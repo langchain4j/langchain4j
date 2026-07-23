@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.assertThatNoException;
 
+import java.util.UUID;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -33,6 +34,8 @@ import dev.langchain4j.observability.api.event.AiServiceStartedEvent;
 import dev.langchain4j.observability.api.event.InputGuardrailExecutedEvent;
 import dev.langchain4j.observability.api.event.OutputGuardrailExecutedEvent;
 import dev.langchain4j.observability.api.event.ToolExecutedEvent;
+import dev.langchain4j.observability.api.event.AiServiceInteractionEvent;
+import dev.langchain4j.observability.api.listener.AiServiceInteractionListener;
 import dev.langchain4j.observability.api.listener.AiServiceCompletedListener;
 import dev.langchain4j.observability.api.listener.AiServiceErrorListener;
 import dev.langchain4j.observability.api.listener.AiServiceListener;
@@ -49,6 +52,7 @@ class DefaultAiServiceListenerRegistrarTests {
     private static final AiServiceListenerRegistrar REGISTRAR = AiServiceListenerRegistrar.newInstance();
 
     private static final InvocationContext DEFAULT_INVOCATION_CONTEXT = InvocationContext.builder()
+            .invocationId(UUID.randomUUID())
             .interfaceName("SomeInterface")
             .methodName("someMethod")
             .methodArgument("one")
@@ -195,6 +199,72 @@ class DefaultAiServiceListenerRegistrarTests {
     }
 
     @Test
+    void shouldFireInteractionEventOnCompletion() {
+        // From https://github.com/langchain4j/langchain4j/issues/4207
+        
+        var registrar = AiServiceListenerRegistrar.newInstance();
+        var listener = new TestAiServiceInteractionListener();
+
+        registrar.register(listener);
+
+        registrar.fireEvent(INVOCATION_STARTED_EVENT);
+        registrar.fireEvent(REQUEST_ISSUED_EVENT);
+        registrar.fireEvent(RESPONSE_RECEIVED_EVENT);
+        registrar.fireEvent(INVOCATION_COMPLETED_EVENT);
+
+        assertThat(listener.count()).isEqualTo(1);
+        assertThat(listener.lastEvent()).isNotNull();
+        assertThat(listener.lastEvent().invocationContext()).isEqualTo(DEFAULT_INVOCATION_CONTEXT);
+        assertThat(listener.lastEvent().events())
+                .containsExactly(
+                    INVOCATION_STARTED_EVENT,
+                    REQUEST_ISSUED_EVENT,
+                    RESPONSE_RECEIVED_EVENT,
+                    INVOCATION_COMPLETED_EVENT
+                );
+    }
+
+    @Test
+    void shouldFireInteractionEventOnError() {
+        // From https://github.com/langchain4j/langchain4j/issues/4207
+        
+        var registrar = AiServiceListenerRegistrar.newInstance();
+        var listener = new TestAiServiceInteractionListener();
+
+        registrar.register(listener);
+
+        registrar.fireEvent(INVOCATION_STARTED_EVENT);
+        registrar.fireEvent(REQUEST_ISSUED_EVENT);
+        registrar.fireEvent(INVOCATION_ERROR_EVENT);
+
+        assertThat(listener.count()).isEqualTo(1);
+        assertThat(listener.lastEvent()).isNotNull();
+        assertThat(listener.lastEvent().events())
+                .containsExactly(
+                    INVOCATION_STARTED_EVENT,
+                    REQUEST_ISSUED_EVENT,
+                    INVOCATION_ERROR_EVENT
+                );
+    }
+
+    @Test
+    void shouldNotFireInteractionEventBeforeCompletionOrError() {
+        // From https://github.com/langchain4j/langchain4j/issues/4207
+       
+        var registrar = AiServiceListenerRegistrar.newInstance();
+        var listener = new TestAiServiceInteractionListener();
+
+        registrar.register(listener);
+
+        registrar.fireEvent(INVOCATION_STARTED_EVENT);
+        registrar.fireEvent(REQUEST_ISSUED_EVENT);
+        registrar.fireEvent(RESPONSE_RECEIVED_EVENT);
+
+        assertThat(listener.count()).isZero();
+        assertThat(listener.lastEvent()).isNull();
+    }
+
+    @Test
     void hasCorrectListeners() {
         var registrar = (DefaultAiServiceListenerRegistrar) assertThat(REGISTRAR)
                 .isNotNull()
@@ -288,8 +358,11 @@ class DefaultAiServiceListenerRegistrarTests {
 
     private static class TestToolExecutedListener extends AbstractTestEventListener<ToolExecutedEvent>
             implements ToolExecutedEventListener {}
+    private static class TestAiServiceInteractionListener extends AbstractTestEventListener<AiServiceInteractionEvent>
+            implements AiServiceInteractionListener {}
 
     private static class IG implements InputGuardrail {}
 
     private static class OG implements OutputGuardrail {}
+
 }
