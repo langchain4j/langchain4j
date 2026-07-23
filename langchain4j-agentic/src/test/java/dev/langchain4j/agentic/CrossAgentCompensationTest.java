@@ -25,7 +25,7 @@ import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import org.junit.jupiter.api.Test;
 
-public class CrossAgentCompensationIT {
+public class CrossAgentCompensationTest {
 
     static final List<String> compensationLog = Collections.synchronizedList(new ArrayList<>());
 
