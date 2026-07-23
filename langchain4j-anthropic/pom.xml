@@ -72,7 +72,7 @@
             <scope>test</scope>
         </dependency>
 
-        <!-- Shared reactive non-blocking TCK (AbstractStreamingChatModelPublisherNonBlockingIT) -->
+        <!-- Shared reactive non-blocking TCK (AbstractChatModelNonBlockingIT) -->
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-reactive-streaming</artifactId>
