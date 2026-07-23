@@ -33,6 +33,9 @@ import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.chat.response.StreamingHandle;
 import dev.langchain4j.model.googleai.BatchRequestResponse.ListOperationsResponse;
+import dev.langchain4j.model.googleai.GeminiCaches.GeminiCachedContent;
+import dev.langchain4j.model.googleai.GeminiCaches.GeminiCachedContentsListResponse;
+import dev.langchain4j.model.googleai.GeminiCaches.GeminiCreateCachedContentRequest;
 import dev.langchain4j.model.googleai.GeminiEmbeddingRequestResponse.GeminiBatchEmbeddingRequest;
 import dev.langchain4j.model.googleai.GeminiEmbeddingRequestResponse.GeminiBatchEmbeddingResponse;
 import dev.langchain4j.model.googleai.GeminiEmbeddingRequestResponse.GeminiEmbeddingRequest;
@@ -179,6 +182,29 @@ class GeminiService {
                 new StringPair("pageSize", pageSize != null ? String.valueOf(pageSize) : null),
                 new StringPair("pageToken", pageToken));
         return sendRequest(url, apiKey, null, GeminiModelsListResponse.class, GET);
+    }
+
+    GeminiCachedContent createCachedContent(GeminiCreateCachedContentRequest request) {
+        String url = String.format("%s/cachedContents", baseUrl);
+        return sendRequest(url, apiKey, request, GeminiCachedContent.class);
+    }
+
+    GeminiCachedContent getCachedContent(String name) {
+        String url = String.format("%s/%s", baseUrl, name);
+        return sendRequest(url, apiKey, null, GeminiCachedContent.class, GET);
+    }
+
+    GeminiCachedContentsListResponse listCachedContents(@Nullable Integer pageSize, @Nullable String pageToken) {
+        String url = buildUrl(
+                baseUrl + "/cachedContents",
+                new StringPair("pageSize", pageSize != null ? String.valueOf(pageSize) : null),
+                new StringPair("pageToken", pageToken));
+        return sendRequest(url, apiKey, null, GeminiCachedContentsListResponse.class, GET);
+    }
+
+    Void deleteCachedContent(String name) {
+        String url = String.format("%s/%s", baseUrl, name);
+        return sendRequest(url, apiKey, null, Void.class, DELETE);
     }
 
     void generateContentStream(
