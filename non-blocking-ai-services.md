@@ -134,6 +134,24 @@ Executor contextAware = Context.taskWrapping(base); // OTel
 ExecutorProvider.set(() -> contextAware);
 ```
 
+#### 3.1.2 Model listeners must not block
+
+`ChatModelListener` and `EmbeddingModelListener` callbacks are invoked **synchronously, on the model's own
+threads** — never offloaded. On the synchronous API they run on the caller's thread; on the asynchronous and
+reactive APIs (`chatAsync` / `embedAsync` and the streaming `chat`), `onRequest` runs on the thread that starts the
+call and `onResponse` / `onError` on the transport's I/O worker (for HTTP models, the JDK client's `HttpClient-*`
+threads that read the response — the same scarce delivery threads BlockHound polices in §6).
+
+A listener that blocks there — a synchronous DB write, a synchronous HTTP call to an observability backend,
+synchronous file logging — stalls that worker and, under concurrency, degrades throughput for all in-flight calls,
+exactly as blocking in a reactive `onNext` would. **Keep listener callbacks non-blocking:** record metrics or
+start/stop tracing spans (the built-in `MicrometerMetricsChatModelListener` and `ObservationChatModelListener` are
+non-blocking by design); if a callback genuinely must perform blocking I/O, offload it to your own executor from
+inside the callback so the model's threads stay free. This is the reactive stream's "don't block the delivery
+thread" contract (§3.7), applied to observability hooks — and, unlike blocking user code in tools/RAG, it is **not**
+auto-offloaded (most listeners are metrics/tracing and non-blocking, so paying a thread hop for every one would tax
+the common case).
+
 ### 3.2 Concurrency & error defaults for the new APIs
 - **Tools run concurrently by default** for the async/reactive modes (legacy modes stay sequential). To run them
   serially instead, pass a single-threaded executor to `executeToolsConcurrently(Executor)` — tools are then
@@ -526,6 +544,7 @@ class BookingTools {
 | **Reactive support for non-OpenAI model providers** | Validated across transports: async `doChatAsync` is implemented by **OpenAI** and **Anthropic** (both over the `HttpClient` abstraction) and **Bedrock** (over the AWS SDK's native async client); the reactive `doChat` publisher is implemented by **OpenAI**, **Anthropic**, and **Bedrock**, all with real mid-stream cancellation (Anthropic aborts via the SSE parser's `StreamingHandle`; Bedrock cancels the AWS SDK event-stream subscription). Remaining chat/embedding providers fall back to the fail-loud defaults and need a per-provider implementation (the handler→publisher `TubeBackedStreamingChatResponseHandler` bridge makes this a small change, pending extraction into a shared module). |
 | **`LangChain4jManaged` thread-local across async hops** | `LangChain4jManaged.CURRENT` is an LC4j-owned `ThreadLocal`; unlike `InvocationContext` (passed explicitly) it does **not** follow the new thread hops. Audit whether it is ever read downstream of an async offload — if so, fold it into `InvocationContext` or capture/restore it around LC4j's own async boundaries. (Distinct from host context propagation, which the `ExecutorProvider` seam now covers.) |
 | **Anthropic streaming fully reactive** | **Delivered.** Anthropic's streaming (both handler and reactive-publisher paths) now drives the SSE listener from `HttpClient.stream()` → the JDK client's `BodyHandlers.ofPublisher()` (nothing parked on socket reads), matching OpenAI; the same event-interpretation logic is reused, only the transport driver changed. All three reactive providers now carry the shared BlockHound TCK `AbstractStreamingChatModelPublisherNonBlockingIT` (in `langchain4j-core`), which enforces "no blocking on the worker threads" per provider — OpenAI and Anthropic police the JDK `HttpClient-*` workers, Bedrock the AWS SDK's `sdk-async-response-*` executor. |
+| **Model-listener non-blocking contract** | **Documented** (§3.1.2, and on `ChatModelListener` / `EmbeddingModelListener`): on the async/reactive path listener callbacks run on the transport worker threads and must not block. Auto-offloading is intentionally *not* done — most listeners are non-blocking metrics/tracing, so a per-call thread hop would tax the common case. An opt-in offloading decorator (e.g. `ChatModelListener.offloaded(...)`, submitting to the `ExecutorProvider` executor) for genuinely-blocking listeners is a possible future addition. |
 | Per-provider `setAsync` / async stores | `ChatMemory.setAsync` and the async store methods are implemented by the bundled in-memory stores; persistent-store integrations (Redis, JDBC, …) need their async methods implemented to be non-blocking on the async/reactive paths (they return a failed future by default). |
 | **Tool cancellation** (interrupting already-started tools) | Parked by design — contract is run-to-completion, result discarded. |
 | Moderation (`@Moderate`) on the new APIs | Intentionally **forbidden** (fails fast) — not meaningful for the async/reactive flow. |
