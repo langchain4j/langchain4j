@@ -176,33 +176,68 @@ public class MongoDbEmbeddingStore implements EmbeddingStore<TextSegment> {
         private Boolean createIndex;
 
         /**
-         * Build Mongo Client, Please close the client to release resources after usage
+         * Sets the {@link MongoClient} used to connect to MongoDB. Please close the client to release
+         * resources after usage.
+         *
+         * @param mongoClient the Mongo client
+         * @return {@code this}
          */
         public Builder fromClient(MongoClient mongoClient) {
             this.mongoClient = mongoClient;
             return this;
         }
 
+        /**
+         * Sets the MongoDB database name.
+         *
+         * @param databaseName the database name
+         * @return {@code this}
+         */
         public Builder databaseName(String databaseName) {
             this.databaseName = databaseName;
             return this;
         }
 
+        /**
+         * Sets the MongoDB collection name used to store embeddings.
+         *
+         * @param collectionName the collection name
+         * @return {@code this}
+         */
         public Builder collectionName(String collectionName) {
             this.collectionName = collectionName;
             return this;
         }
 
+        /**
+         * Sets the name of the Atlas Vector Search index used for similarity search.
+         *
+         * @param indexName the search index name
+         * @return {@code this}
+         */
         public Builder indexName(String indexName) {
             this.indexName = indexName;
             return this;
         }
 
+        /**
+         * Sets the multiplier applied to the requested result count to determine the number of
+         * candidates considered during vector search. Defaults to {@code 10}.
+         *
+         * @param maxResultRatio the result candidate multiplier
+         * @return {@code this}
+         */
         public Builder maxResultRatio(Long maxResultRatio) {
             this.maxResultRatio = maxResultRatio;
             return this;
         }
 
+        /**
+         * Sets the {@link CreateCollectionOptions} used when the collection does not yet exist and must be created.
+         *
+         * @param createCollectionOptions the collection creation options
+         * @return {@code this}
+         */
         public Builder createCollectionOptions(CreateCollectionOptions createCollectionOptions) {
             this.createCollectionOptions = createCollectionOptions;
             return this;
