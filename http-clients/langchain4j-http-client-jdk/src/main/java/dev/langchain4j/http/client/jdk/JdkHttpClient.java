@@ -2,7 +2,6 @@ package dev.langchain4j.http.client.jdk;
 
 import static dev.langchain4j.http.client.sse.ServerSentEventListenerUtils.ignoringExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static java.util.stream.Collectors.joining;
 
 import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.exception.TimeoutException;
@@ -12,15 +11,14 @@ import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.http.client.sse.ServerSentEventParser;
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.net.URI;
 import java.net.http.HttpRequest.BodyPublisher;
 import java.net.http.HttpRequest.BodyPublishers;
 import java.net.http.HttpResponse.BodyHandlers;
 import java.net.http.HttpTimeoutException;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Map;
 
@@ -48,10 +46,11 @@ public class JdkHttpClient implements HttpClient {
         try {
             java.net.http.HttpRequest jdkRequest = toJdkRequest(request);
 
-            java.net.http.HttpResponse<String> jdkResponse = delegate.send(jdkRequest, BodyHandlers.ofString());
+            java.net.http.HttpResponse<byte[]> jdkResponse = delegate.send(jdkRequest, BodyHandlers.ofByteArray());
 
             if (!isSuccessful(jdkResponse)) {
-                throw new HttpException(jdkResponse.statusCode(), jdkResponse.body());
+                throw new HttpException(
+                        jdkResponse.statusCode(), new String(jdkResponse.body(), StandardCharsets.UTF_8));
             }
 
             return fromJdkResponse(jdkResponse, jdkResponse.body());
@@ -138,7 +137,7 @@ public class JdkHttpClient implements HttpClient {
         return publisher.build();
     }
 
-    private static SuccessfulHttpResponse fromJdkResponse(java.net.http.HttpResponse<?> response, String body) {
+    private static SuccessfulHttpResponse fromJdkResponse(java.net.http.HttpResponse<?> response, byte[] body) {
         return SuccessfulHttpResponse.builder()
                 .statusCode(response.statusCode())
                 .headers(response.headers().map())
@@ -152,9 +151,8 @@ public class JdkHttpClient implements HttpClient {
     }
 
     private static String readBody(java.net.http.HttpResponse<InputStream> response) {
-        try (InputStream inputStream = response.body();
-                BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
-            return reader.lines().collect(joining(System.lineSeparator()));
+        try (InputStream inputStream = response.body()) {
+            return new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
         } catch (IOException e) {
             return "Cannot read error response body: " + e.getMessage();
         }

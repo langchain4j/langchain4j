@@ -16,21 +16,21 @@ For Maven project `pom.xml`
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j</artifactId>
-    <version>1.17.0</version>
+    <version>1.18.0</version>
 </dependency>
 
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-mistral-ai</artifactId>
-    <version>1.17.0</version>
+    <version>1.18.0</version>
 </dependency>
 ```
 
 For Gradle project `build.gradle`
 
 ```groovy
-implementation 'dev.langchain4j:langchain4j:1.17.0'
-implementation 'dev.langchain4j:langchain4j-mistral-ai:1.17.0'
+implementation 'dev.langchain4j:langchain4j:1.18.0'
+implementation 'dev.langchain4j:langchain4j-mistral-ai:1.18.0'
 ```
 ### API Key setup
 Add your MistralAI API key to your project, you can create a class ```ApiKeys.java``` with the following code
@@ -183,7 +183,7 @@ public class PaymentTransactionTool {
             "transaction_id", List.of("T1001", "T1002", "T1003", "T1004", "T1005"),
             "customer_id", List.of("C001", "C002", "C003", "C002", "C001"),
             "payment_amount", List.of("125.50", "89.99", "120.00", "54.30", "210.20"),
-            "payment_date", List.of("2021.17.05", "2021.17.06", "2021.17.07", "2021.17.05", "2021.17.08"),
+            "payment_date", List.of("2021.18.05", "2021.18.06", "2021.18.07", "2021.18.05", "2021.18.08"),
             "payment_status", List.of("Paid", "Unpaid", "Paid", "Paid", "Pending"));
    
     ...
@@ -583,6 +583,50 @@ When using `MistralAiStreamingChatModel`, you can access the raw HTTP response (
 List<ServerSentEvent> rawServerSentEvents = ((MistralAiChatResponseMetadata) chatResponse.metadata()).rawServerSentEvents();
 System.out.println(rawServerSentEvents.get(0).data());
 System.out.println(rawServerSentEvents.get(0).event());
+```
+
+## Batch Processing
+
+`MistralAiBatchChatModel` implements the core `BatchChatModel` interface to process many chat requests
+asynchronously via the [Mistral Batch API](https://docs.mistral.ai/capabilities/batch/), at 50% of the
+standard per-token price. All requests in a batch run against the single model configured on the batch
+model.
+
+Submit a batch, poll until it reaches a terminal state, then read the per-request results (which preserve
+submission order):
+```java
+MistralAiBatchChatModel batchModel = MistralAiBatchChatModel.builder()
+        .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
+        .modelName("mistral-small-latest")
+        .build();
+
+BatchResponse<ChatResponse> submitted = batchModel.submit(new BatchRequest<>(List.of(
+        ChatRequest.builder().messages(UserMessage.from("What is the capital of France?")).build(),
+        ChatRequest.builder().messages(UserMessage.from("What is the capital of Germany?")).build())));
+
+String batchId = submitted.batchId();
+
+// Poll until the batch reaches a terminal state (SUCCEEDED, FAILED, CANCELLED, EXPIRED).
+BatchResponse<ChatResponse> batch = batchModel.retrieve(batchId);
+while (!batch.state().isTerminal()) {
+    Thread.sleep(Duration.ofSeconds(30).toMillis());
+    batch = batchModel.retrieve(batchId);
+}
+
+for (BatchItemResult<ChatResponse> result : batch.results()) {
+    if (result.isSuccess()) {
+        System.out.println(result.response().aiMessage().text());
+    } else {
+        System.out.println("Failed: " + result.error().message());
+    }
+}
+```
+
+A running batch can be cancelled, and existing batches can be listed with pagination:
+```java
+batchModel.cancel(batchId);
+
+BatchPage<ChatResponse> page = batchModel.list(new BatchPagination(20, null));
 ```
 
 ## Examples

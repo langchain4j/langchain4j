@@ -13,7 +13,7 @@ https://home.nomic.ai/
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-nomic</artifactId>
-    <version>1.17.0-beta27</version>
+    <version>1.18.0-beta28</version>
 </dependency>
 ```
 
