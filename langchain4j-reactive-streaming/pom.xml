@@ -37,11 +37,17 @@
             <version>1.2.1</version>
         </dependency>
 
-        <!-- test: the shared non-blocking TCK uses BlockHound -->
+        <!-- test: the shared non-blocking TCKs use BlockHound; AbstractChatModelNonBlockingIT also uses WireMock -->
         <dependency>
             <groupId>io.projectreactor.tools</groupId>
             <artifactId>blockhound</artifactId>
             <version>1.0.17.RELEASE</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.wiremock</groupId>
+            <artifactId>wiremock-standalone</artifactId>
             <scope>test</scope>
         </dependency>
 

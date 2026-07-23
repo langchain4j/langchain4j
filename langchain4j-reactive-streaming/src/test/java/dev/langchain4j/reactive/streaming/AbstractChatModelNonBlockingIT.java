@@ -1,12 +1,15 @@
-package dev.langchain4j.model.openai;
+package dev.langchain4j.reactive.streaming;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.post;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingEvent;
@@ -29,37 +32,59 @@ import reactor.blockhound.BlockHound;
 import reactor.blockhound.BlockingOperationError;
 
 /**
- * Verifies that the OpenAI models are genuinely non-blocking on the JDK HTTP client's worker threads
- * (named {@code HttpClient-*}), where the response body is read, parsed and dispatched — policed by BlockHound:
+ * Shared contract test (TCK) verifying that a provider's chat models are genuinely non-blocking on the JDK HTTP
+ * client's worker threads (named {@code HttpClient-*}), where the response body is read, parsed and dispatched —
+ * policed by BlockHound. Two paths are covered:
  * <ul>
- *     <li>{@link OpenAiChatModel#chatAsync(ChatRequest)} (single response) — delivered off the caller thread and
- *         parsed without blocking a worker; and</li>
- *     <li>{@link OpenAiStreamingChatModel#chat(ChatRequest)} (reactive stream) — each SSE chunk parsed and
- *         dispatched without blocking a worker.</li>
+ *     <li>{@link ChatModel#chatAsync(ChatRequest)} (single response) — delivered off the caller thread and parsed
+ *         without blocking a worker; and</li>
+ *     <li>{@link StreamingChatModel#chat(ChatRequest)} (reactive stream) — each SSE chunk parsed and dispatched
+ *         without blocking a worker.</li>
  * </ul>
- * The endpoint is a local WireMock server returning deterministic OpenAI-style responses over plain HTTP — no TLS,
- * no real endpoint, no API key — so only the OpenAI pipeline is policed, not the JDK's HTTPS connection setup (whose
- * one-time truststore/class-loading file reads would otherwise be false positives on the worker threads).
+ * The endpoint is a local WireMock server returning the provider-supplied responses over <b>plain HTTP</b> — no TLS,
+ * no real endpoint, no API key — so only the provider's pipeline is policed, not the JDK's HTTPS connection setup
+ * (whose one-time truststore/class-loading file reads would otherwise be false positives on the worker threads).
  * <p>
- * Both paths live in <b>one</b> test class on purpose: BlockHound is JVM-global and {@code install()} is once-per-JVM,
- * so two BlockHound test classes sharing a fork would leave the second one's violation tracking wired to the first's
- * callback. A single install here keeps that tracking correct. It is parameterized over logging so the
- * {@link dev.langchain4j.http.client.log.LoggingHttpClient} code path is policed too.
+ * A subclass provides the models pointed at the given base URL ({@link #syncModel}, {@link #streamingModel}) and the
+ * provider-format response bodies ({@link #nonStreamingResponseBody()}, {@link #streamingResponseBody()}). Requests to
+ * {@code /sync/...} get the non-streaming body; requests to {@code /stream/...} get the streaming SSE body.
+ * <p>
+ * Both paths live in one class on purpose: BlockHound is JVM-global and {@code install()} is once-per-JVM, so two
+ * BlockHound test classes sharing a fork would leave the second one's violation tracking wired to the first's
+ * callback. A single install here keeps that tracking correct — the self-test proves it.
+ * <p>
+ * This TCK requires the JDK {@code HttpClient} transport (the default for HTTP-based providers). A provider on a
+ * different transport that cannot be driven by a plain-HTTP mock (e.g. Bedrock over the AWS SDK) cannot use it.
  */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-class OpenAiNonBlockingIT {
+public abstract class AbstractChatModelNonBlockingIT {
 
     /** Blocking calls BlockHound observed on a policed thread. Cleared before each test by {@link #resetViolations()}. */
     private static final List<Throwable> violations = new CopyOnWriteArrayList<>();
 
     private WireMockServer wireMock;
 
+    /** Builds the (single-response) chat model pointed at {@code baseUrl}; {@code logging} toggles request/response logging. */
+    protected abstract ChatModel syncModel(String baseUrl, boolean logging);
+
+    /** Builds the streaming chat model pointed at {@code baseUrl}; {@code logging} toggles request/response logging. */
+    protected abstract StreamingChatModel streamingModel(String baseUrl, boolean logging);
+
+    /** The provider's non-streaming chat response body (JSON) returned for a {@code /sync/...} request. */
+    protected abstract String nonStreamingResponseBody();
+
+    /** The provider's streaming SSE body returned for a {@code /stream/...} request. */
+    protected abstract String streamingResponseBody();
+
+    /** Name prefix of the transport threads that deliver body chunks. Defaults to the JDK HTTP client's workers. */
+    protected String policedThreadNamePrefix() {
+        return "HttpClient-";
+    }
+
     @BeforeAll
     void installBlockHound() {
         BlockHound.builder()
-                // The response body is read, parsed and dispatched on the JDK HTTP client's worker threads
-                // ("HttpClient-*"). If we block any of these, throughput collapses under concurrency.
-                .nonBlockingThreadPredicate(prev -> prev.or(t -> t.getName().startsWith("HttpClient-")))
+                .nonBlockingThreadPredicate(prev -> prev.or(t -> t.getName().startsWith(policedThreadNamePrefix())))
                 // Pool bookkeeping, not application blocking: idle workers park on the work queue (getTask), exiting
                 // workers acquire the pool's lock to coordinate shutdown (processWorkerExit).
                 .allowBlockingCallsInside("java.util.concurrent.ThreadPoolExecutor", "getTask")
@@ -79,26 +104,26 @@ class OpenAiNonBlockingIT {
         wireMock = new WireMockServer(WireMockConfiguration.options().dynamicPort());
         wireMock.start();
 
-        wireMock.stubFor(post("/sync/v1/chat/completions")
+        wireMock.stubFor(post(urlPathMatching("/sync/.*"))
                 .willReturn(aResponse()
                         .withStatus(200)
                         .withHeader("Content-Type", "application/json")
-                        .withBody(chatCompletionJson("Berlin"))));
+                        .withBody(nonStreamingResponseBody())));
 
-        wireMock.stubFor(post("/stream/v1/chat/completions")
+        wireMock.stubFor(post(urlPathMatching("/stream/.*"))
                 .willReturn(aResponse()
                         .withStatus(200)
                         .withHeader("Content-Type", "text/event-stream")
                         // Dribble the body out in chunks so it arrives in several reads on the worker threads,
                         // exercising the parse/dispatch pipeline repeatedly (not one buffered read).
                         .withChunkedDribbleDelay(10, 200)
-                        .withBody(openAiStreamBody(20))));
+                        .withBody(streamingResponseBody())));
 
         // The first request lazily loads client/parse classes on the worker threads (FileInputStream reading .class
         // from jars). Trigger it once so the measured tests see only steady-state behavior; violations are wiped by
         // resetViolations() before each test.
-        syncModel(true).chatAsync(request()).get(10, TimeUnit.SECONDS);
-        awaitStream(streamingModel(true));
+        syncModel(syncBaseUrl(), true).chatAsync(request()).get(10, TimeUnit.SECONDS);
+        awaitStream(streamingModel(streamBaseUrl(), true));
     }
 
     @AfterAll
@@ -113,13 +138,21 @@ class OpenAiNonBlockingIT {
         violations.clear();
     }
 
+    private String syncBaseUrl() {
+        return "http://localhost:" + wireMock.port() + "/sync/v1";
+    }
+
+    private String streamBaseUrl() {
+        return "http://localhost:" + wireMock.port() + "/stream/v1";
+    }
+
     @ParameterizedTest(name = "logging={0}")
     @ValueSource(booleans = {false, true})
     void chatAsync_does_not_block_the_caller_or_the_http_worker_threads(boolean logging) throws Exception {
         Thread callerThread = Thread.currentThread();
         AtomicReference<Thread> completionThread = new AtomicReference<>();
 
-        ChatResponse response = syncModel(logging)
+        ChatResponse response = syncModel(syncBaseUrl(), logging)
                 .chatAsync(request())
                 .whenComplete((chatResponse, throwable) -> completionThread.set(Thread.currentThread()))
                 .get(10, TimeUnit.SECONDS);
@@ -130,32 +163,29 @@ class OpenAiNonBlockingIT {
                 .isNotNull()
                 .isNotEqualTo(callerThread);
         assertThat(violations)
-                .as("BlockHound detected blocking calls on JDK HTTP worker threads (logging=%s) — see stack(s) below",
-                        logging)
+                .as("BlockHound detected blocking calls on the worker threads (logging=%s) — see stack(s) below", logging)
                 .isEmpty();
     }
 
     @ParameterizedTest(name = "logging={0}")
     @ValueSource(booleans = {false, true})
     void streaming_publisher_does_not_block_the_http_worker_threads(boolean logging) throws Exception {
-        Capture capture = awaitStream(streamingModel(logging));
+        Capture capture = awaitStream(streamingModel(streamBaseUrl(), logging));
 
         assertThat(capture.error).as("subscriber received an error (logging=%s)", logging).isNull();
         assertThat(capture.received).as("no events received (logging=%s)", logging).isNotEmpty();
-        // Non-vacuity: at least one event delivered on a policed worker thread.
         assertThat(capture.deliveryThreads)
-                .as("at least one event must be delivered on a policed HttpClient-* thread (logging=%s); delivered on: %s",
+                .as("at least one event must be delivered on a policed worker thread (logging=%s); delivered on: %s",
                         logging, capture.deliveryThreads)
-                .anyMatch(name -> name.startsWith("HttpClient-"));
+                .anyMatch(name -> name.startsWith(policedThreadNamePrefix()));
         assertThat(violations)
-                .as("BlockHound detected blocking calls on JDK HTTP worker threads (logging=%s) — see stack(s) below",
-                        logging)
+                .as("BlockHound detected blocking calls on the worker threads (logging=%s) — see stack(s) below", logging)
                 .isEmpty();
     }
 
     /**
-     * Sanity-checks the harness itself: a blocking call on a policed ("HttpClient-*") thread MUST be recorded, so the
-     * tests above cannot pass vacuously if BlockHound ever stopped policing the worker threads.
+     * Sanity-checks the harness itself: a blocking call on a policed thread MUST be recorded, so the tests above
+     * cannot pass vacuously if BlockHound ever stopped policing the worker threads.
      */
     @Test
     void blockHound_detects_blocking_on_a_policed_thread() throws Exception {
@@ -167,7 +197,7 @@ class OpenAiNonBlockingIT {
                         Thread.currentThread().interrupt();
                     }
                 },
-                "HttpClient-selftest");
+                policedThreadNamePrefix() + "selftest");
         thread.start();
         thread.join(TimeUnit.SECONDS.toMillis(5));
 
@@ -176,33 +206,7 @@ class OpenAiNonBlockingIT {
                 .isNotEmpty();
     }
 
-    private OpenAiChatModel syncModel(boolean logging) {
-        return OpenAiChatModel.builder()
-                .baseUrl("http://localhost:" + wireMock.port() + "/sync/v1")
-                .apiKey("test-key")
-                .modelName("gpt-4o-mini")
-                .logRequests(logging)
-                .logResponses(logging)
-                .build();
-    }
-
-    private OpenAiStreamingChatModel streamingModel(boolean logging) {
-        return OpenAiStreamingChatModel.builder()
-                .baseUrl("http://localhost:" + wireMock.port() + "/stream/v1")
-                .apiKey("test-key")
-                .modelName("gpt-4o-mini")
-                .logRequests(logging)
-                .logResponses(logging)
-                .build();
-    }
-
-    private static ChatRequest request() {
-        return ChatRequest.builder()
-                .messages(UserMessage.from("What is the capital of Germany?"))
-                .build();
-    }
-
-    private Capture awaitStream(OpenAiStreamingChatModel model) throws Exception {
+    private Capture awaitStream(StreamingChatModel model) throws Exception {
         Flow.Publisher<StreamingEvent> publisher = model.chat(request());
         List<StreamingEvent> received = new CopyOnWriteArrayList<>();
         AtomicReference<Throwable> error = new AtomicReference<>();
@@ -237,26 +241,11 @@ class OpenAiNonBlockingIT {
         return new Capture(received, deliveryThreads, error.get());
     }
 
+    private static ChatRequest request() {
+        return ChatRequest.builder()
+                .messages(UserMessage.from("What is the capital of Germany?"))
+                .build();
+    }
+
     private record Capture(List<StreamingEvent> received, Set<String> deliveryThreads, Throwable error) {}
-
-    private static String chatCompletionJson(String content) {
-        return "{\"id\":\"x\",\"object\":\"chat.completion\",\"created\":1,\"model\":\"gpt-4o-mini\","
-                + "\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":\"" + content
-                + "\"},\"finish_reason\":\"stop\"}],"
-                + "\"usage\":{\"prompt_tokens\":1,\"completion_tokens\":1,\"total_tokens\":2}}";
-    }
-
-    private static String openAiStreamBody(int contentChunks) {
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < contentChunks; i++) {
-            sb.append("data: ").append(contentChunk("chunk-" + i)).append("\n\n");
-        }
-        sb.append("data: [DONE]\n\n");
-        return sb.toString();
-    }
-
-    private static String contentChunk(String content) {
-        return "{\"id\":\"x\",\"object\":\"chat.completion.chunk\",\"created\":1,\"model\":\"gpt-4o-mini\","
-                + "\"choices\":[{\"index\":0,\"delta\":{\"content\":\"" + content + "\"},\"finish_reason\":null}]}";
-    }
 }
