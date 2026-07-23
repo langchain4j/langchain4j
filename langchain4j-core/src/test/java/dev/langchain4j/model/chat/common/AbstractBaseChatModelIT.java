@@ -735,8 +735,7 @@ public abstract class AbstractBaseChatModelIT<M> {
                 inOrder.verifyNoMoreInteractions();
                 verifyNoMoreInteractions(handler);
             } else if (metadata.mode() == StreamingMode.PUBLISHER) {
-                verifyToolEvents(
-                        metadata, supportsPartialToolStreaming((StreamingChatModel) model), toolExecutionRequest.id());
+                verifyToolEvents(metadata, toolExecutionRequest.id());
             }
 
             assertThat(metadata.timesOnCompleteResponseWasCalled()).isEqualTo(1);
@@ -818,8 +817,8 @@ public abstract class AbstractBaseChatModelIT<M> {
         verifyToolCallbacks(handler, io, getWeather(id));
     }
 
-    protected void verifyToolEvents(StreamingMetadata metadata, boolean supportsPartialToolStreaming, String id) {
-        verifyToolEvents(metadata, supportsPartialToolStreaming, getWeather(id));
+    protected void verifyToolEvents(StreamingMetadata metadata, String id) {
+        verifyToolEvents(metadata, getWeather(id));
     }
 
     /** Verifies the handler received the expected tool calls (handler API, via Mockito {@link InOrder}). */
@@ -831,9 +830,8 @@ public abstract class AbstractBaseChatModelIT<M> {
     }
 
     /** Verifies the collected streaming metadata contains the expected tool calls (publisher API). */
-    protected void verifyToolEvents(
-            StreamingMetadata metadata, boolean supportsPartialToolStreaming, ExpectedToolCall... expected) {
-        if (supportsPartialToolStreaming) {
+    protected void verifyToolEvents(StreamingMetadata metadata, ExpectedToolCall... expected) {
+        if (supportsPartialToolStreaming(metadata.model())) {
             // Every partial chunk must belong to one of the expected tool calls (no strays)...
             assertThat(metadata.partialToolCalls())
                     .isNotEmpty()
@@ -951,10 +949,7 @@ public abstract class AbstractBaseChatModelIT<M> {
                 inOrder.verifyNoMoreInteractions();
                 verifyNoMoreInteractions(handler);
             } else if (metadata.mode() == StreamingMode.PUBLISHER) {
-                verifyToolEvents(
-                        metadata,
-                        supportsPartialToolStreaming((StreamingChatModel) model),
-                        getCurrentTime(toolExecutionRequest.id()));
+                verifyToolEvents(metadata, getCurrentTime(toolExecutionRequest.id()));
             }
 
             assertThat(metadata.timesOnCompleteResponseWasCalled()).isEqualTo(1);
@@ -1139,7 +1134,6 @@ public abstract class AbstractBaseChatModelIT<M> {
             } else if (metadata.mode() == StreamingMode.PUBLISHER) {
                 verifyToolEvents(
                         metadata,
-                        supportsPartialToolStreaming((StreamingChatModel) model),
                         toolExecutionRequests.get(0).id(),
                         toolExecutionRequests.get(1).id());
             }
@@ -1204,9 +1198,8 @@ public abstract class AbstractBaseChatModelIT<M> {
         verifyToolCallbacks(handler, io, id1, id2);
     }
 
-    protected void verifyToolEvents(
-            StreamingMetadata metadata, boolean supportsPartialToolStreaming, String id1, String id2) {
-        verifyToolEvents(metadata, supportsPartialToolStreaming, getWeather(id1), getTime(id2));
+    protected void verifyToolEvents(StreamingMetadata metadata, String id1, String id2) {
+        verifyToolEvents(metadata, getWeather(id1), getTime(id2));
     }
 
     protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id1, String id2) {

@@ -545,7 +545,8 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
                 timesOnCompleteResponseWasCalled.get(),
                 threads,
                 spyHandler,
-                StreamingMode.HANDLER);
+                StreamingMode.HANDLER,
+                chatModel);
         return new ChatResponseAndStreamingMetadata(chatResponse, metadata);
     }
 
@@ -639,7 +640,8 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
                 timesOnCompleteResponseWasCalled.get(),
                 threads,
                 null,
-                StreamingMode.PUBLISHER);
+                StreamingMode.PUBLISHER,
+                chatModel);
         return new ChatResponseAndStreamingMetadata(chatResponse, metadata);
     }
 
