@@ -7,9 +7,13 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingStore;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -26,7 +30,9 @@ import org.jspecify.annotations.Nullable;
  * segment-specific information, such as the page number, the position of the segment within the document, chapter, etc.
  * <br>
  * The metadata is stored as a key-value map, where the key is a {@link String} and the value can be one of:
- * {@link String}, {@link UUID}, {@link Integer}, {@link Long}, {@link Float}, {@link Double}.
+ * {@link String}, {@link UUID}, {@link Integer}, {@link Long}, {@link Float}, {@link Double},
+ * or a {@link Collection} containing either {@link String} or {@link UUID} values.
+ * Support for storing and filtering by collection values depends on the {@link EmbeddingStore} implementation.
  * If you require additional types, please <a href="https://github.com/langchain4j/langchain4j/issues/new/choose">open an issue</a>.
  * <br>
  * {@code null} values are not permitted.
@@ -34,6 +40,7 @@ import org.jspecify.annotations.Nullable;
 public class Metadata {
 
     private static final Set<Class<?>> SUPPORTED_VALUE_TYPES = new LinkedHashSet<>();
+    private static final Set<Class<?>> SUPPORTED_COLLECTION_VALUE_TYPES = new LinkedHashSet<>();
 
     static {
         SUPPORTED_VALUE_TYPES.add(String.class);
@@ -51,6 +58,9 @@ public class Metadata {
 
         SUPPORTED_VALUE_TYPES.add(double.class);
         SUPPORTED_VALUE_TYPES.add(Double.class);
+
+        SUPPORTED_COLLECTION_VALUE_TYPES.add(String.class);
+        SUPPORTED_COLLECTION_VALUE_TYPES.add(UUID.class);
     }
 
     private final Map<String, Object> metadata;
@@ -66,28 +76,66 @@ public class Metadata {
      * Constructs a Metadata object from a map of key-value pairs.
      *
      * @param metadata the map of key-value pairs; must not be {@code null}. {@code null} values are not permitted.
-     *                 Supported value types: {@link String}, {@link Integer}, {@link Long}, {@link Float}, {@link Double}, {@link UUID}
+     *                 Supported value types: {@link String}, {@link Integer}, {@link Long}, {@link Float}, {@link Double}, {@link UUID},
+     *                 and {@link Collection}s containing either {@link String} or {@link UUID} values.
      */
     public Metadata(Map<String, ?> metadata) {
-        validate(metadata);
-        this.metadata = new HashMap<>(metadata);
+        this.metadata = copyAndValidate(metadata);
     }
 
-    private static void validate(Map<String, ?> metadata) {
+    private static Map<String, Object> copyAndValidate(Map<String, ?> metadata) {
+        Map<String, Object> copy = new HashMap<>();
         ensureNotNull(metadata, "metadata").forEach((key, value) -> {
-            validate(key, value);
-            if (!SUPPORTED_VALUE_TYPES.contains(value.getClass())) {
-                throw illegalArgument(
-                        "The metadata key '%s' has the value '%s', which is of the unsupported type '%s'. "
-                                + "Currently, the supported types are: %s",
-                        key, value, value.getClass().getName(), SUPPORTED_VALUE_TYPES);
-            }
+            copy.put(key, copyAndValidate(key, value));
         });
+        return copy;
+    }
+
+    private static Object copyAndValidate(String key, Object value) {
+        validate(key, value);
+        if (value instanceof Collection<?> collection) {
+            return copyAndValidateCollection(key, collection);
+        }
+        validateValue(key, value);
+        return value;
     }
 
     private static void validate(String key, Object value) {
         ensureNotBlank(key, "The metadata key with the value '" + value + "'");
         ensureNotNull(value, "The metadata value for the key '" + key + "'");
+    }
+
+    private static void validateValue(String key, Object value) {
+        if (!SUPPORTED_VALUE_TYPES.contains(value.getClass())) {
+            throw illegalArgument(
+                    "The metadata key '%s' has the value '%s', which is of the unsupported type '%s'. "
+                            + "Currently, the supported types are: %s and collections containing values of these types: %s",
+                    key, value, value.getClass().getName(), SUPPORTED_VALUE_TYPES, SUPPORTED_COLLECTION_VALUE_TYPES);
+        }
+    }
+
+    private static List<?> copyAndValidateCollection(String key, Collection<?> values) {
+        List<Object> copy = new ArrayList<>(values.size());
+        Class<?> collectionValueType = null;
+        for (Object value : values) {
+            ensureNotNull(value, "The metadata collection value for the key '" + key + "'");
+            if (!SUPPORTED_COLLECTION_VALUE_TYPES.contains(value.getClass())) {
+                throw illegalArgument(
+                        "The metadata key '%s' has collection value '%s', which is of the unsupported collection value type '%s'. "
+                                + "Currently, the supported collection value types are: %s",
+                        key, value, value.getClass().getName(), SUPPORTED_COLLECTION_VALUE_TYPES);
+            }
+            if (collectionValueType == null) {
+                collectionValueType = value.getClass();
+            } else if (collectionValueType != value.getClass()) {
+                throw illegalArgument(
+                        "The metadata key '%s' has a collection with mixed value types: '%s' and '%s'. "
+                                + "Metadata collections must contain values of the same type.",
+                        key, collectionValueType.getName(), value.getClass().getName());
+            }
+            copy.add(value);
+        }
+        return Collections.unmodifiableList(copy);
     }
 
     /**
@@ -115,6 +163,40 @@ public class Metadata {
     }
 
     /**
+     * Returns the {@code String} values associated with the given key.
+     *
+     * @param key the key
+     * @return the {@code String} values associated with the given key, or an empty collection if the key is not present.
+     * @throws RuntimeException if the value is not a {@link Collection} of {@link String}s
+     */
+    public Collection<String> getStrings(String key) {
+        Object values = metadata.get(key);
+        if (values == null) {
+            return Collections.emptyList();
+        }
+
+        if (values instanceof Collection<?> collection) {
+            List<String> strings = new ArrayList<>(collection.size());
+            for (Object value : collection) {
+                if (value instanceof String string) {
+                    strings.add(string);
+                } else {
+                    throw runtime(
+                            "Metadata entry with the key '%s' has a collection value of '%s' and type '%s'. "
+                                    + "It cannot be returned as a Collection<String>.",
+                            key, value, value.getClass().getName());
+                }
+            }
+            return Collections.unmodifiableList(strings);
+        }
+
+        throw runtime(
+                "Metadata entry with the key '%s' has a value of '%s' and type '%s'. "
+                        + "It cannot be returned as a Collection<String>.",
+                key, values, values.getClass().getName());
+    }
+
+    /**
      * Returns the {@code UUID} value associated with the given key.
      *
      * @param key the key
@@ -139,6 +221,45 @@ public class Metadata {
                 "Metadata entry with the key '%s' has a value of '%s' and type '%s'. "
                         + "It cannot be returned as a UUID.",
                 key, value, value.getClass().getName());
+    }
+
+    /**
+     * Returns the {@code UUID} values associated with the given key.
+     * <br>
+     * Some {@link EmbeddingStore} implementations store {@code UUID}s as {@code String}s.
+     * In this case, the {@code String} values will be parsed into {@code UUID}s when this method is called.
+     *
+     * @param key the key
+     * @return the {@code UUID} values associated with the given key, or an empty collection if the key is not present.
+     * @throws RuntimeException if the value is not a {@link Collection} of {@link UUID}s or {@link String}s
+     */
+    public Collection<UUID> getUUIDs(String key) {
+        Object values = metadata.get(key);
+        if (values == null) {
+            return Collections.emptyList();
+        }
+
+        if (values instanceof Collection<?> collection) {
+            List<UUID> uuids = new ArrayList<>(collection.size());
+            for (Object value : collection) {
+                if (value instanceof UUID uuid) {
+                    uuids.add(uuid);
+                } else if (value instanceof String string) {
+                    uuids.add(UUID.fromString(string));
+                } else {
+                    throw runtime(
+                            "Metadata entry with the key '%s' has a collection value of '%s' and type '%s'. "
+                                    + "It cannot be returned as a Collection<UUID>.",
+                            key, value, value.getClass().getName());
+                }
+            }
+            return Collections.unmodifiableList(uuids);
+        }
+
+        throw runtime(
+                "Metadata entry with the key '%s' has a value of '%s' and type '%s'. "
+                        + "It cannot be returned as a Collection<UUID>.",
+                key, values, values.getClass().getName());
     }
 
     /**
@@ -369,9 +490,20 @@ public class Metadata {
         return this;
     }
 
+    /**
+     * Adds a key-value pair to the metadata.
+     *
+     * @param key    the key
+     * @param values the values; must contain only {@link String}s or only {@link UUID}s
+     * @return {@code this}
+     */
+    public Metadata put(String key, Collection<?> values) {
+        this.metadata.put(key, copyAndValidate(key, values));
+        return this;
+    }
+
     public Metadata putAll(Map<String, Object> metadata) {
-        validate(metadata);
-        this.metadata.putAll(metadata);
+        this.metadata.putAll(copyAndValidate(metadata));
         return this;
     }
 
