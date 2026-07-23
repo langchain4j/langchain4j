@@ -753,9 +753,9 @@ UntypedAgent novelCreator = AgenticServices.sequenceBuilder()
 
 ## Cross-agent compensation
 
-When an agentic system performs side effects through tools (e.g., database writes, API calls, financial transactions), a failure partway through the workflow can leave the system in an inconsistent state. Cross-agent compensation makes these operations atomic: if any agent in the hierarchy fails, all previously successful tool invocations with `@CompensateFor` actions are compensated in reverse order.
+When an agentic system performs side effects through tools (e.g., database writes, API calls, financial transactions), a failure partway through the workflow can leave the system in an inconsistent state. Cross-agent compensation tries to solve, or at least mitigate, this problem: if any agent in the hierarchy fails, all previously successful tool invocations with `@CompensateFor` actions are compensated in reverse order.
 
-This builds on the per-agent `@CompensateFor` mechanism (see [Tools](/tutorials/tools#compensation-actions)). While per-agent compensation handles tool errors within a single agent, cross-agent compensation handles agent-level failures across an entire hierarchy.
+This builds on the per-agent `@CompensateFor` mechanism (see [Tools](/tutorials/tools#compensating-tool-actions)). While per-agent compensation handles tool errors within a single agent, cross-agent compensation handles agent-level failures across an entire hierarchy.
 
 In order to enable this feature set `compensateOnError(true)` on the composed agent builder:
 
