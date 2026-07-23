@@ -35,6 +35,7 @@ import dev.langchain4j.agentic.declarative.ChatMemoryProviderSupplier;
 import dev.langchain4j.agentic.declarative.ChatModelSupplier;
 import dev.langchain4j.agentic.declarative.SystemMessageProviderSupplier;
 import dev.langchain4j.agentic.declarative.UserMessageProviderSupplier;
+import dev.langchain4j.agentic.declarative.BeforeCall;
 import dev.langchain4j.agentic.declarative.ConditionalAgent;
 import dev.langchain4j.agentic.declarative.ErrorHandler;
 import dev.langchain4j.agentic.declarative.ExitCondition;
@@ -324,6 +325,38 @@ public class DeclarativeAgentIT {
 
         String story = storyCreator.write(null, "fantasy", "young adults");
         assertThat(story).isNotBlank();
+    }
+
+    public interface StoryCreatorWithBeforeCall {
+
+        @SequenceAgent(outputKey = "story",
+                subAgents = { CreativeWriter.class, StyleEditor.class })
+        ResultWithAgenticScope<String> write(@V("topic") String topic, @V("style") String style);
+
+        @BeforeCall
+        static void beforeCall(AgenticScope agenticScope) {
+            agenticScope.writeStateIfAbsent("style", "comedy");
+        }
+    }
+
+    @Test
+    void declarative_sequence_with_before_call_uses_default() {
+        StoryCreatorWithBeforeCall creator =
+                AgenticServices.createAgenticSystem(StoryCreatorWithBeforeCall.class, baseModel());
+
+        ResultWithAgenticScope<String> result = creator.write("dragons", null);
+        assertThat(result.result()).isNotBlank();
+        assertThat(result.agenticScope().readState("style")).isEqualTo("comedy");
+    }
+
+    @Test
+    void declarative_sequence_with_before_call_explicit_value_wins() {
+        StoryCreatorWithBeforeCall creator =
+                AgenticServices.createAgenticSystem(StoryCreatorWithBeforeCall.class, baseModel());
+
+        ResultWithAgenticScope<String> result = creator.write("dragons", "horror");
+        assertThat(result.result()).isNotBlank();
+        assertThat(result.agenticScope().readState("style")).isEqualTo("horror");
     }
 
     public interface StyleReviewLoopAgent {
@@ -1117,5 +1150,47 @@ public class DeclarativeAgentIT {
         assertThat(response).isNotBlank();
         assertThat(PROVIDED_SYSTEM_MESSAGE).isEqualTo("Conversation abc: You are a concise assistant. Reply with exactly one word.");
         assertThat(PROVIDED_USER_MESSAGE).isEqualTo("Conversation abc: What color is the sky?");
+    }
+
+    public static class CityDataProducer {
+
+        @Agent(description = "Produce city data for further processing", outputKey = "cityData")
+        public static String produceCityData() {
+            return "Rome: population 2.8 million, founded 753 BC, known for the Colosseum and Vatican City";
+        }
+    }
+
+    public interface CitySummarizer {
+
+        @UserMessage("""
+                Summarize the following city data in exactly one sentence.
+                City data: {{cityData}}
+                """)
+        @Agent(description = "Summarize city data into a single sentence", outputKey = "summary")
+        String summarize(@V("cityData") String cityData);
+
+        @ChatModelSupplier
+        static ChatModel chatModel() {
+            return baseModel();
+        }
+    }
+
+    public interface CityDataPipeline {
+
+        @SequenceAgent(
+                outputKey = "summary",
+                subAgents = {CityDataProducer.class, CitySummarizer.class})
+        ResultWithAgenticScope<String> process();
+    }
+
+    @Test
+    void declarative_sequence_non_ai_agent_producing_data_for_ai_agent() {
+        CityDataPipeline pipeline = AgenticServices.createAgenticSystem(CityDataPipeline.class);
+
+        ResultWithAgenticScope<String> result = pipeline.process();
+
+        assertThat(result.result()).isNotBlank();
+        assertThat(result.agenticScope().readState("cityData", "")).contains("Rome");
+        assertThat(result.result()).containsIgnoringCase("Rome");
     }
 }

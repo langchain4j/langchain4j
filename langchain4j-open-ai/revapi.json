@@ -5,6 +5,36 @@
       "ignore": true,
       "differences": [
         {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.model.embedding.listener.EmbeddingModelListener",
+          "justification": "Core langchain4j type intentionally exposed by the EmbeddingModel request/response API"
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.model.embedding.request.EmbeddingParameter",
+          "justification": "Core langchain4j type intentionally exposed by the EmbeddingModel request/response API"
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.model.embedding.request.EmbeddingRequest",
+          "justification": "Core langchain4j type intentionally exposed by the EmbeddingModel request/response API"
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.model.embedding.request.EmbeddingRequestParameters",
+          "justification": "Core langchain4j type intentionally exposed by the EmbeddingModel request/response API"
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.model.embedding.response.EmbeddingResponse",
+          "justification": "Core langchain4j type intentionally exposed by the EmbeddingModel request/response API"
+        },
+        {
+          "code": "java.method.removed",
+          "old": "method dev.langchain4j.model.output.Response<java.util.List<dev.langchain4j.data.embedding.Embedding>> dev.langchain4j.model.openai.OpenAiEmbeddingModel::embedAll(java.util.List<dev.langchain4j.data.segment.TextSegment>)",
+          "justification": "embedAll now inherits its default implementation from EmbeddingModel (routing through embed(EmbeddingRequest)); the method is still present and callable via inheritance — non-breaking"
+        },
+        {
           "code": "java.method.removed",
           "old": "method dev.langchain4j.model.openai.OpenAiImageModel.OpenAiImageModelBuilder dev.langchain4j.model.openai.OpenAiImageModel.OpenAiImageModelBuilder::style(java.lang.String)",
           "justification": "The 'style' parameter is not supported by the OpenAI image generation API"
@@ -58,6 +88,16 @@
           "code": "java.field.removed",
           "old": "field dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_TURBO_PREVIEW",
           "justification": "Deprecated OpenAI model removed"
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.model.audio.TextToSpeechRequest",
+          "justification": "TextToSpeechRequest is intentionally exposed by OpenAiTextToSpeechModel because it implements the core TextToSpeechModel API"
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.model.audio.TextToSpeechResponse",
+          "justification": "TextToSpeechResponse is intentionally exposed by OpenAiTextToSpeechModel because it implements the core TextToSpeechModel API"
         }
       ]
     }

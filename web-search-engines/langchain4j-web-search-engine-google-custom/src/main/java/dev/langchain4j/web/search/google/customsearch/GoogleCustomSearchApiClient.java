@@ -238,7 +238,7 @@ class GoogleCustomSearchApiClient {
         }
 
         public String toString() {
-            return "GoogleCustomSearchApiClient.GoogleCustomSearchApiClientBuilder(apiKey=" + this.apiKey + ", csi=" + this.csi + ", siteRestrict=" + this.siteRestrict + ", timeout=" + this.timeout + ", maxRetries=" + this.maxRetries + ", logRequests=" + this.logRequests + ", logResponses=" + this.logResponses + ")";
+            return "GoogleCustomSearchApiClient.GoogleCustomSearchApiClientBuilder(apiKey=" + (this.apiKey == null ? null : "********") + ", csi=" + this.csi + ", siteRestrict=" + this.siteRestrict + ", timeout=" + this.timeout + ", maxRetries=" + this.maxRetries + ", logRequests=" + this.logRequests + ", logResponses=" + this.logResponses + ")";
         }
     }
 }

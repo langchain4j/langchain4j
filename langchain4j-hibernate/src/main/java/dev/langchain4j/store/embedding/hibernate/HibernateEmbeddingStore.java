@@ -431,9 +431,18 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
                         .executeUpdate();
             });
         } else {
-            sessionFactory
-                    .getSchemaManager()
-                    .truncateTable(entityPersister.getIdentifierTableMapping().getTableName());
+            try {
+                sessionFactory
+                        .getSchemaManager()
+                        .truncateTable(entityPersister.getIdentifierTableMapping().getTableName());
+            }
+            catch (UnsupportedOperationException ex) {
+                // Workaround HHH-20500 since we can't reliably detect the Hibernate ORM version
+                sessionFactory.inStatelessTransaction(session -> {
+                    session.createMutationQuery("delete from " + entityPersister.getEntityName())
+                            .executeUpdate();
+                });
+            }
         }
     }
 
@@ -1772,7 +1781,7 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
             return "HibernateEmbeddingStore.DynamicBuilder(jdbcUrl=" + this.jdbcUrl
                     + ", databaseKind=" + this.databaseKind
                     + ", user=" + this.user
-                    + ", password=" + this.password
+                    + ", password=" + (this.password == null ? null : "********")
                     + ", table=" + this.table
                     + ", dimension=" + this.dimension
                     + ", createIndex=" + this.createIndex

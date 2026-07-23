@@ -20,7 +20,12 @@ class FactoryCreator {
 
         @Override
         public HuggingFaceClient create(Input input) {
-            return new DefaultHuggingFaceClient(input.baseUrl(), input.apiKey(), input.modelId(), input.timeout());
+            return new DefaultHuggingFaceClient(
+                    input.httpClientBuilder(),
+                    input.baseUrl(),
+                    input.apiKey(),
+                    input.modelId(),
+                    input.timeout());
         }
     }
 }

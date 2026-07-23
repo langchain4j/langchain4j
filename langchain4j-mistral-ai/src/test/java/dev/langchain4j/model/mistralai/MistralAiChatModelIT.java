@@ -4,7 +4,6 @@ import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.model.mistralai.MistralAiChatModelName.CODESTRAL_LATEST;
 import static dev.langchain4j.model.mistralai.MistralAiChatModelName.MISTRAL_SMALL_LATEST;
 import static dev.langchain4j.model.mistralai.MistralAiChatModelName.OPEN_MISTRAL_7B;
-import static dev.langchain4j.model.mistralai.MistralAiChatModelName.VOXTRAL_MINI_LATEST;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -35,6 +34,8 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 @EnabledIfEnvironmentVariable(named = "MISTRAL_AI_API_KEY", matches = ".+")
 class MistralAiChatModelIT {
+
+    private static final String VOXTRAL_SMALL = "voxtral-small-2507";
 
     // https://docs.mistral.ai/platform/guardrailing/
     @Test
@@ -204,7 +205,7 @@ class MistralAiChatModelIT {
         // given
         ChatModel chatModel = MistralAiChatModel.builder()
                 .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
-                .modelName(VOXTRAL_MINI_LATEST)
+                .modelName(VOXTRAL_SMALL)
                 .temperature(0.0)
                 .logRequests(true)
                 .logResponses(true)
@@ -230,7 +231,7 @@ class MistralAiChatModelIT {
         // given
         ChatModel chatModel = MistralAiChatModel.builder()
                 .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
-                .modelName(VOXTRAL_MINI_LATEST)
+                .modelName(VOXTRAL_SMALL)
                 .temperature(0.0)
                 .logRequests(true)
                 .logResponses(true)

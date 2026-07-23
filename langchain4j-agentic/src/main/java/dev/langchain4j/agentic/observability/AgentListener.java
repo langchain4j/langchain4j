@@ -14,6 +14,8 @@ public interface AgentListener {
     default void afterAgenticScopeCreated(AgenticScope agenticScope) { }
     default void beforeAgenticScopeDestroyed(AgenticScope agenticScope) { }
 
+    default void onAgenticSystemSuspended(AgenticScope agenticScope) { }
+
     default void beforeAgentToolExecution(BeforeAgentToolExecution beforeAgentToolExecution) { }
     default void afterAgentToolExecution(AfterAgentToolExecution afterAgentToolExecution) { }
 

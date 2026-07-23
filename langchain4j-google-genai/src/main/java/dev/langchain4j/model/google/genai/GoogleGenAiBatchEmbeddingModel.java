@@ -140,7 +140,10 @@ public final class GoogleGenAiBatchEmbeddingModel implements BatchEmbeddingModel
                 .build();
 
         BatchJob batchJob =
-                withRetryMappingExceptions(() -> client.batches.createEmbeddings(modelName, src, config), maxRetries);
+                withRetryMappingExceptions(
+                        () -> client.batches.createEmbeddings(modelName, src, config),
+                        maxRetries,
+                        GoogleGenAiExceptionMapper.INSTANCE);
         return processResponse(batchJob);
     }
 
@@ -161,7 +164,10 @@ public final class GoogleGenAiBatchEmbeddingModel implements BatchEmbeddingModel
                 .build();
 
         BatchJob batchJob =
-                withRetryMappingExceptions(() -> client.batches.createEmbeddings(modelName, src, config), maxRetries);
+                withRetryMappingExceptions(
+                        () -> client.batches.createEmbeddings(modelName, src, config),
+                        maxRetries,
+                        GoogleGenAiExceptionMapper.INSTANCE);
         return processResponse(batchJob);
     }
 
