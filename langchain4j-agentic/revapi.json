@@ -147,6 +147,18 @@
           "old": "class dev.langchain4j.agentic.scope.ResultWithAgenticScope<T>",
           "new": "class dev.langchain4j.agentic.scope.ResultWithAgenticScope<T>",
           "justification": "Consequence of converting ResultWithAgenticScope from a record (which implicitly extends java.lang.Record) to a regular final class in order to carry non-component suspension state. Public constructor and accessors are preserved."
+        },
+        {
+          "ignore": true,
+          "code": "java.method.addedToInterface",
+          "new": "method T dev.langchain4j.agentic.planner.AgenticService<T, A>::compensateOnError(boolean)",
+          "justification": "Add tool actions compensation at agentic system level"
+        },
+        {
+          "ignore": true,
+          "code": "java.method.addedToInterface",
+          "new": "method dev.langchain4j.agentic.supervisor.SupervisorAgentService<T> dev.langchain4j.agentic.supervisor.SupervisorAgentService<T>::compensateOnError(boolean)",
+          "justification": "Add tool actions compensation at agentic system level for supervisor agents"
         }
       ]
     }
