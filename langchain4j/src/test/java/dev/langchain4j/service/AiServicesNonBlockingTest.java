@@ -331,16 +331,13 @@ class AiServicesNonBlockingTest {
                 .chatModel(new NonBlockingChatModelStub(AiMessage.from("Berlin")))
                 .build();
 
-        Thread callerThread = Thread.currentThread();
-        AtomicReference<Thread> completionThread = new AtomicReference<>();
-
-        String answer = assistant
-                .chat("What is the capital of Germany?")
-                .whenComplete((response, error) -> completionThread.set(Thread.currentThread()))
-                .get(10, SECONDS);
+        // The pipeline runs on the stub's delivery thread; BlockHound proves nothing blocks it. (The caller is not
+        // asserted here — whether the terminal whenComplete happens to run inline on the caller depends on a
+        // completion/attach race under load; the caller-not-blocked guarantee is covered deterministically by
+        // chat_does_not_block_the_caller_thread_on_chat_memory, which gates the response.)
+        String answer = assistant.chat("What is the capital of Germany?").get(10, SECONDS);
 
         assertThat(answer).isEqualTo("Berlin");
-        assertThat(completionThread.get()).isNotNull().isNotEqualTo(callerThread);
         assertNoBlockingCalls();
     }
 
