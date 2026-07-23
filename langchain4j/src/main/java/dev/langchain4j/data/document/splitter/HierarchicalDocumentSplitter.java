@@ -209,6 +209,30 @@ public abstract class HierarchicalDocumentSplitter implements DocumentSplitter {
                 break;
             }
         }
+
+        String overlap = overlapBuilder.toString();
+        if (!overlap.isEmpty()) {
+            return overlap;
+        }
+
+        // Fall back only when the sentence splitter produced a single unit and that complete unit
+        // does not fit into the overlap. If it found multiple sentences but the trailing sentence
+        // is too large, preserve the existing behavior of considering only complete sentences.
+        return sentences.size() == 1 ? characterLevelOverlap(segmentText) : "";
+    }
+
+    private String characterLevelOverlap(String segmentText) {
+        // Join separator is intentionally empty: characters are concatenated directly so the overlap
+        // preserves the original text verbatim (critical for CJK and other scripts without spaces).
+        SegmentBuilder overlapBuilder = new SegmentBuilder(maxOverlapSize, this::estimateSize, "");
+        for (int i = segmentText.length() - 1; i >= 0; i--) {
+            String character = String.valueOf(segmentText.charAt(i));
+            if (overlapBuilder.hasSpaceFor(character)) {
+                overlapBuilder.prepend(character);
+            } else {
+                break;
+            }
+        }
         return overlapBuilder.toString();
     }
 
