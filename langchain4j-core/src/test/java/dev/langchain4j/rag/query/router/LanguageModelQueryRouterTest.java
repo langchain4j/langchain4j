@@ -1,5 +1,11 @@
 package dev.langchain4j.rag.query.router;
 
+import static dev.langchain4j.rag.query.router.LanguageModelQueryRouter.FallbackStrategy.FAIL;
+import static dev.langchain4j.rag.query.router.LanguageModelQueryRouter.FallbackStrategy.ROUTE_TO_ALL;
+import static java.util.concurrent.TimeUnit.SECONDS;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -8,11 +14,6 @@ import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.rag.query.router.LanguageModelQueryRouter.FallbackStrategy;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -20,12 +21,10 @@ import java.util.Map;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
-
-import static dev.langchain4j.rag.query.router.LanguageModelQueryRouter.FallbackStrategy.FAIL;
-import static dev.langchain4j.rag.query.router.LanguageModelQueryRouter.FallbackStrategy.ROUTE_TO_ALL;
-import static java.util.concurrent.TimeUnit.SECONDS;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class LanguageModelQueryRouterTest {
@@ -35,6 +34,9 @@ class LanguageModelQueryRouterTest {
 
     @Mock
     ContentRetriever dogArticlesRetriever;
+
+    @Mock
+    ContentRetriever birdArticlesRetriever;
 
     @Test
     void should_route_to_single_retriever() {
@@ -57,8 +59,7 @@ class LanguageModelQueryRouterTest {
         // then
         assertThat(retrievers).containsExactly(dogArticlesRetriever);
 
-        assertThat(model.userMessageText()).isEqualTo(
-                """
+        assertThat(model.userMessageText()).isEqualTo("""
                 Based on the user query, determine the most suitable data source(s) \
                 to retrieve relevant information from the following options:
                 1: articles about cats
@@ -175,8 +176,7 @@ class LanguageModelQueryRouterTest {
         // then
         assertThat(retrievers).containsExactly(dogArticlesRetriever);
 
-        assertThat(model.userMessageText()).isEqualTo(
-                """
+        assertThat(model.userMessageText()).isEqualTo("""
                 Based on the user query, determine the most suitable data source(s) \
                 to retrieve relevant information from the following options:
                 1: articles about cats
@@ -212,9 +212,7 @@ class LanguageModelQueryRouterTest {
 
         // given
         PromptTemplate promptTemplate = PromptTemplate.from(
-                "Which source should I use to get answer for '{{query}}'? " +
-                        "Options: {{options}}'"
-        );
+                "Which source should I use to get answer for '{{query}}'? " + "Options: {{options}}'");
 
         Query query = Query.from("Which animal is the fluffiest?");
 
@@ -250,9 +248,8 @@ class LanguageModelQueryRouterTest {
         ChatModelMock model = ChatModelMock.thatAlwaysResponds("Sorry, I don't know");
 
         final var retrieverToDescription = Map.of(
-            catArticlesRetriever, "articles about cats",
-            dogArticlesRetriever, "articles about dogs"
-        );
+                catArticlesRetriever, "articles about cats",
+                dogArticlesRetriever, "articles about dogs");
 
         QueryRouter router = new LanguageModelQueryRouter(model, retrieverToDescription);
 
@@ -321,7 +318,6 @@ class LanguageModelQueryRouterTest {
         retrieverToDescription.put(catArticlesRetriever, "articles about cats");
         retrieverToDescription.put(dogArticlesRetriever, "articles about dogs");
 
-
         QueryRouter router = LanguageModelQueryRouter.builder()
                 .chatModel(model)
                 .retrieverToDescription(retrieverToDescription)
@@ -354,8 +350,7 @@ class LanguageModelQueryRouterTest {
                 .build();
 
         // when-then
-        assertThatThrownBy(() -> router.route(query))
-                .hasRootCauseExactlyInstanceOf(NumberFormatException.class);
+        assertThatThrownBy(() -> router.route(query)).hasRootCauseExactlyInstanceOf(NumberFormatException.class);
     }
 
     @Test
@@ -380,5 +375,107 @@ class LanguageModelQueryRouterTest {
         assertThatThrownBy(() -> router.route(query))
                 .isExactlyInstanceOf(RuntimeException.class)
                 .hasMessageContaining("Something went wrong");
+    }
+
+    @Test
+    void should_not_route_by_default_when_LLM_returns_unknown_retriever_id() {
+
+        // given
+        Query query = Query.from("Hey what's up?");
+
+        // LLM hallucinates an id that is out of range: only ids 1-3 are available
+        ChatModelMock model = ChatModelMock.thatAlwaysResponds("4");
+
+        Map<ContentRetriever, String> retrieverToDescription = new LinkedHashMap<>();
+        retrieverToDescription.put(catArticlesRetriever, "articles about cats");
+        retrieverToDescription.put(dogArticlesRetriever, "articles about dogs");
+        retrieverToDescription.put(birdArticlesRetriever, "articles about birds");
+
+        QueryRouter router = new LanguageModelQueryRouter(model, retrieverToDescription);
+
+        // when
+        Collection<ContentRetriever> retrievers = router.route(query);
+
+        // then
+        assertThat(retrievers).isEmpty();
+    }
+
+    @Test
+    void should_route_to_all_retrievers_when_LLM_returns_unknown_retriever_id() {
+
+        // given
+        Query query = Query.from("Hey what's up?");
+
+        // LLM hallucinates an id that is out of range: only ids 1-3 are available
+        ChatModelMock model = ChatModelMock.thatAlwaysResponds("4");
+
+        Map<ContentRetriever, String> retrieverToDescription = new LinkedHashMap<>();
+        retrieverToDescription.put(catArticlesRetriever, "articles about cats");
+        retrieverToDescription.put(dogArticlesRetriever, "articles about dogs");
+        retrieverToDescription.put(birdArticlesRetriever, "articles about birds");
+
+        QueryRouter router = LanguageModelQueryRouter.builder()
+                .chatModel(model)
+                .retrieverToDescription(retrieverToDescription)
+                .fallbackStrategy(ROUTE_TO_ALL)
+                .build();
+
+        // when
+        Collection<ContentRetriever> retrievers = router.route(query);
+
+        // then
+        assertThat(retrievers)
+                .containsExactlyInAnyOrder(catArticlesRetriever, dogArticlesRetriever, birdArticlesRetriever);
+    }
+
+    @Test
+    void should_fail_when_LLM_returns_unknown_retriever_id() {
+
+        // given
+        Query query = Query.from("Hey what's up?");
+
+        // LLM hallucinates an id that is out of range: only ids 1-3 are available
+        ChatModelMock model = ChatModelMock.thatAlwaysResponds("4");
+
+        Map<ContentRetriever, String> retrieverToDescription = new LinkedHashMap<>();
+        retrieverToDescription.put(catArticlesRetriever, "articles about cats");
+        retrieverToDescription.put(dogArticlesRetriever, "articles about dogs");
+        retrieverToDescription.put(birdArticlesRetriever, "articles about birds");
+
+        QueryRouter router = LanguageModelQueryRouter.builder()
+                .chatModel(model)
+                .retrieverToDescription(retrieverToDescription)
+                .fallbackStrategy(FAIL)
+                .build();
+
+        // when-then
+        assertThatThrownBy(() -> router.route(query))
+                .isExactlyInstanceOf(RuntimeException.class)
+                .hasRootCauseExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("unknown content retriever id: 4");
+    }
+
+    @Test
+    void should_not_route_by_default_when_LLM_returns_partially_unknown_retriever_ids() {
+
+        // given
+        Query query = Query.from("Hey what's up?");
+
+        // "1" is a valid id, but "4" is out of range: the fallback strategy should be applied
+        // instead of routing to a partial list of retrievers
+        ChatModelMock model = ChatModelMock.thatAlwaysResponds("1, 4");
+
+        Map<ContentRetriever, String> retrieverToDescription = new LinkedHashMap<>();
+        retrieverToDescription.put(catArticlesRetriever, "articles about cats");
+        retrieverToDescription.put(dogArticlesRetriever, "articles about dogs");
+        retrieverToDescription.put(birdArticlesRetriever, "articles about birds");
+
+        QueryRouter router = new LanguageModelQueryRouter(model, retrieverToDescription);
+
+        // when
+        Collection<ContentRetriever> retrievers = router.route(query);
+
+        // then
+        assertThat(retrievers).isEmpty();
     }
 }
