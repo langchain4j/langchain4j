@@ -15,9 +15,9 @@ import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
 
 import dev.langchain4j.Internal;
+import dev.langchain4j.agent.tool.CompensateFor;
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.ReturnBehavior;
-import dev.langchain4j.agent.tool.CompensateFor;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolMemoryId;
@@ -48,12 +48,10 @@ import dev.langchain4j.service.IllegalConfigurationException;
 import dev.langchain4j.service.tool.search.ToolSearchService;
 import dev.langchain4j.service.tool.search.ToolSearchStrategy;
 import java.lang.reflect.Method;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import java.lang.reflect.Parameter;
 import java.time.LocalDateTime;
-import java.util.Arrays;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -73,6 +71,8 @@ import java.util.function.BiFunction;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Internal
 public class ToolService {
@@ -335,15 +335,17 @@ public class ToolService {
                 }
                 Method toolMethod = ((DefaultToolExecutor) toolExecutor).originalMethod();
                 Class<?>[] compensatingParams = method.getParameterTypes();
-                boolean acceptsToolExecution = compensatingParams.length == 1
-                        && compensatingParams[0] == ToolExecution.class;
-                if (!acceptsToolExecution
-                        && !Arrays.equals(toolMethod.getParameterTypes(), compensatingParams)) {
+                boolean acceptsToolExecution =
+                        compensatingParams.length == 1 && compensatingParams[0] == ToolExecution.class;
+                if (!acceptsToolExecution && !Arrays.equals(toolMethod.getParameterTypes(), compensatingParams)) {
                     compensatingToolMisconfiguration = illegalConfiguration(
                             "@CompensateFor(\"%s\") on method '%s.%s' must have the same parameter types as tool '%s'"
                                     + " or a single %s parameter",
-                            toolName, objectWithTools.getClass().getName(), method.getName(),
-                            toolName, ToolExecution.class.getSimpleName());
+                            toolName,
+                            objectWithTools.getClass().getName(),
+                            method.getName(),
+                            toolName,
+                            ToolExecution.class.getSimpleName());
                     if (compensateOnToolErrors) {
                         throw compensatingToolMisconfiguration;
                     }
@@ -1635,7 +1637,14 @@ public class ToolService {
             return toolServiceContext;
         }
 
-        UserMessage userMessage = UserMessage.findLast(messages).orElseThrow();
+        UserMessage userMessage = invocationContext.userMessage();
+        if (userMessage == null) {
+            userMessage = UserMessage.findLast(messages).orElse(null);
+        }
+        if (userMessage == null) {
+            return toolServiceContext;
+        }
+
         ToolProviderRequest request = ToolProviderRequest.builder()
                 .invocationContext(invocationContext)
                 .userMessage(userMessage)
