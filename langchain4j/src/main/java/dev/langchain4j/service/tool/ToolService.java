@@ -12,9 +12,9 @@ import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
 
 import dev.langchain4j.Internal;
+import dev.langchain4j.agent.tool.CompensateFor;
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.ReturnBehavior;
-import dev.langchain4j.agent.tool.CompensateFor;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolMemoryId;
@@ -43,12 +43,10 @@ import dev.langchain4j.service.IllegalConfigurationException;
 import dev.langchain4j.service.tool.search.ToolSearchService;
 import dev.langchain4j.service.tool.search.ToolSearchStrategy;
 import java.lang.reflect.Method;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import java.lang.reflect.Parameter;
 import java.time.LocalDateTime;
-import java.util.Arrays;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -63,6 +61,8 @@ import java.util.concurrent.Executor;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Internal
 public class ToolService {
@@ -95,6 +95,10 @@ public class ToolService {
     private IllegalConfigurationException compensatingToolMisconfiguration;
     private final Set<ToolProvider> toolProviders = new LinkedHashSet<>();
     private boolean compensateOnToolErrors;
+    private final List<Object> objectsWithTools = new ArrayList<>();
+    private int registeredObjectsWithToolsCount;
+    private boolean includeInheritedFields;
+    private boolean respectJsonIgnoreAnnotations;
     private Executor executor;
     private int maxToolCallingRoundTrips = 100;
     private ToolArgumentsErrorHandler argumentsErrorHandler;
@@ -126,6 +130,30 @@ public class ToolService {
         }
     }
 
+    public void addObjectsWithTools(Collection<Object> objectsWithTools) {
+        this.objectsWithTools.addAll(objectsWithTools);
+    }
+
+    public void includeInheritedFields(boolean includeInheritedFields) {
+        this.includeInheritedFields = includeInheritedFields;
+    }
+
+    public void respectJsonIgnoreAnnotations(boolean respectJsonIgnoreAnnotations) {
+        this.respectJsonIgnoreAnnotations = respectJsonIgnoreAnnotations;
+    }
+
+    public void registerObjectsWithTools() {
+        if (registeredObjectsWithToolsCount == objectsWithTools.size()) {
+            return;
+        }
+
+        tools(
+                objectsWithTools.subList(registeredObjectsWithToolsCount, objectsWithTools.size()),
+                includeInheritedFields,
+                respectJsonIgnoreAnnotations);
+        registeredObjectsWithToolsCount = objectsWithTools.size();
+    }
+
     public void tools(Map<ToolSpecification, ToolExecutor> tools) {
         tools.forEach((toolSpecification, toolExecutor) -> {
             toolSpecifications.add(toolSpecification);
@@ -139,8 +167,18 @@ public class ToolService {
     }
 
     public void tools(Collection<Object> objectsWithTools) {
+        tools(objectsWithTools, false, false);
+    }
+
+    public void tools(Collection<Object> objectsWithTools, boolean includeInheritedFields) {
+        tools(objectsWithTools, includeInheritedFields, false);
+    }
+
+    public void tools(
+            Collection<Object> objectsWithTools, boolean includeInheritedFields, boolean respectJsonIgnoreAnnotations) {
         for (Object objectWithTools : objectsWithTools) {
-            List<AiServiceTool> tools = findTools(objectWithTools);
+            List<AiServiceTool> tools =
+                    findTools(objectWithTools, includeInheritedFields, respectJsonIgnoreAnnotations);
             addTools(tools, this.toolExecutors, this.toolSpecifications, this.returnBehaviors);
             this.compensatingExecutors.putAll(findCompensatingActions(objectWithTools));
         }
@@ -229,6 +267,15 @@ public class ToolService {
      * @since 1.13.0
      */
     public static List<AiServiceTool> findTools(Object objectWithTools) {
+        return findTools(objectWithTools, false, false);
+    }
+
+    public static List<AiServiceTool> findTools(Object objectWithTools, boolean includeInheritedFields) {
+        return findTools(objectWithTools, includeInheritedFields, false);
+    }
+
+    public static List<AiServiceTool> findTools(
+            Object objectWithTools, boolean includeInheritedFields, boolean respectJsonIgnoreAnnotations) {
         if (objectWithTools instanceof Class) {
             throw illegalConfiguration("Tool '%s' must be an object, not a class", objectWithTools);
         }
@@ -246,7 +293,8 @@ public class ToolService {
                 Method toolMethod = annotatedMethod.get();
                 validateToolParameters(toolMethod);
                 result.add(AiServiceTool.builder()
-                        .toolSpecification(toolSpecificationFrom(toolMethod))
+                        .toolSpecification(
+                                toolSpecificationFrom(toolMethod, includeInheritedFields, respectJsonIgnoreAnnotations))
                         .toolExecutor(createToolExecutor(objectWithTools, toolMethod))
                         .returnBehavior(toolMethod.getAnnotation(Tool.class).returnBehavior())
                         .build());
@@ -267,8 +315,7 @@ public class ToolService {
         }
     }
 
-    private Map<String, BiConsumer<ToolExecution, InvocationContext>> findCompensatingActions(
-            Object objectWithTools) {
+    private Map<String, BiConsumer<ToolExecution, InvocationContext>> findCompensatingActions(Object objectWithTools) {
         Map<String, BiConsumer<ToolExecution, InvocationContext>> compensatingActions = new HashMap<>();
         if (compensatingToolMisconfiguration != null) {
             return compensatingActions;
@@ -300,15 +347,17 @@ public class ToolService {
                 }
                 Method toolMethod = ((DefaultToolExecutor) toolExecutor).originalMethod();
                 Class<?>[] compensatingParams = method.getParameterTypes();
-                boolean acceptsToolExecution = compensatingParams.length == 1
-                        && compensatingParams[0] == ToolExecution.class;
-                if (!acceptsToolExecution
-                        && !Arrays.equals(toolMethod.getParameterTypes(), compensatingParams)) {
+                boolean acceptsToolExecution =
+                        compensatingParams.length == 1 && compensatingParams[0] == ToolExecution.class;
+                if (!acceptsToolExecution && !Arrays.equals(toolMethod.getParameterTypes(), compensatingParams)) {
                     compensatingToolMisconfiguration = illegalConfiguration(
                             "@CompensateFor(\"%s\") on method '%s.%s' must have the same parameter types as tool '%s'"
                                     + " or a single %s parameter",
-                            toolName, objectWithTools.getClass().getName(), method.getName(),
-                            toolName, ToolExecution.class.getSimpleName());
+                            toolName,
+                            objectWithTools.getClass().getName(),
+                            method.getName(),
+                            toolName,
+                            ToolExecution.class.getSimpleName());
                     if (compensateOnToolErrors) {
                         throw compensatingToolMisconfiguration;
                     }
@@ -331,8 +380,9 @@ public class ToolService {
                             .methodToInvoke(method)
                             .propagateToolExecutionExceptions(true)
                             .build();
-                    compensatingActions.put(toolName, (toolExecution, ctx) ->
-                            executor.executeWithContext(toolExecution.request(), ctx));
+                    compensatingActions.put(
+                            toolName,
+                            (toolExecution, ctx) -> executor.executeWithContext(toolExecution.request(), ctx));
                 }
             }
         }
@@ -442,6 +492,7 @@ public class ToolService {
 
     public ToolServiceContext createContext(
             InvocationContext invocationContext, UserMessage userMessage, List<ChatMessage> messages) {
+        registerObjectsWithTools();
         ToolServiceContext context = createContextFromStaticToolsAndProviders(invocationContext, userMessage, messages);
         if (toolSearchService != null) {
             context = toolSearchService.adjust(context, messages, invocationContext);
@@ -667,23 +718,24 @@ public class ToolService {
                 .build();
     }
 
-    private void rewriteCurrentResults(List<ToolExecutionRequest> toolExecutionRequests,
-                                       Map<ToolExecutionRequest, ToolExecutionResult> toolResults,
-                                       List<ToolExecutionResultMessage> resultMessages,
-                                       String failedToolName) {
+    private void rewriteCurrentResults(
+            List<ToolExecutionRequest> toolExecutionRequests,
+            Map<ToolExecutionRequest, ToolExecutionResult> toolResults,
+            List<ToolExecutionResultMessage> resultMessages,
+            String failedToolName) {
         for (int i = 0; i < toolExecutionRequests.size(); i++) {
             ToolExecutionRequest request = toolExecutionRequests.get(i);
-            if (!toolResults.get(request).isError()
-                    && compensatingExecutors.containsKey(request.name())) {
+            if (!toolResults.get(request).isError() && compensatingExecutors.containsKey(request.name())) {
                 resultMessages.set(i, rolledBackResultMessage(resultMessages.get(i), failedToolName));
             }
         }
     }
 
-    private static void rewriteChatMemoryForCompensatedTools(List<ChatMessage> messages,
-                                                             ChatMemory chatMemory,
-                                                             List<CompensableToolExecution> compensableExecutions,
-                                                             String failedToolName) {
+    private static void rewriteChatMemoryForCompensatedTools(
+            List<ChatMessage> messages,
+            ChatMemory chatMemory,
+            List<CompensableToolExecution> compensableExecutions,
+            String failedToolName) {
         List<ChatMessage> memoryMessages = chatMemory != null ? new ArrayList<>(chatMemory.messages()) : messages;
         for (CompensableToolExecution entry : compensableExecutions) {
             ToolExecutionResultMessage originalMsg = entry.resultMessage();
@@ -713,7 +765,8 @@ public class ToolService {
 
     private record CompensableToolExecution(ToolExecution toolExecution, ToolExecutionResultMessage resultMessage) {}
 
-    private void compensateToolsActions(List<CompensableToolExecution> compensableExecutions, InvocationContext invocationContext) {
+    private void compensateToolsActions(
+            List<CompensableToolExecution> compensableExecutions, InvocationContext invocationContext) {
         for (int i = compensableExecutions.size() - 1; i >= 0; i--) {
             ToolExecution toolExecution = compensableExecutions.get(i).toolExecution();
             String toolName = toolExecution.request().name();

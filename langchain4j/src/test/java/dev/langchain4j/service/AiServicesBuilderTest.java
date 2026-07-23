@@ -4,10 +4,13 @@ import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
 import static org.mockito.Mockito.mock;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import java.util.Arrays;
@@ -22,6 +25,23 @@ class AiServicesBuilderTest {
 
     interface TestService {
         String chat(String userMessage);
+    }
+
+    static class ParentToolParameter {
+        String inherited;
+
+        @JsonIgnore
+        String ignored;
+    }
+
+    static class ChildToolParameter extends ParentToolParameter {
+        String declared;
+    }
+
+    static class InheritedFieldTool {
+
+        @Tool
+        void execute(@P(name = "request") ChildToolParameter request) {}
     }
 
     @Test
@@ -96,6 +116,28 @@ class AiServicesBuilderTest {
                 AiServices.builder(TestService.class).chatModel(chatModel).build();
 
         assertThat(service).isNotNull();
+    }
+
+    @Test
+    void should_apply_tool_schema_flags_to_tools_registered_through_ai_services() {
+        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds("response");
+
+        TestService service = AiServices.builder(TestService.class)
+                .chatModel(chatModel)
+                .includeInheritedFields(true)
+                .respectJsonIgnoreAnnotations(true)
+                .tools(new InheritedFieldTool())
+                .build();
+
+        service.chat("hello");
+
+        ToolSpecification toolSpecification =
+                chatModel.request().toolSpecifications().get(0);
+        JsonObjectSchema requestSchema =
+                (JsonObjectSchema) toolSpecification.parameters().properties().get("request");
+        org.assertj.core.api.Assertions.assertThat(requestSchema.properties())
+                .containsKeys("inherited", "declared")
+                .doesNotContainKey("ignored");
     }
 
     @Test
