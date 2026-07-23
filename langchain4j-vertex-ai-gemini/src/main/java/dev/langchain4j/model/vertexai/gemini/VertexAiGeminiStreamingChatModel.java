@@ -91,6 +91,8 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
     private final Executor executor;
 
     private final Map<String, String> labels;
+    private final Boolean returnThinking;
+    private final boolean sendThinking;
 
     public VertexAiGeminiStreamingChatModel(VertexAiGeminiStreamingChatModelBuilder builder) {
         ensureNotBlank(builder.modelName, "modelName");
@@ -199,6 +201,8 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
         this.listeners = copy(builder.listeners);
         this.executor = getOrDefault(builder.executor, VertexAiGeminiStreamingChatModel::createDefaultExecutor);
         this.labels = copy(builder.labels);
+        this.returnThinking = getOrDefault(builder.returnThinking, false);
+        this.sendThinking = getOrDefault(builder.sendThinking, false);
     }
 
     /**
@@ -328,6 +332,8 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
         this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
         this.executor = getOrDefault(executor, VertexAiGeminiStreamingChatModel::createDefaultExecutor);
         this.labels = Collections.emptyMap();
+        this.returnThinking = false;
+        this.sendThinking = false;
     }
 
     public VertexAiGeminiStreamingChatModel(GenerativeModel generativeModel, GenerationConfig generationConfig) {
@@ -348,6 +354,8 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
         this.listeners = Collections.emptyList();
         this.executor = VertexAiGeminiStreamingChatModel.createDefaultExecutor();
         this.labels = Collections.emptyMap();
+        this.returnThinking = false;
+        this.sendThinking = false;
     }
 
     public VertexAiGeminiStreamingChatModel(
@@ -369,6 +377,8 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
         this.listeners = Collections.emptyList();
         this.executor = getOrDefault(executor, VertexAiGeminiStreamingChatModel::createDefaultExecutor);
         this.labels = Collections.emptyMap();
+        this.returnThinking = false;
+        this.sendThinking = false;
     }
 
     private static ExecutorService createDefaultExecutor() {
@@ -416,7 +426,7 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
         GenerativeModel model = this.generativeModel.withTools(tools).withToolConfig(this.toolConfig);
 
         ContentsMapper.InstructionAndContent instructionAndContent =
-                ContentsMapper.splitInstructionAndContent(messages);
+                ContentsMapper.splitInstructionAndContent(messages, sendThinking);
 
         if (instructionAndContent.systemInstruction != null) {
             model = model.withSystemInstruction(instructionAndContent.systemInstruction);
@@ -451,7 +461,7 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
             }
         });
 
-        StreamingChatResponseBuilder responseBuilder = new StreamingChatResponseBuilder();
+        StreamingChatResponseBuilder responseBuilder = new StreamingChatResponseBuilder(returnThinking);
         final GenerativeModel finalModel = model;
         AtomicInteger toolIndex = new AtomicInteger(0);
         StreamingHandle streamingHandle = new VertexAiGeminiStreamingHandle();
@@ -556,6 +566,14 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
         return this.labels;
     }
 
+    public Boolean returnThinking() {
+        return returnThinking;
+    }
+
+    public boolean sendThinking() {
+        return sendThinking;
+    }
+
     @Override
     public void close() {
         if (this.vertexAI != null) {
@@ -608,6 +626,8 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
         private GoogleCredentials credentials;
         private String apiEndpoint;
         private Map<String, String> labels;
+        private Boolean returnThinking;
+        private Boolean sendThinking;
 
         public VertexAiGeminiStreamingChatModelBuilder() {
             // This is public so it can be extended
@@ -756,6 +776,16 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
          */
         public VertexAiGeminiStreamingChatModelBuilder labels(Map<String, String> labels) {
             this.labels = labels;
+            return this;
+        }
+
+        public VertexAiGeminiStreamingChatModelBuilder returnThinking(Boolean returnThinking) {
+            this.returnThinking = returnThinking;
+            return this;
+        }
+
+        public VertexAiGeminiStreamingChatModelBuilder sendThinking(Boolean sendThinking) {
+            this.sendThinking = sendThinking;
             return this;
         }
 

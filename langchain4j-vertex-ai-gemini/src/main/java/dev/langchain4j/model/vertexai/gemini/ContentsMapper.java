@@ -8,7 +8,6 @@ import dev.langchain4j.data.message.ChatMessageType;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -20,14 +19,17 @@ class ContentsMapper {
 
         @Override
         public String toString() {
-            return "InstructionAndContent {\n" +
-                " systemInstruction = " + systemInstruction +
-                ",\n contents = " + contents +
-                "\n}";
+            return "InstructionAndContent {\n" + " systemInstruction = "
+                    + systemInstruction + ",\n contents = "
+                    + contents + "\n}";
         }
     }
 
     static InstructionAndContent splitInstructionAndContent(List<ChatMessage> messages) {
+        return splitInstructionAndContent(messages, false);
+    }
+
+    static InstructionAndContent splitInstructionAndContent(List<ChatMessage> messages, boolean sendThinking) {
         InstructionAndContent instructionAndContent = new InstructionAndContent();
         List<Part> sysInstructionParts = new ArrayList<>();
 
@@ -42,7 +44,7 @@ class ContentsMapper {
                 if (isLastMessage) {
                     // if there's no accumulated tool results, add it right away to the list of messages
                     if (executionResultMessages.isEmpty()) {
-                        instructionAndContent.contents.add(createContent(message));
+                        instructionAndContent.contents.add(createContent(message, sendThinking));
                     } else { // otherwise add to the list, and create the new user message with all the tool results
                         executionResultMessages.add(toolResult);
                         instructionAndContent.contents.add(createToolExecutionResultContent(executionResultMessages));
@@ -60,7 +62,7 @@ class ContentsMapper {
 
                 // directly add user and AI messages to the list
                 if (message instanceof UserMessage || message instanceof AiMessage) {
-                    instructionAndContent.contents.add(createContent(message));
+                    instructionAndContent.contents.add(createContent(message, sendThinking));
                 } else if (message instanceof SystemMessage) { // save system messages separately
                     sysInstructionParts.addAll(PartsMapper.map(message));
                 }
@@ -70,32 +72,31 @@ class ContentsMapper {
         // if there are system instructions, collect them together into one system instruction Content
         if (!sysInstructionParts.isEmpty()) {
             instructionAndContent.systemInstruction = Content.newBuilder()
-                .setRole("system")
-                .addAllParts(sysInstructionParts)
-                .build();
+                    .setRole("system")
+                    .addAllParts(sysInstructionParts)
+                    .build();
         }
 
         return instructionAndContent;
     }
 
     // transform a LangChain4j ChatMessage into a Gemini Content
-    private static Content createContent(ChatMessage message) {
+    private static Content createContent(ChatMessage message, boolean sendThinking) {
         return Content.newBuilder()
-            .setRole(RoleMapper.map(message.type()))
-            .addAllParts(PartsMapper.map(message))
-            .build();
+                .setRole(RoleMapper.map(message.type()))
+                .addAllParts(PartsMapper.map(message, sendThinking))
+                .build();
     }
 
     // transform a list of LangChain4j tool execution results
     // into a user message made of multiple Gemini Parts
     private static Content createToolExecutionResultContent(List<ToolExecutionResultMessage> executionResultMessages) {
         return Content.newBuilder()
-            .setRole(RoleMapper.map(ChatMessageType.TOOL_EXECUTION_RESULT))
-            .addAllParts(
-                executionResultMessages.stream()
-                    .map(PartsMapper::map)
-                    .flatMap(List::stream)
-                    .collect(Collectors.toList()))
-            .build();
+                .setRole(RoleMapper.map(ChatMessageType.TOOL_EXECUTION_RESULT))
+                .addAllParts(executionResultMessages.stream()
+                        .map(PartsMapper::map)
+                        .flatMap(List::stream)
+                        .collect(Collectors.toList()))
+                .build();
     }
 }
