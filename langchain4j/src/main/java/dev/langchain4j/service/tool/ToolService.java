@@ -764,8 +764,6 @@ public class ToolService {
             return toolServiceContext;
         }
 
-        // The current user message may have been evicted from a bounded memory window during a
-        // multi-round tool loop, so source it from the invocation context rather than the messages.
         UserMessage userMessage = invocationContext.userMessage();
         if (userMessage == null) {
             userMessage = UserMessage.findLast(messages).orElse(null);
