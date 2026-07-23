@@ -918,7 +918,10 @@ class AiServiceStreamingPublisherTest {
         subscription.get().cancel();
         releaseTool.countDown(); // let the already-running tool finish (drain), then it is rolled back
 
-        long deadline = System.currentTimeMillis() + 5_000;
+        // The rollback (uncredit + the compensated event) runs asynchronously on the shared executor; under a full
+        // parallel test run that executor is contended, so allow a generous ceiling (the happy path finishes in well
+        // under a second) rather than a tight deadline that flakes under load.
+        long deadline = System.currentTimeMillis() + 30_000;
         while (compensatedEvents.isEmpty() && System.currentTimeMillis() < deadline) {
             Thread.sleep(20);
         }
