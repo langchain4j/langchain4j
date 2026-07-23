@@ -27,6 +27,7 @@ public interface ModerationModel {
 
     /**
      * This is the main API to interact with the moderation model.
+     * Provider-specific typed metadata is available through the returned {@link ModerationResponse}.
      *
      * @param moderationRequest a {@link ModerationRequest}, containing all the inputs to the moderation model
      * @return a {@link ModerationResponse}, containing all the outputs from the moderation model
