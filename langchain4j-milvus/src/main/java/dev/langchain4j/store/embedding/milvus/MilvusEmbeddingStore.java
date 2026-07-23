@@ -396,6 +396,13 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
         private String vectorFieldName;
         private Map<String, Object> extraParameters;
 
+        /**
+         * Sets a pre-built {@link MilvusServiceClient} to use for all Milvus operations.
+         * When set, connection-related parameters (host, port, uri, token, username, password) are ignored.
+         *
+         * @param milvusClient the Milvus service client
+         * @return {@code this}
+         */
         public Builder milvusClient(MilvusServiceClient milvusClient) {
             this.milvusClient = milvusClient;
             return this;
@@ -585,11 +592,23 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
             return this;
         }
 
+        /**
+         * Sets extra parameters passed to Milvus when creating the index for a new collection.
+         * Defaults to an empty map when not set.
+         *
+         * @param extraParameters the extra index parameters
+         * @return {@code this}
+         */
         public Builder extraParameters(Map<String, Object> extraParameters) {
             this.extraParameters = extraParameters;
             return this;
         }
 
+        /**
+         * Builds the {@link MilvusEmbeddingStore}.
+         *
+         * @return the configured {@link MilvusEmbeddingStore}
+         */
         public MilvusEmbeddingStore build() {
             return new MilvusEmbeddingStore(this);
         }
