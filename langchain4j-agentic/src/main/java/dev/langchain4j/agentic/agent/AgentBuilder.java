@@ -210,6 +210,26 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
         setupGuardrails(aiServices);
         setupTools(aiServices);
 
+        context.toolService.onCompensableToolExecution((toolExecution, compensatingAction) -> {
+            var managed = toolExecution.invocationContext().managedParameters();
+            if (managed != null) {
+                var scopeManaged = managed.get(AgenticScope.class);
+                if (scopeManaged instanceof DefaultAgenticScope das) {
+                    das.registerCompensableExecution(toolExecution, compensatingAction);
+                }
+            }
+        });
+
+        context.toolService.onToolExecutionError(invocationContext -> {
+            var managed = invocationContext.managedParameters();
+            if (managed != null) {
+                var scopeManaged = managed.get(AgenticScope.class);
+                if (scopeManaged instanceof DefaultAgenticScope das) {
+                    das.compensateAll();
+                }
+            }
+        });
+
         boolean agenticScopeDependent =
                 contextProvider != null || (contextProvidingAgents != null && contextProvidingAgents.length > 0);
         if (agenticScope != null && agenticScopeDependent) {

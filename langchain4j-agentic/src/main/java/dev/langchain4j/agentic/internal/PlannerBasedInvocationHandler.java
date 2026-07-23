@@ -214,6 +214,7 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
         try {
             result = new PlannerLoop(planner, currentScope, registry).loop();
         } catch (Exception e) {
+            currentScope.compensateAll();
             if (isRootCall()) {
                 agentError(agentListener, currentScope, this, namedArgs, e);
                 currentScope.rootCallEnded(registry, agentListener);
@@ -580,6 +581,9 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
 
         Object memoryId = memoryId(method, args);
         DefaultAgenticScope newAgenticScope = memoryId != null ? getOrCreateAgenticScope(registry, memoryId) : createEphemeralAgenticScope(registry);
+        if (service.compensateOnError) {
+            newAgenticScope.compensateOnError(true);
+        }
         return newAgenticScope.withErrorHandler(errorHandler);
     }
 

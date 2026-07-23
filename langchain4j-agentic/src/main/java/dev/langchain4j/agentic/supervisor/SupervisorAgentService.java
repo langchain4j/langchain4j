@@ -45,4 +45,6 @@ public interface SupervisorAgentService<T> {
     SupervisorAgentService<T> listener(AgentListener agentListener);
 
     SupervisorAgentService<T> beforeCall(Consumer<AgenticScope> beforeCall);
+
+    SupervisorAgentService<T> compensateOnError(boolean compensateOnError);
 }

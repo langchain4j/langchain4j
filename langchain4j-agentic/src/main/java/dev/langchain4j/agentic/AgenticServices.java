@@ -418,7 +418,8 @@ public class AgenticServices {
     }
 
     private static void buildAgentSpecs(
-            Method agentMethod, String name, String description, String outputKey, AgenticService<?, ?> builder) {
+            Method agentMethod, String name, String description, String outputKey,
+            boolean compensateOnError, AgenticService<?, ?> builder) {
         if (!isNullOrBlank(name)) {
             builder.name(name);
         } else {
@@ -429,6 +430,9 @@ public class AgenticServices {
         }
         if (!isNullOrBlank(outputKey)) {
             builder.outputKey(outputKey);
+        }
+        if (compensateOnError) {
+            builder.compensateOnError(true);
         }
     }
 
@@ -445,6 +449,7 @@ public class AgenticServices {
                 annotation.name(),
                 annotation.description(),
                 AgentUtil.outputKey(annotation.outputKey(), annotation.typedOutputKey()),
+                annotation.compensateOnError(),
                 builder);
 
         return builder.build();
@@ -464,6 +469,7 @@ public class AgenticServices {
                 annotation.name(),
                 annotation.description(),
                 AgentUtil.outputKey(annotation.outputKey(), annotation.typedOutputKey()),
+                annotation.compensateOnError(),
                 builder);
 
         return builder.build();
@@ -481,6 +487,7 @@ public class AgenticServices {
                 annotation.name(),
                 annotation.description(),
                 AgentUtil.outputKey(annotation.outputKey(), annotation.typedOutputKey()),
+                annotation.compensateOnError(),
                 builder);
 
         for (Class<?> subagent : annotation.subAgents()) {
@@ -511,6 +518,7 @@ public class AgenticServices {
                 annotation.name(),
                 annotation.description(),
                 AgentUtil.outputKey(annotation.outputKey(), annotation.typedOutputKey()),
+                annotation.compensateOnError(),
                 builder);
 
         return builder.build();
@@ -530,6 +538,7 @@ public class AgenticServices {
                 annotation.name(),
                 annotation.description(),
                 AgentUtil.outputKey(annotation.outputKey(), annotation.typedOutputKey()),
+                annotation.compensateOnError(),
                 builder);
 
         return builder.build();
@@ -548,6 +557,7 @@ public class AgenticServices {
                 annotation.name(),
                 annotation.description(),
                 AgentUtil.outputKey(annotation.outputKey(), annotation.typedOutputKey()),
+                annotation.compensateOnError(),
                 builder);
 
         return builder.build();
@@ -574,6 +584,9 @@ public class AgenticServices {
             builder.description(supervisorAgent.description());
         }
         builder.outputKey(AgentUtil.outputKey(supervisorAgent.outputKey(), supervisorAgent.typedOutputKey()));
+        if (supervisorAgent.compensateOnError()) {
+            builder.compensateOnError(true);
+        }
 
         return builder.build();
     }
