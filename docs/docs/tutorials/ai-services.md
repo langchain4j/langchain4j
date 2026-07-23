@@ -203,6 +203,54 @@ This annotation is necessary only when the `-parameters` option is *not* enabled
 `@UserMessage` can also load a prompt template from resources:
 `@UserMessage(fromResource = "my-prompt-template.txt")`
 
+## Lenient Template Resolution
+
+Prompt templates use `{{variable}}` placeholders that are replaced with the values
+of the corresponding method parameters (annotated with `@V`, or resolved by name).
+By default, if a placeholder cannot be resolved — for example because the user message
+itself happens to contain a literal `{{...}}` sequence, or a variable was not provided —
+an `IllegalArgumentException` is thrown, since an unresolved variable usually indicates a bug.
+
+This strict behavior becomes a problem when the user message legitimately contains
+`{{...}}` sequences that should be sent to the LLM verbatim, such as code samples,
+documentation, or Mustache/Handlebars snippets. In that case you can enable **lenient**
+mode: unresolved placeholders are left untouched in the text instead of throwing.
+
+There are two ways to control lenient mode:
+
+1. **Per-template** — via the `lenient` attribute on `@SystemMessage` and `@UserMessage`:
+
+   ```java
+   interface Assistant {
+
+       @SystemMessage(value = "You are a helpful assistant.", lenient = true)
+       @UserMessage(value = "Explain this snippet: {{it}}", lenient = true)
+       String explain(@V("it") String snippet);
+   }
+   ```
+
+2. **Globally** — via the `systemMessageLenient(boolean)` and `userMessageLenient(boolean)`
+   builder methods. This applies to templates resolved from `systemMessageProvider` /
+   `userMessageProvider`, as well as to user messages provided as a plain `String`
+   argument (e.g. `String chat(String userMessage)`):
+
+   ```java
+   Assistant assistant = AiServices.builder(Assistant.class)
+       .chatModel(model)
+       .systemMessageLenient(true)
+       .userMessageLenient(true)
+       .build();
+
+   // The {{name}} placeholder is not a template variable here;
+   // it is sent to the LLM verbatim instead of throwing.
+   assistant.chat("Hello {{name}}");
+   ```
+
+:::note
+An explicit annotation attribute (`@UserMessage(lenient = ...)` /
+`@SystemMessage(lenient = ...)`) always takes precedence over the builder setting.
+:::
+
 ## Programmatic ChatRequest rewriting
 
 In some circumstances it can be useful to modify the `ChatRequest` before it is sent to the LLM. For instance, it may be necessary to append some additional context to the user message or modify the system message based on some external conditions.
