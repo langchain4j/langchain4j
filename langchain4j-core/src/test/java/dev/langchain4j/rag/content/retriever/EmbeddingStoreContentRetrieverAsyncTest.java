@@ -18,6 +18,7 @@ import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
@@ -50,7 +51,7 @@ class EmbeddingStoreContentRetrieverAsyncTest {
 
         EmbeddingModel asyncModel = new FakeEmbeddingModel() {
             @Override
-            public java.util.concurrent.CompletableFuture<EmbeddingResponse> doEmbedAsync(EmbeddingRequest request) {
+            public CompletableFuture<EmbeddingResponse> doEmbedAsync(EmbeddingRequest request) {
                 modelAsyncCalls.incrementAndGet();
                 return java.util.concurrent.CompletableFuture.completedFuture(doEmbed(request));
             }
@@ -117,7 +118,7 @@ class EmbeddingStoreContentRetrieverAsyncTest {
         AtomicInteger nativeSearchAsyncCalls = new AtomicInteger();
         FakeEmbeddingStore store = new FakeEmbeddingStore() {
             @Override
-            public java.util.concurrent.CompletableFuture<EmbeddingSearchResult<TextSegment>> searchAsync(
+            public CompletableFuture<EmbeddingSearchResult<TextSegment>> searchAsync(
                     EmbeddingSearchRequest request) {
                 nativeSearchAsyncCalls.incrementAndGet();
                 return java.util.concurrent.CompletableFuture.completedFuture(search(request));
@@ -138,11 +139,11 @@ class EmbeddingStoreContentRetrieverAsyncTest {
     @Test
     void retrieveAsync_cancellation_aborts_the_in_flight_search() {
         // async model (embed completes instantly) + a store whose search never completes, exposed to assert cancel
-        java.util.concurrent.CompletableFuture<EmbeddingSearchResult<TextSegment>> pendingSearch =
+        CompletableFuture<EmbeddingSearchResult<TextSegment>> pendingSearch =
                 new java.util.concurrent.CompletableFuture<>();
         FakeEmbeddingStore store = new FakeEmbeddingStore() {
             @Override
-            public java.util.concurrent.CompletableFuture<EmbeddingSearchResult<TextSegment>> searchAsync(
+            public CompletableFuture<EmbeddingSearchResult<TextSegment>> searchAsync(
                     EmbeddingSearchRequest request) {
                 return pendingSearch;
             }
@@ -175,7 +176,7 @@ class EmbeddingStoreContentRetrieverAsyncTest {
     // Genuinely async: overrides doEmbedAsync, so EmbeddingStoreContentRetriever treats the model as async-capable.
     static class NativeAsyncEmbeddingModel extends FakeEmbeddingModel {
         @Override
-        public java.util.concurrent.CompletableFuture<EmbeddingResponse> doEmbedAsync(EmbeddingRequest request) {
+        public CompletableFuture<EmbeddingResponse> doEmbedAsync(EmbeddingRequest request) {
             return java.util.concurrent.CompletableFuture.completedFuture(doEmbed(request));
         }
     }

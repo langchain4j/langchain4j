@@ -44,6 +44,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
@@ -851,17 +852,17 @@ public class AnthropicChatModel implements ChatModel {
     }
 
     @Override
-    public java.util.concurrent.CompletableFuture<ChatResponse> doChatAsync(ChatRequest chatRequest) {
+    public CompletableFuture<ChatResponse> doChatAsync(ChatRequest chatRequest) {
         AnthropicChatRequestParameters parameters = (AnthropicChatRequestParameters) chatRequest.parameters();
         validate(parameters);
 
         AnthropicCreateMessageRequest anthropicRequest = toAnthropicRequest(chatRequest, parameters);
         boolean returnThinking = getOrDefault(parameters.returnThinking(), false);
 
-        java.util.concurrent.CompletableFuture<ParsedAndRawResponse> rawFuture = withRetryMappingExceptionsAsync(
+        CompletableFuture<ParsedAndRawResponse> rawFuture = withRetryMappingExceptionsAsync(
                 () -> client.createMessageWithRawResponseAsync(anthropicRequest), maxRetries);
 
-        java.util.concurrent.CompletableFuture<ChatResponse> result =
+        CompletableFuture<ChatResponse> result =
                 rawFuture.thenApply(response -> createChatResponse(response, returnThinking));
 
         propagateCancellation(result, rawFuture);

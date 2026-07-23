@@ -76,6 +76,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Flow.Publisher;
@@ -261,8 +262,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
      * without ever parking a thread.
      */
     @Override
-    public java.util.concurrent.CompletableFuture<ParsedAndRawResponse> createMessageWithRawResponseAsync(
-            AnthropicCreateMessageRequest request) {
+    public CompletableFuture<ParsedAndRawResponse> createMessageWithRawResponseAsync(AnthropicCreateMessageRequest request) {
         HttpRequest httpRequest = toHttpRequest(toJson(request), "messages");
         return httpClient.executeAsync(httpRequest).thenApply(rawResponse -> {
             AnthropicCreateMessageResponse parsedResponse =
