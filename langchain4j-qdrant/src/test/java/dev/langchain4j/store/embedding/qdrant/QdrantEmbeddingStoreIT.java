@@ -1,6 +1,7 @@
 package dev.langchain4j.store.embedding.qdrant;
 
 import static dev.langchain4j.internal.Utils.randomUUID;
+import static dev.langchain4j.store.embedding.TestUtils.awaitUntilAsserted;
 import static io.qdrant.client.grpc.Collections.Distance.Cosine;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -121,6 +122,38 @@ class QdrantEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
         assertThat(relevant).hasSize(1);
         assertThat(relevant.get(0).embeddingId()).isEqualTo(integerId);
         assertThat(relevant.get(0).embedded().text()).isEqualTo(text);
+    }
+
+    @Test
+    void should_store_and_filter_collection_of_integers() {
+        // given
+        Metadata matching = new Metadata().put("scores", List.of(10, 20, 30));
+        Metadata notMatching = new Metadata().put("scores", List.of(40, 50));
+
+        TextSegment seg1 = TextSegment.from("matching", matching);
+        TextSegment seg2 = TextSegment.from("not matching", notMatching);
+
+        Embedding emb1 = embeddingModel().embed(seg1).content();
+        Embedding emb2 = embeddingModel().embed(seg2).content();
+
+        embeddingStore().addAll(List.of(emb1, emb2), List.of(seg1, seg2));
+
+        awaitUntilAsserted(() -> assertThat(getAllEmbeddings()).hasSize(2));
+
+        Filter filter = new IsIn("scores", List.of(20));
+        EmbeddingSearchRequest request = EmbeddingSearchRequest.builder()
+                .queryEmbedding(emb1)
+                .filter(filter)
+                .maxResults(10)
+                .build();
+
+        List<EmbeddingMatch<TextSegment>> matches =
+                embeddingStore().search(request).matches();
+
+        assertThat(matches).hasSize(1);
+        assertThat(matches.get(0).embedded().text()).isEqualTo("matching");
+        assertThat(matches.get(0).embedded().metadata().getIntegers("scores"))
+                .containsExactlyInAnyOrder(10, 20, 30);
     }
 
     @Override
