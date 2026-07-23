@@ -3,6 +3,7 @@ package dev.langchain4j.model.mistralai;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.ModelProvider.MISTRAL_AI;
 import static dev.langchain4j.model.mistralai.InternalMistralAIHelper.createMistralAiRequest;
 import static dev.langchain4j.model.mistralai.InternalMistralAIHelper.validate;
@@ -110,6 +111,10 @@ public class MistralAiChatModel implements ChatModel {
                 withRetryMappingExceptions(() -> client.chatCompletionWithRawResponse(request), maxRetries);
 
         MistralAiChatCompletionResponse mistralAiResponse = response.parsedResponse();
+
+        if (isNullOrEmpty(mistralAiResponse.getChoices())) {
+            throw new IllegalArgumentException("Mistral AI response has no choices");
+        }
 
         return ChatResponse.builder()
                 .aiMessage(aiMessageFrom(mistralAiResponse, returnThinking))
