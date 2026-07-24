@@ -48,6 +48,8 @@ public abstract class AbstractServiceBuilder<T, S> {
 
     protected Function<ErrorContext, ErrorRecoveryResult> errorHandler;
 
+    protected boolean compensateOnError = false;
+
     protected Function<InternalAgent, Object> agentInstanceFactory;
 
     protected Executor executor;
@@ -125,6 +127,11 @@ public abstract class AbstractServiceBuilder<T, S> {
 
     public S errorHandler(Function<ErrorContext, ErrorRecoveryResult> errorHandler) {
         this.errorHandler = errorHandler;
+        return (S) this;
+    }
+
+    public S compensateOnError(boolean compensateOnError) {
+        this.compensateOnError = compensateOnError;
         return (S) this;
     }
 

@@ -205,6 +205,16 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements 
     }
 
     @Override
+    public boolean compensateOnError() {
+        return agentInvoker.compensateOnError();
+    }
+
+    @Override
+    public void enableCrossAgentCompensation() {
+        agentInvoker.enableCrossAgentCompensation();
+    }
+
+    @Override
     public void registerInheritedParentListener(AgentListener parentListener) {
         agentInvoker.registerInheritedParentListener(parentListener);
     }

@@ -90,6 +90,7 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
 
     private String agentId;
     private InternalAgent parent;
+    private boolean crossAgentCompensationEnabled;
 
     public PlannerBasedInvocationHandler(AbstractServiceBuilder<?, ?> service, Supplier<Planner> plannerSupplier) {
         this(service, null, service.name, plannerSupplier, null);
@@ -214,6 +215,7 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
         try {
             result = new PlannerLoop(planner, currentScope, registry).loop();
         } catch (Exception e) {
+            currentScope.compensateAll();
             if (isRootCall()) {
                 agentError(agentListener, currentScope, this, namedArgs, e);
                 currentScope.rootCallEnded(registry, agentListener);
@@ -312,6 +314,22 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
     }
 
     @Override
+    public boolean compensateOnError() {
+        if (service.compensateOnError) return true;
+        return parent != null && parent.compensateOnError();
+    }
+
+    @Override
+    public void enableCrossAgentCompensation() {
+        if (crossAgentCompensationEnabled) {
+            return;
+        }
+        crossAgentCompensationEnabled = true;
+        subagents.stream().map(InternalAgent.class::cast)
+                .forEach(InternalAgent::enableCrossAgentCompensation);
+    }
+
+    @Override
     public void setParent(InternalAgent parent) {
         if (parent == null) {
             return;
@@ -320,6 +338,9 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
         registerInheritedParentListener(parent.listener());
         if (!parent.allowStreamingOutput()) {
             this.allowStreamingOutput = false;
+        }
+        if (compensateOnError()) {
+            enableCrossAgentCompensation();
         }
     }
 
