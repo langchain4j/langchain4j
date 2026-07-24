@@ -192,8 +192,10 @@ public class DefaultMcpClientTest {
     public void should_cache_tool_list() throws Exception {
         // given
         final McpTransport transport = getMinimalMcpTransportMock();
-        final DefaultMcpClient client =
-                new DefaultMcpClient.Builder().transport(transport).build();
+        final DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion("2025-11-25")
+                .build();
         final ObjectNode toolsJsonResult = getToolResultJson(
                 new ToolDefinition("testTool", "A test tool", new ToolArg("argument1", "string", "An argument")));
         when(transport.executeOperationWithResponse(any(McpCallContext.class)))
@@ -215,8 +217,10 @@ public class DefaultMcpClientTest {
     public void should_evict_tool_list_cache() throws Exception {
         // given
         final McpTransport transport = getMinimalMcpTransportMock();
-        final DefaultMcpClient client =
-                new DefaultMcpClient.Builder().transport(transport).build();
+        final DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion("2025-11-25")
+                .build();
         final ObjectNode toolsJsonResult = getToolResultJson(
                 new ToolDefinition("testTool", "A test tool", new ToolArg("argument1", "string", "An argument")));
         when(transport.executeOperationWithResponse(any(McpCallContext.class)))
@@ -253,6 +257,7 @@ public class DefaultMcpClientTest {
         final McpTransport transport = getMinimalMcpTransportMock();
         final DefaultMcpClient client = new DefaultMcpClient.Builder()
                 .transport(transport)
+                .protocolVersion("2025-11-25")
                 .cacheToolList(false)
                 .build();
         final ObjectNode toolsJsonResult = getToolResultJson(
@@ -492,8 +497,10 @@ public class DefaultMcpClientTest {
     public void should_paginate_tool_list_using_cursor() throws Exception {
         // given
         final McpTransport transport = getMinimalMcpTransportMock();
-        final DefaultMcpClient client =
-                new DefaultMcpClient.Builder().transport(transport).build();
+        final DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion("2025-11-25")
+                .build();
 
         // first page: 2 tools + nextCursor
         final ObjectNode firstPage = getToolResultJson(
@@ -547,6 +554,7 @@ public class DefaultMcpClientTest {
 
         DefaultMcpClient client = new DefaultMcpClient.Builder()
                 .transport(transport)
+                .protocolVersion("2025-11-25")
                 .progressHandler(notification -> {})
                 .metaSupplier(context -> Map.of("tenant", "acme"))
                 .build();
@@ -564,10 +572,245 @@ public class DefaultMcpClientTest {
         assertThat(meta).containsKey("progressToken");
     }
 
+    @Test
+    public void modern_protocol_should_inject_required_meta_fields() throws Exception {
+        final McpTransport transport = getModernMcpTransportMock();
+
+        ObjectNode toolResult = JsonNodeFactory.instance.objectNode();
+        toolResult
+                .putObject("result")
+                .putArray("content")
+                .addObject()
+                .put("type", "text")
+                .put("text", "ok");
+        // First call is server/discover, second is the tool call
+        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
+                .thenReturn(CompletableFuture.completedFuture(getDiscoverResult()))
+                .thenReturn(CompletableFuture.completedFuture(toolResult));
+
+        DefaultMcpClient client = createMcpClient(transport);
+
+        client.executeTool(
+                ToolExecutionRequest.builder().name("test").arguments("{}").build());
+
+        ArgumentCaptor<McpCallContext> captor = ArgumentCaptor.forClass(McpCallContext.class);
+        verify(transport, times(2)).executeOperationWithResponse(captor.capture());
+        // The second call is the tool execution (first is discover)
+        McpClientRequest toolRequest =
+                (McpClientRequest) captor.getAllValues().get(1).message();
+        Map<String, Object> meta = toolRequest.getParams().getMeta();
+
+        assertThat(meta).containsKey("io.modelcontextprotocol/protocolVersion");
+        assertThat(meta.get("io.modelcontextprotocol/protocolVersion")).isEqualTo("2026-07-28");
+        assertThat(meta).containsKey("io.modelcontextprotocol/clientInfo");
+        assertThat(meta).containsKey("io.modelcontextprotocol/clientCapabilities");
+    }
+
+    @Test
+    public void modern_protocol_meta_should_not_be_overwritten_by_user_supplier() throws Exception {
+        final McpTransport transport = getModernMcpTransportMock();
+
+        ObjectNode toolResult = JsonNodeFactory.instance.objectNode();
+        toolResult
+                .putObject("result")
+                .putArray("content")
+                .addObject()
+                .put("type", "text")
+                .put("text", "ok");
+        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
+                .thenReturn(CompletableFuture.completedFuture(getDiscoverResult()))
+                .thenReturn(CompletableFuture.completedFuture(toolResult))
+                .thenReturn(CompletableFuture.completedFuture(toolResult));
+
+        DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion("2026-07-28")
+                .metaSupplier(context -> Map.of(
+                        "io.modelcontextprotocol/protocolVersion", "SHOULD-NOT-APPEAR",
+                        "custom-key", "custom-value"))
+                .build();
+
+        client.executeTool(
+                ToolExecutionRequest.builder().name("test").arguments("{}").build());
+
+        ArgumentCaptor<McpCallContext> captor = ArgumentCaptor.forClass(McpCallContext.class);
+        verify(transport, times(3)).executeOperationWithResponse(captor.capture());
+        McpClientRequest toolRequest =
+                (McpClientRequest) captor.getAllValues().get(2).message();
+        Map<String, Object> meta = toolRequest.getParams().getMeta();
+
+        // Protocol-level fields must take precedence over user-supplied values
+        assertThat(meta.get("io.modelcontextprotocol/protocolVersion")).isEqualTo("2026-07-28");
+        // User-supplied custom fields should still be present
+        assertThat(meta.get("custom-key")).isEqualTo("custom-value");
+    }
+
+    // ========== MRTR tests ==========
+
+    @Test
+    public void mrtr_requestState_only_should_retry_and_succeed() throws Exception {
+        final McpTransport transport = getModernMcpTransportMock();
+
+        ObjectNode inputRequired = buildInputRequiredResponse(true, false);
+        ObjectNode complete = buildToolCompleteResponse("done");
+
+        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
+                .thenReturn(CompletableFuture.completedFuture(getDiscoverResult())) // discover
+                .thenReturn(CompletableFuture.completedFuture(inputRequired)) // first tool call -> input_required
+                .thenReturn(CompletableFuture.completedFuture(complete)); // retry -> complete
+
+        DefaultMcpClient client = createMcpClient(transport);
+
+        ToolExecutionResult result = client.executeTool(
+                ToolExecutionRequest.builder().name("test").arguments("{}").build());
+        assertThat(result.resultText()).isEqualTo("done");
+
+        // 4 calls: discover, first tool call, retry
+        verify(transport, times(3)).executeOperationWithResponse(any(McpCallContext.class));
+    }
+
+    @Test
+    public void mrtr_with_inputRequests_should_throw() throws Exception {
+        final McpTransport transport = getModernMcpTransportMock();
+
+        ObjectNode inputRequired = buildInputRequiredResponse(true, true);
+
+        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
+                .thenReturn(CompletableFuture.completedFuture(getDiscoverResult()))
+                .thenReturn(CompletableFuture.completedFuture(inputRequired));
+
+        DefaultMcpClient client = createMcpClient(transport);
+
+        assertThatThrownBy(() -> client.executeTool(ToolExecutionRequest.builder()
+                        .name("test")
+                        .arguments("{}")
+                        .build()))
+                .isInstanceOf(ToolExecutionException.class)
+                .hasMessageContaining("inputRequests");
+    }
+
+    @Test
+    public void mrtr_max_retries_exceeded_should_throw() throws Exception {
+        final McpTransport transport = getModernMcpTransportMock();
+
+        ObjectNode inputRequired = buildInputRequiredResponse(true, false);
+
+        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
+                .thenReturn(CompletableFuture.completedFuture(getDiscoverResult()))
+                .thenReturn(CompletableFuture.completedFuture(inputRequired)) // attempt 1
+                .thenReturn(CompletableFuture.completedFuture(inputRequired)) // retry 1
+                .thenReturn(CompletableFuture.completedFuture(inputRequired)) // retry 2
+                .thenReturn(CompletableFuture.completedFuture(inputRequired)); // retry 3 -> exceeds limit
+
+        DefaultMcpClient client = createMcpClient(transport);
+
+        assertThatThrownBy(() -> client.executeTool(ToolExecutionRequest.builder()
+                        .name("test")
+                        .arguments("{}")
+                        .build()))
+                .isInstanceOf(ToolExecutionException.class)
+                .hasMessageContaining("retry limit");
+    }
+
+    private static DefaultMcpClient createMcpClient(McpTransport transport) {
+        DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion("2026-07-28")
+                .subscribeToPromptListChanges(false)
+                .subscribeToResourceListChanges(false)
+                .subscribeToToolListChanges(false)
+                .build();
+        return client;
+    }
+
+    @Test
+    public void mrtr_without_requestState_or_inputRequests_should_throw() throws Exception {
+        final McpTransport transport = getModernMcpTransportMock();
+
+        ObjectNode inputRequired = buildInputRequiredResponse(false, false);
+
+        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
+                .thenReturn(CompletableFuture.completedFuture(getDiscoverResult()))
+                .thenReturn(CompletableFuture.completedFuture(inputRequired));
+
+        DefaultMcpClient client = createMcpClient(transport);
+
+        assertThatThrownBy(() -> client.executeTool(ToolExecutionRequest.builder()
+                        .name("test")
+                        .arguments("{}")
+                        .build()))
+                .isInstanceOf(ToolExecutionException.class)
+                .hasMessageContaining("without requestState");
+    }
+
+    @Test
+    public void mrtr_unknown_resultType_should_throw() throws Exception {
+        final McpTransport transport = getModernMcpTransportMock();
+
+        ObjectNode unknownType = JsonNodeFactory.instance.objectNode();
+        ObjectNode result = unknownType.putObject("result");
+        result.put("resultType", "partial");
+        result.putArray("content").addObject().put("type", "text").put("text", "ok");
+
+        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
+                .thenReturn(CompletableFuture.completedFuture(getDiscoverResult()))
+                .thenReturn(CompletableFuture.completedFuture(unknownType));
+
+        DefaultMcpClient client = createMcpClient(transport);
+
+        assertThatThrownBy(() -> client.executeTool(ToolExecutionRequest.builder()
+                        .name("test")
+                        .arguments("{}")
+                        .build()))
+                .isInstanceOf(ToolExecutionException.class)
+                .hasMessageContaining("Unexpected resultType");
+    }
+
+    private static ObjectNode buildInputRequiredResponse(boolean withRequestState, boolean withInputRequests) {
+        ObjectNode node = JsonNodeFactory.instance.objectNode();
+        ObjectNode result = node.putObject("result");
+        result.put("resultType", "input_required");
+        if (withRequestState) {
+            result.put("requestState", "opaque-state-token");
+        }
+        if (withInputRequests) {
+            ObjectNode inputRequests = result.putObject("inputRequests");
+            ObjectNode req = inputRequests.putObject("req1");
+            req.put("method", "sampling/createMessage");
+            req.putObject("params");
+        }
+        return node;
+    }
+
+    private static ObjectNode buildToolCompleteResponse(String text) {
+        ObjectNode node = JsonNodeFactory.instance.objectNode();
+        ObjectNode result = node.putObject("result");
+        result.put("resultType", "complete");
+        result.putArray("content").addObject().put("type", "text").put("text", text);
+        return node;
+    }
+
     private static McpTransport getMinimalMcpTransportMock() {
         McpTransport transport = mock(McpTransport.class);
         ObjectNode emptyJsonNode = JsonNodeFactory.instance.objectNode();
         when(transport.initialize(any())).thenReturn(CompletableFuture.completedFuture(emptyJsonNode));
+        return transport;
+    }
+
+    private static ObjectNode getDiscoverResult() {
+        ObjectNode node = JsonNodeFactory.instance.objectNode();
+        ObjectNode result = node.putObject("result");
+        result.putArray("supportedVersions").add("2026-07-28");
+        result.putObject("capabilities");
+        result.put("resultType", "complete");
+        return node;
+    }
+
+    private static McpTransport getModernMcpTransportMock() {
+        McpTransport transport = mock(McpTransport.class);
+        ObjectNode discoverResult = getDiscoverResult();
+        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
+                .thenReturn(CompletableFuture.completedFuture(discoverResult));
         return transport;
     }
 

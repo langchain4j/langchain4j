@@ -18,7 +18,7 @@ import org.slf4j.LoggerFactory;
 
 public class McpServerHelper {
 
-    private static final Logger log = LoggerFactory.getLogger(McpToolsHttpTransportIT.class);
+    private static final Logger log = LoggerFactory.getLogger(McpServerHelper.class);
 
     static Process startServerHttp(String scriptName) throws InterruptedException, TimeoutException, IOException {
         return startServerHttp(scriptName, 8080);
@@ -66,9 +66,8 @@ public class McpServerHelper {
     }
 
     private static void waitForPort(int port, int timeoutSeconds) throws InterruptedException, TimeoutException {
-        HttpClient httpClient = HttpClient.newBuilder()
-                .connectTimeout(Duration.ofSeconds(2))
-                .build();
+        HttpClient httpClient =
+                HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(2)).build();
         long start = System.currentTimeMillis();
         while (System.currentTimeMillis() - start < timeoutSeconds * 1000) {
             try {

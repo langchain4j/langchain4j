@@ -43,7 +43,12 @@ class ToolSpecificationHelper {
             if (tool.has("description")) {
                 builder.description(tool.get("description").asText());
             }
-            builder.parameters((JsonObjectSchema) jsonNodeToJsonSchemaElement(tool.get("inputSchema")));
+            JsonNode inputSchema = tool.get("inputSchema");
+            builder.parameters((JsonObjectSchema) jsonNodeToJsonSchemaElement(inputSchema));
+            Map<String, String> paramHeaders = extractMcpParamHeaders(inputSchema);
+            if (!paramHeaders.isEmpty()) {
+                builder.addMetadata(MCP_PARAM_HEADERS, paramHeaders);
+            }
             if (tool.has("annotations")) {
                 processMcpToolAnnotations(tool.get("annotations"), builder);
             }
@@ -294,6 +299,30 @@ class ToolSpecificationHelper {
         for (Map.Entry<String, JsonNode> property : meta.properties()) {
             // convert the value to a nested Map (independent of Jackson) and store it in the metadata
             builder.addMetadata(property.getKey(), OBJECT_MAPPER.convertValue(property.getValue(), Object.class));
+        }
+    }
+
+    static Map<String, String> extractMcpParamHeaders(JsonNode schema) {
+        Map<String, String> result = new LinkedHashMap<>();
+        extractMcpParamHeaders(schema, "", result);
+        return result;
+    }
+
+    private static void extractMcpParamHeaders(JsonNode schema, String pathPrefix, Map<String, String> result) {
+        JsonNode properties = schema.path("properties");
+        if (properties.isMissingNode() || !properties.isObject()) {
+            return;
+        }
+        for (Map.Entry<String, JsonNode> entry : properties.properties()) {
+            JsonNode propSchema = entry.getValue();
+            String propertyPath = pathPrefix.isEmpty() ? entry.getKey() : pathPrefix + "." + entry.getKey();
+            JsonNode headerAnnotation = propSchema.get("x-mcp-header");
+            if (headerAnnotation != null && headerAnnotation.isTextual()) {
+                result.put(propertyPath, headerAnnotation.asText());
+            }
+            if (propSchema.has("properties")) {
+                extractMcpParamHeaders(propSchema, propertyPath, result);
+            }
         }
     }
 }

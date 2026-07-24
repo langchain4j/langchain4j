@@ -3,6 +3,7 @@ package dev.langchain4j.mcp.client;
 import static dev.langchain4j.mcp.client.McpToolMetadataKeys.DESTRUCTIVE_HINT;
 import static dev.langchain4j.mcp.client.McpToolMetadataKeys.ICONS;
 import static dev.langchain4j.mcp.client.McpToolMetadataKeys.IDEMPOTENT_HINT;
+import static dev.langchain4j.mcp.client.McpToolMetadataKeys.MCP_PARAM_HEADERS;
 import static dev.langchain4j.mcp.client.McpToolMetadataKeys.OPEN_WORLD_HINT;
 import static dev.langchain4j.mcp.client.McpToolMetadataKeys.OUTPUT_SCHEMA;
 import static dev.langchain4j.mcp.client.McpToolMetadataKeys.READ_ONLY_HINT;
@@ -950,5 +951,90 @@ class ToolSpecificationHelperTest {
         JsonSchemaElement note = parameters.properties().get("note");
         assertThat(note).isInstanceOf(JsonStringSchema.class);
         assertThat(((JsonStringSchema) note).description()).isEqualTo("a note");
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    void toolWithMcpParamHeaders() throws JsonProcessingException {
+        String text =
+                // language=json
+                """
+                [{
+                    "name": "execute_sql",
+                    "description": "Execute SQL on Google Cloud Spanner",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "region": {
+                          "type": "string",
+                          "description": "The region",
+                          "x-mcp-header": "Region"
+                        },
+                        "query": {
+                          "type": "string",
+                          "description": "The SQL query"
+                        }
+                      },
+                      "required": ["region", "query"]
+                    }
+                }]
+                """;
+        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        List<ToolSpecification> tools = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
+        assertThat(tools).hasSize(1);
+        Map<String, String> headers =
+                (Map<String, String>) tools.get(0).metadata().get(MCP_PARAM_HEADERS);
+        assertThat(headers).containsExactly(Map.entry("region", "Region"));
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    void toolWithNestedMcpParamHeaders() throws JsonProcessingException {
+        String text =
+                // language=json
+                """
+                [{
+                    "name": "nested_tool",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "config": {
+                          "type": "object",
+                          "properties": {
+                            "region": {
+                              "type": "string",
+                              "x-mcp-header": "Region"
+                            }
+                          }
+                        }
+                      }
+                    }
+                }]
+                """;
+        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        List<ToolSpecification> tools = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
+        Map<String, String> headers =
+                (Map<String, String>) tools.get(0).metadata().get(MCP_PARAM_HEADERS);
+        assertThat(headers).containsExactly(Map.entry("config.region", "Region"));
+    }
+
+    @Test
+    void toolWithoutMcpParamHeaders() throws JsonProcessingException {
+        String text =
+                // language=json
+                """
+                [{
+                    "name": "plain_tool",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "query": { "type": "string" }
+                      }
+                    }
+                }]
+                """;
+        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        List<ToolSpecification> tools = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
+        assertThat(tools.get(0).metadata()).doesNotContainKey(MCP_PARAM_HEADERS);
     }
 }

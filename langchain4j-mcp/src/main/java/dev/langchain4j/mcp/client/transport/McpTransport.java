@@ -20,6 +20,8 @@ public interface McpTransport extends Closeable {
      * capabilities, supported protocol version etc. When this method
      * returns successfully, the transport is fully initialized and ready to
      * be used. This has to be called AFTER the "start" method.
+     * Only used with the legacy MCP protocol (versions up to 2025-11-25).
+     * Modern protocol uses {@code server/discover} instead.
      */
     CompletableFuture<JsonNode> initialize(McpInitializeRequest request);
 
@@ -56,4 +58,19 @@ public interface McpTransport extends Closeable {
     void checkHealth();
 
     void onFailure(Runnable actionOnFailure);
+
+    /**
+     * Informs the transport whether the modern MCP protocol (2026-07-28 or later) is in use.
+     * HTTP-based transports use this to switch between modern headers (MCP-Protocol-Version,
+     * Mcp-Method, Mcp-Name) and legacy session management (Mcp-Session-Id).
+     * Default implementation is a no-op (for transports like stdio/WebSocket that don't need it).
+     */
+    default void setModernProtocol(boolean modernProtocol) {}
+
+    /**
+     * Sets the protocol version string to be sent in the MCP-Protocol-Version HTTP header.
+     * Only relevant for HTTP-based transports in modern protocol mode.
+     * Default implementation is a no-op.
+     */
+    default void setProtocolVersion(String protocolVersion) {}
 }
