@@ -16,8 +16,9 @@ import dev.langchain4j.model.chat.request.json.JsonNumberSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
+import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -53,7 +54,7 @@ class GoogleGenAiToolMapper {
         }
 
         if (element instanceof JsonObjectSchema objectSchema) {
-            Map<String, Schema> properties = new HashMap<>();
+            Map<String, Schema> properties = new LinkedHashMap<>();
             if (objectSchema.properties() != null) {
                 objectSchema
                         .properties()
@@ -61,12 +62,15 @@ class GoogleGenAiToolMapper {
                                 properties.put(key, convertToGoogleSchema(value)));
             }
 
-            return Schema.builder()
+            Schema.Builder builder = Schema.builder()
                     .type(Type.Known.OBJECT)
                     .properties(properties)
                     .required(getOrDefault(objectSchema.required(), Collections.emptyList()))
-                    .description(getOrDefault(objectSchema.description(), ""))
-                    .build();
+                    .description(getOrDefault(objectSchema.description(), ""));
+            if (properties.size() > 1) {
+                builder.propertyOrdering(new ArrayList<>(properties.keySet()));
+            }
+            return builder.build();
         }
 
         if (element instanceof JsonStringSchema stringSchema) {
