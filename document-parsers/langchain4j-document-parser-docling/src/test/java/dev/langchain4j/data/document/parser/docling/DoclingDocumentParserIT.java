@@ -52,4 +52,20 @@ class DoclingDocumentParserIT {
             assertThat(document.text()).isNotEmpty();
         }
     }
+
+    @Test
+    void shouldParsePdfDocumentWithCustomExtractor() throws Exception {
+        var parser = DoclingDocumentParser.builder()
+                .doclingClient(client)
+                .documentTextExtractor(
+                        response -> response.getDocument().getMarkdownContent().toUpperCase())
+                .build();
+
+        try (InputStream inputStream = getClass().getResourceAsStream("/test-file.pdf")) {
+            Document document = parser.parse(inputStream);
+
+            assertThat(document).isNotNull();
+            assertThat(document.text()).isNotEmpty().isUpperCase();
+        }
+    }
 }
