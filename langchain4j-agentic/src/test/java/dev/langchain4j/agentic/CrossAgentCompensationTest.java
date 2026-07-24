@@ -266,7 +266,7 @@ public class CrossAgentCompensationTest {
         assertThrows(AgentInvocationException.class, () -> sequenceAgent.run("test"));
 
         assertThat(creditService.compensated).isTrue();
-        assertThat(compensationLog).doesNotContain("undoNoCompensation");
+        assertThat(compensationLog).containsExactly("credit:100", "noCompensation:test", "uncredit:100");
     }
 
     @Test
