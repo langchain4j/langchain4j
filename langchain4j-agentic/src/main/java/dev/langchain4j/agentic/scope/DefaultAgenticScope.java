@@ -54,7 +54,6 @@ public class DefaultAgenticScope implements AgenticScope {
     private final transient Map<String, Object> agents = new ConcurrentHashMap<>();
     private final transient Map<String, Object> executionContexts = new ConcurrentHashMap<>();
     private final transient List<CompensableExecution> compensableExecutions = Collections.synchronizedList(new ArrayList<>());
-    private volatile boolean compensateOnError = false;
 
     private static final Function<ErrorContext, ErrorRecoveryResult> DEFAULT_ERROR_RECOVERY =
             errorContext -> ErrorRecoveryResult.throwException();
@@ -393,21 +392,11 @@ public class DefaultAgenticScope implements AgenticScope {
         }
     }
 
-    public void compensateOnError(boolean compensateOnError) {
-        this.compensateOnError = compensateOnError;
-    }
-
     public void registerCompensableExecution(ToolExecution toolExecution, Consumer<ToolExecution> compensatingAction) {
-        if (compensateOnError) {
-            compensableExecutions.add(new CompensableExecution(toolExecution, compensatingAction));
-        }
+        compensableExecutions.add(new CompensableExecution(toolExecution, compensatingAction));
     }
 
     public void compensateAll() {
-        if (!compensateOnError) {
-            return;
-        }
-
         List<CompensableExecution> snapshot;
         synchronized (compensableExecutions) {
             snapshot = new ArrayList<>(compensableExecutions);

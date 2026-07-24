@@ -409,6 +409,9 @@ public class ToolService {
     }
 
     public void onCompensableToolExecution(BiConsumer<ToolExecution, Consumer<ToolExecution>> onCompensableToolExecution) {
+        if (compensatingToolMisconfiguration != null) {
+            throw compensatingToolMisconfiguration;
+        }
         this.onCompensableToolExecution = onCompensableToolExecution;
     }
 

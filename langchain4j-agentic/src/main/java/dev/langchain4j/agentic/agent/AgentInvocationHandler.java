@@ -61,6 +61,7 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
     private String agentId;
     private InternalAgent parent;
     private AgentListener agentListener;
+    private boolean crossAgentCompensationEnabled;
 
     private final Map<Object, AiServiceResponseReceivedEvent> lastResponseEvents = new ConcurrentHashMap<>();
 
@@ -232,12 +233,47 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
     }
 
     @Override
+    public boolean compensateOnError() {
+        return builder.compensateOnError || (parent != null && parent.compensateOnError());
+    }
+
+    @Override
     public void setParent(InternalAgent parent) {
         if (builder.hasChatMemory() && parent != null && !parent.allowChatMemory()) {
             throw new AgenticSystemConfigurationException("Agents with chat memory can't be a subagent of " + parent.type());
         }
         this.parent = parent;
         registerInheritedParentListener(parent.listener());
+        if (compensateOnError()) {
+            enableCrossAgentCompensation();
+        }
+    }
+
+    @Override
+    public void enableCrossAgentCompensation() {
+        if (crossAgentCompensationEnabled) {
+            return;
+        }
+        crossAgentCompensationEnabled = true;
+        context.toolService.onCompensableToolExecution((toolExecution, compensatingAction) -> {
+            var managed = toolExecution.invocationContext().managedParameters();
+            if (managed != null) {
+                var scopeManaged = managed.get(AgenticScope.class);
+                if (scopeManaged instanceof DefaultAgenticScope das) {
+                    das.registerCompensableExecution(toolExecution, compensatingAction);
+                }
+            }
+        });
+
+        context.toolService.onToolExecutionError(invocationContext -> {
+            var managed = invocationContext.managedParameters();
+            if (managed != null) {
+                var scopeManaged = managed.get(AgenticScope.class);
+                if (scopeManaged instanceof DefaultAgenticScope das) {
+                    das.compensateAll();
+                }
+            }
+        });
     }
 
     @Override
