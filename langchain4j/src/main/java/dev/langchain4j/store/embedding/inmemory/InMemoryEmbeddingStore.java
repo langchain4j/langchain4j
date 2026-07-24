@@ -21,6 +21,7 @@ import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
+import java.util.concurrent.CompletableFuture;
 import dev.langchain4j.store.embedding.RelevanceScore;
 import dev.langchain4j.store.embedding.filter.Filter;
 import java.io.BufferedInputStream;
@@ -188,6 +189,20 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
         Collections.reverse(result);
 
         return new EmbeddingSearchResult<>(result);
+    }
+
+    /**
+     * The in-memory search is a non-blocking, CPU-only operation, so this completes synchronously on the calling
+     * thread rather than offloading to an executor (overriding the default, which would needlessly hop threads).
+     * A failure is delivered through the returned future rather than thrown, honoring the async error contract.
+     */
+    @Override
+    public CompletableFuture<EmbeddingSearchResult<Embedded>> searchAsync(EmbeddingSearchRequest request) {
+        try {
+            return CompletableFuture.completedFuture(search(request));
+        } catch (Throwable t) {
+            return CompletableFuture.failedFuture(t);
+        }
     }
 
     public String serializeToJson() {

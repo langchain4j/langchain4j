@@ -11,12 +11,16 @@ import dev.langchain4j.exception.InvalidRequestException;
 import dev.langchain4j.exception.LangChain4jException;
 import dev.langchain4j.exception.ModelNotFoundException;
 import dev.langchain4j.exception.RateLimitException;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.chat.response.StreamingEvent;
 import io.ktor.http.HttpStatusCode;
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Flow;
 import java.util.stream.Stream;
 import me.kpavlov.aimocks.openai.MockOpenai;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -108,6 +112,52 @@ class OpenAiStreamingChatModelErrorsTest {
         Throwable error = futureError.get(30, SECONDS);
 
         assertThat(error).isExactlyInstanceOf(dev.langchain4j.exception.TimeoutException.class);
+    }
+
+    @ParameterizedTest
+    @MethodSource("errors")
+    void should_map_error_responses_on_the_reactive_publisher_path(
+            int httpStatusCode, Class<LangChain4jException> exception) throws Exception {
+
+        // given
+        final var question = "Return error: " + httpStatusCode;
+        MOCK.completion(req -> req.userMessageContains(question)).respondsError(res -> {
+            res.setHttpStatus(HttpStatusCode.Companion.fromValue(httpStatusCode));
+            res.setBody("");
+        });
+
+        ChatRequest request =
+                ChatRequest.builder().messages(UserMessage.from(question)).build();
+        CompletableFuture<Throwable> futureError = new CompletableFuture<>();
+
+        // when
+        model.chat(request).subscribe(new Flow.Subscriber<>() {
+            @Override
+            public void onSubscribe(Flow.Subscription subscription) {
+                subscription.request(Long.MAX_VALUE);
+            }
+
+            @Override
+            public void onNext(StreamingEvent item) {}
+
+            @Override
+            public void onError(Throwable throwable) {
+                futureError.complete(throwable);
+            }
+
+            @Override
+            public void onComplete() {
+                futureError.completeExceptionally(new RuntimeException("onComplete must not be called"));
+            }
+        });
+
+        // then: the reactive Publisher path maps the provider error to the same LangChain4j exception type as the
+        // handler-based path (rather than forwarding the raw HttpException), so both APIs are consistent.
+        Throwable error = futureError.get(30, SECONDS);
+        assertThat(error).isExactlyInstanceOf(exception).satisfies(ex -> assertThat(
+                        ((HttpException) ex.getCause()).statusCode())
+                .as("statusCode")
+                .isEqualTo(httpStatusCode));
     }
 
     private record ErrorHandler(CompletableFuture<Throwable> futureError) implements StreamingChatResponseHandler {

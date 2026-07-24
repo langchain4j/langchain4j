@@ -2,6 +2,7 @@ package dev.langchain4j.model.anthropic;
 
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.ModelProvider.ANTHROPIC;
 import static dev.langchain4j.model.anthropic.AnthropicChatModel.toThinking;
@@ -33,12 +34,15 @@ import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.chat.response.StreamingEvent;
+import dev.langchain4j.reactive.streaming.ReactiveStreamingDefaults;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.Flow.Publisher;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
@@ -62,6 +66,7 @@ import org.slf4j.Logger;
  */
 public class AnthropicStreamingChatModel implements StreamingChatModel {
 
+
     private final AnthropicClient client;
     private final String thinkingDisplay;
     private final List<ChatModelListener> listeners;
@@ -73,6 +78,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
     private final Map<String, Object> customParameters;
     private final Boolean strictTools;
     private final Set<Capability> supportedCapabilities;
+    private final int streamingBufferSize;
 
     /**
      * Constructs an instance of an {@code AnthropicStreamingChatModel} with the specified parameters.
@@ -94,6 +100,9 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         this.listeners = copy(builder.listeners);
         this.returnServerToolResults = getOrDefault(builder.returnServerToolResults, false);
         this.supportedCapabilities = copy(builder.supportedCapabilities);
+        this.streamingBufferSize = ensureGreaterThanZero(
+                getOrDefault(builder.streamingBufferSize, ReactiveStreamingDefaults.DEFAULT_BUFFER_SIZE),
+                "streamingBufferSize");
 
         ChatRequestParameters commonParameters;
         if (builder.defaultRequestParameters != null) {
@@ -191,6 +200,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         private Set<Capability> supportedCapabilities;
         private Supplier<Map<String, String>> customHeadersSupplier;
         private Boolean returnCacheDiagnostics;
+        private Integer streamingBufferSize;
 
         /**
          * Sets a custom {@link HttpClientBuilder} for the underlying HTTP client.
@@ -201,6 +211,20 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
          */
         public AnthropicStreamingChatModelBuilder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
             this.httpClientBuilder = httpClientBuilder;
+            return this;
+        }
+
+        /**
+         * Sets the size of the bounded back-pressure buffer for the reactive ({@code Flow.Publisher}) streaming
+         * path. Events from the model are relayed through this buffer; if a subscriber consumes slower than the
+         * model produces and the buffer overflows, the stream terminates with an {@link IllegalStateException}.
+         * Defaults to {@value dev.langchain4j.reactive.streaming.ReactiveStreamingDefaults#DEFAULT_BUFFER_SIZE}.
+         *
+         * @param streamingBufferSize the buffer size (must be greater than zero)
+         * @return {@code this}
+         */
+        public AnthropicStreamingChatModelBuilder streamingBufferSize(Integer streamingBufferSize) {
+            this.streamingBufferSize = streamingBufferSize;
             return this;
         }
 
@@ -813,9 +837,22 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
     public void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
         ensureNotNull(handler, "handler");
         AnthropicChatRequestParameters parameters = (AnthropicChatRequestParameters) chatRequest.parameters();
-        validate(parameters);
+        AnthropicCreateMessageRequest anthropicRequest = toAnthropicRequest(chatRequest, parameters);
+        client.createMessage(anthropicRequest, toOptions(parameters), handler);
+    }
 
-        AnthropicCreateMessageRequest anthropicRequest = createAnthropicRequest(
+    @Override
+    public Publisher<StreamingEvent> doChat(ChatRequest chatRequest) {
+        AnthropicChatRequestParameters parameters = (AnthropicChatRequestParameters) chatRequest.parameters();
+        AnthropicCreateMessageRequest anthropicRequest = toAnthropicRequest(chatRequest, parameters);
+        AnthropicCreateMessageOptions options = toOptions(parameters);
+        return client.createMessagePublisher(anthropicRequest, options, streamingBufferSize);
+    }
+
+    private AnthropicCreateMessageRequest toAnthropicRequest(
+            ChatRequest chatRequest, AnthropicChatRequestParameters parameters) {
+        validate(parameters);
+        return createAnthropicRequest(
                 chatRequest,
                 toThinking(parameters.thinkingType(), parameters.thinkingBudgetTokens(), this.thinkingDisplay),
                 getOrDefault(parameters.sendThinking(), true),
@@ -833,10 +870,11 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
                 this.strictTools,
                 getOrDefault(parameters.returnCacheDiagnostics(), false),
                 parameters.previousMessageId());
+    }
 
+    private AnthropicCreateMessageOptions toOptions(AnthropicChatRequestParameters parameters) {
         boolean returnThinking = getOrDefault(parameters.returnThinking(), false);
-        client.createMessage(
-                anthropicRequest, new AnthropicCreateMessageOptions(returnThinking, returnServerToolResults), handler);
+        return new AnthropicCreateMessageOptions(returnThinking, returnServerToolResults);
     }
 
     @Override

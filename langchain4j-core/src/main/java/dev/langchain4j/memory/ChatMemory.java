@@ -1,8 +1,12 @@
 package dev.langchain4j.memory;
 
+import dev.langchain4j.exception.AsyncNotSupportedException;
+import dev.langchain4j.internal.AsyncNotSupported;
 import dev.langchain4j.data.message.ChatMessage;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
@@ -99,6 +103,64 @@ public interface ChatMemory {
      * @return A list of {@link ChatMessage} objects that represent the current state of the chat memory.
      */
     List<ChatMessage> messages();
+
+    /**
+     * Non-blocking counterpart of {@link #add(Iterable)}, used by the asynchronous
+     * ({@link java.util.concurrent.CompletableFuture}/{@link CompletionStage}) and reactive
+     * ({@link java.util.concurrent.Flow.Publisher}) AI Service APIs. It takes a list (rather than a single
+     * message) so that adding several messages at once is a single operation; to add one message, pass a
+     * singleton list.
+     * <p>
+     * The default implementation returns a failed future carrying {@link AsyncNotSupportedException}: a memory backed by a blocking
+     * {@link dev.langchain4j.store.memory.chat.ChatMemoryStore} is <b>not</b> silently offloaded to a worker thread.
+     * Implementations should compose the store's
+     * {@link dev.langchain4j.store.memory.chat.ChatMemoryStore#getMessagesAsync(Object) getMessagesAsync}/
+     * {@link dev.langchain4j.store.memory.chat.ChatMemoryStore#updateMessagesAsync(Object, List) updateMessagesAsync},
+     * persisting all messages in a single read-modify-write (fewer round trips and an atomic update).
+     * <p>
+     * Callers must not invoke this method concurrently for the same memory: implementations typically read, modify
+     * and write the store, so concurrent calls would race. The AI Service chains its calls sequentially.
+     *
+     * @param messages The {@link ChatMessage}s to add.
+     * @return A future that completes when the messages have been added.
+     * @since 1.19.0
+     */
+    default CompletableFuture<Void> addAsync(List<ChatMessage> messages) {
+        return AsyncNotSupported.failedFuture(getClass(), "addAsync");
+    }
+
+    /**
+     * Non-blocking counterpart of {@link #set(Iterable)}, used by the asynchronous
+     * ({@link java.util.concurrent.CompletableFuture}/{@link CompletionStage}) and reactive
+     * ({@link java.util.concurrent.Flow.Publisher}) AI Service APIs (e.g. to rewrite memory for tool
+     * compensation without blocking the model-delivery thread).
+     * <p>
+     * Replaces the entire message history with {@code messages}. Like the other async methods, callers must not
+     * invoke it concurrently for the same memory. The default implementation returns a failed future carrying
+     * {@link AsyncNotSupportedException}; see {@link #addAsync(List)} for the rationale.
+     *
+     * @param messages The {@link ChatMessage}s to set.
+     * @return A future that completes when the messages have been set.
+     * @since 1.19.0
+     */
+    default CompletableFuture<Void> setAsync(List<ChatMessage> messages) {
+        return AsyncNotSupported.failedFuture(getClass(), "setAsync");
+    }
+
+    /**
+     * Non-blocking counterpart of {@link #messages()}, used by the asynchronous
+     * ({@link java.util.concurrent.CompletableFuture}/{@link CompletionStage}) and reactive
+     * ({@link java.util.concurrent.Flow.Publisher}) AI Service APIs.
+     * <p>
+     * The default implementation returns a failed future carrying {@link AsyncNotSupportedException}; see {@link #addAsync(List)}
+     * for the rationale.
+     *
+     * @return A future that completes with the current state of the chat memory.
+     * @since 1.19.0
+     */
+    default CompletableFuture<List<ChatMessage>> messagesAsync() {
+        return AsyncNotSupported.failedFuture(getClass(), "messagesAsync");
+    }
 
     /**
      * Clears the chat memory.

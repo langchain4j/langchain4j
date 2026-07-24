@@ -1,5 +1,7 @@
 package dev.langchain4j.store.embedding;
 
+import dev.langchain4j.exception.AsyncNotSupportedException;
+import dev.langchain4j.internal.AsyncNotSupported;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.randomUUID;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
@@ -15,6 +17,7 @@ import dev.langchain4j.store.embedding.listener.EmbeddingStoreListener;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Represents a store for embeddings, also known as a vector database.
@@ -141,6 +144,28 @@ public interface EmbeddingStore<Embedded> {
      * @return An {@link EmbeddingSearchResult} containing all found {@link Embedding}s.
      */
     EmbeddingSearchResult<Embedded> search(EmbeddingSearchRequest request);
+
+    /**
+     * Non-blocking counterpart of {@link #search(EmbeddingSearchRequest)}, used by the asynchronous and reactive RAG
+     * flow (see {@code EmbeddingStoreContentRetriever.retrieveAsync}).
+     * <p>
+     * The default returns a failed future carrying {@link AsyncNotSupportedException}: a store that is not genuinely asynchronous does not
+     * pretend to be. A store backed by remote/DB I/O opts in by overriding this with a genuinely async query (no
+     * thread parked); an in-memory store may override it to complete synchronously on the calling thread. A store
+     * that has not opted in is still usable from the non-blocking RAG path:
+     * {@code EmbeddingStoreContentRetriever.retrieveAsync} offloads its blocking {@link #search(EmbeddingSearchRequest)}
+     * for it, rather than the store being silently offloaded to a thread on every call.
+     * <p>
+     * An implementation that honors cancellation should abort its in-flight query when the returned future is
+     * cancelled (best-effort).
+     *
+     * @param request A request to search in an {@link EmbeddingStore}. Contains all search criteria.
+     * @return a {@link CompletableFuture} of the {@link EmbeddingSearchResult}.
+     * @since 1.19.0
+     */
+    default CompletableFuture<EmbeddingSearchResult<Embedded>> searchAsync(EmbeddingSearchRequest request) {
+        return AsyncNotSupported.failedFuture(getClass(), "searchAsync");
+    }
 
     /**
      * Wraps this {@link EmbeddingStore} with a listening store that dispatches events to the provided listener.

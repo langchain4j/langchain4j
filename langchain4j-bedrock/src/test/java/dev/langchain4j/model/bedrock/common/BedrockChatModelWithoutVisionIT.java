@@ -63,6 +63,11 @@ class BedrockChatModelWithoutVisionIT extends AbstractChatModelIT {
     }
 
     @Override
+    protected boolean supportsChatAsync() {
+        return true;
+    }
+
+    @Override
     protected boolean supportsToolChoiceRequired() {
         // ToolChoice "only supported by Anthropic Claude 3 models and by Mistral AI Mistral Large" from
         // https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_ToolChoice.html

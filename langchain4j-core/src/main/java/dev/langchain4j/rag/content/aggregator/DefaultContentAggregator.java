@@ -7,6 +7,7 @@ import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Default implementation of {@link ContentAggregator} intended to be suitable for the majority of use cases.
@@ -61,6 +62,13 @@ public class DefaultContentAggregator implements ContentAggregator {
 
         // Then, fuse all contents retrieved using all queries
         return ReciprocalRankFuser.fuse(fused.values());
+    }
+
+    @Override
+    public CompletableFuture<List<Content>> aggregateAsync(Map<Query, Collection<List<Content>>> queryToContents) {
+        // Reciprocal-rank fusion is CPU-only, no I/O: complete synchronously so the async RAG flow treats this
+        // stage as non-blocking.
+        return CompletableFuture.completedFuture(aggregate(queryToContents));
     }
 
     protected Map<Query, List<Content>> fuse(Map<Query, Collection<List<Content>>> queryToContents) {

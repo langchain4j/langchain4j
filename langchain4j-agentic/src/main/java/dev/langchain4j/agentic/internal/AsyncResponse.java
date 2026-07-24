@@ -10,7 +10,7 @@ public class AsyncResponse<T> implements DelayedResponse<T> {
 
     public AsyncResponse(Supplier<T> responseSupplier) {
         this.futureResponse =
-                CompletableFuture.supplyAsync(responseSupplier, DefaultExecutorProvider.getDefaultExecutorService());
+                CompletableFuture.supplyAsync(responseSupplier, DefaultExecutorProvider.getDefaultExecutor());
     }
 
     @Override

@@ -103,6 +103,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CancellationException;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -122,7 +124,7 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
     static final String ENCRYPTED_REASONING_KEY = "encrypted_reasoning";
 
     private final OpenAIClient client;
-    private final ExecutorService executorService;
+    private final Executor executor;
     private final OpenAiOfficialResponsesChatRequestParameters defaultRequestParameters;
     private final List<ChatModelListener> listeners;
 
@@ -143,8 +145,7 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                         builder.maxRetries,
                         builder.proxy,
                         builder.customHeaders);
-        this.executorService =
-                getOrDefault(builder.executorService, DefaultExecutorProvider::getDefaultExecutorService);
+        this.executor = getOrDefault(builder.executorService, DefaultExecutorProvider::getDefaultExecutor);
 
         ChatRequestParameters commonParameters;
         if (builder.defaultRequestParameters != null) {
@@ -220,21 +221,25 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
             var eventHandler =
                     new ResponsesEventHandler(handler, responseIdRef, parameters.modelName(), streamingHandle);
 
-            // The forEach call blocks, so it is submitted to the executor service to run asynchronously.
-            // We keep this on our executor (instead of OpenAIClientAsync callbacks) to ensure that user
-            // handlers execute on a single, controlled thread rather than SDK/OkHttp threads.
-            streamingFuture = executorService.submit(() -> {
-                try (streamResponse) {
-                    streamResponse.stream().forEach(eventHandler::handleEvent);
-                } catch (CancellationException e) {
-                    withLoggingExceptions(() -> handler.onError(e));
-                } catch (Exception e) {
-                    RuntimeException mappedException = ExceptionMapper.DEFAULT.mapException(e);
-                    withLoggingExceptions(() -> handler.onError(mappedException));
-                } finally {
-                    streamingHandle.markCompleted();
-                }
-            });
+            // The forEach call blocks, so it runs asynchronously on our executor. We keep this on our executor
+            // (instead of OpenAIClientAsync callbacks) to ensure that user handlers execute on a single,
+            // controlled thread rather than SDK/OkHttp threads. Cancellation aborts the stream by closing
+            // streamResponse (see streamingHandle's cancel callback), which unblocks the forEach — so a plain
+            // Executor suffices; no ExecutorService/Future interruption is required.
+            streamingFuture = CompletableFuture.runAsync(
+                    () -> {
+                        try (streamResponse) {
+                            streamResponse.stream().forEach(eventHandler::handleEvent);
+                        } catch (CancellationException e) {
+                            withLoggingExceptions(() -> handler.onError(e));
+                        } catch (Exception e) {
+                            RuntimeException mappedException = ExceptionMapper.DEFAULT.mapException(e);
+                            withLoggingExceptions(() -> handler.onError(mappedException));
+                        } finally {
+                            streamingHandle.markCompleted();
+                        }
+                    },
+                    executor);
             streamingHandle.setStreamingFuture(streamingFuture);
         } catch (Exception e) {
             RuntimeException mappedException = ExceptionMapper.DEFAULT.mapException(e);

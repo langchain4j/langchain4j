@@ -1,5 +1,7 @@
 package dev.langchain4j.rag.content.retriever;
 
+import dev.langchain4j.exception.AsyncNotSupportedException;
+import dev.langchain4j.internal.AsyncNotSupported;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 
 import dev.langchain4j.Experimental;
@@ -10,6 +12,7 @@ import dev.langchain4j.rag.query.Query;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Retrieves {@link Content}s from an underlying data source using a given {@link Query}.
@@ -41,6 +44,28 @@ public interface ContentRetriever {
      * @return A list of retrieved {@link Content}s.
      */
     List<Content> retrieve(Query query);
+
+    /**
+     * Non-blocking counterpart of {@link #retrieve(Query)}, invoked by the asynchronous
+     * ({@link java.util.concurrent.CompletableFuture}/{@link java.util.concurrent.CompletionStage}) and reactive
+     * ({@link java.util.concurrent.Flow.Publisher}) AI Service modes when RAG is configured.
+     * <p>
+     * The default implementation returns a failed future carrying {@link AsyncNotSupportedException}: a retriever backed by blocking I/O
+     * (embedding-model call, vector-store query, web search, etc.) must opt in by overriding this method so it can
+     * return a genuinely non-blocking future instead of secretly tying up a worker thread. A retriever that cannot
+     * be made non-blocking is still usable from these modes via {@code DefaultRetrievalAugmentor}, which offloads the
+     * blocking {@link #retrieve(Query)} to its executor.
+     * <p>
+     * An implementation that honors cancellation should abort its in-flight I/O when the returned future is
+     * cancelled (best-effort); Java cannot safely interrupt arbitrary code, so this is not guaranteed.
+     *
+     * @param query The {@link Query} to use for retrieval.
+     * @return A {@link CompletableFuture} of the retrieved {@link Content}s, sorted by relevance.
+     * @since 1.19.0
+     */
+    default CompletableFuture<List<Content>> retrieveAsync(Query query) {
+        return AsyncNotSupported.failedFuture(getClass(), "retrieveAsync");
+    }
 
     /**
      * Wraps this {@link ContentRetriever} with a listening retriever that dispatches events to the provided listener.

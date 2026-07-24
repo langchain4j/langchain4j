@@ -1,6 +1,8 @@
 package dev.langchain4j.model.cohere;
 
+import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptionsAsync;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static java.time.Duration.ofSeconds;
@@ -15,6 +17,7 @@ import dev.langchain4j.model.scoring.ScoringModel;
 import java.net.Proxy;
 import java.time.Duration;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import org.slf4j.Logger;
 
 /**
@@ -97,6 +100,36 @@ public class CohereScoringModel implements ScoringModel {
 
         return Response.from(
                 scores, new TokenUsage(response.getMeta().getBilledUnits().getSearchUnits()));
+    }
+
+    /**
+     * Genuinely non-blocking counterpart of {@link #scoreAll(List, String)}, used by the asynchronous and reactive
+     * RAG flow. The underlying HTTP call is dispatched asynchronously (no thread is parked while it is in flight),
+     * and cancelling the returned future aborts the in-flight call (best-effort).
+     * <p>
+     * Like {@link #scoreAll(List, String)}, a failed request is retried up to {@code maxRetries} times
+     * (retry-around-future, composing futures without parking a thread); a cancellation is never retried.
+     */
+    @Override
+    public CompletableFuture<Response<List<Double>>> scoreAllAsync(List<TextSegment> segments, String query) {
+
+        RerankRequest request = RerankRequest.builder()
+                .model(modelName)
+                .query(query)
+                .documents(segments.stream().map(TextSegment::text).collect(toList()))
+                .build();
+
+        CompletableFuture<RerankResponse> rerankFuture =
+                withRetryMappingExceptionsAsync(() -> client.rerankAsync(request), maxRetries);
+        CompletableFuture<Response<List<Double>>> result = rerankFuture.thenApply(response -> {
+            List<Double> scores = response.getResults().stream()
+                    .sorted(comparingInt(Result::getIndex))
+                    .map(Result::getRelevanceScore)
+                    .collect(toList());
+            return Response.from(scores, new TokenUsage(response.getMeta().getBilledUnits().getSearchUnits()));
+        });
+        propagateCancellation(result, rerankFuture);
+        return result;
     }
 
     public static class CohereScoringModelBuilder {

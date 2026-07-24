@@ -8,11 +8,14 @@ import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
+import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static dev.langchain4j.model.ModelProvider.AMAZON_BEDROCK;
 import static java.util.Objects.isNull;
 
 import dev.langchain4j.internal.MappingTrackingStreamingChatResponseHandler;
 import dev.langchain4j.internal.ToolCallBuilder;
+import dev.langchain4j.reactive.streaming.ReactiveStreamingDefaults;
+import dev.langchain4j.reactive.streaming.TubeBackedStreamingChatResponseHandler;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.StreamingChatModel;
@@ -20,11 +23,16 @@ import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.chat.response.StreamingEvent;
 import dev.langchain4j.model.chat.response.StreamingHandle;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.Flow.Publisher;
 import java.util.concurrent.atomic.AtomicReference;
+import mutiny.zero.BackpressureStrategy;
+import mutiny.zero.TubeConfiguration;
+import mutiny.zero.ZeroPublisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import org.slf4j.Logger;
@@ -55,8 +63,10 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
 
     private static final Logger log = LoggerFactory.getLogger(BedrockStreamingChatModel.class);
 
+
     private final BedrockRuntimeAsyncClient client;
     private final boolean logResponses;
+    private final int streamingBufferSize;
 
     public BedrockStreamingChatModel(String modelId) {
         this(builder().modelId(modelId));
@@ -71,20 +81,39 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
                         builder.logger)
                 : builder.client;
         this.logResponses = getOrDefault(builder.logResponses, false);
+        this.streamingBufferSize = ensureGreaterThanZero(
+                getOrDefault(builder.streamingBufferSize, ReactiveStreamingDefaults.DEFAULT_BUFFER_SIZE),
+                "streamingBufferSize");
     }
 
     @Override
     public void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
         validate(chatRequest.parameters());
+        ConverseStreamRequest converseStreamRequest = buildConverseStreamRequest(chatRequest);
+        streamTo(converseStreamRequest, handler);
+    }
 
+    @Override
+    public Publisher<StreamingEvent> doChat(ChatRequest chatRequest) {
+        validate(chatRequest.parameters());
         ConverseStreamRequest converseStreamRequest = buildConverseStreamRequest(chatRequest);
 
+        TubeConfiguration config = new TubeConfiguration()
+                .withBackpressureStrategy(BackpressureStrategy.BUFFER)
+                .withBufferSize(streamingBufferSize);
+
+        return ZeroPublisher.create(config, tube -> {
+            TubeBackedStreamingChatResponseHandler bridge = new TubeBackedStreamingChatResponseHandler(tube);
+            tube.whenTerminates(bridge::cancelUpstream);
+            streamTo(converseStreamRequest, bridge);
+        });
+    }
+
+    private void streamTo(ConverseStreamRequest converseStreamRequest, StreamingChatResponseHandler targetHandler) {
         ConverseResponseFromStreamBuilder responseBuilder = new ConverseResponseFromStreamBuilder(returnThinking);
         ToolCallBuilder toolCallBuilder = new ToolCallBuilder(-1);
         AtomicReference<ContentBlockDelta.Type> currentContentType = new AtomicReference<>();
         AtomicReference<StreamingHandle> streamingHandle = new AtomicReference<>();
-
-        StreamingChatResponseHandler targetHandler = handler;
 
         ConverseStreamResponseHandler converseStreamResponseHandler = ConverseStreamResponseHandler.builder()
                 .onEventStream(publisher -> publisher.subscribe(new Subscriber<ConverseStreamOutput>() {
@@ -104,6 +133,7 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
                     @Override
                     public void onNext(ConverseStreamOutput output) {
                         handler.resetMappingTracking();
+                        try {
                         if (output instanceof MessageStartEvent event) {
                             if (logResponses) {
                                 log.debug("onMessageStart: {}", event);
@@ -167,6 +197,12 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
                         if (!handler.wasMapped()) {
                             onUnmappedRawEvent(handler, output);
                         }
+                        } catch (Exception e) {
+                            RuntimeException mappedError = BedrockExceptionMapper.INSTANCE.mapException(e);
+                            withLoggingExceptions(() -> handler.onError(mappedError));
+                            subscription.cancel();
+                            return;
+                        }
 
                         subscription.request(1);
                     }
@@ -186,7 +222,7 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
                 .converseStream(converseStreamRequest, converseStreamResponseHandler)
                 .exceptionally(ex -> {
                     RuntimeException mappedError = BedrockExceptionMapper.INSTANCE.mapException(ex);
-                    withLoggingExceptions(() -> handler.onError(mappedError));
+                    withLoggingExceptions(() -> targetHandler.onError(mappedError));
                     return null;
                 });
     }
@@ -271,9 +307,24 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
     public static class Builder extends AbstractBuilder<Builder> {
 
         private BedrockRuntimeAsyncClient client;
+        private Integer streamingBufferSize;
 
         public Builder client(BedrockRuntimeAsyncClient client) {
             this.client = client;
+            return this;
+        }
+
+        /**
+         * Sets the size of the bounded back-pressure buffer for the reactive ({@code Flow.Publisher}) streaming
+         * path. Events from the model are relayed through this buffer; if a subscriber consumes slower than the
+         * model produces and the buffer overflows, the stream terminates with an {@link IllegalStateException}.
+         * Defaults to {@value dev.langchain4j.reactive.streaming.ReactiveStreamingDefaults#DEFAULT_BUFFER_SIZE}.
+         *
+         * @param streamingBufferSize the buffer size (must be greater than zero)
+         * @return {@code this}
+         */
+        public Builder streamingBufferSize(Integer streamingBufferSize) {
+            this.streamingBufferSize = streamingBufferSize;
             return this;
         }
 

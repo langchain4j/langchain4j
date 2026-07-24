@@ -32,7 +32,7 @@ class RunShellCommandToolExecutor implements ToolExecutor {
         Integer timeoutSeconds = resolveTimeout(arguments);
 
         try {
-            Result result = ShellCommandRunner.run(command, workingDir, timeoutSeconds, config.executorService);
+            Result result = ShellCommandRunner.run(command, workingDir, timeoutSeconds, config.executor);
 
             String stdOut = formatStdOut(result.stdOut());
             if (result.isSuccess()) {

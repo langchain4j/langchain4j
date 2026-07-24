@@ -12,7 +12,7 @@ import java.util.Objects;
  */
 @Experimental
 @JacocoIgnoreCoverageGenerated
-public class PartialThinking {
+public class PartialThinking implements StreamingEvent {
 
     private final String text;
 

@@ -7,9 +7,14 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
+import static java.util.concurrent.TimeUnit.SECONDS;
 
+import dev.langchain4j.exception.AuthenticationException;
+import dev.langchain4j.exception.HttpException;
+import dev.langchain4j.exception.InternalServerException;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 
 class RetryUtilsTest {
@@ -197,5 +202,106 @@ class RetryUtilsTest {
         verify(mockAction, times(1)).call();
         verifyNoMoreInteractions(mockAction);
         assertThat(Thread.interrupted()).isTrue();
+    }
+
+    private static RetryUtils.RetryPolicy fastPolicy() {
+        return RetryUtils.retryPolicyBuilder().delayMillis(1).jitterScale(0.0).build();
+    }
+
+    @Test
+    void withRetryAsync_succeeds_on_the_first_attempt() throws Exception {
+        AtomicInteger attempts = new AtomicInteger();
+
+        CompletableFuture<String> result = fastPolicy()
+                .withRetryAsync(
+                        () -> {
+                            attempts.incrementAndGet();
+                            return CompletableFuture.completedFuture("ok");
+                        },
+                        2,
+                        ExceptionMapper.DEFAULT);
+
+        assertThat(result.get(5, SECONDS)).isEqualTo("ok");
+        assertThat(attempts).hasValue(1);
+    }
+
+    @Test
+    void withRetryAsync_retries_a_retriable_failure_then_succeeds() throws Exception {
+        AtomicInteger attempts = new AtomicInteger();
+
+        CompletableFuture<String> result = fastPolicy()
+                .withRetryAsync(
+                        () -> {
+                            if (attempts.incrementAndGet() < 3) {
+                                return CompletableFuture.failedFuture(new HttpException(429, "rate limited"));
+                            }
+                            return CompletableFuture.completedFuture("ok");
+                        },
+                        2,
+                        ExceptionMapper.DEFAULT);
+
+        assertThat(result.get(5, SECONDS)).isEqualTo("ok");
+        assertThat(attempts).as("two failures + one success").hasValue(3);
+    }
+
+    @Test
+    void withRetryAsync_does_not_retry_a_non_retriable_failure() {
+        AtomicInteger attempts = new AtomicInteger();
+
+        CompletableFuture<String> result = fastPolicy()
+                .withRetryAsync(
+                        () -> {
+                            attempts.incrementAndGet();
+                            return CompletableFuture.failedFuture(new HttpException(401, "unauthorized"));
+                        },
+                        5,
+                        ExceptionMapper.DEFAULT);
+
+        // a 401 maps to AuthenticationException (a NonRetriableException) - it is not retried
+        assertThatThrownBy(() -> result.get(5, SECONDS)).hasCauseInstanceOf(AuthenticationException.class);
+        assertThat(attempts).hasValue(1);
+    }
+
+    @Test
+    void withRetryAsync_exhausts_retries_and_fails_with_the_mapped_exception() {
+        AtomicInteger attempts = new AtomicInteger();
+
+        CompletableFuture<String> result = fastPolicy()
+                .withRetryAsync(
+                        () -> {
+                            attempts.incrementAndGet();
+                            return CompletableFuture.failedFuture(new HttpException(503, "unavailable"));
+                        },
+                        2,
+                        ExceptionMapper.DEFAULT);
+
+        // a 503 maps to InternalServerException (retriable); after maxRetries the mapped exception surfaces
+        assertThatThrownBy(() -> result.get(5, SECONDS)).hasCauseInstanceOf(InternalServerException.class);
+        assertThat(attempts).as("maxRetries (2) + 1").hasValue(3);
+    }
+
+    @Test
+    void withRetryAsync_cancellation_stops_further_retries() throws Exception {
+        AtomicInteger attempts = new AtomicInteger();
+
+        CompletableFuture<String> result = RetryUtils.retryPolicyBuilder()
+                .delayMillis(300)
+                .jitterScale(0.0)
+                .build()
+                .withRetryAsync(
+                        () -> {
+                            attempts.incrementAndGet();
+                            return CompletableFuture.failedFuture(new HttpException(503, "unavailable"));
+                        },
+                        10,
+                        ExceptionMapper.DEFAULT);
+
+        // the first attempt fails immediately, then a ~300ms backoff is scheduled; cancel during that window
+        Thread.sleep(50);
+        assertThat(result.cancel(true)).isTrue();
+        Thread.sleep(500); // past when the next attempt would have run
+
+        assertThat(result).isCancelled();
+        assertThat(attempts).as("no further attempts after cancellation").hasValue(1);
     }
 }

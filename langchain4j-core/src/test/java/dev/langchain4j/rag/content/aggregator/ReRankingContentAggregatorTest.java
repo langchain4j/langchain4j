@@ -1,10 +1,13 @@
 package dev.langchain4j.rag.content.aggregator;
 
+import dev.langchain4j.exception.AsyncNotSupportedException;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptyMap;
 import static java.util.Collections.singletonList;
 import static java.util.Collections.singletonMap;
+import static java.util.concurrent.CompletableFuture.completedFuture;
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -263,6 +266,63 @@ class ReRankingContentAggregatorTest {
                 .add(Arguments.of(singletonMap(Query.from("query"), singletonList(emptyList()))))
                 .add(Arguments.of(singletonMap(Query.from("query"), asList(emptyList(), emptyList()))))
                 .build();
+    }
+
+    @Test
+    void aggregateAsync_should_rerank_over_scoreAllAsync() throws Exception {
+
+        // given
+        Query query = Query.from("query");
+        Content content1 = Content.from("content 1");
+        Content content2 = Content.from("content 2");
+        Map<Query, Collection<List<Content>>> queryToContents =
+                singletonMap(query, singletonList(asList(content1, content2)));
+
+        ScoringModel scoringModel = mock(ScoringModel.class);
+        when(scoringModel.scoreAllAsync(any(), any())).thenReturn(completedFuture(Response.from(asList(0.5, 0.7))));
+        ContentAggregator aggregator = new ReRankingContentAggregator(scoringModel);
+
+        // when
+        List<Content> aggregated = aggregator.aggregateAsync(queryToContents).get(5, SECONDS);
+
+        // then
+        assertThat(aggregated).hasSize(2);
+        assertReRankedContentOrder(aggregated, content2, content1);
+        assertReRankedContentScore(aggregated, 0.7, 0.5);
+    }
+
+    @Test
+    void aggregateAsync_should_return_empty_list_without_touching_the_model_when_no_content() throws Exception {
+
+        // given
+        ScoringModel scoringModel = mock(ScoringModel.class);
+        ContentAggregator aggregator = new ReRankingContentAggregator(scoringModel);
+
+        // when-then
+        assertThat(aggregator.aggregateAsync(emptyMap()).get(5, SECONDS)).isEmpty();
+        verifyNoInteractions(scoringModel);
+    }
+
+    @Test
+    void aggregateAsync_should_fail_loudly_when_scoring_model_is_not_async() {
+
+        // given
+        Query query = Query.from("query");
+        Map<Query, Collection<List<Content>>> queryToContents =
+                singletonMap(query, singletonList(singletonList(Content.from("content 1"))));
+
+        // A scoring model that implements only the blocking scoreAll, leaving scoreAllAsync as the throwing default
+        ScoringModel blockingOnly = (segments, q) -> Response.from(singletonList(0.9));
+        ContentAggregator aggregator = new ReRankingContentAggregator(blockingOnly);
+
+        // when-then: the non-async model surfaces loudly (through the returned future) instead of silently blocking
+        // a carrier thread - the scoring model's failed future propagates through the aggregator's composition
+        assertThat(aggregator.aggregateAsync(queryToContents)).isCompletedExceptionally();
+        assertThatThrownBy(() -> aggregator.aggregateAsync(queryToContents).get())
+                .isInstanceOf(java.util.concurrent.ExecutionException.class)
+                .cause()
+                .isExactlyInstanceOf(AsyncNotSupportedException.class)
+                .hasMessageContaining("scoreAllAsync");
     }
 
     private void assertReRankedContentOrder(List<Content> actual, Content... expectedContents) {

@@ -8,6 +8,7 @@ import static dev.langchain4j.service.tool.ReturnBehaviorCombinationsTest.Outcom
 import static dev.langchain4j.service.tool.ReturnBehaviorCombinationsTest.ToolStep.err;
 import static dev.langchain4j.service.tool.ReturnBehaviorCombinationsTest.ToolStep.ok;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 
 import dev.langchain4j.agent.tool.ReturnBehavior;
@@ -46,6 +47,8 @@ class ReturnBehaviorCombinationsTest {
 
     interface Assistant {
         Result<String> chat(String message);
+
+        CompletableFuture<Result<String>> chatAsync(String message);
 
         String chatString(String message);
 
@@ -105,6 +108,57 @@ class ReturnBehaviorCombinationsTest {
         public String immediateNull_ok() {
             System.out.println("**** immediateNull_ok");
             return null;
+        }
+    }
+
+    /**
+     * Future-returning twins of the {@link Tools} methods exercised by {@link #combinations()}. Used to verify
+     * that the immediate-return/reprocess decision is identical when tool results arrive asynchronously
+     * (on the future's completion thread) rather than synchronously.
+     */
+    static class AsyncTools {
+
+        @Tool(returnBehavior = TO_LLM)
+        public CompletableFuture<String> to_llm_ok() {
+            return completedLater("to-llm");
+        }
+
+        @Tool(returnBehavior = TO_LLM)
+        public CompletableFuture<String> to_llm_err() {
+            return failedLater("boom (to_llm)");
+        }
+
+        @Tool(returnBehavior = IMMEDIATE)
+        public CompletableFuture<String> immediate_ok() {
+            return completedLater("immediate");
+        }
+
+        @Tool(returnBehavior = IMMEDIATE)
+        public CompletableFuture<String> immediate_err() {
+            return failedLater("boom (immediate)");
+        }
+
+        @Tool(returnBehavior = IMMEDIATE_IF_LAST)
+        public CompletableFuture<String> immediate_if_last_ok() {
+            return completedLater("immediate-if-last");
+        }
+
+        @Tool(returnBehavior = IMMEDIATE_IF_LAST)
+        public CompletableFuture<String> immediate_if_last_err() {
+            return failedLater("boom (immediate_if_last)");
+        }
+
+        private static CompletableFuture<String> completedLater(String value) {
+            return CompletableFuture.supplyAsync(
+                    () -> value, CompletableFuture.delayedExecutor(20, TimeUnit.MILLISECONDS));
+        }
+
+        private static CompletableFuture<String> failedLater(String message) {
+            return CompletableFuture.supplyAsync(
+                    () -> {
+                        throw new IllegalStateException(message);
+                    },
+                    CompletableFuture.delayedExecutor(20, TimeUnit.MILLISECONDS));
         }
     }
 
@@ -210,6 +264,97 @@ class ReturnBehaviorCombinationsTest {
                 .build();
 
         Result<String> result = assistant.chat("go");
+
+        if (expectedOutcome == RETURN_IMMEDIATELY) {
+            assertThat(model.requests())
+                    .as("immediate return means a single LLM call (no reprocessing round trip)")
+                    .hasSize(1);
+            assertThat(result.content())
+                    .as("immediate return means no LLM-generated text content")
+                    .isNull();
+        } else {
+            assertThat(model.requests())
+                    .as("REPROCESS means a second LLM call to consume the tool results")
+                    .hasSize(2);
+            assertThat(result.content())
+                    .as("REPROCESS means the second LLM response wins")
+                    .isEqualTo("final answer");
+        }
+    }
+
+    @ParameterizedTest(name = "{0} -> {1}")
+    @MethodSource("combinations")
+    void should_produce_expected_outcome__async(List<ToolStep> steps, Outcome expectedOutcome) throws Exception {
+
+        List<ToolExecutionRequest> toolRequests = toolRequestsFor(steps);
+
+        // First LLM response: the tool calls under test.
+        // Second LLM response: a final text answer, consumed only when the loop reprocesses.
+        ChatModelMock model = ChatModelMock.thatAlwaysResponds(
+                AiMessage.from(toolRequests.toArray(new ToolExecutionRequest[0])), AiMessage.from("final answer"));
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(model)
+                .tools(new Tools())
+                .build();
+
+        if (steps.stream().anyMatch(ToolStep::errors)) {
+            // new async default (CompletableFuture mode): a tool execution error fails the invocation
+            // instead of being sent to the LLM, so the loop never reprocesses
+            assertThatThrownBy(() -> assistant.chatAsync("go").get(10, TimeUnit.SECONDS))
+                    .hasCauseInstanceOf(IllegalStateException.class);
+            assertThat(model.requests()).hasSize(1);
+            return;
+        }
+
+        Result<String> result = assistant.chatAsync("go").get(10, TimeUnit.SECONDS);
+
+        if (expectedOutcome == RETURN_IMMEDIATELY) {
+            assertThat(model.requests())
+                    .as("immediate return means a single LLM call (no reprocessing round trip)")
+                    .hasSize(1);
+            assertThat(result.content())
+                    .as("immediate return means no LLM-generated text content")
+                    .isNull();
+        } else {
+            assertThat(model.requests())
+                    .as("REPROCESS means a second LLM call to consume the tool results")
+                    .hasSize(2);
+            assertThat(result.content())
+                    .as("REPROCESS means the second LLM response wins")
+                    .isEqualTo("final answer");
+        }
+    }
+
+    @ParameterizedTest(name = "{0} -> {1}")
+    @MethodSource("combinations")
+    void should_produce_expected_outcome__async_tools(List<ToolStep> steps, Outcome expectedOutcome)
+            throws Exception {
+
+        List<ToolExecutionRequest> toolRequests = toolRequestsFor(steps);
+
+        // First LLM response: the tool calls under test.
+        // Second LLM response: a final text answer, consumed only when the loop reprocesses.
+        ChatModelMock model = ChatModelMock.thatAlwaysResponds(
+                AiMessage.from(toolRequests.toArray(new ToolExecutionRequest[0])), AiMessage.from("final answer"));
+
+        // the tools themselves return CompletableFuture, so the immediate-return/reprocess decision is made
+        // when the tool result arrives asynchronously - a different code path than the sync tools above
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(model)
+                .tools(new AsyncTools())
+                .executeToolsConcurrently()
+                .build();
+
+        if (steps.stream().anyMatch(ToolStep::errors)) {
+            // new async default: a tool execution error fails the invocation instead of going to the LLM
+            assertThatThrownBy(() -> assistant.chatAsync("go").get(10, TimeUnit.SECONDS))
+                    .hasCauseInstanceOf(IllegalStateException.class);
+            assertThat(model.requests()).hasSize(1);
+            return;
+        }
+
+        Result<String> result = assistant.chatAsync("go").get(10, TimeUnit.SECONDS);
 
         if (expectedOutcome == RETURN_IMMEDIATELY) {
             assertThat(model.requests())

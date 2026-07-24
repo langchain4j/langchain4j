@@ -1,5 +1,6 @@
 package dev.langchain4j.model.chat.common;
 
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
@@ -14,4 +15,6 @@ public record StreamingMetadata(
         List<CompleteToolCall> completeToolCalls,
         int timesOnCompleteResponseWasCalled,
         Set<Thread> threads,
-        StreamingChatResponseHandler handler) {}
+        StreamingChatResponseHandler handler,
+        StreamingMode mode,
+        StreamingChatModel model) {}

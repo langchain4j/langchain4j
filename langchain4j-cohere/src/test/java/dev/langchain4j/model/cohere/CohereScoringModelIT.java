@@ -10,6 +10,7 @@ import java.time.Duration;
 import java.util.List;
 
 import static java.util.Arrays.asList;
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.data.Percentage.withPercentage;
 
@@ -63,6 +64,36 @@ class CohereScoringModelIT {
 
         // when
         Response<List<Double>> response = model.scoreAll(segments, query);
+
+        // then
+        List<Double> scores = response.content();
+        assertThat(scores).hasSize(2);
+        assertThat(scores.get(0)).isLessThan(scores.get(1));
+
+        assertThat(response.tokenUsage().totalTokenCount()).isEqualTo(1);
+
+        assertThat(response.finishReason()).isNull();
+    }
+
+    @Test
+    void scoreAllAsync_should_score_multiple_segments() throws Exception {
+
+        // given
+        ScoringModel model = CohereScoringModel.builder()
+                .apiKey(System.getenv("COHERE_API_KEY"))
+                .modelName("rerank-english-v3.0")
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        TextSegment catSegment = TextSegment.from("maine coon");
+        TextSegment dogSegment = TextSegment.from("labrador retriever");
+        List<TextSegment> segments = asList(catSegment, dogSegment);
+
+        String query = "tell me about dogs";
+
+        // when
+        Response<List<Double>> response = model.scoreAllAsync(segments, query).get(30, SECONDS);
 
         // then
         List<Double> scores = response.content();

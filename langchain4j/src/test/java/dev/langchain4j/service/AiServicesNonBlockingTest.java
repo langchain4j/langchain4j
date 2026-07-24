@@ -1,0 +1,1560 @@
+package dev.langchain4j.service;
+
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
+import static java.util.concurrent.TimeUnit.SECONDS;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import dev.langchain4j.agent.tool.CompensateFor;
+import dev.langchain4j.agent.tool.Tool;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.guardrail.InputGuardrail;
+import dev.langchain4j.guardrail.InputGuardrailRequest;
+import dev.langchain4j.guardrail.InputGuardrailResult;
+import dev.langchain4j.guardrail.OutputGuardrail;
+import dev.langchain4j.guardrail.OutputGuardrailRequest;
+import dev.langchain4j.guardrail.OutputGuardrailResult;
+import dev.langchain4j.memory.chat.MessageWindowChatMemory;
+import dev.langchain4j.rag.DefaultRetrievalAugmentor;
+import dev.langchain4j.rag.RetrievalAugmentor;
+import dev.langchain4j.rag.content.Content;
+import dev.langchain4j.rag.content.retriever.ContentRetriever;
+import dev.langchain4j.rag.query.Query;
+import dev.langchain4j.rag.query.router.DefaultQueryRouter;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
+import dev.langchain4j.observability.api.event.AiServiceCompletedEvent;
+import dev.langchain4j.observability.api.event.CompensationReason;
+import dev.langchain4j.observability.api.event.ToolCompensatedEvent;
+import dev.langchain4j.observability.api.listener.AiServiceCompletedListener;
+import dev.langchain4j.observability.api.listener.ToolCompensatedEventListener;
+import dev.langchain4j.service.guardrail.InputGuardrails;
+import dev.langchain4j.service.guardrail.OutputGuardrails;
+import dev.langchain4j.service.tool.ToolErrorHandlerResult;
+import dev.langchain4j.store.memory.chat.ChatMemoryStore;
+import dev.langchain4j.store.memory.chat.InMemoryChatMemoryStore;
+import java.util.List;
+import java.util.Queue;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Flow;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
+import reactor.blockhound.BlockHound;
+import reactor.blockhound.BlockingOperationError;
+
+/**
+ * Verifies that the asynchronous AI Service pipeline never performs a blocking call on the thread that
+ * delivers model responses — policed by BlockHound. This covers both the {@code CompletableFuture} return
+ * types (single-response path) and the reactive {@code Flow.Publisher} streaming path (whose stub emits all
+ * events on the same policed delivery thread, so its tool loop, chat-memory writes, event firing and
+ * round-to-round resubscription are policed too).
+ * <p>
+ * The stub model completes its futures (or emits its stream) on a dedicated thread (named
+ * {@code ai-service-delivery}) that BlockHound treats as non-blocking. Because every downstream stage of the async pipeline runs on the
+ * thread that completed the previous stage, the entire post-response pipeline — tool-loop bookkeeping,
+ * chat-memory writes, tool result processing, output guardrails, output parsing, {@code Result} building,
+ * event firing and the recursive next round — executes on that policed thread. Any hidden
+ * {@code Future.get()}, sleep, or I/O in there fails the test deterministically, without a real API.
+ * <p>
+ * Each test enables a different AI Service feature so that each component crosses the policed pipeline.
+ * Limitation: when tools execute concurrently, stages following the tool barrier run on the tool executor's
+ * (unpoliced) threads until the next model response returns to the policed thread.
+ * <p>
+ * BlockHound is JVM-global, so recorded violations are shared static state; {@link #resetViolations()}
+ * clears them before each test. This module runs tests concurrently by default (junit-platform.properties),
+ * so this class forces sequential execution — otherwise the self-test's deliberately-blocking policed
+ * thread would pollute the violation list of concurrently running tests.
+ */
+@Execution(ExecutionMode.SAME_THREAD)
+class AiServicesNonBlockingTest {
+
+    /**
+     * Blocking calls BlockHound observed on the policed thread. Cleared before each test by
+     * {@link #resetViolations()}; the pipeline tests expect none, the self-test expects one.
+     */
+    private static final List<Throwable> violations = new CopyOnWriteArrayList<>();
+
+    private static final ExecutorService deliveryExecutor =
+            Executors.newSingleThreadExecutor(runnable -> new Thread(runnable, "ai-service-delivery"));
+
+    // A non-policed pool that a blocking ChatMemoryStore offloads its (blocking) work to. Named distinctly so
+    // BlockHound does not police it - the point is that the framework offloads memory I/O here and never runs it
+    // on the policed delivery thread.
+    private static final ExecutorService memoryWorker =
+            Executors.newCachedThreadPool(runnable -> new Thread(runnable, "chat-memory-worker"));
+
+    // A non-policed pool that a blocking guardrail offloads its (blocking) validation to via validateAsync.
+    // Named distinctly so BlockHound does not police it - the point is that an I/O guardrail offloads its work
+    // here and never runs it on the policed delivery thread.
+    private static final ExecutorService guardrailWorker =
+            Executors.newCachedThreadPool(runnable -> new Thread(runnable, "guardrail-worker"));
+
+    @BeforeAll
+    static void installBlockHound() {
+        BlockHound.builder()
+                .nonBlockingThreadPredicate(prev -> prev.or(thread -> thread.getName()
+                        .startsWith("ai-service-delivery")))
+                // Pool bookkeeping, not application blocking: idle workers park on the work queue (getTask),
+                // exiting workers acquire the pool's lock to coordinate shutdown (processWorkerExit).
+                .allowBlockingCallsInside("java.util.concurrent.ThreadPoolExecutor", "getTask")
+                .allowBlockingCallsInside("java.util.concurrent.ThreadPoolExecutor", "processWorkerExit")
+                // Record (don't throw): a thrown error on the delivery thread would fail the future, but
+                // recording gives a precise assertion message with the offending stack trace.
+                .blockingMethodCallback(method -> violations.add(new BlockingOperationError(method)))
+                .install();
+    }
+
+    /**
+     * Warms up the async pipeline on the delivery thread once, before any test asserts. The first time JSON
+     * output parsing runs (Jackson, JSON-schema reflection, {@code MethodHandle} linkage, lazy class init), it
+     * can {@code Unsafe.park} on a one-time initialization lock — which BlockHound flags even though it is not
+     * application-level blocking and never recurs. Triggering it here (and clearing the recorded violations
+     * via {@link #resetViolations()} before each test) removes that flakiness without masking real blocking:
+     * any per-call blocking would still be caught by the per-test assertions on a fully warmed-up pipeline.
+     */
+    @BeforeAll
+    static void warmUpDeliveryThread() throws Exception {
+        AssistantReturningResult assistant = AiServices.builder(AssistantReturningResult.class)
+                .chatModel(new NonBlockingChatModelStub(AiMessage.from("{\"name\": \"Warmup\"}")))
+                .build();
+        assistant.extractPerson("warm up the parsing pipeline").get(10, SECONDS);
+    }
+
+    @AfterAll
+    static void shutDownDeliveryExecutor() {
+        deliveryExecutor.shutdownNow();
+        memoryWorker.shutdownNow();
+        guardrailWorker.shutdownNow();
+    }
+
+    /**
+     * A {@link ChatMemoryStore} whose synchronous methods block (simulating I/O). Its asynchronous methods offload
+     * that blocking work to a non-policed worker pool. If the AI Service ever called the synchronous methods on
+     * the policed delivery thread, BlockHound would flag it; using the async methods keeps the delivery thread
+     * free. When a {@code gate} is supplied, the read blocks until it is released — used to prove the caller
+     * thread is not blocked on memory.
+     */
+    static class BlockingChatMemoryStore implements ChatMemoryStore {
+
+        private final InMemoryChatMemoryStore delegate = new InMemoryChatMemoryStore();
+        private final Executor worker;
+        private final CountDownLatch gate;
+
+        BlockingChatMemoryStore(Executor worker) {
+            this(worker, null);
+        }
+
+        BlockingChatMemoryStore(Executor worker, CountDownLatch gate) {
+            this.worker = worker;
+            this.gate = gate;
+        }
+
+        private void block() {
+            try {
+                if (gate != null) {
+                    gate.await();
+                } else {
+                    Thread.sleep(20);
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
+
+        @Override
+        public List<ChatMessage> getMessages(Object memoryId) {
+            block();
+            return delegate.getMessages(memoryId);
+        }
+
+        @Override
+        public void updateMessages(Object memoryId, List<ChatMessage> messages) {
+            block();
+            delegate.updateMessages(memoryId, messages);
+        }
+
+        @Override
+        public void deleteMessages(Object memoryId) {
+            delegate.deleteMessages(memoryId);
+        }
+
+        @Override
+        public CompletableFuture<List<ChatMessage>> getMessagesAsync(Object memoryId) {
+            return CompletableFuture.supplyAsync(() -> getMessages(memoryId), worker);
+        }
+
+        @Override
+        public CompletableFuture<Void> updateMessagesAsync(Object memoryId, List<ChatMessage> messages) {
+            return CompletableFuture.runAsync(() -> updateMessages(memoryId, messages), worker);
+        }
+
+        @Override
+        public CompletableFuture<Void> deleteMessagesAsync(Object memoryId) {
+            return CompletableFuture.runAsync(() -> deleteMessages(memoryId), worker);
+        }
+    }
+
+    private static MessageWindowChatMemory blockingMemory(CountDownLatch gate) {
+        return MessageWindowChatMemory.builder()
+                .maxMessages(20)
+                .chatMemoryStore(new BlockingChatMemoryStore(memoryWorker, gate))
+                .build();
+    }
+
+    @Test
+    void blocking_chat_memory_store_does_not_block_the_delivery_thread() throws Exception {
+
+        NonBlockingChatModelStub chatModel = new NonBlockingChatModelStub(
+                AiMessage.from(toolRequest("1", "currentTemperature")), AiMessage.from("42 degrees"));
+        WeatherTools tools = new WeatherTools();
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(chatModel)
+                .chatMemory(blockingMemory(null))
+                .tools(tools)
+                .build();
+
+        String answer = assistant.chat("What is the temperature in Munich?").get(10, SECONDS);
+
+        assertThat(answer).isEqualTo("42 degrees");
+        assertThat(tools.invocations).hasValue(1);
+        assertNoBlockingCalls();
+    }
+
+    @Test
+    void streaming_with_blocking_chat_memory_store_does_not_block_the_delivery_thread() throws Exception {
+
+        StreamingEventChatModelMock model = StreamingEventChatModelMock.thatStreamsOn(
+                deliveryExecutor,
+                AiMessage.from(toolRequest("1", "currentTemperature")),
+                AiMessage.from("42 degrees"));
+        WeatherTools tools = new WeatherTools();
+
+        StreamingAssistant assistant = AiServices.builder(StreamingAssistant.class)
+                .streamingChatModel(model)
+                .chatMemory(blockingMemory(null))
+                .tools(tools)
+                .build();
+
+        assertThat(subscribeAndAwait(assistant.chat("What is the temperature in Munich?")))
+                .isEqualTo("42 degrees");
+        assertThat(tools.invocations).hasValue(1);
+        assertNoBlockingCalls();
+    }
+
+    @Test
+    void chat_does_not_block_the_caller_thread_on_chat_memory() throws Exception {
+
+        // The store's read blocks until the gate is released. If the caller thread assembled memory
+        // synchronously, chat() would block here; instead it returns a not-yet-completed future immediately.
+        CountDownLatch gate = new CountDownLatch(1);
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(new NonBlockingChatModelStub(AiMessage.from("Berlin")))
+                .chatMemory(blockingMemory(gate))
+                .build();
+
+        CompletableFuture<String> future = assistant.chat("What is the capital of Germany?");
+
+        assertThat(future).isNotDone();
+
+        gate.countDown();
+
+        assertThat(future.get(10, SECONDS)).isEqualTo("Berlin");
+    }
+
+    @BeforeEach
+    void resetViolations() {
+        violations.clear();
+    }
+
+    /**
+     * Completes responses on the policed delivery thread, with a small delay so that the async pipeline's
+     * stages are attached before the future completes — ensuring they run on the policed (completing)
+     * thread rather than the caller's.
+     */
+    static class NonBlockingChatModelStub implements ChatModel {
+
+        private final Queue<AiMessage> responses;
+        final List<ChatRequest> requests = new CopyOnWriteArrayList<>();
+
+        NonBlockingChatModelStub(AiMessage... aiMessages) {
+            this.responses = new ConcurrentLinkedQueue<>(List.of(aiMessages));
+        }
+
+        @Override
+        public CompletableFuture<ChatResponse> doChatAsync(ChatRequest chatRequest) {
+            requests.add(chatRequest);
+            return CompletableFuture.supplyAsync(
+                    () -> ChatResponse.builder()
+                            .aiMessage(responses.poll())
+                            .metadata(ChatResponseMetadata.builder().build())
+                            .build(),
+                    CompletableFuture.delayedExecutor(10, MILLISECONDS, deliveryExecutor));
+        }
+
+        @Override
+        public ChatResponse doChat(ChatRequest chatRequest) {
+            throw new AssertionError("Blocking chat() must not be called "
+                    + "when the AI Service method returns a CompletableFuture");
+        }
+    }
+
+    interface Assistant {
+
+        CompletableFuture<String> chat(String userMessage);
+    }
+
+    @Test
+    void plain_chat_does_not_block_the_delivery_thread() throws Exception {
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(new NonBlockingChatModelStub(AiMessage.from("Berlin")))
+                .build();
+
+        // The pipeline runs on the stub's delivery thread; BlockHound proves nothing blocks it. (The caller is not
+        // asserted here — whether the terminal whenComplete happens to run inline on the caller depends on a
+        // completion/attach race under load; the caller-not-blocked guarantee is covered deterministically by
+        // chat_does_not_block_the_caller_thread_on_chat_memory, which gates the response.)
+        String answer = assistant.chat("What is the capital of Germany?").get(10, SECONDS);
+
+        assertThat(answer).isEqualTo("Berlin");
+        assertNoBlockingCalls();
+    }
+
+    static class WeatherTools {
+
+        final AtomicInteger invocations = new AtomicInteger();
+
+        @Tool
+        String currentTemperature(String city) {
+            invocations.incrementAndGet();
+            return "42";
+        }
+
+        @Tool
+        String currentHumidity(String city) {
+            invocations.incrementAndGet();
+            return "69";
+        }
+    }
+
+    private static ToolExecutionRequest toolRequest(String id, String toolName) {
+        return ToolExecutionRequest.builder()
+                .id(id)
+                .name(toolName)
+                .arguments("{\"arg0\": \"Munich\"}")
+                .build();
+    }
+
+    @Test
+    void tool_loop_with_multiple_rounds_and_memory_does_not_block_the_delivery_thread() throws Exception {
+
+        NonBlockingChatModelStub chatModel = new NonBlockingChatModelStub(
+                AiMessage.from(toolRequest("1", "currentTemperature")),
+                AiMessage.from(toolRequest("2", "currentHumidity")),
+                AiMessage.from("42 degrees, 69 percent"));
+        WeatherTools tools = new WeatherTools();
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(chatModel)
+                .chatMemory(MessageWindowChatMemory.withMaxMessages(20))
+                .tools(tools)
+                .build();
+
+        String answer = assistant.chat("What is the weather in Munich?").get(10, SECONDS);
+
+        assertThat(answer).isEqualTo("42 degrees, 69 percent");
+        assertThat(tools.invocations).hasValue(2);
+        assertNoBlockingCalls();
+    }
+
+    @Test
+    void concurrent_tool_execution_does_not_block_the_delivery_thread() throws Exception {
+
+        NonBlockingChatModelStub chatModel = new NonBlockingChatModelStub(
+                AiMessage.from(toolRequest("1", "currentTemperature"), toolRequest("2", "currentHumidity")),
+                AiMessage.from("42 degrees, 69 percent"));
+        WeatherTools tools = new WeatherTools();
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(chatModel)
+                .tools(tools)
+                .executeToolsConcurrently()
+                .build();
+
+        String answer = assistant.chat("What is the weather in Munich?").get(10, SECONDS);
+
+        assertThat(answer).isEqualTo("42 degrees, 69 percent");
+        assertThat(tools.invocations).hasValue(2);
+        assertNoBlockingCalls();
+    }
+
+    static class AsyncWeatherTools {
+
+        final AtomicInteger invocations = new AtomicInteger();
+
+        @Tool
+        CompletableFuture<String> currentTemperature(String city) {
+            invocations.incrementAndGet();
+            // completes later, on an unpoliced thread; while it is pending, nothing may block
+            // the policed delivery thread
+            return CompletableFuture.supplyAsync(() -> "42", CompletableFuture.delayedExecutor(50, MILLISECONDS));
+        }
+
+        @Tool
+        CompletableFuture<String> currentHumidity(String city) {
+            invocations.incrementAndGet();
+            return CompletableFuture.supplyAsync(() -> "69", CompletableFuture.delayedExecutor(50, MILLISECONDS));
+        }
+    }
+
+    @Test
+    void async_tool_does_not_block_the_delivery_thread() throws Exception {
+
+        NonBlockingChatModelStub chatModel = new NonBlockingChatModelStub(
+                AiMessage.from(toolRequest("1", "currentTemperature")), AiMessage.from("42 degrees"));
+        AsyncWeatherTools tools = new AsyncWeatherTools();
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(chatModel)
+                .tools(tools)
+                .build();
+
+        String answer = assistant.chat("What is the temperature in Munich?").get(10, SECONDS);
+
+        assertThat(answer).isEqualTo("42 degrees");
+        assertThat(tools.invocations).hasValue(1);
+        assertNoBlockingCalls();
+    }
+
+    @Test
+    void concurrent_async_tools_do_not_block_the_delivery_thread() throws Exception {
+
+        NonBlockingChatModelStub chatModel = new NonBlockingChatModelStub(
+                AiMessage.from(toolRequest("1", "currentTemperature"), toolRequest("2", "currentHumidity")),
+                AiMessage.from("42 degrees, 69 percent"));
+        AsyncWeatherTools tools = new AsyncWeatherTools();
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(chatModel)
+                .tools(tools)
+                .executeToolsConcurrently()
+                .build();
+
+        String answer = assistant.chat("What is the weather in Munich?").get(10, SECONDS);
+
+        assertThat(answer).isEqualTo("42 degrees, 69 percent");
+        assertThat(tools.invocations).hasValue(2);
+        assertNoBlockingCalls();
+    }
+
+    static class MixedWeatherTools {
+
+        final AtomicInteger invocations = new AtomicInteger();
+
+        @Tool
+        CompletableFuture<String> currentTemperature(String city) {
+            invocations.incrementAndGet();
+            return CompletableFuture.supplyAsync(() -> "42", CompletableFuture.delayedExecutor(50, MILLISECONDS));
+        }
+
+        @Tool
+        String currentHumidity(String city) {
+            invocations.incrementAndGet();
+            return "69";
+        }
+    }
+
+    @Test
+    void mixed_async_and_sync_tools_do_not_block_the_delivery_thread() throws Exception {
+
+        NonBlockingChatModelStub chatModel = new NonBlockingChatModelStub(
+                AiMessage.from(toolRequest("1", "currentTemperature"), toolRequest("2", "currentHumidity")),
+                AiMessage.from("42 degrees, 69 percent"));
+        MixedWeatherTools tools = new MixedWeatherTools();
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(chatModel)
+                .tools(tools)
+                .executeToolsConcurrently()
+                .build();
+
+        String answer = assistant.chat("What is the weather in Munich?").get(10, SECONDS);
+
+        assertThat(answer).isEqualTo("42 degrees, 69 percent");
+        assertThat(tools.invocations).hasValue(2);
+        assertNoBlockingCalls();
+    }
+
+    static class Person {
+
+        String name;
+    }
+
+    interface AssistantReturningResult {
+
+        CompletableFuture<Result<Person>> extractPerson(String text);
+    }
+
+    @Test
+    void result_with_pojo_parsing_does_not_block_the_delivery_thread() throws Exception {
+
+        AssistantReturningResult assistant = AiServices.builder(AssistantReturningResult.class)
+                .chatModel(new NonBlockingChatModelStub(AiMessage.from("{\"name\": \"Klaus\"}")))
+                .build();
+
+        Result<Person> result = assistant.extractPerson("My name is Klaus").get(10, SECONDS);
+
+        assertThat(result.content().name).isEqualTo("Klaus");
+        assertNoBlockingCalls();
+    }
+
+    public static class PassingOutputGuardrail implements OutputGuardrail {
+
+        @Override
+        public OutputGuardrailResult validate(AiMessage responseFromLLM) {
+            return success();
+        }
+
+        @Override
+        public CompletableFuture<OutputGuardrailResult> validateAsync(OutputGuardrailRequest request) {
+            // Non-blocking (CPU-only) guardrail: wrap the synchronous validation in a completed stage.
+            return CompletableFuture.completedFuture(validate(request));
+        }
+    }
+
+    interface GuardedAssistant {
+
+        @OutputGuardrails(PassingOutputGuardrail.class)
+        CompletableFuture<String> chat(String userMessage);
+    }
+
+    @Test
+    void output_guardrails_do_not_block_the_delivery_thread() throws Exception {
+
+        GuardedAssistant assistant = AiServices.builder(GuardedAssistant.class)
+                .chatModel(new NonBlockingChatModelStub(AiMessage.from("Berlin")))
+                .build();
+
+        String answer = assistant.chat("What is the capital of Germany?").get(10, SECONDS);
+
+        assertThat(answer).isEqualTo("Berlin");
+        assertNoBlockingCalls();
+    }
+
+    /**
+     * An output guardrail whose validation blocks (simulating a remote moderation/PII call). Because it does
+     * blocking I/O, it overrides {@link #validateAsync} to offload that work to a non-policed worker pool, keeping
+     * the model-delivery thread free — exactly what an I/O guardrail must do on the non-blocking AI Service paths.
+     */
+    public static class BlockingOutputGuardrail implements OutputGuardrail {
+
+        @Override
+        public OutputGuardrailResult validate(AiMessage responseFromLLM) {
+            try {
+                Thread.sleep(20);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            return success();
+        }
+
+        @Override
+        public CompletableFuture<OutputGuardrailResult> validateAsync(OutputGuardrailRequest request) {
+            return CompletableFuture.supplyAsync(() -> validate(request), guardrailWorker);
+        }
+    }
+
+    /**
+     * An output guardrail that reprompts the model once (when the response still contains "retry") and then
+     * passes. Its (blocking) validation is offloaded via {@link #validateAsync}; the reprompt re-calls the model
+     * via {@link ChatExecutor#executeAsync(java.util.List)}. Neither must touch the delivery thread.
+     */
+    public static class RepromptOnceOutputGuardrail implements OutputGuardrail {
+
+        @Override
+        public OutputGuardrailResult validate(AiMessage responseFromLLM) {
+            try {
+                Thread.sleep(20);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            if (responseFromLLM.text().contains("retry")) {
+                return reprompt("Unacceptable answer", "Please answer the question properly");
+            }
+            return success();
+        }
+
+        @Override
+        public CompletableFuture<OutputGuardrailResult> validateAsync(OutputGuardrailRequest request) {
+            return CompletableFuture.supplyAsync(() -> validate(request), guardrailWorker);
+        }
+    }
+
+    interface BlockingGuardedAssistant {
+
+        @OutputGuardrails(BlockingOutputGuardrail.class)
+        CompletableFuture<String> chat(String userMessage);
+    }
+
+    interface BlockingGuardedStreamingAssistant {
+
+        @OutputGuardrails(BlockingOutputGuardrail.class)
+        Flow.Publisher<String> chat(String userMessage);
+    }
+
+    interface RepromptGuardedAssistant {
+
+        @OutputGuardrails(RepromptOnceOutputGuardrail.class)
+        CompletableFuture<String> chat(String userMessage);
+    }
+
+    /**
+     * Delivers the first response asynchronously on the policed delivery thread (like
+     * {@link NonBlockingChatModelStub}), but — unlike it — also implements the blocking {@link #doChat} used by
+     * output-guardrail reprompts. Reprompts run on a virtual thread off the delivery thread, so blocking there
+     * is acceptable.
+     */
+    static class RepromptingChatModelStub implements ChatModel {
+
+        private final Queue<AiMessage> responses;
+
+        RepromptingChatModelStub(AiMessage... aiMessages) {
+            this.responses = new ConcurrentLinkedQueue<>(List.of(aiMessages));
+        }
+
+        @Override
+        public CompletableFuture<ChatResponse> doChatAsync(ChatRequest chatRequest) {
+            return CompletableFuture.supplyAsync(
+                    this::nextResponse, CompletableFuture.delayedExecutor(10, MILLISECONDS, deliveryExecutor));
+        }
+
+        @Override
+        public ChatResponse doChat(ChatRequest chatRequest) {
+            return nextResponse();
+        }
+
+        private ChatResponse nextResponse() {
+            return ChatResponse.builder()
+                    .aiMessage(responses.poll())
+                    .metadata(ChatResponseMetadata.builder().build())
+                    .build();
+        }
+    }
+
+    @Test
+    void cf_blocking_output_guardrail_does_not_block_the_delivery_thread() throws Exception {
+
+        BlockingGuardedAssistant assistant = AiServices.builder(BlockingGuardedAssistant.class)
+                .chatModel(new NonBlockingChatModelStub(AiMessage.from("Berlin")))
+                .build();
+
+        String answer = assistant.chat("What is the capital of Germany?").get(10, SECONDS);
+
+        assertThat(answer).isEqualTo("Berlin");
+        assertNoBlockingCalls();
+    }
+
+    @Test
+    void streaming_blocking_output_guardrail_does_not_block_the_delivery_thread() throws Exception {
+
+        BlockingGuardedStreamingAssistant assistant = AiServices.builder(BlockingGuardedStreamingAssistant.class)
+                .streamingChatModel(StreamingEventChatModelMock.thatStreamsOn(deliveryExecutor, AiMessage.from("Berlin")))
+                .build();
+
+        assertThat(subscribeAndAwait(assistant.chat("What is the capital of Germany?")))
+                .isEqualTo("Berlin");
+        assertNoBlockingCalls();
+    }
+
+    @Test
+    void cf_output_guardrail_reprompt_does_not_block_the_delivery_thread() throws Exception {
+
+        RepromptingChatModelStub model =
+                new RepromptingChatModelStub(AiMessage.from("please retry"), AiMessage.from("Berlin"));
+
+        RepromptGuardedAssistant assistant = AiServices.builder(RepromptGuardedAssistant.class)
+                .chatModel(model)
+                .build();
+
+        String answer = assistant.chat("What is the capital of Germany?").get(10, SECONDS);
+
+        assertThat(answer).isEqualTo("Berlin");
+        assertNoBlockingCalls();
+    }
+
+    /**
+     * An input guardrail whose validation blocks (simulating a remote moderation/PII call); like its output
+     * sibling it offloads via {@link #validateAsync} to a non-policed worker so the caller and delivery threads
+     * stay free.
+     */
+    public static class BlockingInputGuardrail implements InputGuardrail {
+
+        @Override
+        public InputGuardrailResult validate(UserMessage userMessage) {
+            try {
+                Thread.sleep(20);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            return success();
+        }
+
+        @Override
+        public CompletableFuture<InputGuardrailResult> validateAsync(InputGuardrailRequest request) {
+            return CompletableFuture.supplyAsync(() -> validate(request), guardrailWorker);
+        }
+    }
+
+    /**
+     * An input guardrail whose validation blocks until a shared {@code gate} is released, used to prove the
+     * caller thread is not blocked while input guardrails run.
+     */
+    public static class GatedInputGuardrail implements InputGuardrail {
+
+        static volatile CountDownLatch gate;
+
+        @Override
+        public InputGuardrailResult validate(UserMessage userMessage) {
+            try {
+                gate.await();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            return success();
+        }
+
+        @Override
+        public CompletableFuture<InputGuardrailResult> validateAsync(InputGuardrailRequest request) {
+            return CompletableFuture.supplyAsync(() -> validate(request), guardrailWorker);
+        }
+    }
+
+    interface BlockingInputGuardedAssistant {
+
+        @InputGuardrails(BlockingInputGuardrail.class)
+        CompletableFuture<String> chat(String userMessage);
+    }
+
+    interface BlockingInputGuardedStreamingAssistant {
+
+        @InputGuardrails(BlockingInputGuardrail.class)
+        Flow.Publisher<String> chat(String userMessage);
+    }
+
+    interface GatedInputGuardedAssistant {
+
+        @InputGuardrails(GatedInputGuardrail.class)
+        CompletableFuture<String> chat(String userMessage);
+    }
+
+    @Test
+    void cf_blocking_input_guardrail_does_not_block_the_delivery_thread() throws Exception {
+
+        BlockingInputGuardedAssistant assistant = AiServices.builder(BlockingInputGuardedAssistant.class)
+                .chatModel(new NonBlockingChatModelStub(AiMessage.from("Berlin")))
+                .build();
+
+        String answer = assistant.chat("What is the capital of Germany?").get(10, SECONDS);
+
+        assertThat(answer).isEqualTo("Berlin");
+        assertNoBlockingCalls();
+    }
+
+    @Test
+    void streaming_blocking_input_guardrail_does_not_block_the_delivery_thread() throws Exception {
+
+        BlockingInputGuardedStreamingAssistant assistant = AiServices.builder(BlockingInputGuardedStreamingAssistant.class)
+                .streamingChatModel(StreamingEventChatModelMock.thatStreamsOn(deliveryExecutor, AiMessage.from("Berlin")))
+                .build();
+
+        assertThat(subscribeAndAwait(assistant.chat("What is the capital of Germany?")))
+                .isEqualTo("Berlin");
+        assertNoBlockingCalls();
+    }
+
+    @Test
+    void chat_does_not_block_the_caller_thread_on_input_guardrails() throws Exception {
+
+        // The input guardrail blocks until the gate is released. If input guardrails ran on the caller thread,
+        // chat() would block here; instead it returns a not-yet-completed future immediately.
+        CountDownLatch gate = new CountDownLatch(1);
+        GatedInputGuardrail.gate = gate;
+
+        GatedInputGuardedAssistant assistant = AiServices.builder(GatedInputGuardedAssistant.class)
+                .chatModel(new NonBlockingChatModelStub(AiMessage.from("Berlin")))
+                .build();
+
+        CompletableFuture<String> future = assistant.chat("What is the capital of Germany?");
+
+        assertThat(future).isNotDone();
+
+        gate.countDown();
+
+        assertThat(future.get(10, SECONDS)).isEqualTo("Berlin");
+        assertNoBlockingCalls();
+    }
+
+    /**
+     * An input guardrail that signals when its (offloaded) validation has started and then blocks until released,
+     * so a test can cancel the AI Service future while the guardrail is in flight.
+     */
+    public static class CancellableInputGuardrail implements InputGuardrail {
+
+        static volatile CountDownLatch entered;
+        static volatile CountDownLatch release;
+
+        @Override
+        public InputGuardrailResult validate(UserMessage userMessage) {
+            entered.countDown();
+            try {
+                release.await();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            return success();
+        }
+
+        @Override
+        public CompletableFuture<InputGuardrailResult> validateAsync(InputGuardrailRequest request) {
+            return CompletableFuture.supplyAsync(() -> validate(request), guardrailWorker);
+        }
+    }
+
+    interface CancellableInputGuardedAssistant {
+
+        @InputGuardrails(CancellableInputGuardrail.class)
+        CompletableFuture<String> chat(String userMessage);
+    }
+
+    @Test
+    void cancelling_the_future_during_input_guardrails_skips_the_model_call() throws Exception {
+
+        // Cancelling the returned future while an input guardrail is in flight must short-circuit the pipeline:
+        // the model is never called. (The guardrail validation itself runs to completion — best-effort, like a
+        // started tool.)
+        CountDownLatch entered = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+        CancellableInputGuardrail.entered = entered;
+        CancellableInputGuardrail.release = release;
+
+        AtomicInteger modelCalls = new AtomicInteger();
+        ChatModel chatModel = new ChatModel() {
+
+            @Override
+            public CompletableFuture<ChatResponse> doChatAsync(ChatRequest chatRequest) {
+                modelCalls.incrementAndGet();
+                return CompletableFuture.completedFuture(ChatResponse.builder()
+                        .aiMessage(AiMessage.from("Berlin"))
+                        .metadata(ChatResponseMetadata.builder().build())
+                        .build());
+            }
+
+            @Override
+            public ChatResponse doChat(ChatRequest chatRequest) {
+                throw new AssertionError("blocking chat() must not be called");
+            }
+        };
+
+        CancellableInputGuardedAssistant assistant = AiServices.builder(CancellableInputGuardedAssistant.class)
+                .chatModel(chatModel)
+                .build();
+
+        CompletableFuture<String> future = assistant.chat("What is the capital of Germany?");
+
+        assertThat(entered.await(5, SECONDS)).as("input guardrail should start").isTrue();
+        future.cancel(true);
+        release.countDown();
+
+        Thread.sleep(200);
+        assertThat(future).isCancelled();
+        assertThat(modelCalls).as("model must not be called after cancellation").hasValue(0);
+    }
+
+    /**
+     * Tools with a compensating ({@code @CompensateFor}) action whose rollback blocks (simulating a remote undo
+     * call). Because it does blocking I/O, the rollback returns a {@link CompletableFuture} that offloads the work
+     * to a non-policed worker, so it never runs on the model-delivery thread.
+     */
+    public static class CompensatingBankTools {
+
+        final List<String> calls = new CopyOnWriteArrayList<>();
+
+        @Tool
+        String credit(String name, double amount) {
+            calls.add("credit:" + name);
+            return "credited";
+        }
+
+        @CompensateFor("credit")
+        CompletableFuture<Void> uncredit(String name, double amount) {
+            return CompletableFuture.runAsync(
+                    () -> {
+                        try {
+                            Thread.sleep(20);
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                        }
+                        calls.add("uncredit:" + name);
+                    },
+                    guardrailWorker);
+        }
+
+        @Tool
+        String withdraw(String name, double amount) {
+            calls.add("withdraw:" + name);
+            throw new RuntimeException("insufficient funds");
+        }
+
+        @Tool
+        String cancel(String name, double amount) {
+            calls.add("cancel:" + name);
+            throw new CancellationException("the tool itself threw CancellationException");
+        }
+    }
+
+    interface CompensatingAssistant {
+
+        CompletableFuture<String> chat(String userMessage);
+    }
+
+    interface CompensatingStreamingAssistant {
+
+        Flow.Publisher<String> chat(String userMessage);
+    }
+
+    private static ToolExecutionRequest bankToolRequest(String id, String tool) {
+        return ToolExecutionRequest.builder()
+                .id(id)
+                .name(tool)
+                .arguments("{\"arg0\": \"Mario\", \"arg1\": 100.0}")
+                .build();
+    }
+
+    @Test
+    void cf_tool_compensation_rolls_back_and_does_not_block_the_delivery_thread() throws Exception {
+
+        CompensatingBankTools tools = new CompensatingBankTools();
+        List<ToolCompensatedEvent> compensatedEvents = new CopyOnWriteArrayList<>();
+        NonBlockingChatModelStub chatModel = new NonBlockingChatModelStub(
+                AiMessage.from(bankToolRequest("1", "credit")),
+                AiMessage.from(bankToolRequest("2", "withdraw")),
+                AiMessage.from("done"));
+
+        CompensatingAssistant assistant = AiServices.builder(CompensatingAssistant.class)
+                .chatModel(chatModel)
+                .tools(tools)
+                .compensateOnToolErrors(true)
+                .toolExecutionErrorHandler((error, ctx) -> ToolErrorHandlerResult.text(error.getMessage()))
+                .registerListener((ToolCompensatedEventListener) compensatedEvents::add)
+                .build();
+
+        String answer = assistant.chat("transfer").get(10, SECONDS);
+
+        assertThat(answer).isEqualTo("done");
+        // the failed withdraw triggered a rollback of the earlier successful credit
+        assertThat(tools.calls).containsExactly("credit:Mario", "withdraw:Mario", "uncredit:Mario");
+        // the rollback is observable: a ToolCompensatedEvent fires for the rolled-back credit
+        assertThat(compensatedEvents).singleElement().satisfies(event -> {
+            assertThat(event.request().name()).isEqualTo("credit");
+            assertThat(event.reason()).isEqualTo(CompensationReason.TOOL_EXECUTION_FAILED);
+        });
+        assertNoBlockingCalls();
+    }
+
+    @Test
+    void cf_tool_throwing_cancellation_exception_is_treated_as_a_tool_failure_not_an_invocation_cancellation()
+            throws Exception {
+
+        CompensatingBankTools tools = new CompensatingBankTools();
+        List<ToolCompensatedEvent> compensatedEvents = new CopyOnWriteArrayList<>();
+
+        // Round 1: a successful (compensable) credit alongside a tool that itself throws CancellationException.
+        NonBlockingChatModelStub chatModel = new NonBlockingChatModelStub(
+                AiMessage.from(bankToolRequest("1", "credit"), bankToolRequest("2", "cancel")),
+                AiMessage.from("unreachable"));
+
+        CompensatingAssistant assistant = AiServices.builder(CompensatingAssistant.class)
+                .chatModel(chatModel)
+                .tools(tools)
+                .compensateOnToolErrors(true)
+                .registerListener((ToolCompensatedEventListener) compensatedEvents::add)
+                .build();
+
+        CompletableFuture<String> future = assistant.chat("transfer");
+
+        // A CancellationException thrown by a tool is a tool failure, not an invocation cancellation: the invocation
+        // fails with it (the default async execution handler rethrows), rather than silently completing as cancelled.
+        assertThatThrownBy(() -> future.get(10, SECONDS)).rootCause().isInstanceOf(CancellationException.class);
+        // The successful credit is rolled back because a *tool* failed - reason TOOL_EXECUTION_FAILED, not
+        // INVOCATION_CANCELLED (which is what the misclassification would have produced).
+        assertThat(tools.calls).containsExactlyInAnyOrder("credit:Mario", "cancel:Mario", "uncredit:Mario");
+        assertThat(compensatedEvents).singleElement().satisfies(event -> {
+            assertThat(event.request().name()).isEqualTo("credit");
+            assertThat(event.reason()).isEqualTo(CompensationReason.TOOL_EXECUTION_FAILED);
+        });
+        assertNoBlockingCalls();
+    }
+
+    @Test
+    void cf_argument_parse_error_rolls_back_a_successful_compensable_sibling_and_reports_both_to_the_llm()
+            throws Exception {
+
+        CompensatingBankTools tools = new CompensatingBankTools();
+        List<ToolCompensatedEvent> compensatedEvents = new CopyOnWriteArrayList<>();
+
+        // Round 1: a successful (compensable) credit alongside a withdraw whose arguments cannot be parsed.
+        ToolExecutionRequest badArguments = ToolExecutionRequest.builder()
+                .id("2")
+                .name("withdraw")
+                .arguments("{ invalid json }")
+                .build();
+        NonBlockingChatModelStub chatModel = new NonBlockingChatModelStub(
+                AiMessage.from(bankToolRequest("1", "credit"), badArguments),
+                AiMessage.from("done"));
+
+        CompensatingAssistant assistant = AiServices.builder(CompensatingAssistant.class)
+                .chatModel(chatModel)
+                .tools(tools)
+                .compensateOnToolErrors(true)
+                // Deterministic argument-error text so we can assert exactly what the LLM receives (the default text
+                // is the underlying JSON parser's message). This does not change the rollback behavior under test.
+                .toolArgumentsErrorHandler((error, ctx) -> ToolErrorHandlerResult.text("Failed to parse arguments"))
+                .registerListener((ToolCompensatedEventListener) compensatedEvents::add)
+                .build();
+
+        String answer = assistant.chat("transfer").get(10, SECONDS);
+
+        assertThat(answer).isEqualTo("done");
+
+        // A tool-calling round is atomic: any tool error - including a soft argument-parse error that is sent to
+        // the LLM - rolls back the successful compensable sibling, so credit is compensated with uncredit.
+        assertThat(tools.calls).containsExactly("credit:Mario", "uncredit:Mario");
+        assertThat(compensatedEvents).singleElement().satisfies(event -> {
+            assertThat(event.request().name()).isEqualTo("credit");
+            assertThat(event.reason()).isEqualTo(CompensationReason.TOOL_EXECUTION_FAILED);
+        });
+
+        // The LLM (next round's request) receives the argument-parse error for the withdraw call, and a
+        // rolled-back notice for the credit call that was undone because of it.
+        List<ToolExecutionResultMessage> toolResultsSentToLlm = chatModel.requests.stream()
+                .flatMap(request -> request.messages().stream())
+                .filter(message -> message instanceof ToolExecutionResultMessage)
+                .map(message -> (ToolExecutionResultMessage) message)
+                .toList();
+        assertThat(toolResultsSentToLlm).hasSize(2);
+        assertThat(toolResultsSentToLlm)
+                .filteredOn(message -> message.toolName().equals("withdraw"))
+                .singleElement()
+                .satisfies(message -> assertThat(message.text()).isEqualTo("Failed to parse arguments"));
+        assertThat(toolResultsSentToLlm)
+                .filteredOn(message -> message.toolName().equals("credit"))
+                .singleElement()
+                .satisfies(message -> assertThat(message.text())
+                        .isEqualTo("Tool 'credit' was executed successfully "
+                                + "but was rolled back due to failure of tool 'withdraw'"));
+
+        assertNoBlockingCalls();
+    }
+
+    @Test
+    void streaming_tool_compensation_rolls_back_and_does_not_block_the_delivery_thread() throws Exception {
+
+        CompensatingBankTools tools = new CompensatingBankTools();
+        StreamingEventChatModelMock model = StreamingEventChatModelMock.thatStreamsOn(
+                deliveryExecutor,
+                AiMessage.from(bankToolRequest("1", "credit")),
+                AiMessage.from(bankToolRequest("2", "withdraw")),
+                AiMessage.from("done"));
+
+        CompensatingStreamingAssistant assistant = AiServices.builder(CompensatingStreamingAssistant.class)
+                .streamingChatModel(model)
+                .tools(tools)
+                .compensateOnToolErrors(true)
+                .toolExecutionErrorHandler((error, ctx) -> ToolErrorHandlerResult.text(error.getMessage()))
+                .build();
+
+        assertThat(subscribeAndAwait(assistant.chat("transfer"))).isEqualTo("done");
+        assertThat(tools.calls).containsExactly("credit:Mario", "withdraw:Mario", "uncredit:Mario");
+        assertNoBlockingCalls();
+    }
+
+    @Test
+    void cf_tool_compensation_rolls_back_then_fails_under_the_default_rethrow_handler() throws Exception {
+
+        CompensatingBankTools tools = new CompensatingBankTools();
+        NonBlockingChatModelStub chatModel = new NonBlockingChatModelStub(
+                AiMessage.from(bankToolRequest("1", "credit")),
+                AiMessage.from(bankToolRequest("2", "withdraw")),
+                AiMessage.from("done"));
+
+        CompensatingAssistant assistant = AiServices.builder(CompensatingAssistant.class)
+                .chatModel(chatModel)
+                .tools(tools)
+                .compensateOnToolErrors(true)
+                // no toolExecutionErrorHandler override: the async default rethrows a tool execution error
+                .build();
+
+        CompletableFuture<String> future = assistant.chat("transfer");
+
+        // The failing withdraw fails the invocation (the default async handler rethrows), but the earlier
+        // successful credit is compensated first — a tool failure must not short-circuit the rollback.
+        assertThatThrownBy(() -> future.get(10, SECONDS)).rootCause().hasMessageContaining("insufficient funds");
+        assertThat(tools.calls).containsExactly("credit:Mario", "withdraw:Mario", "uncredit:Mario");
+        assertNoBlockingCalls();
+    }
+
+    @Test
+    void streaming_tool_compensation_rolls_back_then_fails_under_the_default_rethrow_handler() throws Exception {
+
+        CompensatingBankTools tools = new CompensatingBankTools();
+        StreamingEventChatModelMock model = StreamingEventChatModelMock.thatStreamsOn(
+                deliveryExecutor,
+                AiMessage.from(bankToolRequest("1", "credit")),
+                AiMessage.from(bankToolRequest("2", "withdraw")),
+                AiMessage.from("done"));
+
+        CompensatingStreamingAssistant assistant = AiServices.builder(CompensatingStreamingAssistant.class)
+                .streamingChatModel(model)
+                .tools(tools)
+                .compensateOnToolErrors(true)
+                // no toolExecutionErrorHandler override: the async default rethrows a tool execution error
+                .build();
+
+        Throwable error = subscribeAndAwaitError(assistant.chat("transfer"));
+
+        assertThat(error).hasMessageContaining("insufficient funds");
+        assertThat(tools.calls).containsExactly("credit:Mario", "withdraw:Mario", "uncredit:Mario");
+        assertNoBlockingCalls();
+    }
+
+    @Test
+    void cancelling_the_future_rolls_back_compensable_tools_and_fires_a_compensated_event() throws Exception {
+
+        CompensatingBankTools tools = new CompensatingBankTools();
+        List<ToolCompensatedEvent> compensatedEvents = new CopyOnWriteArrayList<>();
+
+        CountDownLatch round2Entered = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+
+        ChatModel chatModel = new ChatModel() {
+            final AtomicInteger calls = new AtomicInteger();
+
+            @Override
+            public CompletableFuture<ChatResponse> doChatAsync(ChatRequest chatRequest) {
+                if (calls.incrementAndGet() == 1) {
+                    return CompletableFuture.completedFuture(response(AiMessage.from(bankToolRequest("1", "credit"))));
+                }
+                // the second (post-credit) model call blocks so the test can cancel while it is in flight
+                return CompletableFuture.supplyAsync(
+                        () -> {
+                            round2Entered.countDown();
+                            try {
+                                release.await();
+                            } catch (InterruptedException e) {
+                                Thread.currentThread().interrupt();
+                            }
+                            return response(AiMessage.from("done"));
+                        },
+                        guardrailWorker); // non-policed worker: this test deliberately blocks it to simulate a slow call
+            }
+
+            @Override
+            public ChatResponse doChat(ChatRequest chatRequest) {
+                throw new AssertionError("blocking chat() must not be called");
+            }
+        };
+
+        CompensatingAssistant assistant = AiServices.builder(CompensatingAssistant.class)
+                .chatModel(chatModel)
+                .tools(tools)
+                .compensateOnToolErrors(true)
+                .registerListener((ToolCompensatedEventListener) compensatedEvents::add)
+                .build();
+
+        CompletableFuture<String> future = assistant.chat("transfer");
+
+        assertThat(round2Entered.await(5, SECONDS)).as("the second round should start").isTrue();
+        future.cancel(true);
+        release.countDown();
+
+        // the earlier successful credit is rolled back even though the operation was cancelled (drain-then-rollback).
+        // The ToolCompensatedEvent fires last in the compensation chain, so waiting for it also covers the rollback.
+        long deadline = System.currentTimeMillis() + 5_000;
+        while (compensatedEvents.isEmpty() && System.currentTimeMillis() < deadline) {
+            Thread.sleep(20);
+        }
+        assertThat(tools.calls).contains("credit:Mario", "uncredit:Mario");
+        assertThat(compensatedEvents).singleElement().satisfies(event -> {
+            assertThat(event.request().name()).isEqualTo("credit");
+            assertThat(event.reason()).isEqualTo(CompensationReason.INVOCATION_CANCELLED);
+        });
+        assertNoBlockingCalls();
+    }
+
+    private static ChatResponse response(AiMessage aiMessage) {
+        return ChatResponse.builder()
+                .aiMessage(aiMessage)
+                .metadata(ChatResponseMetadata.builder().build())
+                .build();
+    }
+
+    static class CountingCompletedListener implements AiServiceCompletedListener {
+
+        final AtomicInteger count = new AtomicInteger();
+
+        @Override
+        public void onEvent(AiServiceCompletedEvent event) {
+            count.incrementAndGet();
+        }
+    }
+
+    @Test
+    void event_listeners_do_not_block_the_delivery_thread() throws Exception {
+
+        CountingCompletedListener listener = new CountingCompletedListener();
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(new NonBlockingChatModelStub(AiMessage.from("Berlin")))
+                .registerListeners(List.of(listener))
+                .build();
+
+        String answer = assistant.chat("What is the capital of Germany?").get(10, SECONDS);
+
+        assertThat(answer).isEqualTo("Berlin");
+        assertThat(listener.count).hasValue(1);
+        assertNoBlockingCalls();
+    }
+
+    interface StreamingAssistant {
+
+        Flow.Publisher<String> chat(String userMessage);
+    }
+
+    @Test
+    void streaming_plain_chat_does_not_block_the_delivery_thread() throws Exception {
+
+        StreamingAssistant assistant = AiServices.builder(StreamingAssistant.class)
+                .streamingChatModel(StreamingEventChatModelMock.thatStreamsOn(deliveryExecutor, AiMessage.from("Berlin")))
+                .build();
+
+        assertThat(subscribeAndAwait(assistant.chat("What is the capital of Germany?")))
+                .isEqualTo("Berlin");
+        assertNoBlockingCalls();
+    }
+
+    @Test
+    void streaming_tool_loop_does_not_block_the_delivery_thread() throws Exception {
+
+        StreamingEventChatModelMock model = StreamingEventChatModelMock.thatStreamsOn(
+                deliveryExecutor,
+                AiMessage.from(toolRequest("1", "currentTemperature")),
+                AiMessage.from("42 degrees"));
+        WeatherTools tools = new WeatherTools();
+
+        StreamingAssistant assistant = AiServices.builder(StreamingAssistant.class)
+                .streamingChatModel(model)
+                .chatMemory(MessageWindowChatMemory.withMaxMessages(20))
+                .tools(tools)
+                .build();
+
+        assertThat(subscribeAndAwait(assistant.chat("What is the temperature in Munich?")))
+                .isEqualTo("42 degrees");
+        assertThat(tools.invocations).hasValue(1);
+        assertNoBlockingCalls();
+    }
+
+    @Test
+    void streaming_async_tool_does_not_block_the_delivery_thread() throws Exception {
+
+        StreamingEventChatModelMock model = StreamingEventChatModelMock.thatStreamsOn(
+                deliveryExecutor,
+                AiMessage.from(toolRequest("1", "currentTemperature")),
+                AiMessage.from("42 degrees"));
+        AsyncWeatherTools tools = new AsyncWeatherTools();
+
+        StreamingAssistant assistant = AiServices.builder(StreamingAssistant.class)
+                .streamingChatModel(model)
+                .tools(tools)
+                .build();
+
+        assertThat(subscribeAndAwait(assistant.chat("What is the temperature in Munich?")))
+                .isEqualTo("42 degrees");
+        assertThat(tools.invocations).hasValue(1);
+        assertNoBlockingCalls();
+    }
+
+    private static String subscribeAndAwait(Flow.Publisher<String> publisher) throws InterruptedException {
+        List<String> items = new CopyOnWriteArrayList<>();
+        AtomicReference<Throwable> error = new AtomicReference<>();
+        CountDownLatch latch = new CountDownLatch(1);
+
+        publisher.subscribe(new Flow.Subscriber<>() {
+            @Override
+            public void onSubscribe(Flow.Subscription subscription) {
+                subscription.request(Long.MAX_VALUE);
+            }
+
+            @Override
+            public void onNext(String item) {
+                items.add(item);
+            }
+
+            @Override
+            public void onError(Throwable throwable) {
+                error.set(throwable);
+                latch.countDown();
+            }
+
+            @Override
+            public void onComplete() {
+                latch.countDown();
+            }
+        });
+
+        assertThat(latch.await(10, SECONDS)).isTrue();
+        assertThat(error.get()).isNull();
+        return String.join("", items);
+    }
+
+    private static Throwable subscribeAndAwaitError(Flow.Publisher<String> publisher) throws InterruptedException {
+        AtomicReference<Throwable> error = new AtomicReference<>();
+        CountDownLatch latch = new CountDownLatch(1);
+
+        publisher.subscribe(new Flow.Subscriber<>() {
+            @Override
+            public void onSubscribe(Flow.Subscription subscription) {
+                subscription.request(Long.MAX_VALUE);
+            }
+
+            @Override
+            public void onNext(String item) {}
+
+            @Override
+            public void onError(Throwable throwable) {
+                error.set(throwable);
+                latch.countDown();
+            }
+
+            @Override
+            public void onComplete() {
+                latch.countDown();
+            }
+        });
+
+        assertThat(latch.await(10, SECONDS)).isTrue();
+        assertThat(error.get()).as("stream must fail").isNotNull();
+        return error.get();
+    }
+
+    /**
+     * Sanity-checks the harness itself: a blocking call on a policed ({@code ai-service-delivery*}) thread
+     * MUST be recorded. Guarantees the tests above cannot pass vacuously if BlockHound ever stopped
+     * policing the delivery thread.
+     */
+    @Test
+    void blockHound_detects_blocking_on_the_policed_thread() throws Exception {
+        Thread thread = new Thread(
+                () -> {
+                    try {
+                        Thread.sleep(1);
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    }
+                },
+                "ai-service-delivery-selftest");
+        thread.start();
+        thread.join(SECONDS.toMillis(5));
+
+        assertThat(violations)
+                .as("BlockHound must flag a blocking call on a policed thread")
+                .isNotEmpty();
+    }
+
+    // ---- RAG (retrieval augmentation) ----
+    // RAG runs *before* the model call, so - unlike the tool/guardrail/memory stages - it does not naturally land on
+    // the policed delivery thread. Two complementary shapes cover it: a native-async retriever that completes on the
+    // delivery thread (so content aggregation, injection and the model call that follows are policed), and a blocking
+    // retriever offloaded via offloadBlocking(true) whose retrieve() must run off the pipeline thread.
+
+    /**
+     * A {@link ContentRetriever} whose synchronous {@code retrieve()} blocks (simulating I/O). It does not implement
+     * {@code retrieveAsync}, so {@code DefaultRetrievalAugmentor.offloadBlocking(true)} offloads the blocking call to
+     * a non-policed worker. Records the thread it ran on so a test can assert it was offloaded off the pipeline
+     * thread; when a {@code gate} is supplied the retrieval blocks until it opens (to prove the caller is not blocked).
+     */
+    static class BlockingContentRetriever implements ContentRetriever {
+
+        private final Content content;
+        private final CountDownLatch gate;
+        final AtomicReference<String> retrieveThread = new AtomicReference<>();
+
+        BlockingContentRetriever(Content content) {
+            this(content, null);
+        }
+
+        BlockingContentRetriever(Content content, CountDownLatch gate) {
+            this.content = content;
+            this.gate = gate;
+        }
+
+        @Override
+        public List<Content> retrieve(Query query) {
+            retrieveThread.set(Thread.currentThread().getName());
+            try {
+                if (gate != null) {
+                    gate.await();
+                } else {
+                    Thread.sleep(20);
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            return List.of(content);
+        }
+    }
+
+    /**
+     * A genuinely non-blocking {@link ContentRetriever}: {@code retrieveAsync} completes on the policed delivery
+     * thread (like the model stub), so content aggregation, injection and the downstream stages run on the policed
+     * thread - any hidden blocking there is caught by BlockHound. Its blocking {@code retrieve()} must never be called.
+     */
+    static class AsyncContentRetriever implements ContentRetriever {
+
+        private final Content content;
+
+        AsyncContentRetriever(Content content) {
+            this.content = content;
+        }
+
+        @Override
+        public List<Content> retrieve(Query query) {
+            throw new AssertionError("blocking retrieve() must not be called for a native-async retriever");
+        }
+
+        @Override
+        public CompletableFuture<List<Content>> retrieveAsync(Query query) {
+            return CompletableFuture.supplyAsync(
+                    () -> List.of(content), CompletableFuture.delayedExecutor(10, MILLISECONDS, deliveryExecutor));
+        }
+    }
+
+    private static RetrievalAugmentor augmentorFor(ContentRetriever... retrievers) {
+        return DefaultRetrievalAugmentor.builder()
+                .queryRouter(new DefaultQueryRouter(retrievers))
+                .build();
+    }
+
+    private static RetrievalAugmentor offloadingAugmentorFor(ContentRetriever... retrievers) {
+        return DefaultRetrievalAugmentor.builder()
+                .queryRouter(new DefaultQueryRouter(retrievers))
+                .offloadBlocking(true)
+                .build();
+    }
+
+    @Test
+    void rag_native_async_retriever_does_not_block_the_delivery_thread() throws Exception {
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(new NonBlockingChatModelStub(AiMessage.from("Berlin")))
+                .retrievalAugmentor(augmentorFor(new AsyncContentRetriever(Content.from("Germany is in Europe."))))
+                .build();
+
+        assertThat(assistant.chat("What is the capital of Germany?").get(10, SECONDS)).isEqualTo("Berlin");
+        assertNoBlockingCalls();
+    }
+
+    @Test
+    void rag_multiple_retrievers_fan_out_does_not_block_the_delivery_thread() throws Exception {
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(new NonBlockingChatModelStub(AiMessage.from("Berlin")))
+                .retrievalAugmentor(augmentorFor(
+                        new AsyncContentRetriever(Content.from("fact one")),
+                        new AsyncContentRetriever(Content.from("fact two"))))
+                .build();
+
+        assertThat(assistant.chat("What is the capital of Germany?").get(10, SECONDS)).isEqualTo("Berlin");
+        assertNoBlockingCalls();
+    }
+
+    @Test
+    void rag_with_memory_and_tools_does_not_block_the_delivery_thread() throws Exception {
+        WeatherTools tools = new WeatherTools();
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(new NonBlockingChatModelStub(
+                        AiMessage.from(toolRequest("1", "currentTemperature")), AiMessage.from("It is 42 in Berlin.")))
+                .chatMemory(MessageWindowChatMemory.withMaxMessages(20))
+                .tools(tools)
+                .retrievalAugmentor(augmentorFor(new AsyncContentRetriever(Content.from("Berlin is in Germany."))))
+                .build();
+
+        assertThat(assistant.chat("What is the weather in Berlin?").get(10, SECONDS))
+                .isEqualTo("It is 42 in Berlin.");
+        assertNoBlockingCalls();
+    }
+
+    @Test
+    void rag_blocking_retriever_is_offloaded_off_the_caller_thread() throws Exception {
+        // A blocking retriever with offloadBlocking(true): the blocking retrieve() must run on the offload executor,
+        // never inline on the calling thread. The offloaded worker legitimately blocks - the guarantee here is that it
+        // does so off the caller/pipeline thread; the downstream pipeline (delivery thread) also stays clean.
+        BlockingContentRetriever retriever = new BlockingContentRetriever(Content.from("Germany is in Europe."));
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(new NonBlockingChatModelStub(AiMessage.from("Berlin")))
+                .retrievalAugmentor(offloadingAugmentorFor(retriever))
+                .build();
+
+        String callerThreadName = Thread.currentThread().getName();
+        assertThat(assistant.chat("What is the capital of Germany?").get(10, SECONDS)).isEqualTo("Berlin");
+
+        assertThat(retriever.retrieveThread.get())
+                .as("the blocking retrieve() must be offloaded off the caller/pipeline thread")
+                .isNotNull()
+                .isNotEqualTo(callerThreadName);
+        assertNoBlockingCalls();
+    }
+
+    @Test
+    void rag_does_not_block_the_caller_thread() throws Exception {
+        // The blocking retrieve() waits on the gate; offloadBlocking(true) offloads it, so chat() hands back a
+        // not-yet-completed future instead of blocking the caller on retrieval.
+        CountDownLatch gate = new CountDownLatch(1);
+        BlockingContentRetriever retriever = new BlockingContentRetriever(Content.from("context"), gate);
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(new NonBlockingChatModelStub(AiMessage.from("Berlin")))
+                .retrievalAugmentor(offloadingAugmentorFor(retriever))
+                .build();
+
+        CompletableFuture<String> future = assistant.chat("What is the capital of Germany?");
+
+        assertThat(future).isNotDone();
+        gate.countDown();
+        assertThat(future.get(10, SECONDS)).isEqualTo("Berlin");
+    }
+
+    private static void assertNoBlockingCalls() {
+        assertThat(violations)
+                .as("BlockHound detected blocking calls on the model-response delivery thread "
+                        + "- see stack trace(s) below")
+                .isEmpty();
+    }
+}

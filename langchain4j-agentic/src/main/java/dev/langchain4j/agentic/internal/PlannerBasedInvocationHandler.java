@@ -453,7 +453,7 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
         }
 
         private void parallelExecution(List<AgentExecutor> agents) {
-            Executor exec = executor != null ? executor : DefaultExecutorProvider.getDefaultExecutorService();
+            Executor exec = executor != null ? executor : DefaultExecutorProvider.getDefaultExecutor();
             var tasks = agents.stream()
                     .map(agentExecutor -> CompletableFuture.supplyAsync(() -> agentExecutor.execute(agenticScope, this), exec))
                     .toArray(CompletableFuture[]::new);

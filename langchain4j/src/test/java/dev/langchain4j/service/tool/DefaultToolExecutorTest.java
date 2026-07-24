@@ -9,9 +9,14 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolMemoryId;
+import dev.langchain4j.data.image.Image;
+import dev.langchain4j.data.message.Content;
+import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.invocation.InvocationContext;
 import java.lang.reflect.Method;
+import java.util.concurrent.CompletableFuture;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.HashMap;
@@ -773,5 +778,105 @@ class DefaultToolExecutorTest implements WithAssertions {
 
         assertThat(result.isError()).isTrue();
         assertThat(result.resultText()).isEqualTo("Test exception with details");
+    }
+
+    static class AsyncPojo {
+
+        public String name;
+        public int age;
+
+        AsyncPojo(String name, int age) {
+            this.name = name;
+            this.age = age;
+        }
+    }
+
+    static class AsyncResultTools {
+
+        @Tool
+        public CompletableFuture<Void> doNothing() {
+            return CompletableFuture.completedFuture(null);
+        }
+
+        @Tool
+        public CompletableFuture<String> nullString() {
+            return CompletableFuture.completedFuture(null);
+        }
+
+        @Tool
+        public CompletableFuture<String> text() {
+            return CompletableFuture.completedFuture("hello");
+        }
+
+        @Tool
+        public CompletableFuture<AsyncPojo> pojo() {
+            return CompletableFuture.completedFuture(new AsyncPojo("Klaus", 42));
+        }
+
+        @Tool
+        public CompletableFuture<Image> image() {
+            return CompletableFuture.completedFuture(
+                    Image.builder().url("http://example.com/cat.png").build());
+        }
+
+        @Tool
+        public CompletableFuture<List<Content>> contents() {
+            return CompletableFuture.completedFuture(List.<Content>of(TextContent.from("a"), TextContent.from("b")));
+        }
+    }
+
+    private ToolExecutionResult executeAsync(String methodName) throws Exception {
+        DefaultToolExecutor executor =
+                new DefaultToolExecutor(new AsyncResultTools(), AsyncResultTools.class.getDeclaredMethod(methodName));
+        ToolExecutionRequest request = ToolExecutionRequest.builder()
+                .id("1")
+                .name(methodName)
+                .arguments("{}")
+                .build();
+        return executor.executeAsync(request, InvocationContext.builder()
+                        .chatMemoryId("DEFAULT")
+                        .build())
+                .get();
+    }
+
+    @Test
+    void async_tool_returning_future_of_void_yields_success_text() throws Exception {
+        assertThat(executeAsync("doNothing").resultText()).isEqualTo("Success");
+    }
+
+    @Test
+    void async_tool_returning_future_completing_with_null_string_yields_null_text() throws Exception {
+        assertThat(executeAsync("nullString").resultText()).isEqualTo("null");
+    }
+
+    @Test
+    void async_tool_returning_future_of_string() throws Exception {
+        assertThat(executeAsync("text").resultText()).isEqualTo("hello");
+    }
+
+    @Test
+    void async_tool_returning_future_of_pojo_is_json_serialized() throws Exception {
+        ToolExecutionResult result = executeAsync("pojo");
+        assertThat(result.resultText()).contains("Klaus").contains("42");
+        assertThat(result.result()).isInstanceOf(AsyncPojo.class);
+    }
+
+    @Test
+    void async_tool_returning_future_of_image_yields_image_content() throws Exception {
+        ToolExecutionResult result = executeAsync("image");
+        assertThat(result.resultContents()).singleElement().isInstanceOf(ImageContent.class);
+        ImageContent imageContent = (ImageContent) result.resultContents().get(0);
+        assertThat(imageContent.image().url()).hasToString("http://example.com/cat.png");
+    }
+
+    @Test
+    void async_tool_returning_future_of_content_list_yields_those_contents() throws Exception {
+        ToolExecutionResult result = executeAsync("contents");
+        assertThat(result.resultContents())
+                .hasSize(2)
+                .allSatisfy(content -> assertThat(content).isInstanceOf(TextContent.class));
+        assertThat(result.resultContents())
+                .extracting(content -> ((TextContent) content).text())
+                .containsExactly("a", "b");
     }
 }
