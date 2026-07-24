@@ -97,4 +97,15 @@ class DocumentLoaderTest implements WithAssertions {
                 }))
                 .withMessageContaining("Failed to load document");
     }
+
+    @Test
+    void load_throwsWhenDocumentAndSourceMetadataShareKeys() {
+        StringSource source = new StringSource("Hello, world!", new Metadata().put("foo", "bar"));
+        DocumentParser collidingParser =
+                inputStream -> Document.from("Hello, world!", new Metadata().put("foo", "baz"));
+
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> DocumentLoader.load(source, collidingParser))
+                .withMessageContaining("Metadata keys are not unique");
+    }
 }

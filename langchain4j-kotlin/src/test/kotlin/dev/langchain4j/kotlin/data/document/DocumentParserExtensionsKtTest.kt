@@ -11,6 +11,8 @@ import dev.langchain4j.data.document.DocumentParser
 import dev.langchain4j.data.document.DocumentSource
 import dev.langchain4j.data.document.Metadata
 import dev.langchain4j.kotlin.data.document.parseAsync
+import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.types.shouldBeSameInstanceAs
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.runTest
@@ -56,6 +58,39 @@ internal class DocumentParserExtensionsKtTest {
                     FILE_NAME to "bar.txt",
                     "title" to "Bar"
                 )
+        }
+    }
+
+    @Test
+    fun `parseAsync should throw when document and source metadata share keys`() {
+        val documentContent = "parsed document content"
+        runTest {
+            val inputStream = documentContent.byteInputStream()
+            val documentMetadata =
+                Metadata.from(
+                    mapOf(
+                        FILE_NAME to "parser-name.txt",
+                        "title" to "Bar"
+                    )
+                )
+            val fileMetadata =
+                Metadata.from(
+                    mapOf(
+                        ABSOLUTE_DIRECTORY_PATH to "foo",
+                        FILE_NAME to "source-name.txt"
+                    )
+                )
+            val document = Document.from(documentContent, documentMetadata)
+
+            whenever(documentSource.inputStream()).thenReturn(inputStream)
+            whenever(documentParser.parse(inputStream)).thenReturn(document)
+            whenever(documentSource.metadata()).thenReturn(fileMetadata)
+
+            val exception =
+                shouldThrow<IllegalArgumentException> {
+                    documentParser.parseAsync(documentSource, Dispatchers.IO)
+                }
+            exception.message shouldContain "Metadata keys are not unique"
         }
     }
 
