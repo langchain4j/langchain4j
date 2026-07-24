@@ -5,11 +5,14 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -63,14 +66,20 @@ public class McpServerHelper {
     }
 
     private static void waitForPort(int port, int timeoutSeconds) throws InterruptedException, TimeoutException {
-        Request request = new Request.Builder().url("http://localhost:" + port).build();
+        HttpClient httpClient = HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(2))
+                .build();
         long start = System.currentTimeMillis();
-        OkHttpClient client = new OkHttpClient();
         while (System.currentTimeMillis() - start < timeoutSeconds * 1000) {
             try {
-                client.newCall(request).execute();
+                HttpRequest request = HttpRequest.newBuilder()
+                        .uri(URI.create("http://localhost:" + port))
+                        .timeout(Duration.ofSeconds(2))
+                        .GET()
+                        .build();
+                httpClient.send(request, HttpResponse.BodyHandlers.discarding());
                 return;
-            } catch (IOException e) {
+            } catch (Exception e) {
                 TimeUnit.SECONDS.sleep(1);
             }
         }

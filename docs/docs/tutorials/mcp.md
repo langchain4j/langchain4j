@@ -28,10 +28,6 @@ built using other frameworks, compatibility is not guaranteed.
 Additionally, LangChain4J supports a Docker stdio transport that can use a stdio MCP server distributed as a 
 container image.
 
-LangChain4j also supports the legacy 
-[HTTP/SSE transport](https://modelcontextprotocol.io/specification/2024-11-05/basic/transports#http-with-sse),
-but this is deprecated and will be removed in the future.
-
 To let your chat model or AI service run tools provided by an MCP server,
 you need to create an instance of an MCP tool provider.
 
@@ -73,17 +69,6 @@ McpTransport transport = WebSocketMcpTransport.builder()
         .logResponses(true)
         .logRequests(true)
         .build();
-```
-
-For the legacy HTTP transport, there are two URLs, one for starting the SSE channel and one for submitting commands via `POST`.
-The latter is provided by the server dynamically, the former needs to be specified using the `sseUrl` method:
-
-```java
-McpTransport transport = HttpMcpTransport.builder()
-    .sseUrl("http://localhost:3001/sse")
-    .logRequests(true) // if you want to see the traffic in the log
-    .logResponses(true)
-    .build();
 ```
 
 For the Docker stdio transport, you first need to add a module to your pom.xml:
