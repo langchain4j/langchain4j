@@ -80,7 +80,7 @@ class ContentTest {
         // then
         assertThat(content)
                 .hasToString(
-                        "DefaultContent { textSegment = TextSegment { text = \"content\" metadata = {} }, metadata = {} }");
+                        "DefaultContent { textSegment = TextSegment { text = [length=7] metadata = {} }, metadata = {} }");
     }
 
     @Test
@@ -227,8 +227,8 @@ class ContentTest {
         Content contentWithMetadata = Content.from(TextSegment.from("with metadata"), Map.of(SCORE, 0.1));
 
         // then
-        assertThat(simpleContent.toString()).contains("simple");
-        assertThat(contentWithMetadata.toString()).contains("with metadata");
+        assertThat(simpleContent.toString()).contains("[length=6]");
+        assertThat(contentWithMetadata.toString()).contains("[length=13]");
         assertThat(contentWithMetadata.toString()).contains("0.1");
     }
 
@@ -239,8 +239,8 @@ class ContentTest {
 
         // then
         String toString = content.toString();
-        assertThat(toString).contains("text with");
-        assertThat(toString).contains("quotes");
+        assertThat(toString).contains("[length=33]");
+        assertThat(toString).doesNotContain("quotes");
     }
 
     @Test

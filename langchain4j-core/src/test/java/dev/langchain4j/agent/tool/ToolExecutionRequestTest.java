@@ -17,7 +17,7 @@ class ToolExecutionRequestTest implements WithAssertions {
         assertThat(request.arguments()).isEqualTo("arguments");
 
         assertThat(request)
-                .hasToString("ToolExecutionRequest { id = \"id\", name = \"name\", arguments = \"arguments\" }");
+                .hasToString("ToolExecutionRequest { id = \"id\", name = \"name\", arguments = [length=9] }");
     }
 
     @Test

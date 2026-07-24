@@ -140,13 +140,17 @@ class EmbeddingModelRequestResponseTest implements WithAssertions {
             public void onResponse(dev.langchain4j.model.embedding.listener.EmbeddingModelResponseContext ctx) {
                 seen.set(ctx.response());
                 // the new request/response types are available on the context
-                assertThat(ctx.embeddingRequest().inputs()).extracting(EmbeddingInput::text).containsExactly("hello");
-                assertThat(ctx.embeddingResponse().embeddings()).isEqualTo(ctx.response().content());
+                assertThat(ctx.embeddingRequest().inputs())
+                        .extracting(EmbeddingInput::text)
+                        .containsExactly("hello");
+                assertThat(ctx.embeddingResponse().embeddings())
+                        .isEqualTo(ctx.response().content());
             }
         };
 
         EmbeddingModel model = new ListenableModel(List.of(listener), false);
-        EmbeddingResponse response = model.embed(EmbeddingRequest.builder().input("hello").build());
+        EmbeddingResponse response =
+                model.embed(EmbeddingRequest.builder().input("hello").build());
 
         assertThat(onRequest).hasValue(1);
         assertThat(seen.get().content()).isEqualTo(response.embeddings());
@@ -173,7 +177,8 @@ class EmbeddingModelRequestResponseTest implements WithAssertions {
 
     @Test
     void inline_listeners_fire_on_error() {
-        java.util.concurrent.atomic.AtomicReference<Throwable> error = new java.util.concurrent.atomic.AtomicReference<>();
+        java.util.concurrent.atomic.AtomicReference<Throwable> error =
+                new java.util.concurrent.atomic.AtomicReference<>();
         EmbeddingModelListener listener = new EmbeddingModelListener() {
             @Override
             public void onError(dev.langchain4j.model.embedding.listener.EmbeddingModelErrorContext ctx) {
@@ -184,7 +189,8 @@ class EmbeddingModelRequestResponseTest implements WithAssertions {
         EmbeddingModel model = new ListenableModel(List.of(listener), true);
 
         assertThatExceptionOfType(RuntimeException.class)
-                .isThrownBy(() -> model.embed(EmbeddingRequest.builder().input("hello").build()))
+                .isThrownBy(() ->
+                        model.embed(EmbeddingRequest.builder().input("hello").build()))
                 .withMessage("boom");
         assertThat(error.get()).hasMessage("boom");
     }
@@ -223,8 +229,8 @@ class EmbeddingModelRequestResponseTest implements WithAssertions {
     void batch_of_text_inputs_yields_one_embedding_each() {
         EmbeddingModel model = new LegacyModel();
 
-        EmbeddingResponse response = model.embed(
-                EmbeddingRequest.builder().inputs("a", "bb", "ccc").build());
+        EmbeddingResponse response =
+                model.embed(EmbeddingRequest.builder().inputs("a", "bb", "ccc").build());
 
         assertThat(response.embeddings()).hasSize(3);
         assertThat(response.embeddings().get(0).vector()).containsExactly(1f);
@@ -238,7 +244,8 @@ class EmbeddingModelRequestResponseTest implements WithAssertions {
 
         Content image = ImageContent.from("http://example.com/cat.png");
         assertThatExceptionOfType(UnsupportedFeatureException.class)
-                .isThrownBy(() -> model.embed(EmbeddingRequest.builder().input(image).build()))
+                .isThrownBy(() ->
+                        model.embed(EmbeddingRequest.builder().input(image).build()))
                 .withMessageContaining("IMAGE");
     }
 
@@ -281,10 +288,8 @@ class EmbeddingModelRequestResponseTest implements WithAssertions {
 
         // a different, unsupported parameter (modelName) is rejected
         assertThatExceptionOfType(UnsupportedFeatureException.class)
-                .isThrownBy(() -> model.embed(EmbeddingRequest.builder()
-                        .input("hello")
-                        .modelName("x")
-                        .build()))
+                .isThrownBy(() -> model.embed(
+                        EmbeddingRequest.builder().input("hello").modelName("x").build()))
                 .withMessageContaining("modelName");
     }
 
@@ -362,7 +367,8 @@ class EmbeddingModelRequestResponseTest implements WithAssertions {
                 if (fail) {
                     throw new RuntimeException("boom");
                 }
-                return Response.from(new Embedding(new float[] {textSegment.text().length()}), new TokenUsage(3));
+                return Response.from(
+                        new Embedding(new float[] {textSegment.text().length()}), new TokenUsage(3));
             });
         }
 
@@ -395,13 +401,13 @@ class EmbeddingModelRequestResponseTest implements WithAssertions {
             @Override
             public void onResponse(dev.langchain4j.model.embedding.listener.EmbeddingModelResponseContext ctx) {
                 seen.set(ctx.response());
-                assertThat(ctx.embeddingResponse().embeddings()).isEqualTo(ctx.response().content());
+                assertThat(ctx.embeddingResponse().embeddings())
+                        .isEqualTo(ctx.response().content());
             }
         };
 
         EmbeddingModel model = new CustomOverrideModel(List.of(listener), false);
-        Response<List<Embedding>> response =
-                model.embedAll(List.of(TextSegment.from("a"), TextSegment.from("bb")));
+        Response<List<Embedding>> response = model.embedAll(List.of(TextSegment.from("a"), TextSegment.from("bb")));
 
         assertThat(response.content()).hasSize(2);
         assertThat(onRequest).hasValue(1); // fires exactly once, no double-firing
@@ -459,8 +465,7 @@ class EmbeddingModelRequestResponseTest implements WithAssertions {
         // no listeners configured -> util runs the operation directly without building contexts
         EmbeddingModel model = new CustomOverrideModel(List.of(), false);
 
-        Response<List<Embedding>> response =
-                model.embedAll(List.of(TextSegment.from("a"), TextSegment.from("bb")));
+        Response<List<Embedding>> response = model.embedAll(List.of(TextSegment.from("a"), TextSegment.from("bb")));
 
         assertThat(response.content()).hasSize(2);
         assertThat(response.tokenUsage()).isEqualTo(new TokenUsage(5));

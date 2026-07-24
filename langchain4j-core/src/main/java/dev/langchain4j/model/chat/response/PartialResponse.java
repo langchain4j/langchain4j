@@ -1,10 +1,11 @@
 package dev.langchain4j.model.chat.response;
 
+import static dev.langchain4j.internal.Utils.contentDescription;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 
-import java.util.Objects;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
+import java.util.Objects;
 
 /**
  * @since 1.8.0
@@ -38,6 +39,6 @@ public class PartialResponse {
 
     @Override
     public String toString() {
-        return "PartialResponse{" + "text='" + text + '\'' + '}';
+        return "PartialResponse{" + "text=" + contentDescription(text) + '}';
     }
 }

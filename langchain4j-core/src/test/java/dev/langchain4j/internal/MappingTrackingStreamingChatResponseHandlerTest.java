@@ -60,7 +60,9 @@ class MappingTrackingStreamingChatResponseHandlerTest {
         assertThat(handler.wasMapped()).isTrue();
 
         handler.resetMappingTracking();
-        handler.onCompleteResponse(ChatResponse.builder().aiMessage(dev.langchain4j.data.message.AiMessage.from("done")).build());
+        handler.onCompleteResponse(ChatResponse.builder()
+                .aiMessage(dev.langchain4j.data.message.AiMessage.from("done"))
+                .build());
         assertThat(handler.wasMapped()).isTrue();
     }
 

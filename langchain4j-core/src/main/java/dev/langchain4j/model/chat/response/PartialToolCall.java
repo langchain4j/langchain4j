@@ -1,5 +1,6 @@
 package dev.langchain4j.model.chat.response;
 
+import static dev.langchain4j.internal.Utils.contentDescription;
 import static dev.langchain4j.internal.Utils.quoted;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
@@ -7,7 +8,6 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNegative;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
-
 import java.util.Objects;
 
 /**
@@ -87,7 +87,7 @@ public class PartialToolCall {
                 + index + ", id="
                 + quoted(id) + ", name="
                 + quoted(name) + ", partialArguments="
-                + quoted(partialArguments) + '}';
+                + contentDescription(partialArguments) + '}';
     }
 
     public static Builder builder() {

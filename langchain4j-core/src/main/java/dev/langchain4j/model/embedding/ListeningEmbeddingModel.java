@@ -184,8 +184,9 @@ final class ListeningEmbeddingModel implements EmbeddingModel {
     @Override
     public EmbeddingResponse embed(EmbeddingRequest request) {
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
-        List<TextSegment> textSegmentsForContext =
-                request.inputs().stream().map(input -> TextSegment.from(input.text())).toList();
+        List<TextSegment> textSegmentsForContext = request.inputs().stream()
+                .map(input -> TextSegment.from(input.text()))
+                .toList();
 
         EmbeddingModelRequestContext requestContext = EmbeddingModelRequestContext.builder()
                 .textSegments(textSegmentsForContext)
@@ -197,8 +198,8 @@ final class ListeningEmbeddingModel implements EmbeddingModel {
         try {
             EmbeddingResponse response = delegate.embed(request);
 
-            Response<List<Embedding>> responseForListeners = Response.from(
-                    response.embeddings(), response.metadata().tokenUsage());
+            Response<List<Embedding>> responseForListeners =
+                    Response.from(response.embeddings(), response.metadata().tokenUsage());
 
             onResponse(
                     EmbeddingModelResponseContext.builder()
@@ -264,7 +265,9 @@ final class ListeningEmbeddingModel implements EmbeddingModel {
     private static EmbeddingResponse responseFrom(List<Embedding> embeddings, TokenUsage tokenUsage) {
         return EmbeddingResponse.builder()
                 .embeddings(embeddings)
-                .metadata(EmbeddingResponseMetadata.builder().tokenUsage(tokenUsage).build())
+                .metadata(EmbeddingResponseMetadata.builder()
+                        .tokenUsage(tokenUsage)
+                        .build())
                 .build();
     }
 }

@@ -63,7 +63,7 @@ class TextSegmentTest implements WithAssertions {
         assertThat(ts.metadata()).isEqualTo(metadata);
         assertThat(ts.metadata().getString("abc")).isEqualTo("123");
 
-        assertThat(ts).hasToString("TextSegment { text = \"text\" metadata = {abc=123} }");
+        assertThat(ts).hasToString("TextSegment { text = [length=4] metadata = {abc=123} }");
     }
 
     @Test
