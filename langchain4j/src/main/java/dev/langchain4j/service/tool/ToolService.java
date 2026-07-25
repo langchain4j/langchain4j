@@ -2,6 +2,7 @@ package dev.langchain4j.service.tool;
 
 import static dev.langchain4j.agent.tool.ReturnBehavior.IMMEDIATE;
 import static dev.langchain4j.agent.tool.ReturnBehavior.IMMEDIATE_IF_LAST;
+import static dev.langchain4j.agent.tool.ReturnBehavior.SUSPEND;
 import static dev.langchain4j.agent.tool.ToolSpecifications.toolSpecificationFrom;
 import static dev.langchain4j.internal.Exceptions.runtime;
 import static dev.langchain4j.internal.Utils.allConcreteMethods;
@@ -613,12 +614,37 @@ public class ToolService {
                 rewriteCurrentResults(toolExecutionRequests, toolResults, resultMessages, failedToolName);
             }
 
-            for (ToolExecutionResultMessage resultMessage : resultMessages) {
+            boolean suspended = !anyToolErrored && returnBehaviors.stream().anyMatch(rb -> rb == SUSPEND);
+
+            for (int i = 0; i < resultMessages.size(); i++) {
+                if (suspended && returnBehaviors.get(i) == SUSPEND) {
+                    // leave the tool call pending; it is fulfilled when the conversation is resumed
+                    continue;
+                }
+                ToolExecutionResultMessage resultMessage = resultMessages.get(i);
                 if (chatMemory != null) {
                     chatMemory.add(resultMessage);
                 } else {
                     messages.add(resultMessage);
                 }
+            }
+
+            if (suspended) {
+                ChatResponse finalResponse = intermediateResponses.remove(intermediateResponses.size() - 1);
+                List<ToolExecutionRequest> pendingRequests = new ArrayList<>();
+                for (int i = 0; i < toolExecutionRequests.size(); i++) {
+                    if (returnBehaviors.get(i) == SUSPEND) {
+                        pendingRequests.add(toolExecutionRequests.get(i));
+                    }
+                }
+                return ToolServiceResult.builder()
+                        .intermediateResponses(intermediateResponses)
+                        .finalResponse(finalResponse)
+                        .toolExecutions(toolExecutions)
+                        .aggregateTokenUsage(aggregateTokenUsage)
+                        .suspended(true)
+                        .pendingToolExecutionRequests(pendingRequests)
+                        .build();
             }
 
             if (shouldReturnImmediately(anyToolErrored, returnBehaviors)) {

@@ -354,6 +354,7 @@ class ReturnBehaviorCombinationsTest {
                     case TO_LLM -> "to_llm";
                     case IMMEDIATE -> "immediate";
                     case IMMEDIATE_IF_LAST -> "immediate_if_last";
+                    case SUSPEND -> "suspend";
                 };
         return prefix + (step.errors() ? "_err" : "_ok");
     }
