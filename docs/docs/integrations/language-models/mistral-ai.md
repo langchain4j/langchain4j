@@ -414,6 +414,33 @@ Toggling the safe prompt will prepend your messages with the following `@SystemM
 Always assist with care, respect, and truth. Respond with utmost utility yet securely. Avoid harmful, unethical, prejudiced, or negative content. Ensure replies promote fairness and positivity.
 ```
 
+### Per-Request Parameters
+
+The Mistral-specific options (`safePrompt`, `randomSeed`, `sendThinking` and `returnThinking`) can also be
+set per request via `MistralAiChatRequestParameters`, overriding the values configured on the model builder.
+This lets a single shared model instance vary these options from one call to the next — for example, enabling
+`safePrompt` for one request but not another, or setting a `randomSeed` for a reproducible completion, without
+building a second model:
+
+```java
+ChatModel model = MistralAiChatModel.builder()
+        .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
+        .modelName("mistral-small-latest")
+        .build();
+
+MistralAiChatRequestParameters parameters = MistralAiChatRequestParameters.builder()
+        .safePrompt(true)
+        .randomSeed(42)
+        .build();
+
+ChatRequest chatRequest = ChatRequest.builder()
+        .messages(UserMessage.from("What is the best French cheese?"))
+        .parameters(parameters)
+        .build();
+
+ChatResponse chatResponse = model.chat(chatRequest);
+```
+
 ## Thinking / Reasoning
 
 Both `MistralAiChatModel` and `MistralAiStreamingChatModel` support
