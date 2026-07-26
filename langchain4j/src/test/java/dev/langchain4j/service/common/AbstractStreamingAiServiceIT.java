@@ -25,11 +25,11 @@ import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.TokenStream;
+import dev.langchain4j.service.tool.ToolExecution;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import dev.langchain4j.service.tool.ToolExecution;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -186,7 +186,8 @@ public abstract class AbstractStreamingAiServiceIT {
         CompletableFuture<ChatResponse> future = new CompletableFuture<>();
 
         // when
-        assistant.chat("How much is 37 plus 87?")
+        assistant
+                .chat("How much is 37 plus 87?")
                 .onPartialResponse(ignored -> {})
                 .onToolExecuted(toolExecutions::add)
                 .onCompleteResponse(future::complete)
@@ -211,7 +212,8 @@ public abstract class AbstractStreamingAiServiceIT {
 
         // when
         // Check that the memory is not corrupted and conversation can continue
-        assistant.chat("Now add 47 to the previous result")
+        assistant
+                .chat("Now add 47 to the previous result")
                 .onPartialResponse(ignored -> {})
                 .onToolExecuted(toolExecutions2::add)
                 .onCompleteResponse(future2::complete)

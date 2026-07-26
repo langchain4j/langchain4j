@@ -1213,7 +1213,8 @@ public abstract class AbstractAiServiceWithToolsIT {
     protected Image catImage() {
         if (catImage == null) {
             String base64Data = java.util.Base64.getEncoder().encodeToString(readBytes(CAT_IMAGE_URL));
-            catImage = Image.builder().base64Data(base64Data).mimeType("image/png").build();
+            catImage =
+                    Image.builder().base64Data(base64Data).mimeType("image/png").build();
         }
         return catImage;
     }

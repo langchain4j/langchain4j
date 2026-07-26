@@ -7,7 +7,6 @@ import static java.util.Arrays.asList;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
-
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -164,13 +163,12 @@ public class ToolExecutionResultMessage implements ChatMessage {
 
     @Override
     public String toString() {
-        return "ToolExecutionResultMessage{" +
-                "id='" + id + '\'' +
-                ", toolName='" + toolName + '\'' +
-                ", contents=" + contents +
-                ", isError=" + isError +
-                ", attributes=" + attributes +
-                '}';
+        return "ToolExecutionResultMessage{" + "id='"
+                + id + '\'' + ", toolName='"
+                + toolName + '\'' + ", contents="
+                + contents + ", isError="
+                + isError + ", attributes="
+                + attributes + '}';
     }
 
     /**
