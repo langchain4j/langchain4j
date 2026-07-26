@@ -98,6 +98,16 @@
           "code": "java.class.externalClassExposedInAPI",
           "new": "missing-class dev.langchain4j.model.audio.TextToSpeechResponse",
           "justification": "TextToSpeechResponse is intentionally exposed by OpenAiTextToSpeechModel because it implements the core TextToSpeechModel API"
+        },
+        {
+          "code": "java.annotation.added",
+          "new": "method dev.langchain4j.model.openai.internal.chat.AssistantMessage.Builder dev.langchain4j.model.openai.internal.chat.AssistantMessage.Builder::reasoningContent(java.lang.String)",
+          "justification": "@JsonAlias only widens deserialization to also accept the \"reasoning\" field name returned by current vLLM, OpenRouter and Groq; serialization and the Java API are unchanged"
+        },
+        {
+          "code": "java.annotation.added",
+          "new": "method dev.langchain4j.model.openai.internal.chat.Delta.Builder dev.langchain4j.model.openai.internal.chat.Delta.Builder::reasoningContent(java.lang.String)",
+          "justification": "@JsonAlias only widens deserialization to also accept the \"reasoning\" field name returned by current vLLM, OpenRouter and Groq; serialization and the Java API are unchanged"
         }
       ]
     }
