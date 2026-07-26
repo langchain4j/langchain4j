@@ -4,16 +4,25 @@ import java.util.function.Supplier;
 
 public enum AnthropicCacheType {
 
-    NO_CACHE(() -> new AnthropicCacheControl("no_cache")),
-    EPHEMERAL(() -> new AnthropicCacheControl("ephemeral"));
+    NO_CACHE("no_cache"),
+    EPHEMERAL("ephemeral");
 
-    private final Supplier<AnthropicCacheControl> value;
+    private final String type;
 
-    AnthropicCacheType(Supplier<AnthropicCacheControl> value) {
-        this.value = value;
+    AnthropicCacheType(String type) {
+        this.type = type;
     }
 
     public AnthropicCacheControl cacheControl() {
-        return this.value.get();
+        return new AnthropicCacheControl(this.type);
+    }
+
+    public AnthropicCacheControl cacheControl(java.time.Duration cacheTtl) {
+        if (this == NO_CACHE || cacheTtl == null) {
+            return cacheControl();
+        }
+        long minutes = cacheTtl.toMinutes();
+        String ttlStr = (minutes >= 60 && minutes % 60 == 0) ? (minutes / 60) + "h" : minutes + "m";
+        return new AnthropicCacheControl(this.type, ttlStr);
     }
 }

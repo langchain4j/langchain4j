@@ -13,12 +13,22 @@ import com.fasterxml.jackson.databind.annotation.JsonNaming;
 public class AnthropicCacheControl {
 
     private final String type;
+    private final String ttl;
 
     public AnthropicCacheControl(String type) {
+        this(type, null);
+    }
+
+    public AnthropicCacheControl(String type, String ttl) {
         this.type = type;
+        this.ttl = ttl;
     }
 
     public String getType() {
         return type;
+    }
+
+    public String getTtl() {
+        return ttl;
     }
 }

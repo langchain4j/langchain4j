@@ -4,6 +4,7 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
+import java.time.Duration;
 import java.util.Objects;
 
 /**
@@ -27,6 +28,7 @@ public class AnthropicChatRequestParameters extends DefaultChatRequestParameters
     private final String userId;
     private final Boolean returnCacheDiagnostics;
     private final String previousMessageId;
+    private final Duration cacheTtl;
 
     private AnthropicChatRequestParameters(Builder builder) {
         super(builder);
@@ -42,10 +44,15 @@ public class AnthropicChatRequestParameters extends DefaultChatRequestParameters
         this.userId = builder.userId;
         this.returnCacheDiagnostics = builder.returnCacheDiagnostics;
         this.previousMessageId = builder.previousMessageId;
+        this.cacheTtl = builder.cacheTtl;
     }
 
     public Boolean cacheSystemMessages() {
         return cacheSystemMessages;
+    }
+
+    public Duration cacheTtl() {
+        return cacheTtl;
     }
 
     public Boolean cacheTools() {
@@ -143,7 +150,8 @@ public class AnthropicChatRequestParameters extends DefaultChatRequestParameters
                 && Objects.equals(disableParallelToolUse, that.disableParallelToolUse)
                 && Objects.equals(userId, that.userId)
                 && Objects.equals(returnCacheDiagnostics, that.returnCacheDiagnostics)
-                && Objects.equals(previousMessageId, that.previousMessageId);
+                && Objects.equals(previousMessageId, that.previousMessageId)
+                && Objects.equals(cacheTtl, that.cacheTtl);
     }
 
     @Override
@@ -161,7 +169,8 @@ public class AnthropicChatRequestParameters extends DefaultChatRequestParameters
                 disableParallelToolUse,
                 userId,
                 returnCacheDiagnostics,
-                previousMessageId);
+                previousMessageId,
+                cacheTtl);
     }
 
     @Override
@@ -190,6 +199,7 @@ public class AnthropicChatRequestParameters extends DefaultChatRequestParameters
                 + ", userId=" + userId
                 + ", returnCacheDiagnostics=" + returnCacheDiagnostics
                 + ", previousMessageId=" + previousMessageId
+                + ", cacheTtl=" + cacheTtl
                 + '}';
     }
 
@@ -215,6 +225,7 @@ public class AnthropicChatRequestParameters extends DefaultChatRequestParameters
         private String userId;
         private Boolean returnCacheDiagnostics;
         private String previousMessageId;
+        private Duration cacheTtl;
 
         @Override
         public Builder overrideWith(ChatRequestParameters parameters) {
@@ -235,6 +246,7 @@ public class AnthropicChatRequestParameters extends DefaultChatRequestParameters
                 returnCacheDiagnostics(
                         getOrDefault(anthropicParameters.returnCacheDiagnostics(), returnCacheDiagnostics));
                 previousMessageId(getOrDefault(anthropicParameters.previousMessageId(), previousMessageId));
+                cacheTtl(getOrDefault(anthropicParameters.cacheTtl(), cacheTtl));
             }
             return this;
         }
@@ -245,6 +257,17 @@ public class AnthropicChatRequestParameters extends DefaultChatRequestParameters
 
         public Builder cacheSystemMessages(Boolean cacheSystemMessages) {
             this.cacheSystemMessages = cacheSystemMessages;
+            return this;
+        }
+
+        /**
+         * Sets the cache TTL (Time To Live) for prompt caching (e.g., 5m, 1h).
+         *
+         * @param cacheTtl the cache TTL duration
+         * @return {@code this}
+         */
+        public Builder cacheTtl(Duration cacheTtl) {
+            this.cacheTtl = cacheTtl;
             return this;
         }
 

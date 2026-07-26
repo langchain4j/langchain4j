@@ -73,6 +73,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
     private final Map<String, Object> customParameters;
     private final Boolean strictTools;
     private final Set<Capability> supportedCapabilities;
+    private final Duration cacheTtl;
 
     /**
      * Constructs an instance of an {@code AnthropicStreamingChatModel} with the specified parameters.
@@ -94,6 +95,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         this.listeners = copy(builder.listeners);
         this.returnServerToolResults = getOrDefault(builder.returnServerToolResults, false);
         this.supportedCapabilities = copy(builder.supportedCapabilities);
+        this.cacheTtl = builder.cacheTtl;
 
         ChatRequestParameters commonParameters;
         if (builder.defaultRequestParameters != null) {
@@ -140,6 +142,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
                 .userId(getOrDefault(builder.userId, anthropicDefaults.userId()))
                 .returnCacheDiagnostics(
                         getOrDefault(builder.returnCacheDiagnostics, anthropicDefaults.returnCacheDiagnostics()))
+                .cacheTtl(getOrDefault(builder.cacheTtl, anthropicDefaults.cacheTtl()))
                 // previousMessageId is a per-request value (it changes every turn); it is never carried
                 // as a model-level default, only supplied via per-request AnthropicChatRequestParameters.
                 .build();
@@ -191,6 +194,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         private Set<Capability> supportedCapabilities;
         private Supplier<Map<String, String>> customHeadersSupplier;
         private Boolean returnCacheDiagnostics;
+        private Duration cacheTtl;
 
         /**
          * Sets a custom {@link HttpClientBuilder} for the underlying HTTP client.
@@ -214,6 +218,17 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
          */
         public AnthropicStreamingChatModelBuilder baseUrl(String baseUrl) {
             this.baseUrl = baseUrl;
+            return this;
+        }
+
+        /**
+         * Sets the cache TTL (Time To Live) for prompt caching (e.g., 5m, 1h).
+         *
+         * @param cacheTtl the cache TTL duration
+         * @return {@code this}
+         */
+        public AnthropicStreamingChatModelBuilder cacheTtl(Duration cacheTtl) {
+            this.cacheTtl = cacheTtl;
             return this;
         }
 
@@ -832,7 +847,8 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
                 this.customParameters,
                 this.strictTools,
                 getOrDefault(parameters.returnCacheDiagnostics(), false),
-                parameters.previousMessageId());
+                parameters.previousMessageId(),
+                parameters.cacheTtl());
 
         boolean returnThinking = getOrDefault(parameters.returnThinking(), false);
         client.createMessage(
