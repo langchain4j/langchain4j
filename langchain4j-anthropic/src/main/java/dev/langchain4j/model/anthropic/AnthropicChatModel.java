@@ -81,7 +81,7 @@ public class AnthropicChatModel implements ChatModel {
     private final Boolean strictTools;
     private final Set<Capability> supportedCapabilities;
     private final Duration cacheTtl;
-     
+
     public AnthropicChatModel(AnthropicChatModelBuilder builder) {
         this.client = AnthropicClient.builder()
                 .httpClientBuilder(builder.httpClientBuilder)

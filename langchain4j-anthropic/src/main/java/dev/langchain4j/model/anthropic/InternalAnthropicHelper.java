@@ -129,8 +129,10 @@ class InternalAnthropicHelper {
 
         AnthropicCreateMessageRequest.Builder requestBuilder = AnthropicCreateMessageRequest.builder().stream(stream)
                 .model(chatRequest.modelName())
-                .messages(toAnthropicMessages(chatRequest.messages(), sendThinking, midConversationSystemMessages, cacheTtl))
-                .system(toAnthropicSystemPrompt(chatRequest.messages(), cacheType, midConversationSystemMessages, cacheTtl))
+                .messages(toAnthropicMessages(
+                        chatRequest.messages(), sendThinking, midConversationSystemMessages, cacheTtl))
+                .system(toAnthropicSystemPrompt(
+                        chatRequest.messages(), cacheType, midConversationSystemMessages, cacheTtl))
                 .maxTokens(chatRequest.maxOutputTokens())
                 .stopSequences(chatRequest.stopSequences())
                 .temperature(chatRequest.temperature())

@@ -1,9 +1,6 @@
 package dev.langchain4j.model.anthropic.internal.api;
 
-import java.util.function.Supplier;
-
 public enum AnthropicCacheType {
-
     NO_CACHE("no_cache"),
     EPHEMERAL("ephemeral");
 

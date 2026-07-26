@@ -101,7 +101,10 @@ public class AnthropicMapper {
     }
 
     public static List<AnthropicMessage> toAnthropicMessages(
-            List<ChatMessage> messages, boolean sendThinking, boolean midConversationSystemMessages, Duration cacheTtl) {
+            List<ChatMessage> messages,
+            boolean sendThinking,
+            boolean midConversationSystemMessages,
+            Duration cacheTtl) {
 
         List<AnthropicMessage> anthropicMessages = new ArrayList<>();
         List<AnthropicMessageContent> toolContents = new ArrayList<>();
@@ -134,7 +137,8 @@ public class AnthropicMapper {
                     List<AnthropicMessageContent> contents = toAnthropicMessageContents(userMessage, cacheTtl);
                     anthropicMessages.add(new AnthropicMessage(USER, contents));
                 } else if (message instanceof AiMessage aiMessage) {
-                    List<AnthropicMessageContent> contents = toAnthropicMessageContents(aiMessage, sendThinking, cacheTtl);
+                    List<AnthropicMessageContent> contents =
+                            toAnthropicMessageContents(aiMessage, sendThinking, cacheTtl);
                     anthropicMessages.add(new AnthropicMessage(ASSISTANT, contents));
                 }
             }
@@ -151,7 +155,8 @@ public class AnthropicMapper {
         return toAnthropicToolResultContent(message, null);
     }
 
-    private static AnthropicToolResultContent toAnthropicToolResultContent(ToolExecutionResultMessage message, Duration cacheTtl) {
+    private static AnthropicToolResultContent toAnthropicToolResultContent(
+            ToolExecutionResultMessage message, Duration cacheTtl) {
         AnthropicCacheControl cacheControl =
                 isMarkedForCaching(message.attributes()) ? AnthropicCacheType.EPHEMERAL.cacheControl(cacheTtl) : null;
         Boolean isError = Boolean.TRUE.equals(message.isError()) ? true : null;
@@ -201,8 +206,8 @@ public class AnthropicMapper {
 
             if (content instanceof TextContent textContent) {
                 if (applyCache) {
-                    anthropicContents.add(
-                            new AnthropicTextContent(textContent.text(), AnthropicCacheType.EPHEMERAL.cacheControl(cacheTtl)));
+                    anthropicContents.add(new AnthropicTextContent(
+                            textContent.text(), AnthropicCacheType.EPHEMERAL.cacheControl(cacheTtl)));
                 } else {
                     anthropicContents.add(new AnthropicTextContent(textContent.text()));
                 }
@@ -236,7 +241,8 @@ public class AnthropicMapper {
         return toAnthropicMessageContents(message, sendThinking, null);
     }
 
-    private static List<AnthropicMessageContent> toAnthropicMessageContents(AiMessage message, boolean sendThinking, Duration cacheTtl) {
+    private static List<AnthropicMessageContent> toAnthropicMessageContents(
+            AiMessage message, boolean sendThinking, Duration cacheTtl) {
         List<AnthropicMessageContent> contents = new ArrayList<>();
 
         if (sendThinking && isNotNullOrBlank(message.thinking())) {
@@ -259,7 +265,8 @@ public class AnthropicMapper {
             boolean applyCache = shouldCache && !hasToolExecutionRequests;
             contents.add(
                     applyCache
-                            ? new AnthropicTextContent(message.text(), AnthropicCacheType.EPHEMERAL.cacheControl(cacheTtl))
+                            ? new AnthropicTextContent(
+                                    message.text(), AnthropicCacheType.EPHEMERAL.cacheControl(cacheTtl))
                             : new AnthropicTextContent(message.text()));
         }
 
@@ -302,7 +309,10 @@ public class AnthropicMapper {
     }
 
     public static List<AnthropicTextContent> toAnthropicSystemPrompt(
-            List<ChatMessage> messages, AnthropicCacheType cacheType, boolean midConversationSystemMessages, Duration cacheTtl) {
+            List<ChatMessage> messages,
+            AnthropicCacheType cacheType,
+            boolean midConversationSystemMessages,
+            Duration cacheTtl) {
         List<SystemMessage> systemMessages = new ArrayList<>();
         boolean conversationStarted = false;
         for (ChatMessage message : messages) {
@@ -490,7 +500,11 @@ public class AnthropicMapper {
                                 toolSpecification, cacheToolsPrompt, toolMetadataKeysToSend, strictTools, cacheTtl);
                     }
                     return toAnthropicTool(
-                            toolSpecification, AnthropicCacheType.NO_CACHE, toolMetadataKeysToSend, strictTools, cacheTtl);
+                            toolSpecification,
+                            AnthropicCacheType.NO_CACHE,
+                            toolMetadataKeysToSend,
+                            strictTools,
+                            cacheTtl);
                 })
                 .toList();
     }
