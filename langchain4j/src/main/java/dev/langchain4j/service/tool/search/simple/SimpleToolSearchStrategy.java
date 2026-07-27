@@ -1,5 +1,11 @@
 package dev.langchain4j.service.tool.search.simple;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.internal.Utils.toBase64;
+import static java.util.Arrays.stream;
+import static java.util.Comparator.comparingInt;
+
 import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.exception.ToolArgumentsException;
@@ -12,17 +18,10 @@ import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.service.tool.search.ToolSearchRequest;
 import dev.langchain4j.service.tool.search.ToolSearchResult;
 import dev.langchain4j.service.tool.search.ToolSearchStrategy;
-
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
-
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-import static dev.langchain4j.internal.Utils.toBase64;
-import static java.util.Arrays.stream;
-import static java.util.Comparator.comparingInt;
 
 /**
  * A {@link ToolSearchStrategy} that allows an LLM to search for available tools
@@ -41,9 +40,11 @@ import static java.util.Comparator.comparingInt;
 public class SimpleToolSearchStrategy implements ToolSearchStrategy {
 
     private static final String DEFAULT_TOOL_NAME = "tool_search_tool";
-    private static final String DEFAULT_TOOL_DESCRIPTION = "Finds available tools whose name or description contains given search terms";
+    private static final String DEFAULT_TOOL_DESCRIPTION =
+            "Finds available tools whose name or description contains given search terms";
     private static final String DEFAULT_TOOL_ARGUMENT_NAME = "terms";
-    private static final String DEFAULT_TOOL_ARGUMENT_DESCRIPTION = "A list of individual search terms (single words) used to find relevant tools";
+    private static final String DEFAULT_TOOL_ARGUMENT_DESCRIPTION =
+            "A list of individual search terms (single words) used to find relevant tools";
     private static final int DEFAULT_MAX_RESULTS = 5;
     private static final int DEFAULT_MIN_SCORE = 1;
     private static final Function<List<String>, String> DEFAULT_TOOL_RESULT_MESSAGE_TEXT_PROVIDER = foundToolNames -> {
@@ -72,10 +73,13 @@ public class SimpleToolSearchStrategy implements ToolSearchStrategy {
                 .name(getOrDefault(builder.toolName, DEFAULT_TOOL_NAME))
                 .description(getOrDefault(builder.toolDescription, DEFAULT_TOOL_DESCRIPTION))
                 .parameters(JsonObjectSchema.builder()
-                        .addProperty(toolArgumentName, JsonArraySchema.builder()
-                                .description(getOrDefault(builder.toolArgumentDescription, DEFAULT_TOOL_ARGUMENT_DESCRIPTION))
-                                .items(new JsonStringSchema())
-                                .build())
+                        .addProperty(
+                                toolArgumentName,
+                                JsonArraySchema.builder()
+                                        .description(getOrDefault(
+                                                builder.toolArgumentDescription, DEFAULT_TOOL_ARGUMENT_DESCRIPTION))
+                                        .items(new JsonStringSchema())
+                                        .build())
                         .required(toolArgumentName)
                         .build())
                 .build();
@@ -83,7 +87,8 @@ public class SimpleToolSearchStrategy implements ToolSearchStrategy {
         this.maxResults = getOrDefault(builder.maxResults, DEFAULT_MAX_RESULTS);
         this.minScore = getOrDefault(builder.minScore, DEFAULT_MIN_SCORE);
         this.throwToolArgumentsExceptions = getOrDefault(builder.throwToolArgumentsExceptions, false);
-        this.toolResultMessageTextProvider = getOrDefault(builder.toolResultMessageTextProvider, DEFAULT_TOOL_RESULT_MESSAGE_TEXT_PROVIDER);
+        this.toolResultMessageTextProvider =
+                getOrDefault(builder.toolResultMessageTextProvider, DEFAULT_TOOL_RESULT_MESSAGE_TEXT_PROVIDER);
     }
 
     @Override
@@ -101,9 +106,7 @@ public class SimpleToolSearchStrategy implements ToolSearchStrategy {
                 .limit(maxResults)
                 .toList();
 
-        List<String> toolNames = scoredTools.stream()
-                .map(st -> st.tool.name())
-                .toList();
+        List<String> toolNames = scoredTools.stream().map(st -> st.tool.name()).toList();
 
         String toolResultMessageText = toolResultMessageTextProvider.apply(toolNames);
 
@@ -151,10 +154,7 @@ public class SimpleToolSearchStrategy implements ToolSearchStrategy {
 
         Object value = map.get(toolArgumentName);
         if (value instanceof List<?> list) {
-            return list.stream()
-                    .filter(Objects::nonNull)
-                    .map(Object::toString)
-                    .toList();
+            return list.stream().filter(Objects::nonNull).map(Object::toString).toList();
         } else {
             String message = "Tool argument '%s' must be an array of strings".formatted(toolArgumentName);
             throwArgumentException(message, null);
@@ -166,7 +166,8 @@ public class SimpleToolSearchStrategy implements ToolSearchStrategy {
         try {
             return Json.fromJson(json, Map.class);
         } catch (Exception e) {
-            String message = "Failed to parse tool search arguments: '%s' (base64: '%s')".formatted(json, toBase64(json));
+            String message =
+                    "Failed to parse tool search arguments: '%s' (base64: '%s')".formatted(json, toBase64(json));
             throwArgumentException(message, e);
             return null; // unreachable
         }
@@ -186,8 +187,7 @@ public class SimpleToolSearchStrategy implements ToolSearchStrategy {
         return value == null ? null : value.toLowerCase();
     }
 
-    private record ScoredTool(ToolSpecification tool, int score) {
-    }
+    private record ScoredTool(ToolSpecification tool, int score) {}
 
     public static Builder builder() {
         return new Builder();
