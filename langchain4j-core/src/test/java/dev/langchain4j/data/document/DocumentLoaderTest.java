@@ -98,14 +98,28 @@ class DocumentLoaderTest implements WithAssertions {
                 .withMessageContaining("Failed to load document");
     }
 
-    @Test
-    void load_throwsWhenDocumentAndSourceMetadataShareKeys() {
-        StringSource source = new StringSource("Hello, world!", new Metadata().put("foo", "bar"));
-        DocumentParser collidingParser =
-                inputStream -> Document.from("Hello, world!", new Metadata().put("foo", "baz"));
+    private static final DocumentParser COLLIDING_PARSER =
+            inputStream -> Document.from("Hello, world!", new Metadata().put("foo", "baz").put("title", "Bar"));
 
-        assertThatExceptionOfType(IllegalArgumentException.class)
-                .isThrownBy(() -> DocumentLoader.load(source, collidingParser))
-                .withMessageContaining("Metadata keys are not unique");
+    @Test
+    void load_sourceWinsWhenDocumentAndSourceMetadataShareKeys() {
+        StringSource source = new StringSource("Hello, world!", new Metadata().put("foo", "bar"));
+
+        Document document = DocumentLoader.load(source, COLLIDING_PARSER);
+
+        assertThat(document.metadata().toMap()).containsOnly(entry("foo", "bar"), entry("title", "Bar"));
+    }
+
+    @Test
+    void load_wrapsIllegalArgumentExceptionThrownByParser() {
+        StringSource source = new StringSource("Hello, world!", new Metadata().put("foo", "bar"));
+        DocumentParser failingParser = inputStream -> {
+            throw new IllegalArgumentException("Failed to parse document");
+        };
+
+        assertThatExceptionOfType(RuntimeException.class)
+                .isThrownBy(() -> DocumentLoader.load(source, failingParser))
+                .withMessageContaining("Failed to load document")
+                .withCauseInstanceOf(IllegalArgumentException.class);
     }
 }

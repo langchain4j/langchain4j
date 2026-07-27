@@ -75,14 +75,25 @@ public class GoogleCloudStorageDocumentLoader {
             storage.list(bucket, Storage.BlobListOption.currentDirectory());
 
         List<Document> documents = new ArrayList<>();
+        int failed = 0;
 
         for (Blob blob : blobs.iterateAll()) {
             try {
                 GcsSource gcsSource = new GcsSource(blob);
                 documents.add(DocumentLoader.load(gcsSource, ensureNotNull(parser, "parser")));
             } catch (Exception e) {
+                failed++;
                 log.warn("Failed to load blob '{}' from bucket '{}', skipping it.", blob.getName(), bucket, e);
             }
+        }
+
+        if (failed > 0) {
+            log.warn(
+                    "Loaded {} of {} documents from bucket '{}'. Skipped {} that failed to load.",
+                    documents.size(),
+                    documents.size() + failed,
+                    bucket,
+                    failed);
         }
 
         return documents;
