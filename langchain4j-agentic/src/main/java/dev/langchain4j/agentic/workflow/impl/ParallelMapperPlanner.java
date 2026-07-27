@@ -49,7 +49,7 @@ public class ParallelMapperPlanner implements Planner {
         List<?> items = collectItems(collectionObj);
 
         if (items.isEmpty()) {
-            return doneWithResults(planningContext, new ArrayList<>());
+            return doneWithResults(planningContext, List.of());
         }
 
         this.itemCount = items.size();
