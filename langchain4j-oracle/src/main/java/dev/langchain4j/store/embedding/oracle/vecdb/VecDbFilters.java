@@ -96,6 +96,13 @@ final class VecDbFilters {
                 : TranslationContext.root().translate(filter).toString();
     }
 
+    /** Validates that a filter can be translated using the supported VecDB metadata-filter contract. */
+    static void validate(Filter filter) {
+        if (filter != null) {
+            TranslationContext.root().translate(filter);
+        }
+    }
+
     private static JsonNode translate(Filter filter, TranslationContext context) {
         FilterTranslator<?> translator = TRANSLATORS.get(filter.getClass());
         if (translator == null) {

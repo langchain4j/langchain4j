@@ -3,13 +3,16 @@ package dev.langchain4j.store.embedding.oracle.vecdb;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.langchain4j.store.embedding.oracle.SQLFilter;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
 import java.sql.CallableStatement;
 import java.sql.Clob;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.Locale;
 import java.util.Map;
 import oracle.jdbc.OracleType;
@@ -207,6 +210,22 @@ final class VecDbJdbcQueryExecutor implements VecDbQueryExecutor {
                     statement.setString(2, tableName);
                     setJson(statement, 3, idsJson);
                 });
+    }
+
+    @Override
+    public int deleteVectorsByFilter(Connection connection, String tableName, SQLFilter filter) throws SQLException {
+        String sql = "DELETE FROM " + tableName + filter.asWhereClause();
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            filter.setParameters(statement, 1);
+            return statement.executeUpdate();
+        }
+    }
+
+    @Override
+    public void truncateVectorTable(Connection connection, String tableName) throws SQLException {
+        try (Statement statement = connection.createStatement()) {
+            statement.executeUpdate("TRUNCATE TABLE " + tableName);
+        }
     }
 
     private static String call(Connection connection, String sql, StatementBinder... binders) throws SQLException {

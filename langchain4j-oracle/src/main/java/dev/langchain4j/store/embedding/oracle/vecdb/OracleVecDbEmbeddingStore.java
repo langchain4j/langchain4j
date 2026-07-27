@@ -12,6 +12,8 @@ import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.filter.Filter;
 import dev.langchain4j.store.embedding.oracle.CreateOption;
+import dev.langchain4j.store.embedding.oracle.SQLFilter;
+import dev.langchain4j.store.embedding.oracle.SQLFilters;
 import dev.langchain4j.store.embedding.oracle.vecdb.enums.VecDbDistanceMetric;
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -33,7 +35,6 @@ import javax.sql.DataSource;
  */
 public final class OracleVecDbEmbeddingStore implements EmbeddingStore<TextSegment> {
 
-    private static final int DELETE_BATCH_SIZE = 1_000;
     private static final VecDbDistanceMetric DISTANCE_METRIC = VecDbDistanceMetric.COSINE;
 
     private final DataSource dataSource;
@@ -140,29 +141,13 @@ public final class OracleVecDbEmbeddingStore implements EmbeddingStore<TextSegme
     @Override
     public void removeAll(Filter filter) {
         ensureNotNull(filter, "filter");
+        VecDbFilters.validate(filter);
+        SQLFilter sqlFilter = SQLFilters.create(filter, embeddingTable::mapMetadataKey);
+
         try (Connection connection = dataSource.getConnection()) {
-            int offset = 0;
-            while (true) {
-                String responseJson =
-                        queryExecutor.listVectors(connection, embeddingTable.name(), null, DELETE_BATCH_SIZE, offset);
-
-                List<VecDbVectorJsonMapper.ListedVector> listedVectors =
-                        VecDbVectorJsonMapper.vectorsFromListResponse(responseJson);
-                if (listedVectors.isEmpty()) {
-                    return;
-                }
-
-                List<String> matchingIds = listedVectors.stream()
-                        .filter(vector -> filter.test(vector.metadata()))
-                        .map(VecDbVectorJsonMapper.ListedVector::id)
-                        .toList();
-
-                if (!matchingIds.isEmpty()) {
-                    queryExecutor.deleteVectors(
-                            connection, embeddingTable.name(), VecDbVectorJsonMapper.idsToJson(matchingIds));
-                }
-
-                offset += listedVectors.size() - matchingIds.size();
+            queryExecutor.deleteVectorsByFilter(connection, embeddingTable.name(), sqlFilter);
+            if (!connection.getAutoCommit()) {
+                connection.commit();
             }
         } catch (SQLException exception) {
             throw unchecked(exception);
@@ -172,15 +157,7 @@ public final class OracleVecDbEmbeddingStore implements EmbeddingStore<TextSegme
     @Override
     public void removeAll() {
         try (Connection connection = dataSource.getConnection()) {
-            while (true) {
-                String responseJson =
-                        queryExecutor.listVectors(connection, embeddingTable.name(), null, DELETE_BATCH_SIZE, 0);
-                List<String> ids = VecDbVectorJsonMapper.idsFromListResponse(responseJson);
-                if (ids.isEmpty()) {
-                    return;
-                }
-                queryExecutor.deleteVectors(connection, embeddingTable.name(), VecDbVectorJsonMapper.idsToJson(ids));
-            }
+            queryExecutor.truncateVectorTable(connection, embeddingTable.name());
         } catch (SQLException exception) {
             throw unchecked(exception);
         }

@@ -1,5 +1,6 @@
 package dev.langchain4j.store.embedding.oracle.vecdb;
 
+import dev.langchain4j.store.embedding.oracle.SQLFilter;
 import java.sql.Connection;
 import java.sql.SQLException;
 
@@ -73,6 +74,16 @@ interface VecDbQueryExecutor {
      * <p>{@code DBMS_VECTOR_DATABASE.DELETE_VECTORS} commits its changes automatically.
      */
     String deleteVectors(Connection connection, String tableName, String idsJson) throws SQLException;
+
+    /**
+     * Deletes every vector whose metadata matches the supplied SQL filter and returns the affected row count.
+     *
+     * <p>This uses direct table DML because {@code DBMS_VECTOR_DATABASE.DELETE_VECTORS} accepts IDs only.
+     */
+    int deleteVectorsByFilter(Connection connection, String tableName, SQLFilter filter) throws SQLException;
+
+    /** Removes every row from the vector table using {@code TRUNCATE TABLE}. */
+    void truncateVectorTable(Connection connection, String tableName) throws SQLException;
 
     /** Index state returned by {@link #indexStatus(Connection, String)}. */
     record IndexStatus(boolean vectorIndexExists, boolean metadataIndexExists) {}
