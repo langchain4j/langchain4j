@@ -1045,6 +1045,8 @@ public abstract class AbstractBaseChatModelIT<M> {
             }
         }
 
+        sleepIfNeeded();
+
         // given
         ChatRequest chatRequest2 = ChatRequest.builder()
                 .messages(
