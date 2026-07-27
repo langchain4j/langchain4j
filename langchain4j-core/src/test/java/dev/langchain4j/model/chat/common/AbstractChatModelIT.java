@@ -1,7 +1,6 @@
 package dev.langchain4j.model.chat.common;
 
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import org.junit.jupiter.api.TestInstance;
@@ -17,7 +16,9 @@ public abstract class AbstractChatModelIT extends AbstractBaseChatModelIT<ChatMo
 
     @Override
     protected ChatResponseAndStreamingMetadata chat(ChatModel chatModel, ChatRequest chatRequest) {
+        LastChatExchange.recordRequest(chatRequest);
         ChatResponse chatResponse = chatModel.chat(chatRequest);
+        LastChatExchange.recordResponse(chatResponse);
         return new ChatResponseAndStreamingMetadata(chatResponse, null);
     }
 }
