@@ -58,6 +58,18 @@ class BedrockNonBlockingIT {
     /** Blocking calls BlockHound observed on a policed thread. Cleared before each test by {@link #resetViolations()}. */
     private static final List<Throwable> violations = new CopyOnWriteArrayList<>();
 
+    /**
+     * Models are created once and reused across warm-up and the measured tests. A <em>fresh</em> AWS SDK client does
+     * one-time TLS setup on its first request - reading the truststore/certificate files, which BlockHound flags as
+     * {@code FileInputStream#readBytes} on the handshake/response threads. Reusing a warmed-up client moves that setup
+     * into {@link #warmUp()} (outside the measured window, wiped by {@link #resetViolations()}) while the tested
+     * request reuses the pooled, already-handshaked connection.
+     */
+    private static BedrockChatModel chatModel;
+
+    private static BedrockStreamingChatModel streamingModelWithoutLogging;
+    private static BedrockStreamingChatModel streamingModelWithLogging;
+
     @BeforeAll
     static void installBlockHound() {
         BlockHound.builder()
@@ -83,11 +95,17 @@ class BedrockNonBlockingIT {
 
     @BeforeAll
     static void warmUp() throws Exception {
-        // First request/stream triggers one-time lazy work (TLS handshake, class/JAR loading, lazy async-client
-        // creation) on the SDK threads. Do it once so the measured tests see only steady-state behavior; logging is on
-        // so the logging path's classes load here too. Violations recorded here are wiped before each test.
-        newChatModel().chatAsync(request()).get(60, TimeUnit.SECONDS);
-        awaitStream(newStreamingModel(true));
+        chatModel = newChatModel();
+        streamingModelWithoutLogging = newStreamingModel(false);
+        streamingModelWithLogging = newStreamingModel(true);
+
+        // Drive one request/stream through each client so all one-time lazy work (TLS handshake, truststore/certificate
+        // reads, class/JAR loading, lazy async-client creation) happens here, on the SDK threads, before the measured
+        // tests. The tested requests then reuse the pooled, already-handshaked connection. Both logging variants are
+        // warmed so the logging path's classes load here too. Violations recorded here are wiped before each test.
+        chatModel.chatAsync(request()).get(60, TimeUnit.SECONDS);
+        awaitStream(streamingModelWithoutLogging);
+        awaitStream(streamingModelWithLogging);
     }
 
     @BeforeEach
@@ -101,7 +119,7 @@ class BedrockNonBlockingIT {
         AtomicReference<Thread> completionThread = new AtomicReference<>();
 
         // when
-        ChatResponse response = newChatModel()
+        ChatResponse response = chatModel
                 .chatAsync(request())
                 .whenComplete((chatResponse, throwable) -> completionThread.set(Thread.currentThread()))
                 .get(60, TimeUnit.SECONDS);
@@ -123,7 +141,7 @@ class BedrockNonBlockingIT {
     @ValueSource(booleans = {false, true})
     void streaming_publisher_does_not_block_the_event_loop_threads(boolean logging) throws Exception {
         // Given: the real streaming endpoint and a multi-token response that exercises the pipeline across many chunks.
-        StreamCapture capture = awaitStream(newStreamingModel(logging));
+        StreamCapture capture = awaitStream(logging ? streamingModelWithLogging : streamingModelWithoutLogging);
 
         // Then: stream completed normally, real events arrived, and no blocking call was detected on the event loop.
         assertThat(capture.error()).isNull();
