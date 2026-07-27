@@ -31,9 +31,11 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import dev.langchain4j.service.tool.ToolExecution;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,6 +53,7 @@ public class DefaultAgenticScope implements AgenticScope {
 
     private final transient Map<String, Object> agents = new ConcurrentHashMap<>();
     private final transient Map<String, Object> executionContexts = new ConcurrentHashMap<>();
+    private final transient List<CompensableExecution> compensableExecutions = Collections.synchronizedList(new ArrayList<>());
 
     private static final Function<ErrorContext, ErrorRecoveryResult> DEFAULT_ERROR_RECOVERY =
             errorContext -> ErrorRecoveryResult.throwException();
@@ -231,6 +234,8 @@ public class DefaultAgenticScope implements AgenticScope {
         } else if (kind == Kind.PERSISTENT) {
             flush(registry);
         }
+
+        compensableExecutions.clear();
     }
 
     private void flush(AgenticScopeRegistry registry) {
@@ -373,6 +378,34 @@ public class DefaultAgenticScope implements AgenticScope {
 
     public ErrorRecoveryResult handleError(String agentName, AgentInvocationException exception) {
         return errorHandler.apply(new ErrorContext(agentName, this, exception));
+    }
+
+    private record CompensableExecution(ToolExecution toolExecution, Consumer<ToolExecution> compensatingAction) {
+
+        public void compensate() {
+            try {
+                compensatingAction.accept(toolExecution());
+            } catch (Exception e) {
+                LOG.warn("Cross-agent compensating action failed for tool '{}': {}",
+                        toolExecution().request().name(), e.getMessage(), e);
+            }
+        }
+    }
+
+    public void registerCompensableExecution(ToolExecution toolExecution, Consumer<ToolExecution> compensatingAction) {
+        compensableExecutions.add(new CompensableExecution(toolExecution, compensatingAction));
+    }
+
+    public void compensateAll() {
+        List<CompensableExecution> snapshot;
+        synchronized (compensableExecutions) {
+            snapshot = new ArrayList<>(compensableExecutions);
+            compensableExecutions.clear();
+        }
+
+        for (int i = snapshot.size() - 1; i >= 0; i--) {
+            snapshot.get(i).compensate();
+        }
     }
 
     /**
