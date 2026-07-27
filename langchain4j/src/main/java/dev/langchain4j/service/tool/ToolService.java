@@ -139,6 +139,8 @@ public class ToolService {
 
     private Consumer<BeforeToolExecution> beforeToolExecution = null;
     private Consumer<ToolExecution> afterToolExecution = null;
+    private BiConsumer<ToolExecution, Consumer<ToolExecution>> onCompensableToolExecution = null;
+    private Consumer<InvocationContext> onToolExecutionError = null;
 
     public void hallucinatedToolNameStrategy(
             Function<ToolExecutionRequest, ToolExecutionResultMessage> toolHallucinationStrategy) {
@@ -453,6 +455,17 @@ public class ToolService {
      */
     public Consumer<ToolExecution> afterToolExecution() {
         return afterToolExecution;
+    }
+
+    public void onCompensableToolExecution(BiConsumer<ToolExecution, Consumer<ToolExecution>> onCompensableToolExecution) {
+        if (compensatingToolMisconfiguration != null) {
+            throw compensatingToolMisconfiguration;
+        }
+        this.onCompensableToolExecution = onCompensableToolExecution;
+    }
+
+    public void onToolExecutionError(Consumer<InvocationContext> onToolExecutionError) {
+        this.onToolExecutionError = onToolExecutionError;
     }
 
     /**
@@ -1058,8 +1071,25 @@ public class ToolService {
 
             fireToolExecutedEvent(invocationContext, request, toolExecution, context.eventListenerRegistrar);
 
+            // Expose a successfully-executed compensable tool to the agentic layer (when it registered an observer via
+            // onCompensableToolExecution) so cross-agent compensation can undo it later. Our compensating action is the
+            // async BiFunction; adapt it to the Consumer<ToolExecution> the observer expects by awaiting it when
+            // invoked - cross-agent compensation runs off the reactive path, so blocking there is fine.
+            if (onCompensableToolExecution != null
+                    && !result.isError()
+                    && compensatingExecutors.containsKey(request.name())) {
+                BiFunction<ToolExecution, InvocationContext, CompletableFuture<Void>> compensatingAction =
+                        compensatingExecutors.get(request.name());
+                onCompensableToolExecution.accept(
+                        toolExecution, te -> compensatingAction.apply(te, te.invocationContext()).join());
+            }
+
             anyToolErrored = anyToolErrored || result.isError();
             returnBehaviors.add(toolServiceContext.returnBehavior(request.name()));
+        }
+
+        if (anyToolErrored && onToolExecutionError != null) {
+            onToolExecutionError.accept(invocationContext);
         }
 
         return new ToolResultsOutcome(anyToolErrored, returnBehaviors, resultMessages);

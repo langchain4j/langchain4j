@@ -561,7 +561,7 @@ By default, all agents invocations are performed in the same thread that invoked
 
 For this reason it is possible to flag an agent as asynchronous using the `async` method of the agent builder. When doing so, the invocation of that agent is performed in a separate thread, and the execution of the agentic system will proceed without waiting for the completion of that agent. The result of the asynchronous agent will be available in the `AgenticScope` as soon as it is completed, and the `AgenticScope` will be blocked waiting for that result only when it is required as an input for a subsequent invocation of a different agent.
 
-For instance, since they are independent of each other, flagging the `FoodExpert` and `MovieExpert` agents, discussed in the parallel workflow section, as asynchronous, will make them to be executed at the same time even when used in a sequential workflow.
+For instance, since they are independent of each other, flagging the `FoodExpert` and `MovieExpert` agents, discussed in the parallel workflow section, as asynchronous with `.async(true)` on each sub-agent, will make them to be executed at the same time even when used in a sequential workflow. Unlike `parallelBuilder()`, `sequenceBuilder()` has no `executor()` method; the optional `executor()` belongs on parallel workflows only.
 
 ```java
 FoodExpert foodExpert = AgenticServices
@@ -581,7 +581,6 @@ MovieExpert movieExpert = AgenticServices
 EveningPlannerAgent eveningPlannerAgent = AgenticServices
         .sequenceBuilder(EveningPlannerAgent.class)
         .subAgents(foodExpert, movieExpert)
-        .executor(Executors.newFixedThreadPool(2))
         .outputKey("plans")
         .output(agenticScope -> {
             List<String> movies = agenticScope.readState("movies", List.of());
@@ -750,6 +749,46 @@ UntypedAgent novelCreator = AgenticServices.sequenceBuilder()
         .outputKey("story")
         .build();
 ```
+
+## Cross-agent compensation
+
+When an agentic system performs side effects through tools (e.g., database writes, API calls, financial transactions), a failure partway through the workflow can leave the system in an inconsistent state. Cross-agent compensation tries to solve, or at least mitigate, this problem: if any agent in the hierarchy fails, all previously successful tool invocations with `@CompensateFor` actions are compensated in reverse order.
+
+This builds on the per-agent `@CompensateFor` mechanism (see [Tools](/tutorials/tools#compensating-tool-actions)). While per-agent compensation handles tool errors within a single agent, cross-agent compensation handles agent-level failures across an entire hierarchy.
+
+In order to enable this feature set `compensateOnError(true)` on the composed agent builder:
+
+```java
+UntypedAgent transferWorkflow = AgenticServices.sequenceBuilder()
+        .subAgents(creditAgent, debitAgent, notificationAgent)
+        .compensateOnError(true)
+        .outputKey("result")
+        .build();
+```
+
+If `notificationAgent` throws an exception, the tools invoked by `creditAgent` and `debitAgent` that have `@CompensateFor` methods will be compensated in reverse chronological order (last executed first).
+
+Tools without a `@CompensateFor` annotation are simply skipped during compensation.
+
+Compensating actions are defined on tool classes using `@CompensateFor`, the same annotation used for per-agent tool compensation:
+
+```java
+public class AccountService {
+
+    @Tool("Credits the given amount to the account")
+    String credit(@P(name = "amount") int amount) {
+        // perform the credit
+        return "credited " + amount;
+    }
+
+    @CompensateFor("credit")
+    void reverseCredit(int amount) {
+        // reverse the credit
+    }
+}
+```
+
+Note that the compensating actions are executed with a best-effort policy: if one of them fails, the error is logged and the remaining compensations continue.
 
 ## Observability
 

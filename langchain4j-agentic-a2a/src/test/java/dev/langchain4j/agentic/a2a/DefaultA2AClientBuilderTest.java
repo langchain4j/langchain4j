@@ -91,4 +91,47 @@ class DefaultA2AClientBuilderTest {
         assertThat(future).isCompleted();
         assertThat(future.get()).isEmpty();
     }
+
+    @Test
+    void handleStreamEnd_streamEndsWithoutResult_completesExceptionally() {
+        CompletableFuture<String> future = new CompletableFuture<>();
+
+        DefaultA2AClientBuilder.handleStreamEnd(null, future);
+
+        assertThat(future).isCompletedExceptionally();
+        assertThatThrownBy(future::get)
+                .hasCauseInstanceOf(RuntimeException.class)
+                .hasMessageContaining("A2A stream closed before a result was received");
+    }
+
+    @Test
+    void handleStreamEnd_streamEndsAfterResult_keepsResult() throws Exception {
+        CompletableFuture<String> future = CompletableFuture.completedFuture("the answer");
+
+        DefaultA2AClientBuilder.handleStreamEnd(null, future);
+
+        assertThat(future).isCompleted();
+        assertThat(future.get()).isEqualTo("the answer");
+    }
+
+    @Test
+    void handleStreamEnd_errorBeforeResult_completesExceptionallyWithThatError() {
+        CompletableFuture<String> future = new CompletableFuture<>();
+        RuntimeException error = new RuntimeException("connection reset");
+
+        DefaultA2AClientBuilder.handleStreamEnd(error, future);
+
+        assertThat(future).isCompletedExceptionally();
+        assertThatThrownBy(future::get).hasCause(error);
+    }
+
+    @Test
+    void handleStreamEnd_errorAfterResult_keepsResult() throws Exception {
+        CompletableFuture<String> future = CompletableFuture.completedFuture("the answer");
+
+        DefaultA2AClientBuilder.handleStreamEnd(new RuntimeException("connection reset"), future);
+
+        assertThat(future).isCompleted();
+        assertThat(future.get()).isEqualTo("the answer");
+    }
 }

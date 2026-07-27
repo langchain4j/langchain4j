@@ -22,7 +22,9 @@ public abstract class AbstractChatModelIT extends AbstractBaseChatModelIT<ChatMo
 
     @Override
     protected ChatResponseAndStreamingMetadata chat(ChatModel chatModel, ChatRequest chatRequest) {
+        LastChatExchange.recordRequest(chatRequest);
         ChatResponse chatResponse = chatModel.chat(chatRequest);
+        LastChatExchange.recordResponse(chatResponse);
         return new ChatResponseAndStreamingMetadata(chatResponse, null);
     }
 
