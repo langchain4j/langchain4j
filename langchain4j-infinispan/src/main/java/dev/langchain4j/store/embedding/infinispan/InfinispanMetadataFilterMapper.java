@@ -199,13 +199,18 @@ class InfinispanMetadataFilterMapper {
     }
 
     private String formattedComparisonValues(Collection<?> comparisonValues, boolean isNumeric) {
-        String inStatement = comparisonValues.stream()
-                .map(s -> isNumeric ? s.toString() : "'" + escape(String.valueOf(s)) + "'")
+        boolean hasNumeric = comparisonValues.stream().anyMatch(v -> v instanceof Number);
+        boolean hasNonNumeric = comparisonValues.stream().anyMatch(v -> !(v instanceof Number));
+        if (hasNumeric && hasNonNumeric) {
+            throw new IllegalArgumentException(
+                    "Infinispan metadata filter IN/NOT IN cannot mix numeric and non-numeric values");
+        }
+        return comparisonValues.stream()
+                .map(s -> s instanceof Number ? s.toString() : "'" + escape(String.valueOf(s)) + "'")
                 .collect(Collectors.joining(", "));
-        return inStatement;
     }
 
     private static String escape(String s) {
-        return s.replace("'", "''");
+        return s.replace("\\", "\\\\").replace("'", "''");
     }
 }
