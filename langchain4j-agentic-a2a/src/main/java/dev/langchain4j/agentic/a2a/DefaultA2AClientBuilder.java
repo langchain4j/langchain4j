@@ -232,14 +232,7 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
                         new IllegalArgumentException("The event expected should be of type " + event.getClass()));
             }
         });
-        Consumer<Throwable> streamingErrorHandler = error -> {
-            if (messageResponse.isDone()) {
-                LOG.debug("SSE stream closed after response received: {}", error.getMessage());
-            } else {
-                LOG.error("Streaming error occurred: {}", error.getMessage(), error);
-                messageResponse.completeExceptionally(error);
-            }
-        };
+        Consumer<Throwable> streamingErrorHandler = error -> handleStreamEnd(error, messageResponse);
         a2aClient.sendMessage(message, consumers, streamingErrorHandler, null);
 
         String finalContextIdKey = contextIdKey;
@@ -263,6 +256,24 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
     private static void captureTaskIds(Task task, AtomicReference<String> contextId, AtomicReference<String> taskId) {
         contextId.set(task.contextId());
         taskId.set(task.id());
+    }
+
+    static void handleStreamEnd(Throwable error, CompletableFuture<String> messageResponse) {
+        if (error == null) {
+            // The A2A SDK reports a normal end of the stream by passing a null error.
+            LOG.debug("SSE stream closed normally");
+            if (!messageResponse.isDone()) {
+                messageResponse.completeExceptionally(
+                        new RuntimeException("A2A stream closed before a result was received"));
+            }
+            return;
+        }
+        if (messageResponse.isDone()) {
+            LOG.debug("SSE stream closed after response received: {}", error.getMessage());
+        } else {
+            LOG.error("Streaming error occurred: {}", error.getMessage(), error);
+            messageResponse.completeExceptionally(error);
+        }
     }
 
     static void completeFromTask(Task task, CompletableFuture<String> messageResponse) {
