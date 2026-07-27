@@ -561,7 +561,7 @@ By default, all agents invocations are performed in the same thread that invoked
 
 For this reason it is possible to flag an agent as asynchronous using the `async` method of the agent builder. When doing so, the invocation of that agent is performed in a separate thread, and the execution of the agentic system will proceed without waiting for the completion of that agent. The result of the asynchronous agent will be available in the `AgenticScope` as soon as it is completed, and the `AgenticScope` will be blocked waiting for that result only when it is required as an input for a subsequent invocation of a different agent.
 
-For instance, since they are independent of each other, flagging the `FoodExpert` and `MovieExpert` agents, discussed in the parallel workflow section, as asynchronous, will make them to be executed at the same time even when used in a sequential workflow.
+For instance, since they are independent of each other, flagging the `FoodExpert` and `MovieExpert` agents, discussed in the parallel workflow section, as asynchronous with `.async(true)` on each sub-agent, will make them to be executed at the same time even when used in a sequential workflow. Unlike `parallelBuilder()`, `sequenceBuilder()` has no `executor()` method; the optional `executor()` belongs on parallel workflows only.
 
 ```java
 FoodExpert foodExpert = AgenticServices
@@ -581,7 +581,6 @@ MovieExpert movieExpert = AgenticServices
 EveningPlannerAgent eveningPlannerAgent = AgenticServices
         .sequenceBuilder(EveningPlannerAgent.class)
         .subAgents(foodExpert, movieExpert)
-        .executor(Executors.newFixedThreadPool(2))
         .outputKey("plans")
         .output(agenticScope -> {
             List<String> movies = agenticScope.readState("movies", List.of());
