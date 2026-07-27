@@ -13,8 +13,8 @@
     <name>LangChain4j :: Integration :: Infinispan</name>
 
     <properties>
-        <infinispan.version>16.0.6</infinispan.version>
-        <protostream.version>6.0.6</protostream.version>
+        <infinispan.version>16.0.14</infinispan.version>
+        <protostream.version>6.0.10</protostream.version>
     </properties>
 
     <dependencyManagement>
