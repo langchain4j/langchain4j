@@ -47,10 +47,29 @@
             <version>2.0.18</version>
         </dependency>
 
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-engine</artifactId>
+            <version>6.0.3</version>
+            <scope>test</scope>
+        </dependency>
+
     </dependencies>
 
     <build>
         <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.5.5</version>
+                <configuration>
+                    <!-- the tests of this module verify the extension itself, so it has to be active -->
+                    <environmentVariables>
+                        <LC4J_GLOBAL_TEST_RETRY_ENABLED>true</LC4J_GLOBAL_TEST_RETRY_ENABLED>
+                        <LC4J_GLOBAL_TEST_RETRY_MAX_ATTEMPTS>2</LC4J_GLOBAL_TEST_RETRY_MAX_ATTEMPTS>
+                    </environmentVariables>
+                </configuration>
+            </plugin>
             <plugin>
                 <groupId>org.sonatype.central</groupId>
                 <artifactId>central-publishing-maven-plugin</artifactId>
