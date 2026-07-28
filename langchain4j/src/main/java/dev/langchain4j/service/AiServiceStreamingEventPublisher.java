@@ -242,6 +242,8 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
         private final ChatMemory temporaryMemory;
         private final AtomicReference<Flow.Subscription> modelSubscription = new AtomicReference<>();
         private final AtomicReference<InflightRound> inflightRound = new AtomicReference<>();
+        private final AtomicReference<Map<ToolExecutionRequest, CompletableFuture<ToolExecutionResult>>>
+                startedRoundTools = new AtomicReference<>();
         private final AtomicReference<CompletableFuture<?>> guardrailsFuture = new AtomicReference<>();
         private final List<ToolService.CompensableToolExecution> compensableExecutions =
                 context.toolService.newCompensableExecutionsAccumulator();
@@ -268,10 +270,24 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                 }
             });
             tube.whenCancelled(() -> {
-                InflightRound round = underAccumulatorLock(() -> inflightRound.getAndSet(null));
+                Object[] claimed = underAccumulatorLock(() -> {
+                    InflightRound round = inflightRound.getAndSet(null);
+                    Map<ToolExecutionRequest, CompletableFuture<ToolExecutionResult>> started =
+                            round == null ? startedRoundTools.getAndSet(null) : null;
+                    return new Object[] {round, started};
+                });
+                InflightRound round = (InflightRound) claimed[0];
+                @SuppressWarnings("unchecked")
+                Map<ToolExecutionRequest, CompletableFuture<ToolExecutionResult>> startedTools =
+                        (Map<ToolExecutionRequest, CompletableFuture<ToolExecutionResult>>) claimed[1];
                 if (round != null) {
                     round.toolsFuture().whenComplete((combined, error) -> doCancellationCompensation(
                             round.toolRequests(), combined != null ? combined.results() : null));
+                } else if (startedTools != null && !startedTools.isEmpty()) {
+                    List<ToolExecutionRequest> requests = new ArrayList<>(startedTools.keySet());
+                    ToolService.combineToolResultsCollectingErrors(startedTools)
+                            .whenComplete((combined, error) -> doCancellationCompensation(
+                                    requests, combined != null ? combined.results() : null));
                 } else {
                     doCancellationCompensation(null, null);
                 }
@@ -312,6 +328,10 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
             }
 
             Map<ToolExecutionRequest, CompletableFuture<ToolExecutionResult>> startedTools = new LinkedHashMap<>();
+            underAccumulatorLock(() -> {
+                startedRoundTools.set(startedTools);
+                return null;
+            });
 
             context.streamingChatModel.chat(chatRequest).subscribe(new Flow.Subscriber<>() {
 
@@ -345,13 +365,17 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                     } else if (event instanceof CompleteToolCall completeToolCall) {
                         tube.send(new CompleteToolCallEvent(completeToolCall, invocationContext));
                         ToolExecutionRequest toolRequest = completeToolCall.toolExecutionRequest();
-                        startedTools.put(toolRequest, context.toolService.startTool(
+                        CompletableFuture<ToolExecutionResult> startedTool = context.toolService.startTool(
                                 toolRequest,
                                 currentToolContext.toolExecutors(),
                                 invocationContext,
                                 Loop.this::emitBeforeToolExecution,
                                 Loop.this::emitAfterToolExecution,
-                                toolExecutor));
+                                toolExecutor);
+                        underAccumulatorLock(() -> {
+                            startedTools.put(toolRequest, startedTool);
+                            return null;
+                        });
                     } else if (event instanceof RawStreamingEvent rawStreamingEvent) {
                         tube.send(new RawEvent(rawStreamingEvent, invocationContext));
                     }
@@ -428,7 +452,17 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
             CompletableFuture<ToolService.CombinedToolResults> toolResultsFuture =
                     combineEagerlyStartedTools(toolRequests, startedTools, currentToolContext);
             InflightRound round = new InflightRound(toolRequests, toolResultsFuture);
-            inflightRound.set(round);
+            boolean promoted = underAccumulatorLock(() -> {
+                if (tube.cancelled()) {
+                    return false;
+                }
+                inflightRound.set(round);
+                startedRoundTools.set(null);
+                return true;
+            });
+            if (!promoted) {
+                return;
+            }
 
             toolResultsFuture.whenComplete((combined, error) -> {
                 if (error != null) {

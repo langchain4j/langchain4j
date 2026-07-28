@@ -16,6 +16,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.invocation.InvocationContext;
+import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.response.RawStreamingEvent;
@@ -888,9 +889,17 @@ class AiServiceStreamingPublisherTest {
         StreamingEventChatModelMock model = StreamingEventChatModelMock.thatStreams(
                 AiMessage.from(toolRequest("1", "credit")), AiMessage.from("unreachable"));
 
+        // A chat memory whose async add can be frozen. Round assembly (which sets inflightRound and wires the
+        // cancellation rollback) is reached only *after* getMemory().addAsync(aiMessage); freezing that call parks the
+        // publisher exactly between the eager tool start and the round being assembled. That window opens by chance
+        // under full-suite load; forcing it here makes the "cancel before the round is assembled" rollback
+        // deterministic instead of flaky.
+        GatedAsyncMemory memory = new GatedAsyncMemory();
+
         List<ToolCompensatedEvent> compensatedEvents = new CopyOnWriteArrayList<>();
         EventStreamer assistant = AiServices.builder(EventStreamer.class)
                 .streamingChatModel(model)
+                .chatMemory(memory)
                 .tools(new SlowCompensatingTool())
                 .compensateOnToolErrors(true)
                 .registerListener((ToolCompensatedEventListener) compensatedEvents::add)
@@ -914,23 +923,91 @@ class AiServiceStreamingPublisherTest {
             public void onComplete() {}
         });
 
+        // The compensable tool has started, and the publisher is now parked in getMemory().addAsync(aiMessage) — the
+        // round is NOT yet assembled (inflightRound is unset). Cancel in exactly this window.
         assertThat(toolStarted.await(5, TimeUnit.SECONDS)).as("the compensable tool is running").isTrue();
+        assertThat(memory.addAsyncEntered.await(5, TimeUnit.SECONDS))
+                .as("round assembly reached the async memory add")
+                .isTrue();
         subscription.get().cancel();
-        releaseTool.countDown(); // let the already-running tool finish (drain), then it is rolled back
+        memory.releaseAddAsync.countDown(); // the aborted round assembly returns at its cancellation gate
+        releaseTool.countDown(); // let the already-running tool drain, then it is rolled back
 
-        // The rollback (uncredit + the compensated event) runs asynchronously on the shared executor; under a full
-        // parallel test run that executor is contended, so allow a generous ceiling (the happy path finishes in well
-        // under a second) rather than a tight deadline that flakes under load.
-        long deadline = System.currentTimeMillis() + 30_000;
+        long deadline = System.currentTimeMillis() + 5_000;
         while (compensatedEvents.isEmpty() && System.currentTimeMillis() < deadline) {
             Thread.sleep(20);
         }
-        // drain-then-rollback: the successful credit is compensated even though the subscription was cancelled
+        // drain-then-rollback: the successful credit is compensated even though it was cancelled before its round was
+        // assembled (previously it was orphaned and never rolled back — the race this test now forces deterministically).
         assertThat(calls).contains("credit", "uncredit");
         assertThat(compensatedEvents).singleElement().satisfies(event -> {
             assertThat(event.request().name()).isEqualTo("credit");
             assertThat(event.reason()).isEqualTo(CompensationReason.INVOCATION_CANCELLED);
         });
+    }
+
+    /**
+     * A {@link ChatMemory} (backed by an in-memory window) whose {@link #addAsync(List)} blocks until
+     * {@link #releaseAddAsync} is counted down, signalling {@link #addAsyncEntered} when entered. Lets a test park the
+     * reactive tool loop at the memory-add step that precedes tool-round assembly.
+     */
+    static class GatedAsyncMemory implements ChatMemory {
+
+        private final ChatMemory delegate = MessageWindowChatMemory.withMaxMessages(Integer.MAX_VALUE);
+        final CountDownLatch addAsyncEntered = new CountDownLatch(1);
+        final CountDownLatch releaseAddAsync = new CountDownLatch(1);
+
+        @Override
+        public Object id() {
+            return delegate.id();
+        }
+
+        @Override
+        public void add(ChatMessage message) {
+            delegate.add(message);
+        }
+
+        @Override
+        public List<ChatMessage> messages() {
+            return delegate.messages();
+        }
+
+        @Override
+        public void clear() {
+            delegate.clear();
+        }
+
+        @Override
+        public CompletableFuture<Void> addAsync(List<ChatMessage> messages) {
+            // Only gate the round-assembly add (the AiMessage carrying the tool calls, added right before tool-round
+            // assembly). The system/user-message adds that precede the model call must pass through, or the model
+            // would never stream and no tool would start.
+            if (messages.stream().noneMatch(m -> m instanceof AiMessage)) {
+                messages.forEach(delegate::add);
+                return CompletableFuture.completedFuture(null);
+            }
+            addAsyncEntered.countDown();
+            return CompletableFuture.runAsync(() -> {
+                try {
+                    releaseAddAsync.await();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+                messages.forEach(delegate::add);
+            });
+        }
+
+        @Override
+        public CompletableFuture<List<ChatMessage>> messagesAsync() {
+            return CompletableFuture.completedFuture(delegate.messages());
+        }
+
+        @Override
+        public CompletableFuture<Void> setAsync(List<ChatMessage> messages) {
+            delegate.clear();
+            messages.forEach(delegate::add);
+            return CompletableFuture.completedFuture(null);
+        }
     }
 
     @Test
