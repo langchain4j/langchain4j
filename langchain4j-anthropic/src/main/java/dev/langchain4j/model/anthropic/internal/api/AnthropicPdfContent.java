@@ -20,6 +20,11 @@ public class AnthropicPdfContent extends AnthropicMessageContent {
         this.source = source;
     }
 
+    public AnthropicPdfContent(AnthropicPdfContentSource source, AnthropicCacheControl cacheControl) {
+        super("document", cacheControl);
+        this.source = source;
+    }
+
     public AnthropicPdfContent(String mediaType, String base64Data) {
         super("document");
         this.source = new AnthropicPdfContentSource("base64", mediaType, base64Data);
@@ -35,6 +40,14 @@ public class AnthropicPdfContent extends AnthropicMessageContent {
 
     public static AnthropicPdfContent fromUrl(String url) {
         return new AnthropicPdfContent(AnthropicPdfContentSource.fromUrl(url));
+    }
+
+    public static AnthropicPdfContent fromBase64(String mediaType, String data, AnthropicCacheControl cacheControl) {
+        return new AnthropicPdfContent(AnthropicPdfContentSource.fromBase64(mediaType, data), cacheControl);
+    }
+
+    public static AnthropicPdfContent fromUrl(String url, AnthropicCacheControl cacheControl) {
+        return new AnthropicPdfContent(AnthropicPdfContentSource.fromUrl(url), cacheControl);
     }
 
     @Override
@@ -53,6 +66,9 @@ public class AnthropicPdfContent extends AnthropicMessageContent {
 
     @Override
     public String toString() {
-        return "AnthropicPdfContent{" + "source=" + source + '}';
+        return "AnthropicPdfContent{" + "source="
+                + source + ", type='"
+                + type + '\'' + ", cacheControl="
+                + cacheControl + '}';
     }
 }
