@@ -3,6 +3,7 @@ package dev.langchain4j.model.google.genai;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.google.genai.Client;
@@ -346,12 +347,12 @@ class GoogleGenAiStreamingChatModelTest {
         @SuppressWarnings("unchecked")
         ResponseStream<GenerateContentResponse> stream = mock(ResponseStream.class);
 
-        ArgumentCaptor<GenerateContentConfig> configCaptor = ArgumentCaptor.forClass(GenerateContentConfig.class);
-
-        when(models.generateContentStream(any(String.class), any(List.class), configCaptor.capture()))
+        when(models.generateContentStream(any(String.class), any(List.class), any(GenerateContentConfig.class)))
                 .thenReturn(stream);
 
         when(stream.iterator()).thenReturn(List.<GenerateContentResponse>of().iterator());
+
+        CompletableFuture<ChatResponse> future = new CompletableFuture<>();
 
         GoogleGenAiStreamingChatModel model = GoogleGenAiStreamingChatModel.builder()
                 .client(client)
@@ -371,17 +372,22 @@ class GoogleGenAiStreamingChatModelTest {
             public void onPartialResponse(String partialResponse) {}
 
             @Override
-            public void onCompleteResponse(ChatResponse completeResponse) {}
+            public void onCompleteResponse(ChatResponse completeResponse) {
+                future.complete(completeResponse);
+            }
 
             @Override
-            public void onError(Throwable error) {}
+            public void onError(Throwable error) {
+                future.completeExceptionally(error);
+            }
         });
 
-        // Wait a little bit for the executor to run
-        Thread.sleep(100);
+        future.get(30, TimeUnit.SECONDS);
 
-        assertThat(configCaptor.getValue().cachedContent().isPresent()).isTrue();
-        assertThat(configCaptor.getValue().cachedContent().get())
-                .isEqualTo("projects/123/locations/us-central1/cachedContents/per-request");
+        ArgumentCaptor<GenerateContentConfig> configCaptor = ArgumentCaptor.forClass(GenerateContentConfig.class);
+        verify(models).generateContentStream(any(String.class), any(List.class), configCaptor.capture());
+
+        assertThat(configCaptor.getValue().cachedContent())
+                .contains("projects/123/locations/us-central1/cachedContents/per-request");
     }
 }

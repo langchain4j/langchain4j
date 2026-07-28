@@ -2,7 +2,6 @@ package dev.langchain4j.data.document.loader.tencent.cos;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static java.util.stream.Collectors.toList;
 
 import com.qcloud.cos.COSClient;
 import com.qcloud.cos.ClientConfig;
@@ -75,18 +74,23 @@ public class TencentCosDocumentLoader {
 
         ObjectListing objectListing = cosClient.listObjects(listObjectsRequest);
 
-        List<COSObjectSummary> filteredObjects = objectListing.getObjectSummaries().stream()
-                .filter(object -> !object.getKey().endsWith("/") && object.getSize() > 0)
-                .collect(toList());
-
-        for (COSObjectSummary object : filteredObjects) {
-            String key = object.getKey();
-            try {
-                Document document = loadDocument(bucket, key, parser);
-                documents.add(document);
-            } catch (Exception e) {
-                log.warn("Failed to load an object with key '{}' from bucket '{}', skipping it.", key, bucket, e);
+        while (true) {
+            for (COSObjectSummary object : objectListing.getObjectSummaries()) {
+                if (object.getKey().endsWith("/") || object.getSize() == 0) {
+                    continue;
+                }
+                String key = object.getKey();
+                try {
+                    Document document = loadDocument(bucket, key, parser);
+                    documents.add(document);
+                } catch (Exception e) {
+                    log.warn("Failed to load an object with key '{}' from bucket '{}', skipping it.", key, bucket, e);
+                }
             }
+            if (!objectListing.isTruncated()) {
+                break;
+            }
+            objectListing = cosClient.listNextBatchOfObjects(objectListing);
         }
 
         return documents;

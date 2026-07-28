@@ -69,7 +69,11 @@ class ToolSpecificationHelper {
      * to a JsonSchemaElement object that describes the tool's arguments.
      */
     static JsonSchemaElement jsonNodeToJsonSchemaElement(JsonNode node) {
-        if (node.has("anyOf")) {
+        // MCP SEP-2106 allows composition keywords such as anyOf alongside type "object", and the tool
+        // inputSchema root is always type "object". JsonObjectSchema cannot represent a schema-level anyOf,
+        // so an object-typed node is parsed as an object (its anyOf constraint is not carried over) rather
+        // than as a JsonAnyOfSchema that the root would then fail to cast.
+        if (node.has("anyOf") && !isObjectType(node)) {
             JsonAnyOfSchema.Builder anyOf = JsonAnyOfSchema.builder();
             JsonSchemaElement[] types = StreamSupport.stream(node.get("anyOf").spliterator(), false)
                     .map(ToolSpecificationHelper::jsonNodeToJsonSchemaElement)
@@ -80,11 +84,11 @@ class ToolSpecificationHelper {
             }
             return anyOf.build();
         }
-        // Handle $ref (JSON Schema reference)
         if (node.has("$ref")) {
-            return JsonReferenceSchema.builder()
-                    .reference(extractReferenceKey(node.get("$ref").asText()))
-                    .build();
+            String referenceKey = extractReferenceKey(node.get("$ref").asText());
+            if (referenceKey != null) {
+                return JsonReferenceSchema.builder().reference(referenceKey).build();
+            }
         }
         JsonNode typeNode = node.get("type");
         // If no type is specified, default to object schema
@@ -207,6 +211,13 @@ class ToolSpecificationHelper {
         }
     }
 
+    private static boolean isObjectType(JsonNode node) {
+        JsonNode typeNode = node.get("type");
+        return typeNode != null
+                && typeNode.getNodeType() == JsonNodeType.STRING
+                && typeNode.asText().equals("object");
+    }
+
     private static JsonSchemaElement toTypeElement(JsonNode node) {
         if (!node.isTextual()) {
             throw new IllegalArgumentException(node + " is not a string");
@@ -232,8 +243,10 @@ class ToolSpecificationHelper {
     }
 
     /**
-     * Extracts the reference key from a JSON Schema $ref value.
-     * For example, "#/$defs/Foo" returns "Foo", "#/definitions/Bar" returns "Bar".
+     * Extracts the definition key from a JSON Schema $ref that targets a definition.
+     * For example, "#/$defs/Foo" returns "Foo" and "#/definitions/Bar" returns "Bar".
+     * Returns {@code null} for any other $ref (for example a pointer into the schema body),
+     * which is not a definition key.
      */
     private static String extractReferenceKey(String ref) {
         if (ref.startsWith("#/$defs/")) {
@@ -242,7 +255,7 @@ class ToolSpecificationHelper {
         if (ref.startsWith("#/definitions/")) {
             return ref.substring("#/definitions/".length());
         }
-        return ref;
+        return null;
     }
 
     private static String[] toStringArray(ArrayNode jsonArray) {

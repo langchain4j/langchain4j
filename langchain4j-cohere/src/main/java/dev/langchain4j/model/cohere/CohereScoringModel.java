@@ -8,6 +8,7 @@ import static java.util.Comparator.comparingInt;
 import static java.util.stream.Collectors.toList;
 
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.model.scoring.ScoringModel;
@@ -52,6 +53,7 @@ public class CohereScoringModel implements ScoringModel {
 
     public CohereScoringModel(CohereScoringModelBuilder builder) {
         this.client = CohereClient.builder()
+                .httpClientBuilder(builder.httpClientBuilder)
                 .baseUrl(getOrDefault(builder.baseUrl, DEFAULT_BASE_URL))
                 .apiKey(ensureNotBlank(builder.apiKey, "apiKey"))
                 .timeout(getOrDefault(builder.timeout, ofSeconds(60)))
@@ -98,6 +100,7 @@ public class CohereScoringModel implements ScoringModel {
     }
 
     public static class CohereScoringModelBuilder {
+        private HttpClientBuilder httpClientBuilder;
         private String baseUrl;
         private String apiKey;
         private String modelName;
@@ -109,6 +112,18 @@ public class CohereScoringModel implements ScoringModel {
         private Logger logger;
 
         CohereScoringModelBuilder() {}
+
+        /**
+         * Sets a custom HTTP client builder, allowing fine-grained control over the HTTP client
+         * configuration such as timeouts and proxy settings.
+         *
+         * @param httpClientBuilder the HTTP client builder
+         * @return {@code this}
+         */
+        public CohereScoringModelBuilder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
+            this.httpClientBuilder = httpClientBuilder;
+            return this;
+        }
 
         public CohereScoringModelBuilder baseUrl(String baseUrl) {
             this.baseUrl = baseUrl;
@@ -135,6 +150,15 @@ public class CohereScoringModel implements ScoringModel {
             return this;
         }
 
+        /**
+         * @param proxy the proxy (no longer applied)
+         * @return {@code this}
+         * @deprecated Proxy configuration via {@code proxy(...)} is no longer supported since the migration to the
+         * langchain4j HttpClient abstraction. Passing a non-null proxy will cause an
+         * {@link UnsupportedOperationException} when the model is built. To configure a proxy, supply a custom
+         * {@link HttpClientBuilder} via {@link #httpClientBuilder(HttpClientBuilder)} instead.
+         */
+        @Deprecated
         public CohereScoringModelBuilder proxy(Proxy proxy) {
             this.proxy = proxy;
             return this;

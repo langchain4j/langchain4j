@@ -17,6 +17,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.SocketTimeoutException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -50,6 +51,8 @@ public class ApacheHttpClient implements HttpClient {
     private final CloseableHttpAsyncClient asyncClient;
 
     public ApacheHttpClient(ApacheHttpClientBuilder builder) {
+        boolean syncBuilderProvidedByUser = builder.httpClientBuilder() != null;
+        boolean asyncBuilderProvidedByUser = builder.httpAsyncClientBuilder() != null;
         org.apache.hc.client5.http.impl.classic.HttpClientBuilder syncHttpClientBuilder =
                 getOrDefault(builder.httpClientBuilder(), HttpClients::custom);
         org.apache.hc.client5.http.impl.async.HttpAsyncClientBuilder asyncHttpClientBuilder =
@@ -58,8 +61,7 @@ public class ApacheHttpClient implements HttpClient {
         RequestConfig.Builder requestConfigBuilder = RequestConfig.custom();
 
         if (builder.connectTimeout() != null) {
-            requestConfigBuilder.setConnectionRequestTimeout(
-                    Timeout.ofMilliseconds(builder.connectTimeout().toMillis()));
+            setConnectTimeout(requestConfigBuilder, builder.connectTimeout());
         }
         if (builder.readTimeout() != null) {
             requestConfigBuilder.setResponseTimeout(
@@ -69,9 +71,29 @@ public class ApacheHttpClient implements HttpClient {
         RequestConfig requestConfig = requestConfigBuilder.build();
         asyncHttpClientBuilder.setDefaultRequestConfig(requestConfig);
         syncHttpClientBuilder.setDefaultRequestConfig(requestConfig);
+
+        if (!syncBuilderProvidedByUser) {
+            syncHttpClientBuilder.disableAutomaticRetries();
+        }
+        if (!asyncBuilderProvidedByUser) {
+            asyncHttpClientBuilder.disableAutomaticRetries();
+        }
+
         this.syncClient = syncHttpClientBuilder.build();
         this.asyncClient = asyncHttpClientBuilder.build();
         this.asyncClient.start();
+    }
+
+    /**
+     * {@code RequestConfig.Builder.setConnectTimeout} is deprecated in favour of
+     * {@code ConnectionConfig.Builder.setConnectTimeout}, but the latter can only be applied through a
+     * connection manager, which would override the one a user may have configured on the supplied client builders.
+     * The connect timeout from {@code RequestConfig} takes precedence over {@code ConnectionConfig} when set,
+     * and is read by both the sync and the async execution runtimes.
+     */
+    @SuppressWarnings("deprecation")
+    private static void setConnectTimeout(RequestConfig.Builder requestConfigBuilder, Duration connectTimeout) {
+        requestConfigBuilder.setConnectTimeout(Timeout.ofMilliseconds(connectTimeout.toMillis()));
     }
 
     public static ApacheHttpClientBuilder builder() {

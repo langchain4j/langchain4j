@@ -37,6 +37,7 @@ import dev.langchain4j.model.anthropic.AnthropicCacheDiagnostics;
 import dev.langchain4j.model.anthropic.AnthropicServerTool;
 import dev.langchain4j.model.anthropic.AnthropicServerToolResult;
 import dev.langchain4j.model.anthropic.AnthropicTokenUsage;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicCacheControl;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCacheMissReason;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCacheType;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicContent;
@@ -80,6 +81,10 @@ public class AnthropicMapper {
     public static final String SERVER_TOOL_RESULTS_KEY =
             "server_tool_results"; // do not change, will break backward compatibility!
     public static final String CACHE_CONTROL = "cache_control";
+
+    private static boolean isMarkedForCaching(Map<String, Object> attributes) {
+        return attributes != null && "ephemeral".equals(attributes.get(CACHE_CONTROL));
+    }
 
     public static List<AnthropicMessage> toAnthropicMessages(List<ChatMessage> messages) {
         return toAnthropicMessages(messages, false, false);
@@ -137,10 +142,14 @@ public class AnthropicMapper {
     }
 
     private static AnthropicToolResultContent toAnthropicToolResultContent(ToolExecutionResultMessage message) {
+        AnthropicCacheControl cacheControl =
+                isMarkedForCaching(message.attributes()) ? AnthropicCacheType.EPHEMERAL.cacheControl() : null;
+        Boolean isError = Boolean.TRUE.equals(message.isError()) ? true : null;
+
         if (message.hasSingleText()) {
-            return new AnthropicToolResultContent(
-                    message.id(), message.text(), Boolean.TRUE.equals(message.isError()) ? true : null);
+            return new AnthropicToolResultContent(message.id(), message.text(), isError, cacheControl);
         }
+
         List<AnthropicMessageContent> contentBlocks = new ArrayList<>();
         for (dev.langchain4j.data.message.Content content : message.contents()) {
             if (content instanceof TextContent textContent) {
@@ -158,13 +167,11 @@ public class AnthropicMapper {
                 throw illegalArgument("Unsupported content type in tool result: " + content.type());
             }
         }
-        return new AnthropicToolResultContent(
-                message.id(), contentBlocks, Boolean.TRUE.equals(message.isError()) ? true : null);
+        return new AnthropicToolResultContent(message.id(), contentBlocks, isError, cacheControl);
     }
 
     private static List<AnthropicMessageContent> toAnthropicMessageContents(UserMessage message) {
-        boolean shouldCache = message.attributes() != null
-                && "ephemeral".equals(message.attributes().get(CACHE_CONTROL));
+        boolean shouldCache = isMarkedForCaching(message.attributes());
 
         List<dev.langchain4j.data.message.Content> contents = message.contents();
         List<AnthropicMessageContent> anthropicContents = new ArrayList<>();
@@ -226,19 +233,32 @@ public class AnthropicMapper {
             }
         }
 
+        boolean shouldCache = isMarkedForCaching(message.attributes());
+        boolean hasToolExecutionRequests = message.hasToolExecutionRequests();
+
         if (isNotNullOrBlank(message.text())) {
-            contents.add(new AnthropicTextContent(message.text()));
+            // the tool_use blocks added below (if any) become the last content block instead of this text
+            boolean applyCache = shouldCache && !hasToolExecutionRequests;
+            contents.add(
+                    applyCache
+                            ? new AnthropicTextContent(message.text(), AnthropicCacheType.EPHEMERAL.cacheControl())
+                            : new AnthropicTextContent(message.text()));
         }
 
-        if (message.hasToolExecutionRequests()) {
-            List<AnthropicToolUseContent> toolUseContents = message.toolExecutionRequests().stream()
-                    .map(toolExecutionRequest -> AnthropicToolUseContent.builder()
-                            .id(toolExecutionRequest.id())
-                            .name(toolExecutionRequest.name())
-                            .input(toAnthropicInput(toolExecutionRequest))
-                            .build())
-                    .toList();
-            contents.addAll(toolUseContents);
+        if (hasToolExecutionRequests) {
+            List<ToolExecutionRequest> toolExecutionRequests = message.toolExecutionRequests();
+            for (int i = 0; i < toolExecutionRequests.size(); i++) {
+                ToolExecutionRequest toolExecutionRequest = toolExecutionRequests.get(i);
+                boolean isLastItem = i == toolExecutionRequests.size() - 1;
+                AnthropicToolUseContent.Builder toolUseContentBuilder = AnthropicToolUseContent.builder()
+                        .id(toolExecutionRequest.id())
+                        .name(toolExecutionRequest.name())
+                        .input(toAnthropicInput(toolExecutionRequest));
+                if (shouldCache && isLastItem) {
+                    toolUseContentBuilder.cacheControl(AnthropicCacheType.EPHEMERAL.cacheControl());
+                }
+                contents.add(toolUseContentBuilder.build());
+            }
         }
 
         return contents;

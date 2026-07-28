@@ -43,15 +43,11 @@ import org.slf4j.Logger;
 public class MistralAiChatModel implements ChatModel {
 
     private final MistralAiClient client;
-    private final Boolean safePrompt;
-    private final Integer randomSeed;
-    private final boolean returnThinking;
-    private final boolean sendThinking;
     private final Integer maxRetries;
     private final List<ChatModelListener> listeners;
     private final Set<Capability> supportedCapabilities;
     private final boolean strictJsonSchema;
-    private final ChatRequestParameters defaultRequestParameters;
+    private final MistralAiChatRequestParameters defaultRequestParameters;
 
     public MistralAiChatModel(MistralAiChatModelBuilder builder) {
         this.client = MistralAiClient.builder()
@@ -65,10 +61,6 @@ public class MistralAiChatModel implements ChatModel {
                 .customHeaders(builder.customHeadersSupplier)
                 .build();
 
-        this.safePrompt = builder.safePrompt;
-        this.randomSeed = builder.randomSeed;
-        this.returnThinking = getOrDefault(builder.returnThinking, false);
-        this.sendThinking = getOrDefault(builder.sendThinking, false);
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
         this.listeners = copy(builder.listeners);
         this.supportedCapabilities = copy(builder.supportedCapabilities);
@@ -76,7 +68,7 @@ public class MistralAiChatModel implements ChatModel {
         this.defaultRequestParameters = initDefaultRequestParameters(builder);
     }
 
-    private ChatRequestParameters initDefaultRequestParameters(MistralAiChatModelBuilder builder) {
+    private MistralAiChatRequestParameters initDefaultRequestParameters(MistralAiChatModelBuilder builder) {
         ChatRequestParameters commonParameters;
         if (builder.defaultRequestParameters != null) {
             validate(builder.defaultRequestParameters);
@@ -85,7 +77,10 @@ public class MistralAiChatModel implements ChatModel {
             commonParameters = DefaultChatRequestParameters.EMPTY;
         }
 
-        return DefaultChatRequestParameters.builder()
+        MistralAiChatRequestParameters mistralParameters =
+                commonParameters instanceof MistralAiChatRequestParameters m ? m : MistralAiChatRequestParameters.EMPTY;
+
+        return MistralAiChatRequestParameters.builder()
                 .modelName(getOrDefault(builder.modelName, commonParameters.modelName()))
                 .temperature(getOrDefault(builder.temperature, commonParameters.temperature()))
                 .topP(getOrDefault(builder.topP, commonParameters.topP()))
@@ -96,15 +91,25 @@ public class MistralAiChatModel implements ChatModel {
                 .toolSpecifications(commonParameters.toolSpecifications())
                 .toolChoice(commonParameters.toolChoice())
                 .responseFormat(getOrDefault(builder.responseFormat, commonParameters.responseFormat()))
+                .safePrompt(getOrDefault(builder.safePrompt, mistralParameters.safePrompt()))
+                .randomSeed(getOrDefault(builder.randomSeed, mistralParameters.randomSeed()))
+                .sendThinking(getOrDefault(builder.sendThinking, mistralParameters.sendThinking()))
+                .returnThinking(getOrDefault(builder.returnThinking, mistralParameters.returnThinking()))
                 .build();
     }
 
     @Override
     public ChatResponse doChat(ChatRequest chatRequest) {
-        validate(chatRequest.parameters());
+        MistralAiChatRequestParameters parameters = (MistralAiChatRequestParameters) chatRequest.parameters();
+        validate(parameters);
 
-        MistralAiChatCompletionRequest request =
-                createMistralAiRequest(chatRequest, safePrompt, randomSeed, false, sendThinking, strictJsonSchema);
+        MistralAiChatCompletionRequest request = createMistralAiRequest(
+                chatRequest,
+                parameters.safePrompt(),
+                parameters.randomSeed(),
+                false,
+                getOrDefault(parameters.sendThinking(), false),
+                strictJsonSchema);
 
         ParsedAndRawResponse<MistralAiChatCompletionResponse> response =
                 withRetryMappingExceptions(() -> client.chatCompletionWithRawResponse(request), maxRetries);
@@ -112,7 +117,7 @@ public class MistralAiChatModel implements ChatModel {
         MistralAiChatCompletionResponse mistralAiResponse = response.parsedResponse();
 
         return ChatResponse.builder()
-                .aiMessage(aiMessageFrom(mistralAiResponse, returnThinking))
+                .aiMessage(aiMessageFrom(mistralAiResponse, getOrDefault(parameters.returnThinking(), false)))
                 .metadata(MistralAiChatResponseMetadata.builder()
                         .id(mistralAiResponse.getId())
                         .modelName(mistralAiResponse.getModel())
@@ -125,7 +130,7 @@ public class MistralAiChatModel implements ChatModel {
     }
 
     @Override
-    public ChatRequestParameters defaultRequestParameters() {
+    public MistralAiChatRequestParameters defaultRequestParameters() {
         return defaultRequestParameters;
     }
 

@@ -30,8 +30,6 @@ public enum MistralAiChatModelName {
 
     CODESTRAL_LATEST("codestral-latest"),
 
-    VOXTRAL_MINI_LATEST("voxtral-mini-latest"),
-
     VOXTRAL_SMALL_LATEST("voxtral-small-latest");
 
     private final String value;
