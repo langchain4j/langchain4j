@@ -10,8 +10,8 @@ import org.junit.jupiter.api.Test;
 
 class DocumentLoaderTest implements WithAssertions {
 
-    private static final DocumentParser COLLIDING_PARSER =
-            inputStream -> Document.from("Hello, world!", new Metadata().put("foo", "baz").put("title", "Bar"));
+    private static final DocumentParser COLLIDING_PARSER = inputStream ->
+            Document.from("Hello, world!", new Metadata().put("foo", "baz").put("title", "Bar"));
 
     public static final class StringSource implements DocumentSource {
         private final String content;
