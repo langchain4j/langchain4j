@@ -125,37 +125,6 @@ public interface StreamingChatModel {
         throw new RuntimeException("Not implemented");
     }
 
-    default ChatRequestParameters defaultRequestParameters() {
-        return DefaultChatRequestParameters.EMPTY;
-    }
-
-    default List<ChatModelListener> listeners() {
-        return List.of();
-    }
-
-    default ModelProvider provider() {
-        return OTHER;
-    }
-
-    default Set<Capability> supportedCapabilities() {
-        return Set.of();
-    }
-
-    default void chat(String userMessage, StreamingChatResponseHandler handler) {
-
-        ChatRequest chatRequest =
-                ChatRequest.builder().messages(UserMessage.from(userMessage)).build();
-
-        chat(chatRequest, handler);
-    }
-
-    default void chat(List<ChatMessage> messages, StreamingChatResponseHandler handler) {
-
-        ChatRequest chatRequest = ChatRequest.builder().messages(messages).build();
-
-        chat(chatRequest, handler);
-    }
-
     /**
      * Reactive entry point: sends a chat request and returns a {@link Publisher} of {@link ChatModelStreamingEvent}s.
      * <p>
@@ -281,5 +250,107 @@ public interface StreamingChatModel {
         return AsyncNotSupported.failingPublisher(getClass(), "doChat");
     }
 
-    // TODO more convenience methods accepting String, messages, etc
+    default ChatRequestParameters defaultRequestParameters() {
+        return DefaultChatRequestParameters.EMPTY;
+    }
+
+    default List<ChatModelListener> listeners() {
+        return List.of();
+    }
+
+    default ModelProvider provider() {
+        return OTHER;
+    }
+
+    default void chat(String userMessage, StreamingChatResponseHandler handler) {
+
+        ChatRequest chatRequest =
+                ChatRequest.builder().messages(UserMessage.from(userMessage)).build();
+
+        chat(chatRequest, handler);
+    }
+
+    default void chat(List<ChatMessage> messages, StreamingChatResponseHandler handler) {
+
+        ChatRequest chatRequest = ChatRequest.builder().messages(messages).build();
+
+        chat(chatRequest, handler);
+    }
+
+    /**
+     * Reactive convenience counterpart of {@link #chat(String, StreamingChatResponseHandler)}: returns a cold
+     * {@code Publisher} that streams the model's textual response to {@code userMessage}, token by token.
+     * <p>
+     * This is the streaming analog of the simplified {@link ChatModel#chat(String)} (which returns the response
+     * {@code String}): it emits only the text chunks ({@link PartialResponse#text()}), filtering out the other
+     * {@link ChatModelStreamingEvent}s of the underlying {@link #chat(ChatRequest)} stream. For the full event stream,
+     * use {@link #chat(ChatMessage...)} / {@link #chat(List)} / {@link #chat(ChatRequest)}.
+     *
+     * @since 1.19.0
+     */
+    default Publisher<String> chat(String userMessage) {
+
+        ChatRequest chatRequest =
+                ChatRequest.builder().messages(UserMessage.from(userMessage)).build();
+
+        return downstream -> chat(chatRequest).subscribe(new Subscriber<>() {
+
+            private Subscription subscription;
+
+            @Override
+            public void onSubscribe(Subscription subscription) {
+                this.subscription = subscription;
+                downstream.onSubscribe(subscription);
+            }
+
+            @Override
+            public void onNext(ChatModelStreamingEvent event) {
+                if (event instanceof PartialResponse partialResponse) {
+                    downstream.onNext(partialResponse.text());
+                } else {
+                    subscription.request(1);
+                }
+            }
+
+            @Override
+            public void onError(Throwable throwable) {
+                downstream.onError(throwable);
+            }
+
+            @Override
+            public void onComplete() {
+                downstream.onComplete();
+            }
+        });
+    }
+
+    /**
+     * Reactive convenience overload accepting the messages directly: returns a cold {@code Publisher} that streams
+     * the response to {@code messages}.
+     *
+     * @since 1.19.0
+     */
+    default Publisher<ChatModelStreamingEvent> chat(ChatMessage... messages) {
+
+        ChatRequest chatRequest = ChatRequest.builder().messages(messages).build();
+
+        return chat(chatRequest);
+    }
+
+    /**
+     * Reactive convenience counterpart of {@link #chat(List, StreamingChatResponseHandler)}: returns a cold
+     * {@code Publisher} that streams the response to {@code messages}.
+     *
+     * @since 1.19.0
+     */
+    default Publisher<ChatModelStreamingEvent> chat(List<ChatMessage> messages) {
+
+        ChatRequest chatRequest = ChatRequest.builder().messages(messages).build();
+
+        return chat(chatRequest);
+    }
+
+    default Set<Capability> supportedCapabilities() {
+        return Set.of();
+    }
 }

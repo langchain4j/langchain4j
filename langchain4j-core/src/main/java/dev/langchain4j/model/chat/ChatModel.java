@@ -195,7 +195,42 @@ public interface ChatModel {
         return chat(chatRequest);
     }
 
-    // TODO chatAsync convenience methods
+    /**
+     * Non-blocking convenience counterpart of {@link #chat(String)}: completes with the text of the model's response.
+     *
+     * @since 1.19.0
+     */
+    default CompletableFuture<String> chatAsync(String userMessage) {
+
+        ChatRequest chatRequest =
+                ChatRequest.builder().messages(UserMessage.from(userMessage)).build();
+
+        return chatAsync(chatRequest).thenApply(chatResponse -> chatResponse.aiMessage().text());
+    }
+
+    /**
+     * Non-blocking convenience counterpart of {@link #chat(ChatMessage...)}.
+     *
+     * @since 1.19.0
+     */
+    default CompletableFuture<ChatResponse> chatAsync(ChatMessage... messages) {
+
+        ChatRequest chatRequest = ChatRequest.builder().messages(messages).build();
+
+        return chatAsync(chatRequest);
+    }
+
+    /**
+     * Non-blocking convenience counterpart of {@link #chat(List)}.
+     *
+     * @since 1.19.0
+     */
+    default CompletableFuture<ChatResponse> chatAsync(List<ChatMessage> messages) {
+
+        ChatRequest chatRequest = ChatRequest.builder().messages(messages).build();
+
+        return chatAsync(chatRequest);
+    }
 
     default Set<Capability> supportedCapabilities() {
         return Set.of();
