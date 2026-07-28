@@ -332,21 +332,7 @@ public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingSt
             String embeddedContent = (String) searchDocument.get(DEFAULT_FIELD_CONTENT);
             EmbeddingMatch<TextSegment> embeddingMatch;
             if (isNotNullOrBlank(embeddedContent)) {
-                LinkedHashMap metadata = (LinkedHashMap) searchDocument.get(DEFAULT_FIELD_METADATA);
-                Metadata langChainMetadata;
-                if (metadata == null) {
-                    langChainMetadata = Metadata.from(Collections.emptyMap());
-                } else {
-                    List attributes = (List) metadata.get(DEFAULT_FIELD_METADATA_ATTRS);
-                    Map<String, String> attributesMap = new HashMap<>();
-                    for (Object attribute : attributes) {
-                        LinkedHashMap innerAttribute = (LinkedHashMap) attribute;
-                        String key = (String) innerAttribute.get("key");
-                        String value = (String) innerAttribute.get("value");
-                        attributesMap.put(key, value);
-                    }
-                    langChainMetadata = Metadata.from(attributesMap);
-                }
+                Metadata langChainMetadata = metadataFrom(searchDocument.get(DEFAULT_FIELD_METADATA));
                 TextSegment embedded = TextSegment.textSegment(embeddedContent, langChainMetadata);
                 embeddingMatch = new EmbeddingMatch<>(score, embeddingId, embedding, embedded);
             } else {
@@ -355,6 +341,26 @@ public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingSt
             result.add(embeddingMatch);
         }
         return result;
+    }
+
+    static Metadata metadataFrom(Object rawMetadata) {
+        if (!(rawMetadata instanceof Map<?, ?> metadata)) {
+            return Metadata.from(Collections.emptyMap());
+        }
+        if (!(metadata.get(DEFAULT_FIELD_METADATA_ATTRS) instanceof List<?> attributes)) {
+            return Metadata.from(Collections.emptyMap());
+        }
+        Map<String, String> attributesMap = new HashMap<>();
+        for (Object attribute : attributes) {
+            if (attribute instanceof Map<?, ?> keyValue) {
+                Object key = keyValue.get("key");
+                Object value = keyValue.get("value");
+                if (key != null && value != null) {
+                    attributesMap.put(key.toString(), value.toString());
+                }
+            }
+        }
+        return Metadata.from(attributesMap);
     }
 
     private void addInternal(String id, Embedding embedding, TextSegment embedded) {
