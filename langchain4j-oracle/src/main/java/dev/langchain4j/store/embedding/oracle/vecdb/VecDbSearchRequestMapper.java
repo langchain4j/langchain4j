@@ -15,16 +15,16 @@ final class VecDbSearchRequestMapper {
 
     private VecDbSearchRequestMapper() {}
 
-    static VecDbSearchParameters map(EmbeddingSearchRequest request, VecDbDistanceMetric metric) {
+    static VecDbSearchParameters map(EmbeddingSearchRequest request, VecDbDistanceMetric distanceMetric) {
         ensureNotNull(request, "request");
-        ensureNotNull(metric, "metric");
+        ensureNotNull(distanceMetric, "distanceMetric");
 
         return new VecDbSearchParameters(
                 toSearchQueryJson(request.queryEmbedding()),
                 VecDbFilters.toJson(request.filter()),
                 request.maxResults(),
                 true,
-                advancedOptionsToJson(metric));
+                toAdvancedOptionsJson(distanceMetric));
     }
 
     private static String toSearchQueryJson(Embedding embedding) {
@@ -38,10 +38,10 @@ final class VecDbSearchRequestMapper {
         return query.toString();
     }
 
-    private static String advancedOptionsToJson(VecDbDistanceMetric metric) {
-        ObjectNode options = OBJECT_MAPPER.createObjectNode();
-        options.put("distance_metric", metric.name());
-        return options.toString();
+    private static String toAdvancedOptionsJson(VecDbDistanceMetric distanceMetric) {
+        ObjectNode advancedOptions = OBJECT_MAPPER.createObjectNode();
+        advancedOptions.put("distance_metric", distanceMetric.name());
+        return advancedOptions.toString();
     }
 
     record VecDbSearchParameters(

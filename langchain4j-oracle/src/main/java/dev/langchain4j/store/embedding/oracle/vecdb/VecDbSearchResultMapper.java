@@ -13,7 +13,6 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.oracle.vecdb.enums.VecDbDistanceMetric;
@@ -34,7 +33,6 @@ final class VecDbSearchResultMapper {
         ensureNotBlank(responseJson, "responseJson");
         ensureBetween(minScore, 0.0, 1.0, "minScore");
         ensureNotNull(distanceMetric, "distanceMetric");
-        requireCosineMetric(distanceMetric);
 
         JsonNode results = requiredField(readTree(responseJson), "results");
         if (!results.isArray()) {
@@ -47,7 +45,7 @@ final class VecDbSearchResultMapper {
                 throw invalidResponse("each \"results\" entry must be an object");
             }
 
-            double score = cosineScore(requiredFiniteNumber(result, "distance"));
+            double score = distanceToScore(requiredFiniteNumber(result, "distance"), distanceMetric);
             if (score < minScore) {
                 continue;
             }
@@ -62,19 +60,30 @@ final class VecDbSearchResultMapper {
         return new EmbeddingSearchResult<>(matches);
     }
 
-    private static void requireCosineMetric(VecDbDistanceMetric distanceMetric) {
-        if (distanceMetric != VecDbDistanceMetric.COSINE) {
-            throw new UnsupportedFeatureException(
-                    "VecDB search result scoring currently supports only COSINE distance, but was " + distanceMetric);
-        }
+    private static double distanceToScore(double distance, VecDbDistanceMetric distanceMetric) {
+        return switch (distanceMetric) {
+            case COSINE -> {
+                if (distance < 0.0 || distance > 2.0) {
+                    throw invalidResponse("cosine \"distance\" must be between 0 and 2");
+                }
+                yield 1.0 - distance / 2.0;
+            }
+            case EUCLIDEAN, MANHATTAN -> 1.0 / (1.0 + requireNonNegativeDistance(distance, distanceMetric));
+            case L2_SQUARED, EUCLIDEAN_SQUARED ->
+                1.0 / (1.0 + Math.sqrt(requireNonNegativeDistance(distance, distanceMetric)));
+            case DOT -> clampScore(-distance);
+        };
     }
 
-    private static double cosineScore(double distance) {
-        if (distance < 0.0 || distance > 2.0) {
-            throw invalidResponse("cosine \"distance\" must be between 0 and 2");
+    private static double requireNonNegativeDistance(double distance, VecDbDistanceMetric distanceMetric) {
+        if (distance < 0.0) {
+            throw invalidResponse(distanceMetric + " \"distance\" must not be negative");
         }
-        // Oracle cosine distance is in [0, 2]; LangChain4j relevance score reverses it into [1, 0].
-        return 1.0 - distance / 2.0;
+        return distance;
+    }
+
+    private static double clampScore(double score) {
+        return Math.max(0.0, Math.min(1.0, score));
     }
 
     private static Embedding toEmbedding(JsonNode vector) {

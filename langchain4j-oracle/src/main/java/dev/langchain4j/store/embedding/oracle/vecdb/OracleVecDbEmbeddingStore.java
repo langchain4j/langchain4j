@@ -30,22 +30,21 @@ import javax.sql.DataSource;
  * VecDB. Instances are immutable and safe to share between threads when the configured {@link DataSource} is
  * thread-safe.
  *
- * <p>Like {@code OracleEmbeddingStore}, this implementation uses cosine distance for both vector indexes and
- * similarity searches.
+ * <p>The required store distance metric controls similarity search and score conversion. It is independent from the
+ * vector-index metric. If they differ, Oracle bypasses the index and performs an exact search.
  */
 public final class OracleVecDbEmbeddingStore implements EmbeddingStore<TextSegment> {
-
-    private static final VecDbDistanceMetric DISTANCE_METRIC = VecDbDistanceMetric.COSINE;
 
     private final DataSource dataSource;
     private final VecDbEmbeddingTable embeddingTable;
     private final VecDbQueryExecutor queryExecutor;
+    private final VecDbDistanceMetric distanceMetric;
 
     private OracleVecDbEmbeddingStore(Builder builder) {
         this.dataSource = builder.dataSource;
         this.embeddingTable = builder.embeddingTable;
         this.queryExecutor = builder.queryExecutor;
-        requireCosineIndex(builder.index);
+        this.distanceMetric = builder.distanceMetric;
 
         VecDbSchemaManager schemaManager = new VecDbSchemaManager(queryExecutor);
         try (Connection connection = dataSource.getConnection()) {
@@ -166,7 +165,7 @@ public final class OracleVecDbEmbeddingStore implements EmbeddingStore<TextSegme
     @Override
     public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest request) {
         VecDbSearchRequestMapper.VecDbSearchParameters parameters =
-                VecDbSearchRequestMapper.map(request, DISTANCE_METRIC);
+                VecDbSearchRequestMapper.map(request, distanceMetric);
 
         try (Connection connection = dataSource.getConnection()) {
             String responseJson = queryExecutor.search(
@@ -177,7 +176,7 @@ public final class OracleVecDbEmbeddingStore implements EmbeddingStore<TextSegme
                     parameters.maxResults(),
                     parameters.includeVectors(),
                     parameters.advancedOptionsJson());
-            return VecDbSearchResultMapper.map(responseJson, request.minScore(), DISTANCE_METRIC);
+            return VecDbSearchResultMapper.map(responseJson, request.minScore(), distanceMetric);
         } catch (SQLException exception) {
             throw unchecked(exception);
         }
@@ -188,18 +187,6 @@ public final class OracleVecDbEmbeddingStore implements EmbeddingStore<TextSegme
             queryExecutor.upsertVectors(connection, embeddingTable.name(), vectorsJson);
         } catch (SQLException exception) {
             throw unchecked(exception);
-        }
-    }
-
-    private static void requireCosineIndex(VecDbVectorIndex index) {
-        if (index == null) {
-            return;
-        }
-
-        VecDbDistanceMetric indexMetric = index.distanceMetric();
-        if (indexMetric != DISTANCE_METRIC) {
-            throw new IllegalArgumentException(
-                    "OracleVecDbEmbeddingStore requires a COSINE vector index, but was " + indexMetric);
         }
     }
 
@@ -222,6 +209,7 @@ public final class OracleVecDbEmbeddingStore implements EmbeddingStore<TextSegme
         private DataSource dataSource;
         private VecDbEmbeddingTable embeddingTable;
         private VecDbVectorIndex index;
+        private VecDbDistanceMetric distanceMetric;
         private VecDbMetadataIndex metadataIndex;
         private Integer parallelCreation;
         private VecDbQueryExecutor queryExecutor = new VecDbJdbcQueryExecutor();
@@ -253,11 +241,38 @@ public final class OracleVecDbEmbeddingStore implements EmbeddingStore<TextSegme
             return this;
         }
 
-        /** Configures the vector index. The index must use cosine distance. */
+        /** Configures the vector index, including its independent index-time distance metric. */
         public Builder index(VecDbVectorIndex index) {
-            index = ensureNotNull(index, "index");
-            requireCosineIndex(index);
-            this.index = index;
+            this.index = ensureNotNull(index, "index");
+            return this;
+        }
+
+        /**
+         * Configures the distance metric used for VecDB searches and score conversion.
+         *
+         * <p>The metric is written to {@code advanced_options.distance_metric}. It is independent from
+         * {@link VecDbIndexBuilder#distanceMetric(VecDbDistanceMetric)}, which configures the vector index. If the
+         * values differ, Oracle cannot use that index and performs an exact search with this store metric.
+         *
+         * <p>Oracle's underlying metric-selection rules are:
+         * <ul>
+         *     <li>A search over one indexed vector column uses that index's metric.</li>
+         *     <li>A search without a vector index uses cosine when no metric is specified.</li>
+         *     <li>A query involving multiple indexed vector columns uses their metric only when all indexes share it;
+         *     otherwise it uses cosine.</li>
+         * </ul>
+         *
+         * <p>This store always supplies the configured search metric. An approximate index-based search requires its
+         * value to match the vector-index metric.
+         *
+         * @param distanceMetric search-time distance metric
+         * @return this builder
+         * @throws IllegalArgumentException if {@code distanceMetric} is {@code null}
+         * @see <a href="https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/vector_distance.html">
+         *     Oracle VECTOR_DISTANCE metric-selection rules</a>
+         */
+        public Builder distanceMetric(VecDbDistanceMetric distanceMetric) {
+            this.distanceMetric = ensureNotNull(distanceMetric, "distanceMetric");
             return this;
         }
 
@@ -282,6 +297,7 @@ public final class OracleVecDbEmbeddingStore implements EmbeddingStore<TextSegme
         public OracleVecDbEmbeddingStore build() {
             ensureNotNull(dataSource, "dataSource");
             ensureNotNull(embeddingTable, "embeddingTable");
+            ensureNotNull(distanceMetric, "distanceMetric");
             return new OracleVecDbEmbeddingStore(this);
         }
     }

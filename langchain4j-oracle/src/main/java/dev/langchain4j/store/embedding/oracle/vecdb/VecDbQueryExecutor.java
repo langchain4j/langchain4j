@@ -56,7 +56,7 @@ interface VecDbQueryExecutor {
      * @param filtersJson optional metadata filter JSON
      * @param maxResults maximum number of nearest results
      * @param includeVectors whether returned matches should include their stored vector
-     * @param advancedOptionsJson optional search options, including the index distance metric
+     * @param advancedOptionsJson optional search-time options
      */
     String search(
             Connection connection,

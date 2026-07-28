@@ -53,8 +53,7 @@ final class VecDbIndexJsonMapper {
         ObjectNode vectorIndexParameters = OBJECT_MAPPER.createObjectNode();
         vectorIndexParameters.put("auto_index", vectorIndex.createOption() != CreateOption.CREATE_NONE);
         vectorIndexParameters.put("organization", toDatabaseValue(vectorIndex.organization()));
-        vectorIndexParameters.put(
-                "distance_metric", vectorIndex.distanceMetric().name());
+        vectorIndexParameters.put("distance_metric", vectorIndex.distanceMetric().name());
 
         if (vectorIndex.accuracy() != null) {
             vectorIndexParameters.put("accuracy", vectorIndex.accuracy());
