@@ -14,6 +14,8 @@ import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.model.scoring.ScoringModel;
+import dev.langchain4j.model.scoring.request.ScoringRequest;
+import dev.langchain4j.model.scoring.response.ScoringResponse;
 import java.net.Proxy;
 import java.time.Duration;
 import java.util.List;
@@ -111,22 +113,26 @@ public class CohereScoringModel implements ScoringModel {
      * (retry-around-future, composing futures without parking a thread); a cancellation is never retried.
      */
     @Override
-    public CompletableFuture<Response<List<Double>>> scoreAllAsync(List<TextSegment> segments, String query) {
+    public CompletableFuture<ScoringResponse> doScoreAsync(ScoringRequest scoringRequest) {
 
         RerankRequest request = RerankRequest.builder()
-                .model(modelName)
-                .query(query)
-                .documents(segments.stream().map(TextSegment::text).collect(toList()))
+                .model(getOrDefault(scoringRequest.modelName(), modelName))
+                .query(scoringRequest.query())
+                .documents(scoringRequest.documents())
                 .build();
 
         CompletableFuture<RerankResponse> rerankFuture =
                 withRetryMappingExceptionsAsync(() -> client.rerankAsync(request), maxRetries);
-        CompletableFuture<Response<List<Double>>> result = rerankFuture.thenApply(response -> {
+        CompletableFuture<ScoringResponse> result = rerankFuture.thenApply(response -> {
             List<Double> scores = response.getResults().stream()
                     .sorted(comparingInt(Result::getIndex))
                     .map(Result::getRelevanceScore)
                     .collect(toList());
-            return Response.from(scores, new TokenUsage(response.getMeta().getBilledUnits().getSearchUnits()));
+            return ScoringResponse.builder()
+                    .scores(scores)
+                    .modelName(getOrDefault(scoringRequest.modelName(), modelName))
+                    .tokenUsage(new TokenUsage(response.getMeta().getBilledUnits().getSearchUnits()))
+                    .build();
         });
         propagateCancellation(result, rerankFuture);
         return result;

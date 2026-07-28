@@ -67,7 +67,7 @@ become non-blocking.
   retrieved RAG content).
 
 On the model/provider side, **OpenAI** implements the async + reactive chat methods and async embeddings,
-**Cohere** implements async scoring/re-rank (`scoreAllAsync`) and **Tavily** implements async web search
+**Cohere** implements async scoring/re-rank (`scoreAsync`) and **Tavily** implements async web search
 (`searchAsync`); other providers fall back to the fail-loud defaults until implemented (see §8).
 
 ### 3.1 Threading model — "non-blocking" and "non-pinning"
@@ -247,7 +247,7 @@ history can't corrupt conversation state (see §3.7).
 
 > **(a) Every async SPI returns `CompletableFuture` (uniform surface); cancellability is a usage decision, not a type.**
 > All async SPI methods return `CompletableFuture<T>` (or `Flow.Publisher<T>` for streaming) — `ChatModel.chatAsync`,
-> `EmbeddingModel.embedAsync`, `EmbeddingStore.searchAsync`, `ScoringModel.scoreAllAsync`, `WebSearchEngine.searchAsync`,
+> `EmbeddingModel.embedAsync`, `EmbeddingStore.searchAsync`, `ScoringModel.scoreAsync`, `WebSearchEngine.searchAsync`,
 > the RAG stage methods, `ToolExecutor.executeAsync`, `Guardrail.validateAsync`, `ChatExecutor.executeAsync`, **and** the
 > `ChatMemory` / `ChatMemoryStore` async methods. A uniform return type keeps the SPI predictable (a provider implementing
 > both an `EmbeddingStore` and a `ChatMemoryStore` sees the same shape) and lets the framework wire cancellation the same
@@ -260,7 +260,7 @@ history can't corrupt conversation state (see §3.7).
 > **(b) The new async SPIs report `AsyncNotSupportedException` by default — uniformly.**
 > Every async SPI default reports `AsyncNotSupportedException` (a `NonRetriableException`, and hence a `LangChain4jException`) through its return type — a failed `CompletableFuture`, or a failing `Flow.Publisher` for the two publisher-returning methods (`StreamingChatModel.doChat(ChatRequest)`, `HttpClient.stream`): the model
 > layer (`ChatModel.doChatAsync`, `StreamingChatModel.doChat(ChatRequest)`, `EmbeddingModel.doEmbedAsync`,
-> `ScoringModel.scoreAllAsync`), `EmbeddingStore.searchAsync`, `WebSearchEngine.searchAsync`, the RAG stage SPIs
+> `ScoringModel.scoreAsync`), `EmbeddingStore.searchAsync`, `WebSearchEngine.searchAsync`, the RAG stage SPIs
 > (`RetrievalAugmentor.augmentAsync`, `QueryTransformer.transformAsync`, `QueryRouter.routeAsync`,
 > `ContentRetriever.retrieveAsync`, `ContentAggregator.aggregateAsync`), `ChatMemory`/`ChatMemoryStore`,
 > `ToolExecutor.executeAsync`, `Guardrail.validateAsync`, `ChatExecutor.executeAsync`, and
@@ -320,7 +320,7 @@ RAG has an async surface mirroring the synchronous one, at every stage: `Retriev
 `QueryTransformer.transformAsync`, `QueryRouter.routeAsync`, `ContentRetriever.retrieveAsync`,
 `ContentAggregator.aggregateAsync`, and — beneath the leaf stages — `EmbeddingModel.embedAsync` (over the
 overridable `doEmbedAsync`) and `EmbeddingStore.searchAsync` (beneath the embedding retriever),
-`ScoringModel.scoreAllAsync` (beneath the re-ranking aggregator), and `WebSearchEngine.searchAsync` (beneath the
+`ScoringModel.scoreAsync` (beneath the re-ranking aggregator), and `WebSearchEngine.searchAsync` (beneath the
 web-search retriever). `DefaultRetrievalAugmentor.augmentAsync` composes the
 transform → route → retrieve → aggregate stages, each on its component's native async method. The default,
 no-I/O stages (`DefaultQueryTransformer`, `DefaultQueryRouter`, `DefaultContentAggregator`, and the CPU-only
@@ -374,7 +374,7 @@ Which stage implementations are async today:
   chat model is, e.g. OpenAI).
 - `EmbeddingStoreContentRetriever` is native over `EmbeddingModel.embedAsync` + `EmbeddingStore.searchAsync`
   (genuinely non-blocking with, e.g., OpenAI embeddings + a store that overrides `searchAsync`).
-- `ReRankingContentAggregator` is native over `ScoringModel.scoreAllAsync`, and `WebSearchContentRetriever` is
+- `ReRankingContentAggregator` is native over `ScoringModel.scoreAsync`, and `WebSearchContentRetriever` is
   native over `WebSearchEngine.searchAsync`. They are genuinely non-blocking when their model/engine overrides the
   async method — `CohereScoringModel` and `TavilyWebSearchEngine` do (via the OkHttp async dispatcher, no thread
   parked, cancellation propagated to the in-flight call). A `ScoringModel`/`WebSearchEngine` that has not overridden

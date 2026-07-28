@@ -1,8 +1,8 @@
 package dev.langchain4j.model.cohere;
 
-import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.scoring.ScoringModel;
+import dev.langchain4j.model.scoring.request.ScoringRequest;
+import dev.langchain4j.model.scoring.response.ScoringResponse;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -17,7 +17,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Deterministic (no API key) coverage of {@link CohereScoringModel#scoreAllAsync}'s cancellation contract:
+ * Deterministic (no API key) coverage of {@link CohereScoringModel#doScoreAsync}'s cancellation contract:
  * cancelling the returned future must abort the in-flight HTTP call. A raw server socket accepts the connection but
  * never responds; when the OkHttp call is cancelled it closes the socket, which the server observes as EOF. Without
  * cancellation reaching the HTTP call the socket would stay open and the assertion would time out.
@@ -25,7 +25,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class CohereScoringModelAsyncTest {
 
     @Test
-    void scoreAllAsync_cancellation_aborts_the_in_flight_http_call() throws Exception {
+    void scoreAsync_cancellation_aborts_the_in_flight_http_call() throws Exception {
         try (ServerSocket server = new ServerSocket(0)) {
             CountDownLatch accepted = new CountDownLatch(1);
             CompletableFuture<Boolean> clientDisconnected = new CompletableFuture<>();
@@ -55,8 +55,10 @@ class CohereScoringModelAsyncTest {
                     .maxRetries(0)
                     .build();
 
-            CompletableFuture<Response<List<Double>>> future =
-                    model.scoreAllAsync(List.of(TextSegment.from("labrador retriever")), "tell me about dogs");
+            CompletableFuture<ScoringResponse> future = model.scoreAsync(ScoringRequest.builder()
+                    .documents(List.of("labrador retriever"))
+                    .query("tell me about dogs")
+                    .build());
 
             assertThat(accepted.await(5, SECONDS)).isTrue();
             assertThat(future).isNotDone();

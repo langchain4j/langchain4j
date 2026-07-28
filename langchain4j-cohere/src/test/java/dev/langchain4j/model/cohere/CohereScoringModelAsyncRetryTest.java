@@ -13,8 +13,9 @@ import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.http.client.sse.ServerSentEventParser;
-import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.scoring.ScoringModel;
+import dev.langchain4j.model.scoring.request.ScoringRequest;
+import dev.langchain4j.model.scoring.response.ScoringResponse;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -24,7 +25,7 @@ import java.util.function.Supplier;
 import org.junit.jupiter.api.Test;
 
 /**
- * Deterministic coverage of the non-blocking retry on {@link CohereScoringModel#scoreAllAsync}: a mock HTTP client
+ * Deterministic coverage of the non-blocking retry on {@link CohereScoringModel#doScoreAsync}: a mock HTTP client
  * drives retriable / non-retriable failures so the async rerank path is shown to retry (and map) exactly like the
  * blocking path, without hitting a real server.
  */
@@ -105,8 +106,15 @@ class CohereScoringModelAsyncRetryTest {
         return List.of(TextSegment.from("labrador retriever"));
     }
 
+    private static ScoringRequest request(String query) {
+        return ScoringRequest.builder()
+                .documents(segments().stream().map(TextSegment::text).toList())
+                .query(query)
+                .build();
+    }
+
     @Test
-    void scoreAllAsync_retries_a_retriable_failure_and_then_succeeds() throws Exception {
+    void scoreAsync_retries_a_retriable_failure_and_then_succeeds() throws Exception {
         AtomicInteger calls = new AtomicInteger();
         ScoringModel model = model(
                 httpClient(() -> calls.incrementAndGet() <= 2
@@ -114,15 +122,14 @@ class CohereScoringModelAsyncRetryTest {
                         : CompletableFuture.completedFuture(okResponse())),
                 2);
 
-        Response<List<Double>> response =
-                model.scoreAllAsync(segments(), "tell me about dogs").get(30, SECONDS);
+        ScoringResponse response = model.scoreAsync(request("tell me about dogs")).get(30, SECONDS);
 
-        assertThat(response.content()).hasSize(1);
+        assertThat(response.scores()).hasSize(1);
         assertThat(calls).as("two retriable (429) failures + one success").hasValue(3);
     }
 
     @Test
-    void scoreAllAsync_does_not_retry_a_non_retriable_failure() {
+    void scoreAsync_does_not_retry_a_non_retriable_failure() {
         AtomicInteger calls = new AtomicInteger();
         ScoringModel model = model(
                 httpClient(() -> {
@@ -132,7 +139,7 @@ class CohereScoringModelAsyncRetryTest {
                 5);
 
         // a 401 maps to AuthenticationException (NonRetriableException) - it must fail immediately, no retries
-        assertThatThrownBy(() -> model.scoreAllAsync(segments(), "q").get(10, SECONDS))
+        assertThatThrownBy(() -> model.scoreAsync(request("q")).get(10, SECONDS))
                 .hasCauseInstanceOf(AuthenticationException.class);
         assertThat(calls).hasValue(1);
     }

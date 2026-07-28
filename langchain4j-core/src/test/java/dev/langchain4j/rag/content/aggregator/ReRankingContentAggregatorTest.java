@@ -18,6 +18,8 @@ import static org.mockito.Mockito.when;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.scoring.ScoringModel;
+import dev.langchain4j.model.scoring.request.ScoringRequest;
+import dev.langchain4j.model.scoring.response.ScoringResponse;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.ContentMetadata;
 import dev.langchain4j.rag.query.Query;
@@ -269,7 +271,7 @@ class ReRankingContentAggregatorTest {
     }
 
     @Test
-    void aggregateAsync_should_rerank_over_scoreAllAsync() throws Exception {
+    void aggregateAsync_should_rerank_over_scoreAsync() throws Exception {
 
         // given
         Query query = Query.from("query");
@@ -279,7 +281,8 @@ class ReRankingContentAggregatorTest {
                 singletonMap(query, singletonList(asList(content1, content2)));
 
         ScoringModel scoringModel = mock(ScoringModel.class);
-        when(scoringModel.scoreAllAsync(any(), any())).thenReturn(completedFuture(Response.from(asList(0.5, 0.7))));
+        when(scoringModel.scoreAsync(any(ScoringRequest.class)))
+                .thenReturn(completedFuture(ScoringResponse.builder().scores(asList(0.5, 0.7)).build()));
         ContentAggregator aggregator = new ReRankingContentAggregator(scoringModel);
 
         // when
@@ -311,7 +314,7 @@ class ReRankingContentAggregatorTest {
         Map<Query, Collection<List<Content>>> queryToContents =
                 singletonMap(query, singletonList(singletonList(Content.from("content 1"))));
 
-        // A scoring model that implements only the blocking scoreAll, leaving scoreAllAsync as the throwing default
+        // A scoring model that implements only the blocking scoreAll, leaving doScoreAsync as the throwing default
         ScoringModel blockingOnly = (segments, q) -> Response.from(singletonList(0.9));
         ContentAggregator aggregator = new ReRankingContentAggregator(blockingOnly);
 
@@ -322,7 +325,7 @@ class ReRankingContentAggregatorTest {
                 .isInstanceOf(java.util.concurrent.ExecutionException.class)
                 .cause()
                 .isExactlyInstanceOf(AsyncNotSupportedException.class)
-                .hasMessageContaining("scoreAllAsync");
+                .hasMessageContaining("doScoreAsync");
     }
 
     private void assertReRankedContentOrder(List<Content> actual, Content... expectedContents) {

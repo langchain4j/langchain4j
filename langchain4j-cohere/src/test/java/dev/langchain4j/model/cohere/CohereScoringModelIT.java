@@ -3,6 +3,8 @@ package dev.langchain4j.model.cohere;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.scoring.ScoringModel;
+import dev.langchain4j.model.scoring.request.ScoringRequest;
+import dev.langchain4j.model.scoring.response.ScoringResponse;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
@@ -76,7 +78,7 @@ class CohereScoringModelIT {
     }
 
     @Test
-    void scoreAllAsync_should_score_multiple_segments() throws Exception {
+    void scoreAsync_should_score_multiple_segments() throws Exception {
 
         // given
         ScoringModel model = CohereScoringModel.builder()
@@ -93,15 +95,17 @@ class CohereScoringModelIT {
         String query = "tell me about dogs";
 
         // when
-        Response<List<Double>> response = model.scoreAllAsync(segments, query).get(30, SECONDS);
+        ScoringResponse response = model.scoreAsync(ScoringRequest.builder()
+                        .documents(segments.stream().map(TextSegment::text).toList())
+                        .query(query)
+                        .build())
+                .get(30, SECONDS);
 
         // then
-        List<Double> scores = response.content();
+        List<Double> scores = response.scores();
         assertThat(scores).hasSize(2);
         assertThat(scores.get(0)).isLessThan(scores.get(1));
 
         assertThat(response.tokenUsage().totalTokenCount()).isEqualTo(1);
-
-        assertThat(response.finishReason()).isNull();
     }
 }
