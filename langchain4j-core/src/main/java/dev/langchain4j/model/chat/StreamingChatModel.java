@@ -157,7 +157,7 @@ public interface StreamingChatModel {
     }
 
     /**
-     * Reactive entry point: sends a chat request and returns a {@link Publisher} of {@link StreamingEvent}s.
+     * Reactive entry point: sends a chat request and returns a {@link Publisher} of {@link ChatModelStreamingEvent}s.
      * <p>
      * The publisher is cold: each {@code subscribe()} call initiates a new LLM request.
      * It emits events in this order:
@@ -183,7 +183,7 @@ public interface StreamingChatModel {
      * {@link #chat(ChatRequest, StreamingChatResponseHandler)} path, which catches exceptions thrown from
      * handler callbacks, reports them to {@code onError}, and keeps streaming.
      * <p>
-     * Subscribers must be prepared to receive {@link StreamingEvent} subtypes they do not recognize and
+     * Subscribers must be prepared to receive {@link ChatModelStreamingEvent} subtypes they do not recognize and
      * ignore them. New event types may be introduced over time (and providers may surface unmapped events
      * as {@link dev.langchain4j.model.chat.response.RawStreamingEvent}), so consuming this stream with an
      * exhaustive type switch that lacks a default branch is unsafe.
@@ -200,7 +200,7 @@ public interface StreamingChatModel {
      *
      * @since 1.19.0
      */
-    default Publisher<StreamingEvent> chat(ChatRequest request) {
+    default Publisher<ChatModelStreamingEvent> chat(ChatRequest request) {
 
         ChatRequest finalChatRequest = ChatRequest.builder()
                 .messages(request.messages())
@@ -211,14 +211,14 @@ public interface StreamingChatModel {
 
         ModelProvider provider = provider();
 
-        return new Publisher<StreamingEvent>() {
+        return new Publisher<ChatModelStreamingEvent>() {
 
             @Override
-            public void subscribe(Subscriber<? super StreamingEvent> downstream) {
+            public void subscribe(Subscriber<? super ChatModelStreamingEvent> downstream) {
 
                 Map<Object, Object> attributes = new ConcurrentHashMap<>();
 
-                Publisher<StreamingEvent> innerPublisher;
+                Publisher<ChatModelStreamingEvent> innerPublisher;
                 try {
                     onRequest(finalChatRequest, provider, attributes, listeners);
                     innerPublisher = doChat(finalChatRequest);
@@ -239,7 +239,7 @@ public interface StreamingChatModel {
                     }
 
                     @Override
-                    public void onNext(StreamingEvent event) {
+                    public void onNext(ChatModelStreamingEvent event) {
                         if (event instanceof CompleteResponse completeResponseEvent) {
                             completeResponse = completeResponseEvent.chatResponse();
                         }
@@ -268,7 +268,7 @@ public interface StreamingChatModel {
      * Provider-specific implementation of the reactive stream returned by {@link #chat(ChatRequest)} (which wraps
      * it with {@link ChatModelListener} invocation). Implementations must honor the event ordering and the
      * demand / back-pressure expectations documented on {@link #chat(ChatRequest)} — in particular, they
-     * typically consume the response eagerly and relay {@link StreamingEvent}s through a bounded buffer rather
+     * typically consume the response eagerly and relay {@link ChatModelStreamingEvent}s through a bounded buffer rather
      * than propagating subscriber demand to the model.
      * <p>
      * The default implementation returns an immediately-failing Publisher carrying {@link AsyncNotSupportedException} to signal that this model has no
@@ -277,7 +277,7 @@ public interface StreamingChatModel {
      *
      * @since 1.19.0
      */
-    default Publisher<StreamingEvent> doChat(ChatRequest chatRequest) {
+    default Publisher<ChatModelStreamingEvent> doChat(ChatRequest chatRequest) {
         return AsyncNotSupported.failingPublisher(getClass(), "doChat");
     }
 

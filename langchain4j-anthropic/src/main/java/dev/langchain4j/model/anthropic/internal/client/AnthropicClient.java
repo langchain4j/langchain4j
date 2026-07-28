@@ -11,7 +11,7 @@ import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRespon
 import dev.langchain4j.model.anthropic.internal.api.AnthropicModelsListResponse;
 import dev.langchain4j.model.anthropic.internal.api.MessageTokenCountResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
-import dev.langchain4j.model.chat.response.StreamingEvent;
+import dev.langchain4j.model.chat.response.ChatModelStreamingEvent;
 import dev.langchain4j.spi.ServiceHelper;
 import java.time.Duration;
 import java.util.Map;
@@ -57,13 +57,13 @@ public abstract class AnthropicClient {
     /**
      * Non-blocking reactive streaming counterpart of {@link #createMessage(AnthropicCreateMessageRequest,
      * AnthropicCreateMessageOptions, StreamingChatResponseHandler)}: returns a {@code Publisher} of
-     * {@link StreamingEvent}s driven by {@code httpClient.stream(...)} (nothing parked on socket reads);
+     * {@link ChatModelStreamingEvent}s driven by {@code httpClient.stream(...)} (nothing parked on socket reads);
      * {@code bufferSize} bounds the back-pressure buffer, and cancelling the subscription aborts the in-flight HTTP
      * request. The default returns a failing {@code Publisher} carrying {@link AsyncNotSupportedException}.
      *
      * @since 1.19.0
      */
-    public Publisher<StreamingEvent> createMessagePublisher(
+    public Publisher<ChatModelStreamingEvent> createMessagePublisher(
             AnthropicCreateMessageRequest request, AnthropicCreateMessageOptions options, int bufferSize) {
         return AsyncNotSupported.failingPublisher(getClass(), "createMessagePublisher");
     }

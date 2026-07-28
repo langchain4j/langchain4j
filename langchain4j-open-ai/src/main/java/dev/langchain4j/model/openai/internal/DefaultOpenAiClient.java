@@ -25,7 +25,7 @@ import dev.langchain4j.internal.MappingTrackingStreamingChatResponseHandler;
 import dev.langchain4j.internal.ToolCallBuilder;
 import dev.langchain4j.reactive.streaming.TubeBackedStreamingChatResponseHandler;
 import dev.langchain4j.reactive.streaming.HttpStreamingChatPublisher;
-import dev.langchain4j.model.chat.response.StreamingEvent;
+import dev.langchain4j.model.chat.response.ChatModelStreamingEvent;
 import dev.langchain4j.model.openai.OpenAiStreamingResponseBuilder;
 import dev.langchain4j.model.openai.internal.audio.texttospeech.OpenAiTextToSpeechRequest;
 import dev.langchain4j.model.openai.internal.audio.texttospeech.OpenAiTextToSpeechResponse;
@@ -178,7 +178,7 @@ public class DefaultOpenAiClient extends OpenAiClient {
     }
 
     @Override
-    public Publisher<StreamingEvent> chatCompletionPublisher(
+    public Publisher<ChatModelStreamingEvent> chatCompletionPublisher(
             ChatCompletionRequest request, ChatCompletionOptions options) {
 
         HttpRequest httpRequest = HttpRequest.builder()
@@ -200,7 +200,7 @@ public class DefaultOpenAiClient extends OpenAiClient {
 
         private static final String DONE_MARKER = "[DONE]";
 
-        private final Tube<StreamingEvent> tube;
+        private final Tube<ChatModelStreamingEvent> tube;
         private final TubeBackedStreamingChatResponseHandler tubeHandler;
         private final MappingTrackingStreamingChatResponseHandler handler;
         private final ChatCompletionOptions options;
@@ -208,7 +208,7 @@ public class DefaultOpenAiClient extends OpenAiClient {
         private final OpenAiStreamingResponseBuilder responseBuilder;
         private SuccessfulHttpResponse rawHttpResponse;
 
-        ChatCompletionEventSink(Tube<StreamingEvent> tube, ChatCompletionOptions options) {
+        ChatCompletionEventSink(Tube<ChatModelStreamingEvent> tube, ChatCompletionOptions options) {
             this.tube = ensureNotNull(tube, "tube");
             this.tubeHandler = new TubeBackedStreamingChatResponseHandler(tube);
             this.handler = new MappingTrackingStreamingChatResponseHandler(tubeHandler);

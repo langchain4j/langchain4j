@@ -51,7 +51,7 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
-import dev.langchain4j.model.chat.response.StreamingEvent;
+import dev.langchain4j.model.chat.response.ChatModelStreamingEvent;
 import dev.langchain4j.model.chat.response.StreamingHandle;
 import dev.langchain4j.model.openai.internal.OpenAiClient;
 import dev.langchain4j.reactive.streaming.HttpStreamingChatPublisher;
@@ -227,7 +227,7 @@ class OpenAiResponsesClient {
         }
     }
 
-    Publisher<StreamingEvent> streamingChatPublisher(
+    Publisher<ChatModelStreamingEvent> streamingChatPublisher(
             ChatRequest chatRequest, OpenAiResponsesChatRequestParameters parameters) {
 
         return HttpStreamingChatPublisher.create(
@@ -245,10 +245,10 @@ class OpenAiResponsesClient {
 
     private static final class ResponsesEventSink implements HttpStreamingChatPublisher.Sink {
 
-        private final Tube<StreamingEvent> tube;
+        private final Tube<ChatModelStreamingEvent> tube;
         private final ResponsesApiEventListener listener;
 
-        ResponsesEventSink(Tube<StreamingEvent> tube) {
+        ResponsesEventSink(Tube<ChatModelStreamingEvent> tube) {
             this.tube = tube;
             this.listener = new ResponsesApiEventListener(new TubeBackedStreamingChatResponseHandler(tube));
         }

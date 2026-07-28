@@ -2,7 +2,7 @@ package dev.langchain4j.model.openai.internal;
 
 
 import dev.langchain4j.http.client.HttpClientBuilder;
-import dev.langchain4j.model.chat.response.StreamingEvent;
+import dev.langchain4j.model.chat.response.ChatModelStreamingEvent;
 import dev.langchain4j.model.openai.internal.audio.texttospeech.OpenAiTextToSpeechRequest;
 import dev.langchain4j.model.openai.internal.audio.texttospeech.OpenAiTextToSpeechResponse;
 import dev.langchain4j.model.openai.internal.audio.transcription.OpenAiAudioTranscriptionRequest;
@@ -41,7 +41,7 @@ public abstract class OpenAiClient {
 
     public abstract SyncOrAsyncOrStreaming<ChatCompletionResponse> chatCompletion(ChatCompletionRequest request);
 
-    public Publisher<StreamingEvent> chatCompletionPublisher(
+    public Publisher<ChatModelStreamingEvent> chatCompletionPublisher(
             ChatCompletionRequest request, ChatCompletionOptions options) {
         throw new UnsupportedOperationException("Not implemented");
     }

@@ -8,11 +8,11 @@ import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
 import java.util.Objects;
 
 /**
- * The terminal {@link StreamingEvent} of a streaming chat: the complete, aggregated {@link ChatResponse}.
+ * The terminal {@link ChatModelStreamingEvent} of a streaming chat: the complete, aggregated {@link ChatResponse}.
  * It is the streaming counterpart of {@link PartialResponse} (a single text chunk) — emitted once, last,
  * after all partial events.
  * <p>
- * Wrapping {@link ChatResponse} (rather than having it implement {@link StreamingEvent} directly) keeps
+ * Wrapping {@link ChatResponse} (rather than having it implement {@link ChatModelStreamingEvent} directly) keeps
  * {@link ChatResponse} — which is also returned by the non-streaming {@code ChatModel#chat} /
  * {@code ChatModel#chatAsync} — free of the streaming-event marker.
  *
@@ -21,7 +21,7 @@ import java.util.Objects;
  */
 @Experimental
 @JacocoIgnoreCoverageGenerated
-public class CompleteResponse implements StreamingEvent { // TODO name
+public class CompleteResponse implements ChatModelStreamingEvent {
 
     private final ChatResponse chatResponse;
 

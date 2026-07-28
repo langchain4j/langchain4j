@@ -21,7 +21,7 @@ import java.util.List;
  * declared to return a {@link java.util.concurrent.Flow.Publisher} of {@code AiServiceStreamingEvent}.
  * <p>
  * This is a <b>high-level</b>, AI-Service-scoped vocabulary, deliberately distinct from the low-level,
- * per-LLM-call {@link dev.langchain4j.model.chat.response.StreamingEvent} emitted by
+ * per-LLM-call {@link dev.langchain4j.model.chat.response.ChatModelStreamingEvent} emitted by
  * {@link dev.langchain4j.model.chat.StreamingChatModel#chat(dev.langchain4j.model.chat.request.ChatRequest)}.
  * It covers a whole agentic interaction: the token-level chunks of every round, the tool-execution lifecycle,
  * the distinction between an intermediate (tool-calling) round and the final answer, and retrieved RAG content.
@@ -31,14 +31,16 @@ import java.util.List;
  * <p>
  * The set is intentionally <b>not sealed</b>: new event types may be introduced over time. Consumers must
  * therefore handle unrecognized subtypes gracefully (e.g. a {@code default} branch in a type switch) rather
- * than assume the listing below is exhaustive.
+ * than assume the listing below is exhaustive. Each event is a nested class (so it stays discoverable from this
+ * one entry point and namespaced against similarly-named types elsewhere, e.g. the observability
+ * {@code ToolCompensatedEvent}); an existing event grows non-breakingly by adding an accessor (and, if needed, an
+ * overloaded constructor that keeps the old one) — deliberately classes rather than records, whose canonical
+ * constructor and deconstruction patterns could not evolve without breaking callers.
  *
  * @since 1.19.0
  */
 @Experimental
-public interface AiServiceStreamingEvent { // TODO nested events?
-
-    // TODO consistent naming
+public interface AiServiceStreamingEvent {
 
     /**
      * The {@link InvocationContext} of the AI Service invocation that produced this event.

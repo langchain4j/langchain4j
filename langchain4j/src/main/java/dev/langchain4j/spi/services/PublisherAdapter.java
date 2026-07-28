@@ -1,7 +1,7 @@
 package dev.langchain4j.spi.services;
 
 import dev.langchain4j.Internal;
-import dev.langchain4j.model.chat.response.StreamingEvent;
+import dev.langchain4j.model.chat.response.ChatModelStreamingEvent;
 import dev.langchain4j.service.AiServiceStreamingEvent;
 
 import java.lang.reflect.Type;
@@ -30,7 +30,7 @@ public interface PublisherAdapter {
 
     /**
      * @param type the AI Service method's declared return type, such as {@code Flux<String>} or
-     *             {@code Multi<StreamingEvent>}.
+     *             {@code Multi<ChatModelStreamingEvent>}.
      * @return {@code true} if this adapter handles the given type.
      */
     boolean canAdapt(Type type);
@@ -41,7 +41,7 @@ public interface PublisherAdapter {
      *
      * @param type      the declared type to produce (e.g. {@code Flux<String>}).
      * @param publisher the framework-produced reactive stream, whose element type matches the element type of
-     *                  {@code type} (either {@link StreamingEvent} or {@link String}).
+     *                  {@code type} (either {@link ChatModelStreamingEvent} or {@link String}).
      */
     Object fromPublisher(Type type, Flow.Publisher<?> publisher);
 }

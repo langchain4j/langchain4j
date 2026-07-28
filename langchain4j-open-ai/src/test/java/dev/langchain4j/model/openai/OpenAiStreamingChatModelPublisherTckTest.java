@@ -4,7 +4,7 @@ import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.chat.response.StreamingEvent;
+import dev.langchain4j.model.chat.response.ChatModelStreamingEvent;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.tck.PublisherVerification;
 import org.reactivestreams.tck.TestEnvironment;
@@ -20,7 +20,7 @@ import static org.reactivestreams.FlowAdapters.toPublisher;
  * {@code JdkHttpClient.HttpStreamingEventPublisher -> DefaultOpenAiClient.chatCompletionPublisher -> downstream}.
  * Uses WireMock to emit deterministic OpenAI-style SSE responses.
  */
-public class OpenAiStreamingChatModelPublisherTckTest extends PublisherVerification<StreamingEvent> {
+public class OpenAiStreamingChatModelPublisherTckTest extends PublisherVerification<ChatModelStreamingEvent> {
 
     private static final long DEFAULT_TIMEOUT_MILLIS = 2_000L;
     private static final long DEFAULT_NO_SIGNALS_TIMEOUT_MILLIS = DEFAULT_TIMEOUT_MILLIS;
@@ -64,7 +64,7 @@ public class OpenAiStreamingChatModelPublisherTckTest extends PublisherVerificat
     }
 
     @Override
-    public Publisher<StreamingEvent> createPublisher(long elements) {
+    public Publisher<ChatModelStreamingEvent> createPublisher(long elements) {
         // The publisher emits N PartialResponse events followed by 1 aggregated ChatResponse.
         // So to produce exactly `elements` items, stub (elements - 1) content chunks + [DONE].
         long contentChunks = Math.max(0, elements - 1);
@@ -79,12 +79,12 @@ public class OpenAiStreamingChatModelPublisherTckTest extends PublisherVerificat
     }
 
     @Override
-    public Publisher<StreamingEvent> createFailedPublisher() {
+    public Publisher<ChatModelStreamingEvent> createFailedPublisher() {
         String baseUrl = "http://localhost:" + wireMockServer.port() + "/fail/v1";
         return newPublisher(baseUrl);
     }
 
-    private Publisher<StreamingEvent> newPublisher(String baseUrl) {
+    private Publisher<ChatModelStreamingEvent> newPublisher(String baseUrl) {
         OpenAiStreamingChatModel model = OpenAiStreamingChatModel.builder()
                 .baseUrl(baseUrl)
                 .apiKey("test-key")

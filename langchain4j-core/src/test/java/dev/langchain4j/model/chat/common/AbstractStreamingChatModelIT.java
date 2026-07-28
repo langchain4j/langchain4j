@@ -355,7 +355,7 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
         // work at assembly, so chat(request) itself must not throw).
         if (model instanceof StreamingModeAwareModel wrapped && wrapped.mode() == StreamingMode.PUBLISHER) {
 
-            AtomicReference<Publisher<StreamingEvent>> publisherReference = new AtomicReference<>();
+            AtomicReference<Publisher<ChatModelStreamingEvent>> publisherReference = new AtomicReference<>();
             assertThatCode(() -> publisherReference.set(model.chat(chatRequest))).doesNotThrowAnyException();
 
             AtomicReference<Throwable> error = new AtomicReference<>();
@@ -370,7 +370,7 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
                 }
 
                 @Override
-                public void onNext(StreamingEvent event) {
+                public void onNext(ChatModelStreamingEvent event) {
                     onNextCalled.set(true);
                 }
 
@@ -564,7 +564,7 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
         AtomicInteger timesOnPartialResponseWasCalled = new AtomicInteger();
         AtomicInteger timesOnPartialThinkingWasCalled = new AtomicInteger();
         AtomicInteger timesOnCompleteResponseWasCalled = new AtomicInteger();
-        List<StreamingEvent> events = new CopyOnWriteArrayList<>();
+        List<ChatModelStreamingEvent> events = new CopyOnWriteArrayList<>();
         Set<Thread> threads = new CopyOnWriteArraySet<>();
         Thread callerThread = Thread.currentThread();
 
@@ -578,7 +578,7 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
             }
 
             @Override
-            public void onNext(StreamingEvent event) {
+            public void onNext(ChatModelStreamingEvent event) {
                 events.add(event);
                 threads.add(Thread.currentThread());
                 if (event instanceof PartialResponse partial) {
@@ -595,7 +595,7 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
                     timesOnCompleteResponseWasCalled.incrementAndGet();
                 }
                 // Other event types (e.g. RawStreamingEvent, or types introduced later) are intentionally
-                // ignored here: subscribers must tolerate unrecognized StreamingEvent subtypes.
+                // ignored here: subscribers must tolerate unrecognized ChatModelStreamingEvent subtypes.
             }
 
             @Override
@@ -655,7 +655,7 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
      *     <li>for every tool call, all of its {@link PartialToolCall}s precede its {@link CompleteToolCall}.</li>
      * </ul>
      */
-    private static void verifyPublisherEvents(List<StreamingEvent> events, Set<Thread> deliveryThreads, Thread callerThread) {
+    private static void verifyPublisherEvents(List<ChatModelStreamingEvent> events, Set<Thread> deliveryThreads, Thread callerThread) {
         assertThat(deliveryThreads)
                 .as("publisher must deliver events asynchronously, not on the subscribing thread")
                 .isNotEmpty()
@@ -702,7 +702,7 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
         }
 
         @Override
-        public Publisher<StreamingEvent> doChat(ChatRequest chatRequest) {
+        public Publisher<ChatModelStreamingEvent> doChat(ChatRequest chatRequest) {
             return delegate.doChat(chatRequest);
         }
 

@@ -23,7 +23,7 @@ import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
-import dev.langchain4j.model.chat.response.StreamingEvent;
+import dev.langchain4j.model.chat.response.ChatModelStreamingEvent;
 import dev.langchain4j.model.chat.response.StreamingHandle;
 import java.util.List;
 import java.util.Set;
@@ -94,7 +94,7 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
     }
 
     @Override
-    public Publisher<StreamingEvent> doChat(ChatRequest chatRequest) {
+    public Publisher<ChatModelStreamingEvent> doChat(ChatRequest chatRequest) {
         validate(chatRequest.parameters());
         ConverseStreamRequest converseStreamRequest = buildConverseStreamRequest(chatRequest);
 

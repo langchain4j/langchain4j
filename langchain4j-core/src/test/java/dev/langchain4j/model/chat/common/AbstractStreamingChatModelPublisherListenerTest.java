@@ -12,7 +12,7 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.chat.response.StreamingEvent;
+import dev.langchain4j.model.chat.response.ChatModelStreamingEvent;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Flow;
@@ -24,7 +24,7 @@ import org.mockito.InOrder;
 
 /**
  * Common tests for the {@link ChatModelListener} contract of the reactive publisher path
- * ({@link StreamingChatModel#chat(ChatRequest)} returning a {@code Publisher<StreamingEvent>}).
+ * ({@link StreamingChatModel#chat(ChatRequest)} returning a {@code Publisher<ChatModelStreamingEvent>}).
  * <p>
  * The listener wiring lives entirely in the shared {@code chat(ChatRequest)} default method, but each provider is
  * responsible for driving that pipeline correctly from its own transport (SSE over the {@code HttpClient}, a vendor
@@ -126,7 +126,7 @@ public abstract class AbstractStreamingChatModelPublisherListenerTest {
             }
 
             @Override
-            public void onNext(StreamingEvent event) {
+            public void onNext(ChatModelStreamingEvent event) {
                 if (cancelled.get()) {
                     return;
                 }
@@ -167,7 +167,7 @@ public abstract class AbstractStreamingChatModelPublisherListenerTest {
             }
 
             @Override
-            public void onNext(StreamingEvent event) {
+            public void onNext(ChatModelStreamingEvent event) {
                 firstEvent.countDown();
                 throw new RuntimeException("boom thrown from subscriber's onNext");
             }
@@ -201,7 +201,7 @@ public abstract class AbstractStreamingChatModelPublisherListenerTest {
             }
 
             @Override
-            public void onNext(StreamingEvent event) {}
+            public void onNext(ChatModelStreamingEvent event) {}
 
             @Override
             public void onError(Throwable throwable) {

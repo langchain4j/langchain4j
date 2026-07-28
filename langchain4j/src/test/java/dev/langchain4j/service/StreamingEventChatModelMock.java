@@ -14,7 +14,7 @@ import dev.langchain4j.model.chat.response.CompleteResponse;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.model.chat.response.PartialResponse;
 import dev.langchain4j.model.chat.response.RawStreamingEvent;
-import dev.langchain4j.model.chat.response.StreamingEvent;
+import dev.langchain4j.model.chat.response.ChatModelStreamingEvent;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -95,7 +95,7 @@ class StreamingEventChatModelMock implements StreamingChatModel {
     }
 
     @Override
-    public Publisher<StreamingEvent> doChat(ChatRequest chatRequest) {
+    public Publisher<ChatModelStreamingEvent> doChat(ChatRequest chatRequest) {
         requests.add(chatRequest);
         AiMessage aiMessage = ensureNotNull(aiMessages.poll(), "aiMessage");
 

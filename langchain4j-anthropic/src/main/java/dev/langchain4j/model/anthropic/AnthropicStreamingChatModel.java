@@ -34,7 +34,7 @@ import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
-import dev.langchain4j.model.chat.response.StreamingEvent;
+import dev.langchain4j.model.chat.response.ChatModelStreamingEvent;
 import dev.langchain4j.reactive.streaming.ReactiveStreamingDefaults;
 import java.time.Duration;
 import java.util.Arrays;
@@ -842,7 +842,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
     }
 
     @Override
-    public Publisher<StreamingEvent> doChat(ChatRequest chatRequest) {
+    public Publisher<ChatModelStreamingEvent> doChat(ChatRequest chatRequest) {
         AnthropicChatRequestParameters parameters = (AnthropicChatRequestParameters) chatRequest.parameters();
         AnthropicCreateMessageRequest anthropicRequest = toAnthropicRequest(chatRequest, parameters);
         AnthropicCreateMessageOptions options = toOptions(parameters);

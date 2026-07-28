@@ -18,7 +18,7 @@ import java.util.Objects;
  */
 @Experimental
 @JacocoIgnoreCoverageGenerated
-public class CompleteToolCall implements StreamingEvent {
+public class CompleteToolCall implements ChatModelStreamingEvent {
 
     private final int index;
     private final ToolExecutionRequest toolExecutionRequest;

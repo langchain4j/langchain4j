@@ -9,7 +9,7 @@ import static org.mockito.Mockito.when;
 
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.chat.response.StreamingEvent;
+import dev.langchain4j.model.chat.response.ChatModelStreamingEvent;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -103,7 +103,7 @@ class BedrockStreamingChatModelPublisherCancellationTest {
             }
 
             @Override
-            public void onNext(StreamingEvent event) {
+            public void onNext(ChatModelStreamingEvent event) {
                 if (cancelled.get()) {
                     eventsAfterCancel.incrementAndGet(); // in-flight; the spec allows these (Rule 2.8)
                     return;

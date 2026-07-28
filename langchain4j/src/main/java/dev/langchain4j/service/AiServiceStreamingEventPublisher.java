@@ -29,7 +29,7 @@ import dev.langchain4j.model.chat.response.PartialResponse;
 import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.RawStreamingEvent;
-import dev.langchain4j.model.chat.response.StreamingEvent;
+import dev.langchain4j.model.chat.response.ChatModelStreamingEvent;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.observability.api.event.AiServiceCompletedEvent;
 import dev.langchain4j.observability.api.event.AiServiceErrorEvent;
@@ -71,7 +71,7 @@ import mutiny.zero.ZeroPublisher;
  * {@link Flow.Publisher} of {@link AiServiceStreamingEvent}s.
  * <p>
  * It consumes the model's reactive {@link dev.langchain4j.model.chat.StreamingChatModel#chat(ChatRequest)}
- * publisher round by round, mapping each low-level {@link StreamingEvent} to the corresponding high-level
+ * publisher round by round, mapping each low-level {@link ChatModelStreamingEvent} to the corresponding high-level
  * {@link AiServiceStreamingEvent} as it arrives ({@link PartialThinkingEvent}, {@link PartialResponseEvent},
  * {@link PartialToolCallEvent}, {@link CompleteToolCallEvent}). When a round requests tools, each tool is started
  * <b>eagerly</b> as soon as its {@link CompleteToolCallEvent} is emitted - executed without blocking via
@@ -328,7 +328,7 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                 }
 
                 @Override
-                public void onNext(StreamingEvent event) {
+                public void onNext(ChatModelStreamingEvent event) {
                     if (tube.cancelled()) {
                         return;
                     }

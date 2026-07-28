@@ -33,7 +33,7 @@ import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
-import dev.langchain4j.model.chat.response.StreamingEvent;
+import dev.langchain4j.model.chat.response.ChatModelStreamingEvent;
 import dev.langchain4j.model.openai.internal.ChatCompletionOptions;
 import dev.langchain4j.model.openai.internal.OpenAiClient;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionRequest;
@@ -178,7 +178,7 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
     }
 
     @Override
-    public Publisher<StreamingEvent> doChat(ChatRequest chatRequest) {
+    public Publisher<ChatModelStreamingEvent> doChat(ChatRequest chatRequest) {
 
         OpenAiChatRequestParameters parameters = (OpenAiChatRequestParameters) chatRequest.parameters();
         validate(parameters);

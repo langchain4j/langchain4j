@@ -8,7 +8,7 @@ import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.CompleteResponse;
 import dev.langchain4j.model.chat.response.PartialResponse;
-import dev.langchain4j.model.chat.response.StreamingEvent;
+import dev.langchain4j.model.chat.response.ChatModelStreamingEvent;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
@@ -23,7 +23,7 @@ import org.junit.jupiter.api.Test;
 
 /**
  * Deterministic test of the reactive publisher path ({@link StreamingChatModel#chat(ChatRequest)} returning a
- * {@code Publisher<StreamingEvent>}). A local HTTP server replays a canned Anthropic SSE stream so no API key or
+ * {@code Publisher<ChatModelStreamingEvent>}). A local HTTP server replays a canned Anthropic SSE stream so no API key or
  * network access is needed; the test asserts the publisher emits the streamed text and a terminal complete event.
  */
 class AnthropicStreamingChatModelPublisherTest {
@@ -96,7 +96,7 @@ class AnthropicStreamingChatModelPublisherTest {
                 .messages(UserMessage.from("Hi"))
                 .build();
 
-        List<StreamingEvent> events = new CopyOnWriteArrayList<>();
+        List<ChatModelStreamingEvent> events = new CopyOnWriteArrayList<>();
         CompletableFuture<Void> completed = new CompletableFuture<>();
 
         model.chat(request).subscribe(new Flow.Subscriber<>() {
@@ -106,7 +106,7 @@ class AnthropicStreamingChatModelPublisherTest {
             }
 
             @Override
-            public void onNext(StreamingEvent event) {
+            public void onNext(ChatModelStreamingEvent event) {
                 events.add(event);
             }
 
@@ -131,7 +131,7 @@ class AnthropicStreamingChatModelPublisherTest {
         assertThat(streamedText).isEqualTo("Hi there");
 
         // ...and the terminal event carries the aggregated ChatResponse.
-        StreamingEvent last = events.get(events.size() - 1);
+        ChatModelStreamingEvent last = events.get(events.size() - 1);
         assertThat(last).isInstanceOf(CompleteResponse.class);
         assertThat(((CompleteResponse) last).chatResponse().aiMessage().text()).isEqualTo("Hi there");
     }

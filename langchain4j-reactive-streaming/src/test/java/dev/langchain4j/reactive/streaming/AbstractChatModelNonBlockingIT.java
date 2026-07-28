@@ -12,7 +12,7 @@ import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.chat.response.StreamingEvent;
+import dev.langchain4j.model.chat.response.ChatModelStreamingEvent;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
@@ -200,8 +200,8 @@ public abstract class AbstractChatModelNonBlockingIT {
     }
 
     private Capture awaitStream(StreamingChatModel model) throws Exception {
-        Flow.Publisher<StreamingEvent> publisher = model.chat(request());
-        List<StreamingEvent> received = new CopyOnWriteArrayList<>();
+        Flow.Publisher<ChatModelStreamingEvent> publisher = model.chat(request());
+        List<ChatModelStreamingEvent> received = new CopyOnWriteArrayList<>();
         AtomicReference<Throwable> error = new AtomicReference<>();
         Set<String> deliveryThreads = ConcurrentHashMap.newKeySet();
         CompletableFuture<Void> done = new CompletableFuture<>();
@@ -213,7 +213,7 @@ public abstract class AbstractChatModelNonBlockingIT {
             }
 
             @Override
-            public void onNext(StreamingEvent event) {
+            public void onNext(ChatModelStreamingEvent event) {
                 deliveryThreads.add(Thread.currentThread().getName());
                 received.add(event);
             }
@@ -240,5 +240,5 @@ public abstract class AbstractChatModelNonBlockingIT {
                 .build();
     }
 
-    private record Capture(List<StreamingEvent> received, Set<String> deliveryThreads, Throwable error) {}
+    private record Capture(List<ChatModelStreamingEvent> received, Set<String> deliveryThreads, Throwable error) {}
 }

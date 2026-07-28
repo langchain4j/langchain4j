@@ -28,7 +28,7 @@ import org.junit.jupiter.api.Test;
 /**
  * Proves the one load-bearing concurrency assumption of {@link AiServiceStreamingEventPublisher}: the framework
  * emits into the {@code mutiny-zero} {@code Tube} from <b>several threads at once</b> — the model-delivery thread
- * (mapping each {@code StreamingEvent} in {@code onNext}) and every tool-executor thread (each firing
+ * (mapping each {@code ChatModelStreamingEvent} in {@code onNext}) and every tool-executor thread (each firing
  * {@code BeforeToolExecutionEvent}/{@code AfterToolExecutionEvent} as its tool starts and finishes) — yet the
  * Reactive Streams contract forbids concurrent signals to a subscriber (rule 1.3). The {@code Tube} must
  * therefore serialize these concurrent {@code send()}s.

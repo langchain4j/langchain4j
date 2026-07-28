@@ -16,7 +16,7 @@ import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
-import dev.langchain4j.model.chat.response.StreamingEvent;
+import dev.langchain4j.model.chat.response.ChatModelStreamingEvent;
 import io.ktor.http.HttpStatusCode;
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
@@ -138,7 +138,7 @@ class OpenAiStreamingChatModelErrorsTest {
             }
 
             @Override
-            public void onNext(StreamingEvent item) {}
+            public void onNext(ChatModelStreamingEvent item) {}
 
             @Override
             public void onError(Throwable throwable) {

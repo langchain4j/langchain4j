@@ -2,7 +2,7 @@ package dev.langchain4j.reactive.streaming;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.http.client.sse.HttpStreamingEvent;
-import dev.langchain4j.model.chat.response.StreamingEvent;
+import dev.langchain4j.model.chat.response.ChatModelStreamingEvent;
 import java.util.concurrent.Flow.Publisher;
 import java.util.concurrent.Flow.Subscriber;
 import java.util.concurrent.Flow.Subscription;
@@ -14,11 +14,11 @@ import mutiny.zero.TubeConfiguration;
 import mutiny.zero.ZeroPublisher;
 
 /**
- * Builds a reactive {@code Publisher<StreamingEvent>} for a streaming chat model from an upstream
+ * Builds a reactive {@code Publisher<ChatModelStreamingEvent>} for a streaming chat model from an upstream
  * {@code Publisher<HttpStreamingEvent>} (typically {@code httpClient.stream(request, parser)}), factoring out the
  * boilerplate every provider's reactive path otherwise hand-rolls:
  * <ul>
- *   <li>a bounded, back-pressured {@link Tube} of {@link StreamingEvent}s ({@code ZeroPublisher});</li>
+ *   <li>a bounded, back-pressured {@link Tube} of {@link ChatModelStreamingEvent}s ({@code ZeroPublisher});</li>
  *   <li>a subscriber whose cancellation is <b>subscription-based</b> — it cancels the upstream
  *       {@code Flow.Subscription} on <b>any</b> terminal signal (a downstream cancel, an error, or a buffer overflow),
  *       so, for example, an overflow actually aborts the HTTP connection; and</li>
@@ -35,7 +35,7 @@ public final class HttpStreamingChatPublisher {
 
     /**
      * Consumes the upstream {@link HttpStreamingEvent}s of a single subscription and drives the assembled
-     * {@link StreamingEvent}s into the {@link Tube} (typically via a {@link TubeBackedStreamingChatResponseHandler}).
+     * {@link ChatModelStreamingEvent}s into the {@link Tube} (typically via a {@link TubeBackedStreamingChatResponseHandler}).
      * Provider-specific.
      */
     public interface Sink {
@@ -55,10 +55,10 @@ public final class HttpStreamingChatPublisher {
      * @param upstream    supplies the upstream HTTP event publisher (subscribed once per downstream subscription)
      * @param sinkFactory creates the per-subscription {@link Sink} from the subscription's {@link Tube}
      */
-    public static Publisher<StreamingEvent> create(
+    public static Publisher<ChatModelStreamingEvent> create(
             int bufferSize,
             Supplier<Publisher<HttpStreamingEvent>> upstream,
-            Function<Tube<StreamingEvent>, Sink> sinkFactory) {
+            Function<Tube<ChatModelStreamingEvent>, Sink> sinkFactory) {
 
         TubeConfiguration config = new TubeConfiguration()
                 .withBackpressureStrategy(BackpressureStrategy.BUFFER)

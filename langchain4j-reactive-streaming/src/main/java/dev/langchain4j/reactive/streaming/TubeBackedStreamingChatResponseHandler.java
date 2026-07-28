@@ -14,14 +14,14 @@ import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.PartialToolCallContext;
 import dev.langchain4j.model.chat.response.RawStreamingEvent;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
-import dev.langchain4j.model.chat.response.StreamingEvent;
+import dev.langchain4j.model.chat.response.ChatModelStreamingEvent;
 import dev.langchain4j.model.chat.response.StreamingHandle;
 import java.util.concurrent.atomic.AtomicReference;
 import mutiny.zero.Tube;
 
 /**
  * Bridge from the handler-based {@link StreamingChatResponseHandler} contract to a {@link Tube} of
- * {@link StreamingEvent}s. It lets the very same dispatch logic that drives the handler-based streaming API drive the
+ * {@link ChatModelStreamingEvent}s. It lets the very same dispatch logic that drives the handler-based streaming API drive the
  * reactive publisher-based API, with no duplicated event-mapping code. Shared by all streaming chat model providers.
  * <p>
  * Each handler callback maps to a {@code tube.send(event)}; {@code onCompleteResponse} also terminates the tube;
@@ -41,7 +41,7 @@ import mutiny.zero.Tube;
 @Internal
 public final class TubeBackedStreamingChatResponseHandler implements StreamingChatResponseHandler {
 
-    private final Tube<StreamingEvent> tube;
+    private final Tube<ChatModelStreamingEvent> tube;
 
     // For subscription-based providers: a non-null handle to place in per-callback contexts. cancel() is a no-op
     // (they cancel via Flow.Subscription); isCancelled() reflects the tube's state.
@@ -51,7 +51,7 @@ public final class TubeBackedStreamingChatResponseHandler implements StreamingCh
     // carries a genuine (non-bridge) one.
     private final AtomicReference<StreamingHandle> upstreamHandle = new AtomicReference<>();
 
-    public TubeBackedStreamingChatResponseHandler(Tube<StreamingEvent> tube) {
+    public TubeBackedStreamingChatResponseHandler(Tube<ChatModelStreamingEvent> tube) {
         this.tube = ensureNotNull(tube, "tube");
         this.streamingHandle = new StreamingHandle() {
             @Override

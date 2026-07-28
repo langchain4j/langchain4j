@@ -12,7 +12,7 @@ import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.CompleteResponse;
 import dev.langchain4j.model.chat.response.PartialResponse;
-import dev.langchain4j.model.chat.response.StreamingEvent;
+import dev.langchain4j.model.chat.response.ChatModelStreamingEvent;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -42,7 +42,7 @@ import software.amazon.awssdk.services.bedrockruntime.model.TokenUsage;
 
 /**
  * Deterministic test of the reactive publisher path ({@link StreamingChatModel#chat(ChatRequest)} returning a
- * {@code Publisher<StreamingEvent>}) for Bedrock. A mocked {@link BedrockRuntimeAsyncClient} drives a fake
+ * {@code Publisher<ChatModelStreamingEvent>}) for Bedrock. A mocked {@link BedrockRuntimeAsyncClient} drives a fake
  * {@link SdkPublisher} that replays a canned {@code converseStream} event sequence, so no AWS credentials or
  * network access are needed; the test asserts the publisher emits the streamed text and a terminal complete event.
  */
@@ -87,7 +87,7 @@ class BedrockStreamingChatModelPublisherTest {
         ChatRequest request =
                 ChatRequest.builder().messages(UserMessage.from("hi")).build();
 
-        List<StreamingEvent> received = new CopyOnWriteArrayList<>();
+        List<ChatModelStreamingEvent> received = new CopyOnWriteArrayList<>();
         CompletableFuture<Void> completed = new CompletableFuture<>();
 
         model.chat(request).subscribe(new Flow.Subscriber<>() {
@@ -97,7 +97,7 @@ class BedrockStreamingChatModelPublisherTest {
             }
 
             @Override
-            public void onNext(StreamingEvent event) {
+            public void onNext(ChatModelStreamingEvent event) {
                 received.add(event);
             }
 
@@ -122,7 +122,7 @@ class BedrockStreamingChatModelPublisherTest {
         assertThat(streamedText).isEqualTo("Hi there");
 
         // ...and the terminal event carries the aggregated ChatResponse.
-        StreamingEvent last = received.get(received.size() - 1);
+        ChatModelStreamingEvent last = received.get(received.size() - 1);
         assertThat(last).isInstanceOf(CompleteResponse.class);
         assertThat(((CompleteResponse) last).chatResponse().aiMessage().text()).isEqualTo("Hi there");
     }

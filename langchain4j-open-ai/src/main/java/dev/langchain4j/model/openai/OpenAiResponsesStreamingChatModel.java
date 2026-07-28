@@ -20,7 +20,7 @@ import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
-import dev.langchain4j.model.chat.response.StreamingEvent;
+import dev.langchain4j.model.chat.response.ChatModelStreamingEvent;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -103,7 +103,7 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
     }
 
     @Override
-    public Publisher<StreamingEvent> doChat(ChatRequest chatRequest) {
+    public Publisher<ChatModelStreamingEvent> doChat(ChatRequest chatRequest) {
         validate(chatRequest.parameters());
         OpenAiResponsesChatRequestParameters parameters =
                 (OpenAiResponsesChatRequestParameters) chatRequest.parameters();

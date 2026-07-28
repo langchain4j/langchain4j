@@ -64,7 +64,7 @@ import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
-import dev.langchain4j.model.chat.response.StreamingEvent;
+import dev.langchain4j.model.chat.response.ChatModelStreamingEvent;
 import dev.langchain4j.model.chat.response.StreamingHandle;
 import dev.langchain4j.reactive.streaming.TubeBackedStreamingChatResponseHandler;
 import dev.langchain4j.reactive.streaming.HttpStreamingChatPublisher;
@@ -691,11 +691,11 @@ public class DefaultAnthropicClient extends AnthropicClient {
      * Non-blocking reactive counterpart of {@link #createMessage(AnthropicCreateMessageRequest,
      * AnthropicCreateMessageOptions, StreamingChatResponseHandler)}: drives the same SSE listener from the reactive
      * {@code httpClient.stream(...)} publisher (nothing parked on socket reads), bridging events into a bounded
-     * {@code Tube} of {@link StreamingEvent}s. Cancelling the returned publisher's subscription aborts the HTTP request
+     * {@code Tube} of {@link ChatModelStreamingEvent}s. Cancelling the returned publisher's subscription aborts the HTTP request
      * - the subscriber cancels the upstream {@code Flow.Subscription} on any terminal signal (downstream cancel, error,
      * or buffer overflow).
      */
-    public Publisher<StreamingEvent> createMessagePublisher(
+    public Publisher<ChatModelStreamingEvent> createMessagePublisher(
             AnthropicCreateMessageRequest request, AnthropicCreateMessageOptions options, int bufferSize) {
 
         HttpRequest httpRequest = toHttpRequest(toJson(request), "messages");
