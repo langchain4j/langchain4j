@@ -17,13 +17,24 @@ import dev.langchain4j.model.vertexai.anthropic.internal.api.AnthropicResponse;
 import io.grpc.StatusRuntimeException;
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 
 public class VertexAiAnthropicClient {
 
     private static final String PUBLISHER = "anthropic";
 
-    private static final String CREDENTIALS_ENDPOINT_TEMPLATE = "%s-aiplatform.googleapis.com:443";
+    /**
+     * Vertex AI exposes three distinct endpoint host formats depending on location type; using
+     * the regional template for "global"/"us"/"eu" produces a non-existent host that resolves via
+     * wildcard DNS to an HTML 404 instead of a clear connection error (see #5865).
+     *
+     * @see #resolveEndpoint(String)
+     */
+    private static final String GLOBAL_ENDPOINT = "aiplatform.googleapis.com:443";
+
+    private static final String MULTI_REGION_ENDPOINT_TEMPLATE = "aiplatform.%s.rep.googleapis.com:443";
+    private static final String REGIONAL_ENDPOINT_TEMPLATE = "%s-aiplatform.googleapis.com:443";
 
     private volatile PredictionServiceClient predictionServiceClient;
     private final String project;
@@ -58,7 +69,9 @@ public class VertexAiAnthropicClient {
     private PredictionServiceClient createClient() {
         try {
             PredictionServiceSettings.Builder settingsBuilder = PredictionServiceSettings.newBuilder();
-            settingsBuilder.setEndpoint(String.format(CREDENTIALS_ENDPOINT_TEMPLATE, location.toLowerCase()));
+            // Determine the endpoint from the location
+            String endpoint = resolveEndpoint(location);
+            settingsBuilder.setEndpoint(endpoint);
             if (credentials != null) {
                 GoogleCredentials scopedCredentials =
                         credentials.createScoped("https://www.googleapis.com/auth/cloud-platform");
@@ -68,6 +81,29 @@ public class VertexAiAnthropicClient {
         } catch (Exception e) {
             throw new RuntimeException("Failed to initialize Vertex AI client", e);
         }
+    }
+
+    /**
+     * Maps a Vertex AI {@code location} to its API endpoint host.
+     * <p>
+     * {@code global} and the multi-region values {@code us}/{@code eu} each use a host format
+     * that differs from ordinary regional locations (e.g. {@code us-east5}); the regional
+     * template does not apply to them.
+     * See <a href="https://platform.claude.com/docs/en/build-with-claude/claude-on-vertex-ai">claude-on-vertex-ai</a>
+     *
+     * @param location the Vertex AI location, e.g. {@code global}, {@code us}, {@code eu}, or a
+     *                 region such as {@code us-east5} (case-insensitive)
+     * @return the {@code host:port} endpoint to use for {@link PredictionServiceSettings}
+     */
+    static String resolveEndpoint(String location) {
+        String normalized = location.toLowerCase(Locale.ROOT);
+        if ("global".equals(normalized)) {
+            return GLOBAL_ENDPOINT;
+        }
+        if ("us".equals(normalized) || "eu".equals(normalized)) {
+            return String.format(MULTI_REGION_ENDPOINT_TEMPLATE, normalized);
+        }
+        return String.format(REGIONAL_ENDPOINT_TEMPLATE, normalized);
     }
 
     public AnthropicResponse generateContent(AnthropicRequest request, String modelName) throws IOException {
