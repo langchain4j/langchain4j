@@ -16,21 +16,21 @@ For Maven project `pom.xml`
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j</artifactId>
-    <version>1.11.10</version>
+    <version>1.11.9</version>
 </dependency>
 
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-mistral-ai</artifactId>
-    <version>1.11.10</version>
+    <version>1.11.9</version>
 </dependency>
 ```
 
 For Gradle project `build.gradle`
 
 ```groovy
-implementation 'dev.langchain4j:langchain4j:1.11.10'
-implementation 'dev.langchain4j:langchain4j-mistral-ai:1.11.10'
+implementation 'dev.langchain4j:langchain4j:1.11.9'
+implementation 'dev.langchain4j:langchain4j-mistral-ai:1.11.9'
 ```
 ### API Key setup
 Add your MistralAI API key to your project, you can create a class ```ApiKeys.java``` with the following code
@@ -183,7 +183,7 @@ public class PaymentTransactionTool {
             "transaction_id", List.of("T1001", "T1002", "T1003", "T1004", "T1005"),
             "customer_id", List.of("C001", "C002", "C003", "C002", "C001"),
             "payment_amount", List.of("125.50", "89.99", "120.00", "54.30", "210.20"),
-            "payment_date", List.of("2021.11.105", "2021.11.106", "2021.11.107", "2021.11.105", "2021.11.108"),
+            "payment_date", List.of("2021.11.95", "2021.11.96", "2021.11.97", "2021.11.95", "2021.11.98"),
             "payment_status", List.of("Paid", "Unpaid", "Paid", "Paid", "Pending"));
    
     ...
