@@ -9,8 +9,6 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.gpullama3.GPULlama3ChatModel;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.List;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Disabled;
@@ -19,12 +17,10 @@ import org.junit.jupiter.api.Test;
 class GPULlama3ChatModelIT extends AbstractChatModelIT {
 
     private static GPULlama3ChatModel model;
-    private static final Path MODEL_PATH = Paths.get("beehive-llama-3.2-1b-instruct-fp16.gguf");
-
     @BeforeAll
     public static void setUp() {
         model = GPULlama3ChatModel.builder()
-                .modelPath(MODEL_PATH)
+                .modelPath(TestModelPath.fromEnvironment())
                 .temperature(0.6)
                 .topP(1.0)
                 .maxTokens(2048)

@@ -12,8 +12,6 @@ import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.gpullama3.GPULlama3StreamingChatModel;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.BeforeAll;
@@ -21,14 +19,13 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 public class GPULlama3CStreamingChatModelIT extends AbstractStreamingChatModelIT {
-    private static final Path MODEL_PATH = Paths.get("beehive-llama-3.2-1b-instruct-fp16.gguf");
     private static GPULlama3StreamingChatModel model;
 
     @BeforeAll
     public static void setup() {
         // @formatter:off
         model = GPULlama3StreamingChatModel.builder()
-                .modelPath(MODEL_PATH)
+                .modelPath(TestModelPath.fromEnvironment())
                 .temperature(0.6)
                 .topP(1.0)
                 .maxTokens(2048)

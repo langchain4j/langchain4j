@@ -14,7 +14,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.function.IntConsumer;
-import org.beehive.gpullama3.auxiliary.LastRunMetrics;
+import org.beehive.gpullama3.auxiliary.RunMetrics;
 import org.beehive.gpullama3.inference.sampler.Sampler;
 import org.beehive.gpullama3.inference.state.State;
 import org.beehive.gpullama3.model.Model;
@@ -161,7 +161,7 @@ abstract class GPULlama3BaseModel implements AutoCloseable {
     // @formatter:on
 
     public void printLastMetrics() {
-        LastRunMetrics.printMetrics();
+        RunMetrics.printMetrics();
     }
 
     /**
