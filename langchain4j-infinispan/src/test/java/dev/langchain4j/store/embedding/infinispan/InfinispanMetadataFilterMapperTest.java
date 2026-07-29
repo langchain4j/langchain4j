@@ -58,14 +58,12 @@ class InfinispanMetadataFilterMapperTest {
                         " join i.metadata m0"),
                 // IsGreaterThan
                 Arguments.of(
-                        new IsGreaterThan("name", "A"),
-                        "m0.name='name' and m0.value > 'A'",
-                        " join i.metadata m0 join i.metadata m1"),
+                        new IsGreaterThan("name", "A"), "m0.name='name' and m0.value > 'A'", " join i.metadata m0"),
                 // IsGreaterThanOrEqualTo
                 Arguments.of(
                         new IsGreaterThanOrEqualTo("name", "A"),
                         "m0.name='name' and m0.value >= 'A'",
-                        " join i.metadata m0 join i.metadata m1"),
+                        " join i.metadata m0"),
                 // IsLessThan
                 Arguments.of(new IsLessThan("name", "Z"), "m0.name='name' and m0.value < 'Z'", " join i.metadata m0"),
                 // IsLessThanOrEqualTo
@@ -104,9 +102,7 @@ class InfinispanMetadataFilterMapperTest {
                         " join i.metadata m0"),
                 // Integer IsGreaterThan
                 Arguments.of(
-                        new IsGreaterThan("age", 18),
-                        "m0.name='age' and m0.value_int > 18",
-                        " join i.metadata m0 join i.metadata m1"),
+                        new IsGreaterThan("age", 18), "m0.name='age' and m0.value_int > 18", " join i.metadata m0"),
                 // Float IsLessThan
                 Arguments.of(
                         new IsLessThan("score", 4.5f),
@@ -210,9 +206,8 @@ class InfinispanMetadataFilterMapperTest {
         // then
         assertThat(result.query)
                 .isEqualTo(
-                        "((m0.name='category' and m0.value = 'book') AND (((m1.name='price' and m1.value_float > 10.0) OR (m3.name='price' and m3.value_float < 5.0))))");
-        assertThat(result.join)
-                .isEqualTo(" join i.metadata m0 join i.metadata m1 join i.metadata m2 join i.metadata m3");
+                        "((m0.name='category' and m0.value = 'book') AND (((m1.name='price' and m1.value_float > 10.0) OR (m2.name='price' and m2.value_float < 5.0))))");
+        assertThat(result.join).isEqualTo(" join i.metadata m0 join i.metadata m1 join i.metadata m2");
     }
 
     @Test
