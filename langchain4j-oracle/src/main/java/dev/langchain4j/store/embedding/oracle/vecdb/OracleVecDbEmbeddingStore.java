@@ -156,7 +156,10 @@ public final class OracleVecDbEmbeddingStore implements EmbeddingStore<TextSegme
     @Override
     public void removeAll() {
         try (Connection connection = dataSource.getConnection()) {
-            queryExecutor.truncateVectorTable(connection, embeddingTable.name());
+            queryExecutor.deleteAllVectors(connection, embeddingTable.name());
+            if (!connection.getAutoCommit()) {
+                connection.commit();
+            }
         } catch (SQLException exception) {
             throw unchecked(exception);
         }

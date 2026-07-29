@@ -222,9 +222,9 @@ final class VecDbJdbcQueryExecutor implements VecDbQueryExecutor {
     }
 
     @Override
-    public void truncateVectorTable(Connection connection, String tableName) throws SQLException {
+    public int deleteAllVectors(Connection connection, String tableName) throws SQLException {
         try (Statement statement = connection.createStatement()) {
-            statement.executeUpdate("TRUNCATE TABLE " + tableName);
+            return statement.executeUpdate("DELETE FROM " + tableName);
         }
     }
 

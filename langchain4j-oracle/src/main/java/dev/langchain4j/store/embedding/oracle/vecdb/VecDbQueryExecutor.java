@@ -82,8 +82,8 @@ interface VecDbQueryExecutor {
      */
     int deleteVectorsByFilter(Connection connection, String tableName, SQLFilter filter) throws SQLException;
 
-    /** Removes every row from the vector table using {@code TRUNCATE TABLE}. */
-    void truncateVectorTable(Connection connection, String tableName) throws SQLException;
+    /** Deletes every row from the vector table and returns the affected row count. */
+    int deleteAllVectors(Connection connection, String tableName) throws SQLException;
 
     /** Index state returned by {@link #indexStatus(Connection, String)}. */
     record IndexStatus(boolean vectorIndexExists, boolean metadataIndexExists) {}

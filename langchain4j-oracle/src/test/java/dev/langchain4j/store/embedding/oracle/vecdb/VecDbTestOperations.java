@@ -6,6 +6,7 @@ import dev.langchain4j.store.embedding.oracle.CreateOption;
 import dev.langchain4j.store.embedding.oracle.vecdb.enums.VecDbDistanceMetric;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.List;
 import javax.sql.DataSource;
 
 /**
@@ -32,6 +33,31 @@ final class VecDbTestOperations {
                 .embeddingTable(tableName, CreateOption.CREATE_OR_REPLACE)
                 .distanceMetric(VecDbDistanceMetric.COSINE)
                 .build();
+    }
+
+    static boolean vectorTableExists(String tableName) throws SQLException {
+        try (Connection connection = dataSource().getConnection()) {
+            return QUERY_EXECUTOR.vectorTableExists(connection, tableName);
+        }
+    }
+
+    static List<String> listVectorIds(String tableName) throws SQLException {
+        try (Connection connection = dataSource().getConnection()) {
+            String responseJson = QUERY_EXECUTOR.listVectors(connection, tableName, null, 100, 0);
+            return VecDbVectorJsonMapper.idsFromListResponse(responseJson);
+        }
+    }
+
+    static String describeVectorTable(String tableName) throws SQLException {
+        try (Connection connection = dataSource().getConnection()) {
+            return QUERY_EXECUTOR.describeVectorTable(connection, tableName);
+        }
+    }
+
+    static VecDbQueryExecutor.IndexStatus indexStatus(String tableName) throws SQLException {
+        try (Connection connection = dataSource().getConnection()) {
+            return QUERY_EXECUTOR.indexStatus(connection, tableName);
+        }
     }
 
     static void dropVectorTable(String tableName) throws SQLException {
