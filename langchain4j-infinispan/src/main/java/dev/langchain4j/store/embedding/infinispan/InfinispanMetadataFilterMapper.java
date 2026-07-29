@@ -112,7 +112,7 @@ class InfinispanMetadataFilterMapper {
             throw new UnsupportedOperationException("Infinispan metadata filter IN must contain values");
         }
         Object o = first.get();
-        String inStatement = formattedComparisonValues(filter.comparisonValues(), o instanceof Number);
+        String inStatement = formattedComparisonValues(filter.comparisonValues());
         String m = "m" + i + ".";
         String filterQuery = m + "value IN (" + inStatement + ")";
         if (o instanceof Integer || o instanceof Long) {
@@ -130,7 +130,7 @@ class InfinispanMetadataFilterMapper {
             throw new UnsupportedOperationException("Infinispan metadata filter IN must contain values");
         }
         Object o = first.get();
-        String inStatement = formattedComparisonValues(filter.comparisonValues(), o instanceof Number);
+        String inStatement = formattedComparisonValues(filter.comparisonValues());
         String m = "m" + i + ".";
         String filterQuery = m + "value NOT IN (" + inStatement + ")";
         if (o instanceof Integer || o instanceof Long) {
@@ -147,13 +147,13 @@ class InfinispanMetadataFilterMapper {
         }
 
         return "(" + filterQuery + metadataKeyLast(filter.key()) + ") " + "OR ("
-                + inFilterQuery + " and " + m + "name!='" + filter.key() + "')"
+                + inFilterQuery + " and " + m + "name!='" + escape(filter.key()) + "')"
                 + addMetadataNullCheck();
     }
 
     private String computeFilter(String operator, Object value) {
         String m = "m" + i + ".";
-        String filterQuery = m + "value " + operator + " '" + value + "'";
+        String filterQuery = m + "value " + operator + " '" + escape(String.valueOf(value)) + "'";
         if (value instanceof Integer || value instanceof Long) {
             Long longValue = getLongValue(value);
             filterQuery = m + "value_int " + operator + " " + longValue;
@@ -191,17 +191,26 @@ class InfinispanMetadataFilterMapper {
     }
 
     private String metadataKeyLast(String key) {
-        return " and m" + i + ".name='" + key + "'";
+        return " and m" + i + ".name='" + escape(key) + "'";
     }
 
     private String metadataKey(String key) {
-        return "m" + i + ".name='" + key + "' and ";
+        return "m" + i + ".name='" + escape(key) + "' and ";
     }
 
-    private String formattedComparisonValues(Collection<?> comparisonValues, boolean isNumeric) {
-        String inStatement = comparisonValues.stream()
-                .map(s -> isNumeric ? s.toString() : "'" + s + "'")
+    private String formattedComparisonValues(Collection<?> comparisonValues) {
+        boolean hasNumeric = comparisonValues.stream().anyMatch(v -> v instanceof Number);
+        boolean hasNonNumeric = comparisonValues.stream().anyMatch(v -> !(v instanceof Number));
+        if (hasNumeric && hasNonNumeric) {
+            throw new IllegalArgumentException(
+                    "Infinispan metadata filter IN/NOT IN cannot mix numeric and non-numeric values");
+        }
+        return comparisonValues.stream()
+                .map(s -> s instanceof Number ? s.toString() : "'" + escape(String.valueOf(s)) + "'")
                 .collect(Collectors.joining(", "));
-        return inStatement;
+    }
+
+    private static String escape(String s) {
+        return s.replace("\\", "\\\\").replace("'", "''");
     }
 }
