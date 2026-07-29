@@ -168,7 +168,7 @@ Built on the Milvus Java SDK v1. Supports dense vector search only. It will be r
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-milvus</artifactId>
-    <version>1.11.9-beta19</version>
+    <version>1.11.10-beta19</version>
 </dependency>
 ```
 
