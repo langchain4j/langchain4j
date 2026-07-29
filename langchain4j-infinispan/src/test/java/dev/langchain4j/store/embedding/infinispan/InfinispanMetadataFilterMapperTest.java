@@ -281,7 +281,126 @@ class InfinispanMetadataFilterMapperTest {
         InfinispanMetadataFilterMapper.FilterResult result = mapper.map(filter);
 
         // then
-        assertThat(result.query).isEqualTo("m0.name='key' and m0.value = 'value with 'quotes' and \"double quotes\"'");
+        assertThat(result.query)
+                .isEqualTo("m0.name='key' and m0.value = 'value with ''quotes'' and \"double quotes\"'");
+    }
+
+    @Test
+    void should_escape_single_quote_in_string_value() {
+        // given
+        Filter filter = new IsEqualTo("name", "O'Brien");
+
+        // when
+        InfinispanMetadataFilterMapper.FilterResult result = mapper.map(filter);
+
+        // then
+        assertThat(result.query).isEqualTo("m0.name='name' and m0.value = 'O''Brien'");
+    }
+
+    @Test
+    void should_escape_single_quote_in_key() {
+        // given
+        Filter filter = new IsEqualTo("o'clock", "noon");
+
+        // when
+        InfinispanMetadataFilterMapper.FilterResult result = mapper.map(filter);
+
+        // then
+        assertThat(result.query).isEqualTo("m0.name='o''clock' and m0.value = 'noon'");
+    }
+
+    @Test
+    void should_escape_ickle_injection_in_value() {
+        // given
+        Filter filter = new IsEqualTo("name", "x' OR 1=1 --");
+
+        // when
+        InfinispanMetadataFilterMapper.FilterResult result = mapper.map(filter);
+
+        // then
+        assertThat(result.query).isEqualTo("m0.name='name' and m0.value = 'x'' OR 1=1 --'");
+    }
+
+    @Test
+    void should_escape_ickle_injection_in_key() {
+        // given
+        Filter filter = new IsEqualTo("foo' OR 1=1 OR name='", "bar");
+
+        // when
+        InfinispanMetadataFilterMapper.FilterResult result = mapper.map(filter);
+
+        // then
+        assertThat(result.query).isEqualTo("m0.name='foo'' OR 1=1 OR name=''' and m0.value = 'bar'");
+    }
+
+    @Test
+    void should_escape_trailing_backslash_so_it_cannot_consume_the_closing_quote() {
+        // given — a bare backslash is not a legal literal character in Ickle; left unescaped
+        // it consumes the closing quote as an escape sequence and the literal runs on
+        Filter filter = new IsEqualTo("path", "C:\\Users\\test");
+
+        // when
+        InfinispanMetadataFilterMapper.FilterResult result = mapper.map(filter);
+
+        // then
+        assertThat(result.query).isEqualTo("m0.name='path' and m0.value = 'C:\\\\Users\\\\test'");
+    }
+
+    @Test
+    void should_escape_single_quote_in_in_filter() {
+        // given
+        Filter filter = new IsIn("name", Arrays.asList("O'Brien", "D'Angelo"));
+
+        // when
+        InfinispanMetadataFilterMapper.FilterResult result = mapper.map(filter);
+
+        // then
+        assertThat(result.query).isEqualTo("m0.name='name' and m0.value IN ('O''Brien', 'D''Angelo')");
+    }
+
+    @Test
+    void should_escape_key_in_not_in_filter() {
+        // given
+        Filter filter = new IsNotIn("k' OR 1=1 --", Arrays.asList("a"));
+
+        // when
+        InfinispanMetadataFilterMapper.FilterResult result = mapper.map(filter);
+
+        // then
+        assertThat(result.query).contains("m0.name='k'' OR 1=1 --'").contains("m0.name!='k'' OR 1=1 --'");
+    }
+
+    @Test
+    void should_reject_mixed_numeric_and_string_in_filter() {
+        // given — a Number seen first would otherwise format the String unquoted and unescaped
+        Filter filter = new IsIn("key", Arrays.asList(1, "x' OR 1=1 --"));
+
+        // when & then
+        assertThatThrownBy(() -> mapper.map(filter))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("cannot mix numeric and non-numeric values");
+    }
+
+    @Test
+    void should_reject_mixed_numeric_and_string_not_in_filter() {
+        // given
+        Filter filter = new IsNotIn("key", Arrays.asList(42, "x' OR 1=1 --"));
+
+        // when & then
+        assertThatThrownBy(() -> mapper.map(filter))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("cannot mix numeric and non-numeric values");
+    }
+
+    @Test
+    void should_reject_mixed_values_regardless_of_iteration_order() {
+        // given — same pair, reversed; HashSet order must not decide whether it is rejected
+        Filter filter = new IsIn("key", Arrays.asList("x' OR 1=1 --", 1));
+
+        // when & then
+        assertThatThrownBy(() -> mapper.map(filter))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("cannot mix numeric and non-numeric values");
     }
 
     @Test
