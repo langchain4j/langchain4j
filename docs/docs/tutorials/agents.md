@@ -2730,6 +2730,24 @@ AgenticScopePersister.setStore(new MyAgenticScopeStore());
 
 or using the standard Java Service Provider interface creating a file named `META-INF/services/dev.langchain4j.agentic.scope.AgenticScopeStore` containing the fully qualified name of the class implementing the `AgenticScopeStore` interface.
 
+### AgenticScope JSON serialization
+
+LangChain4j provides built-in JSON serialization for the `AgenticScope` via the `AgenticScopeSerializer` class. For security reasons, deserialization uses an allowlist policy that restricts which classes can be deserialized from JSON. By default, standard JDK types (`java.util.*`, `java.math.*`, primitive wrappers, enums) and internal LangChain4j types (`AgentMessage`, `AgentInvocation`) are allowed.
+
+If your agents store custom domain objects in the `AgenticScope` state, you must register them before deserialization occurs. You can register a single class:
+
+```java
+AgenticScopeSerializer.allowDeserializationType(LoanApplication.class);
+```
+
+or an entire package prefix:
+
+```java
+AgenticScopeSerializer.allowDeserializationPackagePrefix("com.acme.myapp.");
+```
+
+Attempting to deserialize an unregistered type throws an `UnserializableAgenticScopeException` whose message names the rejected class and suggests how to register it.
+
 ### AgenticScope and agentic systems recoverability
 
 When an `AgenticScopeStore` is configured, the `langchain4j-agentic` module provides built-in recoverability support that allows agentic systems to resume execution from where they left off after a crash or process restart. This is especially valuable for long-running agentic systems that include human-in-the-loop steps, where the process may be intentionally stopped and restarted later.
