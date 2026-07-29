@@ -375,9 +375,40 @@ class InfinispanMetadataFilterMapperTest {
         // when
         InfinispanMetadataFilterMapper.FilterResult result = mapper.map(filter);
 
-        // then — all values formatted as numbers (no quotes), column depends on HashSet iteration order
-        assertThat(result.query).startsWith("m0.name='mixed' and m0.value_");
-        assertThat(result.query).contains("1").contains("2").contains("3.0").contains("4.0");
+        // then — presence of a floating point value selects value_float for the whole list,
+        // and integral values are widened to match the column
+        assertThat(result.query).isEqualTo("m0.name='mixed' and m0.value_float IN (3.0, 4.0, 1.0, 2.0)");
+    }
+
+    @ParameterizedTest
+    @MethodSource("numericInColumnSelection")
+    void should_select_in_column_independently_of_iteration_order(List<?> values, String expectedColumn) {
+        // when
+        InfinispanMetadataFilterMapper.FilterResult result = mapper.map(new IsIn("n", values));
+
+        // then
+        assertThat(result.query).startsWith("m0.name='n' and m0." + expectedColumn + " IN (");
+    }
+
+    static List<Arguments> numericInColumnSelection() {
+        return Arrays.asList(
+                Arguments.of(Arrays.asList(1, 2, 3), "value_int"),
+                Arguments.of(Arrays.asList(1, 2L), "value_int"),
+                Arguments.of(Arrays.asList(1.5, 2.5), "value_float"),
+                // these two pairs hash into opposite iteration orders; both must pick value_float
+                Arguments.of(Arrays.asList(1, 2.5), "value_float"),
+                Arguments.of(Arrays.asList(3, 0.5), "value_float"),
+                Arguments.of(Arrays.asList("a", "b"), "value"));
+    }
+
+    @Test
+    void should_select_not_in_column_independently_of_iteration_order() {
+        // when
+        InfinispanMetadataFilterMapper.FilterResult result = mapper.map(new IsNotIn("n", Arrays.asList(1, 2.5)));
+
+        // then — both occurrences of the column must agree
+        assertThat(result.query).contains("m0.value_float NOT IN (").contains("m0.value_float IN (");
+        assertThat(result.query).doesNotContain("value_int");
     }
 
     @Test
