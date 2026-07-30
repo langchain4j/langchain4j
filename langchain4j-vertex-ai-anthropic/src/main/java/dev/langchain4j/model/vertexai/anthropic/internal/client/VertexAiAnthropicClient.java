@@ -24,15 +24,7 @@ public class VertexAiAnthropicClient {
 
     private static final String PUBLISHER = "anthropic";
 
-    /**
-     * Vertex AI exposes three distinct endpoint host formats depending on location type; using
-     * the regional template for "global"/"us"/"eu" produces a non-existent host that resolves via
-     * wildcard DNS to an HTML 404 instead of a clear connection error (see #5865).
-     *
-     * @see #resolveEndpoint(String)
-     */
     private static final String GLOBAL_ENDPOINT = "aiplatform.googleapis.com:443";
-
     private static final String MULTI_REGION_ENDPOINT_TEMPLATE = "aiplatform.%s.rep.googleapis.com:443";
     private static final String REGIONAL_ENDPOINT_TEMPLATE = "%s-aiplatform.googleapis.com:443";
 
@@ -60,7 +52,8 @@ public class VertexAiAnthropicClient {
         String ignoredModel = model;
 
         this.project = project;
-        this.location = location;
+        // Vertex AI locations are lowercase, both in the endpoint host and in the resource name
+        this.location = location.toLowerCase(Locale.ROOT);
         this.credentials = credentials;
         this.objectMapper = new ObjectMapper().disable(SerializationFeature.FAIL_ON_EMPTY_BEANS);
         this.predictionServiceClient = createClient();
@@ -69,9 +62,7 @@ public class VertexAiAnthropicClient {
     private PredictionServiceClient createClient() {
         try {
             PredictionServiceSettings.Builder settingsBuilder = PredictionServiceSettings.newBuilder();
-            // Determine the endpoint from the location
-            String endpoint = resolveEndpoint(location);
-            settingsBuilder.setEndpoint(endpoint);
+            settingsBuilder.setEndpoint(resolveEndpoint(location));
             if (credentials != null) {
                 GoogleCredentials scopedCredentials =
                         credentials.createScoped("https://www.googleapis.com/auth/cloud-platform");
@@ -84,18 +75,19 @@ public class VertexAiAnthropicClient {
     }
 
     /**
-     * Maps a Vertex AI {@code location} to its API endpoint host.
-     * <p>
-     * {@code global} and the multi-region values {@code us}/{@code eu} each use a host format
-     * that differs from ordinary regional locations (e.g. {@code us-east5}); the regional
-     * template does not apply to them.
-     * See <a href="https://platform.claude.com/docs/en/build-with-claude/claude-on-vertex-ai">claude-on-vertex-ai</a>
+     * Maps a Vertex AI location to the API endpoint host serving it. Vertex AI uses a different host
+     * format for each of its three location types:
+     * <ul>
+     *     <li>{@code global} &rarr; {@code aiplatform.googleapis.com}</li>
+     *     <li>multi-region ({@code us}, {@code eu}) &rarr; {@code aiplatform.<location>.rep.googleapis.com}</li>
+     *     <li>region (e.g. {@code us-east5}) &rarr; {@code <location>-aiplatform.googleapis.com}</li>
+     * </ul>
+     * See <a href="https://platform.claude.com/docs/en/build-with-claude/claude-on-vertex-ai">Claude on Vertex AI</a>.
      *
-     * @param location the Vertex AI location, e.g. {@code global}, {@code us}, {@code eu}, or a
-     *                 region such as {@code us-east5} (case-insensitive)
+     * @param location the Vertex AI location, case-insensitive
      * @return the {@code host:port} endpoint to use for {@link PredictionServiceSettings}
      */
-    static String resolveEndpoint(String location) {
+    public static String resolveEndpoint(String location) {
         String normalized = location.toLowerCase(Locale.ROOT);
         if ("global".equals(normalized)) {
             return GLOBAL_ENDPOINT;

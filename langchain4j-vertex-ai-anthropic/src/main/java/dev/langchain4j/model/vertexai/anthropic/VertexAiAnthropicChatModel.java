@@ -106,7 +106,7 @@ public class VertexAiAnthropicChatModel implements ChatModel, Closeable {
             String requestModelName = getOrDefault(parameters.modelName(), modelName);
 
             if (logRequests) {
-                logger.debug("Base URL: {}-aiplatform.googleapis.com:443", location);
+                logger.debug("Base URL: {}", VertexAiAnthropicClient.resolveEndpoint(location));
                 logger.debug(
                         "Using model name: {} (from parameters: {}, default: {})",
                         requestModelName,
