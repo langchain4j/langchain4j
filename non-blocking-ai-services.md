@@ -330,6 +330,12 @@ library — chosen so the core does not depend on a full reactive framework.
   through a **bounded** buffer (default **16384** entries). A consumer slower than the model that overflows the
   buffer **fails fast** with `IllegalStateException` rather than dropping events (which would corrupt the assembled
   response) or buffering unbounded (OOM risk).
+- Consequently, a subscriber's `Subscription.request(n)` is **advisory for pacing, not a throttle on the model**:
+  because upstream demand is unbounded, the model keeps producing into the buffer regardless of how little the
+  subscriber requests. Demand governs the *rate of delivery out of the buffer*; it does not slow generation. A
+  subscriber that persistently requests less than the model produces will therefore fill the buffer and receive the
+  `IllegalStateException` above — request eagerly (e.g. `request(Long.MAX_VALUE)`), or raise `streamingBufferSize`,
+  if the consumer cannot keep up.
 - The buffer size is **configurable per AI Service** via `AiServices.streamingBufferSize(int)` (and per HTTP/model
   client builder); set it to `Integer.MAX_VALUE` for an effectively unbounded buffer.
 - **Why unbounded demand toward the model (rather than socket-level back-pressure)?** The byte/event stream
@@ -460,6 +466,11 @@ The `*Async` methods on `ScoringModel` and `WebSearchEngine` are `default` metho
 - **Unit tests per mode** with mock models — `AiServicesAsyncTest` (CF), `AiServiceStreamingPublisherTest` and
   `AiServiceStreamingPublisherGuardrailTest` (publisher), `AsyncChatMemoryTest`; plus a coverage matrix
   (sequential/concurrent × multi-round × error modes × cancellation) mirrored from the legacy suites.
+- **Reactive Streams TCK (`PublisherVerification`):** every reactive publisher is verified against the official
+  spec — the AI Service event publisher and its text-only (`Flow.Publisher<String>`) view, the JDK HTTP streaming
+  publisher, and the OpenAI, Anthropic, and Bedrock model publishers — proving each honours the `onSubscribe` /
+  demand / cancellation / error / completion contract. The model TCKs run against loopback or in-memory fakes, so
+  they need no credentials or network.
 - **Integration tests (real OpenAI):** `AiServicesIT` (CF, CF + chat memory across turns),
   `AiServicesStreamingPublisherIT` (no-tools / tools / tool-provider).
 
