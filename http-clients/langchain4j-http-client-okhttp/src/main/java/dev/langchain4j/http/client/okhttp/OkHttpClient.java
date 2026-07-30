@@ -153,6 +153,10 @@ public class OkHttpClient implements HttpClient {
             }
         });
 
+        if (request.headers().keySet().stream().noneMatch(k -> k.equalsIgnoreCase("User-Agent"))) {
+            builder.header("User-Agent", "LangChain4j");
+        }
+
         RequestBody body = buildRequestBody(request);
 
         switch (request.method()) {
