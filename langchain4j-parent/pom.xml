@@ -588,6 +588,18 @@
                         <failOnMissingConfigurationFiles>false</failOnMissingConfigurationFiles>
                         <checkDependencies>false</checkDependencies>
                         <analysisConfiguration>
+                            <revapi.filter>
+                                <elements>
+                                    <exclude>
+                                        <!-- @Internal-annotated elements are not part of the public API contract, so
+                                             they are not analysed (e.g. plumbing that exposes mutiny-zero types). -->
+                                        <item>
+                                            <matcher>java</matcher>
+                                            <match>@dev.langchain4j.Internal ^*;</match>
+                                        </item>
+                                    </exclude>
+                                </elements>
+                            </revapi.filter>
                             <revapi.differences>
                                 <ignore>true</ignore>
                                 <differences>
@@ -604,8 +616,10 @@
                                         <justification>Dependencies are not checked, so their classes are expectedly missing</justification>
                                     </item>
                                     <item>
-                                        <code>java.class.externalClassExposedInAPI</code>
-                                        <justification>Dependencies are not checked (checkDependencies=false), so a dependency class surfaced in a module's public API (e.g. langchain4j-core types such as the streaming response/event classes, or the mutiny-zero reactive types used by @Internal plumbing) is expectedly reported as external/missing. Exposing our own core types in module APIs is intentional and not a break for consumers.</justification>
+                                        <regex>true</regex>
+                                        <code>java\.class\.externalClassExposedInAPI</code>
+                                        <new>missing-class dev\.langchain4j\..*</new>
+                                        <justification>Exposing our own dev.langchain4j types (e.g. the streaming response/event classes) across module boundaries is intentional; with checkDependencies=false they are reported as external/missing. This is scoped to dev.langchain4j.* so that a genuine third-party dependency type leaking into a module's public API is still flagged rather than silently ignored.</justification>
                                     </item>
                                     <item>
                                         <code>java.field.enumConstantOrderChanged</code>
