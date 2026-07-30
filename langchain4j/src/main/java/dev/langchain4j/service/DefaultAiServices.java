@@ -93,6 +93,7 @@ import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Flow;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 @Internal
@@ -293,16 +294,6 @@ class DefaultAiServices<T> extends AiServices<T> {
                         UserMessage originalUserMessage =
                                 prepareUserMessage(method, args, userMessageTemplate, variables);
 
-                        context.eventListenerRegistrar.fireEvent(AiServiceStartedEvent.builder()
-                                .invocationContext(invocationContext)
-                                .systemMessage(systemMessage)
-                                .userMessage(originalUserMessage)
-                                .build());
-
-                        // RAG augmentation is performed per return-type mode below: on the calling thread for the
-                        // synchronous path, and off the calling thread (composed into the result) for the asynchronous
-                        // and reactive paths - see augmentAsyncIfNeeded.
-
                         Type declaredReturnType =
                                 context.returnType != null ? context.returnType : method.getGenericReturnType();
                         CompletableFutureAdapter completableFutureAdapter = findCompletableFutureAdapter(declaredReturnType);
@@ -362,6 +353,14 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         boolean isReturnTypeResult = typeHasRawClass(returnType, Result.class);
 
+                        if (!reactiveStreaming) {
+                            context.eventListenerRegistrar.fireEvent(AiServiceStartedEvent.builder()
+                                    .invocationContext(invocationContext)
+                                    .systemMessage(systemMessage)
+                                    .userMessage(originalUserMessage)
+                                    .build());
+                        }
+
                         if (asyncReturnType) {
                             final InvocationContext baseInvocationContext = invocationContext;
                             final Optional<SystemMessage> asyncSystemMessage = systemMessage;
@@ -369,11 +368,6 @@ class DefaultAiServices<T> extends AiServices<T> {
                             final Type asyncReturnType2 = returnType;
                             final boolean asyncAppendOutputFormat = appendOutputFormat;
                             CompletableFuture<Object> result = new CompletableFuture<>();
-                            // RAG augmentation runs off the caller thread (memory read + retrieval); the augmented
-                            // user message, input guardrails, memory assembly, model call and tool loop then all run
-                            // composed. Cancelling the returned future cancels the in-flight augmentation and input
-                            // guardrails (best-effort); the model call and the output guardrails are cancelled via
-                            // propagateCancellation on the inner loop future.
                             CompletableFuture<AugmentationResult> augmentation = augmentAsyncIfNeeded(
                                     chatMemory, asyncSystemMessage, originalUserMessage, baseInvocationContext);
                             propagateCancellation(result, augmentation);
@@ -467,117 +461,153 @@ class DefaultAiServices<T> extends AiServices<T> {
                             final Type reactiveReturnType = returnType;
                             final boolean reactiveAppendOutputFormat = appendOutputFormat;
 
-                            // Cold stream: RAG augmentation (memory read + retrieval) is started on subscribe, off the
-                            // subscriber thread, and the augmented user message, input guardrails, memory assembly and
-                            // the streaming tool loop are composed onto it. The subscriber has no Subscription until the
-                            // inner publisher subscribes, so augmentation itself is not cancellable; once streaming
-                            // starts, cancelling the Subscription stops the interaction (see AiServiceStreamingEventPublisher).
-                            Flow.Publisher<AiServiceStreamingEvent> events = subscriber -> augmentAsyncIfNeeded(
-                                            reactiveChatMemory,
-                                            reactiveSystemMessage,
-                                            originalUserMessage,
-                                            baseInvocationContext)
-                                    .whenComplete((augmentationResult, augmentationError) -> {
-                                        if (augmentationError != null) {
-                                            subscriber.onSubscribe(NOOP_SUBSCRIPTION);
-                                            subscriber.onError(unwrapCompletionException(augmentationError));
-                                            return;
-                                        }
-                                        final UserMessage reactiveInputUserMessage;
-                                        final GuardrailRequestParams commonGuardrailParam;
-                                        try {
-                                            reactiveInputUserMessage = addContentsToUserMessage(
-                                                    method,
-                                                    args,
-                                                    augmentationResult != null
-                                                            ? (UserMessage) augmentationResult.chatMessage()
-                                                            : originalUserMessage);
-                                            commonGuardrailParam = GuardrailRequestParams.builder()
-                                                    .chatMemory(reactiveChatMemory)
-                                                    .augmentationResult(augmentationResult)
-                                                    .userMessageTemplate(userMessageTemplate)
-                                                    .invocationContext(baseInvocationContext)
-                                                    .aiServiceListenerRegistrar(context.eventListenerRegistrar)
-                                                    .variables(variables)
-                                                    .build();
-                                        } catch (Throwable t) {
-                                            subscriber.onSubscribe(NOOP_SUBSCRIPTION);
-                                            subscriber.onError(unwrapCompletionException(t));
-                                            return;
-                                        }
-                                        invokeInputGuardrailsAsync(
-                                                        context.guardrailService(),
-                                                        method,
-                                                        reactiveInputUserMessage,
-                                                        commonGuardrailParam)
-                                                .thenApply(guardedUserMessage -> prepareGuardedInput(
-                                                        guardedUserMessage,
-                                                        baseInvocationContext,
-                                                        reactiveReturnType,
-                                                        reactiveAppendOutputFormat))
-                                                .whenComplete((guardedInput, guardrailError) -> {
-                                                    if (guardrailError != null) {
-                                                        subscriber.onSubscribe(NOOP_SUBSCRIPTION);
-                                                        subscriber.onError(unwrapCompletionException(guardrailError));
-                                                        return;
-                                                    }
-                                                    assembleMessagesAsync(
-                                                                    reactiveChatMemory,
-                                                                    reactiveSystemMessage,
-                                                                    guardedInput.userMessage(),
-                                                                    originalUserMessage)
-                                                            .whenComplete((assembledMessages, assemblyError) -> {
-                                                                if (assemblyError != null) {
-                                                                    subscriber.onSubscribe(NOOP_SUBSCRIPTION);
-                                                                    subscriber.onError(
-                                                                            unwrapCompletionException(assemblyError));
-                                                                    return;
+                            final boolean reactiveSingleSubscription = reactiveChatMemory != null;
+                            final AtomicBoolean reactiveSubscribed = new AtomicBoolean(false);
+
+                            Flow.Publisher<AiServiceStreamingEvent> events = subscriber -> {
+                                if (reactiveSingleSubscription && !reactiveSubscribed.compareAndSet(false, true)) {
+                                    subscriber.onSubscribe(NOOP_SUBSCRIPTION);
+                                    subscriber.onError(new IllegalStateException(
+                                            "This AI Service reactive stream cannot be subscribed to more than once "
+                                                    + "because a ChatMemory is configured: re-subscribing would re-run "
+                                                    + "the interaction and duplicate messages in the chat memory. To "
+                                                    + "retry, re-invoke the AI Service method (e.g. Uni.retry() / "
+                                                    + "Mono.retry() around the call), not re-subscribe the publisher."));
+                                    return;
+                                }
+
+                                DeferredSubscription subscription = new DeferredSubscription();
+                                subscriber.onSubscribe(subscription);
+
+                                context.eventListenerRegistrar.fireEvent(AiServiceStartedEvent.builder()
+                                        .invocationContext(baseInvocationContext)
+                                        .systemMessage(reactiveSystemMessage)
+                                        .userMessage(originalUserMessage)
+                                        .build());
+
+                                CompletableFuture<AugmentationResult> augmentation = augmentAsyncIfNeeded(
+                                        reactiveChatMemory, reactiveSystemMessage, originalUserMessage, baseInvocationContext);
+                                subscription.setCancelAction(() -> augmentation.cancel(true));
+
+                                augmentation.whenComplete((augmentationResult, augmentationError) -> {
+                                    if (subscription.isCancelled()) {
+                                        return;
+                                    }
+                                    if (augmentationError != null) {
+                                        subscriber.onError(unwrapCompletionException(augmentationError));
+                                        return;
+                                    }
+                                    final UserMessage reactiveInputUserMessage;
+                                    final GuardrailRequestParams commonGuardrailParam;
+                                    try {
+                                        reactiveInputUserMessage = addContentsToUserMessage(
+                                                method,
+                                                args,
+                                                augmentationResult != null
+                                                        ? (UserMessage) augmentationResult.chatMessage()
+                                                        : originalUserMessage);
+                                        commonGuardrailParam = GuardrailRequestParams.builder()
+                                                .chatMemory(reactiveChatMemory)
+                                                .augmentationResult(augmentationResult)
+                                                .userMessageTemplate(userMessageTemplate)
+                                                .invocationContext(baseInvocationContext)
+                                                .aiServiceListenerRegistrar(context.eventListenerRegistrar)
+                                                .variables(variables)
+                                                .build();
+                                    } catch (Throwable t) {
+                                        subscriber.onError(unwrapCompletionException(t));
+                                        return;
+                                    }
+                                    CompletableFuture<UserMessage> inputGuardrails = invokeInputGuardrailsAsync(
+                                            context.guardrailService(), method, reactiveInputUserMessage, commonGuardrailParam);
+                                    subscription.setCancelAction(() -> inputGuardrails.cancel(true));
+                                    inputGuardrails
+                                            .thenApply(guardedUserMessage -> prepareGuardedInput(
+                                                    guardedUserMessage,
+                                                    baseInvocationContext,
+                                                    reactiveReturnType,
+                                                    reactiveAppendOutputFormat))
+                                            .whenComplete((guardedInput, guardrailError) -> {
+                                                if (subscription.isCancelled()) {
+                                                    return;
+                                                }
+                                                if (guardrailError != null) {
+                                                    subscriber.onError(unwrapCompletionException(guardrailError));
+                                                    return;
+                                                }
+                                                assembleMessagesAsync(
+                                                                reactiveChatMemory,
+                                                                reactiveSystemMessage,
+                                                                guardedInput.userMessage(),
+                                                                originalUserMessage)
+                                                        .whenComplete((assembledMessages, assemblyError) -> {
+                                                            if (subscription.isCancelled()) {
+                                                                return;
+                                                            }
+                                                            if (assemblyError != null) {
+                                                                subscriber.onError(unwrapCompletionException(assemblyError));
+                                                                return;
+                                                            }
+                                                            AiServiceStreamingEventPublisher publisher;
+                                                            try {
+                                                                ToolServiceContext reactiveToolServiceContext =
+                                                                        context.toolService.createContext(
+                                                                                guardedInput.invocationContext(),
+                                                                                guardedInput.userMessage(),
+                                                                                assembledMessages);
+                                                                var streamingEventStreamParameters =
+                                                                        AiServiceTokenStreamParameters.builder()
+                                                                                .messages(assembledMessages)
+                                                                                .toolServiceContext(reactiveToolServiceContext)
+                                                                                .toolArgumentsErrorHandler(context.toolService
+                                                                                        .argumentsErrorHandler())
+                                                                                .toolExecutionErrorHandler(context.toolService
+                                                                                        .executionErrorHandler())
+                                                                                .toolExecutor(context.toolService.executor())
+                                                                                .retrievedContents(augmentationResult != null
+                                                                                        ? augmentationResult.contents()
+                                                                                        : null)
+                                                                                .context(context)
+                                                                                .invocationContext(
+                                                                                        guardedInput.invocationContext())
+                                                                                .commonGuardrailParams(commonGuardrailParam)
+                                                                                .methodKey(method)
+                                                                                .build();
+                                                                publisher = new AiServiceStreamingEventPublisher(
+                                                                        streamingEventStreamParameters,
+                                                                        context.streamingBufferSize);
+                                                            } catch (Throwable t) {
+                                                                subscriber.onError(unwrapCompletionException(t));
+                                                                return;
+                                                            }
+                                                            if (subscription.isCancelled()) {
+                                                                return;
+                                                            }
+                                                            publisher.subscribe(new Flow.Subscriber<>() {
+                                                                @Override
+                                                                public void onSubscribe(Flow.Subscription real) {
+                                                                    subscription.setSubscription(real);
                                                                 }
-                                                                AiServiceStreamingEventPublisher publisher;
-                                                                try {
-                                                                    ToolServiceContext reactiveToolServiceContext =
-                                                                            context.toolService.createContext(
-                                                                                    guardedInput.invocationContext(),
-                                                                                    guardedInput.userMessage(),
-                                                                                    assembledMessages);
-                                                                    var streamingEventStreamParameters =
-                                                                            AiServiceTokenStreamParameters.builder()
-                                                                                    .messages(assembledMessages)
-                                                                                    .toolServiceContext(
-                                                                                            reactiveToolServiceContext)
-                                                                                    .toolArgumentsErrorHandler(
-                                                                                            context.toolService
-                                                                                                    .argumentsErrorHandler())
-                                                                                    .toolExecutionErrorHandler(
-                                                                                            context.toolService
-                                                                                                    .executionErrorHandler())
-                                                                                    .toolExecutor(
-                                                                                            context.toolService.executor())
-                                                                                    .retrievedContents(
-                                                                                            augmentationResult != null
-                                                                                                    ? augmentationResult
-                                                                                                            .contents()
-                                                                                                    : null)
-                                                                                    .context(context)
-                                                                                    .invocationContext(
-                                                                                            guardedInput
-                                                                                                    .invocationContext())
-                                                                                    .commonGuardrailParams(
-                                                                                            commonGuardrailParam)
-                                                                                    .methodKey(method)
-                                                                                    .build();
-                                                                    publisher = new AiServiceStreamingEventPublisher(
-                                                                            streamingEventStreamParameters,
-                                                                            context.streamingBufferSize);
-                                                                } catch (Throwable t) {
-                                                                    subscriber.onSubscribe(NOOP_SUBSCRIPTION);
-                                                                    subscriber.onError(unwrapCompletionException(t));
-                                                                    return;
+
+                                                                @Override
+                                                                public void onNext(AiServiceStreamingEvent item) {
+                                                                    subscriber.onNext(item);
                                                                 }
-                                                                publisher.subscribe(subscriber);
+
+                                                                @Override
+                                                                public void onError(Throwable error) {
+                                                                    subscriber.onError(error);
+                                                                }
+
+                                                                @Override
+                                                                public void onComplete() {
+                                                                    subscriber.onComplete();
+                                                                }
                                                             });
-                                                });
-                                    });
+                                                        });
+                                            });
+                                });
+                            };
 
                             Flow.Publisher<?> mapped = elementType == AiServiceStreamingEvent.class
                                     ? events

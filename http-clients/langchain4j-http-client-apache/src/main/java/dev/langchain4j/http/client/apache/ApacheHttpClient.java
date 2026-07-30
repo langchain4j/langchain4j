@@ -68,7 +68,11 @@ public class ApacheHttpClient implements HttpClient {
     static final int DEFAULT_STREAMING_BUFFER_SIZE = 16384;
 
     private final CloseableHttpClient syncClient;
-    private final CloseableHttpAsyncClient asyncClient;
+
+    private final org.apache.hc.client5.http.impl.async.HttpAsyncClientBuilder asyncHttpClientBuilder;
+    private volatile CloseableHttpAsyncClient asyncClient;
+    private final Object asyncClientLock = new Object();
+
     private final int streamingBufferSize;
 
     public ApacheHttpClient(ApacheHttpClientBuilder builder) {
@@ -101,10 +105,28 @@ public class ApacheHttpClient implements HttpClient {
         }
 
         this.syncClient = syncHttpClientBuilder.build();
-        this.asyncClient = asyncHttpClientBuilder.build();
-        this.asyncClient.start();
+        this.asyncHttpClientBuilder = asyncHttpClientBuilder;
         this.streamingBufferSize = ensureGreaterThanZero(
                 getOrDefault(builder.streamingBufferSize(), DEFAULT_STREAMING_BUFFER_SIZE), "streamingBufferSize");
+    }
+
+    /**
+     * Returns the async client, building and starting it on first use (double-checked locking). This defers the I/O
+     * reactor threads and second connection pool until the first {@code executeAsync} / {@code stream} call.
+     */
+    private CloseableHttpAsyncClient asyncClient() {
+        CloseableHttpAsyncClient client = asyncClient;
+        if (client == null) {
+            synchronized (asyncClientLock) {
+                client = asyncClient;
+                if (client == null) {
+                    client = asyncHttpClientBuilder.build();
+                    client.start();
+                    asyncClient = client;
+                }
+            }
+        }
+        return client;
     }
 
     /**
@@ -145,7 +167,7 @@ public class ApacheHttpClient implements HttpClient {
         SimpleHttpRequest apacheRequest = toSimpleApacheRequest(request);
         CompletableFuture<SuccessfulHttpResponse> future = new CompletableFuture<>();
         java.util.concurrent.Future<SimpleHttpResponse> apacheFuture =
-                asyncClient.execute(apacheRequest, new FutureCallback<>() {
+                asyncClient().execute(apacheRequest, new FutureCallback<>() {
                     @Override
                     public void completed(SimpleHttpResponse apacheResponse) {
                         if (!isSuccessful(apacheResponse)) {
@@ -223,7 +245,7 @@ public class ApacheHttpClient implements HttpClient {
                     }
                 }
             };
-            java.util.concurrent.Future<Void> future = asyncClient.execute(
+            java.util.concurrent.Future<Void> future = asyncClient().execute(
                     SimpleRequestProducer.create(toSimpleApacheRequest(request)),
                     new SseResponseConsumer(parser, listener),
                     null);
@@ -360,7 +382,7 @@ public class ApacheHttpClient implements HttpClient {
     private java.util.concurrent.Future<SimpleHttpResponse> executeServerSentEvents(
             HttpRequest request, ServerSentEventParser parser, ServerSentEventListener listener) {
         SimpleHttpRequest apacheRequest = toSimpleApacheRequest(request);
-        return asyncClient.execute(apacheRequest, new FutureCallback<>() {
+        return asyncClient().execute(apacheRequest, new FutureCallback<>() {
             @Override
             public void completed(SimpleHttpResponse apacheResponse) {
                 if (!isSuccessful(apacheResponse)) {

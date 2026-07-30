@@ -74,9 +74,13 @@ On the model/provider side, **OpenAI** implements the async + reactive chat meth
 
 - **Model call:** genuinely async I/O (OpenAI's reactive `doChat`/`doChatAsync`); no thread waits for the response.
 - **Async tools** (returning a future/reactive type): composed, never waited on.
-- **Sync (blocking) tools:** offloaded to a **virtual-thread** executor (`DefaultExecutorProvider`) — they block a
-  *virtual* thread, which unmounts from its carrier (*non-pinning*), so they scale without starving the event
-  loop. This is the Loom-aligned answer to "what about blocking user code".
+- **Sync (blocking) tools:** offloaded to the `ExecutorProvider` executor (default: virtual-thread-per-task).
+  **On JDK 21+** they block a *virtual* thread, which unmounts from its carrier (*non-pinning*), so they scale
+  without starving the event loop — the Loom-aligned answer to "what about blocking user code". **On the JDK 17
+  baseline** virtual threads are unavailable, so the default executor falls back to an unbounded platform-thread
+  pool: blocking tools still run off the delivery thread (correct), but each blocks a *platform* thread and is
+  *not* non-pinning. Run on JDK 21+ for the scaling story, or supply a bounded/managed executor via
+  `ExecutorProvider` (§3.1.1) if you need to cap platform threads on 17.
 - **Chat memory:** async SPI (§3.4); bundled in-memory stores complete synchronously, persistent stores supply
   real async I/O.
 - **Guardrails:** async SPI (§3.5) — a guardrail that does blocking I/O implements `validateAsync` to stay off the
@@ -89,7 +93,25 @@ On the model/provider side, **OpenAI** implements the async + reactive chat meth
   thread-local. Callers that rely on ambient context must propagate it themselves via the **`ExecutorProvider` SPI**
   (§3.1.1). This is inherent to any async/reactive model, and it now applies **by default** since tools run
   concurrently for the new modes (§3.2).
+- **Reactive stream delivery runs on the transport / worker thread — use `emitOn`/`publishOn` to move it.** For a
+  `Flow.Publisher` AI Service, `onNext` is delivered on whatever thread produced the event: the transport's I/O
+  worker for token chunks (e.g. the JDK client's `HttpClient-*` thread) and the tool-executor thread after a tool
+  round. LangChain4j does **not** hop the stream onto a caller-chosen scheduler, and — unlike offloaded work
+  (§3.1.1) — the **`ExecutorProvider` does not govern stream delivery**. A consumer that needs a specific
+  scheduler / context (a Reactor scheduler, a UI thread, a Vert.x duplicated context for CDI request scope) must
+  request it at its own edge — `Multi/Uni.emitOn(...)`, `Flux/Mono.publishOn(...)`. A Vert.x duplicated context in
+  particular cannot be restored by a plain context-propagating executor; capture/restore it yourself, or run the
+  provider on a Quarkus HTTP client that already delivers on the request's duplicated context.
 - The scarce **model-delivery thread** is never blocked — enforced by BlockHound (§6).
+
+**Per-transport reactive behavior.** "No thread waits" holds for the JDK client; the other transports differ, so a
+provider's non-blocking guarantee depends on which `HttpClient` it is built on:
+
+| HTTP client | `stream()` delivery | Notes |
+|---|---|---|
+| **JDK** (`langchain4j-http-client-jdk`, default) | fully non-blocking — SSE is delivered on the JDK client's `HttpClient-*` I/O workers via `BodyHandlers.ofPublisher()`; nothing parks on a socket read | policed by the BlockHound TCKs (§6) |
+| **Apache** (`…-apache`) | non-blocking async I/O reactor; the async client (a second connection pool + reactor thread group) is created lazily on first async use | |
+| **OkHttp** (`…-okhttp`) | **thread-per-stream** — OkHttp reads the response body on a blocking dispatcher thread that stays pinned for the stream's lifetime | works functionally, but a high-concurrency / Quarkus app that wants genuinely non-blocking streaming should prefer the JDK client |
 
 #### 3.1.1 Controlling the executor (and propagating context) — `ExecutorProvider`
 
@@ -133,6 +155,11 @@ ExecutorService base = Executors.newVirtualThreadPerTaskExecutor();
 Executor contextAware = Context.taskWrapping(base); // OTel
 ExecutorProvider.set(() -> contextAware);
 ```
+
+**Scope.** This governs work LangChain4j *offloads* — concurrent tool calls, blocking RAG / retrieval, moderation,
+retry backoff. It does **not** cover **reactive stream delivery** (`onNext` to a `Flow.Publisher` subscriber),
+which is not routed through the `ExecutorProvider`: move that with `emitOn`/`publishOn` at the consumer (see the
+reactive-delivery note in §3.1). It also does not fabricate a Vert.x duplicated context.
 
 #### 3.1.2 Model listeners must not block
 

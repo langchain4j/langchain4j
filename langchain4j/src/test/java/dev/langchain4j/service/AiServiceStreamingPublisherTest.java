@@ -10,6 +10,10 @@ import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.observability.api.event.CompensationReason;
 import dev.langchain4j.observability.api.event.ToolCompensatedEvent;
 import dev.langchain4j.observability.api.listener.ToolCompensatedEventListener;
+import dev.langchain4j.observability.api.listener.AiServiceStartedListener;
+import dev.langchain4j.rag.AugmentationRequest;
+import dev.langchain4j.rag.AugmentationResult;
+import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
@@ -518,6 +522,124 @@ class AiServiceStreamingPublisherTest {
         assertThat(collected.error).isNull();
         assertThat(finalText(collected)).isEqualTo("It is 42 degrees");
         assertToolResultsSentToLlm(model, 1, "42");
+    }
+
+    // --- review fixes: reactive-publisher subscription contract (#1 onSubscribe/cancellation, #2 re-subscription,
+    // #3 per-subscription lifecycle events) ---
+
+    @Test
+    void reactive_stream_delivers_a_subscription_synchronously_and_is_cancellable_during_the_rag_prologue()
+            throws Exception {
+        StreamingEventChatModelMock model = StreamingEventChatModelMock.thatStreams(AiMessage.from("Hello"));
+
+        // A RAG augmentor whose augmentAsync hangs until we release it, simulating an in-flight retrieval.
+        CompletableFuture<AugmentationResult> augmentation = new CompletableFuture<>();
+        RetrievalAugmentor hangingAugmentor = new RetrievalAugmentor() {
+            @Override
+            public AugmentationResult augment(AugmentationRequest request) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public CompletableFuture<AugmentationResult> augmentAsync(AugmentationRequest request) {
+                return augmentation;
+            }
+        };
+
+        EventStreamer assistant = AiServices.builder(EventStreamer.class)
+                .streamingChatModel(model)
+                .retrievalAugmentor(hangingAugmentor)
+                .build();
+
+        AtomicReference<Flow.Subscription> subscription = new AtomicReference<>();
+        List<AiServiceStreamingEvent> events = new CopyOnWriteArrayList<>();
+        AtomicReference<Throwable> error = new AtomicReference<>();
+        AtomicBoolean completed = new AtomicBoolean();
+
+        assistant.chat("Tell me about Berlin").subscribe(new Flow.Subscriber<>() {
+            @Override
+            public void onSubscribe(Flow.Subscription s) {
+                subscription.set(s);
+                s.request(Long.MAX_VALUE);
+            }
+
+            @Override
+            public void onNext(AiServiceStreamingEvent event) {
+                events.add(event);
+            }
+
+            @Override
+            public void onError(Throwable throwable) {
+                error.set(throwable);
+            }
+
+            @Override
+            public void onComplete() {
+                completed.set(true);
+            }
+        });
+
+        // #1a: a Subscription is delivered synchronously, even though augmentation is still in flight.
+        assertThat(subscription.get())
+                .as("onSubscribe must be signalled before the RAG prologue completes")
+                .isNotNull();
+        assertThat(events).isEmpty();
+        assertThat(error.get()).isNull();
+        assertThat(completed).isFalse();
+
+        // #1b: cancelling during the prologue, then releasing augmentation, must not let the interaction proceed.
+        subscription.get().cancel();
+        augmentation.complete(
+                new AugmentationResult(dev.langchain4j.data.message.UserMessage.from("Tell me about Berlin"), null));
+
+        Thread.sleep(200);
+        assertThat(events).as("no events after cancelling during the prologue").isEmpty();
+        assertThat(error.get()).as("no onError after cancel").isNull();
+        assertThat(completed).as("no onComplete after cancel").isFalse();
+    }
+
+    @Test
+    void reactive_stream_with_chat_memory_rejects_a_second_subscription() throws Exception {
+        StreamingEventChatModelMock model = StreamingEventChatModelMock.thatStreams(AiMessage.from("Hello"));
+        ChatMemory memory = MessageWindowChatMemory.withMaxMessages(20);
+
+        EventStreamer assistant = AiServices.builder(EventStreamer.class)
+                .streamingChatModel(model)
+                .chatMemory(memory)
+                .build();
+
+        Flow.Publisher<AiServiceStreamingEvent> publisher = assistant.chat("Hi");
+
+        Collected<AiServiceStreamingEvent> first = collect(publisher);
+        assertThat(first.error).isNull();
+        int messagesAfterFirst = memory.messages().size();
+        assertThat(messagesAfterFirst).isGreaterThanOrEqualTo(2); // user + ai
+
+        // Re-subscribing would re-run the interaction and duplicate the memory: it must fail fast instead.
+        Collected<AiServiceStreamingEvent> second = collect(publisher);
+        assertThat(second.error).isInstanceOf(IllegalStateException.class);
+        assertThat(second.items).isEmpty();
+        assertThat(memory.messages())
+                .as("memory must not be duplicated by a rejected re-subscription")
+                .hasSize(messagesAfterFirst);
+    }
+
+    @Test
+    void reactive_stream_fires_started_event_per_subscription_not_on_invocation() throws Exception {
+        StreamingEventChatModelMock model = StreamingEventChatModelMock.thatStreams(AiMessage.from("Hello"));
+        AtomicInteger started = new AtomicInteger();
+
+        EventStreamer assistant = AiServices.builder(EventStreamer.class)
+                .streamingChatModel(model)
+                .registerListener((AiServiceStartedListener) event -> started.incrementAndGet())
+                .build();
+
+        Flow.Publisher<AiServiceStreamingEvent> publisher = assistant.chat("Hi");
+        assertThat(started).as("no AiServiceStarted event before subscribing to the cold publisher").hasValue(0);
+
+        Collected<AiServiceStreamingEvent> collected = collect(publisher);
+        assertThat(collected.error).isNull();
+        assertThat(started).as("exactly one AiServiceStarted event after a single subscription").hasValue(1);
     }
 
     @Test
