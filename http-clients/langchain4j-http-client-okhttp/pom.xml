@@ -47,7 +47,6 @@
         <dependency>
             <groupId>io.smallrye.reactive</groupId>
             <artifactId>mutiny-zero</artifactId>
-            <version>1.2.1</version>
         </dependency>
 
         <!-- test dependencies -->

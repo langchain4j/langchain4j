@@ -119,7 +119,10 @@ public interface ChatMemory {
      * persisting all messages in a single read-modify-write (fewer round trips and an atomic update).
      * <p>
      * Callers must not invoke this method concurrently for the same memory: implementations typically read, modify
-     * and write the store, so concurrent calls would race. The AI Service chains its calls sequentially.
+     * and write the store, so concurrent calls would race. The AI Service chains its calls sequentially. Note that
+     * this race window is <b>wider</b> than with the blocking {@link #add(Iterable)}: here the read and the write are
+     * separated by future composition and thread hops rather than a single uninterrupted call, so sharing one memory
+     * across concurrent invocations is more likely to silently drop an update than it was with the synchronous API.
      *
      * @param messages The {@link ChatMessage}s to add.
      * @return A future that completes when the messages have been added.

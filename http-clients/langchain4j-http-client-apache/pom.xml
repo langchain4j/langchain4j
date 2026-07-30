@@ -37,7 +37,6 @@
         <dependency>
             <groupId>io.smallrye.reactive</groupId>
             <artifactId>mutiny-zero</artifactId>
-            <version>1.2.1</version>
         </dependency>
 
         <!-- test dependencies -->
@@ -64,7 +63,6 @@
         <dependency>
             <groupId>io.projectreactor.tools</groupId>
             <artifactId>blockhound</artifactId>
-            <version>1.0.17.RELEASE</version>
             <scope>test</scope>
         </dependency>
 

@@ -55,7 +55,6 @@
         <dependency>
             <groupId>io.smallrye.reactive</groupId>
             <artifactId>mutiny-zero</artifactId>
-            <version>1.2.1</version>
         </dependency>
 
         <!-- test dependencies -->
@@ -108,21 +107,18 @@
         <dependency>
             <groupId>io.projectreactor.tools</groupId>
             <artifactId>blockhound</artifactId>
-            <version>1.0.17.RELEASE</version>
             <scope>test</scope>
         </dependency>
 
         <dependency>
             <groupId>com.tngtech.archunit</groupId>
             <artifactId>archunit</artifactId>
-            <version>1.1.0</version>
             <scope>test</scope>
         </dependency>
 
         <dependency>
             <groupId>org.reactivestreams</groupId>
             <artifactId>reactive-streams-tck</artifactId>
-            <version>1.0.4</version>
             <scope>test</scope>
         </dependency>
 
