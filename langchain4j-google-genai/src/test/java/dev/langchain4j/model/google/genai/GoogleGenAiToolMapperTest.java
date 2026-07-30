@@ -426,6 +426,48 @@ class GoogleGenAiToolMapperTest {
     }
 
     @Test
+    void should_preserve_declared_property_order_and_set_property_ordering() {
+        List<String> declaredOrder = List.of("gamma", "alpha", "zeta", "beta", "delta", "epsilon");
+        JsonObjectSchema.Builder objectBuilder = JsonObjectSchema.builder();
+        declaredOrder.forEach(name -> objectBuilder.addStringProperty(name));
+
+        ToolSpecification spec = ToolSpecification.builder()
+                .name("test")
+                .description("test")
+                .parameters(objectBuilder.build())
+                .build();
+
+        Schema schema =
+                GoogleGenAiToolMapper.convertToGoogleFunction(spec).parameters().get();
+
+        assertThat(schema.properties().get().keySet()).containsExactlyElementsOf(declaredOrder);
+        assertThat(schema.propertyOrdering().get()).containsExactlyElementsOf(declaredOrder);
+    }
+
+    @Test
+    void should_set_property_ordering_on_nested_object() {
+        List<String> nestedOrder = List.of("street", "number", "city", "zip");
+        JsonObjectSchema.Builder addressBuilder = JsonObjectSchema.builder();
+        nestedOrder.forEach(name -> addressBuilder.addStringProperty(name));
+
+        ToolSpecification spec = ToolSpecification.builder()
+                .name("test")
+                .description("test")
+                .parameters(JsonObjectSchema.builder()
+                        .addProperty("address", addressBuilder.build())
+                        .addStringProperty("name")
+                        .build())
+                .build();
+
+        Schema schema =
+                GoogleGenAiToolMapper.convertToGoogleFunction(spec).parameters().get();
+        Schema addressSchema = schema.properties().get().get("address");
+
+        assertThat(schema.propertyOrdering().get()).containsExactly("address", "name");
+        assertThat(addressSchema.propertyOrdering().get()).containsExactlyElementsOf(nestedOrder);
+    }
+
+    @Test
     void should_convert_nested_object_schema() {
         ToolSpecification spec = ToolSpecification.builder()
                 .name("test")
