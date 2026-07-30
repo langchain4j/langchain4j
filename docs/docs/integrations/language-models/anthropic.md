@@ -143,7 +143,7 @@ interface (`submit`, `retrieve`, `cancel`, `list`). Each request is submitted wi
 ```java
 AnthropicBatchChatModel model = AnthropicBatchChatModel.builder()
     .apiKey(System.getenv("ANTHROPIC_API_KEY"))
-    .modelName(CLAUDE_3_5_SONNET_20240620)
+    .modelName("claude-sonnet-4-5")
     .maxTokens(1024)
     .build();
 
@@ -157,7 +157,7 @@ String batchId = submitted.batchId();
 // Poll until the batch reaches a terminal state (typically well under an hour)
 BatchResponse<ChatResponse> batch = model.retrieve(batchId);
 while (!batch.state().isTerminal()) {
-    Thread.sleep(Duration.ofSeconds(30).toMillis());
+    TimeUnit.SECONDS.sleep(30); // throws InterruptedException
     batch = model.retrieve(batchId);
 }
 
@@ -172,6 +172,25 @@ for (BatchItemResult<ChatResponse> result : batch.results()) {
 ```
 
 Use `model.list(...)` to page through recent batches and `model.cancel(batchId)` to cancel one that is still processing.
+A batch that you cancel also finishes in the `ended` state on Anthropic's side, and is reported as `BatchState.CANCELLED`;
+it may still contain results for the requests that completed before the cancellation took effect.
+
+Anthropic-specific options such as thinking or prompt caching are configured through `defaultRequestParameters(...)`,
+exactly as for `AnthropicChatModel`, and can be overridden per request:
+
+```java
+AnthropicBatchChatModel model = AnthropicBatchChatModel.builder()
+    .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+    .modelName("claude-sonnet-4-5")
+    .maxTokens(4096)
+    .defaultRequestParameters(AnthropicChatRequestParameters.builder()
+        .thinkingType("enabled")
+        .thinkingBudgetTokens(2000)
+        .cacheSystemMessages(true)
+        .build())
+    .returnThinking(true) // store the returned thinking in AiMessage.thinking()
+    .build();
+```
 
 ## Tools
 

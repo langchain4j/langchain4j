@@ -1,12 +1,18 @@
 package dev.langchain4j.model.anthropic;
 
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
+import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.model.anthropic.InternalAnthropicHelper.validate;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAiMessage;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toFinishReason;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toTokenUsage;
+import static java.util.Arrays.asList;
 
 import dev.langchain4j.Experimental;
+import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicBatch;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicBatchResult;
@@ -27,13 +33,16 @@ import dev.langchain4j.model.batch.BatchState;
 import dev.langchain4j.model.chat.BatchChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Supplier;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -63,6 +72,14 @@ public final class AnthropicBatchChatModel implements BatchChatModel {
     private final AnthropicClient client;
     private final AnthropicChatRequestParameters defaultRequestParameters;
     private final int maxRetries;
+    private final String thinkingDisplay;
+    private final boolean returnThinking;
+    private final boolean returnServerToolResults;
+    private final List<AnthropicServerTool> serverTools;
+    private final Set<String> toolMetadataKeysToSend;
+    private final List<AnthropicSkill> skills;
+    private final Map<String, Object> customParameters;
+    private final Boolean strictTools;
 
     public AnthropicBatchChatModel(Builder builder) {
         this.client = AnthropicClient.builder()
@@ -74,18 +91,63 @@ public final class AnthropicBatchChatModel implements BatchChatModel {
                 .timeout(builder.timeout)
                 .logRequests(getOrDefault(builder.logRequests, false))
                 .logResponses(getOrDefault(builder.logResponses, false))
+                .customHeaders(builder.customHeadersSupplier)
                 .build();
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
+
+        ChatRequestParameters commonParameters;
+        if (builder.defaultRequestParameters != null) {
+            validate(builder.defaultRequestParameters);
+            commonParameters = builder.defaultRequestParameters;
+        } else {
+            commonParameters = DefaultChatRequestParameters.EMPTY;
+        }
+
+        AnthropicChatRequestParameters anthropicDefaults = commonParameters instanceof AnthropicChatRequestParameters
+                ? (AnthropicChatRequestParameters) commonParameters
+                : AnthropicChatRequestParameters.EMPTY;
+
+        this.thinkingDisplay = builder.thinkingDisplay;
+        this.returnServerToolResults = getOrDefault(builder.returnServerToolResults, false);
+        this.serverTools = copy(builder.serverTools);
+        this.toolMetadataKeysToSend = copy(builder.toolMetadataKeysToSend);
+        this.skills = copy(builder.skills);
+        this.customParameters = copy(builder.customParameters);
+        this.strictTools = builder.strictTools;
+
         this.defaultRequestParameters = AnthropicChatRequestParameters.builder()
-                .modelName(builder.modelName)
-                .maxOutputTokens(getOrDefault(builder.maxTokens, 1024))
-                .temperature(builder.temperature)
-                .topP(builder.topP)
-                .topK(builder.topK)
-                .stopSequences(builder.stopSequences)
+                .modelName(getOrDefault(builder.modelName, commonParameters.modelName()))
+                .maxOutputTokens(
+                        getOrDefault(builder.maxTokens, getOrDefault(commonParameters.maxOutputTokens(), 1024)))
+                .temperature(getOrDefault(builder.temperature, commonParameters.temperature()))
+                .topP(getOrDefault(builder.topP, commonParameters.topP()))
+                .topK(getOrDefault(builder.topK, commonParameters.topK()))
+                .stopSequences(getOrDefault(builder.stopSequences, commonParameters.stopSequences()))
+                .toolSpecifications(commonParameters.toolSpecifications())
+                .toolChoice(commonParameters.toolChoice())
+                .responseFormat(commonParameters.responseFormat())
+                .cacheSystemMessages(anthropicDefaults.cacheSystemMessages())
+                .cacheTools(anthropicDefaults.cacheTools())
+                .thinkingType(anthropicDefaults.thinkingType())
+                .thinkingBudgetTokens(anthropicDefaults.thinkingBudgetTokens())
+                .sendThinking(anthropicDefaults.sendThinking())
+                .midConversationSystemMessages(anthropicDefaults.midConversationSystemMessages())
+                .returnThinking(getOrDefault(builder.returnThinking, anthropicDefaults.returnThinking()))
+                .toolChoiceName(anthropicDefaults.toolChoiceName())
+                .disableParallelToolUse(anthropicDefaults.disableParallelToolUse())
+                .userId(anthropicDefaults.userId())
+                .returnCacheDiagnostics(anthropicDefaults.returnCacheDiagnostics())
                 .build();
+
+        this.returnThinking = getOrDefault(this.defaultRequestParameters.returnThinking(), false);
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * <p>All requests are submitted inline in a single HTTP request, so Anthropic's limits of 100,000 requests
+     * and 256 MB per batch apply. Exceeding either is rejected by the API.</p>
+     */
     @Override
     public BatchResponse<ChatResponse> submit(BatchRequest<ChatRequest> request) {
         List<ChatRequest> requests = request.requests();
@@ -99,6 +161,12 @@ public final class AnthropicBatchChatModel implements BatchChatModel {
         return toBatchResponse(batch, List.of());
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * <p>Once the batch has ended, all of its results are downloaded and held in memory. For very large batches
+     * (Anthropic allows up to 100,000 requests per batch) this can require a correspondingly large heap.</p>
+     */
     @Override
     public BatchResponse<ChatResponse> retrieve(String batchId) {
         AnthropicBatch batch = withRetryMappingExceptions(() -> client.retrieveBatch(batchId), maxRetries);
@@ -141,15 +209,16 @@ public final class AnthropicBatchChatModel implements BatchChatModel {
     }
 
     private AnthropicCreateMessageRequest toAnthropicRequest(ChatRequest chatRequest) {
-        ChatRequestParameters merged = defaultRequestParameters.overrideWith(chatRequest.parameters());
-        AnthropicChatRequestParameters parameters = (AnthropicChatRequestParameters) merged;
+        AnthropicChatRequestParameters parameters = defaultRequestParameters.overrideWith(chatRequest.parameters());
+        ensureNotBlank(parameters.modelName(), "modelName");
         ChatRequest effectiveRequest = ChatRequest.builder()
                 .messages(chatRequest.messages())
-                .parameters(merged)
+                .parameters(parameters)
                 .build();
         return InternalAnthropicHelper.createAnthropicRequest(
                 effectiveRequest,
-                AnthropicChatModel.toThinking(parameters.thinkingType(), parameters.thinkingBudgetTokens(), null),
+                AnthropicChatModel.toThinking(
+                        parameters.thinkingType(), parameters.thinkingBudgetTokens(), thinkingDisplay),
                 getOrDefault(parameters.sendThinking(), true),
                 getOrDefault(parameters.midConversationSystemMessages(), false),
                 getOrDefault(parameters.cacheSystemMessages(), false)
@@ -161,12 +230,12 @@ public final class AnthropicBatchChatModel implements BatchChatModel {
                 false,
                 parameters.toolChoiceName(),
                 parameters.disableParallelToolUse(),
-                List.of(),
-                Set.of(),
+                serverTools,
+                toolMetadataKeysToSend,
                 parameters.userId(),
-                List.of(),
-                null,
-                null,
+                skills,
+                customParameters,
+                strictTools,
                 getOrDefault(parameters.returnCacheDiagnostics(), false),
                 parameters.previousMessageId());
     }
@@ -179,7 +248,7 @@ public final class AnthropicBatchChatModel implements BatchChatModel {
                 .finishReason(toFinishReason(response.stopReason))
                 .build();
         return ChatResponse.builder()
-                .aiMessage(toAiMessage(response.content, false, false))
+                .aiMessage(toAiMessage(response.content, returnThinking, returnServerToolResults))
                 .metadata(metadata)
                 .build();
     }
@@ -188,18 +257,19 @@ public final class AnthropicBatchChatModel implements BatchChatModel {
             AnthropicBatch batch, List<BatchItemResult<ChatResponse>> results) {
         return BatchResponse.<ChatResponse>builder()
                 .batchId(batch.id)
-                .state(toBatchState(batch.processingStatus))
+                .state(toBatchState(batch))
                 .results(results)
                 .build();
     }
 
-    private static BatchState toBatchState(@Nullable String processingStatus) {
+    private static BatchState toBatchState(AnthropicBatch batch) {
+        String processingStatus = batch.processingStatus;
         if (processingStatus == null) {
             return BatchState.UNSPECIFIED;
         }
         return switch (processingStatus) {
             case STATUS_IN_PROGRESS, STATUS_CANCELING -> BatchState.RUNNING;
-            case STATUS_ENDED -> BatchState.SUCCEEDED;
+            case STATUS_ENDED -> batch.cancelInitiatedAt != null ? BatchState.CANCELLED : BatchState.SUCCEEDED;
             default -> BatchState.UNSPECIFIED;
         };
     }
@@ -212,6 +282,11 @@ public final class AnthropicBatchChatModel implements BatchChatModel {
         return BatchItemResult.failure(toBatchError(outcome));
     }
 
+    /**
+     * Anthropic reports batch item failures by error type, not by numeric code, so {@link BatchError#code()} is
+     * always {@code 0}; the Anthropic error type is surfaced under the {@code "type"} key of
+     * {@link BatchError#details()} instead.
+     */
     private static BatchError toBatchError(AnthropicBatchResult.@Nullable Result outcome) {
         if (outcome == null) {
             return new BatchError(0, "unknown", null);
@@ -254,6 +329,16 @@ public final class AnthropicBatchChatModel implements BatchChatModel {
         private Integer maxRetries;
         private Boolean logRequests;
         private Boolean logResponses;
+        private ChatRequestParameters defaultRequestParameters;
+        private String thinkingDisplay;
+        private Boolean returnThinking;
+        private Boolean returnServerToolResults;
+        private List<AnthropicServerTool> serverTools;
+        private Set<String> toolMetadataKeysToSend;
+        private List<AnthropicSkill> skills;
+        private Map<String, Object> customParameters;
+        private Boolean strictTools;
+        private Supplier<Map<String, String>> customHeadersSupplier;
 
         private Builder() {}
 
@@ -331,6 +416,19 @@ public final class AnthropicBatchChatModel implements BatchChatModel {
          */
         public Builder modelName(String modelName) {
             this.modelName = modelName;
+            return this;
+        }
+
+        /**
+         * Sets the model applied to every batched request.
+         * <p>
+         * It can be overridden per request via {@link ChatRequestParameters#modelName()}.
+         *
+         * @param modelName the model
+         * @return {@code this}
+         */
+        public Builder modelName(AnthropicChatModelName modelName) {
+            this.modelName = modelName.toString();
             return this;
         }
 
@@ -442,6 +540,170 @@ public final class AnthropicBatchChatModel implements BatchChatModel {
          */
         public Builder logResponses(Boolean logResponses) {
             this.logResponses = logResponses;
+            return this;
+        }
+
+        /**
+         * Sets the default {@link ChatRequestParameters} applied to every batched request.
+         * <p>
+         * Pass {@link AnthropicChatRequestParameters} to configure Anthropic-specific defaults such as thinking,
+         * prompt caching and tool choice. Individual builder methods (e.g. {@link #modelName(String)}) take
+         * precedence over the corresponding value here, and per-request parameters take precedence over both.
+         *
+         * @param parameters the default request parameters
+         * @return {@code this}
+         */
+        public Builder defaultRequestParameters(ChatRequestParameters parameters) {
+            this.defaultRequestParameters = parameters;
+            return this;
+        }
+
+        /**
+         * Controls how thinking is returned by the API, e.g. {@code "summarized"} or {@code "omitted"}.
+         * <p>
+         * Applies only when thinking is enabled via
+         * {@link AnthropicChatRequestParameters.Builder#thinkingType(String)}.
+         *
+         * @param thinkingDisplay the thinking display mode
+         * @return {@code this}
+         * @see #returnThinking(Boolean)
+         */
+        public Builder thinkingDisplay(String thinkingDisplay) {
+            this.thinkingDisplay = thinkingDisplay;
+            return this;
+        }
+
+        /**
+         * Controls whether thinking returned by the API is stored in {@link AiMessage#thinking()}.
+         * <p>
+         * Disabled by default. Unlike {@link AnthropicChatModel}, this is resolved once per model rather than per
+         * request, because results are mapped in {@link #retrieve(String)}, which has no access to the originating
+         * request.
+         *
+         * @param returnThinking whether to return thinking
+         * @return {@code this}
+         */
+        public Builder returnThinking(Boolean returnThinking) {
+            this.returnThinking = returnThinking;
+            return this;
+        }
+
+        /**
+         * Controls whether to return server tool results (e.g. web_search, code_execution)
+         * inside {@link AiMessage#attributes()} under the key "server_tool_results".
+         * <p>
+         * Disabled by default to avoid returning potentially large data.
+         *
+         * @param returnServerToolResults whether to return server tool results
+         * @return {@code this}
+         * @see #serverTools(List)
+         */
+        public Builder returnServerToolResults(Boolean returnServerToolResults) {
+            this.returnServerToolResults = returnServerToolResults;
+            return this;
+        }
+
+        /**
+         * Specifies server tools (e.g. web search, code execution) to be included in every batched request.
+         *
+         * @param serverTools the server tools
+         * @return {@code this}
+         * @see AnthropicChatModel.AnthropicChatModelBuilder#serverTools(List)
+         */
+        public Builder serverTools(List<AnthropicServerTool> serverTools) {
+            this.serverTools = serverTools;
+            return this;
+        }
+
+        /**
+         * @see #serverTools(List)
+         */
+        public Builder serverTools(AnthropicServerTool... serverTools) {
+            return serverTools(asList(serverTools));
+        }
+
+        /**
+         * Enables Anthropic Agent Skills for every batched request.
+         * <p>
+         * The required beta features must be opted into via {@link #beta(String)}.
+         *
+         * @param skills the skills to enable
+         * @return {@code this}
+         * @see AnthropicChatModel.AnthropicChatModelBuilder#skills(List)
+         */
+        public Builder skills(List<AnthropicSkill> skills) {
+            this.skills = skills;
+            return this;
+        }
+
+        /**
+         * @see #skills(List)
+         */
+        public Builder skills(AnthropicSkill... skills) {
+            return skills(asList(skills));
+        }
+
+        /**
+         * Specifies metadata keys from the {@link ToolSpecification#metadata()} to be included in the request.
+         *
+         * @param toolMetadataKeysToSend the metadata keys
+         * @return {@code this}
+         */
+        public Builder toolMetadataKeysToSend(Set<String> toolMetadataKeysToSend) {
+            this.toolMetadataKeysToSend = toolMetadataKeysToSend;
+            return this;
+        }
+
+        /**
+         * @see #toolMetadataKeysToSend(Set)
+         */
+        public Builder toolMetadataKeysToSend(String... toolMetadataKeysToSend) {
+            return toolMetadataKeysToSend(new HashSet<>(asList(toolMetadataKeysToSend)));
+        }
+
+        /**
+         * Enables strict mode for tools, guaranteeing that generated tool arguments match the tool's schema.
+         *
+         * @param strictTools whether tools are strict
+         * @return {@code this}
+         */
+        public Builder strictTools(Boolean strictTools) {
+            this.strictTools = strictTools;
+            return this;
+        }
+
+        /**
+         * Sets additional top-level parameters added verbatim to every batched request body.
+         * Use this to send parameters that are not yet supported by langchain4j.
+         *
+         * @param customParameters the custom parameters
+         * @return {@code this}
+         */
+        public Builder customParameters(Map<String, Object> customParameters) {
+            this.customParameters = customParameters;
+            return this;
+        }
+
+        /**
+         * Sets custom HTTP headers sent with every request to the Anthropic API.
+         *
+         * @param customHeaders a map of header names to values
+         * @return {@code this}
+         */
+        public Builder customHeaders(Map<String, String> customHeaders) {
+            this.customHeadersSupplier = () -> customHeaders;
+            return this;
+        }
+
+        /**
+         * Sets a supplier of custom HTTP headers, invoked for every request to the Anthropic API.
+         * Use this when header values need to be refreshed, e.g. for short-lived tokens.
+         *
+         * @param customHeadersSupplier a supplier that returns a map of header names to values
+         * @return {@code this}
+         */
+        public Builder customHeaders(Supplier<Map<String, String>> customHeadersSupplier) {
+            this.customHeadersSupplier = customHeadersSupplier;
             return this;
         }
 

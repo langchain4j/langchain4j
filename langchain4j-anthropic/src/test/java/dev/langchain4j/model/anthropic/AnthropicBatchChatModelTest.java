@@ -1,8 +1,10 @@
 package dev.langchain4j.model.anthropic;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.sun.net.httpserver.HttpServer;
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.batch.BatchItemResult;
 import dev.langchain4j.model.batch.BatchPage;
@@ -50,6 +52,21 @@ class AnthropicBatchChatModelTest {
              "request_counts":{"processing":2,"succeeded":0,"errored":0,"canceled":0,"expired":0}}
             """;
 
+    private static final String CANCEL_INITIATED_ENDED_RESPONSE = """
+            {"id":"msgbatch_cancel_initiated","type":"message_batch","processing_status":"ended",
+             "cancel_initiated_at":"2024-09-24T18:37:24.100435Z",
+             "results_url":"https://example.com/results",
+             "request_counts":{"processing":0,"succeeded":1,"errored":1,"canceled":0,"expired":0}}
+            """;
+
+    private static final String THINKING_RESULTS_JSONL =
+            "{\"custom_id\":\"request-0\",\"result\":{\"type\":\"succeeded\",\"message\":{\"id\":\"msg_0\","
+                    + "\"type\":\"message\",\"role\":\"assistant\",\"content\":["
+                    + "{\"type\":\"thinking\",\"thinking\":\"Paris is the capital.\",\"signature\":\"sig-1\"},"
+                    + "{\"type\":\"text\",\"text\":\"Paris\"}],"
+                    + "\"model\":\"claude-haiku-4-5-20251001\",\"stop_reason\":\"end_turn\","
+                    + "\"usage\":{\"input_tokens\":5,\"output_tokens\":1}}}}\n";
+
     private static final String CANCELED_RESULTS_JSONL =
             "{\"custom_id\":\"request-0\",\"result\":{\"type\":\"canceled\"}}\n";
 
@@ -84,7 +101,13 @@ class AnthropicBatchChatModelTest {
                 responseBody = CANCELING_RESPONSE;
             } else if (path.endsWith("/results")) {
                 resultsCalled.set(true);
-                responseBody = path.contains("msgbatch_canceled") ? CANCELED_RESULTS_JSONL : RESULTS_JSONL;
+                if (path.contains("msgbatch_canceled")) {
+                    responseBody = CANCELED_RESULTS_JSONL;
+                } else if (path.contains("msgbatch_thinking")) {
+                    responseBody = THINKING_RESULTS_JSONL;
+                } else {
+                    responseBody = RESULTS_JSONL;
+                }
             } else if (path.equals("/v1/messages/batches") && method.equals("POST")) {
                 capturedCreateBody.set(read(exchange.getRequestBody()));
                 responseBody = CREATE_RESPONSE;
@@ -93,6 +116,8 @@ class AnthropicBatchChatModelTest {
                 responseBody = LIST_RESPONSE;
             } else if (path.endsWith("msgbatch_running")) {
                 responseBody = IN_PROGRESS_RESPONSE;
+            } else if (path.endsWith("msgbatch_cancel_initiated")) {
+                responseBody = CANCEL_INITIATED_ENDED_RESPONSE;
             } else {
                 responseBody = ENDED_RESPONSE;
             }
@@ -192,6 +217,77 @@ class AnthropicBatchChatModelTest {
 
         assertThat(page.batches()).hasSize(1);
         assertThat(capturedListQuery.get()).isNull();
+    }
+
+    @Test
+    void retrieve_maps_ended_batch_with_cancel_initiated_at_to_cancelled() {
+        BatchResponse<ChatResponse> response = model().retrieve("msgbatch_cancel_initiated");
+
+        assertThat(response.state()).isEqualTo(BatchState.CANCELLED);
+        assertThat(response.state().isTerminal()).isTrue();
+        // a cancelled batch may still carry results for requests that completed before cancellation
+        assertThat(response.results()).hasSize(2);
+    }
+
+    @Test
+    void retrieve_does_not_return_thinking_by_default() {
+        BatchResponse<ChatResponse> response = model().retrieve("msgbatch_thinking");
+
+        AiMessage aiMessage = response.results().get(0).response().aiMessage();
+        assertThat(aiMessage.text()).isEqualTo("Paris");
+        assertThat(aiMessage.thinking()).isNull();
+    }
+
+    @Test
+    void retrieve_returns_thinking_when_return_thinking_is_enabled() {
+        AnthropicBatchChatModel model = AnthropicBatchChatModel.builder()
+                .baseUrl(baseUrl)
+                .apiKey("test-key")
+                .modelName("claude-haiku-4-5-20251001")
+                .maxTokens(16)
+                .returnThinking(true)
+                .build();
+
+        BatchResponse<ChatResponse> response = model.retrieve("msgbatch_thinking");
+
+        AiMessage aiMessage = response.results().get(0).response().aiMessage();
+        assertThat(aiMessage.text()).isEqualTo("Paris");
+        assertThat(aiMessage.thinking()).isEqualTo("Paris is the capital.");
+    }
+
+    @Test
+    void submit_applies_anthropic_specific_default_request_parameters() {
+        AnthropicBatchChatModel model = AnthropicBatchChatModel.builder()
+                .baseUrl(baseUrl)
+                .apiKey("test-key")
+                .modelName("claude-haiku-4-5-20251001")
+                .maxTokens(2048)
+                .defaultRequestParameters(AnthropicChatRequestParameters.builder()
+                        .thinkingType("enabled")
+                        .thinkingBudgetTokens(1024)
+                        .build())
+                .build();
+
+        model.submit(new BatchRequest<>(List.of(
+                ChatRequest.builder().messages(UserMessage.from("first")).build())));
+
+        assertThat(capturedCreateBody.get()).contains("\"thinking\"", "\"budget_tokens\" : 1024");
+    }
+
+    @Test
+    void submit_fails_when_model_name_is_not_set() {
+        AnthropicBatchChatModel model = AnthropicBatchChatModel.builder()
+                .baseUrl(baseUrl)
+                .apiKey("test-key")
+                .maxTokens(16)
+                .build();
+
+        BatchRequest<ChatRequest> request = new BatchRequest<>(List.of(
+                ChatRequest.builder().messages(UserMessage.from("first")).build()));
+
+        assertThatThrownBy(() -> model.submit(request))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("modelName");
     }
 
     private static String read(InputStream inputStream) throws IOException {
