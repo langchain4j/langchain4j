@@ -1,26 +1,35 @@
 package dev.langchain4j.model.gpullama3;
 
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.internal.Json;
+import dev.langchain4j.internal.JsonSchemaElementUtils;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import java.io.IOException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import java.lang.ref.Cleaner;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.IntConsumer;
+import java.util.stream.Collectors;
 import org.beehive.gpullama3.auxiliary.RunMetrics;
 import org.beehive.gpullama3.inference.sampler.Sampler;
 import org.beehive.gpullama3.inference.state.State;
 import org.beehive.gpullama3.model.Model;
 import org.beehive.gpullama3.model.format.ChatFormat;
+import org.beehive.gpullama3.model.format.ToolCallExtract;
 import org.beehive.gpullama3.model.loader.ModelLoader;
 import org.beehive.gpullama3.tornadovm.TornadoVMMasterPlan;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Abstract base class for GPULlama3 chat models providing core functionality for conversation management and token generation.
@@ -108,9 +117,16 @@ abstract class GPULlama3BaseModel implements AutoCloseable {
             promptTokens.add(chatFormat.getBeginOfText());
         }
 
-        processPromptMessages(request.messages());
+        List<ToolSpecification> tools = request.toolSpecifications();
+        String toolsJson = tools.isEmpty() ? null : buildToolsJson(tools);
+        if (toolsJson != null && !chatFormat.supportsToolCalling()) {
+            throw new UnsupportedOperationException("Tool calling is not supported for model format: "
+                    + chatFormat.getClass().getSimpleName());
+        }
 
-        Set<Integer> stopTokens = chatFormat.getStopTokens();
+        processPromptMessages(request.messages(), toolsJson);
+
+        Set<Integer> stopTokens = toolsJson == null ? chatFormat.getStopTokens() : chatFormat.getToolAwareStopTokens();
         List<Integer> responseTokens;
 
         if (onGPU) {
@@ -187,22 +203,110 @@ abstract class GPULlama3BaseModel implements AutoCloseable {
      * @see SystemMessage
      * @see AiMessage
      */
-    private void processPromptMessages(List<ChatMessage> messageList) {
+    private void processPromptMessages(List<ChatMessage> messageList, String toolsJson) {
+        boolean toolsInjected = false;
+        boolean injectToolsInUserMessage = toolsJson != null && chatFormat.injectsToolsInUserMessage();
+        boolean hasSystemMessage = messageList.stream().anyMatch(SystemMessage.class::isInstance);
+
+        if (toolsJson != null && !injectToolsInUserMessage && !hasSystemMessage && model.shouldAddSystemPrompt()) {
+            promptTokens.addAll(chatFormat.encodeMessage(new ChatFormat.Message(
+                    ChatFormat.Role.SYSTEM,
+                    chatFormat.toolSystemPromptSuffix(toolsJson).stripLeading())));
+            toolsInjected = true;
+        }
+
         for (ChatMessage msg : messageList) {
             if (msg instanceof UserMessage userMessage) {
-                promptTokens.addAll(chatFormat.encodeMessage(
-                        new ChatFormat.Message(ChatFormat.Role.USER, userMessage.singleText())));
+                String content = userMessage.singleText();
+                if (injectToolsInUserMessage && !toolsInjected) {
+                    content = chatFormat.toolFirstUserMessagePrefix(toolsJson) + content;
+                    toolsInjected = true;
+                }
+                promptTokens.addAll(chatFormat.encodeMessage(new ChatFormat.Message(ChatFormat.Role.USER, content)));
             } else if (msg instanceof SystemMessage systemMessage && model.shouldAddSystemPrompt()) {
-                promptTokens.addAll(
-                        chatFormat.encodeMessage(new ChatFormat.Message(ChatFormat.Role.SYSTEM, systemMessage.text())));
+                String content = systemMessage.text();
+                if (toolsJson != null) {
+                    if (injectToolsInUserMessage) {
+                        content = chatFormat.toolSystemMessagePrefix() + content;
+                    } else {
+                        content += chatFormat.toolSystemPromptSuffix(toolsJson);
+                        toolsInjected = true;
+                    }
+                }
+                promptTokens.addAll(chatFormat.encodeMessage(new ChatFormat.Message(ChatFormat.Role.SYSTEM, content)));
             } else if (msg instanceof AiMessage aiMessage) {
-                promptTokens.addAll(
-                        chatFormat.encodeMessage(new ChatFormat.Message(ChatFormat.Role.ASSISTANT, aiMessage.text())));
+                if (aiMessage.hasToolExecutionRequests()) {
+                    List<ToolCallExtract> toolCalls = aiMessage.toolExecutionRequests().stream()
+                            .map(request -> new ToolCallExtract(
+                                    request.name(), request.arguments(), java.util.Optional.ofNullable(request.id())))
+                            .toList();
+                    promptTokens.addAll(chatFormat.encodeToolCallAssistantTurn(toolCalls));
+                } else {
+                    promptTokens.addAll(chatFormat.encodeMessage(
+                            new ChatFormat.Message(ChatFormat.Role.ASSISTANT, aiMessage.text())));
+                }
+            } else if (msg instanceof ToolExecutionResultMessage toolResultMessage) {
+                promptTokens.addAll(chatFormat.encodeToolResultTurn(
+                        toolResultMessage.id(),
+                        toolResultMessage.toolName(),
+                        unwrapToolResult(toolResultMessage.text())));
             }
         }
 
         // EncodeHeader to prime the model to start generating a new assistant response.
         promptTokens.addAll(chatFormat.encodeHeader(new ChatFormat.Message(ChatFormat.Role.ASSISTANT, "")));
+    }
+
+    private String buildToolsJson(List<ToolSpecification> tools) {
+        return buildToolMaps(tools).stream().map(Json::toJson).collect(Collectors.joining("\n\n"));
+    }
+
+    private static List<Map<String, Object>> buildToolMaps(List<ToolSpecification> tools) {
+        List<Map<String, Object>> toolMaps = new ArrayList<>();
+        for (ToolSpecification tool : tools) {
+            Map<String, Object> function = new LinkedHashMap<>();
+            function.put("name", tool.name());
+            if (tool.description() != null) {
+                function.put("description", tool.description());
+            }
+            function.put(
+                    "parameters",
+                    tool.parameters() == null
+                            ? Map.of("type", "object", "properties", Map.of())
+                            : JsonSchemaElementUtils.toMap(tool.parameters()));
+
+            Map<String, Object> toolMap = new LinkedHashMap<>();
+            toolMap.put("type", "function");
+            toolMap.put("function", function);
+            toolMaps.add(toolMap);
+        }
+        return toolMaps;
+    }
+
+    private static String unwrapToolResult(String text) {
+        if (text == null) {
+            return "";
+        }
+        if (text.startsWith("\"")) {
+            try {
+                return Json.fromJson(text, String.class);
+            } catch (RuntimeException ignored) {
+                // The result is not a JSON string literal; pass it through unchanged.
+            }
+        }
+        return text;
+    }
+
+    protected static String generateCallId() {
+        return "call_" + Long.toUnsignedString(ThreadLocalRandom.current().nextLong(), 36);
+    }
+
+    protected static String normalizeJson(String json) {
+        try {
+            return Json.toJson(Json.fromJson(json, Object.class));
+        } catch (RuntimeException ignored) {
+            return json;
+        }
     }
 
     /**

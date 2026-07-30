@@ -17,6 +17,7 @@ import org.junit.jupiter.api.Test;
 class GPULlama3ChatModelIT extends AbstractChatModelIT {
 
     private static GPULlama3ChatModel model;
+
     @BeforeAll
     public static void setUp() {
         model = GPULlama3ChatModel.builder()
@@ -44,7 +45,7 @@ class GPULlama3ChatModelIT extends AbstractChatModelIT {
 
     @Override
     protected List<ChatModel> modelsSupportingTools() {
-        return List.of(); // GPU Llama3 doesn't support tools
+        return List.of(model);
     }
 
     @Override
@@ -58,24 +59,6 @@ class GPULlama3ChatModelIT extends AbstractChatModelIT {
     }
 
     // Disable tests that require features not supported by GPU Llama3
-
-    @Override
-    @Disabled("GPU Llama3 does not support tools")
-    protected void should_execute_a_tool_then_answer(ChatModel model) {
-        // Test disabled - GPU Llama3 doesn't support tools
-    }
-
-    @Override
-    @Disabled("GPU Llama3 does not support tools")
-    protected void should_execute_a_tool_without_arguments_then_answer(ChatModel model) {
-        // Test disabled - GPU Llama3 doesn't support tools
-    }
-
-    @Override
-    @Disabled("GPU Llama3 does not support tools")
-    protected void should_execute_multiple_tools_in_parallel_then_answer(ChatModel model) {
-        // Test disabled - GPU Llama3 doesn't support tools
-    }
 
     @Override
     @Disabled("GPU Llama3 does not support tool choice")
@@ -151,7 +134,7 @@ class GPULlama3ChatModelIT extends AbstractChatModelIT {
     // Override feature support methods to return false for unsupported features
     @Override
     protected boolean supportsTools() {
-        return false;
+        return true;
     }
 
     @Override
@@ -284,12 +267,6 @@ class GPULlama3ChatModelIT extends AbstractChatModelIT {
     @Override
     @Disabled("GPU Llama3 does not support stop sequences")
     protected void should_fail_if_stopSequences_parameter_is_not_supported(ChatModel model) {
-        // This test expects the feature to be supported but fail - GPU Llama3 doesn't support it at all
-    }
-
-    @Override
-    @Disabled("GPU Llama3 does not support tools")
-    protected void should_fail_if_tools_are_not_supported(ChatModel model) {
         // This test expects the feature to be supported but fail - GPU Llama3 doesn't support it at all
     }
 
