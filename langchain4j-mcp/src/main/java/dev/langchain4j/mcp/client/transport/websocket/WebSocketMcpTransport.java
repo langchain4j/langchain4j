@@ -278,16 +278,34 @@ public class WebSocketMcpTransport implements McpTransport {
         private SSLContext sslContext;
         private McpHeadersSupplier headersSupplier;
 
+        /**
+         * Sets whether to log responses received over the websocket connection.
+         *
+         * @param logResponses {@code true} to log responses
+         * @return {@code this}
+         */
         public Builder logResponses(boolean logResponses) {
             this.logResponses = logResponses;
             return this;
         }
 
+        /**
+         * Sets whether to log requests sent over the websocket connection.
+         *
+         * @param logRequests {@code true} to log requests
+         * @return {@code this}
+         */
         public Builder logRequests(boolean logRequests) {
             this.logRequests = logRequests;
             return this;
         }
 
+        /**
+         * Sets the URL of the MCP server's websocket endpoint (required).
+         *
+         * @param url the websocket endpoint URL
+         * @return {@code this}
+         */
         public Builder url(String url) {
             this.url = url;
             return this;
@@ -322,21 +340,47 @@ public class WebSocketMcpTransport implements McpTransport {
             return this;
         }
 
+        /**
+         * Sets the {@link SSLContext} used for secure websocket connections.
+         * See {@link WebSocketMcpTransport#reloadSslContext(SSLContext)} for updating it at runtime.
+         *
+         * @param sslContext the SSL context
+         * @return {@code this}
+         */
         public Builder sslContext(SSLContext sslContext) {
             this.sslContext = sslContext;
             return this;
         }
 
+        /**
+         * Sets a supplier of custom HTTP headers added to the websocket handshake request.
+         * The supplier is called before each connection attempt, allowing dynamic header values.
+         *
+         * @param headersSupplier the headers supplier
+         * @return {@code this}
+         */
         public Builder headersSupplier(Supplier<Map<String, String>> headersSupplier) {
             this.headersSupplier = (i) -> headersSupplier.get();
             return this;
         }
 
+        /**
+         * Sets a {@link McpHeadersSupplier} of custom HTTP headers added to the websocket handshake request.
+         * The supplier is called before each connection attempt, allowing dynamic header values.
+         *
+         * @param headersSupplier the headers supplier
+         * @return {@code this}
+         */
         public Builder headersSupplier(McpHeadersSupplier headersSupplier) {
             this.headersSupplier = headersSupplier;
             return this;
         }
 
+        /**
+         * Builds the {@link WebSocketMcpTransport}.
+         *
+         * @return the configured {@link WebSocketMcpTransport}
+         */
         public WebSocketMcpTransport build() {
             return new WebSocketMcpTransport(this);
         }
