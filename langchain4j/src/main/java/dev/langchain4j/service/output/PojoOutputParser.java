@@ -21,8 +21,10 @@ import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.output.structured.Description;
 import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -101,13 +103,8 @@ class PojoOutputParser<T> implements OutputParser<T> {
         StringBuilder jsonSchema = new StringBuilder();
 
         jsonSchema.append("{\n");
-        for (Field field : type.getDeclaredFields()) {
-            String name = field.getName();
-            if (name.equals("__$hits$__") || java.lang.reflect.Modifier.isStatic(field.getModifiers())) {
-                // Skip coverage instrumentation field.
-                continue;
-            }
-            jsonSchema.append(format("\"%s\": (%s),\n", name, descriptionFor(field, visited)));
+        for (Field field : allNonStaticFields(type)) {
+            jsonSchema.append(format("\"%s\": (%s),\n", field.getName(), descriptionFor(field, visited)));
         }
 
         int trailingCommaIndex = jsonSchema.lastIndexOf(",");
@@ -116,6 +113,26 @@ class PojoOutputParser<T> implements OutputParser<T> {
         }
         jsonSchema.append("}");
         return jsonSchema.toString();
+    }
+
+    private static List<Field> allNonStaticFields(Class<?> type) {
+        List<Field> fields = new ArrayList<>();
+        Set<String> seenNames = new HashSet<>();
+        Class<?> current = type;
+        while (current != null && current != Object.class) {
+            for (Field field : current.getDeclaredFields()) {
+                String name = field.getName();
+                if (name.equals("__$hits$__") || Modifier.isStatic(field.getModifiers())) {
+                    // Skip coverage instrumentation field.
+                    continue;
+                }
+                if (seenNames.add(name)) {
+                    fields.add(field);
+                }
+            }
+            current = current.getSuperclass();
+        }
+        return fields;
     }
 
     private static String descriptionFor(Field field, Set<Class<?>> visited) {
