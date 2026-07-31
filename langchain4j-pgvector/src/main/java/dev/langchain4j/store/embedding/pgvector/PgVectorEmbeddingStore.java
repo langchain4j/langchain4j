@@ -719,61 +719,135 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
 
         DatasourceBuilder() {}
 
+        /**
+         * Sets the {@link DataSource} used to connect to PostgreSQL.
+         *
+         * @param datasource the datasource
+         * @return {@code this}
+         */
         public DatasourceBuilder datasource(DataSource datasource) {
             this.datasource = datasource;
             return this;
         }
 
+        /**
+         * Sets the database table name used to store embeddings.
+         *
+         * @param table the table name
+         * @return {@code this}
+         */
         public DatasourceBuilder table(String table) {
             this.table = table;
             return this;
         }
 
+        /**
+         * Sets the number of dimensions for the embedding vectors.
+         *
+         * @param dimension the number of dimensions
+         * @return {@code this}
+         */
         public DatasourceBuilder dimension(Integer dimension) {
             this.dimension = dimension;
             return this;
         }
 
+        /**
+         * Controls whether to use an IVFFlat index for vector search. Defaults to {@code false}.
+         *
+         * @param useIndex {@code true} to create and use an IVFFlat index
+         * @return {@code this}
+         */
         public DatasourceBuilder useIndex(Boolean useIndex) {
             this.useIndex = useIndex;
             return this;
         }
 
+        /**
+         * Sets the number of lists for the IVFFlat index.
+         *
+         * @param indexListSize the IVFFlat number of lists
+         * @return {@code this}
+         */
         public DatasourceBuilder indexListSize(Integer indexListSize) {
             this.indexListSize = indexListSize;
             return this;
         }
 
+        /**
+         * Controls whether to automatically create the table if it does not exist. Defaults to {@code true}.
+         *
+         * @param createTable {@code true} to create the table automatically
+         * @return {@code this}
+         */
         public DatasourceBuilder createTable(Boolean createTable) {
             this.createTable = createTable;
             return this;
         }
 
+        /**
+         * Controls whether to drop the table first before creating it, usually for testing. Defaults to {@code false}.
+         *
+         * @param dropTableFirst {@code true} to drop the table before creating it
+         * @return {@code this}
+         */
         public DatasourceBuilder dropTableFirst(Boolean dropTableFirst) {
             this.dropTableFirst = dropTableFirst;
             return this;
         }
 
+        /**
+         * Controls whether to skip executing {@code CREATE EXTENSION vector} on each connection. Defaults to {@code false}.
+         *
+         * @param skipCreateVectorExtension {@code true} to skip creating the vector extension
+         * @return {@code this}
+         */
         public DatasourceBuilder skipCreateVectorExtension(Boolean skipCreateVectorExtension) {
             this.skipCreateVectorExtension = skipCreateVectorExtension;
             return this;
         }
 
+        /**
+         * Sets the {@link MetadataStorageConfig} used to store and query metadata.
+         *
+         * @param metadataStorageConfig the metadata storage configuration
+         * @return {@code this}
+         */
         public DatasourceBuilder metadataStorageConfig(MetadataStorageConfig metadataStorageConfig) {
             this.metadataStorageConfig = metadataStorageConfig;
             return this;
         }
 
+        /**
+         * Sets the search mode, either {@code VECTOR} (default) or {@code HYBRID}.
+         *
+         * @param searchMode the search mode
+         * @return {@code this}
+         */
         public DatasourceBuilder searchMode(SearchMode searchMode) {
             this.searchMode = searchMode;
             return this;
         }
 
+        /**
+         * Sets the PostgreSQL text search configuration used for full-text search, e.g. {@code "english"}.
+         * Defaults to {@code "simple"}.
+         *
+         * @param textSearchConfig the text search configuration name
+         * @return {@code this}
+         */
         public DatasourceBuilder textSearchConfig(String textSearchConfig) {
             this.textSearchConfig = textSearchConfig;
             return this;
         }
 
+        /**
+         * Sets the {@code k} parameter used by Reciprocal Rank Fusion (RRF) when combining
+         * embedding and full-text search rankings in {@code HYBRID} search mode. Defaults to {@code 60}.
+         *
+         * @param rrfK the RRF k parameter
+         * @return {@code this}
+         */
         public DatasourceBuilder rrfK(Integer rrfK) {
             this.rrfK = rrfK;
             return this;
@@ -813,81 +887,179 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
 
         PgVectorEmbeddingStoreBuilder() {}
 
+        /**
+         * Sets the PostgreSQL database host.
+         *
+         * @param host the database host
+         * @return {@code this}
+         */
         public PgVectorEmbeddingStoreBuilder host(String host) {
             this.host = host;
             return this;
         }
 
+        /**
+         * Sets the PostgreSQL database port.
+         *
+         * @param port the database port
+         * @return {@code this}
+         */
         public PgVectorEmbeddingStoreBuilder port(Integer port) {
             this.port = port;
             return this;
         }
 
+        /**
+         * Sets the database user for authentication.
+         *
+         * @param user the database user
+         * @return {@code this}
+         */
         public PgVectorEmbeddingStoreBuilder user(String user) {
             this.user = user;
             return this;
         }
 
+        /**
+         * Sets the database password for authentication.
+         *
+         * @param password the database password
+         * @return {@code this}
+         */
         public PgVectorEmbeddingStoreBuilder password(String password) {
             this.password = password;
             return this;
         }
 
+        /**
+         * Sets the database name to connect to.
+         *
+         * @param database the database name
+         * @return {@code this}
+         */
         public PgVectorEmbeddingStoreBuilder database(String database) {
             this.database = database;
             return this;
         }
 
+        /**
+         * Sets the database table name used to store embeddings.
+         *
+         * @param table the table name
+         * @return {@code this}
+         */
         public PgVectorEmbeddingStoreBuilder table(String table) {
             this.table = table;
             return this;
         }
 
+        /**
+         * Sets the number of dimensions for the embedding vectors.
+         *
+         * @param dimension the number of dimensions
+         * @return {@code this}
+         */
         public PgVectorEmbeddingStoreBuilder dimension(Integer dimension) {
             this.dimension = dimension;
             return this;
         }
 
+        /**
+         * Controls whether to use an IVFFlat index for vector search. Defaults to {@code false}.
+         *
+         * @param useIndex {@code true} to create and use an IVFFlat index
+         * @return {@code this}
+         */
         public PgVectorEmbeddingStoreBuilder useIndex(Boolean useIndex) {
             this.useIndex = useIndex;
             return this;
         }
 
+        /**
+         * Sets the number of lists for the IVFFlat index.
+         *
+         * @param indexListSize the IVFFlat number of lists
+         * @return {@code this}
+         */
         public PgVectorEmbeddingStoreBuilder indexListSize(Integer indexListSize) {
             this.indexListSize = indexListSize;
             return this;
         }
 
+        /**
+         * Controls whether to automatically create the table if it does not exist. Defaults to {@code true}.
+         *
+         * @param createTable {@code true} to create the table automatically
+         * @return {@code this}
+         */
         public PgVectorEmbeddingStoreBuilder createTable(Boolean createTable) {
             this.createTable = createTable;
             return this;
         }
 
+        /**
+         * Controls whether to skip executing {@code CREATE EXTENSION vector} on each connection. Defaults to {@code false}.
+         *
+         * @param skipCreateVectorExtension {@code true} to skip creating the vector extension
+         * @return {@code this}
+         */
         public PgVectorEmbeddingStoreBuilder skipCreateVectorExtension(Boolean skipCreateVectorExtension) {
             this.skipCreateVectorExtension = skipCreateVectorExtension;
             return this;
         }
 
+        /**
+         * Controls whether to drop the table first before creating it, usually for testing. Defaults to {@code false}.
+         *
+         * @param dropTableFirst {@code true} to drop the table before creating it
+         * @return {@code this}
+         */
         public PgVectorEmbeddingStoreBuilder dropTableFirst(Boolean dropTableFirst) {
             this.dropTableFirst = dropTableFirst;
             return this;
         }
 
+        /**
+         * Sets the {@link MetadataStorageConfig} used to store and query metadata.
+         *
+         * @param metadataStorageConfig the metadata storage configuration
+         * @return {@code this}
+         */
         public PgVectorEmbeddingStoreBuilder metadataStorageConfig(MetadataStorageConfig metadataStorageConfig) {
             this.metadataStorageConfig = metadataStorageConfig;
             return this;
         }
 
+        /**
+         * Sets the search mode, either {@code VECTOR} (default) or {@code HYBRID}.
+         *
+         * @param searchMode the search mode
+         * @return {@code this}
+         */
         public PgVectorEmbeddingStoreBuilder searchMode(SearchMode searchMode) {
             this.searchMode = searchMode;
             return this;
         }
 
+        /**
+         * Sets the PostgreSQL text search configuration used for full-text search, e.g. {@code "english"}.
+         * Defaults to {@code "simple"}.
+         *
+         * @param textSearchConfig the text search configuration name
+         * @return {@code this}
+         */
         public PgVectorEmbeddingStoreBuilder textSearchConfig(String textSearchConfig) {
             this.textSearchConfig = textSearchConfig;
             return this;
         }
 
+        /**
+         * Sets the {@code k} parameter used by Reciprocal Rank Fusion (RRF) when combining
+         * embedding and full-text search rankings in {@code HYBRID} search mode. Defaults to {@code 60}.
+         *
+         * @param rrfK the RRF k parameter
+         * @return {@code this}
+         */
         public PgVectorEmbeddingStoreBuilder rrfK(Integer rrfK) {
             this.rrfK = rrfK;
             return this;
