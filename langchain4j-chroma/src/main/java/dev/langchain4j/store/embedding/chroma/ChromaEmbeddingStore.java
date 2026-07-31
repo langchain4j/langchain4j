@@ -117,6 +117,10 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
         private boolean logRequests;
         private boolean logResponses;
 
+        /**
+         * @param apiVersion The Chroma API version to use.
+         * @return builder
+         */
         public Builder apiVersion(ChromaApiVersion apiVersion) {
             this.apiVersion = apiVersion;
             return this;
@@ -208,16 +212,29 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
             return this;
         }
 
+        /**
+         * @param logRequests Whether to log HTTP requests sent to Chroma.
+         * @return builder
+         */
         public Builder logRequests(boolean logRequests) {
             this.logRequests = logRequests;
             return this;
         }
 
+        /**
+         * @param logResponses Whether to log HTTP responses received from Chroma.
+         * @return builder
+         */
         public Builder logResponses(boolean logResponses) {
             this.logResponses = logResponses;
             return this;
         }
 
+        /**
+         * Builds the {@link ChromaEmbeddingStore}.
+         *
+         * @return the configured {@link ChromaEmbeddingStore}
+         */
         public ChromaEmbeddingStore build() {
             return new ChromaEmbeddingStore(this);
         }
