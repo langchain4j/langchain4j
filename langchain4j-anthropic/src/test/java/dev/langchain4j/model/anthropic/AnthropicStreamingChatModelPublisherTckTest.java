@@ -8,8 +8,11 @@ import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatModelStreamingEvent;
 import dev.langchain4j.model.chat.response.PartialResponse;
+import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.Flow;
 import org.reactivestreams.Publisher;
@@ -22,7 +25,10 @@ import org.testng.annotations.BeforeClass;
  * Reactive Streams TCK for the Anthropic streaming publisher
  * ({@link AnthropicStreamingChatModel#chat(ChatRequest)} over {@code HttpClient.stream()}). A loopback
  * {@link HttpServer} serves deterministic Anthropic-style SSE, parameterized by the request path: a request to
- * {@code /sse/{n}/v1} streams {@code n} {@code text_delta} events, and {@code /fail/v1} returns a 500.
+ * {@code /sse/{n}/v1} streams {@code n} {@code text_delta} events. The error case ({@code createFailedPublisher})
+ * points the model at a separate socket that accepts a connection and immediately closes it, so the request fails
+ * at the transport level (connection reset) — fast and deterministic on every JDK, and independent of how a given
+ * JDK's {@code HttpClient} drains an HTTP error-response body.
  * <p>
  * Anthropic relays its framing SSE (e.g. {@code content_block_start}) as provider {@code RawStreamingEvent}s whose
  * count the TCK cannot pin down, so the publisher under test is a thin {@code PartialResponse}-only view: the filter
@@ -39,6 +45,8 @@ public class AnthropicStreamingChatModelPublisherTckTest extends PublisherVerifi
     private static HttpServer server;
     private static String host;
     private static int port;
+    private static ServerSocket resetServer;
+    private static int resetPort;
 
     public AnthropicStreamingChatModelPublisherTckTest() {
         super(
@@ -52,14 +60,7 @@ public class AnthropicStreamingChatModelPublisherTckTest extends PublisherVerifi
         server = HttpServer.create(new InetSocketAddress(loopback, 0), 0);
         server.createContext("/", exchange -> {
             exchange.getRequestBody().readAllBytes(); // drain the POST body
-            String path = exchange.getRequestURI().getPath(); // /sse/{n}/v1/messages or /fail/v1/messages
-            if (path.startsWith("/fail")) {
-                byte[] body = "{\"type\":\"error\",\"error\":{\"message\":\"boom\"}}".getBytes(StandardCharsets.UTF_8);
-                exchange.sendResponseHeaders(500, body.length);
-                exchange.getResponseBody().write(body);
-                exchange.getResponseBody().close();
-                return;
-            }
+            String path = exchange.getRequestURI().getPath(); // /sse/{n}/v1/messages
             int deltas = Integer.parseInt(path.split("/")[2]);
             byte[] body = sse(deltas).getBytes(StandardCharsets.UTF_8);
             exchange.getResponseHeaders().set("Content-Type", "text/event-stream");
@@ -70,6 +71,24 @@ public class AnthropicStreamingChatModelPublisherTckTest extends PublisherVerifi
         server.start();
         host = loopback.getHostAddress();
         port = server.getAddress().getPort();
+
+        // Accepts a connection then immediately closes it, so a request fails with a connection reset - a fast,
+        // deterministic failure for createFailedPublisher that does not depend on HTTP error-body handling.
+        resetServer = new ServerSocket(0, 50, loopback);
+        resetPort = resetServer.getLocalPort();
+        Thread resetThread = new Thread(
+                () -> {
+                    while (!resetServer.isClosed()) {
+                        try (Socket socket = resetServer.accept()) {
+                            socket.setSoLinger(true, 0); // send a RST rather than a graceful close
+                        } catch (IOException ignored) {
+                            return; // socket closed during teardown
+                        }
+                    }
+                },
+                "anthropic-tck-reset");
+        resetThread.setDaemon(true);
+        resetThread.start();
     }
 
     @AfterClass
@@ -77,6 +96,14 @@ public class AnthropicStreamingChatModelPublisherTckTest extends PublisherVerifi
         if (server != null) {
             server.stop(0);
             server = null;
+        }
+        if (resetServer != null) {
+            try {
+                resetServer.close();
+            } catch (IOException ignored) {
+                // best effort
+            }
+            resetServer = null;
         }
     }
 
@@ -96,7 +123,7 @@ public class AnthropicStreamingChatModelPublisherTckTest extends PublisherVerifi
     @Override
     public Publisher<ChatModelStreamingEvent> createFailedPublisher() {
         Flow.Publisher<ChatModelStreamingEvent> stream =
-                newModel("http://" + host + ":" + port + "/fail/v1").chat(request());
+                newModel("http://" + host + ":" + resetPort + "/v1").chat(request());
         return toPublisher(partialResponsesOnly(stream));
     }
 
