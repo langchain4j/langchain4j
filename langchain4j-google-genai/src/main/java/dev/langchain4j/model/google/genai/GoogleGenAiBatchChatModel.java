@@ -40,6 +40,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -67,6 +68,7 @@ public final class GoogleGenAiBatchChatModel implements BatchChatModel {
     private final Map<String, String> labels;
     private final String cachedContent;
     private final ChatRequestParameters defaultRequestParameters;
+    private final Consumer<GenerateContentConfig.Builder> generateContentConfigCustomizer;
 
     private GoogleGenAiBatchChatModel(Builder builder) {
         this.modelName = ensureNotBlank(builder.modelName, "modelName");
@@ -83,6 +85,7 @@ public final class GoogleGenAiBatchChatModel implements BatchChatModel {
         this.labels = builder.labels != null ? new HashMap<>(builder.labels) : null;
         this.cachedContent = builder.cachedContent;
         this.defaultRequestParameters = builder.defaultRequestParameters;
+        this.generateContentConfigCustomizer = builder.generateContentConfigCustomizer;
 
         this.client = builder.client != null
                 ? builder.client
@@ -204,7 +207,8 @@ public final class GoogleGenAiBatchChatModel implements BatchChatModel {
                 allowedFunctionNames,
                 vertexSearchDatastore,
                 labels,
-                cachedContent);
+                cachedContent,
+                generateContentConfigCustomizer);
 
         return InlinedRequest.builder().contents(contents).config(config).build();
     }
@@ -277,6 +281,7 @@ public final class GoogleGenAiBatchChatModel implements BatchChatModel {
         private String apiEndpoint;
         private Map<String, String> customHeaders;
         private String cachedContent;
+        private Consumer<GenerateContentConfig.Builder> generateContentConfigCustomizer;
 
         public Builder client(Client client) {
             this.client = client;
@@ -396,6 +401,20 @@ public final class GoogleGenAiBatchChatModel implements BatchChatModel {
 
         public Builder cachedContent(String cachedContent) {
             this.cachedContent = cachedContent;
+            return this;
+        }
+
+        /**
+         * Registers a customizer applied to the {@link GenerateContentConfig.Builder} after this integration has
+         * populated it (generation parameters, tools, system instruction, etc.), so it can set any underlying
+         * Google Gen AI SDK option that is not exposed here, or override a value set above.
+         *
+         * @param generateContentConfigCustomizer a consumer that mutates the {@link GenerateContentConfig.Builder}
+         * @see GenerateContentConfig
+         */
+        public Builder generateContentConfigCustomizer(
+                Consumer<GenerateContentConfig.Builder> generateContentConfigCustomizer) {
+            this.generateContentConfigCustomizer = generateContentConfigCustomizer;
             return this;
         }
 
