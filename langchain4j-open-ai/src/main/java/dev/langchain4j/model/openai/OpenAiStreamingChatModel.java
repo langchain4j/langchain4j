@@ -9,6 +9,7 @@ import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.ModelProvider.OPEN_AI;
@@ -22,6 +23,7 @@ import static java.time.Duration.ofSeconds;
 import static java.util.Arrays.asList;
 
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.exception.ContentFilteredException;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.internal.ExceptionMapper;
 import dev.langchain4j.internal.MappingTrackingStreamingChatResponseHandler;
@@ -181,6 +183,12 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
                 .onComplete(() -> {
                     if (toolCallBuilder.hasRequests()) {
                         onCompleteToolCall(trackingHandler, toolCallBuilder.buildAndReset());
+                    }
+
+                    String refusal = openAiResponseBuilder.refusal();
+                    if (isNotNullOrBlank(refusal)) {
+                        withLoggingExceptions(() -> handler.onError(new ContentFilteredException(refusal)));
+                        return;
                     }
 
                     ChatResponse completeResponse = openAiResponseBuilder.build();
