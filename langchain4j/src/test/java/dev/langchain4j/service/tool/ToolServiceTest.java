@@ -162,10 +162,28 @@ class ToolServiceTest {
     }
 
     @Test
+    void beforeAllToolExecutions_getter() {
+        ToolService toolService = new ToolService();
+        Consumer<BeforeAllToolExecutions> callback = before -> {};
+        toolService.beforeAllToolExecutions(callback);
+        assertThat(toolService.beforeAllToolExecutions()).isSameAs(callback);
+    }
+
+    @Test
+    void afterAllToolExecutions_getter() {
+        ToolService toolService = new ToolService();
+        Consumer<List<ToolExecution>> callback = after -> {};
+        toolService.afterAllToolExecutions(callback);
+        assertThat(toolService.afterAllToolExecutions()).isSameAs(callback);
+    }
+
+    @Test
     void callbacks_null_by_default() {
         ToolService toolService = new ToolService();
         assertThat(toolService.beforeToolExecution()).isNull();
         assertThat(toolService.afterToolExecution()).isNull();
+        assertThat(toolService.beforeAllToolExecutions()).isNull();
+        assertThat(toolService.afterAllToolExecutions()).isNull();
     }
 
     // --- refreshDynamicProviders ---
