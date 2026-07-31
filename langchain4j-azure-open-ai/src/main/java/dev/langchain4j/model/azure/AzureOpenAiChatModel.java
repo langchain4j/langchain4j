@@ -291,6 +291,13 @@ public class AzureOpenAiChatModel implements ChatModel {
         private Set<Capability> supportedCapabilities;
         private ReasoningEffortValue reasoningEffort;
 
+        /**
+         * Sets default {@link ChatRequestParameters} that are merged into every request.
+         * Individual request parameters take precedence over these defaults.
+         *
+         * @param parameters the default request parameters
+         * @return {@code this}
+         */
         public Builder defaultRequestParameters(ChatRequestParameters parameters) {
             this.defaultRequestParameters = parameters;
             return this;
@@ -375,101 +382,240 @@ public class AzureOpenAiChatModel implements ChatModel {
             return this;
         }
 
+        /**
+         * Sets the maximum number of tokens to generate in the response.
+         * <p>
+         * Prefer {@link #maxCompletionTokens(Integer)} for newer models (o-series and later).
+         *
+         * @param maxTokens the maximum number of output tokens
+         * @return {@code this}
+         */
         public Builder maxTokens(Integer maxTokens) {
             this.maxTokens = maxTokens;
             return this;
         }
 
+        /**
+         * Sets the maximum number of tokens that can be generated for a completion, including visible
+         * output tokens and reasoning tokens.
+         * <p>
+         * Use this instead of {@link #maxTokens(Integer)} for o-series reasoning models.
+         *
+         * @param maxCompletionTokens the maximum number of completion tokens
+         * @return {@code this}
+         */
         public Builder maxCompletionTokens(Integer maxCompletionTokens) {
             this.maxCompletionTokens = maxCompletionTokens;
             return this;
         }
 
+        /**
+         * Sets the sampling temperature in the range {@code [0.0, 2.0]}.
+         * Higher values produce more random output; lower values produce more deterministic output.
+         *
+         * @param temperature the sampling temperature
+         * @return {@code this}
+         */
         public Builder temperature(Double temperature) {
             this.temperature = temperature;
             return this;
         }
 
+        /**
+         * Sets the nucleus sampling probability (top-p).
+         * Only the tokens whose cumulative probability exceeds this threshold are considered.
+         *
+         * @param topP the nucleus sampling threshold
+         * @return {@code this}
+         */
         public Builder topP(Double topP) {
             this.topP = topP;
             return this;
         }
 
+        /**
+         * Sets the logit bias to adjust the likelihood of specified tokens appearing in the response.
+         * Map token IDs (as strings) to bias values in the range {@code [-100, 100]}.
+         *
+         * @param logitBias a map of token ID to bias value
+         * @return {@code this}
+         */
         public Builder logitBias(Map<String, Integer> logitBias) {
             this.logitBias = logitBias;
             return this;
         }
 
+        /**
+         * Sets a unique identifier representing the end-user, used by OpenAI to monitor and detect abuse.
+         *
+         * @param user the end-user identifier
+         * @return {@code this}
+         */
         public Builder user(String user) {
             this.user = user;
             return this;
         }
 
+        /**
+         * Sets sequences that, when generated, will cause the model to stop generating further tokens.
+         *
+         * @param stop the list of stop sequences
+         * @return {@code this}
+         */
         public Builder stop(List<String> stop) {
             this.stop = stop;
             return this;
         }
 
+        /**
+         * Sets the presence penalty in the range {@code [-2.0, 2.0]}.
+         * Positive values penalize tokens that have already appeared, increasing the model's
+         * likelihood to talk about new topics.
+         *
+         * @param presencePenalty the presence penalty
+         * @return {@code this}
+         */
         public Builder presencePenalty(Double presencePenalty) {
             this.presencePenalty = presencePenalty;
             return this;
         }
 
+        /**
+         * Sets the frequency penalty in the range {@code [-2.0, 2.0]}.
+         * Positive values penalize tokens based on their frequency in the text so far, reducing
+         * the model's likelihood to repeat the same words verbatim.
+         *
+         * @param frequencyPenalty the frequency penalty
+         * @return {@code this}
+         */
         public Builder frequencyPenalty(Double frequencyPenalty) {
             this.frequencyPenalty = frequencyPenalty;
             return this;
         }
 
+        /**
+         * Sets Azure-specific data sources for retrieval-augmented generation (RAG) scenarios,
+         * such as Azure Cognitive Search.
+         *
+         * @param dataSources the list of Azure chat extension configurations
+         * @return {@code this}
+         */
         public Builder dataSources(List<AzureChatExtensionConfiguration> dataSources) {
             this.dataSources = dataSources;
             return this;
         }
 
+        /**
+         * Sets Azure-specific enhancement configuration, such as grounding or OCR options.
+         *
+         * @param enhancements the Azure chat enhancement configuration
+         * @return {@code this}
+         */
         public Builder enhancements(AzureChatEnhancementConfiguration enhancements) {
             this.enhancements = enhancements;
             return this;
         }
 
+        /**
+         * Sets the random seed for deterministic sampling.
+         * Requests with the same seed and parameters should return the same result.
+         *
+         * @param seed the random seed
+         * @return {@code this}
+         */
         public Builder seed(Long seed) {
             this.seed = seed;
             return this;
         }
 
+        /**
+         * Sets the response format, enabling structured output such as JSON mode or JSON Schema.
+         *
+         * @param responseFormat the desired response format
+         * @return {@code this}
+         */
         public Builder responseFormat(ResponseFormat responseFormat) {
             this.responseFormat = responseFormat;
             return this;
         }
 
+        /**
+         * Enables strict JSON schema validation for structured outputs.
+         * When {@code true}, the model strictly follows the JSON schema defined in the response format.
+         *
+         * @param strictJsonSchema whether to enable strict JSON schema validation
+         * @return {@code this}
+         */
         public Builder strictJsonSchema(Boolean strictJsonSchema) {
             this.strictJsonSchema = strictJsonSchema;
             return this;
         }
 
+        /**
+         * Sets the HTTP request timeout for calls to the Azure OpenAI API.
+         *
+         * @param timeout the request timeout
+         * @return {@code this}
+         */
         public Builder timeout(Duration timeout) {
             this.timeout = timeout;
             return this;
         }
 
+        /**
+         * Sets the number of times to retry a request on transient errors.
+         * <p>
+         * Mutually exclusive with {@link #retryOptions(RetryOptions)}.
+         *
+         * @param maxRetries the maximum number of retry attempts
+         * @return {@code this}
+         */
         public Builder maxRetries(Integer maxRetries) {
             this.maxRetries = maxRetries;
             return this;
         }
 
+        /**
+         * Sets Azure SDK {@link RetryOptions} for fine-grained retry control.
+         * <p>
+         * Mutually exclusive with {@link #maxRetries(Integer)}.
+         *
+         * @param retryOptions the Azure retry options
+         * @return {@code this}
+         */
         public Builder retryOptions(RetryOptions retryOptions) {
             this.retryOptions = retryOptions;
             return this;
         }
 
+        /**
+         * Sets the {@link ProxyOptions} for routing requests through an HTTP proxy.
+         *
+         * @param proxyOptions the proxy configuration
+         * @return {@code this}
+         */
         public Builder proxyOptions(ProxyOptions proxyOptions) {
             this.proxyOptions = proxyOptions;
             return this;
         }
 
+        /**
+         * Enables logging of HTTP requests and responses.
+         *
+         * @param logRequestsAndResponses whether to log requests and responses
+         * @return {@code this}
+         */
         public Builder logRequestsAndResponses(Boolean logRequestsAndResponses) {
             this.logRequestsAndResponses = logRequestsAndResponses;
             return this;
         }
 
+        /**
+         * Sets a suffix to append to the default user-agent string sent in HTTP requests.
+         *
+         * @param userAgentSuffix the user-agent suffix
+         * @return {@code this}
+         */
         public Builder userAgentSuffix(String userAgentSuffix) {
             this.userAgentSuffix = userAgentSuffix;
             return this;
@@ -486,25 +632,59 @@ public class AzureOpenAiChatModel implements ChatModel {
             return this;
         }
 
+        /**
+         * Sets the list of {@link ChatModelListener}s to be notified on each request and response.
+         * Useful for logging, metrics, and observability integrations.
+         *
+         * @param listeners the chat model listeners
+         * @return {@code this}
+         */
         public Builder listeners(List<ChatModelListener> listeners) {
             this.listeners = listeners;
             return this;
         }
 
+        /**
+         * Sets extra HTTP headers to include in every request to the Azure OpenAI API.
+         *
+         * @param customHeaders a map of header names to values
+         * @return {@code this}
+         */
         public Builder customHeaders(Map<String, String> customHeaders) {
             this.customHeaders = customHeaders;
             return this;
         }
 
+        /**
+         * Declares the capabilities supported by the model.
+         * This influences how LangChain4j generates requests for this model.
+         *
+         * @param supportedCapabilities the set of capabilities to declare
+         * @return {@code this}
+         */
         public Builder supportedCapabilities(Set<Capability> supportedCapabilities) {
             this.supportedCapabilities = supportedCapabilities;
             return this;
         }
 
+        /**
+         * Declares the capabilities supported by the model.
+         *
+         * @param supportedCapabilities the capabilities to declare
+         * @return {@code this}
+         */
         public Builder supportedCapabilities(Capability... supportedCapabilities) {
             return supportedCapabilities(new HashSet<>(asList(supportedCapabilities)));
         }
 
+        /**
+         * Sets the reasoning effort for o-series models.
+         * Higher effort produces more thorough reasoning at the cost of more tokens and latency.
+         * See the <a href="https://learn.microsoft.com/en-us/azure/ai-services/openai/how-to/reasoning">Azure reasoning docs</a>.
+         *
+         * @param reasoningEffort the reasoning effort value
+         * @return {@code this}
+         */
         public Builder reasoningEffort(ReasoningEffortValue reasoningEffort) {
             this.reasoningEffort = reasoningEffort;
             return this;
