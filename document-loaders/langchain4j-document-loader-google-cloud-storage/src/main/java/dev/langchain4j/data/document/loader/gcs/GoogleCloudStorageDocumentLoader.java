@@ -1,23 +1,21 @@
 package dev.langchain4j.data.document.loader.gcs;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
+import com.google.api.gax.paging.Page;
 import com.google.auth.Credentials;
 import com.google.cloud.storage.Blob;
 import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageOptions;
-import com.google.api.gax.paging.Page;
-
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentLoader;
 import dev.langchain4j.data.document.DocumentParser;
 import dev.langchain4j.data.document.source.gcs.GcsSource;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.ArrayList;
 import java.util.List;
-
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Google Cloud Storage Document Loader to load documents from Google Cloud Storage buckets.
@@ -70,19 +68,33 @@ public class GoogleCloudStorageDocumentLoader {
      * @return A list of documents from the bucket that match the glob pattern.
      */
     public List<Document> loadDocuments(String bucket, String globPattern, DocumentParser parser) {
-        Page<Blob> blobs = globPattern != null ?
-            storage.list(bucket, Storage.BlobListOption.currentDirectory(), Storage.BlobListOption.matchGlob(globPattern)) :
-            storage.list(bucket, Storage.BlobListOption.currentDirectory());
+        Page<Blob> blobs = globPattern != null
+                ? storage.list(
+                        bucket,
+                        Storage.BlobListOption.currentDirectory(),
+                        Storage.BlobListOption.matchGlob(globPattern))
+                : storage.list(bucket, Storage.BlobListOption.currentDirectory());
 
         List<Document> documents = new ArrayList<>();
+        int failed = 0;
 
         for (Blob blob : blobs.iterateAll()) {
             try {
                 GcsSource gcsSource = new GcsSource(blob);
                 documents.add(DocumentLoader.load(gcsSource, ensureNotNull(parser, "parser")));
             } catch (Exception e) {
+                failed++;
                 log.warn("Failed to load blob '{}' from bucket '{}', skipping it.", blob.getName(), bucket, e);
             }
+        }
+
+        if (failed > 0) {
+            log.warn(
+                    "Loaded {} of {} documents from bucket '{}'. Skipped {} that failed to load.",
+                    documents.size(),
+                    documents.size() + failed,
+                    bucket,
+                    failed);
         }
 
         return documents;
