@@ -1106,16 +1106,42 @@ abstract class AbstractBedrockChatModel {
             return (T) this;
         }
 
+        /**
+         * Sets default {@link ChatRequestParameters} or Bedrock-specific {@link BedrockChatRequestParameters}
+         * that are merged into every request.
+         * Individual request parameters take precedence over these defaults.
+         *
+         * @param defaultRequestParameters the default request parameters
+         * @return {@code this}
+         */
         public T defaultRequestParameters(ChatRequestParameters defaultRequestParameters) {
             this.defaultRequestParameters = defaultRequestParameters;
             return self();
         }
 
+        /**
+         * Sets the AWS region to use for requests.
+         * <p>
+         * Defaults to {@code us-east-1}.
+         *
+         * @param region the AWS region
+         * @return {@code this}
+         */
         public T region(Region region) {
             this.region = region;
             return self();
         }
 
+        /**
+         * Sets the Amazon Bedrock model ID (also known as model ARN or inference profile ID).
+         * <p>
+         * Examples: {@code "anthropic.claude-3-5-sonnet-20241022-v2:0"},
+         * {@code "amazon.nova-pro-v1:0"}.
+         * See the <a href="https://docs.aws.amazon.com/bedrock/latest/userguide/model-ids.html">Bedrock model IDs docs</a>.
+         *
+         * @param modelId the model ID
+         * @return {@code this}
+         */
         public T modelId(String modelId) {
             this.modelId = modelId;
             return self();
@@ -1155,6 +1181,14 @@ abstract class AbstractBedrockChatModel {
             return self();
         }
 
+        /**
+         * Sets the HTTP request timeout for calls to the AWS Bedrock API.
+         * <p>
+         * Defaults to 1 minute.
+         *
+         * @param timeout the request timeout
+         * @return {@code this}
+         */
         public T timeout(Duration timeout) {
             this.timeout = timeout;
             return self();
@@ -1183,6 +1217,15 @@ abstract class AbstractBedrockChatModel {
             return self();
         }
 
+        /**
+         * Enables logging of HTTP response bodies received from the AWS Bedrock API.
+         * <p>
+         * <b>WARNING:</b> Response bodies may contain sensitive generated content.
+         * Use with caution in production environments.
+         *
+         * @param logResponses whether to log responses
+         * @return {@code this}
+         */
         public T logResponses(Boolean logResponses) {
             this.logResponses = logResponses;
             return self();
@@ -1197,30 +1240,69 @@ abstract class AbstractBedrockChatModel {
             return self();
         }
 
+        /**
+         * Sets the list of {@link ChatModelListener}s to be notified on each request and response.
+         * Useful for logging, metrics, and observability integrations.
+         *
+         * @param listeners the chat model listeners
+         * @return {@code this}
+         */
         public T listeners(List<ChatModelListener> listeners) {
             this.listeners = listeners;
             return self();
         }
 
+        /**
+         * Sets the {@link ChatModelListener}s to be notified on each request and response.
+         *
+         * @param listeners the chat model listeners
+         * @return {@code this}
+         */
         public T listeners(ChatModelListener... listeners) {
             return listeners(asList(listeners));
         }
 
+        /**
+         * Declares the capabilities supported by the model.
+         * This influences how LangChain4j generates requests for this model.
+         *
+         * @param supportedCapabilities the set of capabilities to declare
+         * @return {@code this}
+         */
         public T supportedCapabilities(Set<Capability> supportedCapabilities) {
             this.supportedCapabilities = supportedCapabilities;
             return self();
         }
 
+        /**
+         * Declares the capabilities supported by the model.
+         *
+         * @param supportedCapabilities the capabilities to declare
+         * @return {@code this}
+         */
         public T supportedCapabilities(Capability... supportedCapabilities) {
             this.supportedCapabilities = Arrays.stream(supportedCapabilities).collect(Collectors.toSet());
             return self();
         }
 
+        /**
+         * Sets extra HTTP headers to include in every request to the AWS Bedrock API.
+         *
+         * @param customHeaders a map of header names to values
+         * @return {@code this}
+         */
         public T customHeaders(Map<String, String> customHeaders) {
             this.customHeadersSupplier = () -> customHeaders;
             return self();
         }
 
+        /**
+         * Sets a supplier of extra HTTP headers to include in every request to the AWS Bedrock API.
+         * The supplier is called once per request, allowing dynamic header values.
+         *
+         * @param customHeadersSupplier a supplier that returns a map of header names to values
+         * @return {@code this}
+         */
         public T customHeaders(Supplier<Map<String, String>> customHeadersSupplier) {
             this.customHeadersSupplier = customHeadersSupplier;
             return self();
