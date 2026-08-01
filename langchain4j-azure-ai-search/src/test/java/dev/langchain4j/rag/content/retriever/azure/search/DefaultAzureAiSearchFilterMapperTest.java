@@ -66,6 +66,29 @@ class DefaultAzureAiSearchFilterMapperTest {
     }
 
     @Test
+    void map_escapesSingleQuoteInValue() {
+        IsEqualTo isEqualToFilter = new IsEqualTo("key1", "O'Brien");
+        String result = mapper.map(isEqualToFilter);
+        assertThat(result).isEqualTo("metadata/attributes/any(k: k/key eq 'key1' and k/value eq 'O''Brien')");
+    }
+
+    @Test
+    void map_escapesSingleQuoteInKey() {
+        IsEqualTo isEqualToFilter = new IsEqualTo("o'clock", "value1");
+        String result = mapper.map(isEqualToFilter);
+        assertThat(result).isEqualTo("metadata/attributes/any(k: k/key eq 'o''clock' and k/value eq 'value1')");
+    }
+
+    @Test
+    void map_escapesSingleQuoteInIsIn() {
+        IsIn isInFilter = new IsIn("key1", Arrays.asList("O'Brien", "D'Angelo"));
+        String result = mapper.map(isInFilter);
+        assertThat(result)
+                .isEqualTo(
+                        "metadata/attributes/any(k: k/key eq 'key1' and search.in(k/value, ('D''Angelo, O''Brien')))");
+    }
+
+    @Test
     void map_handlesComplexFilter() {
         And filter = new And(
                 new IsEqualTo("key1", "value1"),

@@ -116,6 +116,14 @@ public class DefaultAzureAiSearchFilterMapper implements AzureAiSearchFilterMapp
     }
 
     private String formatComparisonFilter(String key, String value, String format) {
-        return format("metadata/attributes/any(k: k/key eq '%s' and " + format + ")", key, value);
+        return format("metadata/attributes/any(k: k/key eq '%s' and " + format + ")", escape(key), escape(value));
+    }
+
+    /**
+     * Escapes single quotes in an OData string literal by doubling them,
+     * as required by the Azure AI Search OData syntax.
+     */
+    private static String escape(String value) {
+        return value.replace("'", "''");
     }
 }
