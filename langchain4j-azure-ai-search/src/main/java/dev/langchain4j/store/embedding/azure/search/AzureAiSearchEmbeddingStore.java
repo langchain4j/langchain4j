@@ -172,7 +172,9 @@ public class AzureAiSearchEmbeddingStore extends AbstractAzureAiSearchEmbeddingS
             ensureNotNull(endpoint, "endpoint");
             ensureTrue(
                     keyCredential != null || tokenCredential != null, "either apiKey or tokenCredential must be set");
-            ensureTrue(dimensions > 0 || index != null, "either dimensions or index must be set");
+            ensureTrue(
+                    !createOrUpdateIndex || dimensions > 0 || index != null,
+                    "either dimensions or index must be set when createOrUpdateIndex is true");
             if (keyCredential == null) {
                 if (index == null) {
                     return new AzureAiSearchEmbeddingStore(
