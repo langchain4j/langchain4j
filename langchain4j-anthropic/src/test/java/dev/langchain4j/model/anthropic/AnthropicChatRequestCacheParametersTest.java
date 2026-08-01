@@ -178,6 +178,36 @@ class AnthropicChatRequestCacheParametersTest {
     }
 
     @Test
+    void should_send_disable_parallel_tool_use_when_tool_choice_is_not_set() {
+        AnthropicChatModel model = modelBuilder().disableParallelToolUse(true).build();
+
+        ChatRequest request = ChatRequest.builder()
+                .messages(UserMessage.from("What is the weather?"))
+                .parameters(AnthropicChatRequestParameters.builder()
+                        .toolSpecifications(weatherTool())
+                        .build())
+                .build();
+
+        model.chat(request);
+
+        String body = lastRequestBody();
+        assertThat(body).contains("\"tool_choice\"");
+        assertThat(body).contains("\"type\" : \"auto\"");
+        assertThat(body).contains("\"disable_parallel_tool_use\" : true");
+    }
+
+    @Test
+    void should_not_send_tool_choice_when_no_tools_are_present() {
+        // Anthropic defaults tool_choice to "none" when no tools are sent, so the fallback above must not
+        // add a tool_choice to a request without tools.
+        AnthropicChatModel model = modelBuilder().disableParallelToolUse(true).build();
+
+        model.chat(ChatRequest.builder().messages(UserMessage.from("Hi")).build());
+
+        assertThat(lastRequestBody()).doesNotContain("\"tool_choice\"");
+    }
+
+    @Test
     void should_override_user_id_per_request() {
         AnthropicChatModel model = modelBuilder().userId("model-user").build();
 
