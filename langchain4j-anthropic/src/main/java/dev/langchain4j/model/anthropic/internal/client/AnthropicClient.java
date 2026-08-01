@@ -1,16 +1,22 @@
 package dev.langchain4j.model.anthropic.internal.client;
 
 import dev.langchain4j.Internal;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.http.client.HttpClientBuilderLoader;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicBatch;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicBatchResult;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCountTokensRequest;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateBatchRequest;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRequest;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageResponse;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicListBatchesResponse;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicModelsListResponse;
 import dev.langchain4j.model.anthropic.internal.api.MessageTokenCountResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.spi.ServiceHelper;
 import java.time.Duration;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
 import org.slf4j.Logger;
@@ -43,6 +49,26 @@ public abstract class AnthropicClient {
 
     public AnthropicModelsListResponse listModels() {
         throw new UnsupportedOperationException("Model listing is not supported by this client implementation");
+    }
+
+    public AnthropicBatch createBatch(AnthropicCreateBatchRequest request) {
+        throw new UnsupportedFeatureException("Batch creation is not supported by this client implementation");
+    }
+
+    public AnthropicBatch retrieveBatch(String batchId) {
+        throw new UnsupportedFeatureException("Batch retrieval is not supported by this client implementation");
+    }
+
+    public List<AnthropicBatchResult> retrieveBatchResults(String batchId) {
+        throw new UnsupportedFeatureException("Batch results retrieval is not supported by this client implementation");
+    }
+
+    public AnthropicBatch cancelBatch(String batchId) {
+        throw new UnsupportedFeatureException("Batch cancellation is not supported by this client implementation");
+    }
+
+    public AnthropicListBatchesResponse listBatches(Integer limit, String afterId) {
+        throw new UnsupportedFeatureException("Batch listing is not supported by this client implementation");
     }
 
     @SuppressWarnings("rawtypes")

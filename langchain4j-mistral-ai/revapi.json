@@ -28,6 +28,18 @@
           "code": "java.class.externalClassExposedInAPI",
           "new": "missing-class dev.langchain4j.model.batch.BatchResponse",
           "justification": "Core langchain4j batch type intentionally exposed by the BatchChatModel API implemented by MistralAiBatchChatModel"
+        },
+        {
+          "code": "java.method.returnTypeChanged",
+          "old": "method dev.langchain4j.model.chat.request.ChatRequestParameters dev.langchain4j.model.mistralai.MistralAiChatModel::defaultRequestParameters()",
+          "new": "method dev.langchain4j.model.mistralai.MistralAiChatRequestParameters dev.langchain4j.model.mistralai.MistralAiChatModel::defaultRequestParameters()",
+          "justification": "Narrowing the return type to the Mistral-specific MistralAiChatRequestParameters subtype is source- and binary-compatible"
+        },
+        {
+          "code": "java.method.returnTypeChanged",
+          "old": "method dev.langchain4j.model.chat.request.ChatRequestParameters dev.langchain4j.model.mistralai.MistralAiStreamingChatModel::defaultRequestParameters()",
+          "new": "method dev.langchain4j.model.mistralai.MistralAiChatRequestParameters dev.langchain4j.model.mistralai.MistralAiStreamingChatModel::defaultRequestParameters()",
+          "justification": "Narrowing the return type to the Mistral-specific MistralAiChatRequestParameters subtype is source- and binary-compatible"
         }
       ]
     }

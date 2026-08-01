@@ -561,7 +561,7 @@ By default, all agents invocations are performed in the same thread that invoked
 
 For this reason it is possible to flag an agent as asynchronous using the `async` method of the agent builder. When doing so, the invocation of that agent is performed in a separate thread, and the execution of the agentic system will proceed without waiting for the completion of that agent. The result of the asynchronous agent will be available in the `AgenticScope` as soon as it is completed, and the `AgenticScope` will be blocked waiting for that result only when it is required as an input for a subsequent invocation of a different agent.
 
-For instance, since they are independent of each other, flagging the `FoodExpert` and `MovieExpert` agents, discussed in the parallel workflow section, as asynchronous, will make them to be executed at the same time even when used in a sequential workflow.
+For instance, since they are independent of each other, flagging the `FoodExpert` and `MovieExpert` agents, discussed in the parallel workflow section, as asynchronous with `.async(true)` on each sub-agent, will make them to be executed at the same time even when used in a sequential workflow. Unlike `parallelBuilder()`, `sequenceBuilder()` has no `executor()` method; the optional `executor()` belongs on parallel workflows only.
 
 ```java
 FoodExpert foodExpert = AgenticServices
@@ -581,7 +581,6 @@ MovieExpert movieExpert = AgenticServices
 EveningPlannerAgent eveningPlannerAgent = AgenticServices
         .sequenceBuilder(EveningPlannerAgent.class)
         .subAgents(foodExpert, movieExpert)
-        .executor(Executors.newFixedThreadPool(2))
         .outputKey("plans")
         .output(agenticScope -> {
             List<String> movies = agenticScope.readState("movies", List.of());
@@ -751,6 +750,46 @@ UntypedAgent novelCreator = AgenticServices.sequenceBuilder()
         .build();
 ```
 
+## Cross-agent compensation
+
+When an agentic system performs side effects through tools (e.g., database writes, API calls, financial transactions), a failure partway through the workflow can leave the system in an inconsistent state. Cross-agent compensation tries to solve, or at least mitigate, this problem: if any agent in the hierarchy fails, all previously successful tool invocations with `@CompensateFor` actions are compensated in reverse order.
+
+This builds on the per-agent `@CompensateFor` mechanism (see [Tools](/tutorials/tools#compensating-tool-actions)). While per-agent compensation handles tool errors within a single agent, cross-agent compensation handles agent-level failures across an entire hierarchy.
+
+In order to enable this feature set `compensateOnError(true)` on the composed agent builder:
+
+```java
+UntypedAgent transferWorkflow = AgenticServices.sequenceBuilder()
+        .subAgents(creditAgent, debitAgent, notificationAgent)
+        .compensateOnError(true)
+        .outputKey("result")
+        .build();
+```
+
+If `notificationAgent` throws an exception, the tools invoked by `creditAgent` and `debitAgent` that have `@CompensateFor` methods will be compensated in reverse chronological order (last executed first).
+
+Tools without a `@CompensateFor` annotation are simply skipped during compensation.
+
+Compensating actions are defined on tool classes using `@CompensateFor`, the same annotation used for per-agent tool compensation:
+
+```java
+public class AccountService {
+
+    @Tool("Credits the given amount to the account")
+    String credit(@P(name = "amount") int amount) {
+        // perform the credit
+        return "credited " + amount;
+    }
+
+    @CompensateFor("credit")
+    void reverseCredit(int amount) {
+        // reverse the credit
+    }
+}
+```
+
+Note that the compensating actions are executed with a best-effort policy: if one of them fails, the error is logged and the remaining compensations continue.
+
 ## Observability
 
 Tracking and logging the agents' invocations can be crucial for debugging and understanding the aggregate behavior of the whole agentic system in which those agents participate. For this reason, the `langchain4j-agentic` module allows you to register an `AgentListener` through the `listener` method of the agent builders, that is notified of all agents invocations and their results, and it is defined as follows:
@@ -878,7 +917,7 @@ so it will reveal the nested sequence of agents invocations necessary to generat
 
 ```
 AgentInvocation{agent=Sequential, startTime=2026-03-18T17:27:28.099439515, finishTime=2026-03-18T17:27:38.683498783, duration=10584 ms, tokens=0, inputs={topic=dragons and wiz..., style=comedy}, output=In a realm wher...}
-|=> AgentInvocation{agent=generateStory, startTime=2026-03-18T17:27:28.1.18.0287, finishTime=2026-03-18T17:27:31.033561726, duration=2932 ms, tokens=127, inputs={topic=dragons and wiz...}, output=In a realm wher...}
+|=> AgentInvocation{agent=generateStory, startTime=2026-03-18T17:27:28.1.18.1287, finishTime=2026-03-18T17:27:31.033561726, duration=2932 ms, tokens=127, inputs={topic=dragons and wiz...}, output=In a realm wher...}
 |=> AgentInvocation{agent=reviewLoop, startTime=2026-03-18T17:27:31.035952285, finishTime=2026-03-18T17:27:38.683438433, duration=7647 ms, tokens=0, inputs={score=0.8, topic=dragons and wiz..., style=comedy, story=In a realm wher...}, output=null}
     |=> AgentInvocation{agent=scoreStyle, iteration=0, startTime=2026-03-18T17:27:31.036155107, finishTime=2026-03-18T17:27:31.671478699, duration=635 ms, tokens=152, inputs={style=comedy, story=In a realm wher...}, output=0.2}
     |=> AgentInvocation{agent=editStory, iteration=0, startTime=2026-03-18T17:27:31.671711250, finishTime=2026-03-18T17:27:38.182881941, duration=6511 ms, tokens=491, inputs={style=comedy, story=In a realm wher...}, output=In a realm wher...}
@@ -1379,7 +1418,7 @@ AgentInvocation{agentName='withdraw', arguments={user=Mario, amount=115.0}}
 
 AgentInvocation{agentName='credit', arguments={user=Georgios, amount=115.0}}
 
-AgentInvocation{agentName='done', arguments={response=The transfer of 100 EUR from Mario's account to Georgios' account has been completed. Mario's balance is 885.0 USD, and Georgios' balance is 1.18.0 USD. The conversion rate was 1.15 EUR to USD.}}
+AgentInvocation{agentName='done', arguments={response=The transfer of 100 EUR from Mario's account to Georgios' account has been completed. Mario's balance is 885.0 USD, and Georgios' balance is 1.18.1 USD. The conversion rate was 1.15 EUR to USD.}}
 ```
 
 The last invocation is a special one that signals the supervisor believes the task has been completed, and returns as a response a summary of all the operations performed.
@@ -2729,6 +2768,24 @@ AgenticScopePersister.setStore(new MyAgenticScopeStore());
 ```
 
 or using the standard Java Service Provider interface creating a file named `META-INF/services/dev.langchain4j.agentic.scope.AgenticScopeStore` containing the fully qualified name of the class implementing the `AgenticScopeStore` interface.
+
+### AgenticScope JSON serialization
+
+LangChain4j provides built-in JSON serialization for the `AgenticScope` via the `AgenticScopeSerializer` class. For security reasons, deserialization uses an allowlist policy that restricts which classes can be deserialized from JSON. By default, standard JDK types (`java.util.*`, `java.math.*`, primitive wrappers, enums) and internal LangChain4j types (`AgentMessage`, `AgentInvocation`) are allowed.
+
+If your agents store custom domain objects in the `AgenticScope` state, you must register them before deserialization occurs. You can register a single class:
+
+```java
+AgenticScopeSerializer.allowDeserializationType(LoanApplication.class);
+```
+
+or an entire package prefix:
+
+```java
+AgenticScopeSerializer.allowDeserializationPackagePrefix("com.acme.myapp.");
+```
+
+Attempting to deserialize an unregistered type throws an `UnserializableAgenticScopeException` whose message names the rejected class and suggests how to register it.
 
 ### AgenticScope and agentic systems recoverability
 

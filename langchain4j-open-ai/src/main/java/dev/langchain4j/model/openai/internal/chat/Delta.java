@@ -1,5 +1,8 @@
 package dev.langchain4j.model.openai.internal.chat;
 
+import static java.util.Collections.unmodifiableList;
+
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -8,11 +11,8 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
-
 import java.util.List;
 import java.util.Objects;
-
-import static java.util.Collections.unmodifiableList;
 
 @JsonDeserialize(builder = Delta.Builder.class)
 @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -21,12 +21,16 @@ public final class Delta {
 
     @JsonProperty
     private final String role;
+
     @JsonProperty
     private final String content;
+
     @JsonProperty
     private final String reasoningContent;
+
     @JsonProperty
     private final List<ToolCall> toolCalls;
+
     @JsonProperty
     @Deprecated
     private final FunctionCall functionCall;
@@ -64,8 +68,7 @@ public final class Delta {
     @JacocoIgnoreCoverageGenerated
     public boolean equals(Object another) {
         if (this == another) return true;
-        return another instanceof Delta
-                && equalTo((Delta) another);
+        return another instanceof Delta && equalTo((Delta) another);
     }
 
     @JacocoIgnoreCoverageGenerated
@@ -114,6 +117,7 @@ public final class Delta {
         private String content;
         private String reasoningContent;
         private List<ToolCall> toolCalls;
+
         @Deprecated
         private FunctionCall functionCall;
 
@@ -127,6 +131,7 @@ public final class Delta {
             return this;
         }
 
+        @JsonAlias("reasoning")
         public Builder reasoningContent(String reasoningContent) {
             this.reasoningContent = reasoningContent;
             return this;

@@ -64,6 +64,10 @@ class AnthropicMapperTest {
     static final String DICE_IMAGE_URL =
             "https://upload.wikimedia.org/wikipedia/commons/4/47/PNG_transparency_demonstration_1.png";
 
+    static final String BASE64_IMAGE_DATA = "iVBORw0KGgo=";
+
+    static final String BASE64_PDF_DATA = "JVBERi0xLjQK";
+
     @ParameterizedTest
     @MethodSource
     void test_toAnthropicMessages(List<ChatMessage> messages, List<AnthropicMessage> expectedAnthropicMessages) {
@@ -875,6 +879,179 @@ class AnthropicMapperTest {
         // Then
         assertThat(cacheDiagnostics.cacheMissReasonType()).isEqualTo("system_changed");
         assertThat(cacheDiagnostics.cacheMissedInputTokens()).isEqualTo(41850);
+    }
+
+    @Test
+    void should_apply_cache_control_to_last_content_block_of_user_message_ending_with_image() {
+        // given
+        UserMessage userMessage = UserMessage.from(
+                TextContent.from("What is on this image?"),
+                ImageContent.from(
+                        Image.builder().url(URI.create(DICE_IMAGE_URL)).build()));
+        userMessage.attributes().put("cache_control", "ephemeral");
+
+        // when
+        List<AnthropicMessage> anthropicMessages = toAnthropicMessages(singletonList(userMessage));
+
+        // then
+        AnthropicTextContent textContent =
+                (AnthropicTextContent) anthropicMessages.get(0).content.get(0);
+        assertThat(textContent.cacheControl).isNull();
+
+        AnthropicImageContent imageContent =
+                (AnthropicImageContent) anthropicMessages.get(0).content.get(1);
+        assertThat(imageContent.cacheControl).isNotNull();
+        assertThat(imageContent.cacheControl).extracting("type").isEqualTo("ephemeral");
+    }
+
+    @Test
+    void should_apply_cache_control_to_last_content_block_of_user_message_ending_with_pdf() {
+        // given
+        UserMessage userMessage = UserMessage.from(
+                TextContent.from("What is in this document?"),
+                PdfFileContent.from(URI.create("https://example.com/document.pdf")));
+        userMessage.attributes().put("cache_control", "ephemeral");
+
+        // when
+        List<AnthropicMessage> anthropicMessages = toAnthropicMessages(singletonList(userMessage));
+
+        // then
+        AnthropicTextContent textContent =
+                (AnthropicTextContent) anthropicMessages.get(0).content.get(0);
+        assertThat(textContent.cacheControl).isNull();
+
+        AnthropicPdfContent pdfContent =
+                (AnthropicPdfContent) anthropicMessages.get(0).content.get(1);
+        assertThat(pdfContent.cacheControl).isNotNull();
+        assertThat(pdfContent.cacheControl).extracting("type").isEqualTo("ephemeral");
+    }
+
+    @Test
+    void should_not_apply_cache_control_to_image_content_when_not_last_item() {
+        // given
+        UserMessage userMessage = UserMessage.from(
+                ImageContent.from(
+                        Image.builder().url(URI.create(DICE_IMAGE_URL)).build()),
+                TextContent.from("What is on this image?"));
+        userMessage.attributes().put("cache_control", "ephemeral");
+
+        // when
+        List<AnthropicMessage> anthropicMessages = toAnthropicMessages(singletonList(userMessage));
+
+        // then
+        AnthropicImageContent imageContent =
+                (AnthropicImageContent) anthropicMessages.get(0).content.get(0);
+        assertThat(imageContent.cacheControl).isNull();
+
+        AnthropicTextContent textContent =
+                (AnthropicTextContent) anthropicMessages.get(0).content.get(1);
+        assertThat(textContent.cacheControl).isNotNull();
+    }
+
+    @Test
+    void should_apply_cache_control_to_base64_image_content() {
+        // given
+        UserMessage userMessage = UserMessage.from(ImageContent.from(BASE64_IMAGE_DATA, "image/png"));
+        userMessage.attributes().put("cache_control", "ephemeral");
+
+        // when
+        List<AnthropicMessage> anthropicMessages = toAnthropicMessages(singletonList(userMessage));
+
+        // then
+        AnthropicImageContent imageContent =
+                (AnthropicImageContent) anthropicMessages.get(0).content.get(0);
+        assertThat(imageContent.source.type).isEqualTo("base64");
+        assertThat(imageContent.cacheControl).isNotNull();
+        assertThat(imageContent.cacheControl).extracting("type").isEqualTo("ephemeral");
+    }
+
+    @Test
+    void should_apply_cache_control_to_base64_pdf_content() {
+        // given
+        UserMessage userMessage = UserMessage.from(PdfFileContent.from(BASE64_PDF_DATA, "application/pdf"));
+        userMessage.attributes().put("cache_control", "ephemeral");
+
+        // when
+        List<AnthropicMessage> anthropicMessages = toAnthropicMessages(singletonList(userMessage));
+
+        // then
+        AnthropicPdfContent pdfContent =
+                (AnthropicPdfContent) anthropicMessages.get(0).content.get(0);
+        assertThat(pdfContent.source.type).isEqualTo("base64");
+        assertThat(pdfContent.cacheControl).isNotNull();
+        assertThat(pdfContent.cacheControl).extracting("type").isEqualTo("ephemeral");
+    }
+
+    @Test
+    void should_not_apply_cache_control_to_image_content_without_cache_control_attribute() {
+        // given
+        UserMessage userMessage = UserMessage.from(ImageContent.from(
+                Image.builder().url(URI.create(DICE_IMAGE_URL)).build()));
+
+        // when
+        List<AnthropicMessage> anthropicMessages = toAnthropicMessages(singletonList(userMessage));
+
+        // then
+        AnthropicImageContent imageContent =
+                (AnthropicImageContent) anthropicMessages.get(0).content.get(0);
+        assertThat(imageContent.cacheControl).isNull();
+    }
+
+    @Test
+    void should_not_apply_cache_control_to_pdf_content_without_cache_control_attribute() {
+        // given
+        UserMessage userMessage = UserMessage.from(PdfFileContent.from(URI.create("https://example.com/document.pdf")));
+
+        // when
+        List<AnthropicMessage> anthropicMessages = toAnthropicMessages(singletonList(userMessage));
+
+        // then
+        AnthropicPdfContent pdfContent =
+                (AnthropicPdfContent) anthropicMessages.get(0).content.get(0);
+        assertThat(pdfContent.cacheControl).isNull();
+    }
+
+    @Test
+    void should_serialize_image_content_with_cache_control_next_to_source() throws JsonProcessingException {
+        // given
+        UserMessage userMessage = UserMessage.from(ImageContent.from(
+                Image.builder().url(URI.create(DICE_IMAGE_URL)).build()));
+        userMessage.attributes().put("cache_control", "ephemeral");
+
+        // when
+        List<AnthropicMessage> anthropicMessages = toAnthropicMessages(singletonList(userMessage));
+
+        // then
+        String json = new ObjectMapper()
+                .writeValueAsString(anthropicMessages.get(0).content.get(0));
+        assertThat(json).isEqualToIgnoringWhitespace("""
+                        {
+                          "type": "image",
+                          "cache_control": {"type": "ephemeral"},
+                          "source": {"type": "url", "url": "%s"}
+                        }
+                        """.formatted(DICE_IMAGE_URL));
+    }
+
+    @Test
+    void should_serialize_pdf_content_with_cache_control_next_to_source() throws JsonProcessingException {
+        // given
+        UserMessage userMessage = UserMessage.from(PdfFileContent.from(BASE64_PDF_DATA, "application/pdf"));
+        userMessage.attributes().put("cache_control", "ephemeral");
+
+        // when
+        List<AnthropicMessage> anthropicMessages = toAnthropicMessages(singletonList(userMessage));
+
+        // then
+        String json = new ObjectMapper()
+                .writeValueAsString(anthropicMessages.get(0).content.get(0));
+        assertThat(json).isEqualToIgnoringWhitespace("""
+                        {
+                          "type": "document",
+                          "cache_control": {"type": "ephemeral"},
+                          "source": {"type": "base64", "media_type": "application/pdf", "data": "%s"}
+                        }
+                        """.formatted(BASE64_PDF_DATA));
     }
 
     @SafeVarargs

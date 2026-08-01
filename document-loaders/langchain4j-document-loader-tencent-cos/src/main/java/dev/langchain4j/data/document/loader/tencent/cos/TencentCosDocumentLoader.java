@@ -74,6 +74,7 @@ public class TencentCosDocumentLoader {
 
         ObjectListing objectListing = cosClient.listObjects(listObjectsRequest);
 
+        int failed = 0;
         while (true) {
             for (COSObjectSummary object : objectListing.getObjectSummaries()) {
                 if (object.getKey().endsWith("/") || object.getSize() == 0) {
@@ -84,6 +85,7 @@ public class TencentCosDocumentLoader {
                     Document document = loadDocument(bucket, key, parser);
                     documents.add(document);
                 } catch (Exception e) {
+                    failed++;
                     log.warn("Failed to load an object with key '{}' from bucket '{}', skipping it.", key, bucket, e);
                 }
             }
@@ -91,6 +93,15 @@ public class TencentCosDocumentLoader {
                 break;
             }
             objectListing = cosClient.listNextBatchOfObjects(objectListing);
+        }
+
+        if (failed > 0) {
+            log.warn(
+                    "Loaded {} of {} documents from bucket '{}'. Skipped {} that failed to load.",
+                    documents.size(),
+                    documents.size() + failed,
+                    bucket,
+                    failed);
         }
 
         return documents;
