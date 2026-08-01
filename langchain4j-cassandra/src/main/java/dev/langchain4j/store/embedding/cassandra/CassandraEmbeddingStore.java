@@ -105,46 +105,100 @@ public class CassandraEmbeddingStore implements EmbeddingStore<TextSegment> {
         protected Integer dimension;
         protected CassandraSimilarityMetric metric = CassandraSimilarityMetric.COSINE;
 
+        /**
+         * Sets the Cassandra contact points (hostnames or IP addresses).
+         *
+         * @param contactPoints the list of contact points
+         * @return {@code this}
+         */
         public Builder contactPoints(List<String> contactPoints) {
             this.contactPoints = contactPoints;
             return this;
         }
 
+        /**
+         * Sets the local data center name for the Cassandra driver.
+         *
+         * @param localDataCenter the local data center name
+         * @return {@code this}
+         */
         public Builder localDataCenter(String localDataCenter) {
             this.localDataCenter = localDataCenter;
             return this;
         }
 
+        /**
+         * Sets the Cassandra native transport port. Defaults to {@code 9042}.
+         *
+         * @param port the port number
+         * @return {@code this}
+         */
         public Builder port(Integer port) {
             this.port = port;
             return this;
         }
 
+        /**
+         * Sets the username for Cassandra authentication.
+         *
+         * @param userName the username
+         * @return {@code this}
+         */
         public Builder userName(String userName) {
             this.userName = userName;
             return this;
         }
 
+        /**
+         * Sets the password for Cassandra authentication.
+         *
+         * @param password the password
+         * @return {@code this}
+         */
         public Builder password(String password) {
             this.password = password;
             return this;
         }
 
+        /**
+         * Sets the Cassandra keyspace name.
+         *
+         * @param keyspace the keyspace name
+         * @return {@code this}
+         */
         public Builder keyspace(String keyspace) {
             this.keyspace = keyspace;
             return this;
         }
 
+        /**
+         * Sets the Cassandra table name for storing embeddings.
+         *
+         * @param table the table name
+         * @return {@code this}
+         */
         public Builder table(String table) {
             this.table = table;
             return this;
         }
 
+        /**
+         * Sets the number of dimensions for the embedding vectors.
+         *
+         * @param dimension the number of dimensions
+         * @return {@code this}
+         */
         public Builder dimension(Integer dimension) {
             this.dimension = dimension;
             return this;
         }
 
+        /**
+         * Sets the similarity metric used for vector search. Defaults to {@code COSINE}.
+         *
+         * @param metric the similarity metric
+         * @return {@code this}
+         */
         public Builder metric(CassandraSimilarityMetric metric) {
             this.metric = metric;
             return this;
@@ -181,41 +235,89 @@ public class CassandraEmbeddingStore implements EmbeddingStore<TextSegment> {
         private CassandraSimilarityMetric metric = CassandraSimilarityMetric.COSINE;
         private AstraEnvironment env = AstraEnvironment.PROD;
 
+        /**
+         * Sets the Astra DB application token for authentication.
+         *
+         * @param token the Astra DB token
+         * @return {@code this}
+         */
         public BuilderAstra token(String token) {
             this.token = token;
             return this;
         }
 
+        /**
+         * Sets the Astra environment. Defaults to {@code PROD}.
+         *
+         * @param env the Astra environment
+         * @return {@code this}
+         */
         public BuilderAstra env(AstraEnvironment env) {
             this.env = env;
             return this;
         }
 
+        /**
+         * Sets the Astra database ID.
+         *
+         * @param dbId the database UUID
+         * @return {@code this}
+         */
         public BuilderAstra databaseId(UUID dbId) {
             this.dbId = dbId;
             return this;
         }
 
+        /**
+         * Sets the Astra database region. Defaults to {@code "us-east1"}.
+         *
+         * @param dbRegion the database region
+         * @return {@code this}
+         */
         public BuilderAstra databaseRegion(String dbRegion) {
             this.dbRegion = dbRegion;
             return this;
         }
 
+        /**
+         * Sets the keyspace name. Defaults to {@code "default_keyspace"}.
+         *
+         * @param keyspaceName the keyspace name
+         * @return {@code this}
+         */
         public BuilderAstra keyspace(String keyspaceName) {
             this.keyspaceName = keyspaceName;
             return this;
         }
 
+        /**
+         * Sets the table name for storing embeddings.
+         *
+         * @param tableName the table name
+         * @return {@code this}
+         */
         public BuilderAstra table(String tableName) {
             this.tableName = tableName;
             return this;
         }
 
+        /**
+         * Sets the number of dimensions for the embedding vectors.
+         *
+         * @param dimension the number of dimensions
+         * @return {@code this}
+         */
         public BuilderAstra dimension(int dimension) {
             this.dimension = dimension;
             return this;
         }
 
+        /**
+         * Sets the similarity metric used for vector search. Defaults to {@code COSINE}.
+         *
+         * @param metric the similarity metric
+         * @return {@code this}
+         */
         public BuilderAstra metric(CassandraSimilarityMetric metric) {
             this.metric = metric;
             return this;

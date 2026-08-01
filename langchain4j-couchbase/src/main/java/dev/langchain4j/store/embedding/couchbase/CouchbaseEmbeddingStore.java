@@ -14,12 +14,11 @@ import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.*;
-import reactor.util.annotation.NonNull;
-import reactor.util.annotation.Nullable;
-
 import java.time.Duration;
 import java.util.*;
 import java.util.stream.Collectors;
+import reactor.util.annotation.NonNull;
+import reactor.util.annotation.Nullable;
 
 /**
  * Represents a <a href="https://www.couchbase.com/">Couchbase</a> index as an embedding store.
@@ -55,19 +54,8 @@ public class CouchbaseEmbeddingStore implements EmbeddingStore<TextSegment> {
             String scopeName,
             String collectionName,
             String searchIndexName,
-            Integer dimensions
-    ) {
-        this(
-                clusterUrl,
-                username,
-                password,
-                bucketName,
-                scopeName,
-                collectionName,
-                searchIndexName,
-                dimensions,
-                10
-        );
+            Integer dimensions) {
+        this(clusterUrl, username, password, bucketName, scopeName, collectionName, searchIndexName, dimensions, 10);
     }
 
     /**
@@ -92,8 +80,7 @@ public class CouchbaseEmbeddingStore implements EmbeddingStore<TextSegment> {
             String collectionName,
             String searchIndexName,
             Integer dimensions,
-            Integer bucketTimeout
-    ) {
+            Integer bucketTimeout) {
         this.cluster = Cluster.connect(clusterUrl, username, password);
         Bucket bucket = cluster.bucket(bucketName);
         bucket.waitUntilReady(Duration.ofSeconds(bucketTimeout));
@@ -101,7 +88,8 @@ public class CouchbaseEmbeddingStore implements EmbeddingStore<TextSegment> {
         this.collection = bucket.scope(scopeName).collection(collectionName);
         this.searchIndex = searchIndexName;
 
-        if (cluster.searchIndexes().getAllIndexes().stream().noneMatch(i -> i.name().equals(searchIndexName))) {
+        if (cluster.searchIndexes().getAllIndexes().stream()
+                .noneMatch(i -> i.name().equals(searchIndexName))) {
             HashMap<String, Object> sourceParams = new HashMap<>();
             HashMap<String, Object> params = new HashMap<>();
             params.put("doc_config", docConfig());
@@ -116,8 +104,7 @@ public class CouchbaseEmbeddingStore implements EmbeddingStore<TextSegment> {
                     bucketName,
                     sourceParams,
                     "gocbcore",
-                    planParams
-            );
+                    planParams);
             cluster.searchIndexes().upsertIndex(index);
         }
     }
@@ -223,7 +210,10 @@ public class CouchbaseEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     @Override
     public String add(@NonNull Embedding embedding, @Nullable TextSegment textSegment) {
-        return addAll(Collections.singletonList(embedding), textSegment == null ? null : Collections.singletonList(textSegment)).get(0);
+        return addAll(
+                        Collections.singletonList(embedding),
+                        textSegment == null ? null : Collections.singletonList(textSegment))
+                .get(0);
     }
 
     @Override
@@ -264,18 +254,18 @@ public class CouchbaseEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     @Override
     public void removeAll() {
-        cluster.query(String.format(REMOVE_QUERY_PATTERN, collection.bucketName(), collection.scopeName(), collection.name(), "true"));
+        cluster.query(String.format(
+                REMOVE_QUERY_PATTERN, collection.bucketName(), collection.scopeName(), collection.name(), "true"));
     }
 
     @Override
     public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest request) {
-        VectorQuery vectorQuery = VectorQuery.create("vector", request.queryEmbedding().vector())
-                .numCandidates(request.maxResults());
+        VectorQuery vectorQuery =
+                VectorQuery.create("vector", request.queryEmbedding().vector()).numCandidates(request.maxResults());
 
         SearchResult searchResult = cluster.search(
                 searchIndex,
-                SearchRequest.create(VectorSearch.create(vectorQuery.numCandidates(request.maxResults())))
-        );
+                SearchRequest.create(VectorSearch.create(vectorQuery.numCandidates(request.maxResults()))));
         List<EmbeddingMatch<TextSegment>> matches = searchResult.rows().stream()
                 .filter(Objects::nonNull)
                 // filtering out documents that appeared in the index before they were persisted onto collection
@@ -287,11 +277,13 @@ public class CouchbaseEmbeddingStore implements EmbeddingStore<TextSegment> {
                     }
                     Embedding embedding = new Embedding(data.getVector());
                     return new EmbeddingMatch<>(
-                            RelevanceScore.fromCosineSimilarity(CosineSimilarity.between(embedding, request.queryEmbedding())),
+                            RelevanceScore.fromCosineSimilarity(
+                                    CosineSimilarity.between(embedding, request.queryEmbedding())),
                             row.id(),
                             embedding,
-                            data.getText() == null ? null : new TextSegment(data.getText(), new Metadata(data.getMetadata()))
-                    );
+                            data.getText() == null
+                                    ? null
+                                    : new TextSegment(data.getText(), new Metadata(data.getMetadata())));
                 })
                 .filter(r -> r.score() >= request.minScore())
                 .collect(Collectors.toList());
@@ -315,49 +307,102 @@ public class CouchbaseEmbeddingStore implements EmbeddingStore<TextSegment> {
         Integer dimensions;
         Integer bucketTimeout = 10;
 
-        public Builder() {
-        }
+        public Builder() {}
 
+        /**
+         * Sets the Couchbase cluster connection URL, e.g. {@code "couchbase://localhost"}.
+         *
+         * @param clusterUrl the cluster URL
+         * @return {@code this}
+         */
         public Builder clusterUrl(String clusterUrl) {
             this.clusterUrl = clusterUrl;
             return this;
         }
 
+        /**
+         * Sets the username for cluster authentication.
+         *
+         * @param username the username
+         * @return {@code this}
+         */
         public Builder username(String username) {
             this.username = username;
             return this;
         }
 
+        /**
+         * Sets the password for cluster authentication.
+         *
+         * @param password the password
+         * @return {@code this}
+         */
         public Builder password(String password) {
             this.password = password;
             return this;
         }
 
+        /**
+         * Sets the Couchbase bucket name.
+         *
+         * @param bucketName the bucket name
+         * @return {@code this}
+         */
         public Builder bucketName(String bucketName) {
             this.bucketName = bucketName;
             return this;
         }
 
+        /**
+         * Sets the Couchbase scope name within the bucket.
+         *
+         * @param scopeName the scope name
+         * @return {@code this}
+         */
         public Builder scopeName(String scopeName) {
             this.scopeName = scopeName;
             return this;
         }
 
+        /**
+         * Sets the Couchbase collection name within the scope.
+         *
+         * @param collectionName the collection name
+         * @return {@code this}
+         */
         public Builder collectionName(String collectionName) {
             this.collectionName = collectionName;
             return this;
         }
 
+        /**
+         * Sets the name of the Couchbase Full Text Search index used for vector similarity search.
+         *
+         * @param searchIndexName the search index name
+         * @return {@code this}
+         */
         public Builder searchIndexName(String searchIndexName) {
             this.searchIndexName = searchIndexName;
             return this;
         }
 
+        /**
+         * Sets the number of dimensions for the embedding vectors.
+         *
+         * @param dimensions the number of dimensions
+         * @return {@code this}
+         */
         public Builder dimensions(Integer dimensions) {
             this.dimensions = dimensions;
             return this;
         }
 
+        /**
+         * Sets the bucket operation timeout in seconds. Defaults to {@code 10}.
+         *
+         * @param bucketTimeout the timeout in seconds
+         * @return {@code this}
+         */
         public Builder bucketTimeout(Integer bucketTimeout) {
             this.bucketTimeout = bucketTimeout;
             return this;
@@ -373,8 +418,7 @@ public class CouchbaseEmbeddingStore implements EmbeddingStore<TextSegment> {
                     collectionName,
                     searchIndexName,
                     dimensions,
-                    bucketTimeout
-            );
+                    bucketTimeout);
         }
     }
 }

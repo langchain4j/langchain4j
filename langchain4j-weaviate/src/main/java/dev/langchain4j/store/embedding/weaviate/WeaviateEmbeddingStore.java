@@ -460,66 +460,145 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
 
         WeaviateEmbeddingStoreBuilder() {}
 
+        /**
+         * Sets the Weaviate API key. Not required for local deployments.
+         *
+         * @param apiKey the API key
+         * @return {@code this}
+         */
         public WeaviateEmbeddingStoreBuilder apiKey(String apiKey) {
             this.apiKey = apiKey;
             return this;
         }
 
+        /**
+         * Sets the URL scheme, e.g. {@code "https"}.
+         *
+         * @param scheme the URL scheme
+         * @return {@code this}
+         */
         public WeaviateEmbeddingStoreBuilder scheme(String scheme) {
             this.scheme = scheme;
             return this;
         }
 
+        /**
+         * Sets the Weaviate cluster host, e.g. {@code "localhost"} or {@code "my-cluster.weaviate.network"}.
+         *
+         * @param host the host
+         * @return {@code this}
+         */
         public WeaviateEmbeddingStoreBuilder host(String host) {
             this.host = host;
             return this;
         }
 
+        /**
+         * Sets the HTTP port, e.g. {@code 8080}.
+         *
+         * @param port the port number
+         * @return {@code this}
+         */
         public WeaviateEmbeddingStoreBuilder port(Integer port) {
             this.port = port;
             return this;
         }
 
+        /**
+         * Enables gRPC for batch inserts instead of HTTP. Defaults to {@code false}.
+         *
+         * @param useGrpcForInserts {@code true} to use gRPC for inserts
+         * @return {@code this}
+         */
         public WeaviateEmbeddingStoreBuilder useGrpcForInserts(Boolean useGrpcForInserts) {
             this.useGrpcForInserts = useGrpcForInserts;
             return this;
         }
 
+        /**
+         * Controls whether the gRPC connection uses TLS. Defaults to {@code false}.
+         *
+         * @param securedGrpc {@code true} to secure the gRPC connection
+         * @return {@code this}
+         */
         public WeaviateEmbeddingStoreBuilder securedGrpc(Boolean securedGrpc) {
             this.securedGrpc = securedGrpc;
             return this;
         }
 
+        /**
+         * Sets the gRPC port. Defaults to {@code 50051}.
+         *
+         * @param grpcPort the gRPC port number
+         * @return {@code this}
+         */
         public WeaviateEmbeddingStoreBuilder grpcPort(Integer grpcPort) {
             this.grpcPort = grpcPort;
             return this;
         }
 
+        /**
+         * Sets the Weaviate object class name. Must start with an uppercase letter. Defaults to {@code "Default"}.
+         *
+         * @param objectClass the object class name
+         * @return {@code this}
+         */
         public WeaviateEmbeddingStoreBuilder objectClass(String objectClass) {
             this.objectClass = objectClass;
             return this;
         }
 
+        /**
+         * Controls whether to generate hashed IDs from text segments to avoid duplicates. Defaults to {@code true}.
+         *
+         * @param avoidDups {@code true} to avoid duplicate entries
+         * @return {@code this}
+         */
         public WeaviateEmbeddingStoreBuilder avoidDups(Boolean avoidDups) {
             this.avoidDups = avoidDups;
             return this;
         }
 
+        /**
+         * Sets the replication consistency level: {@code "ONE"}, {@code "QUORUM"} (default), or {@code "ALL"}.
+         *
+         * @param consistencyLevel the consistency level
+         * @return {@code this}
+         */
         public WeaviateEmbeddingStoreBuilder consistencyLevel(String consistencyLevel) {
             this.consistencyLevel = consistencyLevel;
             return this;
         }
 
+        /**
+         * Sets the metadata keys that should be persisted alongside embeddings.
+         *
+         * @param metadataKeys the collection of metadata key names
+         * @return {@code this}
+         */
         public WeaviateEmbeddingStoreBuilder metadataKeys(Collection<String> metadataKeys) {
             this.metadataKeys = metadataKeys;
             return this;
         }
 
+        /**
+         * Sets the field name for storing text segment content. Defaults to {@code "text"}.
+         *
+         * @param textFieldName the text field name
+         * @return {@code this}
+         */
         public WeaviateEmbeddingStoreBuilder textFieldName(String textFieldName) {
             this.textFieldName = textFieldName;
             return this;
         }
 
+        /**
+         * Sets the field name for storing metadata entries. Defaults to {@code "_metadata"}.
+         * If set to an empty string, metadata entries are stored in the root of the Weaviate object.
+         *
+         * @param metadataFieldName the metadata field name
+         * @return {@code this}
+         */
         public WeaviateEmbeddingStoreBuilder metadataFieldName(String metadataFieldName) {
             this.metadataFieldName = metadataFieldName;
             return this;
