@@ -18,12 +18,10 @@ import com.dtsx.astra.sdk.utils.AstraEnvironment;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.store.embedding.CosineSimilarity;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
-import dev.langchain4j.store.embedding.RelevanceScore;
 import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.Objects;
@@ -328,7 +326,7 @@ public class CassandraEmbeddingStore implements EmbeddingStore<TextSegment> {
                 .similaritySearch(AnnQuery.builder()
                         .embeddings(embedding.vectorAsList())
                         .recordCount(ensureGreaterThanZero(maxResults, "maxResults"))
-                        .threshold(CosineSimilarity.fromRelevanceScore(ensureBetween(minScore, 0, 1, "minScore")))
+                        .threshold(ensureBetween(minScore, 0, 1, "minScore"))
                         .metric(embeddingTable.getSimilarityMetric())
                         .build())
                 .stream()
@@ -352,8 +350,9 @@ public class CassandraEmbeddingStore implements EmbeddingStore<TextSegment> {
                     new Metadata(record.getEmbedded().getMetadata()));
         }
         return new EmbeddingMatch<>(
-                // Score
-                RelevanceScore.fromCosineSimilarity(record.getSimilarity()),
+                // Score: the Cassandra similarity_* CQL functions already return a value in [0..1],
+                // which is the scale LangChain4j uses for relevance scores.
+                (double) record.getSimilarity(),
                 // EmbeddingId : unique identifier
                 record.getEmbedded().getRowId(),
                 // Embeddings vector
@@ -377,7 +376,7 @@ public class CassandraEmbeddingStore implements EmbeddingStore<TextSegment> {
                 .embeddings(embedding.vectorAsList())
                 .metric(embeddingTable.getSimilarityMetric())
                 .recordCount(ensureGreaterThanZero(maxResults, "maxResults"))
-                .threshold(CosineSimilarity.fromRelevanceScore(ensureBetween(minScore, 0, 1, "minScore")));
+                .threshold(ensureBetween(minScore, 0, 1, "minScore"));
         if (metadata != null) {
             builder.metaData(toStringValueMap(metadata.toMap()));
         }
