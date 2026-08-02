@@ -338,8 +338,7 @@ class PartsAndContentsMapperTest {
                 .arguments("{}")
                 .build();
         AiMessage aiMessage = AiMessage.from(toolRequest);
-        ToolExecutionResultMessage toolResult =
-                ToolExecutionResultMessage.from("call-1", "explicit_name", "ok");
+        ToolExecutionResultMessage toolResult = ToolExecutionResultMessage.from("call-1", "explicit_name", "ok");
 
         List<GeminiContent> result =
                 PartsAndContentsMapper.fromMessageToGContent(List.of(aiMessage, toolResult), null, false);

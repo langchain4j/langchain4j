@@ -376,9 +376,8 @@ final class PartsAndContentsMapper {
                         } else if (content instanceof ImageContent imageContent) {
                             toolParts.add(fromContentToGPart(imageContent, mediaResolutionPerPartEnabled));
                         } else {
-                            throw new UnsupportedFeatureException(
-                                    "Google AI Gemini does not support content type '" + content.type()
-                                            + "' in tool results.");
+                            throw new UnsupportedFeatureException("Google AI Gemini does not support content type '"
+                                    + content.type() + "' in tool results.");
                         }
                     }
                     if (responseMap.isEmpty()) {
@@ -439,7 +438,8 @@ final class PartsAndContentsMapper {
                 toolResultOffset++;
             }
         }
-        if (toolResultOffset < requests.size() && !isNullOrBlank(requests.get(toolResultOffset).name())) {
+        if (toolResultOffset < requests.size()
+                && !isNullOrBlank(requests.get(toolResultOffset).name())) {
             return requests.get(toolResultOffset).name();
         }
 
