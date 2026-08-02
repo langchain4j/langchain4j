@@ -39,6 +39,36 @@ class GoogleGenAiToolMapperTest {
     }
 
     @Test
+    void should_convert_schema_constraints() {
+        Schema stringSchema = GoogleGenAiToolMapper.convertToGoogleSchema(JsonStringSchema.builder()
+                .minLength(1)
+                .maxLength(100)
+                .pattern("^[A-Z]+$")
+                .format("date-time")
+                .build());
+        Schema integerSchema = GoogleGenAiToolMapper.convertToGoogleSchema(
+                JsonIntegerSchema.builder().minimum(0L).maximum(150L).build());
+        Schema numberSchema = GoogleGenAiToolMapper.convertToGoogleSchema(
+                JsonNumberSchema.builder().minimum(0.5).maximum(99.9).build());
+        Schema arraySchema = GoogleGenAiToolMapper.convertToGoogleSchema(JsonArraySchema.builder()
+                .items(JsonStringSchema.builder().build())
+                .minItems(1)
+                .maxItems(10)
+                .build());
+
+        assertThat(stringSchema.minLength().get()).isEqualTo(1L);
+        assertThat(stringSchema.maxLength().get()).isEqualTo(100L);
+        assertThat(stringSchema.pattern().get()).isEqualTo("^[A-Z]+$");
+        assertThat(stringSchema.format().get()).isEqualTo("date-time");
+        assertThat(integerSchema.minimum().get()).isEqualTo(0.0);
+        assertThat(integerSchema.maximum().get()).isEqualTo(150.0);
+        assertThat(numberSchema.minimum().get()).isEqualTo(0.5);
+        assertThat(numberSchema.maximum().get()).isEqualTo(99.9);
+        assertThat(arraySchema.minItems().get()).isEqualTo(1L);
+        assertThat(arraySchema.maxItems().get()).isEqualTo(10L);
+    }
+
+    @Test
     void should_convert_tool_with_blank_description() {
         ToolSpecification spec =
                 ToolSpecification.builder().name("doSomething").description("").build();

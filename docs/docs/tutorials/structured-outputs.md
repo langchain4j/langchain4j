@@ -214,6 +214,17 @@ JsonSchemaElement stringSchema = JsonStringSchema.builder()
         .build();
 ```
 
+Validation constraints (`minLength`, `maxLength`, `pattern`, `format`) can optionally be specified:
+```java
+JsonSchemaElement stringSchema = JsonStringSchema.builder()
+        .description("The name of the person")
+        .minLength(1)
+        .maxLength(100)
+        .pattern("^[A-Z][a-z]*$")
+        .format("date-time")
+        .build();
+```
+
 #### `JsonIntegerSchema`
 
 An example of creating `JsonIntegerSchema`:
@@ -223,12 +234,30 @@ JsonSchemaElement integerSchema = JsonIntegerSchema.builder()
         .build();
 ```
 
+Validation constraints (`minimum`, `maximum`, `exclusiveMinimum`, `exclusiveMaximum`) can optionally be specified:
+```java
+JsonSchemaElement integerSchema = JsonIntegerSchema.builder()
+        .description("The age of the person")
+        .minimum(0L)
+        .maximum(150L)
+        .build();
+```
+
 #### `JsonNumberSchema`
 
 An example of creating `JsonNumberSchema`:
 ```java
 JsonSchemaElement numberSchema = JsonNumberSchema.builder()
         .description("The height of the person")
+        .build();
+```
+
+Validation constraints (`minimum`, `maximum`, `exclusiveMinimum`, `exclusiveMaximum`) can optionally be specified:
+```java
+JsonSchemaElement numberSchema = JsonNumberSchema.builder()
+        .description("The height of the person")
+        .minimum(0.0)
+        .exclusiveMaximum(3.0)
         .build();
 ```
 
@@ -264,6 +293,24 @@ JsonSchemaElement arraySchema = JsonArraySchema.builder()
         .items(itemSchema)
         .build();
 ```
+
+Validation constraints (`minItems`, `maxItems`, `uniqueItems`) can optionally be specified:
+```java
+JsonSchemaElement arraySchema = JsonArraySchema.builder()
+        .description("All names of the people found in the text")
+        .items(itemSchema)
+        .minItems(1)
+        .maxItems(10)
+        .uniqueItems(true)
+        .build();
+```
+
+:::note
+Support for validation constraints varies by LLM provider.
+For example, Google AI Gemini, Vertex AI Gemini and Google GenAI support `minLength`, `maxLength`, `pattern`,
+`format`, `minimum`, `maximum`, `minItems` and `maxItems`, but ignore `exclusiveMinimum`, `exclusiveMaximum`
+and `uniqueItems`. Constraints that a provider does not support are silently ignored by that provider's API.
+:::
 
 #### `JsonReferenceSchema`
 

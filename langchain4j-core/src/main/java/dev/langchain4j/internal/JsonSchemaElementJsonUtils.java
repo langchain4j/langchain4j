@@ -39,14 +39,18 @@ public class JsonSchemaElementJsonUtils {
     // that cannot be represented by the corresponding JsonSchemaElement subtype.
     // When a map contains keys outside this set, fromMap() falls back to JsonRawSchema.
     // NOTE: When adding new JsonSchemaElement subtypes, update these sets accordingly.
-    private static final Set<String> STRING_KEYS = Set.of("type", "description");
-    private static final Set<String> INTEGER_KEYS = Set.of("type", "description");
-    private static final Set<String> NUMBER_KEYS = Set.of("type", "description");
+    private static final Set<String> STRING_KEYS =
+            Set.of("type", "description", "minLength", "maxLength", "pattern", "format");
+    private static final Set<String> INTEGER_KEYS =
+            Set.of("type", "description", "minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum");
+    private static final Set<String> NUMBER_KEYS =
+            Set.of("type", "description", "minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum");
     private static final Set<String> BOOLEAN_KEYS = Set.of("type", "description");
     private static final Set<String> NULL_KEYS = Set.of("type");
     private static final Set<String> OBJECT_KEYS =
             Set.of("type", "description", "properties", "required", "additionalProperties", "$defs");
-    private static final Set<String> ARRAY_KEYS = Set.of("type", "description", "items");
+    private static final Set<String> ARRAY_KEYS =
+            Set.of("type", "description", "items", "minItems", "maxItems", "uniqueItems");
     private static final Set<String> ENUM_KEYS = Set.of("type", "description", "enum");
     private static final Set<String> ANYOF_KEYS = Set.of("anyOf", "description");
     private static final Set<String> REF_KEYS = Set.of("$ref");
@@ -73,10 +77,31 @@ public class JsonSchemaElementJsonUtils {
             return map;
         }
 
-        // Simple typed schemas: type + description
-        if (element instanceof JsonStringSchema s) return typedSchema("string", s.description());
-        if (element instanceof JsonIntegerSchema i) return typedSchema("integer", i.description());
-        if (element instanceof JsonNumberSchema n) return typedSchema("number", n.description());
+        // Simple typed schemas: type + description + validation constraints
+        if (element instanceof JsonStringSchema s) {
+            Map<String, Object> map = typedSchema("string", s.description());
+            putIfNotNull(map, "minLength", s.minLength());
+            putIfNotNull(map, "maxLength", s.maxLength());
+            putIfNotNull(map, "pattern", s.pattern());
+            putIfNotNull(map, "format", s.format());
+            return map;
+        }
+        if (element instanceof JsonIntegerSchema i) {
+            Map<String, Object> map = typedSchema("integer", i.description());
+            putIfNotNull(map, "minimum", i.minimum());
+            putIfNotNull(map, "maximum", i.maximum());
+            putIfNotNull(map, "exclusiveMinimum", i.exclusiveMinimum());
+            putIfNotNull(map, "exclusiveMaximum", i.exclusiveMaximum());
+            return map;
+        }
+        if (element instanceof JsonNumberSchema n) {
+            Map<String, Object> map = typedSchema("number", n.description());
+            putIfNotNull(map, "minimum", n.minimum());
+            putIfNotNull(map, "maximum", n.maximum());
+            putIfNotNull(map, "exclusiveMinimum", n.exclusiveMinimum());
+            putIfNotNull(map, "exclusiveMaximum", n.exclusiveMaximum());
+            return map;
+        }
         if (element instanceof JsonBooleanSchema b) return typedSchema("boolean", b.description());
         if (element instanceof JsonNullSchema) return typedSchema("null", null);
 
@@ -142,7 +167,16 @@ public class JsonSchemaElementJsonUtils {
         if (arr.items() != null) {
             map.put("items", toMap(arr.items()));
         }
+        putIfNotNull(map, "minItems", arr.minItems());
+        putIfNotNull(map, "maxItems", arr.maxItems());
+        putIfNotNull(map, "uniqueItems", arr.uniqueItems());
         return map;
+    }
+
+    private static void putIfNotNull(Map<String, Object> map, String key, Object value) {
+        if (value != null) {
+            map.put(key, value);
+        }
     }
 
     private static Map<String, Object> anyOfSchemaToMap(JsonAnyOfSchema anyOf) {
@@ -242,24 +276,44 @@ public class JsonSchemaElementJsonUtils {
         }
 
         return switch (type) {
-            case "string" ->
-                isRepresentable(map, STRING_KEYS)
-                        ? JsonStringSchema.builder()
-                                .description(optionalString(map, "description"))
-                                .build()
-                        : rawFallback(map);
-            case "integer" ->
-                isRepresentable(map, INTEGER_KEYS)
-                        ? JsonIntegerSchema.builder()
-                                .description(optionalString(map, "description"))
-                                .build()
-                        : rawFallback(map);
-            case "number" ->
-                isRepresentable(map, NUMBER_KEYS)
-                        ? JsonNumberSchema.builder()
-                                .description(optionalString(map, "description"))
-                                .build()
-                        : rawFallback(map);
+            case "string" -> {
+                if (!isRepresentable(map, STRING_KEYS) || !allIntegral(map, "minLength", "maxLength")) {
+                    yield rawFallback(map);
+                }
+                yield JsonStringSchema.builder()
+                        .description(optionalString(map, "description"))
+                        .minLength(intOrNull(map, "minLength"))
+                        .maxLength(intOrNull(map, "maxLength"))
+                        .pattern(optionalString(map, "pattern"))
+                        .format(optionalString(map, "format"))
+                        .build();
+            }
+            case "integer" -> {
+                if (!isRepresentable(map, INTEGER_KEYS)
+                        || !allIntegral(map, "minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum")) {
+                    yield rawFallback(map);
+                }
+                yield JsonIntegerSchema.builder()
+                        .description(optionalString(map, "description"))
+                        .minimum(longOrNull(map, "minimum"))
+                        .maximum(longOrNull(map, "maximum"))
+                        .exclusiveMinimum(longOrNull(map, "exclusiveMinimum"))
+                        .exclusiveMaximum(longOrNull(map, "exclusiveMaximum"))
+                        .build();
+            }
+            case "number" -> {
+                if (!isRepresentable(map, NUMBER_KEYS)
+                        || !allNumbers(map, "minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum")) {
+                    yield rawFallback(map);
+                }
+                yield JsonNumberSchema.builder()
+                        .description(optionalString(map, "description"))
+                        .minimum(doubleOrNull(map, "minimum"))
+                        .maximum(doubleOrNull(map, "maximum"))
+                        .exclusiveMinimum(doubleOrNull(map, "exclusiveMinimum"))
+                        .exclusiveMaximum(doubleOrNull(map, "exclusiveMaximum"))
+                        .build();
+            }
             case "boolean" ->
                 isRepresentable(map, BOOLEAN_KEYS)
                         ? JsonBooleanSchema.builder()
@@ -329,12 +383,19 @@ public class JsonSchemaElementJsonUtils {
                 yield builder.build();
             }
             case "array" -> {
-                if (!isRepresentable(map, ARRAY_KEYS)) {
+                if (!isRepresentable(map, ARRAY_KEYS) || !allIntegral(map, "minItems", "maxItems")) {
+                    yield rawFallback(map);
+                }
+                Object uniqueItems = map.get("uniqueItems");
+                if (uniqueItems != null && !(uniqueItems instanceof Boolean)) {
                     yield rawFallback(map);
                 }
 
-                JsonArraySchema.Builder builder =
-                        JsonArraySchema.builder().description(optionalString(map, "description"));
+                JsonArraySchema.Builder builder = JsonArraySchema.builder()
+                        .description(optionalString(map, "description"))
+                        .minItems(intOrNull(map, "minItems"))
+                        .maxItems(intOrNull(map, "maxItems"))
+                        .uniqueItems((Boolean) uniqueItems);
 
                 Object itemsObj = map.get("items");
                 if (itemsObj instanceof Map) {
@@ -372,6 +433,46 @@ public class JsonSchemaElementJsonUtils {
 
     private static boolean allStrings(List<?> list) {
         return list.stream().allMatch(String.class::isInstance);
+    }
+
+    /**
+     * Returns {@code true} if every present value for {@code keys} is an integral number
+     * ({@link Integer} or {@link Long}). Non-integral values (e.g., {@code minLength: 5.5})
+     * make the map unrepresentable, triggering the raw fallback.
+     */
+    private static boolean allIntegral(Map<String, Object> map, String... keys) {
+        for (String key : keys) {
+            Object value = map.get(key);
+            if (value != null && !(value instanceof Integer) && !(value instanceof Long)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static boolean allNumbers(Map<String, Object> map, String... keys) {
+        for (String key : keys) {
+            Object value = map.get(key);
+            if (value != null && !(value instanceof Number)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static Integer intOrNull(Map<String, Object> map, String key) {
+        Object value = map.get(key);
+        return value == null ? null : ((Number) value).intValue();
+    }
+
+    private static Long longOrNull(Map<String, Object> map, String key) {
+        Object value = map.get(key);
+        return value == null ? null : ((Number) value).longValue();
+    }
+
+    private static Double doubleOrNull(Map<String, Object> map, String key) {
+        Object value = map.get(key);
+        return value == null ? null : ((Number) value).doubleValue();
     }
 
     private static String optionalString(Map<String, Object> map, String field) {

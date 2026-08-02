@@ -74,10 +74,21 @@ class GoogleGenAiToolMapper {
         }
 
         if (element instanceof JsonStringSchema stringSchema) {
-            return Schema.builder()
-                    .type(Type.Known.STRING)
-                    .description(getOrDefault(stringSchema.description(), ""))
-                    .build();
+            Schema.Builder builder =
+                    Schema.builder().type(Type.Known.STRING).description(getOrDefault(stringSchema.description(), ""));
+            if (stringSchema.minLength() != null) {
+                builder.minLength(stringSchema.minLength().longValue());
+            }
+            if (stringSchema.maxLength() != null) {
+                builder.maxLength(stringSchema.maxLength().longValue());
+            }
+            if (stringSchema.pattern() != null) {
+                builder.pattern(stringSchema.pattern());
+            }
+            if (stringSchema.format() != null) {
+                builder.format(stringSchema.format());
+            }
+            return builder.build();
         }
 
         if (element instanceof JsonEnumSchema enumSchema) {
@@ -89,18 +100,31 @@ class GoogleGenAiToolMapper {
                     .build();
         }
 
-        if (element instanceof JsonIntegerSchema) {
-            return Schema.builder()
+        if (element instanceof JsonIntegerSchema integerSchema) {
+            Schema.Builder builder = Schema.builder()
                     .type(Type.Known.INTEGER)
-                    .description(getOrDefault(element.description(), ""))
-                    .build();
+                    .description(getOrDefault(integerSchema.description(), ""));
+            // exclusiveMinimum/exclusiveMaximum are not supported by the Gemini API and are ignored
+            if (integerSchema.minimum() != null) {
+                builder.minimum(integerSchema.minimum().doubleValue());
+            }
+            if (integerSchema.maximum() != null) {
+                builder.maximum(integerSchema.maximum().doubleValue());
+            }
+            return builder.build();
         }
 
-        if (element instanceof JsonNumberSchema) {
-            return Schema.builder()
-                    .type(Type.Known.NUMBER)
-                    .description(getOrDefault(element.description(), ""))
-                    .build();
+        if (element instanceof JsonNumberSchema numberSchema) {
+            Schema.Builder builder =
+                    Schema.builder().type(Type.Known.NUMBER).description(getOrDefault(numberSchema.description(), ""));
+            // exclusiveMinimum/exclusiveMaximum are not supported by the Gemini API and are ignored
+            if (numberSchema.minimum() != null) {
+                builder.minimum(numberSchema.minimum());
+            }
+            if (numberSchema.maximum() != null) {
+                builder.maximum(numberSchema.maximum());
+            }
+            return builder.build();
         }
 
         if (element instanceof JsonBooleanSchema) {
@@ -111,11 +135,18 @@ class GoogleGenAiToolMapper {
         }
 
         if (element instanceof JsonArraySchema arraySchema) {
-            return Schema.builder()
+            Schema.Builder builder = Schema.builder()
                     .type(Type.Known.ARRAY)
                     .items(convertToGoogleSchema(arraySchema.items()))
-                    .description(getOrDefault(arraySchema.description(), ""))
-                    .build();
+                    .description(getOrDefault(arraySchema.description(), ""));
+            // uniqueItems is not supported by the Gemini API and is ignored
+            if (arraySchema.minItems() != null) {
+                builder.minItems(arraySchema.minItems().longValue());
+            }
+            if (arraySchema.maxItems() != null) {
+                builder.maxItems(arraySchema.maxItems().longValue());
+            }
+            return builder.build();
         }
 
         throw new IllegalArgumentException("Unknown schema type: " + element.getClass());
