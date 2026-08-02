@@ -6,6 +6,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.model.ModelProvider;
+import dev.langchain4j.model.embedding.request.EmbeddingRequest;
+import dev.langchain4j.model.embedding.response.EmbeddingResponse;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import java.util.ArrayDeque;
@@ -82,6 +85,35 @@ class BedrockCohereEmbeddingModelTest {
         assertThat(response.tokenUsage().inputTokenCount()).isEqualTo(5);
         assertThat(response.tokenUsage().outputTokenCount()).isNull();
         assertThat(response.tokenUsage().totalTokenCount()).isEqualTo(5);
+    }
+
+    @Test
+    void should_report_amazon_bedrock_as_provider() {
+        BedrockCohereEmbeddingModel model = BedrockCohereEmbeddingModel.builder()
+                .client(clientReturning(new ArrayDeque<>()))
+                .model(COHERE_EMBED_MULTILINGUAL_V3)
+                .inputType(SEARCH_QUERY)
+                .build();
+
+        assertThat(model.provider()).isEqualTo(ModelProvider.AMAZON_BEDROCK);
+    }
+
+    @Test
+    void should_report_model_name_in_response_metadata() {
+        Queue<InvokeModelResponse> responses = new ArrayDeque<>(List.of(invokeModelResponse("[0.1,0.2]", "3")));
+
+        BedrockCohereEmbeddingModel model = BedrockCohereEmbeddingModel.builder()
+                .client(clientReturning(responses))
+                .model(COHERE_EMBED_MULTILINGUAL_V3)
+                .inputType(SEARCH_QUERY)
+                .build();
+
+        assertThat(model.modelName()).isEqualTo("cohere.embed-multilingual-v3");
+
+        EmbeddingResponse response =
+                model.embed(EmbeddingRequest.builder().input("hello").build());
+
+        assertThat(response.metadata().modelName()).isEqualTo("cohere.embed-multilingual-v3");
     }
 
     private static BedrockRuntimeClient clientReturning(Queue<InvokeModelResponse> responses) {
