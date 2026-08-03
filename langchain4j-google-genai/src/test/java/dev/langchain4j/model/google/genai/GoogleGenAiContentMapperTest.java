@@ -390,6 +390,50 @@ class GoogleGenAiContentMapperTest {
     }
 
     @Test
+    void should_return_tool_execution_finish_reason_when_response_contains_function_call() {
+        Map<String, Object> args = new HashMap<>();
+        args.put("city", "London");
+
+        GenerateContentResponse response = GenerateContentResponse.builder()
+                .candidates(List.of(Candidate.builder()
+                        .content(Content.builder()
+                                .role("model")
+                                .parts(Part.builder()
+                                        .functionCall(FunctionCall.builder()
+                                                .name("getWeather")
+                                                .args(args)
+                                                .build())
+                                        .build())
+                                .build())
+                        .finishReason(
+                                new com.google.genai.types.FinishReason(com.google.genai.types.FinishReason.Known.STOP))
+                        .build()))
+                .build();
+
+        ChatResponse result = GoogleGenAiContentMapper.toChatResponse(response, "test-model");
+
+        assertThat(result.finishReason()).isEqualTo(FinishReason.TOOL_EXECUTION);
+    }
+
+    @Test
+    void should_keep_reported_finish_reason_when_response_contains_no_function_call() {
+        GenerateContentResponse response = GenerateContentResponse.builder()
+                .candidates(List.of(Candidate.builder()
+                        .content(Content.builder()
+                                .role("model")
+                                .parts(Part.builder().text("Hello!").build())
+                                .build())
+                        .finishReason(
+                                new com.google.genai.types.FinishReason(com.google.genai.types.FinishReason.Known.STOP))
+                        .build()))
+                .build();
+
+        ChatResponse result = GoogleGenAiContentMapper.toChatResponse(response, "test-model");
+
+        assertThat(result.finishReason()).isEqualTo(FinishReason.STOP);
+    }
+
+    @Test
     void should_handle_response_with_no_content() {
         GenerateContentResponse response = GenerateContentResponse.builder()
                 .candidates(List.of(Candidate.builder().build()))
