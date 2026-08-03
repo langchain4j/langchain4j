@@ -21,7 +21,7 @@ class SseSubscriber implements Flow.Subscriber<String> {
     private final Logger logger;
     private final boolean logResponses;
     private final McpOperationHandler operationHandler;
-    private Flow.Subscription subscription;
+    private volatile Flow.Subscription subscription;
     private final boolean subsidiary;
     private final AtomicReference<String> lastEventId;
     private final AtomicLong retryMs;
@@ -73,7 +73,21 @@ class SseSubscriber implements Flow.Subscriber<String> {
     @Override
     public void onSubscribe(Flow.Subscription subscription) {
         this.subscription = subscription;
+        if (future != null) {
+            future.whenComplete((r, t) -> {
+                if (future.isCancelled()) {
+                    subscription.cancel();
+                }
+            });
+        }
         subscription.request(1);
+    }
+
+    void cancel() {
+        Flow.Subscription s = this.subscription;
+        if (s != null) {
+            s.cancel();
+        }
     }
 
     @Override

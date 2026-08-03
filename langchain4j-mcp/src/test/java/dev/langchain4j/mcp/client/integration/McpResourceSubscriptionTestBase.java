@@ -10,6 +10,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import org.awaitility.Awaitility;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 public abstract class McpResourceSubscriptionTestBase {
@@ -72,6 +73,44 @@ public abstract class McpResourceSubscriptionTestBase {
                 .isEqualTo("one");
 
         mcpClient.unsubscribeFromResources(subscriptionId);
+    }
+
+    @Disabled("Waiting for quarkus-mcp-server release with https://github.com/quarkiverse/quarkus-mcp-server/issues/925 fixed")
+    @Test
+    public void unsubscribeStopsNotifications() {
+        updatedResourceUris.clear();
+
+        long subscriptionId = mcpClient.subscribeToResources(List.of("file:///status"));
+
+        // Trigger an update and verify notification arrives
+        mcpClient.executeTool(ToolExecutionRequest.builder()
+                .name("updateStatus")
+                .arguments("{\"newValue\": \"before-unsub\"}")
+                .build());
+
+        Awaitility.await()
+                .atMost(Duration.ofSeconds(5))
+                .pollInterval(Duration.ofMillis(300))
+                .untilAsserted(() -> assertThat(updatedResourceUris).contains("file:///status"));
+
+        // Unsubscribe
+        mcpClient.unsubscribeFromResources(subscriptionId);
+
+        // Clear and trigger another update
+        updatedResourceUris.clear();
+        mcpClient.executeTool(ToolExecutionRequest.builder()
+                .name("updateStatus")
+                .arguments("{\"newValue\": \"after-unsub\"}")
+                .build());
+
+        // Verify no notification arrives after unsubscribing
+        Awaitility.await()
+                .during(Duration.ofSeconds(4))
+                .pollDelay(Duration.ofSeconds(0))
+                .pollInterval(Duration.ofMillis(300))
+                .untilAsserted(() -> {
+                    assertThat(updatedResourceUris).doesNotContain("file:///status");
+                });
     }
 
     @Test

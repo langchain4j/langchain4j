@@ -131,7 +131,10 @@ public class DefaultMcpClient implements McpClient {
     private final Boolean subscribeToPromptListChanges;
     private final Boolean subscribeToResourceListChanges;
     private final AtomicLong subscriptionIdGenerator = new AtomicLong(0);
-    private final Map<Long, CompletableFuture<JsonNode>> activeSubscriptions = new ConcurrentHashMap<>();
+
+    private record ActiveSubscription(long operationId, CompletableFuture<JsonNode> streamFuture) {}
+
+    private final Map<Long, ActiveSubscription> activeSubscriptions = new ConcurrentHashMap<>();
 
     public DefaultMcpClient(Builder builder) {
         try {
@@ -950,7 +953,7 @@ public class DefaultMcpClient implements McpClient {
         McpCallContext context = new McpCallContext(null, request);
         applyMeta(request, context);
         CompletableFuture<JsonNode> streamFuture = transport.executeOperationWithResponse(context);
-        activeSubscriptions.put(subscriptionId, streamFuture);
+        activeSubscriptions.put(subscriptionId, new ActiveSubscription(operationId, streamFuture));
 
         notifyListeners(l -> l.afterResourcesSubscribe(subscriptionId, uris));
 
@@ -966,9 +969,16 @@ public class DefaultMcpClient implements McpClient {
         }
         notifyListeners(l -> l.beforeResourcesUnsubscribe(subscriptionId));
 
-        CompletableFuture<JsonNode> streamFuture = activeSubscriptions.remove(subscriptionId);
-        if (streamFuture != null) {
-            streamFuture.cancel(true);
+        ActiveSubscription sub = activeSubscriptions.remove(subscriptionId);
+        if (sub != null) {
+            // Cancel the future, which for HTTP transport propagates to
+            // Flow.Subscription.cancel() and closes the SSE stream
+            sub.streamFuture().cancel(true);
+            // Send notifications/cancelled for stdio transport (per spec)
+            McpCancellationNotification cancellation =
+                    new McpCancellationNotification(sub.operationId(), "Client unsubscribed");
+            applyMeta(cancellation, null);
+            transport.executeOperationWithoutResponse(cancellation);
         }
 
         notifyListeners(l -> l.afterResourcesUnsubscribe(subscriptionId));
@@ -1185,7 +1195,7 @@ public class DefaultMcpClient implements McpClient {
     public void close() {
         closed = true;
         // Cancel all active resource subscriptions
-        activeSubscriptions.values().forEach(f -> f.cancel(true));
+        activeSubscriptions.values().forEach(sub -> sub.streamFuture().cancel(true));
         activeSubscriptions.clear();
         if (healthCheckScheduler != null) {
             healthCheckScheduler.shutdownNow();

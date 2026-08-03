@@ -29,6 +29,8 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -65,6 +67,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
     private final AtomicLong subsidiaryRetryMs = new AtomicLong(DEFAULT_SUBSIDIARY_RETRY_MS);
     private final Executor executor;
     private AtomicBoolean closed = new AtomicBoolean(false);
+    private final Set<SseSubscriber> activeStreamSubscribers = ConcurrentHashMap.newKeySet();
 
     public StreamableHttpMcpTransport(StreamableHttpMcpTransport.Builder builder) {
         url = ensureNotNull(builder.url, "Missing server endpoint URL");
@@ -308,8 +311,10 @@ public class StreamableHttpMcpTransport implements McpTransport {
                                 && contentType.isPresent()
                                 && contentType.get().contains("text/event-stream")) {
                             // the server has started an SSE stream
-                            return HttpResponse.BodySubscribers.fromLineSubscriber(
-                                    new SseSubscriber(future, logResponses, operationHandler, trafficLog));
+                            SseSubscriber subscriber =
+                                    new SseSubscriber(future, logResponses, operationHandler, trafficLog);
+                            activeStreamSubscribers.add(subscriber);
+                            return HttpResponse.BodySubscribers.fromLineSubscriber(subscriber);
                         } else {
                             // the server has returned a regular HTTP response
                             return HttpResponse.BodySubscribers.mapping(
@@ -380,6 +385,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
                 subsidiaryRetryMs,
                 this::scheduleSubsidiaryReconnect,
                 closed);
+        activeStreamSubscribers.add(subscriber);
 
         httpClient
                 .sendAsync(request, responseInfo -> {
@@ -449,6 +455,10 @@ public class StreamableHttpMcpTransport implements McpTransport {
     @Override
     public void close() throws IOException {
         closed.set(true);
+        for (SseSubscriber subscriber : activeStreamSubscribers) {
+            subscriber.cancel();
+        }
+        activeStreamSubscribers.clear();
         // The httpClient.close() method only exists on JDK 21+, so invoke it only if we can.
         // Replace this with a normal method call when switching the base to JDK 21+.
         try {
