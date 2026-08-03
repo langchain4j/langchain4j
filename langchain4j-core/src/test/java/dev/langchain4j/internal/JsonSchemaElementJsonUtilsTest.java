@@ -331,6 +331,23 @@ class JsonSchemaElementJsonUtilsTest {
     }
 
     @Test
+    void should_fallback_to_raw_for_min_length_exceeding_int_range() {
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("type", "string");
+        map.put("minLength", 4294967296L);
+        assertRawFallback(map);
+    }
+
+    @Test
+    void should_fallback_to_raw_for_max_items_exceeding_int_range() {
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("type", "array");
+        map.put("items", Map.of("type", "string"));
+        map.put("maxItems", 4294967296L);
+        assertRawFallback(map);
+    }
+
+    @Test
     void should_fallback_to_raw_for_non_integral_integer_minimum() {
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("type", "integer");

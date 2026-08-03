@@ -277,7 +277,7 @@ public class JsonSchemaElementJsonUtils {
 
         return switch (type) {
             case "string" -> {
-                if (!isRepresentable(map, STRING_KEYS) || !allIntegral(map, "minLength", "maxLength")) {
+                if (!isRepresentable(map, STRING_KEYS) || !allInts(map, "minLength", "maxLength")) {
                     yield rawFallback(map);
                 }
                 yield JsonStringSchema.builder()
@@ -383,7 +383,7 @@ public class JsonSchemaElementJsonUtils {
                 yield builder.build();
             }
             case "array" -> {
-                if (!isRepresentable(map, ARRAY_KEYS) || !allIntegral(map, "minItems", "maxItems")) {
+                if (!isRepresentable(map, ARRAY_KEYS) || !allInts(map, "minItems", "maxItems")) {
                     yield rawFallback(map);
                 }
                 Object uniqueItems = map.get("uniqueItems");
@@ -437,7 +437,7 @@ public class JsonSchemaElementJsonUtils {
 
     /**
      * Returns {@code true} if every present value for {@code keys} is an integral number
-     * ({@link Integer} or {@link Long}). Non-integral values (e.g., {@code minLength: 5.5})
+     * ({@link Integer} or {@link Long}). Non-integral values (e.g., {@code minimum: 0.5})
      * make the map unrepresentable, triggering the raw fallback.
      */
     private static boolean allIntegral(Map<String, Object> map, String... keys) {
@@ -446,6 +446,26 @@ public class JsonSchemaElementJsonUtils {
             if (value != null && !(value instanceof Integer) && !(value instanceof Long)) {
                 return false;
             }
+        }
+        return true;
+    }
+
+    /**
+     * Like {@link #allIntegral}, but additionally requires the value to fit in an {@code int},
+     * since these keys map to {@link Integer} fields. Out-of-range values (e.g.,
+     * {@code minLength: 4294967296}) would otherwise be silently truncated by
+     * {@link Number#intValue()}, so they trigger the raw fallback instead.
+     */
+    private static boolean allInts(Map<String, Object> map, String... keys) {
+        for (String key : keys) {
+            Object value = map.get(key);
+            if (value == null || value instanceof Integer) {
+                continue;
+            }
+            if (value instanceof Long longValue && longValue >= Integer.MIN_VALUE && longValue <= Integer.MAX_VALUE) {
+                continue;
+            }
+            return false;
         }
         return true;
     }
