@@ -19,6 +19,7 @@ import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.mcp.client.logging.DefaultMcpLogMessageHandler;
 import dev.langchain4j.mcp.client.logging.McpLogMessageHandler;
 import dev.langchain4j.mcp.client.progress.McpProgressHandler;
+import dev.langchain4j.mcp.client.transport.McpHeaderEncoding;
 import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import dev.langchain4j.mcp.client.transport.McpTransport;
 import dev.langchain4j.mcp.protocol.McpCallToolParams;
@@ -1299,7 +1300,7 @@ public class DefaultMcpClient implements McpClient {
             } else {
                 continue;
             }
-            result.put(headerName, encodeMcpParamValue(stringValue));
+            result.put(headerName, McpHeaderEncoding.encode(stringValue));
         }
         return result.isEmpty() ? null : result;
     }
@@ -1314,38 +1315,6 @@ public class DefaultMcpClient implements McpClient {
             current = current.get(segment);
         }
         return current;
-    }
-
-    private static String encodeMcpParamValue(String value) {
-        if (value.isEmpty()) {
-            return value;
-        }
-        boolean needsEncoding = false;
-        if (value.charAt(0) == ' '
-                || value.charAt(0) == '\t'
-                || value.charAt(value.length() - 1) == ' '
-                || value.charAt(value.length() - 1) == '\t') {
-            needsEncoding = true;
-        }
-        if (!needsEncoding) {
-            for (int i = 0; i < value.length(); i++) {
-                char c = value.charAt(i);
-                if (c < 0x20 || c > 0x7E) {
-                    needsEncoding = true;
-                    break;
-                }
-            }
-        }
-        if (!needsEncoding && value.startsWith("=?base64?") && value.endsWith("?=")) {
-            needsEncoding = true;
-        }
-        if (needsEncoding) {
-            return "=?base64?"
-                    + java.util.Base64.getEncoder()
-                            .encodeToString(value.getBytes(java.nio.charset.StandardCharsets.UTF_8))
-                    + "?=";
-        }
-        return value;
     }
 
     private void notifyListeners(Consumer<McpClientListener> action) {

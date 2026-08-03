@@ -10,6 +10,7 @@ import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.mcp.client.McpCallContext;
 import dev.langchain4j.mcp.client.McpHeadersSupplier;
 import dev.langchain4j.mcp.client.logging.McpLoggers;
+import dev.langchain4j.mcp.client.transport.McpHeaderEncoding;
 import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import dev.langchain4j.mcp.client.transport.McpTransport;
 import dev.langchain4j.mcp.protocol.McpClientMessage;
@@ -146,12 +147,12 @@ public class StreamableHttpMcpTransport implements McpTransport {
             if ("tools/call".equals(method) || "prompts/get".equals(method)) {
                 String name = params.path("name").asText(null);
                 if (name != null) {
-                    builder.header("Mcp-Name", name);
+                    builder.header("Mcp-Name", McpHeaderEncoding.encode(name));
                 }
             } else if ("resources/read".equals(method)) {
                 String uri = params.path("uri").asText(null);
                 if (uri != null) {
-                    builder.header("Mcp-Name", uri);
+                    builder.header("Mcp-Name", McpHeaderEncoding.encode(uri));
                 }
             }
             // Mcp-Param headers from context
