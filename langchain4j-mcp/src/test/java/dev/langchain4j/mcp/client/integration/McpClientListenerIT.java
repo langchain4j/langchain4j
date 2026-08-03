@@ -284,8 +284,11 @@ public class McpClientListenerIT {
     public void resourceSubscribeAndUnsubscribe() {
         long subscriptionId = mcpClient.subscribeToResources(List.of("file:///test-resource"));
 
-        assertThat(testListener.resourcesSubscribeUris).isNotNull();
+        assertThat(testListener.resourcesSubscribeContext).isNotNull();
+        assertThat(testListener.resourcesSubscribeContext.message()).isNotNull();
         assertThat(testListener.resourcesSubscribeUris).containsExactly("file:///test-resource");
+        assertThat(testListener.resourcesSubscribeAfterContext).isNotNull();
+        assertThat(testListener.resourcesSubscribeAfterContext.message()).isNotNull();
         assertThat(testListener.resourcesSubscribeAfterSubscriptionId).isEqualTo(subscriptionId);
         assertThat(testListener.resourcesSubscribeAfterUris).containsExactly("file:///test-resource");
 
@@ -293,7 +296,11 @@ public class McpClientListenerIT {
 
         mcpClient.unsubscribeFromResources(subscriptionId);
 
+        assertThat(testListener.resourcesUnsubscribeContext).isNotNull();
+        assertThat(testListener.resourcesUnsubscribeContext.message()).isNotNull();
         assertThat(testListener.resourcesUnsubscribeSubscriptionId).isEqualTo(subscriptionId);
+        assertThat(testListener.resourcesUnsubscribeAfterContext).isNotNull();
+        assertThat(testListener.resourcesUnsubscribeAfterContext.message()).isNotNull();
         assertThat(testListener.resourcesUnsubscribeAfterSubscriptionId).isEqualTo(subscriptionId);
     }
 
@@ -341,11 +348,15 @@ public class McpClientListenerIT {
         volatile McpCallContext serverDiscoverContext;
         volatile McpDiscoverResult serverDiscoverResult;
 
+        volatile McpCallContext resourcesSubscribeContext;
         volatile List<String> resourcesSubscribeUris;
+        volatile McpCallContext resourcesSubscribeAfterContext;
         volatile long resourcesSubscribeAfterSubscriptionId;
         volatile List<String> resourcesSubscribeAfterUris;
 
+        volatile McpCallContext resourcesUnsubscribeContext;
         volatile long resourcesUnsubscribeSubscriptionId;
+        volatile McpCallContext resourcesUnsubscribeAfterContext;
         volatile long resourcesUnsubscribeAfterSubscriptionId;
 
         @Override
@@ -467,23 +478,27 @@ public class McpClientListenerIT {
         }
 
         @Override
-        public void beforeResourcesSubscribe(List<String> uris) {
+        public void beforeResourcesSubscribe(McpCallContext context, List<String> uris) {
+            resourcesSubscribeContext = context;
             resourcesSubscribeUris = uris;
         }
 
         @Override
-        public void afterResourcesSubscribe(long subscriptionId, List<String> uris) {
+        public void afterResourcesSubscribe(McpCallContext context, long subscriptionId, List<String> uris) {
+            resourcesSubscribeAfterContext = context;
             resourcesSubscribeAfterSubscriptionId = subscriptionId;
             resourcesSubscribeAfterUris = uris;
         }
 
         @Override
-        public void beforeResourcesUnsubscribe(long subscriptionId) {
+        public void beforeResourcesUnsubscribe(McpCallContext context, long subscriptionId) {
+            resourcesUnsubscribeContext = context;
             resourcesUnsubscribeSubscriptionId = subscriptionId;
         }
 
         @Override
-        public void afterResourcesUnsubscribe(long subscriptionId) {
+        public void afterResourcesUnsubscribe(McpCallContext context, long subscriptionId) {
+            resourcesUnsubscribeAfterContext = context;
             resourcesUnsubscribeAfterSubscriptionId = subscriptionId;
         }
 
@@ -525,11 +540,15 @@ public class McpClientListenerIT {
             pingContext = null;
             pingAfterContext = null;
 
+            resourcesSubscribeContext = null;
             resourcesSubscribeUris = null;
+            resourcesSubscribeAfterContext = null;
             resourcesSubscribeAfterSubscriptionId = 0;
             resourcesSubscribeAfterUris = null;
 
+            resourcesUnsubscribeContext = null;
             resourcesUnsubscribeSubscriptionId = 0;
+            resourcesUnsubscribeAfterContext = null;
             resourcesUnsubscribeAfterSubscriptionId = 0;
         }
     }

@@ -976,8 +976,6 @@ public class DefaultMcpClient implements McpClient {
             throw new UnsupportedOperationException("subscribeToResources requires MCP protocol 2026-07-28 or later");
         }
 
-        notifyListeners(l -> l.beforeResourcesSubscribe(uris));
-
         McpSubscriptionsListenParams.Notifications notifications = new McpSubscriptionsListenParams.Notifications();
         notifications.setResourceSubscriptions(uris);
 
@@ -987,6 +985,7 @@ public class DefaultMcpClient implements McpClient {
         params.setNotifications(notifications);
         request.setParams(params);
         McpCallContext context = new McpCallContext(null, request);
+        notifyListeners(l -> l.beforeResourcesSubscribe(context, uris));
         applyMeta(request, context);
         CompletableFuture<JsonNode> streamFuture = transport.executeOperationWithResponse(context);
         activeSubscriptions.put(subscriptionId, streamFuture);
@@ -1002,7 +1001,7 @@ public class DefaultMcpClient implements McpClient {
             }
         });
 
-        notifyListeners(l -> l.afterResourcesSubscribe(subscriptionId, uris));
+        notifyListeners(l -> l.afterResourcesSubscribe(context, subscriptionId, uris));
 
         return subscriptionId;
     }
@@ -1014,7 +1013,14 @@ public class DefaultMcpClient implements McpClient {
             throw new UnsupportedOperationException(
                     "unsubscribeFromResources requires MCP protocol 2026-07-28 or later");
         }
-        notifyListeners(l -> l.beforeResourcesUnsubscribe(subscriptionId));
+        McpCallContext context = null;
+        if (transport.requiresCancellationNotification()) {
+            McpCancellationNotification cancellation =
+                    new McpCancellationNotification(subscriptionId, "Client unsubscribed");
+            context = new McpCallContext(null, cancellation);
+        }
+        final McpCallContext finalContext = context;
+        notifyListeners(l -> l.beforeResourcesUnsubscribe(finalContext, subscriptionId));
 
         CompletableFuture<JsonNode> streamFuture = activeSubscriptions.remove(subscriptionId);
         if (streamFuture != null) {
@@ -1022,15 +1028,13 @@ public class DefaultMcpClient implements McpClient {
             // Flow.Subscription.cancel() and closes the SSE stream
             streamFuture.cancel(true);
             // Send notifications/cancelled for transports that need it (e.g. stdio)
-            if (transport.requiresCancellationNotification()) {
-                McpCancellationNotification cancellation =
-                        new McpCancellationNotification(subscriptionId, "Client unsubscribed");
-                applyMeta(cancellation, null);
-                transport.executeOperationWithoutResponse(cancellation);
+            if (context != null) {
+                applyMeta(context.message(), context);
+                transport.executeOperationWithoutResponse(context.message());
             }
         }
 
-        notifyListeners(l -> l.afterResourcesUnsubscribe(subscriptionId));
+        notifyListeners(l -> l.afterResourcesUnsubscribe(finalContext, subscriptionId));
     }
 
     @Override

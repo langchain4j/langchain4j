@@ -6,6 +6,7 @@ import dev.langchain4j.mcp.client.progress.McpProgressNotification;
 import dev.langchain4j.service.tool.ToolExecutionResult;
 import java.util.List;
 import java.util.Map;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Listener interface for monitoring MCP client operations.
@@ -185,27 +186,33 @@ public interface McpClientListener {
      * Called before subscribing to resources via the modern {@code subscriptions/listen} mechanism.
      * Only used with MCP protocol 2026-07-28 and later.
      */
-    default void beforeResourcesSubscribe(List<String> uris) {}
+    default void beforeResourcesSubscribe(McpCallContext context, List<String> uris) {}
 
     /**
      * Called after subscribing to resources completes successfully.
      * Only used with MCP protocol 2026-07-28 and later.
      *
-     * @param subscriptionId the client-generated subscription ID
+     * @param subscriptionId the subscription ID (the JSON-RPC request ID of the {@code subscriptions/listen} call)
      */
-    default void afterResourcesSubscribe(long subscriptionId, List<String> uris) {}
+    default void afterResourcesSubscribe(McpCallContext context, long subscriptionId, List<String> uris) {}
 
     /**
      * Called before unsubscribing from resources via subscription ID.
      * Only used with MCP protocol 2026-07-28 and later.
+     *
+     * @param context the call context wrapping the {@code notifications/cancelled} message,
+     *     or {@code null} for transports that cancel by closing the SSE stream (e.g. Streamable HTTP)
      */
-    default void beforeResourcesUnsubscribe(long subscriptionId) {}
+    default void beforeResourcesUnsubscribe(@Nullable McpCallContext context, long subscriptionId) {}
 
     /**
      * Called after unsubscribing from resources completes.
      * Only used with MCP protocol 2026-07-28 and later.
+     *
+     * @param context the call context wrapping the {@code notifications/cancelled} message,
+     *     or {@code null} for transports that cancel by closing the SSE stream (e.g. Streamable HTTP)
      */
-    default void afterResourcesUnsubscribe(long subscriptionId) {}
+    default void afterResourcesUnsubscribe(@Nullable McpCallContext context, long subscriptionId) {}
 
     // ========== Client-initiated: prompts/get ==========
 
