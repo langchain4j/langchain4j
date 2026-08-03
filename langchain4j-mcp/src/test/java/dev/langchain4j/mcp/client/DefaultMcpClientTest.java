@@ -12,6 +12,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -836,6 +837,76 @@ public class DefaultMcpClientTest {
         final ObjectNode rootNode = JsonNodeFactory.instance.objectNode();
         rootNode.putObject("result").set("tools", toolsArray);
         return rootNode;
+    }
+
+    @Test
+    public void activeSubscriptions_cleared_after_unsubscribe() throws Exception {
+        McpTransport transport = getModernMcpTransportMock();
+
+        // The subscription request gets a future that never completes (simulating an open SSE stream)
+        CompletableFuture<JsonNode> sseStream = new CompletableFuture<>();
+        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
+                .thenReturn(CompletableFuture.completedFuture(getDiscoverResult()))
+                .thenReturn(sseStream);
+
+        DefaultMcpClient client = createMcpClient(transport);
+        long subscriptionId = client.subscribeToResources(List.of("file:///test"));
+
+        Map<Long, ?> activeSubscriptions = getActiveSubscriptions(client);
+        assertThat(activeSubscriptions).containsKey(subscriptionId);
+
+        client.unsubscribeFromResources(subscriptionId);
+        assertThat(activeSubscriptions).doesNotContainKey(subscriptionId);
+    }
+
+    @Test
+    public void activeSubscriptions_cleared_after_server_rejection() throws Exception {
+        McpTransport transport = getModernMcpTransportMock();
+
+        // The subscription request completes immediately with a JSON-RPC error
+        ObjectNode errorResponse = JsonNodeFactory.instance.objectNode();
+        ObjectNode error = errorResponse.putObject("error");
+        error.put("code", -32602);
+        error.put("message", "Unknown resource URI");
+        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
+                .thenReturn(CompletableFuture.completedFuture(getDiscoverResult()))
+                .thenReturn(CompletableFuture.completedFuture(errorResponse));
+
+        DefaultMcpClient client = createMcpClient(transport);
+        long subscriptionId = client.subscribeToResources(List.of("file:///nonexistent"));
+
+        // The whenComplete handler runs asynchronously — wait for it
+        Map<Long, ?> activeSubscriptions = getActiveSubscriptions(client);
+        org.awaitility.Awaitility.await()
+                .atMost(java.time.Duration.ofSeconds(2))
+                .untilAsserted(() -> assertThat(activeSubscriptions).doesNotContainKey(subscriptionId));
+    }
+
+    @Test
+    public void activeSubscriptions_cleared_after_transport_error() throws Exception {
+        McpTransport transport = getModernMcpTransportMock();
+
+        // The subscription request fails with a transport error
+        CompletableFuture<JsonNode> failed = new CompletableFuture<>();
+        failed.completeExceptionally(new RuntimeException("Connection refused"));
+        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
+                .thenReturn(CompletableFuture.completedFuture(getDiscoverResult()))
+                .thenReturn(failed);
+
+        DefaultMcpClient client = createMcpClient(transport);
+        long subscriptionId = client.subscribeToResources(List.of("file:///test"));
+
+        Map<Long, ?> activeSubscriptions = getActiveSubscriptions(client);
+        org.awaitility.Awaitility.await()
+                .atMost(java.time.Duration.ofSeconds(2))
+                .untilAsserted(() -> assertThat(activeSubscriptions).doesNotContainKey(subscriptionId));
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<Long, ?> getActiveSubscriptions(DefaultMcpClient client) throws Exception {
+        java.lang.reflect.Field field = DefaultMcpClient.class.getDeclaredField("activeSubscriptions");
+        field.setAccessible(true);
+        return (Map<Long, ?>) field.get(client);
     }
 
     private static record ToolDefinition(String name, String description, ToolArg... args) {}

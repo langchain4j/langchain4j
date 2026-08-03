@@ -132,11 +132,8 @@ public class DefaultMcpClient implements McpClient {
     private final Boolean subscribeToToolListChanges;
     private final Boolean subscribeToPromptListChanges;
     private final Boolean subscribeToResourceListChanges;
-    private final AtomicLong subscriptionIdGenerator = new AtomicLong(0);
-
-    private record ActiveSubscription(long operationId, CompletableFuture<JsonNode> streamFuture) {}
-
-    private final Map<Long, ActiveSubscription> activeSubscriptions = new ConcurrentHashMap<>();
+    private final Map<Long, CompletableFuture<JsonNode>> activeSubscriptions = new ConcurrentHashMap<>();
+    private volatile CompletableFuture<JsonNode> listChangeSubscriptionFuture;
 
     public DefaultMcpClient(Builder builder) {
         try {
@@ -525,7 +522,14 @@ public class DefaultMcpClient implements McpClient {
         request.setParams(params);
         McpCallContext context = new McpCallContext(null, request);
         applyMeta(request, context);
-        transport.executeOperationWithResponse(context);
+        CompletableFuture<JsonNode> future = transport.executeOperationWithResponse(context);
+        listChangeSubscriptionFuture = future;
+        future.whenComplete((result, error) -> {
+            pendingOperations.remove(operationId);
+            if (error != null && !closed) {
+                log.warn("List-change subscription failed", error);
+            }
+        });
     }
 
     private static String getResultType(JsonNode response) {
@@ -960,22 +964,32 @@ public class DefaultMcpClient implements McpClient {
         if (!modernProtocol) {
             throw new UnsupportedOperationException("subscribeToResources requires MCP protocol 2026-07-28 or later");
         }
-        long subscriptionId = subscriptionIdGenerator.getAndIncrement();
 
         notifyListeners(l -> l.beforeResourcesSubscribe(uris));
 
         McpSubscriptionsListenParams.Notifications notifications = new McpSubscriptionsListenParams.Notifications();
         notifications.setResourceSubscriptions(uris);
 
-        long operationId = idGenerator.getAndIncrement();
-        McpSubscriptionsListenRequest request = new McpSubscriptionsListenRequest(operationId);
+        long subscriptionId = idGenerator.getAndIncrement();
+        McpSubscriptionsListenRequest request = new McpSubscriptionsListenRequest(subscriptionId);
         McpSubscriptionsListenParams params = new McpSubscriptionsListenParams();
         params.setNotifications(notifications);
         request.setParams(params);
         McpCallContext context = new McpCallContext(null, request);
         applyMeta(request, context);
         CompletableFuture<JsonNode> streamFuture = transport.executeOperationWithResponse(context);
-        activeSubscriptions.put(subscriptionId, new ActiveSubscription(operationId, streamFuture));
+        activeSubscriptions.put(subscriptionId, streamFuture);
+        streamFuture.whenComplete((result, error) -> {
+            pendingOperations.remove(subscriptionId);
+            if (error != null && !closed) {
+                log.warn("Resource subscription {} failed", subscriptionId, error);
+                activeSubscriptions.remove(subscriptionId);
+            } else if (result != null && result.has("error") && !closed) {
+                log.warn("Resource subscription {} rejected by server: {}", subscriptionId,
+                        result.path("error").path("message").asText());
+                activeSubscriptions.remove(subscriptionId);
+            }
+        });
 
         notifyListeners(l -> l.afterResourcesSubscribe(subscriptionId, uris));
 
@@ -991,14 +1005,14 @@ public class DefaultMcpClient implements McpClient {
         }
         notifyListeners(l -> l.beforeResourcesUnsubscribe(subscriptionId));
 
-        ActiveSubscription sub = activeSubscriptions.remove(subscriptionId);
-        if (sub != null) {
+        CompletableFuture<JsonNode> streamFuture = activeSubscriptions.remove(subscriptionId);
+        if (streamFuture != null) {
             // Cancel the future, which for HTTP transport propagates to
             // Flow.Subscription.cancel() and closes the SSE stream
-            sub.streamFuture().cancel(true);
+            streamFuture.cancel(true);
             // Send notifications/cancelled for stdio transport (per spec)
             McpCancellationNotification cancellation =
-                    new McpCancellationNotification(sub.operationId(), "Client unsubscribed");
+                    new McpCancellationNotification(subscriptionId, "Client unsubscribed");
             applyMeta(cancellation, null);
             transport.executeOperationWithoutResponse(cancellation);
         }
@@ -1228,8 +1242,13 @@ public class DefaultMcpClient implements McpClient {
     @Override
     public void close() {
         closed = true;
+        // Cancel list-change subscription
+        CompletableFuture<JsonNode> listChangeFuture = listChangeSubscriptionFuture;
+        if (listChangeFuture != null) {
+            listChangeFuture.cancel(true);
+        }
         // Cancel all active resource subscriptions
-        activeSubscriptions.values().forEach(sub -> sub.streamFuture().cancel(true));
+        activeSubscriptions.values().forEach(f -> f.cancel(true));
         activeSubscriptions.clear();
         if (healthCheckScheduler != null) {
             healthCheckScheduler.shutdownNow();

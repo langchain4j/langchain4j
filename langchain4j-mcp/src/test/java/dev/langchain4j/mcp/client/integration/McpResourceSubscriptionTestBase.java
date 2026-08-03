@@ -114,6 +114,15 @@ public abstract class McpResourceSubscriptionTestBase {
     }
 
     @Test
+    public void concurrentSubscriptionsReturnDistinctIds() {
+        long sub1 = mcpClient.subscribeToResources(List.of("file:///status"));
+        long sub2 = mcpClient.subscribeToResources(List.of("file:///counter"));
+        assertThat(sub1).isNotEqualTo(sub2);
+        mcpClient.unsubscribeFromResources(sub1);
+        mcpClient.unsubscribeFromResources(sub2);
+    }
+
+    @Test
     public void multipleConcurrentSubscriptions() {
         updatedResourceUris.clear();
 
