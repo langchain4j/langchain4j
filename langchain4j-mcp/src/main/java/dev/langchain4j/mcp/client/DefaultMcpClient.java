@@ -247,44 +247,70 @@ public class DefaultMcpClient implements McpClient {
         String resolvedVersion = protocolVersion;
 
         if (resolvedVersion == null || resolvedVersion.isEmpty()) {
-            // Auto-detect: try modern first, fall back to legacy
-            try {
-                initializeModern("2026-07-28");
-                return;
-            } catch (Exception e) {
-                logAutoDetectionFallback(e);
-                initializeLegacy("2025-11-25");
-                return;
-            }
-        }
-
-        if (isModernVersion(resolvedVersion)) {
-            initializeModern(resolvedVersion);
+            autoDetect("2026-07-28", "2025-11-25");
+        } else if (isModernVersion(resolvedVersion)) {
+            initializeModern(resolvedVersion, false);
         } else if ("2025-11-25".equals(resolvedVersion) || "2024-11-05".equals(resolvedVersion)) {
             initializeLegacy(resolvedVersion);
         } else {
-            // Unknown version string — auto-detect but use the given string for advertising
-            try {
-                initializeModern(resolvedVersion);
-                return;
-            } catch (Exception e) {
-                logAutoDetectionFallback(e);
-                initializeLegacy(resolvedVersion);
-            }
+            autoDetect(resolvedVersion, resolvedVersion);
         }
     }
 
-    private void logAutoDetectionFallback(Throwable e) {
-        if (e.getCause() != null && e.getCause() instanceof McpException) {
-            e = e.getCause();
+    private void autoDetect(String modernVersion, String legacyFallbackVersion) {
+        try {
+            initializeModern(modernVersion, true);
+        } catch (McpException e) {
+            if (isModernErrorCode(e.errorCode())) {
+                if (e.errorCode() == -32022) {
+                    retryWithSupportedVersion(e);
+                    return;
+                }
+                throw e;
+            }
+            log.debug("Server does not support modern protocol, falling back to legacy initialize");
+            initializeLegacy(legacyFallbackVersion);
+        } catch (Exception e) {
+            log.debug("Modern initialization (server/discover) failed, falling back to legacy initialize");
+            initializeLegacy(legacyFallbackVersion);
         }
-        if (e instanceof McpException && ((McpException) e).errorCode() == -32601) {
-            log.debug("Server does not support server/discover, falling back to legacy initialize");
-        } else {
-            log.warn(
-                    "Modern initialization (server/discover) failed unexpectedly, falling back to legacy initialize",
-                    e);
+    }
+
+    private static boolean isModernErrorCode(int code) {
+        return code == -32022 || code == -32021 || code == -32020;
+    }
+
+    private void retryWithSupportedVersion(McpException e) {
+        JsonNode data = e.errorData();
+        if (data != null && data.has("supported")) {
+            JsonNode supported = data.get("supported");
+            if (supported.isArray()) {
+                // Prefer modern versions, fall back to legacy
+                String bestModern = null;
+                String bestLegacy = null;
+                for (JsonNode v : supported) {
+                    String version = v.asText();
+                    if (isModernVersion(version)) {
+                        if (bestModern == null || version.compareTo(bestModern) > 0) {
+                            bestModern = version;
+                        }
+                    } else {
+                        if (bestLegacy == null || version.compareTo(bestLegacy) > 0) {
+                            bestLegacy = version;
+                        }
+                    }
+                }
+                if (bestModern != null) {
+                    initializeModern(bestModern, false);
+                    return;
+                }
+                if (bestLegacy != null) {
+                    initializeLegacy(bestLegacy);
+                    return;
+                }
+            }
         }
+        throw new RuntimeException("Server does not support any compatible protocol version", e);
     }
 
     private void initializeLegacy(String version) {
@@ -376,7 +402,7 @@ public class DefaultMcpClient implements McpClient {
                         result.path("instructions").asText(null)));
     }
 
-    private void initializeModern(String versionToAdvertise) {
+    private void initializeModern(String versionToAdvertise, boolean isProbe) {
         // Set modern mode on HTTP transport BEFORE sending server/discover,
         // so the required HTTP headers (MCP-Protocol-Version, Mcp-Method) are included
         transport.setModernProtocol(true);
@@ -387,15 +413,19 @@ public class DefaultMcpClient implements McpClient {
         applyModernMeta(params, versionToAdvertise);
         request.setParams(params);
         McpCallContext context = new McpCallContext(null, request);
-        notifyListeners(l -> l.beforeServerDiscover(context));
+        if (!isProbe) {
+            notifyListeners(l -> l.beforeServerDiscover(context));
+        }
         applyMeta(request, context);
         try {
             CompletableFuture<JsonNode> resultFuture = transport.executeOperationWithResponse(context);
             JsonNode response = resultFuture.get(initializationTimeout.toMillis(), TimeUnit.MILLISECONDS);
             if (response.has("error")) {
+                JsonNode error = response.get("error");
                 throw new McpException(
-                        response.get("error").get("code").asInt(),
-                        response.get("error").get("message").asText());
+                        error.get("code").asInt(),
+                        error.get("message").asText(),
+                        error.get("data"));
             }
             log.debug("MCP server discover result: {}", response.get("result"));
             initializeResult = toInitializeResultFromDiscover(response);
@@ -406,8 +436,15 @@ public class DefaultMcpClient implements McpClient {
             if (subscribeToToolListChanges || subscribeToPromptListChanges || subscribeToResourceListChanges) {
                 startListChangeSubscriptions();
             }
+        } catch (McpException e) {
+            if (!isProbe) {
+                notifyListeners(l -> l.onServerDiscoverError(context, e));
+            }
+            throw e;
         } catch (Exception e) {
-            notifyListeners(l -> l.onServerDiscoverError(context, e));
+            if (!isProbe) {
+                notifyListeners(l -> l.onServerDiscoverError(context, e));
+            }
             throw new RuntimeException(e);
         } finally {
             pendingOperations.remove(operationId);
@@ -426,6 +463,15 @@ public class DefaultMcpClient implements McpClient {
             discoverResult.setCapabilities(capabilities);
         }
         discoverResult.setInstructions(result.path("instructions").asText(null));
+        discoverResult.setResultType(result.path("resultType").asText(null));
+        JsonNode supportedVersions = result.path("supportedVersions");
+        if (supportedVersions.isArray()) {
+            List<String> versions = new ArrayList<>();
+            for (JsonNode v : supportedVersions) {
+                versions.add(v.asText());
+            }
+            discoverResult.setSupportedVersions(versions);
+        }
         return discoverResult;
     }
 

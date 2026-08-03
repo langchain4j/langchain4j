@@ -1,6 +1,7 @@
 ///usr/bin/env jbang "$0" "$@" ; exit $?
 //DEPS io.quarkus:quarkus-bom:${quarkus.version:3.33.2.1}@pom
 //DEPS io.quarkiverse.mcp:quarkus-mcp-server-stdio:1.13.1
+//DEPS io.quarkiverse.mcp:quarkus-mcp-server-http:1.13.1
 
 import java.util.List;
 
