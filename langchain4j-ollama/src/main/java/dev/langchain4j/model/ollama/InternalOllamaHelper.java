@@ -259,10 +259,18 @@ class InternalOllamaHelper {
                             .collect(Collectors.toList()))
                     .orElse(null);
         }
+
+        Map<String, Object> additionalFields = null;
+        if (chatMessage instanceof ToolExecutionResultMessage toolExecutionResultMessage
+                && !isNullOrEmpty(toolExecutionResultMessage.toolName())) {
+            additionalFields = Map.of("tool_name", toolExecutionResultMessage.toolName());
+        }
+
         return Message.builder()
                 .role(toOllamaRole(chatMessage.type()))
                 .content(toText(chatMessage))
                 .toolCalls(toolCalls)
+                .additionalFields(additionalFields)
                 .build();
     }
 
