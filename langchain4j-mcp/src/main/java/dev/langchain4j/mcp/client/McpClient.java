@@ -143,7 +143,12 @@ public interface McpClient extends AutoCloseable {
 
     /**
      * Sets the roots that are made available to the server upon its request.
-     * After calling this method, the client also sends a `notifications/roots/list_changed` message to the server.
+     * After calling this method, the client also sends a {@code notifications/roots/list_changed}
+     * message to the server.
+     *
+     * @deprecated Roots are deprecated in MCP protocol version 2026-07-28. This method throws
+     *     {@link UnsupportedOperationException} when the modern protocol is in use.
      */
+    @Deprecated
     void setRoots(List<McpRoot> roots);
 }

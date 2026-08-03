@@ -882,17 +882,19 @@ public class DefaultMcpClient implements McpClient {
         }
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     public void setRoots(final List<McpRoot> roots) {
-        this.mcpRoots.set(roots);
-        // Roots notification is legacy protocol only (up to 2025-11-25)
-        if (!modernProtocol) {
-            McpRootsListChangedNotification notification = new McpRootsListChangedNotification();
-            McpCallContext context = new McpCallContext(null, notification);
-            applyMeta(notification, context);
-            transport.executeOperationWithoutResponse(context);
-            notifyListeners(l -> l.onRootsListChanged(context));
+        if (modernProtocol) {
+            throw new UnsupportedOperationException(
+                    "setRoots is not supported with MCP protocol 2026-07-28 or later");
         }
+        this.mcpRoots.set(roots);
+        McpRootsListChangedNotification notification = new McpRootsListChangedNotification();
+        McpCallContext context = new McpCallContext(null, notification);
+        applyMeta(notification, context);
+        transport.executeOperationWithoutResponse(context);
+        notifyListeners(l -> l.onRootsListChanged(context));
     }
 
     @Override
