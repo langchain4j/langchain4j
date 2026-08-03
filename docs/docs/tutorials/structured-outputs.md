@@ -221,7 +221,14 @@ JsonSchemaElement stringSchema = JsonStringSchema.builder()
         .minLength(1)
         .maxLength(100)
         .pattern("^[A-Z][a-z]*$")
-        .format("date-time")
+        .build();
+```
+
+The `format` constraint is useful for values like dates and timestamps:
+```java
+JsonSchemaElement dateSchema = JsonStringSchema.builder()
+        .description("The birth date of the person")
+        .format("date")
         .build();
 ```
 
@@ -307,9 +314,10 @@ JsonSchemaElement arraySchema = JsonArraySchema.builder()
 
 :::note
 Support for validation constraints varies by LLM provider.
-For example, Google AI Gemini, Vertex AI Gemini and Google GenAI support `minLength`, `maxLength`, `pattern`,
-`format`, `minimum`, `maximum`, `minItems` and `maxItems`, but ignore `exclusiveMinimum`, `exclusiveMaximum`
-and `uniqueItems`. Constraints that a provider does not support are silently ignored by that provider's API.
+Constraints that a provider does not support may be ignored or rejected, depending on the provider.
+For example, the Google AI Gemini, Vertex AI Gemini and Google GenAI integrations map `minLength`, `maxLength`,
+`pattern`, `format`, `minimum`, `maximum`, `minItems` and `maxItems`, but omit `exclusiveMinimum`,
+`exclusiveMaximum` and `uniqueItems` from the request, as the Gemini API does not support them.
 :::
 
 #### `JsonReferenceSchema`
