@@ -1196,6 +1196,18 @@ public class DefaultMcpClient implements McpClient {
             } finally {
                 pendingOperations.remove(operation.getId());
             }
+            if (modernProtocol) {
+                String resultType = getResultType(result);
+                // servers may only send an InputRequiredResult in response to prompts/get, resources/read and tools/call,
+                // not in response to a list operation
+                if ("input_required".equals(resultType)) {
+                    throw new RuntimeException(
+                            "Server returned input_required for a list operation, which the client cannot handle");
+                }
+                if (!"complete".equals(resultType)) {
+                    throw new RuntimeException("Unexpected resultType: " + resultType);
+                }
+            }
             allItems.addAll(resultParser.apply(result));
             cursor = getNextCursor(result);
         } while (cursor != null);
