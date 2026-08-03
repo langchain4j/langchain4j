@@ -277,7 +277,9 @@ public class JsonSchemaElementJsonUtils {
 
         return switch (type) {
             case "string" -> {
-                if (!isRepresentable(map, STRING_KEYS) || !allInts(map, "minLength", "maxLength")) {
+                if (!isRepresentable(map, STRING_KEYS)
+                        || !allInts(map, "minLength", "maxLength")
+                        || !allStringValues(map, "pattern", "format")) {
                     yield rawFallback(map);
                 }
                 yield JsonStringSchema.builder()
@@ -433,6 +435,21 @@ public class JsonSchemaElementJsonUtils {
 
     private static boolean allStrings(List<?> list) {
         return list.stream().allMatch(String.class::isInstance);
+    }
+
+    /**
+     * Returns {@code true} if every present value for {@code keys} is a {@link String}.
+     * Non-string values (e.g., {@code pattern: 123}) make the map unrepresentable,
+     * triggering the raw fallback, consistent with the numeric constraint handling.
+     */
+    private static boolean allStringValues(Map<String, Object> map, String... keys) {
+        for (String key : keys) {
+            Object value = map.get(key);
+            if (value != null && !(value instanceof String)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**

@@ -331,6 +331,22 @@ class JsonSchemaElementJsonUtilsTest {
     }
 
     @Test
+    void should_fallback_to_raw_for_non_string_pattern() {
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("type", "string");
+        map.put("pattern", 123);
+        assertRawFallback(map);
+    }
+
+    @Test
+    void should_fallback_to_raw_for_non_string_format() {
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("type", "string");
+        map.put("format", true);
+        assertRawFallback(map);
+    }
+
+    @Test
     void should_fallback_to_raw_for_min_length_exceeding_int_range() {
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("type", "string");
