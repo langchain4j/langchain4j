@@ -73,4 +73,17 @@ public interface McpTransport extends Closeable {
      * Default implementation is a no-op.
      */
     default void setProtocolVersion(String protocolVersion) {}
+
+    /**
+     * Returns whether this transport requires an explicit {@code notifications/cancelled}
+     * message to cancel an in-progress request. Transports that use per-request SSE
+     * streams (like Streamable HTTP) cancel by closing the stream and should return
+     * {@code false}. Transports that share a single channel (like stdio) must return
+     * {@code true} so the server knows which request to cancel.
+     * <p>
+     * Note: when using the legacy protocol (2025-11-25), the client always sends
+     * {@code notifications/cancelled} regardless of this value, because the legacy
+     * spec states that disconnection should not be interpreted as cancellation.
+     */
+    boolean requiresCancellationNotification();
 }

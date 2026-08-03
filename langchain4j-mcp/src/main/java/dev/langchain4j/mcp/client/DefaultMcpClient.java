@@ -277,6 +277,10 @@ public class DefaultMcpClient implements McpClient {
         return code == -32022 || code == -32021 || code == -32020;
     }
 
+    private boolean shouldSendCancellationNotification() {
+        return transport.requiresCancellationNotification() || !modernProtocol;
+    }
+
     private void retryWithSupportedVersion(McpException e) {
         JsonNode data = e.errorData();
         if (data != null && data.has("supported")) {
@@ -675,9 +679,14 @@ public class DefaultMcpClient implements McpClient {
                     "tools/call");
         } catch (TimeoutException timeout) {
             notifyListeners(l -> l.onExecuteToolError(context, timeout));
-            McpCancellationNotification cancellation = new McpCancellationNotification(operationId, "Timeout");
-            applyMeta(cancellation, null);
-            transport.executeOperationWithoutResponse(cancellation);
+            if (resultFuture != null) {
+                resultFuture.cancel(true);
+            }
+            if (shouldSendCancellationNotification()) {
+                McpCancellationNotification cancellation = new McpCancellationNotification(operationId, "Timeout");
+                applyMeta(cancellation, null);
+                transport.executeOperationWithoutResponse(cancellation);
+            }
             return ToolExecutionHelper.extractResult(RESULT_TIMEOUT, false, toolResultExtractor);
         } catch (ExecutionException e) {
             notifyListeners(l -> l.onExecuteToolError(context, e));
@@ -1010,11 +1019,13 @@ public class DefaultMcpClient implements McpClient {
             // Cancel the future, which for HTTP transport propagates to
             // Flow.Subscription.cancel() and closes the SSE stream
             streamFuture.cancel(true);
-            // Send notifications/cancelled for stdio transport (per spec)
-            McpCancellationNotification cancellation =
-                    new McpCancellationNotification(subscriptionId, "Client unsubscribed");
-            applyMeta(cancellation, null);
-            transport.executeOperationWithoutResponse(cancellation);
+            // Send notifications/cancelled for transports that need it (e.g. stdio)
+            if (transport.requiresCancellationNotification()) {
+                McpCancellationNotification cancellation =
+                        new McpCancellationNotification(subscriptionId, "Client unsubscribed");
+                applyMeta(cancellation, null);
+                transport.executeOperationWithoutResponse(cancellation);
+            }
         }
 
         notifyListeners(l -> l.afterResourcesUnsubscribe(subscriptionId));

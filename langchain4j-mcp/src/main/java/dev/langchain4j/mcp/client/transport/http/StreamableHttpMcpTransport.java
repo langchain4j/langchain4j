@@ -454,6 +454,11 @@ public class StreamableHttpMcpTransport implements McpTransport {
     }
 
     @Override
+    public boolean requiresCancellationNotification() {
+        return false;
+    }
+
+    @Override
     public void close() throws IOException {
         closed.set(true);
         for (SseSubscriber subscriber : activeStreamSubscribers) {

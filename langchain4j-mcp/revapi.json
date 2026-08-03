@@ -46,6 +46,12 @@
           "code": "java.class.removed",
           "old": "class dev.langchain4j.mcp.client.transport.http.SseEventListener",
           "justification": "Legacy HTTP transport has been removed"
+        },
+        {
+          "ignore": true,
+          "code": "java.method.addedToInterface",
+          "new": "method boolean dev.langchain4j.mcp.client.transport.McpTransport::requiresCancellationNotification()",
+          "justification": "McpTransport is an internal SPI not intended for external implementations"
         }
       ]
     }
