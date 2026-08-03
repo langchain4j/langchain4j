@@ -685,7 +685,7 @@ public class DefaultMcpClientTest {
                         .name("test")
                         .arguments("{}")
                         .build()))
-                .isInstanceOf(ToolExecutionException.class)
+                .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("inputRequests");
     }
 
@@ -708,7 +708,7 @@ public class DefaultMcpClientTest {
                         .name("test")
                         .arguments("{}")
                         .build()))
-                .isInstanceOf(ToolExecutionException.class)
+                .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("retry limit");
     }
 
@@ -739,7 +739,7 @@ public class DefaultMcpClientTest {
                         .name("test")
                         .arguments("{}")
                         .build()))
-                .isInstanceOf(ToolExecutionException.class)
+                .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("without requestState");
     }
 
@@ -762,7 +762,7 @@ public class DefaultMcpClientTest {
                         .name("test")
                         .arguments("{}")
                         .build()))
-                .isInstanceOf(ToolExecutionException.class)
+                .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("Unexpected resultType");
     }
 

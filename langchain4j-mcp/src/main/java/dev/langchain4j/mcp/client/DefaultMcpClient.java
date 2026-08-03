@@ -78,7 +78,7 @@ import org.slf4j.LoggerFactory;
 public class DefaultMcpClient implements McpClient {
 
     private static final Logger log = LoggerFactory.getLogger(DefaultMcpClient.class);
-    private static final int MRTR_MAX_RETRIES = 3;
+    private static final int DEFAULT_MULTI_ROUND_TRIP_MAX_RETRIES = 3;
 
     static final ObjectMapper OBJECT_MAPPER =
             new ObjectMapper().disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
@@ -128,6 +128,7 @@ public class DefaultMcpClient implements McpClient {
     private final McpMetaSupplier metaSupplier;
     private final McpToolResultExtractor toolResultExtractor;
     private volatile @Nullable McpInitializeResult initializeResult;
+    private final int multiRoundTripMaxRetries;
     private final Boolean subscribeToToolListChanges;
     private final Boolean subscribeToPromptListChanges;
     private final Boolean subscribeToResourceListChanges;
@@ -171,6 +172,8 @@ public class DefaultMcpClient implements McpClient {
             cachePromptList = getOrDefault(builder.cachePromptList, Boolean.TRUE);
             onResourceUpdated = builder.onResourceUpdated;
             toolResultExtractor = getOrDefault(builder.toolResultExtractor, new DefaultMcpToolResultExtractor());
+            multiRoundTripMaxRetries =
+                    getOrDefault(builder.multiRoundTripMaxRetries, DEFAULT_MULTI_ROUND_TRIP_MAX_RETRIES);
             subscribeToToolListChanges = getOrDefault(builder.subscribeToToolListChanges, Boolean.TRUE);
             subscribeToPromptListChanges = getOrDefault(builder.subscribeToPromptListChanges, Boolean.TRUE);
             subscribeToResourceListChanges = getOrDefault(builder.subscribeToResourceListChanges, Boolean.TRUE);
@@ -496,6 +499,48 @@ public class DefaultMcpClient implements McpClient {
         return response.path("result").path("inputRequests");
     }
 
+    private JsonNode handleMultiRoundTrip(
+            JsonNode initialResult,
+            long timeoutMillis,
+            InvocationContext invocationContext,
+            BiFunction<Long, JsonNode, McpClientRequest> retryRequestFactory,
+            String operationName)
+            throws ExecutionException, InterruptedException, TimeoutException {
+        if (!modernProtocol) {
+            return initialResult;
+        }
+        JsonNode result = initialResult;
+        int retryCount = 0;
+        while ("input_required".equals(getResultType(result))) {
+            if (retryCount >= multiRoundTripMaxRetries) {
+                throw new RuntimeException(
+                        "Multi round-trip retry limit exceeded for " + operationName);
+            }
+            JsonNode inputRequests = getInputRequests(result);
+            if (!inputRequests.isMissingNode() && !inputRequests.isEmpty()) {
+                throw new RuntimeException("Server sent inputRequests that the client cannot handle");
+            }
+            JsonNode requestState = getRequestState(result);
+            if (requestState.isMissingNode() || requestState.isNull()) {
+                throw new RuntimeException(
+                        "Server sent input_required without requestState or inputRequests");
+            }
+            long retryOperationId = idGenerator.getAndIncrement();
+            McpClientRequest retryOperation = retryRequestFactory.apply(retryOperationId, requestState);
+            McpCallContext retryContext = new McpCallContext(invocationContext, retryOperation);
+            applyMeta(retryOperation, retryContext);
+            CompletableFuture<JsonNode> resultFuture = transport.executeOperationWithResponse(retryContext);
+            result = resultFuture.get(timeoutMillis, TimeUnit.MILLISECONDS);
+            pendingOperations.remove(retryOperationId);
+            retryCount++;
+        }
+        String resultType = getResultType(result);
+        if (!"complete".equals(resultType)) {
+            throw new RuntimeException("Unexpected resultType for " + operationName + ": " + resultType);
+        }
+        return result;
+    }
+
     @Override
     public String key() {
         return key;
@@ -569,39 +614,15 @@ public class DefaultMcpClient implements McpClient {
             resultFuture = transport.executeOperationWithResponse(context);
             result = resultFuture.get(timeoutMillis, TimeUnit.MILLISECONDS);
 
-            // MRTR handling for modern protocol
-            if (modernProtocol) {
-                int retryCount = 0;
-                while ("input_required".equals(getResultType(result))) {
-                    if (retryCount >= MRTR_MAX_RETRIES) {
-                        throw new ToolExecutionException("MRTR retry limit exceeded");
-                    }
-                    JsonNode inputRequests = getInputRequests(result);
-                    if (!inputRequests.isMissingNode() && !inputRequests.isEmpty()) {
-                        throw new ToolExecutionException("Server sent inputRequests that the client cannot handle");
-                    }
-                    JsonNode requestState = getRequestState(result);
-                    if (requestState.isMissingNode() || requestState.isNull()) {
-                        throw new ToolExecutionException(
-                                "Server sent input_required without requestState or inputRequests");
-                    }
-                    // Rebuild request with requestState
-                    long retryOperationId = idGenerator.getAndIncrement();
-                    McpCallToolRequest retryOperation =
-                            new McpCallToolRequest(retryOperationId, executionRequest.name(), arguments, progressToken);
-                    ((McpCallToolParams) retryOperation.getParams()).setRequestState(requestState);
-                    McpCallContext retryContext = new McpCallContext(invocationContext, retryOperation);
-                    applyMeta(retryOperation, retryContext);
-                    resultFuture = transport.executeOperationWithResponse(retryContext);
-                    result = resultFuture.get(timeoutMillis, TimeUnit.MILLISECONDS);
-                    pendingOperations.remove(retryOperationId);
-                    retryCount++;
-                }
-                String resultType = getResultType(result);
-                if (!"complete".equals(resultType)) {
-                    throw new ToolExecutionException("Unexpected resultType: " + resultType);
-                }
-            }
+            final ObjectNode finalArguments = arguments;
+            result = handleMultiRoundTrip(result, timeoutMillis, invocationContext,
+                    (retryId, requestState) -> {
+                        McpCallToolRequest retryOp =
+                                new McpCallToolRequest(retryId, executionRequest.name(), finalArguments, progressToken);
+                        ((McpCallToolParams) retryOp.getParams()).setRequestState(requestState);
+                        return retryOp;
+                    },
+                    "tools/call");
         } catch (TimeoutException timeout) {
             notifyListeners(l -> l.onExecuteToolError(context, timeout));
             McpCancellationNotification cancellation = new McpCancellationNotification(operationId, "Timeout");
@@ -675,36 +696,13 @@ public class DefaultMcpClient implements McpClient {
             resultFuture = transport.executeOperationWithResponse(context);
             result = resultFuture.get(timeoutMillis, TimeUnit.MILLISECONDS);
 
-            // MRTR handling for modern protocol
-            if (modernProtocol) {
-                int retryCount = 0;
-                while ("input_required".equals(getResultType(result))) {
-                    if (retryCount >= MRTR_MAX_RETRIES) {
-                        throw new RuntimeException("MRTR retry limit exceeded for resources/read");
-                    }
-                    JsonNode inputRequests = getInputRequests(result);
-                    if (!inputRequests.isMissingNode() && !inputRequests.isEmpty()) {
-                        throw new RuntimeException("Server sent inputRequests that the client cannot handle");
-                    }
-                    JsonNode requestState = getRequestState(result);
-                    if (requestState.isMissingNode() || requestState.isNull()) {
-                        throw new RuntimeException("input_required without requestState or inputRequests");
-                    }
-                    long retryOperationId = idGenerator.getAndIncrement();
-                    McpReadResourceRequest retryOperation = new McpReadResourceRequest(retryOperationId, uri);
-                    ((McpReadResourceParams) retryOperation.getParams()).setRequestState(requestState);
-                    McpCallContext retryContext = new McpCallContext(invocationContext, retryOperation);
-                    applyMeta(retryOperation, retryContext);
-                    resultFuture = transport.executeOperationWithResponse(retryContext);
-                    result = resultFuture.get(timeoutMillis, TimeUnit.MILLISECONDS);
-                    pendingOperations.remove(retryOperationId);
-                    retryCount++;
-                }
-                String resultType = getResultType(result);
-                if (!"complete".equals(resultType)) {
-                    throw new RuntimeException("Unexpected resultType: " + resultType);
-                }
-            }
+            result = handleMultiRoundTrip(result, timeoutMillis, invocationContext,
+                    (retryId, requestState) -> {
+                        McpReadResourceRequest retryOp = new McpReadResourceRequest(retryId, uri);
+                        ((McpReadResourceParams) retryOp.getParams()).setRequestState(requestState);
+                        return retryOp;
+                    },
+                    "resources/read");
             McpReadResourceResult resourceResult = ResourcesHelper.parseResourceContents(result);
             final JsonNode finalResult = result;
             notifyListeners(l -> l.afterResourceGet(
@@ -747,37 +745,14 @@ public class DefaultMcpClient implements McpClient {
             resultFuture = transport.executeOperationWithResponse(context);
             result = resultFuture.get(timeoutMillis, TimeUnit.MILLISECONDS);
 
-            // MRTR handling for modern protocol
-            if (modernProtocol) {
-                int retryCount = 0;
-                while ("input_required".equals(getResultType(result))) {
-                    if (retryCount >= MRTR_MAX_RETRIES) {
-                        throw new RuntimeException("MRTR retry limit exceeded for prompts/get");
-                    }
-                    JsonNode inputRequests = getInputRequests(result);
-                    if (!inputRequests.isMissingNode() && !inputRequests.isEmpty()) {
-                        throw new RuntimeException("Server sent inputRequests that the client cannot handle");
-                    }
-                    JsonNode requestState = getRequestState(result);
-                    if (requestState.isMissingNode() || requestState.isNull()) {
-                        throw new RuntimeException("input_required without requestState or inputRequests");
-                    }
-                    long retryOperationId = idGenerator.getAndIncrement();
-                    McpGetPromptRequest retryOperation =
-                            new McpGetPromptRequest(retryOperationId, name, arguments == null ? Map.of() : arguments);
-                    ((McpGetPromptParams) retryOperation.getParams()).setRequestState(requestState);
-                    McpCallContext retryContext = new McpCallContext(null, retryOperation);
-                    applyMeta(retryOperation, retryContext);
-                    resultFuture = transport.executeOperationWithResponse(retryContext);
-                    result = resultFuture.get(timeoutMillis, TimeUnit.MILLISECONDS);
-                    pendingOperations.remove(retryOperationId);
-                    retryCount++;
-                }
-                String resultType = getResultType(result);
-                if (!"complete".equals(resultType)) {
-                    throw new RuntimeException("Unexpected resultType: " + resultType);
-                }
-            }
+            final Map<String, Object> finalArguments = arguments == null ? Map.of() : arguments;
+            result = handleMultiRoundTrip(result, timeoutMillis, null,
+                    (retryId, requestState) -> {
+                        McpGetPromptRequest retryOp = new McpGetPromptRequest(retryId, name, finalArguments);
+                        ((McpGetPromptParams) retryOp.getParams()).setRequestState(requestState);
+                        return retryOp;
+                    },
+                    "prompts/get");
             McpGetPromptResult promptResult = PromptsHelper.parsePromptContents(result);
             final JsonNode finalResult = result;
             notifyListeners(l -> l.afterPromptGet(
@@ -1363,6 +1338,7 @@ public class DefaultMcpClient implements McpClient {
         private McpMetaSupplier metaSupplier;
         private BiConsumer<McpClient, String> onResourceUpdated;
         private McpToolResultExtractor toolResultExtractor;
+        private Integer multiRoundTripMaxRetries;
         private Boolean subscribeToToolListChanges;
         private Boolean subscribeToPromptListChanges;
         private Boolean subscribeToResourceListChanges;
@@ -1669,6 +1645,16 @@ public class DefaultMcpClient implements McpClient {
          */
         public Builder subscribeToResourceListChanges(boolean subscribe) {
             this.subscribeToResourceListChanges = subscribe;
+            return this;
+        }
+
+        /**
+         * Sets the maximum number of multi round-trip retries for operations
+         * that return {@code input_required} (MCP protocol 2026-07-28 or later).
+         * The default is 3.
+         */
+        public Builder multiRoundTripMaxRetries(int multiRoundTripMaxRetries) {
+            this.multiRoundTripMaxRetries = multiRoundTripMaxRetries;
             return this;
         }
 
