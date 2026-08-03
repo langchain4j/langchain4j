@@ -327,9 +327,7 @@ class ToolSpecificationHelper {
     }
 
     private static final List<String> FORBIDDEN_SCHEMA_KEYWORDS = List.of(
-            "items", "prefixItems", "additionalProperties",
-            "oneOf", "anyOf", "allOf", "not",
-            "if", "then", "else");
+            "items", "prefixItems", "additionalProperties", "oneOf", "anyOf", "allOf", "not", "if", "then", "else");
 
     private static void extractAndValidateMcpParamHeaders(
             JsonNode schema,
@@ -352,17 +350,17 @@ class ToolSpecificationHelper {
                 if (headerName.isEmpty()) {
                     errors.add("x-mcp-header value must not be empty (property '" + propertyPath + "')");
                 } else if (!isValidToken(headerName)) {
-                    errors.add("x-mcp-header value '" + headerName
-                            + "' is not a valid HTTP token (property '" + propertyPath + "')");
+                    errors.add("x-mcp-header value '" + headerName + "' is not a valid HTTP token (property '"
+                            + propertyPath + "')");
                 }
                 if (!seenHeaderNamesLower.add(headerName.toLowerCase())) {
-                    errors.add("duplicate x-mcp-header value '" + headerName
-                            + "' (case-insensitive, property '" + propertyPath + "')");
+                    errors.add("duplicate x-mcp-header value '" + headerName + "' (case-insensitive, property '"
+                            + propertyPath + "')");
                 }
                 String type = propSchema.path("type").asText(null);
                 if (type != null && !ALLOWED_HEADER_PARAM_TYPES.contains(type)) {
-                    errors.add("x-mcp-header on property '" + propertyPath
-                            + "' with forbidden type '" + type + "' (only string, integer, boolean are allowed)");
+                    errors.add("x-mcp-header on property '" + propertyPath + "' with forbidden type '" + type
+                            + "' (only string, integer, boolean are allowed)");
                 }
                 if (errors.isEmpty()) {
                     result.put(propertyPath, headerName);

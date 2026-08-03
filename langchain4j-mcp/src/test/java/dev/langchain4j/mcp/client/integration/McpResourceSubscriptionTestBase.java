@@ -75,7 +75,8 @@ public abstract class McpResourceSubscriptionTestBase {
         mcpClient.unsubscribeFromResources(subscriptionId);
     }
 
-    @Disabled("Waiting for quarkus-mcp-server release with https://github.com/quarkiverse/quarkus-mcp-server/issues/925 fixed")
+    @Disabled(
+            "Waiting for quarkus-mcp-server release with https://github.com/quarkiverse/quarkus-mcp-server/issues/925 fixed")
     @Test
     public void unsubscribeStopsNotifications() {
         updatedResourceUris.clear();

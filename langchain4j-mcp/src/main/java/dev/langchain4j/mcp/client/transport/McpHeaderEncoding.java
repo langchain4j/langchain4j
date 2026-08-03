@@ -1,9 +1,8 @@
 package dev.langchain4j.mcp.client.transport;
 
+import dev.langchain4j.Internal;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
-
-import dev.langchain4j.Internal;
 
 /**
  * Encodes MCP header values per the spec's Value Encoding rule.
@@ -14,8 +13,7 @@ import dev.langchain4j.Internal;
 @Internal
 public class McpHeaderEncoding {
 
-    private McpHeaderEncoding() {
-    }
+    private McpHeaderEncoding() {}
 
     public static String encode(String value) {
         if (value.isEmpty()) {
@@ -41,9 +39,7 @@ public class McpHeaderEncoding {
             needsEncoding = true;
         }
         if (needsEncoding) {
-            return "=?base64?"
-                    + Base64.getEncoder().encodeToString(value.getBytes(StandardCharsets.UTF_8))
-                    + "?=";
+            return "=?base64?" + Base64.getEncoder().encodeToString(value.getBytes(StandardCharsets.UTF_8)) + "?=";
         }
         return value;
     }

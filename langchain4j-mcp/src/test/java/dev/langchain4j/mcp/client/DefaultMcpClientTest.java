@@ -992,10 +992,8 @@ public class DefaultMcpClientTest {
                 .subscribeToResourceListChanges(false)
                 .build();
 
-        client.executeTool(ToolExecutionRequest.builder()
-                .name("slowTool")
-                .arguments("{}")
-                .build());
+        client.executeTool(
+                ToolExecutionRequest.builder().name("slowTool").arguments("{}").build());
 
         assertThat(neverCompletes.isCancelled()).isTrue();
         verify(transport, never()).executeOperationWithoutResponse(any(McpClientMessage.class));
@@ -1006,8 +1004,7 @@ public class DefaultMcpClientTest {
         McpTransport transport = getLegacyHttpTransportMock();
 
         CompletableFuture<JsonNode> neverCompletes = new CompletableFuture<>();
-        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
-                .thenReturn(neverCompletes);
+        when(transport.executeOperationWithResponse(any(McpCallContext.class))).thenReturn(neverCompletes);
 
         DefaultMcpClient client = new DefaultMcpClient.Builder()
                 .transport(transport)
@@ -1015,10 +1012,8 @@ public class DefaultMcpClientTest {
                 .toolExecutionTimeout(java.time.Duration.ofMillis(100))
                 .build();
 
-        client.executeTool(ToolExecutionRequest.builder()
-                .name("slowTool")
-                .arguments("{}")
-                .build());
+        client.executeTool(
+                ToolExecutionRequest.builder().name("slowTool").arguments("{}").build());
 
         assertThat(neverCompletes.isCancelled()).isTrue();
         verify(transport, times(1)).executeOperationWithoutResponse(any(McpClientMessage.class));
@@ -1042,10 +1037,8 @@ public class DefaultMcpClientTest {
                 .subscribeToResourceListChanges(false)
                 .build();
 
-        client.executeTool(ToolExecutionRequest.builder()
-                .name("slowTool")
-                .arguments("{}")
-                .build());
+        client.executeTool(
+                ToolExecutionRequest.builder().name("slowTool").arguments("{}").build());
 
         assertThat(neverCompletes.isCancelled()).isTrue();
         verify(transport, times(1)).executeOperationWithoutResponse(any(McpClientMessage.class));
@@ -1056,8 +1049,7 @@ public class DefaultMcpClientTest {
         McpTransport transport = getMinimalMcpTransportMock();
 
         CompletableFuture<JsonNode> neverCompletes = new CompletableFuture<>();
-        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
-                .thenReturn(neverCompletes);
+        when(transport.executeOperationWithResponse(any(McpCallContext.class))).thenReturn(neverCompletes);
 
         DefaultMcpClient client = new DefaultMcpClient.Builder()
                 .transport(transport)
@@ -1065,10 +1057,8 @@ public class DefaultMcpClientTest {
                 .toolExecutionTimeout(java.time.Duration.ofMillis(100))
                 .build();
 
-        client.executeTool(ToolExecutionRequest.builder()
-                .name("slowTool")
-                .arguments("{}")
-                .build());
+        client.executeTool(
+                ToolExecutionRequest.builder().name("slowTool").arguments("{}").build());
 
         assertThat(neverCompletes.isCancelled()).isTrue();
         verify(transport, times(1)).executeOperationWithoutResponse(any(McpClientMessage.class));

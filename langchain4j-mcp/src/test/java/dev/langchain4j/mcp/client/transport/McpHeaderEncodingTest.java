@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
-
 import org.junit.jupiter.api.Test;
 
 class McpHeaderEncodingTest {
@@ -21,8 +20,7 @@ class McpHeaderEncodingTest {
 
     @Test
     void resourceUriWithAsciiPassesThrough() {
-        assertThat(McpHeaderEncoding.encode("file:///project/main.rs"))
-                .isEqualTo("file:///project/main.rs");
+        assertThat(McpHeaderEncoding.encode("file:///project/main.rs")).isEqualTo("file:///project/main.rs");
     }
 
     @Test
@@ -31,8 +29,7 @@ class McpHeaderEncodingTest {
         String encoded = McpHeaderEncoding.encode(value);
         assertThat(encoded).startsWith("=?base64?").endsWith("?=");
         String decoded = new String(
-                Base64.getDecoder().decode(encoded.substring(9, encoded.length() - 2)),
-                StandardCharsets.UTF_8);
+                Base64.getDecoder().decode(encoded.substring(9, encoded.length() - 2)), StandardCharsets.UTF_8);
         assertThat(decoded).isEqualTo(value);
     }
 
@@ -59,8 +56,7 @@ class McpHeaderEncodingTest {
         String encoded = McpHeaderEncoding.encode("=?base64?something?=");
         assertThat(encoded).startsWith("=?base64?");
         String decoded = new String(
-                Base64.getDecoder().decode(encoded.substring(9, encoded.length() - 2)),
-                StandardCharsets.UTF_8);
+                Base64.getDecoder().decode(encoded.substring(9, encoded.length() - 2)), StandardCharsets.UTF_8);
         assertThat(decoded).isEqualTo("=?base64?something?=");
     }
 

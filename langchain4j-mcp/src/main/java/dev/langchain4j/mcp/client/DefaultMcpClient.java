@@ -424,9 +424,7 @@ public class DefaultMcpClient implements McpClient {
             if (response.has("error")) {
                 JsonNode error = response.get("error");
                 throw new McpException(
-                        error.get("code").asInt(),
-                        error.get("message").asText(),
-                        error.get("data"));
+                        error.get("code").asInt(), error.get("message").asText(), error.get("data"));
             }
             log.debug("MCP server discover result: {}", response.get("result"));
             initializeResult = toInitializeResultFromDiscover(response);
@@ -567,8 +565,7 @@ public class DefaultMcpClient implements McpClient {
         int retryCount = 0;
         while ("input_required".equals(getResultType(result))) {
             if (retryCount >= multiRoundTripMaxRetries) {
-                throw new RuntimeException(
-                        "Multi round-trip retry limit exceeded for " + operationName);
+                throw new RuntimeException("Multi round-trip retry limit exceeded for " + operationName);
             }
             JsonNode inputRequests = getInputRequests(result);
             if (!inputRequests.isMissingNode() && !inputRequests.isEmpty()) {
@@ -576,8 +573,7 @@ public class DefaultMcpClient implements McpClient {
             }
             JsonNode requestState = getRequestState(result);
             if (requestState.isMissingNode() || requestState.isNull()) {
-                throw new RuntimeException(
-                        "Server sent input_required without requestState or inputRequests");
+                throw new RuntimeException("Server sent input_required without requestState or inputRequests");
             }
             long retryOperationId = idGenerator.getAndIncrement();
             McpClientRequest retryOperation = retryRequestFactory.apply(retryOperationId, requestState);
@@ -669,7 +665,10 @@ public class DefaultMcpClient implements McpClient {
             result = resultFuture.get(timeoutMillis, TimeUnit.MILLISECONDS);
 
             final ObjectNode finalArguments = arguments;
-            result = handleMultiRoundTrip(result, timeoutMillis, invocationContext,
+            result = handleMultiRoundTrip(
+                    result,
+                    timeoutMillis,
+                    invocationContext,
                     (retryId, requestState) -> {
                         McpCallToolRequest retryOp =
                                 new McpCallToolRequest(retryId, executionRequest.name(), finalArguments, progressToken);
@@ -755,7 +754,10 @@ public class DefaultMcpClient implements McpClient {
             resultFuture = transport.executeOperationWithResponse(context);
             result = resultFuture.get(timeoutMillis, TimeUnit.MILLISECONDS);
 
-            result = handleMultiRoundTrip(result, timeoutMillis, invocationContext,
+            result = handleMultiRoundTrip(
+                    result,
+                    timeoutMillis,
+                    invocationContext,
                     (retryId, requestState) -> {
                         McpReadResourceRequest retryOp = new McpReadResourceRequest(retryId, uri);
                         ((McpReadResourceParams) retryOp.getParams()).setRequestState(requestState);
@@ -805,7 +807,10 @@ public class DefaultMcpClient implements McpClient {
             result = resultFuture.get(timeoutMillis, TimeUnit.MILLISECONDS);
 
             final Map<String, Object> finalArguments = arguments == null ? Map.of() : arguments;
-            result = handleMultiRoundTrip(result, timeoutMillis, null,
+            result = handleMultiRoundTrip(
+                    result,
+                    timeoutMillis,
+                    null,
                     (retryId, requestState) -> {
                         McpGetPromptRequest retryOp = new McpGetPromptRequest(retryId, name, finalArguments);
                         ((McpGetPromptParams) retryOp.getParams()).setRequestState(requestState);
@@ -886,8 +891,7 @@ public class DefaultMcpClient implements McpClient {
     @Override
     public void setRoots(final List<McpRoot> roots) {
         if (modernProtocol) {
-            throw new UnsupportedOperationException(
-                    "setRoots is not supported with MCP protocol 2026-07-28 or later");
+            throw new UnsupportedOperationException("setRoots is not supported with MCP protocol 2026-07-28 or later");
         }
         this.mcpRoots.set(roots);
         McpRootsListChangedNotification notification = new McpRootsListChangedNotification();
@@ -995,7 +999,9 @@ public class DefaultMcpClient implements McpClient {
                 log.warn("Resource subscription {} failed", subscriptionId, error);
                 activeSubscriptions.remove(subscriptionId);
             } else if (result != null && result.has("error") && !closed) {
-                log.warn("Resource subscription {} rejected by server: {}", subscriptionId,
+                log.warn(
+                        "Resource subscription {} rejected by server: {}",
+                        subscriptionId,
                         result.path("error").path("message").asText());
                 activeSubscriptions.remove(subscriptionId);
             }
@@ -1229,7 +1235,8 @@ public class DefaultMcpClient implements McpClient {
             }
             if (modernProtocol) {
                 String resultType = getResultType(result);
-                // servers may only send an InputRequiredResult in response to prompts/get, resources/read and tools/call,
+                // servers may only send an InputRequiredResult in response to prompts/get, resources/read and
+                // tools/call,
                 // not in response to a list operation
                 if ("input_required".equals(resultType)) {
                     throw new RuntimeException(
