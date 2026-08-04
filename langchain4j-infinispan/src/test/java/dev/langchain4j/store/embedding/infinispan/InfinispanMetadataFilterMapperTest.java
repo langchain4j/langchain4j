@@ -136,7 +136,7 @@ class InfinispanMetadataFilterMapperTest {
                 // Float IsIn
                 Arguments.of(
                         new IsIn("scores", Arrays.asList(1.1f, 2.2f, 3.3f)),
-                        "m0.name='scores' and m0.value_float IN (3.3, 1.1, 2.2)",
+                        "m0.name='scores' and m0.value_float IN (3.299999952316284, 1.100000023841858, 2.200000047683716)",
                         " join i.metadata m0"));
     }
 
@@ -378,6 +378,32 @@ class InfinispanMetadataFilterMapperTest {
         // then — presence of a floating point value selects value_float for the whole list,
         // and integral values are widened to match the column
         assertThat(result.query).isEqualTo("m0.name='mixed' and m0.value_float IN (3.0, 4.0, 1.0, 2.0)");
+    }
+
+    @Test
+    void should_widen_float_to_double_in_in_filter() {
+        // given — 1.1f is not exactly representable, so Float.toString() and doubleValue() differ
+        Filter filter = new IsIn("score", Arrays.asList(1.1f));
+
+        // when
+        InfinispanMetadataFilterMapper.FilterResult result = mapper.map(filter);
+
+        // then — same literal as IsEqualTo("score", 1.1f) produces for the same value_float column
+        assertThat(result.query).isEqualTo("m0.name='score' and m0.value_float IN (1.100000023841858)");
+    }
+
+    @Test
+    void should_widen_float_to_double_in_not_in_filter() {
+        // given
+        Filter filter = new IsNotIn("score", Arrays.asList(1.1f));
+
+        // when
+        InfinispanMetadataFilterMapper.FilterResult result = mapper.map(filter);
+
+        // then
+        assertThat(result.query)
+                .isEqualTo(
+                        "(m0.value_float NOT IN (1.100000023841858) and m0.name='score') OR (m0.value_float IN (1.100000023841858) and m0.name!='score') OR (i.metadata is null) ");
     }
 
     @ParameterizedTest
