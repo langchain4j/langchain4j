@@ -8,6 +8,7 @@ import com.google.genai.types.Schema;
 import com.google.genai.types.Tool;
 import com.google.genai.types.Type;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.model.chat.request.json.JsonAnyOfSchema;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonBooleanSchema;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
@@ -115,6 +116,15 @@ class GoogleGenAiToolMapper {
                     .type(Type.Known.ARRAY)
                     .items(convertToGoogleSchema(arraySchema.items()))
                     .description(getOrDefault(arraySchema.description(), ""))
+                    .build();
+        }
+
+        if (element instanceof JsonAnyOfSchema anyOfSchema) {
+            return Schema.builder()
+                    .anyOf(anyOfSchema.anyOf().stream()
+                            .map(GoogleGenAiToolMapper::convertToGoogleSchema)
+                            .toList())
+                    .description(getOrDefault(anyOfSchema.description(), ""))
                     .build();
         }
 
