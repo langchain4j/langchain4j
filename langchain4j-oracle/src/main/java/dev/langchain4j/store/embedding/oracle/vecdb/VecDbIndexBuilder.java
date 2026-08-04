@@ -20,9 +20,9 @@ import dev.langchain4j.store.embedding.oracle.vecdb.enums.VecDbQuantizationType;
  * execute database operations. {@link VecDbSchemaManager} applies the resulting configuration when
  * {@link OracleVecDbEmbeddingStore} is built.
  *
- * <p>By default, the index uses {@link VecDbDistanceMetric#COSINE} and
- * {@link CreateOption#CREATE_NONE}. The index metric is independent from the store's search-time metric. Optional
- * properties that are not configured are omitted from the VecDB JSON so the database can apply its defaults.
+ * <p>The index defaults to {@link CreateOption#CREATE_NONE}. Its optional distance metric is independent from the
+ * store's search-time metric. Properties that are not configured are omitted from the VecDB JSON so the database can
+ * apply its defaults.
  *
  * <p>This class uses a self-referential generic type so inherited methods return the concrete IVF or HNSW builder.
  * Consequently, calls such as {@code ivfIndexBuilder().accuracy(90).partitions(100)} remain type-safe and fluent.
@@ -32,7 +32,7 @@ import dev.langchain4j.store.embedding.oracle.vecdb.enums.VecDbQuantizationType;
 abstract class VecDbIndexBuilder<T extends VecDbIndexBuilder<T>> {
 
     final VecDbIndexOrganization organization;
-    VecDbDistanceMetric distanceMetric = VecDbDistanceMetric.COSINE;
+    VecDbDistanceMetric distanceMetric;
     Integer accuracy;
     VecDbQuantizationType quantizationType;
     Integer compressionRatio;
@@ -56,10 +56,9 @@ abstract class VecDbIndexBuilder<T extends VecDbIndexBuilder<T>> {
      *
      * @param distanceMetric distance function recommended by the model that generated the stored embeddings
      * @return this concrete builder
-     * @throws IllegalArgumentException if {@code distanceMetric} is {@code null}
      */
     public T distanceMetric(VecDbDistanceMetric distanceMetric) {
-        this.distanceMetric = ensureNotNull(distanceMetric, "distanceMetric");
+        this.distanceMetric = distanceMetric;
         return self();
     }
 

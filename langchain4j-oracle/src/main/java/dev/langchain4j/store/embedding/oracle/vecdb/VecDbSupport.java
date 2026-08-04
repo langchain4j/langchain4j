@@ -4,6 +4,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.store.embedding.oracle.vecdb.enums.VecDbApiVersion;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.regex.Matcher;
@@ -12,22 +13,37 @@ import java.util.regex.Pattern;
 /** Checks whether a connected Oracle Database supports {@code DBMS_VECTOR_DATABASE}. */
 final class VecDbSupport {
 
-    private static final DatabaseVersion MINIMUM_VERSION = new DatabaseVersion(23, 26, 3);
+    private static final DatabaseVersion MINIMUM_VECDB_VERSION = new DatabaseVersion(23, 26, 1);
+    private static final DatabaseVersion CURRENT_API_VERSION = new DatabaseVersion(23, 26, 3);
     private static final Pattern VERSION_PATTERN =
             Pattern.compile("(?<!\\d)(\\d+)\\.(\\d+)\\.(\\d+)(?:\\.\\d+)*(?!\\d)");
 
     private VecDbSupport() {}
 
     static boolean isSupported(Connection connection) throws SQLException {
-        return databaseVersion(connection).compareTo(MINIMUM_VERSION) >= 0;
+        return databaseVersion(connection).compareTo(MINIMUM_VECDB_VERSION) >= 0;
     }
 
-    static void requireSupported(Connection connection) throws SQLException {
+    static VecDbApiVersion requireSupported(Connection connection) throws SQLException {
         DatabaseVersion version = databaseVersion(connection);
-        if (version.compareTo(MINIMUM_VERSION) < 0) {
-            throw new UnsupportedFeatureException("VecDB requires Oracle Database " + MINIMUM_VERSION
+        if (version.compareTo(MINIMUM_VECDB_VERSION) < 0) {
+            throw new UnsupportedFeatureException("VecDB requires Oracle Database " + MINIMUM_VECDB_VERSION
                     + " or later, but the connected database reports " + version);
         }
+        return resolveApiVersion(version);
+    }
+
+    static VecDbApiVersion resolveApiVersion(Connection connection) throws SQLException {
+        return resolveApiVersion(databaseVersion(connection));
+    }
+
+    static VecDbApiVersion resolveApiVersion(DatabaseVersion version) {
+        ensureNotNull(version, "version");
+        if (version.compareTo(MINIMUM_VECDB_VERSION) < 0) {
+            throw new UnsupportedFeatureException("VecDB requires Oracle Database " + MINIMUM_VECDB_VERSION
+                    + " or later, but the connected database reports " + version);
+        }
+        return version.compareTo(CURRENT_API_VERSION) < 0 ? VecDbApiVersion.V23_26_1 : VecDbApiVersion.V23_26_3;
     }
 
     static DatabaseVersion parseVersion(String productVersion) {

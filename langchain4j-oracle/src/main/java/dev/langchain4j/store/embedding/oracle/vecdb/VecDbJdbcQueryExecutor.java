@@ -4,17 +4,23 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.store.embedding.oracle.SQLFilter;
+import dev.langchain4j.store.embedding.oracle.vecdb.enums.VecDbApiVersion;
+import dev.langchain4j.store.embedding.oracle.vecdb.mapper.VecDbEmbeddingTableJsonMapper;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
 import java.sql.CallableStatement;
 import java.sql.Clob;
 import java.sql.Connection;
+import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.LinkedHashSet;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import oracle.jdbc.OracleType;
 import oracle.jdbc.OracleTypes;
 import oracle.sql.json.OracleJsonFactory;
@@ -46,73 +52,75 @@ final class VecDbJdbcQueryExecutor implements VecDbQueryExecutor {
     }
 
     @Override
+    public VecDbTableLayout inspectTableLayout(Connection connection, String tableName) throws SQLException {
+        DatabaseMetaData metadata = connection.getMetaData();
+        String metadataTableName = isQuoted(tableName) ? unquote(tableName) : tableName.toUpperCase(Locale.ROOT);
+        Set<String> columns = new LinkedHashSet<>();
+        try (ResultSet resultSet = metadata.getColumns(null, connection.getSchema(), metadataTableName, null)) {
+            while (resultSet.next()) {
+                columns.add(resultSet.getString("COLUMN_NAME"));
+            }
+        }
+        return new VecDbTableLayout(columns);
+    }
+
+    @Override
+    public void applyTableMigration(Connection connection, String tableName, VecDbTableMigration.Action action)
+            throws SQLException {
+        try (Statement statement = connection.createStatement()) {
+            statement.executeUpdate(tableMigrationSql(tableName, action));
+        }
+    }
+
+    static String tableMigrationSql(String tableName, VecDbTableMigration.Action action) {
+        return switch (action) {
+            case RENAME_METADATA_TO_CONTENT_METADATA ->
+                "ALTER TABLE " + tableName + " RENAME COLUMN METADATA TO CONTENT_METADATA";
+            case ADD_SPARSE_VECTOR -> "ALTER TABLE " + tableName + " ADD SPARSE_VECTOR VECTOR(*, *, SPARSE)";
+            case ADD_CONTENT -> "ALTER TABLE " + tableName + " ADD CONTENT BLOB";
+            case ADD_CONTENT_TYPE -> "ALTER TABLE " + tableName + " ADD CONTENT_TYPE VARCHAR2(256)";
+        };
+    }
+
+    @Override
     public String createVectorTable(
             Connection connection,
+            VecDbApiVersion apiVersion,
             VecDbEmbeddingTable table,
             String annotationsJson,
             String tableParametersJson,
             String indexParametersJson)
             throws SQLException {
+        VecDbApiDialect dialect = VecDbApiDialect.forVersion(apiVersion);
+        VecDbApiDialect.CreateVectorTableRequest request = new VecDbApiDialect.CreateVectorTableRequest(
+                table, annotationsJson, tableParametersJson, indexParametersJson);
         return call(
                 connection,
-                "BEGIN ? := DBMS_VECTOR_DATABASE.CREATE_VECTOR_TABLE("
-                        + "name => ?, comment => ?, annotations => ?, table_params => ?, "
-                        + "embed_params => NULL, index_params => ?); END;",
-                statement -> {
-                    statement.setString(2, table.name());
-                    statement.setString(3, table.comment());
-                    setJson(statement, 4, annotationsJson);
-                    setJson(statement, 5, tableParametersJson);
-                    setJson(statement, 6, indexParametersJson);
-                });
+                dialect.createVectorTableCall(),
+                statement -> dialect.bindCreateVectorTable(statement, request));
     }
 
     @Override
-    public String describeVectorTable(Connection connection, String tableName) throws SQLException {
-        return call(
-                connection,
-                "BEGIN ? := DBMS_VECTOR_DATABASE.DESCRIBE_VECTOR_TABLE(name => ?); END;",
-                statement -> statement.setString(2, tableName));
+    public String describeVectorTable(Connection connection, String tableName, VecDbApiVersion apiVersion)
+            throws SQLException {
+        VecDbApiDialect dialect = VecDbApiDialect.forVersion(apiVersion);
+        return call(connection, dialect.describeVectorTableCall(), statement -> statement.setString(2, tableName));
     }
 
     @Override
-    public String dropVectorTable(Connection connection, String tableName) throws SQLException {
-        return call(
-                connection,
-                "BEGIN ? := DBMS_VECTOR_DATABASE.DROP_VECTOR_TABLE(name => ?); END;",
-                statement -> statement.setString(2, tableName));
+    public String dropVectorTable(Connection connection, String tableName, VecDbApiVersion apiVersion)
+            throws SQLException {
+        VecDbApiDialect dialect = VecDbApiDialect.forVersion(apiVersion);
+        return call(connection, dialect.dropVectorTableCall(), statement -> statement.setString(2, tableName));
     }
 
     @Override
-    public IndexStatus indexStatus(Connection connection, String tableName) throws SQLException {
-        JsonNode description = readTree(describeVectorTable(connection, tableName));
-        boolean vectorIndexExists = false;
-        boolean metadataIndexExists = false;
-        JsonNode indexes = field(description, "indexes");
-        if (indexes != null && indexes.isArray()) {
-            for (JsonNode index : indexes) {
-                if (isVectorIndex(index)) {
-                    vectorIndexExists = true;
-                }
-                if (isMetadataIndex(index)) {
-                    metadataIndexExists = true;
-                }
-            }
-        }
-
-        JsonNode indexParameters = field(description, "index_params");
-        JsonNode vectorIndexParameters = field(indexParameters, "vector_index_params");
-        if (!vectorIndexExists) {
-            vectorIndexExists = isAutoIndexEnabled(vectorIndexParameters);
-        }
-
-        JsonNode metadataIndexParameters = field(indexParameters, "metadata_index_params");
-        if (!metadataIndexExists) {
-            metadataIndexExists = isAutoIndexEnabled(metadataIndexParameters)
-                    || hasConfiguredPaths(metadataIndexParameters, "include_paths");
-        }
-
-        return new IndexStatus(vectorIndexExists, metadataIndexExists);
+    public IndexStatus indexStatus(Connection connection, String tableName, VecDbApiVersion apiVersion)
+            throws SQLException {
+        String description = describeVectorTable(connection, tableName, apiVersion);
+        VecDbEmbeddingTableJsonMapper.IndexStatus status =
+                VecDbEmbeddingTableJsonMapper.indexStatusFromJson(description, apiVersion);
+        return new IndexStatus(status.vectorIndexExists(), status.metadataIndexExists());
     }
 
     @Override
@@ -239,7 +247,7 @@ final class VecDbJdbcQueryExecutor implements VecDbQueryExecutor {
         }
     }
 
-    private static void setJson(CallableStatement statement, int parameterIndex, String json) throws SQLException {
+    static void setJson(CallableStatement statement, int parameterIndex, String json) throws SQLException {
         if (json == null) {
             statement.setObject(parameterIndex, null, OracleType.JSON);
         } else {
@@ -289,72 +297,15 @@ final class VecDbJdbcQueryExecutor implements VecDbQueryExecutor {
         return null;
     }
 
-    private static boolean isVectorIndex(JsonNode index) {
-        if (index.isTextual()) {
-            return index.asText().toUpperCase(Locale.ROOT).startsWith("VECIDX");
-        }
-        if (!index.isObject()) {
-            return false;
-        }
-
-        JsonNode type = field(index, "index_type");
-        if (type == null) {
-            type = field(index, "type");
-        }
-        if (type != null && type.asText().toUpperCase(Locale.ROOT).contains("VECTOR")) {
-            return true;
-        }
-
-        JsonNode name = field(index, "index_name");
-        if (name == null) {
-            name = field(index, "name");
-        }
-        return name != null && name.asText().toUpperCase(Locale.ROOT).startsWith("VECIDX");
-    }
-
-    private static boolean isMetadataIndex(JsonNode index) {
-        if (index.isTextual()) {
-            String value = index.asText().toUpperCase(Locale.ROOT);
-            return value.startsWith("MVI") || value.contains("METADATA");
-        }
-        if (!index.isObject()) {
-            return false;
-        }
-
-        JsonNode type = field(index, "index_type");
-        if (type == null) {
-            type = field(index, "type");
-        }
-        if (type != null && type.asText().toUpperCase(Locale.ROOT).contains("METADATA")) {
-            return true;
-        }
-
-        JsonNode name = field(index, "index_name");
-        if (name == null) {
-            name = field(index, "name");
-        }
-        if (name == null) {
-            return false;
-        }
-        String value = name.asText().toUpperCase(Locale.ROOT);
-        return value.startsWith("MVI") || value.contains("METADATA");
-    }
-
-    private static boolean isAutoIndexEnabled(JsonNode indexParameters) {
-        JsonNode autoIndex = field(indexParameters, "auto_index");
-        return autoIndex != null && autoIndex.asBoolean(false);
-    }
-
-    private static boolean hasConfiguredPaths(JsonNode indexParameters, String fieldName) {
-        JsonNode paths = field(indexParameters, fieldName);
-        return paths != null && paths.isArray() && !paths.isEmpty();
-    }
-
     private static String unquote(String identifier) {
-        if (identifier.length() >= 2 && identifier.startsWith("\"") && identifier.endsWith("\"")) {
+        if (isQuoted(identifier)) {
             return identifier.substring(1, identifier.length() - 1);
         }
         return identifier;
+    }
+
+    private static boolean isQuoted(String identifier) {
+        return identifier.length() >= 2 && identifier.startsWith("\"") && identifier.endsWith("\"");
     }
 
     @FunctionalInterface

@@ -1,8 +1,8 @@
 package dev.langchain4j.store.embedding.oracle.vecdb;
 
-import dev.langchain4j.store.embedding.oracle.vecdb.enums.VecDbIndexOrganization;
-
 import static dev.langchain4j.internal.ValidationUtils.ensureBetween;
+
+import dev.langchain4j.store.embedding.oracle.vecdb.enums.VecDbIndexOrganization;
 
 /**
  * Builds an Inverted File Flat index configuration for VecDB.

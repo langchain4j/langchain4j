@@ -1,4 +1,4 @@
-package dev.langchain4j.store.embedding.oracle.vecdb;
+package dev.langchain4j.store.embedding.oracle.vecdb.mapper;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
@@ -9,15 +9,14 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.oracle.vecdb.enums.VecDbDistanceMetric;
 
-final class VecDbSearchRequestMapper {
+public final class VecDbSearchRequestMapper {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private VecDbSearchRequestMapper() {}
 
-    static VecDbSearchParameters map(EmbeddingSearchRequest request, VecDbDistanceMetric distanceMetric) {
+    public static VecDbSearchParameters map(EmbeddingSearchRequest request, VecDbDistanceMetric distanceMetric) {
         ensureNotNull(request, "request");
-        ensureNotNull(distanceMetric, "distanceMetric");
 
         return new VecDbSearchParameters(
                 toSearchQueryJson(request.queryEmbedding()),
@@ -39,11 +38,14 @@ final class VecDbSearchRequestMapper {
     }
 
     private static String toAdvancedOptionsJson(VecDbDistanceMetric distanceMetric) {
+        if (distanceMetric == null) {
+            return null;
+        }
         ObjectNode advancedOptions = OBJECT_MAPPER.createObjectNode();
         advancedOptions.put("distance_metric", distanceMetric.name());
         return advancedOptions.toString();
     }
 
-    record VecDbSearchParameters(
+    public record VecDbSearchParameters(
             String queryJson, String filtersJson, int maxResults, boolean includeVectors, String advancedOptionsJson) {}
 }

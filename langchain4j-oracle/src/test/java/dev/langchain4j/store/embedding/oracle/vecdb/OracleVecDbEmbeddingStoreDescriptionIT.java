@@ -40,8 +40,7 @@ class OracleVecDbEmbeddingStoreDescriptionIT {
 
     @Test
     void testDescribeVectorTable() {
-        OracleVecDbEmbeddingStore.VectorTableDescription description =
-                embeddingStore.describeVectorTable();
+        OracleVecDbEmbeddingStore.VectorTableDescription description = embeddingStore.describeVectorTable();
 
         assertThat(description.tableName()).isEqualToIgnoringCase(TABLE_NAME);
         assertThat(description.comment()).isEqualTo(TABLE_COMMENT);

@@ -1,17 +1,19 @@
-package dev.langchain4j.store.embedding.oracle.vecdb;
+package dev.langchain4j.store.embedding.oracle.vecdb.mapper;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import dev.langchain4j.store.embedding.oracle.CreateOption;
+import dev.langchain4j.store.embedding.oracle.vecdb.VecDbMetadataIndex;
+import dev.langchain4j.store.embedding.oracle.vecdb.VecDbVectorIndex;
 import dev.langchain4j.store.embedding.oracle.vecdb.enums.VecDbIndexOrganization;
 
 /**
  * Maps vector-index, metadata-index, and parallel-creation configuration to the {@code index_params} JSON accepted by
  * {@code DBMS_VECTOR_DATABASE}.
  */
-final class VecDbIndexJsonMapper {
+public final class VecDbIndexJsonMapper {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
@@ -20,7 +22,7 @@ final class VecDbIndexJsonMapper {
     /**
      * Returns the VecDB {@code index_params} JSON for an index configuration.
      */
-    static String toJson(
+    public static String toJson(
             VecDbVectorIndex vectorIndex, VecDbMetadataIndex metadataIndex, Integer parallelCreation) {
         if (vectorIndex == null && metadataIndex == null && parallelCreation == null) {
             return null;
@@ -34,15 +36,14 @@ final class VecDbIndexJsonMapper {
             indexParameters.set("metadata_index_params", metadataIndexParameters(metadataIndex));
         }
         if (parallelCreation != null) {
-            indexParameters.put(
-                    "parallel_creation", ensureGreaterThanZero(parallelCreation, "parallelCreation"));
+            indexParameters.put("parallel_creation", ensureGreaterThanZero(parallelCreation, "parallelCreation"));
         }
 
         return indexParameters.toString();
     }
 
     /** Returns parameters that drop every metadata index without affecting the vector index. */
-    static String dropMetadataIndexesJson() {
+    public static String dropMetadataIndexesJson() {
         ObjectNode indexParameters = OBJECT_MAPPER.createObjectNode();
         indexParameters.put("index_type", "metadata");
         return indexParameters.toString();
@@ -53,7 +54,10 @@ final class VecDbIndexJsonMapper {
         ObjectNode vectorIndexParameters = OBJECT_MAPPER.createObjectNode();
         vectorIndexParameters.put("auto_index", vectorIndex.createOption() != CreateOption.CREATE_NONE);
         vectorIndexParameters.put("organization", toDatabaseValue(vectorIndex.organization()));
-        vectorIndexParameters.put("distance_metric", vectorIndex.distanceMetric().name());
+        if (vectorIndex.distanceMetric() != null) {
+            vectorIndexParameters.put(
+                    "distance_metric", vectorIndex.distanceMetric().name());
+        }
 
         if (vectorIndex.accuracy() != null) {
             vectorIndexParameters.put("accuracy", vectorIndex.accuracy());

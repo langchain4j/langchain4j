@@ -1,4 +1,4 @@
-package dev.langchain4j.store.embedding.oracle.vecdb;
+package dev.langchain4j.store.embedding.oracle.vecdb.mapper;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
@@ -22,7 +22,7 @@ import java.util.Map;
  * Maps LangChain4j embeddings and text segments to the {@code vectors} JSON accepted by
  * {@code DBMS_VECTOR_DATABASE.UPSERT_VECTORS}.
  */
-final class VecDbVectorJsonMapper {
+public final class VecDbVectorJsonMapper {
 
     static final String TEXT_METADATA_KEY = "text";
 
@@ -34,7 +34,7 @@ final class VecDbVectorJsonMapper {
     /**
      * Maps embeddings without text or metadata to VecDB vector records.
      */
-    static String toJson(List<String> ids, List<Embedding> embeddings) {
+    public static String toJson(List<String> ids, List<Embedding> embeddings) {
         ensureNotNull(ids, "ids");
         ensureNotNull(embeddings, "embeddings");
         ensureSameSize(ids, "ids", embeddings, "embeddings");
@@ -50,7 +50,7 @@ final class VecDbVectorJsonMapper {
     /**
      * Maps embeddings, text, and metadata to VecDB vector records.
      */
-    static String toJson(List<String> ids, List<Embedding> embeddings, List<TextSegment> segments) {
+    public static String toJson(List<String> ids, List<Embedding> embeddings, List<TextSegment> segments) {
         ensureNotNull(ids, "ids");
         ensureNotNull(embeddings, "embeddings");
         ensureNotNull(segments, "segments");
@@ -97,7 +97,7 @@ final class VecDbVectorJsonMapper {
         return metadataJson;
     }
 
-    static String idsToJson(Collection<String> ids) {
+    public static String idsToJson(Collection<String> ids) {
         ensureNotEmpty(ids, "ids");
 
         ArrayNode idsJson = OBJECT_MAPPER.createArrayNode();
@@ -107,7 +107,7 @@ final class VecDbVectorJsonMapper {
         return idsJson.toString();
     }
 
-    static List<ListedVector> vectorsFromListResponse(String responseJson) {
+    public static List<ListedVector> vectorsFromListResponse(String responseJson) {
         ensureNotBlank(responseJson, "responseJson");
         JsonNode response;
         try {
@@ -139,7 +139,7 @@ final class VecDbVectorJsonMapper {
     }
 
     /** Extracts vector IDs from a {@code DBMS_VECTOR_DATABASE.LIST_VECTORS} response. */
-    static List<String> idsFromListResponse(String responseJson) {
+    public static List<String> idsFromListResponse(String responseJson) {
         return vectorsFromListResponse(responseJson).stream()
                 .map(ListedVector::id)
                 .toList();
@@ -181,5 +181,5 @@ final class VecDbVectorJsonMapper {
         return value;
     }
 
-    record ListedVector(String id, Metadata metadata) {}
+    public record ListedVector(String id, Metadata metadata) {}
 }

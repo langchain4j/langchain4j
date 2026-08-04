@@ -4,6 +4,7 @@ import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.store.embedding.oracle.CreateOption;
 import dev.langchain4j.store.embedding.oracle.vecdb.enums.VecDbDistanceMetric;
+import dev.langchain4j.store.embedding.oracle.vecdb.mapper.VecDbVectorJsonMapper;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.List;
@@ -50,20 +51,21 @@ final class VecDbTestOperations {
 
     static String describeVectorTable(String tableName) throws SQLException {
         try (Connection connection = dataSource().getConnection()) {
-            return QUERY_EXECUTOR.describeVectorTable(connection, tableName);
+            return QUERY_EXECUTOR.describeVectorTable(
+                    connection, tableName, VecDbSupport.resolveApiVersion(connection));
         }
     }
 
     static VecDbQueryExecutor.IndexStatus indexStatus(String tableName) throws SQLException {
         try (Connection connection = dataSource().getConnection()) {
-            return QUERY_EXECUTOR.indexStatus(connection, tableName);
+            return QUERY_EXECUTOR.indexStatus(connection, tableName, VecDbSupport.resolveApiVersion(connection));
         }
     }
 
     static void dropVectorTable(String tableName) throws SQLException {
         try (Connection connection = dataSource().getConnection()) {
             if (QUERY_EXECUTOR.vectorTableExists(connection, tableName)) {
-                QUERY_EXECUTOR.dropVectorTable(connection, tableName);
+                QUERY_EXECUTOR.dropVectorTable(connection, tableName, VecDbSupport.resolveApiVersion(connection));
             }
         }
     }

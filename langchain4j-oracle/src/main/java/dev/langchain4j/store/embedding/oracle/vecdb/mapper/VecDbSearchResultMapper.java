@@ -1,9 +1,9 @@
-package dev.langchain4j.store.embedding.oracle.vecdb;
+package dev.langchain4j.store.embedding.oracle.vecdb.mapper;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureBetween;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static dev.langchain4j.store.embedding.oracle.vecdb.VecDbVectorJsonMapper.TEXT_METADATA_KEY;
+import static dev.langchain4j.store.embedding.oracle.vecdb.mapper.VecDbVectorJsonMapper.TEXT_METADATA_KEY;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -21,14 +21,14 @@ import java.util.List;
 import java.util.Map;
 
 /** Maps a {@code DBMS_VECTOR_DATABASE.SEARCH} response to LangChain4j search results. */
-final class VecDbSearchResultMapper {
+public final class VecDbSearchResultMapper {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final TypeReference<Map<String, Object>> METADATA_TYPE = new TypeReference<>() {};
 
     private VecDbSearchResultMapper() {}
 
-    static EmbeddingSearchResult<TextSegment> map(
+    public static EmbeddingSearchResult<TextSegment> map(
             String responseJson, double minScore, VecDbDistanceMetric distanceMetric) {
         ensureNotBlank(responseJson, "responseJson");
         ensureBetween(minScore, 0.0, 1.0, "minScore");

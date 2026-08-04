@@ -8,6 +8,7 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.oracle.vecdb.enums.VecDbDistanceMetric;
+import dev.langchain4j.store.embedding.oracle.vecdb.mapper.VecDbSearchResultMapper;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -29,8 +30,7 @@ class VecDbSearchResultMapperTest {
 
     @Test
     void testMapsSquaredEuclideanDistanceToScore() {
-        EmbeddingMatch<TextSegment> euclideanSquared =
-                mapSingleResult(9.0, VecDbDistanceMetric.EUCLIDEAN_SQUARED);
+        EmbeddingMatch<TextSegment> euclideanSquared = mapSingleResult(9.0, VecDbDistanceMetric.EUCLIDEAN_SQUARED);
         EmbeddingMatch<TextSegment> l2Squared = mapSingleResult(9.0, VecDbDistanceMetric.L2_SQUARED);
 
         assertThat(euclideanSquared.score()).isCloseTo(0.25, within(1e-12));
@@ -62,9 +62,9 @@ class VecDbSearchResultMapperTest {
                 }
                 """;
 
-        List<EmbeddingMatch<TextSegment>> matches =
-                VecDbSearchResultMapper.map(responseJson, 0.0, VecDbDistanceMetric.DOT)
-                        .matches();
+        List<EmbeddingMatch<TextSegment>> matches = VecDbSearchResultMapper.map(
+                        responseJson, 0.0, VecDbDistanceMetric.DOT)
+                .matches();
 
         assertThat(matches).extracting(EmbeddingMatch::score).containsExactly(1.0, 0.0);
     }
@@ -83,9 +83,7 @@ class VecDbSearchResultMapperTest {
         EmbeddingSearchResult<TextSegment> result =
                 VecDbSearchResultMapper.map(responseJson, 0.75, VecDbDistanceMetric.COSINE);
 
-        assertThat(result.matches())
-                .extracting(EmbeddingMatch::embeddingId)
-                .containsExactly("included");
+        assertThat(result.matches()).extracting(EmbeddingMatch::embeddingId).containsExactly("included");
     }
 
     @Test
@@ -127,10 +125,9 @@ class VecDbSearchResultMapperTest {
                 }
                 """;
 
-        EmbeddingMatch<TextSegment> match =
-                VecDbSearchResultMapper.map(responseJson, 0.0, VecDbDistanceMetric.COSINE)
-                        .matches()
-                        .get(0);
+        EmbeddingMatch<TextSegment> match = VecDbSearchResultMapper.map(responseJson, 0.0, VecDbDistanceMetric.COSINE)
+                .matches()
+                .get(0);
 
         assertThat(match.embeddingId()).isEqualTo("vector-id");
         assertThat(match.embedding().vector()).containsExactly(0.1f, -0.2f, 0.3f);
@@ -155,10 +152,9 @@ class VecDbSearchResultMapperTest {
                 }
                 """;
 
-        EmbeddingMatch<TextSegment> match =
-                VecDbSearchResultMapper.map(responseJson, 0.0, VecDbDistanceMetric.COSINE)
-                        .matches()
-                        .get(0);
+        EmbeddingMatch<TextSegment> match = VecDbSearchResultMapper.map(responseJson, 0.0, VecDbDistanceMetric.COSINE)
+                .matches()
+                .get(0);
 
         assertThat(match.embedding()).isNotNull();
         assertThat(match.embedded()).isNull();
@@ -198,12 +194,10 @@ class VecDbSearchResultMapperTest {
                 }
                 """;
 
-        assertThatThrownBy(
-                        () -> VecDbSearchResultMapper.map(nonNumericVector, 0.0, VecDbDistanceMetric.COSINE))
+        assertThatThrownBy(() -> VecDbSearchResultMapper.map(nonNumericVector, 0.0, VecDbDistanceMetric.COSINE))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("\"vector\" entries must be finite numbers");
-        assertThatThrownBy(
-                        () -> VecDbSearchResultMapper.map(valueOutsideFloat32Range, 0.0, VecDbDistanceMetric.COSINE))
+        assertThatThrownBy(() -> VecDbSearchResultMapper.map(valueOutsideFloat32Range, 0.0, VecDbDistanceMetric.COSINE))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("\"vector\" entry is outside the FLOAT32 range");
     }
@@ -221,16 +215,14 @@ class VecDbSearchResultMapperTest {
                 .hasMessageContaining("EUCLIDEAN \"distance\" must not be negative");
     }
 
-    private static EmbeddingMatch<TextSegment> mapSingleResult(
-            double distance, VecDbDistanceMetric distanceMetric) {
+    private static EmbeddingMatch<TextSegment> mapSingleResult(double distance, VecDbDistanceMetric distanceMetric) {
         String responseJson = """
                 {
                   "results": [
                     {"id": "vector-id", "distance": %s}
                   ]
                 }
-                """
-                .formatted(distance);
+                """.formatted(distance);
 
         return VecDbSearchResultMapper.map(responseJson, 0.0, distanceMetric)
                 .matches()

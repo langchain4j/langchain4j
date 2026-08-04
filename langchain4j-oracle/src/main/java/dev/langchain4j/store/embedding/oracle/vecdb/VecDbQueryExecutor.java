@@ -1,6 +1,7 @@
 package dev.langchain4j.store.embedding.oracle.vecdb;
 
 import dev.langchain4j.store.embedding.oracle.SQLFilter;
+import dev.langchain4j.store.embedding.oracle.vecdb.enums.VecDbApiVersion;
 import java.sql.Connection;
 import java.sql.SQLException;
 
@@ -15,9 +16,17 @@ interface VecDbQueryExecutor {
     /** Returns whether a vector table with the given name exists. */
     boolean vectorTableExists(Connection connection, String tableName) throws SQLException;
 
+    /** Returns the physical columns present in an existing vector table. */
+    VecDbTableLayout inspectTableLayout(Connection connection, String tableName) throws SQLException;
+
+    /** Applies one physical table-layout migration action. */
+    void applyTableMigration(Connection connection, String tableName, VecDbTableMigration.Action action)
+            throws SQLException;
+
     /** Creates a bring-your-own-vector table and returns the VecDB response JSON. */
     String createVectorTable(
             Connection connection,
+            VecDbApiVersion apiVersion,
             VecDbEmbeddingTable table,
             String annotationsJson,
             String tableParametersJson,
@@ -25,13 +34,13 @@ interface VecDbQueryExecutor {
             throws SQLException;
 
     /** Describes a vector table and returns the VecDB response JSON. */
-    String describeVectorTable(Connection connection, String tableName) throws SQLException;
+    String describeVectorTable(Connection connection, String tableName, VecDbApiVersion apiVersion) throws SQLException;
 
     /** Drops a vector table and returns the VecDB response JSON. */
-    String dropVectorTable(Connection connection, String tableName) throws SQLException;
+    String dropVectorTable(Connection connection, String tableName, VecDbApiVersion apiVersion) throws SQLException;
 
     /** Returns the current vector- and metadata-index state of a vector table. */
-    IndexStatus indexStatus(Connection connection, String tableName) throws SQLException;
+    IndexStatus indexStatus(Connection connection, String tableName, VecDbApiVersion apiVersion) throws SQLException;
 
     /** Creates vector indexes, metadata indexes, or both and returns the VecDB response JSON. */
     String createIndex(Connection connection, String tableName, String indexParametersJson) throws SQLException;
@@ -85,6 +94,6 @@ interface VecDbQueryExecutor {
     /** Deletes every row from the vector table and returns the affected row count. */
     int deleteAllVectors(Connection connection, String tableName) throws SQLException;
 
-    /** Index state returned by {@link #indexStatus(Connection, String)}. */
+    /** Index state returned by {@link #indexStatus(Connection, String, VecDbApiVersion)}. */
     record IndexStatus(boolean vectorIndexExists, boolean metadataIndexExists) {}
 }

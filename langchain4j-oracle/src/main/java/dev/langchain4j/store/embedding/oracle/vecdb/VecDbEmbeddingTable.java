@@ -80,8 +80,7 @@ public final class VecDbEmbeddingTable {
         String typeName = type == OracleType.BINARY_FLOAT
                 ? "BINARY_FLOAT"
                 : type == OracleType.BINARY_DOUBLE ? "BINARY_DOUBLE" : type.getName();
-        String pathKey =
-                key.replace("\\", "\\\\").replace("\"", "\\\"").replace("'", "''");
+        String pathKey = key.replace("\\", "\\\\").replace("\"", "\\\"").replace("'", "''");
 
         return "JSON_VALUE(" + METADATA_COLUMN + ", '$.\"" + pathKey + "\"' RETURNING " + typeName + " NULL ON ERROR)";
     }

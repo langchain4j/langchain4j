@@ -123,10 +123,8 @@ class VecDbSchemaManagerMetadataIndexIT {
 
     private static List<String> metadataIncludePaths() throws SQLException, JsonProcessingException {
         JsonNode description = OBJECT_MAPPER.readTree(VecDbTestOperations.describeVectorTable(TABLE_NAME));
-        JsonNode includePaths = description
-                .path("index_params")
-                .path("metadata_index_params")
-                .path("include_paths");
+        JsonNode includePaths =
+                description.path("index_params").path("metadata_index_params").path("include_paths");
 
         List<String> paths = new ArrayList<>(includePaths.size());
         includePaths.forEach(path -> paths.add(path.asText()));

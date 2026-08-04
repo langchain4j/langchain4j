@@ -1,7 +1,7 @@
-package dev.langchain4j.store.embedding.oracle.vecdb;
+package dev.langchain4j.store.embedding.oracle.vecdb.mapper;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.store.embedding.oracle.vecdb.VecDbVectorJsonMapper.TEXT_METADATA_KEY;
+import static dev.langchain4j.store.embedding.oracle.vecdb.mapper.VecDbVectorJsonMapper.TEXT_METADATA_KEY;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -29,7 +29,7 @@ import java.util.Map;
 import java.util.UUID;
 
 /** Factory for constrained LangChain4j-to-VecDB QBE filter translators. */
-final class VecDbFilters {
+public final class VecDbFilters {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
@@ -90,14 +90,14 @@ final class VecDbFilters {
     private VecDbFilters() {}
 
     /** Returns a VecDB metadata filter, or {@code null} when no filter is configured. */
-    static String toJson(Filter filter) {
+    public static String toJson(Filter filter) {
         return filter == null
                 ? null
                 : TranslationContext.root().translate(filter).toString();
     }
 
     /** Validates that a filter can be translated using the supported VecDB metadata-filter contract. */
-    static void validate(Filter filter) {
+    public static void validate(Filter filter) {
         if (filter != null) {
             TranslationContext.root().translate(filter);
         }

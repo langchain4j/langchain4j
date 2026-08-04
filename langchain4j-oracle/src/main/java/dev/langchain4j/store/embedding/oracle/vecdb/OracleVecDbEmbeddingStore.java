@@ -14,7 +14,13 @@ import dev.langchain4j.store.embedding.filter.Filter;
 import dev.langchain4j.store.embedding.oracle.CreateOption;
 import dev.langchain4j.store.embedding.oracle.SQLFilter;
 import dev.langchain4j.store.embedding.oracle.SQLFilters;
+import dev.langchain4j.store.embedding.oracle.vecdb.enums.VecDbApiVersion;
 import dev.langchain4j.store.embedding.oracle.vecdb.enums.VecDbDistanceMetric;
+import dev.langchain4j.store.embedding.oracle.vecdb.mapper.VecDbEmbeddingTableJsonMapper;
+import dev.langchain4j.store.embedding.oracle.vecdb.mapper.VecDbFilters;
+import dev.langchain4j.store.embedding.oracle.vecdb.mapper.VecDbSearchRequestMapper;
+import dev.langchain4j.store.embedding.oracle.vecdb.mapper.VecDbSearchResultMapper;
+import dev.langchain4j.store.embedding.oracle.vecdb.mapper.VecDbVectorJsonMapper;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Collection;
@@ -30,8 +36,9 @@ import javax.sql.DataSource;
  * VecDB. Instances are immutable and safe to share between threads when the configured {@link DataSource} is
  * thread-safe.
  *
- * <p>The required store distance metric controls similarity search and score conversion. It is independent from the
- * vector-index metric. If they differ, Oracle bypasses the index and performs an exact search.
+ * <p>An optional store distance metric controls similarity search. It is independent from the vector-index metric. If
+ * they differ, Oracle bypasses the index and performs an exact search. When the store metric is omitted, Oracle applies
+ * its default metric-selection rules.
  */
 public final class OracleVecDbEmbeddingStore implements EmbeddingStore<TextSegment> {
 
@@ -39,6 +46,7 @@ public final class OracleVecDbEmbeddingStore implements EmbeddingStore<TextSegme
     private final VecDbEmbeddingTable embeddingTable;
     private final VecDbQueryExecutor queryExecutor;
     private final VecDbDistanceMetric distanceMetric;
+    private final VecDbDistanceMetric effectiveDistanceMetric;
 
     private OracleVecDbEmbeddingStore(Builder builder) {
         this.dataSource = builder.dataSource;
@@ -48,8 +56,13 @@ public final class OracleVecDbEmbeddingStore implements EmbeddingStore<TextSegme
 
         VecDbSchemaManager schemaManager = new VecDbSchemaManager(queryExecutor);
         try (Connection connection = dataSource.getConnection()) {
-            schemaManager.prepareSchema(
+            VecDbApiVersion apiVersion = schemaManager.prepareSchema(
                     connection, embeddingTable, builder.index, builder.metadataIndex, builder.parallelCreation);
+            this.effectiveDistanceMetric = distanceMetric != null
+                    ? distanceMetric
+                    : VecDbEmbeddingTableJsonMapper.effectiveDistanceMetricFromJson(
+                            queryExecutor.describeVectorTable(connection, embeddingTable.name(), apiVersion),
+                            apiVersion);
         } catch (SQLException exception) {
             throw unchecked(exception);
         }
@@ -68,7 +81,8 @@ public final class OracleVecDbEmbeddingStore implements EmbeddingStore<TextSegme
      */
     public VectorTableDescription describeVectorTable() {
         try (Connection connection = dataSource.getConnection()) {
-            String responseJson = queryExecutor.describeVectorTable(connection, embeddingTable.name());
+            VecDbApiVersion apiVersion = VecDbSupport.requireSupported(connection);
+            String responseJson = queryExecutor.describeVectorTable(connection, embeddingTable.name(), apiVersion);
             return VecDbEmbeddingTableJsonMapper.descriptionFromJson(responseJson);
         } catch (SQLException exception) {
             throw unchecked(exception);
@@ -179,7 +193,7 @@ public final class OracleVecDbEmbeddingStore implements EmbeddingStore<TextSegme
                     parameters.maxResults(),
                     parameters.includeVectors(),
                     parameters.advancedOptionsJson());
-            return VecDbSearchResultMapper.map(responseJson, request.minScore(), distanceMetric);
+            return VecDbSearchResultMapper.map(responseJson, request.minScore(), effectiveDistanceMetric);
         } catch (SQLException exception) {
             throw unchecked(exception);
         }
@@ -265,17 +279,17 @@ public final class OracleVecDbEmbeddingStore implements EmbeddingStore<TextSegme
          *     otherwise it uses cosine.</li>
          * </ul>
          *
-         * <p>This store always supplies the configured search metric. An approximate index-based search requires its
-         * value to match the vector-index metric.
+         * <p>When this method is not called, the search request omits {@code advanced_options.distance_metric} and
+         * Oracle applies its default metric-selection rules. When a search metric is explicitly configured, an
+         * approximate index-based search requires it to match the vector-index metric.
          *
          * @param distanceMetric search-time distance metric
          * @return this builder
-         * @throws IllegalArgumentException if {@code distanceMetric} is {@code null}
          * @see <a href="https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/vector_distance.html">
          *     Oracle VECTOR_DISTANCE metric-selection rules</a>
          */
         public Builder distanceMetric(VecDbDistanceMetric distanceMetric) {
-            this.distanceMetric = ensureNotNull(distanceMetric, "distanceMetric");
+            this.distanceMetric = distanceMetric;
             return this;
         }
 
@@ -300,7 +314,6 @@ public final class OracleVecDbEmbeddingStore implements EmbeddingStore<TextSegme
         public OracleVecDbEmbeddingStore build() {
             ensureNotNull(dataSource, "dataSource");
             ensureNotNull(embeddingTable, "embeddingTable");
-            ensureNotNull(distanceMetric, "distanceMetric");
             return new OracleVecDbEmbeddingStore(this);
         }
     }
