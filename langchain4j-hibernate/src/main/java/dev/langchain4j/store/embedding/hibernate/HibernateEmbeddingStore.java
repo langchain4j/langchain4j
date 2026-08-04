@@ -434,9 +434,9 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
             try {
                 sessionFactory
                         .getSchemaManager()
-                        .truncateTable(entityPersister.getIdentifierTableMapping().getTableName());
-            }
-            catch (UnsupportedOperationException ex) {
+                        .truncateTable(
+                                entityPersister.getIdentifierTableMapping().getTableName());
+            } catch (UnsupportedOperationException ex) {
                 // Workaround HHH-20500 since we can't reliably detect the Hibernate ORM version
                 sessionFactory.inStatelessTransaction(session -> {
                     session.createMutationQuery("delete from " + entityPersister.getEntityName())
@@ -1261,7 +1261,7 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
                 }
                 values[unmappedMetadataAttributeMapping.getStateArrayPosition()] = null;
                 for (Map.Entry<String, AttributeMapping> entry : metadataAttributeMappings.entrySet()) {
-                    if (entry.getValue().getDeclaringType() != entityPersister) {
+                    if (entry.getValue().getDeclaringType() == entityPersister) {
                         values[entry.getValue().getStateArrayPosition()] = null;
                     }
                 }
