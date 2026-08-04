@@ -1,10 +1,12 @@
 package dev.langchain4j.agentic;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 
+import dev.langchain4j.agentic.agent.AgentInvocationException;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.ChatModel;
@@ -14,6 +16,7 @@ import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
 import java.time.Duration;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 
@@ -105,5 +108,67 @@ class ErrorRecoveryResultTest {
 
         assertThat(failedAgent.get()).isEqualTo("edit");
         assertThat(result).isEqualTo("default story");
+    }
+
+    @Test
+    void error_handler_retrying_within_the_limit_recovers() {
+        AtomicInteger calls = new AtomicInteger();
+        ChatModel flakyModel = new ChatModel() {
+            @Override
+            public ChatResponse chat(ChatRequest chatRequest) {
+                if (calls.incrementAndGet() < 3) {
+                    throw new RuntimeException("transient failure");
+                }
+                return ChatResponse.builder()
+                        .aiMessage(AiMessage.from("recovered story"))
+                        .build();
+            }
+        };
+
+        StoryWriter writer = AgenticServices.agentBuilder(StoryWriter.class)
+                .chatModel(flakyModel)
+                .outputKey("story")
+                .build();
+
+        UntypedAgent workflow = AgenticServices.sequenceBuilder()
+                .subAgents(writer)
+                .outputKey("story")
+                .errorHandler(errorContext -> ErrorRecoveryResult.retry())
+                .build();
+
+        Object result =
+                assertTimeoutPreemptively(Duration.ofSeconds(5), () -> workflow.invoke(Map.of("topic", "dragons")));
+
+        assertThat(result).isEqualTo("recovered story");
+        assertThat(calls).hasValue(3);
+    }
+
+    @Test
+    void error_handler_always_retrying_gives_up_and_rethrows_the_agent_failure() {
+        AtomicInteger calls = new AtomicInteger();
+        ChatModel failingModel = new ChatModel() {
+            @Override
+            public ChatResponse chat(ChatRequest chatRequest) {
+                calls.incrementAndGet();
+                throw new RuntimeException("permanent failure");
+            }
+        };
+
+        StoryWriter writer = AgenticServices.agentBuilder(StoryWriter.class)
+                .chatModel(failingModel)
+                .outputKey("story")
+                .build();
+
+        UntypedAgent workflow = AgenticServices.sequenceBuilder()
+                .subAgents(writer)
+                .outputKey("story")
+                .errorHandler(errorContext -> ErrorRecoveryResult.retry())
+                .build();
+
+        Throwable thrown = assertTimeoutPreemptively(
+                Duration.ofSeconds(30), () -> catchThrowable(() -> workflow.invoke(Map.of("topic", "dragons"))));
+
+        assertThat(thrown).isInstanceOf(AgentInvocationException.class);
+        assertThat(calls).hasValue(101);
     }
 }

@@ -5,13 +5,13 @@ import static dev.langchain4j.agentic.scope.DefaultAgenticScope.isSerializable;
 import dev.langchain4j.agentic.agent.AgentInvocationException;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
-import dev.langchain4j.agentic.scope.AgenticSystemSuspendedException;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.planner.Planner;
 import dev.langchain4j.agentic.scope.AgentInvocation;
+import dev.langchain4j.agentic.scope.AgenticSystemSuspendedException;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import dev.langchain4j.service.TokenStream;
 import java.lang.reflect.Type;
@@ -23,6 +23,8 @@ import org.slf4j.LoggerFactory;
 public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements AgentInstance, InternalAgent {
 
     private static final Logger LOG = LoggerFactory.getLogger(AgentExecutor.class);
+
+    private static final int MAX_RETRY_ATTEMPTS = 100;
 
     public Object execute(DefaultAgenticScope agenticScope, PlannerExecutor planner) {
         return execute(agenticScope, planner, agentInvoker.async());
@@ -37,7 +39,7 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements 
 
     private Object execute(DefaultAgenticScope agenticScope, PlannerExecutor planner, boolean async) {
         Object invokedAgent = (agent instanceof AgenticScopeOwner co ? co.withAgenticScope(agenticScope) : agent);
-        return internalExecute(agenticScope, invokedAgent, planner, async);
+        return internalExecute(agenticScope, invokedAgent, planner, async, 0);
     }
 
     private Object handleAgentFailure(
@@ -46,11 +48,21 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements 
             Object invokedAgent,
             PlannerExecutor planner,
             AgentInvocationArguments args,
-            boolean plannerAlreadyNotified) {
+            boolean plannerAlreadyNotified,
+            int attempt) {
         ErrorRecoveryResult recoveryResult = agenticScope.handleError(agentInvoker.name(), e);
         return switch (recoveryResult.type()) {
             case THROW_EXCEPTION -> throw e;
-            case RETRY -> internalExecute(agenticScope, invokedAgent, planner, false);
+            case RETRY -> {
+                if (attempt >= MAX_RETRY_ATTEMPTS) {
+                    LOG.warn(
+                            "Agent '{}' still failing after {} retries, giving up",
+                            agentInvoker.name(),
+                            MAX_RETRY_ATTEMPTS);
+                    throw e;
+                }
+                yield internalExecute(agenticScope, invokedAgent, planner, false, attempt + 1);
+            }
             case RETURN_RESULT ->
                 plannerAlreadyNotified
                         ? recoveryResult.result()
@@ -59,7 +71,11 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements 
     }
 
     private Object internalExecute(
-            DefaultAgenticScope agenticScope, Object invokedAgent, PlannerExecutor planner, boolean async) {
+            DefaultAgenticScope agenticScope,
+            Object invokedAgent,
+            PlannerExecutor planner,
+            boolean async,
+            int attempt) {
         AgentInvocationArguments args = null;
         try {
             try {
@@ -79,7 +95,7 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements 
                 throw e;
             }
 
-            Object response = agentResponse(agenticScope, invokedAgent, planner, args, async);
+            Object response = agentResponse(agenticScope, invokedAgent, planner, args, async, attempt);
             return completeAgentInvocation(response, agenticScope, invokedAgent, planner, args);
         } catch (AgenticSystemSuspendedException e) {
             if (planner != null) {
@@ -87,7 +103,7 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements 
             }
             return null;
         } catch (AgentInvocationException e) {
-            return handleAgentFailure(e, agenticScope, invokedAgent, planner, args, false);
+            return handleAgentFailure(e, agenticScope, invokedAgent, planner, args, false, attempt);
         }
     }
 
@@ -116,13 +132,14 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements 
             Object invokedAgent,
             PlannerExecutor planner,
             AgentInvocationArguments args,
-            boolean async) {
+            boolean async,
+            int attempt) {
         if (async) {
             return new AsyncResponse<>(() -> {
                 try {
                     return agentInvoker.invoke(agenticScope, invokedAgent, args);
                 } catch (AgentInvocationException e) {
-                    return handleAgentFailure(e, agenticScope, invokedAgent, planner, args, true);
+                    return handleAgentFailure(e, agenticScope, invokedAgent, planner, args, true, attempt);
                 }
             });
         }
