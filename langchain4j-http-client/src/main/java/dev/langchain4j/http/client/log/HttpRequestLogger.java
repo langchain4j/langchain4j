@@ -21,18 +21,13 @@ class HttpRequestLogger {
 
     static void log(Logger log, HttpRequest httpRequest) {
         try {
-            log.info(
-                    """
+            log.info("""
                             HTTP request:
                             - method: {}
                             - url: {}
                             - headers: {}
                             - body: {}
-                            """,
-                    httpRequest.method(),
-                    httpRequest.url(),
-                    format(httpRequest.headers()),
-                    httpRequest.body());
+                            """, httpRequest.method(), httpRequest.url(), format(httpRequest.headers()), httpRequest.body());
         } catch (Exception e) {
             log.warn("Exception occurred while logging HTTP request: {}", e.getMessage());
         }
