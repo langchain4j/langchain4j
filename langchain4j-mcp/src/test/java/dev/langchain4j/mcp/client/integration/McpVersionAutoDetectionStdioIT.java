@@ -22,17 +22,12 @@ class McpVersionAutoDetectionStdioIT {
 
     @Test
     void autoDetectsModernProtocolOverStdio() throws Exception {
-        try (McpTransport transport = new StdioMcpTransport.Builder()
-                        .command(List.of(
-                                getJBangCommand(),
-                                "--quiet",
-                                "--fresh",
-                                "run",
-                                getPathToScript("tools_mcp_server.java")))
-                        .logEvents(true)
-                        .build();
-                McpClient client =
-                        DefaultMcpClient.builder().transport(transport).build()) {
+        McpTransport transport = new StdioMcpTransport.Builder()
+                .command(List.of(
+                        getJBangCommand(), "--quiet", "--fresh", "run", getPathToScript("tools_mcp_server.java")))
+                .logEvents(true)
+                .build();
+        try (McpClient client = DefaultMcpClient.builder().transport(transport).build()) {
             assertThat(((DefaultMcpClient) client).isModernProtocol()).isTrue();
             assertThat(client.listTools()).isNotEmpty();
         }
@@ -40,17 +35,16 @@ class McpVersionAutoDetectionStdioIT {
 
     @Test
     void autoDetectsLegacyProtocolOverStdio() throws Exception {
-        try (McpTransport transport = new StdioMcpTransport.Builder()
-                        .command(List.of(
-                                getJBangCommand(),
-                                "--quiet",
-                                "--fresh",
-                                "run",
-                                getPathToScript("tools_legacy_mcp_server.java")))
-                        .logEvents(true)
-                        .build();
-                McpClient client =
-                        DefaultMcpClient.builder().transport(transport).build()) {
+        McpTransport transport = new StdioMcpTransport.Builder()
+                .command(List.of(
+                        getJBangCommand(),
+                        "--quiet",
+                        "--fresh",
+                        "run",
+                        getPathToScript("tools_legacy_mcp_server.java")))
+                .logEvents(true)
+                .build();
+        try (McpClient client = DefaultMcpClient.builder().transport(transport).build()) {
             assertThat(((DefaultMcpClient) client).isModernProtocol()).isFalse();
             assertThat(client.listTools()).isNotEmpty();
         }
