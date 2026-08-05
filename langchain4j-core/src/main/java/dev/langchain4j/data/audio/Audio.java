@@ -1,5 +1,6 @@
 package dev.langchain4j.data.audio;
 
+import static dev.langchain4j.internal.Utils.contentDescription;
 import static dev.langchain4j.internal.Utils.quoted;
 
 import java.net.URI;
@@ -111,7 +112,7 @@ public class Audio {
     public String toString() {
         return "Audio {" + " url = "
                 + quoted(url) + ", base64Data = "
-                + quoted(base64Data) + ", mimeType = "
+                + contentDescription(base64Data) + ", mimeType = "
                 + quoted(mimeType) + " }";
     }
 

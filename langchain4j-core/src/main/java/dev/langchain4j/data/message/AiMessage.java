@@ -1,9 +1,9 @@
 package dev.langchain4j.data.message;
 
 import static dev.langchain4j.data.message.ChatMessageType.AI;
+import static dev.langchain4j.internal.Utils.contentDescription;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-import static dev.langchain4j.internal.Utils.quoted;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.util.Arrays.asList;
@@ -196,8 +196,8 @@ public class AiMessage implements ChatMessage {
     @Override
     public String toString() {
         return "AiMessage {" + " text = "
-                + quoted(text) + ", thinking = "
-                + quoted(thinking) + ", toolExecutionRequests = "
+                + contentDescription(text) + ", thinking = "
+                + contentDescription(thinking) + ", toolExecutionRequests = "
                 + toolExecutionRequests + ", attributes = "
                 + attributes + " }";
     }

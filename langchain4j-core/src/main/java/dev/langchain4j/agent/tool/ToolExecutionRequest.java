@@ -1,8 +1,9 @@
 package dev.langchain4j.agent.tool;
 
-import java.util.Objects;
-
+import static dev.langchain4j.internal.Utils.contentDescription;
 import static dev.langchain4j.internal.Utils.quoted;
+
+import java.util.Objects;
 
 /**
  * Represents an LLM-generated request to execute a tool.
@@ -50,8 +51,7 @@ public class ToolExecutionRequest {
     @Override
     public boolean equals(Object another) {
         if (this == another) return true;
-        return another instanceof ToolExecutionRequest ter
-                && equalTo(ter);
+        return another instanceof ToolExecutionRequest ter && equalTo(ter);
     }
 
     private boolean equalTo(ToolExecutionRequest another) {
@@ -74,15 +74,12 @@ public class ToolExecutionRequest {
         return "ToolExecutionRequest {"
                 + " id = " + quoted(id)
                 + ", name = " + quoted(name)
-                + ", arguments = " + quoted(arguments)
+                + ", arguments = " + contentDescription(arguments)
                 + " }";
     }
 
     public Builder toBuilder() {
-        return builder()
-                .id(id)
-                .name(name)
-                .arguments(arguments);
+        return builder().id(id).name(name).arguments(arguments);
     }
 
     /**
@@ -104,8 +101,7 @@ public class ToolExecutionRequest {
         /**
          * Creates a builder for {@code ToolExecutionRequest}.
          */
-        private Builder() {
-        }
+        private Builder() {}
 
         /**
          * Sets the {@code id}.

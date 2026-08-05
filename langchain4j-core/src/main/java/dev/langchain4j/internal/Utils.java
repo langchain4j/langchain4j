@@ -308,6 +308,20 @@ public class Utils {
     }
 
     /**
+     * Returns a safe description of potentially sensitive or large text content for use in {@code toString()}.
+     * The raw content is never included.
+     *
+     * @param content The content to describe.
+     * @return A description containing the content length, or {@code "null"} if the content is {@code null}.
+     */
+    public static String contentDescription(String content) {
+        if (content == null) {
+            return "null";
+        }
+        return "[length=" + content.length() + "]";
+    }
+
+    /**
      * Returns the first {@code numberOfChars} characters of the given string.
      * If the string is shorter than {@code numberOfChars}, the whole string is returned.
      *

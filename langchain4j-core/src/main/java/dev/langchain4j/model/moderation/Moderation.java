@@ -1,6 +1,6 @@
 package dev.langchain4j.model.moderation;
 
-import static dev.langchain4j.internal.Utils.quoted;
+import static dev.langchain4j.internal.Utils.contentDescription;
 
 import java.io.Serializable;
 import java.util.Objects;
@@ -65,7 +65,7 @@ public class Moderation implements Serializable {
 
     @Override
     public String toString() {
-        return "Moderation {" + " flagged = " + flagged + ", flaggedText = " + quoted(flaggedText) + " }";
+        return "Moderation {" + " flagged = " + flagged + ", flaggedText = " + contentDescription(flaggedText) + " }";
     }
 
     /**

@@ -40,7 +40,8 @@ public interface EmbeddingRequestParameters {
     /**
      * Empty parameters: nothing is populated, so {@link #presentParameters()} is empty.
      */
-    EmbeddingRequestParameters EMPTY = DefaultEmbeddingRequestParameters.builder().build();
+    EmbeddingRequestParameters EMPTY =
+            DefaultEmbeddingRequestParameters.builder().build();
 
     String modelName();
 

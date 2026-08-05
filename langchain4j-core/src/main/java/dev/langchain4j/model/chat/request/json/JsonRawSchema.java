@@ -1,6 +1,6 @@
 package dev.langchain4j.model.chat.request.json;
 
-import static dev.langchain4j.internal.Utils.quoted;
+import static dev.langchain4j.internal.Utils.contentDescription;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
 import java.util.Objects;
@@ -63,6 +63,6 @@ public class JsonRawSchema implements JsonSchemaElement {
 
     @Override
     public String toString() {
-        return "JsonRawSchema {" + "schema = " + quoted(schema) + " }";
+        return "JsonRawSchema {" + "schema = " + contentDescription(schema) + " }";
     }
 }

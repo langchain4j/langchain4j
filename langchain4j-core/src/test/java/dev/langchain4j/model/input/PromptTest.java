@@ -15,7 +15,7 @@ class PromptTest implements WithAssertions {
                 .withMessageContaining("blank");
 
         Prompt p = new Prompt("abc");
-        assertThat(p).hasToString("Prompt { text = \"abc\" }").isEqualTo(Prompt.from("abc"));
+        assertThat(p).hasToString("Prompt { text = [length=3] }").isEqualTo(Prompt.from("abc"));
         assertThat(p.text()).isEqualTo("abc");
 
         assertThat(p.toSystemMessage()).isEqualTo(systemMessage("abc"));

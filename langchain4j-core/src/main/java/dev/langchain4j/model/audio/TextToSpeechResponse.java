@@ -1,9 +1,9 @@
 package dev.langchain4j.model.audio;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.audio.Audio;
-
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
  * Response containing the audio generated from text.

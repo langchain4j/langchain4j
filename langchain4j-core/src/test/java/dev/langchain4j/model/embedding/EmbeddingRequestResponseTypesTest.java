@@ -41,8 +41,7 @@ class EmbeddingRequestResponseTypesTest implements WithAssertions {
 
         assertThatExceptionOfType(IllegalArgumentException.class)
                 .isThrownBy(() -> new EmbeddingParameter<>(" ", String.class));
-        assertThatExceptionOfType(IllegalArgumentException.class)
-                .isThrownBy(() -> new EmbeddingParameter<>("x", null));
+        assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> new EmbeddingParameter<>("x", null));
     }
 
     @Test
@@ -177,8 +176,10 @@ class EmbeddingRequestResponseTypesTest implements WithAssertions {
 
     @Test
     void request_with_explicit_parameters_and_flat_override() {
-        EmbeddingRequestParameters explicit =
-                DefaultEmbeddingRequestParameters.builder().modelName("base").dimensions(10).build();
+        EmbeddingRequestParameters explicit = DefaultEmbeddingRequestParameters.builder()
+                .modelName("base")
+                .dimensions(10)
+                .build();
 
         EmbeddingRequest request = EmbeddingRequest.builder()
                 .input("x")

@@ -70,6 +70,7 @@ class EmbeddingModelTest implements WithAssertions {
                 .withMessageContaining("Expected a single embedding, but got 2");
         assertThat(model.dimension()).isEqualTo(0);
     }
+
     @Test
     void defaultModelNameShouldReturnUnknown() {
         EmbeddingModel model = new BrokenEmbeddingModelImpl();

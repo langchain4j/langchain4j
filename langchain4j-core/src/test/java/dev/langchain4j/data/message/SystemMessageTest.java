@@ -19,7 +19,7 @@ class SystemMessageTest implements WithAssertions {
         assertThat(message.text()).isEqualTo("text");
         assertThat(message.type()).isEqualTo(ChatMessageType.SYSTEM);
 
-        assertThat(message).hasToString("SystemMessage { text = \"text\" }");
+        assertThat(message).hasToString("SystemMessage { text = [length=4] }");
     }
 
     @Test

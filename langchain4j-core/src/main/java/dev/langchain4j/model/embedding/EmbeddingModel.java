@@ -49,19 +49,19 @@ public interface EmbeddingModel {
     @Experimental
     default EmbeddingResponse embed(EmbeddingRequest request) {
 
-        EmbeddingRequestParameters finalParameters =
-                defaultRequestParameters().overrideWith(request.parameters());
+        EmbeddingRequestParameters finalParameters = defaultRequestParameters().overrideWith(request.parameters());
 
         Set<EmbeddingParameter<?>> unsupported = new LinkedHashSet<>(finalParameters.presentParameters());
         unsupported.removeAll(supportedParameters());
         if (!unsupported.isEmpty()) {
             String names = unsupported.stream().map(EmbeddingParameter::name).collect(Collectors.joining(", "));
-            throw new UnsupportedFeatureException("EmbeddingModel '" + getClass().getName()
-                    + "' does not support the following per-call parameter(s): " + names
-                    + ". Only the following are supported: "
-                    + supportedParameters().stream()
-                            .map(EmbeddingParameter::name)
-                            .collect(Collectors.joining(", ")));
+            throw new UnsupportedFeatureException(
+                    "EmbeddingModel '" + getClass().getName()
+                            + "' does not support the following per-call parameter(s): " + names
+                            + ". Only the following are supported: "
+                            + supportedParameters().stream()
+                                    .map(EmbeddingParameter::name)
+                                    .collect(Collectors.joining(", ")));
         }
 
         Set<ContentType> unsupportedContentTypes = new LinkedHashSet<>();
@@ -70,9 +70,10 @@ public interface EmbeddingModel {
         }
         unsupportedContentTypes.removeAll(supportedContentTypes());
         if (!unsupportedContentTypes.isEmpty()) {
-            throw new UnsupportedFeatureException("EmbeddingModel '" + getClass().getName()
-                    + "' does not support the following content type(s): " + unsupportedContentTypes
-                    + ". Only the following are supported: " + supportedContentTypes());
+            throw new UnsupportedFeatureException(
+                    "EmbeddingModel '" + getClass().getName()
+                            + "' does not support the following content type(s): " + unsupportedContentTypes
+                            + ". Only the following are supported: " + supportedContentTypes());
         }
 
         EmbeddingRequest finalRequest = EmbeddingRequest.builder()
@@ -170,8 +171,9 @@ public interface EmbeddingModel {
      */
     @Experimental
     default EmbeddingResponse doEmbed(EmbeddingRequest request) {
-        Response<List<Embedding>> legacy = embedAll(
-                request.inputs().stream().map(input -> TextSegment.from(input.text())).toList());
+        Response<List<Embedding>> legacy = embedAll(request.inputs().stream()
+                .map(input -> TextSegment.from(input.text()))
+                .toList());
         return EmbeddingResponse.builder()
                 .embeddings(legacy.content())
                 .metadata(EmbeddingResponseMetadata.builder()
@@ -238,9 +240,8 @@ public interface EmbeddingModel {
      * @return the embedding.
      */
     default Response<Embedding> embed(TextSegment textSegment) {
-        EmbeddingResponse response = embed(EmbeddingRequest.builder()
-                .textSegment(textSegment)
-                .build());
+        EmbeddingResponse response =
+                embed(EmbeddingRequest.builder().textSegment(textSegment).build());
         ValidationUtils.ensureEq(
                 response.embeddings().size(),
                 1,
