@@ -27,7 +27,7 @@ import org.xml.sax.ContentHandler;
  * </p>
  * <p>
  * For a full list of supported formats, refer to the
- * <a href="https://tika.apache.org/3.0.0/formats.html">Apache Tika documentation</a>.
+ * <a href="https://tika.apache.org/3.2.3/formats.html">Apache Tika documentation</a>.
  * </p>
  */
 public class ApacheTikaDocumentParser implements DocumentParser {
