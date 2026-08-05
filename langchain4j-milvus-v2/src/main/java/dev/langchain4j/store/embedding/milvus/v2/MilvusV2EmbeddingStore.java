@@ -260,7 +260,8 @@ public class MilvusV2EmbeddingStore implements EmbeddingStore<TextSegment> {
                 collectionName,
                 fieldDefinition,
                 consistencyLevel,
-                retrieveEmbeddingsOnSearch);
+                retrieveEmbeddingsOnSearch,
+                metricType);
 
         List<EmbeddingMatch<TextSegment>> result = matches.stream()
                 .filter(match -> match.score() >= embeddingSearchRequest.minScore())
@@ -315,8 +316,9 @@ public class MilvusV2EmbeddingStore implements EmbeddingStore<TextSegment> {
             throw new IllegalStateException("Built-in sparse mode does not accept client-provided sparse vectors.");
         }
         if (this.dimension == null) {
-            throw new IllegalStateException("dimension must be set (via .dimension(...)) to insert sparse-only vectors, "
-                    + "because a zero-filled dense placeholder vector of that dimension is required.");
+            throw new IllegalStateException(
+                    "dimension must be set (via .dimension(...)) to insert sparse-only vectors, "
+                            + "because a zero-filled dense placeholder vector of that dimension is required.");
         }
 
         List<String> textScalars = toScalars(textSegments, ids.size());

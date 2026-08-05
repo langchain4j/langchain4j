@@ -19,6 +19,7 @@ import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.RelevanceScore;
 import io.milvus.v2.client.MilvusClientV2;
 import io.milvus.v2.common.ConsistencyLevel;
+import io.milvus.v2.common.IndexParam;
 import io.milvus.v2.service.vector.response.QueryResp;
 import io.milvus.v2.service.vector.response.SearchResp;
 import java.lang.reflect.Type;
@@ -81,7 +82,8 @@ class Mapper {
             String collectionName,
             FieldDefinition fieldDefinition,
             ConsistencyLevel consistencyLevel,
-            boolean queryForVectorOnSearch) {
+            boolean queryForVectorOnSearch,
+            IndexParam.MetricType metricType) {
         List<EmbeddingMatch<TextSegment>> matches = new ArrayList<>();
 
         Map<String, Embedding> idToEmbedding = new HashMap<>();
@@ -126,11 +128,19 @@ class Mapper {
             TextSegment textSegment =
                     toTextSegment(searchResp.getSearchResults().get(0).get(i), fieldDefinition);
             EmbeddingMatch<TextSegment> embeddingMatch =
-                    new EmbeddingMatch<>(RelevanceScore.fromCosineSimilarity(score), rowId, embedding, textSegment);
+                    new EmbeddingMatch<>(toRelevanceScore(score, metricType), rowId, embedding, textSegment);
             matches.add(embeddingMatch);
         }
 
         return matches;
+    }
+
+    static double toRelevanceScore(double score, IndexParam.MetricType metricType) {
+        if (metricType == IndexParam.MetricType.L2) {
+            return 1.0 / (1.0 + score);
+        }
+
+        return RelevanceScore.fromCosineSimilarity(score);
     }
 
     private static TextSegment toTextSegment(SearchResp.SearchResult searchResult, FieldDefinition fieldDefinition) {
