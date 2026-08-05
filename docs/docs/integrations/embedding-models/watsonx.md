@@ -6,6 +6,7 @@ sidebar_position: 23
 
 - [watsonx.ai API Reference](https://cloud.ibm.com/apidocs/watsonx-ai#text-embeddings)
 - [watsonx.ai Java SDK](https://github.com/IBM/watsonx-ai-java-sdk)
+- [watsonx.ai Java SDK documentation](https://ibm.github.io/watsonx-ai-java-sdk/services/embedding-service)
 
 ## Maven Dependency
 

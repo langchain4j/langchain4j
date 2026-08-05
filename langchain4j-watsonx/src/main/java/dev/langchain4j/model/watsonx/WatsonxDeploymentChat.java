@@ -4,39 +4,39 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static java.util.Objects.nonNull;
 
 import com.ibm.watsonx.ai.chat.ChatProvider;
-import com.ibm.watsonx.ai.chat.ChatRequest;
-import com.ibm.watsonx.ai.chat.ChatService;
 import com.ibm.watsonx.ai.chat.TextChatResponse;
 import com.ibm.watsonx.ai.chat.model.ChatMessage;
 import com.ibm.watsonx.ai.chat.model.ExtractionTags;
 import com.ibm.watsonx.ai.chat.model.Thinking;
 import com.ibm.watsonx.ai.chat.model.ThinkingEffort;
 import com.ibm.watsonx.ai.chat.model.Tool;
+import com.ibm.watsonx.ai.deployment.DeploymentChatRequest;
+import com.ibm.watsonx.ai.deployment.DeploymentService;
 import dev.langchain4j.Internal;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import java.util.List;
 import java.util.Set;
 
 @Internal
-abstract class WatsonxChat extends WatsonxChatBase<ChatRequest> {
+abstract class WatsonxDeploymentChat extends WatsonxChatBase<DeploymentChatRequest> {
 
-    protected final ChatService chatService;
+    protected final DeploymentService deploymentService;
+    protected final String deploymentId;
 
-    protected WatsonxChat(Builder<?> builder) {
+    protected WatsonxDeploymentChat(Builder<?> builder) {
         super(builder, mergeParameters(builder));
+
+        this.deploymentId = builder.deploymentId;
 
         var parameters = (WatsonxChatRequestParameters) defaultRequestParameters;
 
         var serviceBuilder = nonNull(builder.authenticator)
-                ? ChatService.builder().authenticator(builder.authenticator)
-                : ChatService.builder().apiKey(builder.apiKey);
+                ? DeploymentService.builder().authenticator(builder.authenticator)
+                : DeploymentService.builder().apiKey(builder.apiKey);
 
-        chatService = serviceBuilder
+        deploymentService = serviceBuilder
                 .baseUrl(builder.baseUrl)
-                .modelId(parameters.modelName())
                 .version(builder.version)
-                .projectId(parameters.projectId())
-                .spaceId(parameters.spaceId())
                 .timeout(parameters.timeout())
                 .logRequests(builder.logRequests)
                 .logResponses(builder.logResponses)
@@ -46,10 +46,11 @@ abstract class WatsonxChat extends WatsonxChatBase<ChatRequest> {
     }
 
     @Override
-    protected ChatRequest buildChatRequest(
+    protected DeploymentChatRequest buildChatRequest(
             List<ChatMessage> messages, List<Tool> tools, ChatRequestParameters parameters) {
 
-        var requestBuilder = ChatRequest.builder()
+        var requestBuilder = DeploymentChatRequest.builder()
+                .deploymentId(deploymentId)
                 .messages(messages)
                 .tools(tools)
                 .parameters(Converter.toChatParameters(parameters));
@@ -63,8 +64,8 @@ abstract class WatsonxChat extends WatsonxChatBase<ChatRequest> {
     }
 
     @Override
-    protected ChatProvider<ChatRequest, TextChatResponse> chatProvider() {
-        return chatService;
+    protected ChatProvider<DeploymentChatRequest, TextChatResponse> chatProvider() {
+        return deploymentService;
     }
 
     private static WatsonxChatRequestParameters mergeParameters(Builder<?> builder) {
@@ -76,9 +77,7 @@ abstract class WatsonxChat extends WatsonxChatBase<ChatRequest> {
         var target = WatsonxChatRequestParameters.builder();
         applyCommonParameters(target, builder);
 
-        return target.projectId(getOrDefault(builder.projectId, watsonxParameters.projectId()))
-                .spaceId(getOrDefault(builder.spaceId, watsonxParameters.spaceId()))
-                .logitBias(getOrDefault(builder.logitBias, watsonxParameters.logitBias()))
+        return target.logitBias(getOrDefault(builder.logitBias, watsonxParameters.logitBias()))
                 .logprobs(getOrDefault(builder.logprobs, watsonxParameters.logprobs()))
                 .topLogprobs(getOrDefault(builder.topLogprobs, watsonxParameters.topLogprobs()))
                 .seed(getOrDefault(builder.seed, watsonxParameters.seed()))
@@ -95,8 +94,7 @@ abstract class WatsonxChat extends WatsonxChatBase<ChatRequest> {
 
     @SuppressWarnings("unchecked")
     abstract static class Builder<T extends Builder<T>> extends WatsonxChatBase.Builder<T> {
-        protected String projectId;
-        protected String spaceId;
+        protected String deploymentId;
         protected Thinking thinking;
         protected Set<String> guidedChoice;
         protected String guidedRegex;
@@ -105,40 +103,18 @@ abstract class WatsonxChat extends WatsonxChatBase<ChatRequest> {
         protected Double lengthPenalty;
 
         /**
-         * Sets the foundation model id, e.g. {@code "ibm/granite-4-h-small"}.
+         * Sets the id of the on-demand model to call.
          *
-         * @param modelName the model id
+         * @param deploymentId the deployment id
          * @return {@code this}
          */
-        public T modelName(String modelName) {
-            this.modelName = modelName;
+        public T deploymentId(String deploymentId) {
+            this.deploymentId = deploymentId;
             return (T) this;
         }
 
         /**
-         * Sets the IBM Cloud project ID that owns the watsonx.ai resources. Exactly one of {@code projectId} or {@code spaceId} must be set.
-         *
-         * @param projectId the IBM Cloud project ID
-         * @return {@code this}
-         */
-        public T projectId(String projectId) {
-            this.projectId = projectId;
-            return (T) this;
-        }
-
-        /**
-         * Sets the IBM Cloud deployment space ID. Exactly one of {@code projectId} or {@code spaceId} must be set.
-         *
-         * @param spaceId the IBM Cloud deployment space ID
-         * @return {@code this}
-         */
-        public T spaceId(String spaceId) {
-            this.spaceId = spaceId;
-            return (T) this;
-        }
-
-        /**
-         * Enables or disables extended thinking (chain-of-thought reasoning before the response).
+         * Enables or disables thinking.
          *
          * @param enabled {@code true} to enable extended thinking
          * @return {@code this}
@@ -148,9 +124,9 @@ abstract class WatsonxChat extends WatsonxChatBase<ChatRequest> {
         }
 
         /**
-         * Configures extended thinking with custom extraction tags for parsing the thinking block. Passing {@code null} disables thinking.
+         * Configures extended thinking with custom extraction tags for parsing the thinking block.
          *
-         * @param tags the extraction tags, or {@code null} to disable thinking
+         * @param tags the extraction tags
          * @return {@code this}
          */
         public T thinking(ExtractionTags tags) {
@@ -185,7 +161,7 @@ abstract class WatsonxChat extends WatsonxChatBase<ChatRequest> {
         }
 
         /**
-         * Constrains the model output to one of the given string choices (guided decoding).
+         * Constrains the model output to one of the given string choices.
          *
          * @param guidedChoice the allowed output values
          * @return {@code this}
@@ -195,7 +171,7 @@ abstract class WatsonxChat extends WatsonxChatBase<ChatRequest> {
         }
 
         /**
-         * Constrains the model output to one of the given string choices (guided decoding).
+         * Constrains the model output to one of the given string choices.
          *
          * @param guidedChoices the set of allowed output values
          * @return {@code this}
@@ -206,7 +182,7 @@ abstract class WatsonxChat extends WatsonxChatBase<ChatRequest> {
         }
 
         /**
-         * Constrains the model output to match the given regular expression (guided decoding).
+         * Constrains the model output to match the given regular expression.
          *
          * @param guidedRegex the regular expression pattern
          * @return {@code this}
@@ -217,7 +193,7 @@ abstract class WatsonxChat extends WatsonxChatBase<ChatRequest> {
         }
 
         /**
-         * Constrains the model output to conform to the given EBNF grammar (guided decoding).
+         * Constrains the model output to conform to the given EBNF grammar.
          *
          * @param guidedGrammar the EBNF grammar string
          * @return {@code this}
@@ -228,7 +204,7 @@ abstract class WatsonxChat extends WatsonxChatBase<ChatRequest> {
         }
 
         /**
-         * Sets the repetition penalty. Values greater than {@code 1.0} discourage repetition; values less than {@code 1.0} encourage it.
+         * Sets the repetition penalty.
          *
          * @param repetitionPenalty the repetition penalty
          * @return {@code this}
@@ -239,7 +215,7 @@ abstract class WatsonxChat extends WatsonxChatBase<ChatRequest> {
         }
 
         /**
-         * Sets the length penalty applied to the sequence score during beam search. Values greater than {@code 1.0} favor longer sequences.
+         * Sets the length penalty applied to the sequence score during beam search.
          *
          * @param lengthPenalty the length penalty
          * @return {@code this}

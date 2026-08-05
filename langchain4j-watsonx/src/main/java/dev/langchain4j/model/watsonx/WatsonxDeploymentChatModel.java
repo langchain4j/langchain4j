@@ -5,25 +5,24 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 
 /**
- * A {@link ChatModel} implementation that integrates IBM watsonx.ai foundation models with LangChain4j.
+ * A {@link ChatModel} implementation that integrates the IBM watsonx.ai Deployment with LangChain4j.
  * <p>
  * <b>Example usage:</b>
  *
  * <pre>{@code
- * ChatModel chatModel = WatsonxChatModel.builder()
+ * ChatModel chatModel = WatsonxDeploymentChatModel.builder()
  *     .baseUrl("https://...") // or use CloudRegion
  *     .apiKey("...")
- *     .projectId("...")
- *     .modelName("ibm/granite-4-h-small")
+ *     .deploymentId("...")
  *     .maxOutputTokens(0)
  *     .temperature(0.7)
  *     .build();
  * }</pre>
  *
  */
-public class WatsonxChatModel extends WatsonxChat implements ChatModel {
+public class WatsonxDeploymentChatModel extends WatsonxDeploymentChat implements ChatModel {
 
-    private WatsonxChatModel(Builder builder) {
+    private WatsonxDeploymentChatModel(Builder builder) {
         super(builder);
     }
 
@@ -38,11 +37,10 @@ public class WatsonxChatModel extends WatsonxChat implements ChatModel {
      * <b>Example usage:</b>
      *
      * <pre>{@code
-     * ChatModel chatModel = WatsonxChatModel.builder()
+     * ChatModel chatModel = WatsonxDeploymentChatModel.builder()
      *     .baseUrl("https://...") // or use CloudRegion
      *     .apiKey("...")
-     *     .projectId("...")
-     *     .modelName("ibm/granite-4-h-small")
+     *     .deploymentId("...")
      *     .maxOutputTokens(0)
      *     .temperature(0.7)
      *     .build();
@@ -55,14 +53,14 @@ public class WatsonxChatModel extends WatsonxChat implements ChatModel {
     }
 
     /**
-     * Builder class for constructing {@link WatsonxChatModel} instances with configurable parameters.
+     * Builder class for constructing {@link WatsonxDeploymentChatModel} instances with configurable parameters.
      */
-    public static class Builder extends WatsonxChat.Builder<Builder> {
+    public static class Builder extends WatsonxDeploymentChat.Builder<Builder> {
 
         private Builder() {}
 
-        public WatsonxChatModel build() {
-            return new WatsonxChatModel(this);
+        public WatsonxDeploymentChatModel build() {
+            return new WatsonxDeploymentChatModel(this);
         }
     }
 }
