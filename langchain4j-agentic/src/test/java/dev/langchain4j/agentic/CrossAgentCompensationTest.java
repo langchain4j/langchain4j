@@ -487,7 +487,7 @@ public class CrossAgentCompensationTest {
                     if (ctx.agentServiceClass() == DeclarativeCreditAgent.class) {
                         ctx.agentBuilder().tools(creditService);
                     }
-                }, null, null));
+                }));
 
         assertThrows(AgentInvocationException.class, () -> agent.run("test"));
 
