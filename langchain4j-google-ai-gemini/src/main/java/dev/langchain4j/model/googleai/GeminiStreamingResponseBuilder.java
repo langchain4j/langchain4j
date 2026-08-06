@@ -1,7 +1,9 @@
 package dev.langchain4j.model.googleai;
 
+import static dev.langchain4j.data.message.AiMessage.GENERATED_IMAGES_KEY;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.model.googleai.FinishReasonMapper.fromGFinishReasonToFinishReason;
+import static dev.langchain4j.model.googleai.PartsAndContentsMapper.THINKING_SIGNATURE_KEY;
 import static dev.langchain4j.model.googleai.PartsAndContentsMapper.fromGPartsToAiMessage;
 import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 
@@ -137,10 +139,28 @@ class GeminiStreamingResponseBuilder {
     private void updateContentAndFunctionCalls(AiMessage message) {
         Optional.ofNullable(message.text()).ifPresent(contentBuilder::append);
         Optional.ofNullable(message.thinking()).ifPresent(thoughtBuilder::append);
-        attributes.putAll(message.attributes());
+        mergeAttributes(message.attributes());
         if (message.hasToolExecutionRequests()) {
             functionCalls.addAll(message.toolExecutionRequests());
         }
+    }
+
+    private void mergeAttributes(Map<String, Object> partialAttributes) {
+        partialAttributes.forEach((key, value) -> {
+            if (GENERATED_IMAGES_KEY.equals(key)) {
+                attributes.merge(key, value, GeminiStreamingResponseBuilder::concatenate);
+            } else if (THINKING_SIGNATURE_KEY.equals(key)) {
+                attributes.merge(key, value, (existing, added) -> existing + "\n\n" + added);
+            } else {
+                attributes.put(key, value);
+            }
+        });
+    }
+
+    private static Object concatenate(Object existing, Object added) {
+        List<Object> concatenated = new ArrayList<>((List<?>) existing);
+        concatenated.addAll((List<?>) added);
+        return concatenated;
     }
 
     private AiMessage createAiMessage() {
