@@ -54,6 +54,9 @@ public class AiServiceContext {
 
     public BiFunction<String, InvocationContext, String> systemMessageTransformer = null;
 
+    public boolean systemMessageLenient = false;
+    public boolean userMessageLenient = false;
+
     public BiFunction<ChatRequest, Object, ChatRequest> chatRequestTransformer = (req, memId) -> req;
 
     protected AiServiceContext(Class<?> aiServiceClass) {
