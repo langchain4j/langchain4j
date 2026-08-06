@@ -1,8 +1,7 @@
 package dev.langchain4j.agentic.a2a;
 
-import org.a2aproject.sdk.spec.TaskState;
-
 import dev.langchain4j.exception.LangChain4jException;
+import org.a2aproject.sdk.spec.TaskState;
 
 /**
  * Thrown when an A2A task enters an interrupted state ({@code input-required} or
