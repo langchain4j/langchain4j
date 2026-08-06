@@ -1,14 +1,15 @@
 package dev.langchain4j.model.watsonx;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import java.time.Duration;
-import java.util.List;
-import java.util.Map;
-import org.junit.jupiter.api.Test;
+
 import com.ibm.watsonx.ai.gateway.chat.ModelGatewayParameters.Cache;
 import com.ibm.watsonx.ai.gateway.chat.ModelGatewayParameters.ReasoningEffort;
 import com.ibm.watsonx.ai.gateway.chat.ModelGatewayParameters.Router;
 import com.ibm.watsonx.ai.gateway.chat.ModelGatewayParameters.ServiceTier;
+import java.time.Duration;
+import java.util.List;
+import java.util.Map;
+import org.junit.jupiter.api.Test;
 
 class WatsonxGatewayChatRequestParametersTest {
 
