@@ -107,8 +107,11 @@ class AzureAiSearchEmbeddingStoreTest {
 
     @Test
     void metadata_attribute_with_blank_key_should_be_skipped() {
-        Object rawMetadata =
-                Map.of("attributes", List.of(Map.of("key", " ", "value", "orphan"), Map.of("key", "page", "value", "3")));
+        Object rawMetadata = Map.of(
+                "attributes",
+                List.of(
+                        Map.of("key", " ", "value", "orphan"),
+                        Map.of("key", "page", "value", "3")));
 
         Metadata metadata = metadataFrom(rawMetadata);
 
