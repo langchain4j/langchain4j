@@ -361,7 +361,11 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
                                         .orElse(new float[] {})),
                                 document.getText() == null
                                         ? null
-                                        : TextSegment.from(document.getText(), new Metadata(document.getMetadata()))))
+                                        : TextSegment.from(
+                                                document.getText(),
+                                                new Metadata(document.getMetadata())
+                                                        .put(ContentMetadata.SCORE.name(), hit.score())
+                                                        .put(ContentMetadata.EMBEDDING_ID.name(), hit.id()))))
                         .orElse(null))
                 .collect(toList());
     }
