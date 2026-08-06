@@ -16,6 +16,7 @@
     <description>Implementation of Google Custom Search API for LangChain4j</description>
 
     <properties>
+        <automaticModuleNameSource>dev.langchain4j.websearchengine.google.custom</automaticModuleNameSource>
         <!-- TODO: remove enforcer.skipRules -->
         <enforcer.skipRules>dependencyConvergence,requireUpperBoundDeps</enforcer.skipRules>
     </properties>
@@ -38,7 +39,6 @@
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
         </dependency>
-
 
         <!-- test dependencies -->
 

@@ -11,7 +11,6 @@ import com.azure.cosmos.CosmosAsyncClient;
 import com.azure.cosmos.CosmosAsyncContainer;
 import com.azure.cosmos.CosmosAsyncDatabase;
 import com.azure.cosmos.CosmosClientBuilder;
-import com.azure.cosmos.implementation.guava25.collect.ImmutableList;
 import com.azure.cosmos.models.CosmosContainerProperties;
 import com.azure.cosmos.models.CosmosItemRequestOptions;
 import com.azure.cosmos.models.ExcludedPath;
@@ -116,7 +115,7 @@ public class AzureCosmosDBNoSqlMemoryStore implements ChatMemoryStore {
         indexingPolicy.setExcludedPaths(singletonList(excludedPath));
         IncludedPath includedPath1 = new IncludedPath("/metadata/?");
         IncludedPath includedPath2 = new IncludedPath("/content/?");
-        indexingPolicy.setIncludedPaths(ImmutableList.of(includedPath1, includedPath2));
+        indexingPolicy.setIncludedPaths(List.of(includedPath1, includedPath2));
         return indexingPolicy;
     }
 

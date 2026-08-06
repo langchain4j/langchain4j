@@ -13,6 +13,10 @@
     <version>1.19.0-SNAPSHOT</version>
     <name>LangChain4j :: HTTP Client :: JDK HttpClient</name>
 
+    <properties>
+        <automaticModuleNameSource>dev.langchain4j.httpclient.jdk</automaticModuleNameSource>
+    </properties>
+
     <dependencies>
 
         <dependency>

@@ -13,6 +13,10 @@
     <artifactId>langchain4j-http-client-apache</artifactId>
     <name>LangChain4j :: HTTP Client :: Apache HttpClient5</name>
 
+    <properties>
+        <automaticModuleNameSource>dev.langchain4j.httpclient.apache</automaticModuleNameSource>
+    </properties>
+
     <dependencies>
 
         <dependency>

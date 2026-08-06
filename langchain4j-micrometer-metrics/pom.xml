@@ -14,6 +14,7 @@
     <description>Micrometer implementation for LangChain4j</description>
 
     <properties>
+        <automaticModuleNameSource>dev.langchain4j.micrometermetrics</automaticModuleNameSource>
         <!-- pinned here to avoid surprising upgrades; adjust when updating OTel semconv -->
         <micrometer.version>1.16.5</micrometer.version>
     </properties>

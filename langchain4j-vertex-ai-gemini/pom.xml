@@ -13,6 +13,7 @@
     <name>LangChain4j :: Integration :: Google Vertex AI Gemini</name>
 
     <properties>
+        <automaticModuleNameSource>dev.langchain4j.vertexai.gemini</automaticModuleNameSource>
         <maven.compiler.parameters>true</maven.compiler.parameters>
     </properties>
 

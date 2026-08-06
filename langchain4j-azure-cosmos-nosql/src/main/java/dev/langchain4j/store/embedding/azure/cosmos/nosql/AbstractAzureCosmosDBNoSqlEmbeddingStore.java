@@ -17,7 +17,6 @@ import com.azure.cosmos.CosmosAsyncContainer;
 import com.azure.cosmos.CosmosAsyncDatabase;
 import com.azure.cosmos.CosmosClientBuilder;
 import com.azure.cosmos.CosmosException;
-import com.azure.cosmos.implementation.apachecommons.lang.tuple.ImmutablePair;
 import com.azure.cosmos.models.CosmosBulkOperations;
 import com.azure.cosmos.models.CosmosContainerProperties;
 import com.azure.cosmos.models.CosmosFullTextPolicy;
@@ -48,6 +47,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -235,7 +235,7 @@ public class AbstractAzureCosmosDBNoSqlEmbeddingStore implements EmbeddingStore<
             }
         }
 
-        List<ImmutablePair<String, CosmosItemOperation>> itemOperationsWithIds = ids.stream()
+        List<Map.Entry<String, CosmosItemOperation>> itemOperationsWithIds = ids.stream()
                 .map(id -> {
                     String partitionKeyValue;
 
@@ -273,13 +273,13 @@ public class AbstractAzureCosmosDBNoSqlEmbeddingStore implements EmbeddingStore<
                                 new PartitionKey(partitionKeyValue));
                     }
 
-                    return new ImmutablePair<>(id, operation);
+                    return Map.entry(id, operation);
                 })
                 .toList();
 
         try {
             List<CosmosItemOperation> itemOperations =
-                    itemOperationsWithIds.stream().map(ImmutablePair::getValue).collect(toList());
+                    itemOperationsWithIds.stream().map(Map.Entry::getValue).collect(toList());
 
             this.container
                     .executeBulkOperations(Flux.fromIterable(itemOperations))
@@ -291,7 +291,7 @@ public class AbstractAzureCosmosDBNoSqlEmbeddingStore implements EmbeddingStore<
                                 String documentId = itemOperationsWithIds.stream()
                                         .filter(pair -> pair.getValue().equals(response.getOperation()))
                                         .findFirst()
-                                        .map(ImmutablePair::getKey)
+                                        .map(Map.Entry::getKey)
                                         .orElse("Unknown ID"); // Fallback if the ID can't be found
 
                                 String errorMessage = String.format("Duplicate document id: %s", documentId);
