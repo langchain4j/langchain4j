@@ -364,11 +364,7 @@ public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingSt
                 }
             }
         }
-        try {
-            return Metadata.from(attributesMap);
-        } catch (IllegalArgumentException e) {
-            return Metadata.from(Collections.emptyMap());
-        }
+        return Metadata.from(attributesMap);
     }
 
     private void addInternal(String id, Embedding embedding, TextSegment embedded) {
