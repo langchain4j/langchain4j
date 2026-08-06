@@ -20,6 +20,8 @@ import dev.langchain4j.model.anthropic.internal.api.AnthropicMetadata;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicOutputConfig;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicThinking;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicTool;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicToolChoice;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicToolChoiceType;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
@@ -162,6 +164,11 @@ class InternalAnthropicHelper {
         if (chatRequest.toolChoice() != null) {
             requestBuilder.toolChoice(
                     toAnthropicToolChoice(chatRequest.toolChoice(), toolChoiceName, disableParallelToolUse));
+        } else if (Boolean.TRUE.equals(disableParallelToolUse) && !tools.isEmpty()) {
+            // "disable_parallel_tool_use" is a field of Anthropic's "tool_choice" object, so it can only be sent
+            // inside one. Fall back to "auto", which is the API default when tools are present, so the tool
+            // selection strategy stays the same.
+            requestBuilder.toolChoice(AnthropicToolChoice.from(AnthropicToolChoiceType.AUTO, disableParallelToolUse));
         }
 
         if (!isNullOrEmpty(userId)) {
