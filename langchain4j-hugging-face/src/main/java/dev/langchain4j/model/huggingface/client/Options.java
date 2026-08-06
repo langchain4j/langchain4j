@@ -1,13 +1,12 @@
 package dev.langchain4j.model.huggingface.client;
 
+import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
+
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
-
 import java.util.Objects;
-
-import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonInclude(NON_NULL)
@@ -22,16 +21,22 @@ public class Options {
         this.useCache = builder.useCache;
     }
 
+    public Boolean getWaitForModel() {
+        return waitForModel;
+    }
+
+    public Boolean getUseCache() {
+        return useCache;
+    }
+
     @Override
     public boolean equals(Object another) {
         if (this == another) return true;
-        return another instanceof Options
-                && equalTo((Options) another);
+        return another instanceof Options && equalTo((Options) another);
     }
 
     private boolean equalTo(Options another) {
-        return Objects.equals(waitForModel, another.waitForModel)
-                && Objects.equals(useCache, another.useCache);
+        return Objects.equals(waitForModel, another.waitForModel) && Objects.equals(useCache, another.useCache);
     }
 
     @Override
@@ -44,10 +49,7 @@ public class Options {
 
     @Override
     public String toString() {
-        return "TextGenerationRequest {"
-                + " waitForModel = " + waitForModel
-                + ", useCache = " + useCache
-                + " }";
+        return "TextGenerationRequest {" + " waitForModel = " + waitForModel + ", useCache = " + useCache + " }";
     }
 
     public static Builder builder() {
