@@ -1,9 +1,12 @@
 package dev.langchain4j.store.embedding.milvus.v2;
 
+import static dev.langchain4j.store.embedding.milvus.v2.Mapper.toRelevanceScore;
 import static dev.langchain4j.store.embedding.milvus.v2.Mapper.toSparseVectors;
 import static dev.langchain4j.store.embedding.milvus.v2.Mapper.toVectors;
 
 import dev.langchain4j.data.embedding.Embedding;
+import dev.langchain4j.store.embedding.RelevanceScore;
+import io.milvus.v2.common.IndexParam;
 import java.util.Arrays;
 import java.util.List;
 import java.util.SortedMap;
@@ -132,5 +135,45 @@ class MapperTest implements WithAssertions {
         assertThat(vector.get(-1L)).isEqualTo(-0.1f);
         assertThat(vector.get(0L)).isEqualTo(0.0f);
         assertThat(vector.get(1L)).isEqualTo(0.1f);
+    }
+
+    @Test
+    void should_convert_l2_distance_to_relevance_score() {
+        double identical = toRelevanceScore(0.0, IndexParam.MetricType.L2);
+        double near = toRelevanceScore(1.0, IndexParam.MetricType.L2);
+        double far = toRelevanceScore(3.0, IndexParam.MetricType.L2);
+
+        assertThat(identical).isEqualTo(1.0);
+        assertThat(near).isEqualTo(0.5);
+        assertThat(far).isEqualTo(0.25);
+    }
+
+    @Test
+    void should_rank_a_smaller_l2_distance_higher() {
+        double near = toRelevanceScore(0.5, IndexParam.MetricType.L2);
+        double far = toRelevanceScore(2.0, IndexParam.MetricType.L2);
+
+        assertThat(near).isGreaterThan(far);
+        assertThat(near).isBetween(0.0, 1.0);
+        assertThat(far).isBetween(0.0, 1.0);
+    }
+
+    @Test
+    void should_not_treat_an_l2_distance_as_a_cosine_similarity() {
+        double relevanceScore = toRelevanceScore(3.0, IndexParam.MetricType.L2);
+
+        assertThat(relevanceScore).isNotEqualTo(RelevanceScore.fromCosineSimilarity(3.0));
+        assertThat(relevanceScore).isBetween(0.0, 1.0);
+    }
+
+    @Test
+    void should_use_cosine_conversion_for_non_l2_metrics() {
+        double cosine = toRelevanceScore(0.6, IndexParam.MetricType.COSINE);
+        double innerProduct = toRelevanceScore(0.6, IndexParam.MetricType.IP);
+        double bm25 = toRelevanceScore(0.6, IndexParam.MetricType.BM25);
+
+        assertThat(cosine).isEqualTo(RelevanceScore.fromCosineSimilarity(0.6));
+        assertThat(innerProduct).isEqualTo(RelevanceScore.fromCosineSimilarity(0.6));
+        assertThat(bm25).isEqualTo(RelevanceScore.fromCosineSimilarity(0.6));
     }
 }
