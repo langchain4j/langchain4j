@@ -1061,6 +1061,32 @@ tokenStream
     .start();
 ```
 
+### Observing Tool Executions
+
+When building an AI Service, you can register callbacks that are invoked around tool executions:
+```java
+Assistant assistant = AiServices.builder(Assistant.class)
+        .chatModel(model)
+        .tools(new Tools())
+        // invoked before each tool is executed
+        .beforeToolExecution((BeforeToolExecution before) -> System.out.println(before.request()))
+        // invoked after each tool is executed
+        .afterToolExecution((ToolExecution execution) -> System.out.println(execution.result()))
+        // invoked once per tool-calling round, with all tool execution requests of that round,
+        // before the first tool starts executing
+        .beforeAllToolExecutions((BeforeAllToolExecutions before) -> System.out.println(before.requests()))
+        // invoked once per tool-calling round, with all tool executions of that round,
+        // after the last tool has finished executing
+        .afterAllToolExecutions((List<ToolExecution> executions) -> System.out.println(executions))
+        .build();
+```
+
+The batch-level callbacks (`beforeAllToolExecutions` and `afterAllToolExecutions`) receive the whole batch
+of tool calls requested by the LLM in a single response, both when tools are executed sequentially
+and when they are executed [concurrently](/tutorials/tools#executing-tools-concurrently).
+They are useful, for example, for emitting ordered observability events or for batch-level tracing.
+These callbacks are invoked only for synchronous AI Services.
+
 ### Specifying Tools Programmatically
 
 When using AI Services, tools can also be specified programmatically.
