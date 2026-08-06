@@ -56,7 +56,7 @@ abstract class WatsonxGatewayChat extends WatsonxChatBase<ModelGatewayChatReques
         return ModelGatewayChatRequest.builder()
                 .messages(messages)
                 .tools(tools)
-                .parameters(Converter.toModelGatewayParameters(parameters))
+                .parameters(Converter.toModelGatewayParameters(parameters, strictJsonSchema))
                 .build();
     }
 

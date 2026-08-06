@@ -44,11 +44,13 @@ abstract class WatsonxChatBase<R extends BaseChatRequest> {
     protected final List<ChatModelListener> listeners;
     protected final ChatRequestParameters defaultRequestParameters;
     protected final Set<Capability> supportedCapabilities;
+    protected final boolean strictJsonSchema;
 
     protected WatsonxChatBase(Builder<?> builder, ChatRequestParameters defaultRequestParameters) {
         this.listeners = copy(builder.listeners);
         this.supportedCapabilities = copy(builder.supportedCapabilities);
         this.defaultRequestParameters = defaultRequestParameters;
+        this.strictJsonSchema = getOrDefault(builder.strictJsonSchema, false);
     }
 
     protected abstract ChatProvider<R, ? extends TextChatResponse> chatProvider();
@@ -193,6 +195,7 @@ abstract class WatsonxChatBase<R extends BaseChatRequest> {
         protected List<String> stopSequences;
         protected ToolChoice toolChoice;
         protected ResponseFormat responseFormat;
+        protected Boolean strictJsonSchema;
         protected List<ToolSpecification> toolSpecifications;
         protected List<ChatModelListener> listeners;
         protected ChatRequestParameters defaultRequestParameters;
@@ -298,6 +301,17 @@ abstract class WatsonxChatBase<R extends BaseChatRequest> {
          */
         public T responseFormat(ResponseFormat responseFormat) {
             this.responseFormat = responseFormat;
+            return (T) this;
+        }
+
+        /**
+         * Enables the strict mode for the JSON Schema used by structured outputs. Defaults to {@code false}.
+         *
+         * @param strictJsonSchema {@code true} to enable the strict mode
+         * @return {@code this}
+         */
+        public T strictJsonSchema(Boolean strictJsonSchema) {
+            this.strictJsonSchema = strictJsonSchema;
             return (T) this;
         }
 

@@ -52,7 +52,7 @@ abstract class WatsonxChat extends WatsonxChatBase<ChatRequest> {
         var requestBuilder = ChatRequest.builder()
                 .messages(messages)
                 .tools(tools)
-                .parameters(Converter.toChatParameters(parameters));
+                .parameters(Converter.toChatParameters(parameters, strictJsonSchema));
 
         if (parameters instanceof WatsonxChatRequestParameters watsonxParameters
                 && nonNull(watsonxParameters.thinking())) {
