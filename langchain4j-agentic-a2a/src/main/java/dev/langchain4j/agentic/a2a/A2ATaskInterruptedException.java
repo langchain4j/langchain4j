@@ -2,6 +2,8 @@ package dev.langchain4j.agentic.a2a;
 
 import org.a2aproject.sdk.spec.TaskState;
 
+import dev.langchain4j.exception.LangChain4jException;
+
 /**
  * Thrown when an A2A task enters an interrupted state ({@code input-required} or
  * {@code auth-required}) instead of completing.
@@ -13,8 +15,6 @@ import org.a2aproject.sdk.spec.TaskState;
  *
  * @since 1.19.0
  */
-import dev.langchain4j.exception.LangChain4jException;
-
 public class A2ATaskInterruptedException extends LangChain4jException {
 
     private final String taskId;
