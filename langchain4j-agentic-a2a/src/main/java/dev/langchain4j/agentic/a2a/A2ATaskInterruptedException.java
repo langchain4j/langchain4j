@@ -13,7 +13,9 @@ import org.a2aproject.sdk.spec.TaskState;
  *
  * @since 1.19.0
  */
-public class A2ATaskInterruptedException extends RuntimeException {
+import dev.langchain4j.exception.LangChain4jException;
+
+public class A2ATaskInterruptedException extends LangChain4jException {
 
     private final String taskId;
     private final TaskState state;
