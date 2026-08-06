@@ -2,8 +2,7 @@ package dev.langchain4j.model.watsonx;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static java.util.Objects.nonNull;
-import java.util.List;
-import java.util.Map;
+
 import com.ibm.watsonx.ai.chat.ChatProvider;
 import com.ibm.watsonx.ai.chat.model.ChatMessage;
 import com.ibm.watsonx.ai.chat.model.Tool;
@@ -16,6 +15,8 @@ import com.ibm.watsonx.ai.gateway.chat.ModelGatewayParameters.ServiceTier;
 import com.ibm.watsonx.ai.gateway.chat.ModelGatewayService;
 import dev.langchain4j.Internal;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import java.util.List;
+import java.util.Map;
 
 @Internal
 abstract class WatsonxGatewayChat extends WatsonxChatBase<ModelGatewayChatRequest> {

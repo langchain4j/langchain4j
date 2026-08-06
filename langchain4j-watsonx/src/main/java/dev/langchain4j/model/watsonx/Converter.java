@@ -3,7 +3,7 @@ package dev.langchain4j.model.watsonx;
 import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
 import static java.util.Objects.requireNonNull;
-import java.util.List;
+
 import com.ibm.watsonx.ai.chat.ChatResponse.ResultChoice;
 import com.ibm.watsonx.ai.chat.TextChatResponse;
 import com.ibm.watsonx.ai.chat.model.AssistantMessage;
@@ -39,6 +39,7 @@ import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
+import java.util.List;
 
 @Internal
 class Converter {
@@ -125,7 +126,9 @@ class Converter {
                 .tokenUsage(tokenUsage);
 
         if (textChatResponse instanceof ModelGatewayChatResponse gatewayResponse) {
-            metadata.serviceTier(gatewayResponse.serviceTier())
+
+            metadata.modelName(gatewayResponse.model())
+                    .serviceTier(gatewayResponse.serviceTier())
                     .systemFingerprint(gatewayResponse.systemFingerprint())
                     .cached(gatewayResponse.cached());
         }
@@ -191,9 +194,16 @@ class Converter {
         builder.frequencyPenalty(parameters.frequencyPenalty());
         builder.maxCompletionTokens(parameters.maxOutputTokens());
         builder.presencePenalty(parameters.presencePenalty());
-        builder.stop(parameters.stopSequences());
         builder.temperature(parameters.temperature());
         builder.topP(parameters.topP());
+
+        // DefaultChatRequestParameters returns an empty list when no stop sequence is set, and the Model Gateway
+        // rejects an empty "stop" array, so the field is sent only when there is at least one sequence.
+        List<String> stopSequences = parameters.stopSequences();
+
+        if (nonNull(stopSequences) && !stopSequences.isEmpty()) {
+            builder.stop(stopSequences);
+        }
 
         ResponseFormat responseFormat = parameters.responseFormat();
 

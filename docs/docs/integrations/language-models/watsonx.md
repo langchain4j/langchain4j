@@ -8,7 +8,7 @@ sidebar_position: 22
 - [watsonx.ai Java SDK](https://github.com/IBM/watsonx-ai-java-sdk)
 - [watsonx.ai Java SDK documentation](https://ibm.github.io/watsonx-ai-java-sdk/)
 
-This integration is built on top of the **IBM watsonx.ai Java SDK**: every model described below wraps one of its services. When you need details on a behavior that is not specific to LangChain4j — token caching, retries, HTTP client tuning — the [SDK documentation](https://ibm.github.io/watsonx-ai-java-sdk/) is the reference.
+This integration is built on top of the **IBM watsonx.ai Java SDK**. Every model described below wraps one of its services. When you need details on a behavior that is not specific to LangChain4j - token caching, retries, HTTP client tuning - the [SDK documentation](https://ibm.github.io/watsonx-ai-java-sdk/) is the reference.
 
 ## Maven Dependency
 
@@ -32,7 +32,7 @@ This allows you to use different authentication mechanisms depending on your dep
 
 The `WatsonxChatModel`, `WatsonxStreamingChatModel`, and other service builders accept either a shortcut via `.apiKey(...)` or a full `Authenticator` instance via `.authenticator(...)`.
 
-Token caching and renewal are handled transparently: a token is fetched on the first request, cached, and refreshed before it expires — you never manage its lifecycle. Passing the same `Authenticator` instance to several models lets them share a single cached token. See the [SDK authentication guide](https://ibm.github.io/watsonx-ai-java-sdk/authentication) for the full list of authenticators and their parameters.
+Token caching and renewal are handled transparently. A token is fetched on the first request, cached, and refreshed before it expires, so you never manage its lifecycle. Passing the same `Authenticator` instance to several models lets them share a single cached token. See the [SDK authentication guide](https://ibm.github.io/watsonx-ai-java-sdk/authentication) for the full list of authenticators and their parameters.
 
 ### Example
 ```java
@@ -133,10 +133,10 @@ You can create an API key at [https://cloud.ibm.com/iam/apikeys](https://cloud.i
 The `WatsonxChatModel` class allows you to create an instance of the `ChatModel` interface fully encapsulated within LangChain4j.
 To create an instance, you must specify the mandatory parameters:
 
-- `baseUrl(...)` – IBM Cloud endpoint URL (as `String`, `URI`, or `CloudRegion`);
-- `apiKey(...)` – IBM Cloud IAM API key;
-- `projectId(...)` – IBM Cloud Project ID (or use `spaceId(...)`);
-- `modelName(...)` – Foundation model ID for inference;
+- `baseUrl(...)` – IBM Cloud endpoint URL (as `String`, `URI`, or `CloudRegion`)
+- `apiKey(...)` – IBM Cloud IAM API key
+- `projectId(...)` – IBM Cloud Project ID (or use `spaceId(...)`)
+- `modelName(...)` – Foundation model ID for inference
 
 > You can authenticate using either `.apiKey(...)` or a full `Authenticator` instance via `.authenticator(...)`.
 
@@ -212,17 +212,17 @@ model.chat("What is the capital of Italy?", new StreamingChatResponseHandler() {
 
 ## Deployed models (on-demand deployment)
 
-IBM watsonx.ai allows you to deploy foundation models on-demand on dedicated hardware for exclusive use by your organization. These deployed models are addressed by their `deploymentId` and are served by a different watsonx.ai endpoint than the foundation-model catalog, so LangChain4j exposes them through their own pair of classes: `WatsonxDeploymentChatModel` and `WatsonxDeploymentStreamingChatModel`.
+IBM watsonx.ai allows you to deploy foundation models on-demand on dedicated hardware for exclusive use by your organization. These deployed models are addressed by their `deploymentId` and are served by a different watsonx.ai endpoint than the foundation-model catalog, so LangChain4j exposes them through their own pair of classes, `WatsonxDeploymentChatModel` and `WatsonxDeploymentStreamingChatModel`.
 
 To create an instance, you must specify:
 
-- `baseUrl(...)` – IBM Cloud endpoint URL (as `String`, `URI`, or `CloudRegion`);
-- `apiKey(...)` – IBM Cloud IAM API key;
-- `deploymentId(...)` – Deployment ID of the on-demand deployed model;
+- `baseUrl(...)` – IBM Cloud endpoint URL (as `String`, `URI`, or `CloudRegion`)
+- `apiKey(...)` – IBM Cloud IAM API key
+- `deploymentId(...)` – Deployment ID of the on-demand deployed model
 
 A deployment already targets a specific model within a project or space, so these builders expose neither `modelName(...)` nor `projectId(...)`/`spaceId(...)`. Every other generation parameter (`temperature`, `maxOutputTokens`, `thinking`, tools, `responseFormat`, …) works exactly as it does on `WatsonxChatModel`.
 
-> **Note:** `deploymentId` is a connection-level setting fixed when the model is built — it selects the deployment endpoint, so it cannot be overridden per request through `WatsonxChatRequestParameters`.
+> **Note:** `deploymentId` is a connection-level setting fixed when the model is built - it selects the deployment endpoint, so it cannot be overridden per request through `WatsonxChatRequestParameters`.
 
 ### WatsonxDeploymentChatModel
 
@@ -284,15 +284,15 @@ model.chat("What is the capital of Italy?", new StreamingChatResponseHandler() {
 
 The IBM watsonx.ai **Model Gateway** exposes an OpenAI-compatible chat endpoint that can route requests to models hosted by multiple providers (for example OpenAI, Anthropic, or third-party providers you register) behind a single watsonx.ai entry point. LangChain4j integrates with it through `WatsonxGatewayChatModel` and `WatsonxGatewayStreamingChatModel`.
 
-> **Note:** the gateway must be configured by an administrator before use — each `modelName` you pass must be an id already registered in the gateway.
+> **Note:** the gateway must be configured by an administrator before use - each `modelName` you pass must be an id already registered in the gateway.
 
 ### WatsonxGatewayChatModel
 
 To create an instance, specify:
 
-- `baseUrl(...)` – IBM Cloud endpoint URL (as `String`, `URI`, or `CloudRegion`);
-- `apiKey(...)` – IBM Cloud IAM API key (or a full `Authenticator` via `.authenticator(...)`);
-- `modelName(...)` – OpenAI-style model id registered in the gateway;
+- `baseUrl(...)` – IBM Cloud endpoint URL (as `String`, `URI`, or `CloudRegion`)
+- `apiKey(...)` – IBM Cloud IAM API key (or a full `Authenticator` via `.authenticator(...)`)
+- `modelName(...)` – OpenAI-style model id registered in the gateway
 
 ```java
 import dev.langchain4j.model.chat.ChatModel;
@@ -313,7 +313,7 @@ System.out.println(answer);
 ### WatsonxGatewayStreamingChatModel
 
 `WatsonxGatewayStreamingChatModel` provides streaming support for the gateway. It uses the same configuration
-as `WatsonxGatewayChatModel`; responses are delivered incrementally through a handler.
+as `WatsonxGatewayChatModel`. Responses are delivered incrementally through a handler.
 
 ```java
 import dev.langchain4j.model.chat.StreamingChatModel;
@@ -357,9 +357,9 @@ service accepts and nothing else:
 | `WatsonxChatRequestParameters` | `WatsonxChatModel`, `WatsonxStreamingChatModel`, `WatsonxDeploymentChatModel`, `WatsonxDeploymentStreamingChatModel` |
 | `WatsonxGatewayChatRequestParameters` | `WatsonxGatewayChatModel`, `WatsonxGatewayStreamingChatModel` |
 
-The two classes are independent implementations of `ChatRequestParameters`: each one declares exactly what its service
-supports, so neither knows anything about the other's parameters. Passing the parameters of one service to the other —
-either through `defaultRequestParameters(...)` on the builder or through the parameters of a single `ChatRequest` —
+The two classes are independent implementations of `ChatRequestParameters`. Each one declares exactly what its service
+supports, so neither knows anything about the other's parameters. Passing the parameters of one service to the other -
+either through `defaultRequestParameters(...)` on the builder or through the parameters of a single `ChatRequest` -
 therefore contributes only what `DefaultChatRequestParameters` covers (`modelName`, `temperature`, `topP`,
 `maxOutputTokens`, …), and every watsonx.ai-specific parameter they carry is ignored. Use the class that matches the
 model you are calling.
@@ -368,8 +368,8 @@ In addition to the common chat parameters, `WatsonxGatewayChatRequestParameters`
 
 | Parameter | Description |
 |---|---|
-| `serviceTier(...)` | Service tier: `AUTO`, `DEFAULT`, `FLEX`, or `PRIORITY`. |
-| `reasoningEffort(...)` | Reasoning effort for reasoning models: `LOW`, `MEDIUM`, or `HIGH`. |
+| `serviceTier(...)` | Service tier, one of `AUTO`, `DEFAULT`, `FLEX`, or `PRIORITY`. |
+| `reasoningEffort(...)` | Reasoning effort for reasoning models, one of `LOW`, `MEDIUM`, or `HIGH`. |
 | `router(...)` / `cache(...)` | Router configuration, including a prompt `Cache`. |
 | `modalities(...)` | Output modalities (e.g. `["text"]`). |
 | `store(...)` | Whether the provider should persist the request/response. |
@@ -379,13 +379,14 @@ In addition to the common chat parameters, `WatsonxGatewayChatRequestParameters`
 | `logitBias(...)`, `logprobs(...)`, `topLogprobs(...)`, `seed(...)` | OpenAI-compatible sampling controls. |
 
 ```java
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.watsonx.WatsonxGatewayChatRequestParameters;
 import com.ibm.watsonx.ai.gateway.ModelGatewayParameters.ReasoningEffort;
 import com.ibm.watsonx.ai.gateway.ModelGatewayParameters.ServiceTier;
 
 ChatRequest request = ChatRequest.builder()
-    .messages(dev.langchain4j.data.message.UserMessage.from("Solve this step by step."))
+    .messages(UserMessage.from("Solve this step by step."))
     .parameters(
         WatsonxGatewayChatRequestParameters.builder()
             .serviceTier(ServiceTier.FLEX)
@@ -415,7 +416,7 @@ metadata.getCached();            // whether the response was served from cache (
 
 ## Tool Integration
 
-All the watsonx.ai chat models — `WatsonxChatModel`, `WatsonxStreamingChatModel`, `WatsonxDeploymentChatModel`, `WatsonxDeploymentStreamingChatModel`, `WatsonxGatewayChatModel` and `WatsonxGatewayStreamingChatModel` — support **LangChain4j Tools**, allowing the model to call Java methods annotated with `@Tool`.
+All the watsonx.ai chat models - `WatsonxChatModel`, `WatsonxStreamingChatModel`, `WatsonxDeploymentChatModel`, `WatsonxDeploymentStreamingChatModel`, `WatsonxGatewayChatModel` and `WatsonxGatewayStreamingChatModel` - support **LangChain4j Tools**, allowing the model to call Java methods annotated with `@Tool`.
 
 Here’s an example using the synchronous model (`WatsonxChatModel`), but the same approach applies to the streaming and to the deployment/gateway variants.
 
@@ -470,7 +471,7 @@ There are two main configuration modes:
 - **`ExtractionTags`** → for models that return reasoning and response in the same text block (e.g **ibm/granite-3-3-8b-instruct**).  
 - **`ThinkingEffort`** → for models that already separate reasoning and response automatically (e.g **openai/gpt-oss-120b**).  
 
-> The `thinking(...)` builder method is available on `WatsonxChatModel`, `WatsonxStreamingChatModel`, `WatsonxDeploymentChatModel` and `WatsonxDeploymentStreamingChatModel`. The Model Gateway does not accept it: use [`reasoningEffort(...)`](#gateway-only-parameters) on the gateway models instead.
+> The `thinking(...)` builder method is available on `WatsonxChatModel`, `WatsonxStreamingChatModel`, `WatsonxDeploymentChatModel` and `WatsonxDeploymentStreamingChatModel`. The Model Gateway does not accept it, so use [`reasoningEffort(...)`](#gateway-only-parameters) on the gateway models instead.
 
 ### Models that return reasoning and response together
 
@@ -479,8 +480,8 @@ The tags define XML-like markers used to separate the reasoning from the final r
 
 **Example tags:**
 
-- **Reasoning tag:** `<think>` — contains the model's internal reasoning.  
-- **Response tag:** `<response>` — contains the user-facing answer.  
+- **Reasoning tag:** `<think>` - contains the model's internal reasoning.  
+- **Response tag:** `<response>` - contains the user-facing answer.  
 
 #### Behavior
 
@@ -598,6 +599,45 @@ var models = modelCatalog.listModels();
 
 > 🔗 [SDK foundation model service](https://ibm.github.io/watsonx-ai-java-sdk/services/foundation-model-service)
 
+## WatsonxGatewayModelCatalog
+
+The `WatsonxGatewayModelCatalog` is the [Model Gateway](#model-gateway) counterpart of `WatsonxModelCatalog`. Instead of listing the foundation models hosted by watsonx.ai, it lists the models configured in the gateway, aggregated across all the providers registered in it. It also implements the LangChain4j `ModelCatalog` interface.
+
+The `name()` of every returned `ModelDescription` is the identifier to pass to `WatsonxGatewayChatModel.modelName(...)` and `WatsonxGatewayStreamingChatModel.modelName(...)`. It is the model **alias** when the gateway administrator defined one, otherwise the provider-side model id.
+
+### Example
+
+```java
+import dev.langchain4j.model.catalog.ModelCatalog;
+import dev.langchain4j.model.catalog.ModelDescription;
+import dev.langchain4j.model.watsonx.WatsonxGatewayModelCatalog;
+import com.ibm.watsonx.ai.CloudRegion;
+
+ModelCatalog modelCatalog = WatsonxGatewayModelCatalog.builder()
+    .baseUrl(CloudRegion.FRANKFURT)
+    .apiKey("your-api-key")
+    .build();
+
+for (ModelDescription model : modelCatalog.listModels()) {
+    System.out.println(model.name() + " (" + model.owner() + ")");
+}
+// → gpt-4o (openai)
+// → claude-3-5-sonnet (anthropic)
+```
+
+### How the gateway models are mapped
+
+| `ModelDescription` | Gateway field | Notes |
+|---|---|---|
+| `name()` | `alias`, or `id` when there is no alias | the id to use with the gateway chat models |
+| `displayName()` | same as `name()` | the gateway has no separate label |
+| `description()` | `description` | user-defined, `null` unless the administrator set it |
+| `owner()` | `owned_by` | provider, e.g. `openai` |
+| `createdAt()` | `created` | Unix timestamp of the *gateway configuration*, not of the model release |
+| `type()` | - | always `ModelType.CHAT` because the gateway does not expose model capabilities |
+| `maxInputTokens()` | `metadata.context_window` | `null` when the administrator did not configure the metadata |
+| `maxOutputTokens()` | - | always `null`, the gateway does not return it |
+
 ## WatsonxTokenCountEstimator
 
 The `WatsonxTokenCountEstimator` implements the LangChain4j `TokenCountEstimator` interface by calling the watsonx.ai
@@ -622,7 +662,7 @@ int tokenCount = tokenCountEstimator.estimateTokenCountInText("Hello from watson
 ```
 
 > **Note:** every estimate is a remote call. `estimateTokenCountInMessage(...)` also counts the thinking text and the
-> tool execution requests of an `AiMessage`; image, audio, PDF and video contents are not supported.
+> tool execution requests of an `AiMessage`. Image, audio, PDF and video contents are not supported.
 
 > 🔗 [SDK tokenization service](https://ibm.github.io/watsonx-ai-java-sdk/services/tokenization-service)
 

@@ -228,7 +228,7 @@ public class WatsonxStreamingChatModelTest {
                 assertNull(parameters.responseFormat());
                 assertNull(parameters.seed());
                 assertEquals("spaceId", parameters.spaceId());
-                assertEquals(List.of(), parameters.stop());
+                assertNull(parameters.stop());
                 assertNull(parameters.temperature());
                 assertNull(parameters.timeLimit());
                 assertNull(parameters.toolChoice());
@@ -565,7 +565,7 @@ public class WatsonxStreamingChatModelTest {
                 assertNull(parameters.responseFormat());
                 assertNull(parameters.seed());
                 assertEquals("spaceId", parameters.spaceId());
-                assertEquals(List.of(), parameters.stop());
+                assertNull(parameters.stop());
                 assertNull(parameters.temperature());
                 assertNull(parameters.timeLimit());
                 assertNull(parameters.toolChoice());

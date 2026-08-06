@@ -5,13 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.fail;
-import java.net.URI;
-import java.time.Duration;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import org.junit.jupiter.api.Test;
-import org.skyscreamer.jsonassert.JSONAssert;
+
 import com.ibm.watsonx.ai.chat.ChatResponse.ResultChoice;
 import com.ibm.watsonx.ai.chat.TextChatResponse;
 import com.ibm.watsonx.ai.chat.model.AssistantMessage;
@@ -46,6 +40,13 @@ import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.output.FinishReason;
+import java.net.URI;
+import java.time.Duration;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import org.junit.jupiter.api.Test;
+import org.skyscreamer.jsonassert.JSONAssert;
 
 public class ConverterTest {
 
@@ -373,6 +374,17 @@ public class ConverterTest {
     }
 
     @Test
+    void testToChatParameters_withoutStopSequences() {
+        assertNull(Converter.toChatParameters(
+                        WatsonxChatRequestParameters.builder().build())
+                .stop());
+        assertNull(Converter.toChatParameters(WatsonxChatRequestParameters.builder()
+                        .stopSequences(List.of())
+                        .build())
+                .stop());
+    }
+
+    @Test
     void testToChatParameters_withInvalidToolChoice() {
         assertThrows(
                 IllegalArgumentException.class,
@@ -526,6 +538,19 @@ public class ConverterTest {
 
         var p = Converter.toModelGatewayParameters(parameters);
         assertEquals("none", p.toolChoiceOption());
+    }
+
+    @Test
+    void testToModelGatewayParameters_withoutStopSequences() {
+        // The Model Gateway rejects an empty "stop" array with "Field validation for 'Sequences' failed on the
+        // 'min' tag", so it must not be sent.
+        assertNull(Converter.toModelGatewayParameters(
+                        WatsonxGatewayChatRequestParameters.builder().build())
+                .stop());
+        assertNull(Converter.toModelGatewayParameters(WatsonxGatewayChatRequestParameters.builder()
+                        .stopSequences(List.of())
+                        .build())
+                .stop());
     }
 
     @Test

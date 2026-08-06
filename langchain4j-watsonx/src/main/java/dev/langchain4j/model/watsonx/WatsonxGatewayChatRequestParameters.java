@@ -1,16 +1,17 @@
 package dev.langchain4j.model.watsonx;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import java.time.Duration;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+
 import com.ibm.watsonx.ai.gateway.chat.ModelGatewayParameters.Cache;
 import com.ibm.watsonx.ai.gateway.chat.ModelGatewayParameters.ReasoningEffort;
 import com.ibm.watsonx.ai.gateway.chat.ModelGatewayParameters.Router;
 import com.ibm.watsonx.ai.gateway.chat.ModelGatewayParameters.ServiceTier;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
+import java.time.Duration;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
 public class WatsonxGatewayChatRequestParameters extends DefaultChatRequestParameters {
 
