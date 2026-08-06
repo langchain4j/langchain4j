@@ -2,6 +2,7 @@ package dev.langchain4j.model.watsonx;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -40,6 +41,7 @@ import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
+import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
@@ -588,6 +590,63 @@ public class WatsonxGatewayChatModelTest {
 
             verify(mockModelGatewayServiceBuilder).authenticator(authenticator);
             verify(mockModelGatewayServiceBuilder, never()).apiKey(any());
+        });
+    }
+
+    @Test
+    void should_do_chat_with_strict_json_schema() {
+
+        var resultMessage = new ResultMessage(AssistantMessage.ROLE, "Hello", null, null, null);
+        var resultChoice = new ResultChoice(0, resultMessage, "stop");
+        chatResponse.choices(List.of(resultChoice));
+
+        when(mockModelGatewayService.chat(chatRequestCaptor.capture())).thenReturn(chatResponse.build());
+
+        var responseFormat = ResponseFormat.builder()
+                .type(ResponseFormatType.JSON)
+                .jsonSchema(JsonSchema.builder()
+                        .name("test")
+                        .rootElement(JsonObjectSchema.builder()
+                                .addStringProperty("content")
+                                .addBooleanProperty("flag")
+                                .required("content")
+                                .build())
+                        .build())
+                .build();
+
+        withModelGatewayServiceMock(() -> {
+            var chatModel = WatsonxGatewayChatModel.builder()
+                    .baseUrl("https://test.com")
+                    .modelName("gpt-4o")
+                    .apiKey("api-key")
+                    .responseFormat(responseFormat)
+                    .build();
+
+            chatModel.chat("hello");
+            var jsonSchema = chatRequestCaptor.getValue().parameters().jsonSchema();
+            var schema = assertInstanceOf(Map.class, jsonSchema.schema());
+
+            assertFalse(jsonSchema.strict());
+            assertEquals(List.of("content"), schema.get("required"));
+            assertFalse(schema.containsKey("additionalProperties"));
+        });
+
+        withModelGatewayServiceMock(() -> {
+            var chatModel = WatsonxGatewayChatModel.builder()
+                    .baseUrl("https://test.com")
+                    .modelName("gpt-4o")
+                    .apiKey("api-key")
+                    .responseFormat(responseFormat)
+                    .strictJsonSchema(true)
+                    .build();
+
+            chatModel.chat("hello");
+            var jsonSchema = chatRequestCaptor.getValue().parameters().jsonSchema();
+            var schema = assertInstanceOf(Map.class, jsonSchema.schema());
+
+            assertTrue(jsonSchema.strict());
+            assertEquals(List.of("content", "flag"), schema.get("required"));
+            assertEquals(false, schema.get("additionalProperties"));
         });
     }
 

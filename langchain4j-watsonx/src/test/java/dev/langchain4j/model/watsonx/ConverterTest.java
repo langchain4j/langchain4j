@@ -36,7 +36,9 @@ import dev.langchain4j.internal.JsonSchemaElementUtils;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonRawSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
+import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.output.FinishReason;
@@ -314,7 +316,7 @@ public class ConverterTest {
                 .repetitionPenalty(1.2)
                 .build();
 
-        var p = Converter.toChatParameters(parameters);
+        var p = Converter.toChatParameters(parameters, false);
         assertEquals(0.1, p.frequencyPenalty());
         assertEquals(0, p.maxCompletionTokens());
         assertEquals("modelName", p.modelId());
@@ -347,7 +349,7 @@ public class ConverterTest {
                         ToolSpecification.builder().name("toolChoiceName").build())
                 .build();
 
-        var p = Converter.toChatParameters(parameters);
+        var p = Converter.toChatParameters(parameters, false);
         assertEquals("required", p.toolChoiceOption());
 
         parameters = WatsonxChatRequestParameters.builder()
@@ -357,7 +359,7 @@ public class ConverterTest {
                         ToolSpecification.builder().name("toolChoiceName").build())
                 .build();
 
-        p = Converter.toChatParameters(parameters);
+        p = Converter.toChatParameters(parameters, false);
         assertNull(p.toolChoiceOption());
         assertEquals("function", p.toolChoice().get("type"));
         assertEquals("toolChoiceName", ((Map) p.toolChoice().get("function")).get("name"));
@@ -369,18 +371,20 @@ public class ConverterTest {
                 .toolChoice(ToolChoice.NONE)
                 .build();
 
-        var p = Converter.toChatParameters(parameters);
+        var p = Converter.toChatParameters(parameters, false);
         assertEquals("none", p.toolChoiceOption());
     }
 
     @Test
     void testToChatParameters_withoutStopSequences() {
         assertNull(Converter.toChatParameters(
-                        WatsonxChatRequestParameters.builder().build())
+                        WatsonxChatRequestParameters.builder().build(), false)
                 .stop());
-        assertNull(Converter.toChatParameters(WatsonxChatRequestParameters.builder()
-                        .stopSequences(List.of())
-                        .build())
+        assertNull(Converter.toChatParameters(
+                        WatsonxChatRequestParameters.builder()
+                                .stopSequences(List.of())
+                                .build(),
+                        false)
                 .stop());
     }
 
@@ -388,33 +392,42 @@ public class ConverterTest {
     void testToChatParameters_withInvalidToolChoice() {
         assertThrows(
                 IllegalArgumentException.class,
-                () -> Converter.toChatParameters(WatsonxChatRequestParameters.builder()
-                        .toolChoice(ToolChoice.REQUIRED)
-                        .build()));
+                () -> Converter.toChatParameters(
+                        WatsonxChatRequestParameters.builder()
+                                .toolChoice(ToolChoice.REQUIRED)
+                                .build(),
+                        false));
 
         assertThrows(
                 IllegalArgumentException.class,
-                () -> Converter.toChatParameters(WatsonxChatRequestParameters.builder()
-                        .toolChoice(ToolChoice.REQUIRED)
-                        .toolChoiceName("toolChoiceName")
-                        .build()));
+                () -> Converter.toChatParameters(
+                        WatsonxChatRequestParameters.builder()
+                                .toolChoice(ToolChoice.REQUIRED)
+                                .toolChoiceName("toolChoiceName")
+                                .build(),
+                        false));
 
         assertThrows(
                 IllegalArgumentException.class,
-                () -> Converter.toChatParameters(WatsonxChatRequestParameters.builder()
-                        .toolChoice(ToolChoice.REQUIRED)
-                        .toolChoiceName("toolChoiceName")
-                        .toolSpecifications(List.of())
-                        .build()));
+                () -> Converter.toChatParameters(
+                        WatsonxChatRequestParameters.builder()
+                                .toolChoice(ToolChoice.REQUIRED)
+                                .toolChoiceName("toolChoiceName")
+                                .toolSpecifications(List.of())
+                                .build(),
+                        false));
 
         assertThrows(
                 IllegalArgumentException.class,
-                () -> Converter.toChatParameters(WatsonxChatRequestParameters.builder()
-                        .toolChoice(ToolChoice.REQUIRED)
-                        .toolChoiceName("toolChoiceName")
-                        .toolSpecifications(
-                                ToolSpecification.builder().name("notMatch").build())
-                        .build()));
+                () -> Converter.toChatParameters(
+                        WatsonxChatRequestParameters.builder()
+                                .toolChoice(ToolChoice.REQUIRED)
+                                .toolChoiceName("toolChoiceName")
+                                .toolSpecifications(ToolSpecification.builder()
+                                        .name("notMatch")
+                                        .build())
+                                .build(),
+                        false));
     }
 
     @Test
@@ -423,7 +436,7 @@ public class ConverterTest {
                 .responseFormat(ResponseFormat.JSON)
                 .build();
 
-        var p = Converter.toChatParameters(parameters);
+        var p = Converter.toChatParameters(parameters, false);
         assertEquals("json_object", p.responseFormat());
 
         parameters = WatsonxChatRequestParameters.builder()
@@ -435,10 +448,10 @@ public class ConverterTest {
                         .build())
                 .build();
 
-        p = Converter.toChatParameters(parameters);
+        p = Converter.toChatParameters(parameters, false);
         assertEquals("json_schema", p.responseFormat());
         assertEquals("test", p.jsonSchema().name());
-        assertEquals(true, p.jsonSchema().strict());
+        assertEquals(false, p.jsonSchema().strict());
         JSONAssert.assertEquals("""
                                 {
                                     "type" : "object",
@@ -449,6 +462,86 @@ public class ConverterTest {
                                     },
                                     required : [ ]
                                 }""", Json.toJson(p.jsonSchema().schema()), true);
+    }
+
+    @Test
+    void testToChatParameters_withStrictJsonSchema() throws Exception {
+        var parameters = WatsonxChatRequestParameters.builder()
+                .responseFormat(JsonSchema.builder()
+                        .name("test")
+                        .rootElement(JsonObjectSchema.builder()
+                                .addStringProperty("content")
+                                .addBooleanProperty("flag")
+                                .required("content")
+                                .build())
+                        .build())
+                .build();
+
+        var p = Converter.toChatParameters(parameters, true);
+        assertEquals("json_schema", p.responseFormat());
+        assertEquals("test", p.jsonSchema().name());
+        assertEquals(true, p.jsonSchema().strict());
+        JSONAssert.assertEquals("""
+                {
+                    "type" : "object",
+                    "properties" : {
+                        "content" : {
+                            "type" : "string"
+                        },
+                        "flag" : {
+                            "type" : [ "boolean", "null" ]
+                        }
+                    },
+                    "required" : [ "content", "flag" ],
+                    "additionalProperties" : false
+                }""", Json.toJson(p.jsonSchema().schema()), true);
+    }
+
+    @Test
+    void testToChatParameters_withRawJsonSchema() throws Exception {
+        var rawSchema = """
+                {
+                    "type" : "object",
+                    "properties" : {
+                        "content" : {
+                            "type" : "string"
+                        }
+                    },
+                    "required" : [ "content" ],
+                    "additionalProperties" : true
+                }""";
+
+        var parameters = WatsonxChatRequestParameters.builder()
+                .responseFormat(JsonSchema.builder()
+                        .name("test")
+                        .rootElement(JsonRawSchema.from(rawSchema))
+                        .build())
+                .build();
+
+        for (boolean strict : List.of(true, false)) {
+            var p = Converter.toChatParameters(parameters, strict);
+            assertEquals("json_schema", p.responseFormat());
+            assertEquals(strict, p.jsonSchema().strict());
+            JSONAssert.assertEquals(rawSchema, Json.toJson(p.jsonSchema().schema()), true);
+        }
+    }
+
+    @Test
+    void testToChatParameters_withInvalidJsonSchemaRootElement() {
+        var parameters = WatsonxChatRequestParameters.builder()
+                .responseFormat(JsonSchema.builder()
+                        .name("test")
+                        .rootElement(JsonStringSchema.builder().build())
+                        .build())
+                .build();
+
+        var exception =
+                assertThrows(IllegalArgumentException.class, () -> Converter.toChatParameters(parameters, false));
+
+        assertEquals(
+                "The root element of the JSON Schema must be either a JsonObjectSchema or a JsonRawSchema, but it was: "
+                        + JsonStringSchema.class,
+                exception.getMessage());
     }
 
     @Test
@@ -480,7 +573,7 @@ public class ConverterTest {
                 .metadata(Map.of("k", "v"))
                 .build();
 
-        var p = Converter.toModelGatewayParameters(parameters);
+        var p = Converter.toModelGatewayParameters(parameters, false);
         assertEquals(0.1, p.frequencyPenalty());
         assertEquals(0, p.maxCompletionTokens());
         assertEquals("modelName", p.modelId());
@@ -514,7 +607,7 @@ public class ConverterTest {
                         ToolSpecification.builder().name("toolChoiceName").build())
                 .build();
 
-        var p = Converter.toModelGatewayParameters(parameters);
+        var p = Converter.toModelGatewayParameters(parameters, false);
         assertEquals("required", p.toolChoiceOption());
 
         parameters = WatsonxGatewayChatRequestParameters.builder()
@@ -524,7 +617,7 @@ public class ConverterTest {
                         ToolSpecification.builder().name("toolChoiceName").build())
                 .build();
 
-        p = Converter.toModelGatewayParameters(parameters);
+        p = Converter.toModelGatewayParameters(parameters, false);
         assertNull(p.toolChoiceOption());
         assertEquals("function", p.toolChoice().get("type"));
         assertEquals("toolChoiceName", ((Map) p.toolChoice().get("function")).get("name"));
@@ -536,7 +629,7 @@ public class ConverterTest {
                 .toolChoice(ToolChoice.NONE)
                 .build();
 
-        var p = Converter.toModelGatewayParameters(parameters);
+        var p = Converter.toModelGatewayParameters(parameters, false);
         assertEquals("none", p.toolChoiceOption());
     }
 
@@ -545,11 +638,13 @@ public class ConverterTest {
         // The Model Gateway rejects an empty "stop" array with "Field validation for 'Sequences' failed on the
         // 'min' tag", so it must not be sent.
         assertNull(Converter.toModelGatewayParameters(
-                        WatsonxGatewayChatRequestParameters.builder().build())
+                        WatsonxGatewayChatRequestParameters.builder().build(), false)
                 .stop());
-        assertNull(Converter.toModelGatewayParameters(WatsonxGatewayChatRequestParameters.builder()
-                        .stopSequences(List.of())
-                        .build())
+        assertNull(Converter.toModelGatewayParameters(
+                        WatsonxGatewayChatRequestParameters.builder()
+                                .stopSequences(List.of())
+                                .build(),
+                        false)
                 .stop());
     }
 
@@ -557,33 +652,42 @@ public class ConverterTest {
     void testToModelGatewayParameters_withInvalidToolChoice() {
         assertThrows(
                 IllegalArgumentException.class,
-                () -> Converter.toModelGatewayParameters(WatsonxGatewayChatRequestParameters.builder()
-                        .toolChoice(ToolChoice.REQUIRED)
-                        .build()));
+                () -> Converter.toModelGatewayParameters(
+                        WatsonxGatewayChatRequestParameters.builder()
+                                .toolChoice(ToolChoice.REQUIRED)
+                                .build(),
+                        false));
 
         assertThrows(
                 IllegalArgumentException.class,
-                () -> Converter.toModelGatewayParameters(WatsonxGatewayChatRequestParameters.builder()
-                        .toolChoice(ToolChoice.REQUIRED)
-                        .toolChoiceName("toolChoiceName")
-                        .build()));
+                () -> Converter.toModelGatewayParameters(
+                        WatsonxGatewayChatRequestParameters.builder()
+                                .toolChoice(ToolChoice.REQUIRED)
+                                .toolChoiceName("toolChoiceName")
+                                .build(),
+                        false));
 
         assertThrows(
                 IllegalArgumentException.class,
-                () -> Converter.toModelGatewayParameters(WatsonxGatewayChatRequestParameters.builder()
-                        .toolChoice(ToolChoice.REQUIRED)
-                        .toolChoiceName("toolChoiceName")
-                        .toolSpecifications(List.of())
-                        .build()));
+                () -> Converter.toModelGatewayParameters(
+                        WatsonxGatewayChatRequestParameters.builder()
+                                .toolChoice(ToolChoice.REQUIRED)
+                                .toolChoiceName("toolChoiceName")
+                                .toolSpecifications(List.of())
+                                .build(),
+                        false));
 
         assertThrows(
                 IllegalArgumentException.class,
-                () -> Converter.toModelGatewayParameters(WatsonxGatewayChatRequestParameters.builder()
-                        .toolChoice(ToolChoice.REQUIRED)
-                        .toolChoiceName("toolChoiceName")
-                        .toolSpecifications(
-                                ToolSpecification.builder().name("notMatch").build())
-                        .build()));
+                () -> Converter.toModelGatewayParameters(
+                        WatsonxGatewayChatRequestParameters.builder()
+                                .toolChoice(ToolChoice.REQUIRED)
+                                .toolChoiceName("toolChoiceName")
+                                .toolSpecifications(ToolSpecification.builder()
+                                        .name("notMatch")
+                                        .build())
+                                .build(),
+                        false));
     }
 
     @Test
@@ -592,7 +696,7 @@ public class ConverterTest {
                 .responseFormat(ResponseFormat.JSON)
                 .build();
 
-        var p = Converter.toModelGatewayParameters(parameters);
+        var p = Converter.toModelGatewayParameters(parameters, false);
         assertEquals("json_object", p.responseFormat());
 
         parameters = WatsonxGatewayChatRequestParameters.builder()
@@ -604,10 +708,10 @@ public class ConverterTest {
                         .build())
                 .build();
 
-        p = Converter.toModelGatewayParameters(parameters);
+        p = Converter.toModelGatewayParameters(parameters, false);
         assertEquals("json_schema", p.responseFormat());
         assertEquals("test", p.jsonSchema().name());
-        assertEquals(true, p.jsonSchema().strict());
+        assertEquals(false, p.jsonSchema().strict());
         JSONAssert.assertEquals("""
                                 {
                                     "type" : "object",
@@ -618,6 +722,57 @@ public class ConverterTest {
                                     },
                                     required : [ ]
                                 }""", Json.toJson(p.jsonSchema().schema()), true);
+    }
+
+    @Test
+    void testToModelGatewayParameters_withStrictJsonSchema() throws Exception {
+        var parameters = WatsonxGatewayChatRequestParameters.builder()
+                .responseFormat(JsonSchema.builder()
+                        .name("test")
+                        .rootElement(JsonObjectSchema.builder()
+                                .addStringProperty("content")
+                                .addBooleanProperty("flag")
+                                .required("content")
+                                .build())
+                        .build())
+                .build();
+
+        var p = Converter.toModelGatewayParameters(parameters, true);
+        assertEquals("json_schema", p.responseFormat());
+        assertEquals("test", p.jsonSchema().name());
+        assertEquals(true, p.jsonSchema().strict());
+        JSONAssert.assertEquals("""
+                {
+                    "type" : "object",
+                    "properties" : {
+                        "content" : {
+                            "type" : "string"
+                        },
+                        "flag" : {
+                            "type" : [ "boolean", "null" ]
+                        }
+                    },
+                    "required" : [ "content", "flag" ],
+                    "additionalProperties" : false
+                }""", Json.toJson(p.jsonSchema().schema()), true);
+    }
+
+    @Test
+    void testToModelGatewayParameters_withInvalidJsonSchemaRootElement() {
+        var parameters = WatsonxGatewayChatRequestParameters.builder()
+                .responseFormat(JsonSchema.builder()
+                        .name("test")
+                        .rootElement(JsonStringSchema.builder().build())
+                        .build())
+                .build();
+
+        var exception = assertThrows(
+                IllegalArgumentException.class, () -> Converter.toModelGatewayParameters(parameters, false));
+
+        assertEquals(
+                "The root element of the JSON Schema must be either a JsonObjectSchema or a JsonRawSchema, but it was: "
+                        + JsonStringSchema.class,
+                exception.getMessage());
     }
 
     @Test

@@ -34,6 +34,8 @@ import dev.langchain4j.internal.JsonSchemaElementUtils;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ToolChoice;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonRawSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.model.chat.response.PartialToolCall;
@@ -139,10 +141,10 @@ class Converter {
                 .build();
     }
 
-    static ChatParameters toChatParameters(ChatRequestParameters parameters) {
+    static ChatParameters toChatParameters(ChatRequestParameters parameters, boolean strictJsonSchema) {
 
         ChatParameters.Builder builder = ChatParameters.builder();
-        applyBaseParameters(builder, parameters);
+        applyBaseParameters(builder, parameters, strictJsonSchema);
 
         if (parameters instanceof WatsonxChatRequestParameters watsonxParameters) {
             builder.logitBias(watsonxParameters.logitBias());
@@ -163,10 +165,10 @@ class Converter {
         return builder.build();
     }
 
-    static ModelGatewayParameters toModelGatewayParameters(ChatRequestParameters parameters) {
+    static ModelGatewayParameters toModelGatewayParameters(ChatRequestParameters parameters, boolean strictJsonSchema) {
 
         ModelGatewayParameters.Builder builder = ModelGatewayParameters.builder();
-        applyBaseParameters(builder, parameters);
+        applyBaseParameters(builder, parameters, strictJsonSchema);
 
         if (parameters instanceof WatsonxGatewayChatRequestParameters gatewayParameters) {
             builder.logitBias(gatewayParameters.logitBias());
@@ -188,7 +190,8 @@ class Converter {
         return builder.build();
     }
 
-    private static void applyBaseParameters(BaseChatParameters.Builder<?> builder, ChatRequestParameters parameters) {
+    private static void applyBaseParameters(
+            BaseChatParameters.Builder<?> builder, ChatRequestParameters parameters, boolean strictJsonSchema) {
 
         builder.modelId(parameters.modelName());
         builder.frequencyPenalty(parameters.frequencyPenalty());
@@ -211,10 +214,17 @@ class Converter {
             switch (responseFormat.type()) {
                 case JSON -> {
                     if (nonNull(responseFormat.jsonSchema())) {
+
                         var name = responseFormat.jsonSchema().name();
-                        var jsonSchema = JsonSchemaElementUtils.toMap(
-                                responseFormat.jsonSchema().rootElement());
-                        builder.responseAsJsonSchema(name, jsonSchema, true);
+                        var rootElement = responseFormat.jsonSchema().rootElement();
+
+                        if (!(rootElement instanceof JsonObjectSchema || rootElement instanceof JsonRawSchema))
+                            throw new IllegalArgumentException(
+                                    "The root element of the JSON Schema must be either a JsonObjectSchema or a JsonRawSchema, but it was: "
+                                            + rootElement.getClass());
+
+                        var jsonSchema = JsonSchemaElementUtils.toMap(rootElement, strictJsonSchema);
+                        builder.responseAsJsonSchema(name, jsonSchema, strictJsonSchema);
                     } else {
                         builder.responseAsJson();
                     }

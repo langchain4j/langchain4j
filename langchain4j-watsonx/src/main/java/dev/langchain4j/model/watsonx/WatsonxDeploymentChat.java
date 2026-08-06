@@ -53,7 +53,7 @@ abstract class WatsonxDeploymentChat extends WatsonxChatBase<DeploymentChatReque
                 .deploymentId(deploymentId)
                 .messages(messages)
                 .tools(tools)
-                .parameters(Converter.toChatParameters(parameters));
+                .parameters(Converter.toChatParameters(parameters, strictJsonSchema));
 
         if (parameters instanceof WatsonxChatRequestParameters watsonxParameters
                 && nonNull(watsonxParameters.thinking())) {
