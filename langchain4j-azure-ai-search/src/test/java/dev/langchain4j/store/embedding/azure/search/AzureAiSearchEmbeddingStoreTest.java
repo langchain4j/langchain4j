@@ -26,6 +26,34 @@ class AzureAiSearchEmbeddingStoreTest {
     }
 
     @Test
+    void dimensions_should_not_be_required_when_the_index_is_not_created() {
+        AzureAiSearchEmbeddingStore store = AzureAiSearchEmbeddingStore.builder()
+                .endpoint(endpoint)
+                .apiKey("TEST")
+                .createOrUpdateIndex(false)
+                .indexName(indexName)
+                .build();
+
+        assertThat(store).isNotNull();
+    }
+
+    @Test
+    void dimensions_should_still_be_required_when_the_index_is_created() {
+        try {
+            AzureAiSearchEmbeddingStore.builder()
+                    .endpoint(endpoint)
+                    .apiKey("TEST")
+                    .createOrUpdateIndex(true)
+                    .indexName(indexName)
+                    .build();
+            fail("Expected IllegalArgumentException to be thrown");
+        } catch (IllegalArgumentException e) {
+            assertThat(e.getMessage())
+                    .isEqualTo("either dimensions or index must be set when createOrUpdateIndex is true");
+        }
+    }
+
+    @Test
     void index_and_index_name_should_not_both_be_defined() {
         try {
             new AzureAiSearchEmbeddingStore(endpoint, keyCredential, false, index, indexName, null);
