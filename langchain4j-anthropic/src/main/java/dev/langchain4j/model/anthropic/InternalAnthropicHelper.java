@@ -23,6 +23,7 @@ import dev.langchain4j.model.anthropic.internal.api.AnthropicTool;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -123,12 +124,15 @@ class InternalAnthropicHelper {
             Map<String, Object> customParameters,
             Boolean strictTools,
             boolean returnCacheDiagnostics,
-            String previousMessageId) {
+            String previousMessageId,
+            Duration cacheTtl) {
 
         AnthropicCreateMessageRequest.Builder requestBuilder = AnthropicCreateMessageRequest.builder().stream(stream)
                 .model(chatRequest.modelName())
-                .messages(toAnthropicMessages(chatRequest.messages(), sendThinking, midConversationSystemMessages))
-                .system(toAnthropicSystemPrompt(chatRequest.messages(), cacheType, midConversationSystemMessages))
+                .messages(toAnthropicMessages(
+                        chatRequest.messages(), sendThinking, midConversationSystemMessages, cacheTtl))
+                .system(toAnthropicSystemPrompt(
+                        chatRequest.messages(), cacheType, midConversationSystemMessages, cacheTtl))
                 .maxTokens(chatRequest.maxOutputTokens())
                 .stopSequences(chatRequest.stopSequences())
                 .temperature(chatRequest.temperature())
@@ -144,7 +148,7 @@ class InternalAnthropicHelper {
         }
         if (!isNullOrEmpty(chatRequest.toolSpecifications())) {
             tools.addAll(toAnthropicTools(
-                    chatRequest.toolSpecifications(), toolsCacheType, toolMetadataKeysToSend, strictTools));
+                    chatRequest.toolSpecifications(), toolsCacheType, toolMetadataKeysToSend, strictTools, cacheTtl));
         }
         if (!isNullOrEmpty(skills)) {
             AnthropicContainer container = toAnthropicContainer(skills);
