@@ -22,6 +22,7 @@ import org.mockito.Captor
 import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.whenever
+import java.util.concurrent.CompletableFuture.completedFuture
 import java.util.concurrent.Executors
 import kotlin.coroutines.CoroutineContext
 
@@ -54,14 +55,17 @@ internal class ChatModelExtensionsTest {
     }
 
     @Test
-    fun `chatAsync with ChatRequest should return ChatResponse`() =
-        runTest {
-            whenever(chatModel.chat(chatRequest)).thenReturn(chatResponse)
+    fun `chatAsync(request) resolves to the core CompletableFuture member`() {
+        // ChatModel.chatAsync(ChatRequest) is now a core member returning CompletableFuture.
+        // A same-signature member always wins over the suspend extension, so the bare single-arg
+        // call resolves to the member. The suspend coroutine wrapper is reached via the
+        // coroutineContext overload or the builder/lambda forms below.
+        whenever(chatModel.chatAsync(chatRequest)).thenReturn(completedFuture(chatResponse))
 
-            val response = chatModel.chatAsync(chatRequest)
+        val response = chatModel.chatAsync(chatRequest)
 
-            response shouldBe chatResponse
-        }
+        assertThat(response.get()).isEqualTo(chatResponse) // TODO check with kpavlov
+    }
 
     @Test
     fun `chatAsync with custom dispatcher`() =

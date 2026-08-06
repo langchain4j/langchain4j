@@ -55,6 +55,8 @@ public class SuccessfulHttpResponse {
         return body;
     }
 
+    // TODO equals, hashcode, toString?
+
     /**
      * Determines the charset to decode the body with, based on the {@code charset} parameter of the
      * {@code Content-Type} response header, falling back to UTF-8 when it is absent or unsupported.

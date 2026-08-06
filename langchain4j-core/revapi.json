@@ -1,0 +1,15 @@
+[
+  {
+    "extension": "revapi.differences",
+    "configuration": {
+      "ignore": true,
+      "differences": [
+        {
+          "code": "java.method.addedToInterface",
+          "new": "method java.util.concurrent.CompletableFuture<R> dev.langchain4j.guardrail.GuardrailExecutor<C extends dev.langchain4j.guardrail.config.GuardrailsConfig, P extends dev.langchain4j.guardrail.GuardrailRequest<P>, R extends dev.langchain4j.guardrail.GuardrailResult<R>, G extends dev.langchain4j.guardrail.Guardrail<P, R>, E extends dev.langchain4j.observability.api.event.GuardrailExecutedEvent<P, R, G>>::executeAsync(P)",
+          "justification": "GuardrailExecutor is a sealed interface that only permits AbstractGuardrailExecutor (implemented within langchain4j-core), so no external code can implement it. Adding the non-blocking executeAsync counterpart is therefore not a breaking change for API consumers; revapi does not model interface sealing."
+        }
+      ]
+    }
+  }
+]

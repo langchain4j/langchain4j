@@ -1,5 +1,8 @@
 package dev.langchain4j.rag.content.retriever;
 
+import dev.langchain4j.exception.AsyncNotSupportedException;
+import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
+import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureBetween;
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
@@ -8,6 +11,9 @@ import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.internal.CancellationChain;
+import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.request.EmbeddingInputType;
 import dev.langchain4j.model.embedding.request.EmbeddingRequest;
@@ -22,7 +28,9 @@ import dev.langchain4j.store.embedding.filter.Filter;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 /**
@@ -75,6 +83,11 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
 
     private final String displayName;
 
+    // When the embedding model or store is not genuinely async (its doEmbedAsync/searchAsync throws), retrieveAsync
+    // fails loudly by default (surfacing that exception) rather than silently offloading it. Set offloadBlocking(true)
+    // to instead offload only the blocking component to a shared virtual-thread executor.
+    private final boolean offloadBlocking;
+
     public EmbeddingStoreContentRetriever(EmbeddingStore<TextSegment> embeddingStore, EmbeddingModel embeddingModel) {
         this(
                 DEFAULT_DISPLAY_NAME,
@@ -121,6 +134,26 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
             Function<Query, Double> dynamicMinScore,
             Function<Query, Filter> dynamicFilter,
             EmbeddingInputType embeddingInputType) {
+        this(
+                displayName,
+                embeddingStore,
+                embeddingModel,
+                dynamicMaxResults,
+                dynamicMinScore,
+                dynamicFilter,
+                embeddingInputType,
+                false);
+    }
+
+    private EmbeddingStoreContentRetriever(
+            String displayName,
+            EmbeddingStore<TextSegment> embeddingStore,
+            EmbeddingModel embeddingModel,
+            Function<Query, Integer> dynamicMaxResults,
+            Function<Query, Double> dynamicMinScore,
+            Function<Query, Filter> dynamicFilter,
+            EmbeddingInputType embeddingInputType,
+            boolean offloadBlocking) {
         this.displayName = getOrDefault(displayName, DEFAULT_DISPLAY_NAME);
         this.embeddingStore = ensureNotNull(embeddingStore, "embeddingStore");
         this.embeddingModel = ensureNotNull(
@@ -129,6 +162,7 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
         this.minScoreProvider = getOrDefault(dynamicMinScore, DEFAULT_MIN_SCORE);
         this.filterProvider = getOrDefault(dynamicFilter, DEFAULT_FILTER);
         this.embeddingInputType = embeddingInputType;
+        this.offloadBlocking = offloadBlocking;
     }
 
     private static EmbeddingModel loadEmbeddingModel() {
@@ -158,6 +192,7 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
         private Function<Query, Double> dynamicMinScore;
         private Function<Query, Filter> dynamicFilter;
         private EmbeddingInputType embeddingInputType;
+        private boolean offloadBlocking;
 
         EmbeddingStoreContentRetrieverBuilder() {}
 
@@ -225,6 +260,22 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
             return this;
         }
 
+        /**
+         * Controls what {@link #retrieveAsync(Query)} does when the {@link EmbeddingModel} or {@link EmbeddingStore}
+         * is not genuinely asynchronous (does not implement {@code doEmbedAsync}/{@code searchAsync}).
+         * <p>
+         * By default ({@code false}), {@code retrieveAsync} fails with an {@link UnsupportedFeatureException} naming
+         * the blocking component, so a not-truly-async pipeline is never silently made "async" by parking a thread.
+         * Set to {@code true} to instead offload <i>only the blocking component(s)</i> - the embedding call and/or the
+         * store search - to a shared virtual-thread executor, while any async component keeps running on its native
+         * path. A deliberate opt-in to blocking-on-a-(virtual)-thread; has no effect on the synchronous
+         * {@link #retrieve(Query)}.
+         */
+        public EmbeddingStoreContentRetrieverBuilder offloadBlocking(boolean offloadBlocking) {
+            this.offloadBlocking = offloadBlocking;
+            return this;
+        }
+
         public EmbeddingStoreContentRetriever build() {
             return new EmbeddingStoreContentRetriever(
                     this.displayName,
@@ -233,7 +284,8 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
                     this.dynamicMaxResults,
                     this.dynamicMinScore,
                     this.dynamicFilter,
-                    this.embeddingInputType);
+                    this.embeddingInputType,
+                    this.offloadBlocking);
         }
     }
 
@@ -260,6 +312,89 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
 
         EmbeddingSearchResult<TextSegment> searchResult = embeddingStore.search(searchRequest);
 
+        return toContents(searchResult);
+    }
+
+    /**
+     * Non-blocking counterpart of {@link #retrieve(Query)} that never blocks the calling thread.
+     * <p>
+     * The query embedding and the vector-store search each run on their component's native async path
+     * ({@link EmbeddingModel#embedAsync(EmbeddingRequest)} / {@link EmbeddingStore#searchAsync(EmbeddingSearchRequest)}),
+     * so a genuinely async component runs asynchronously even when the other one is blocking (e.g. an async embedding
+     * model with a blocking vector store).
+     * <p>
+     * If a component is blocking (its async method is not implemented), the returned future fails with an
+     * {@link UnsupportedFeatureException} - the pipeline is not silently made "async" by parking a thread. Building
+     * the retriever with {@code offloadBlocking(true)} instead offloads <i>only the blocking component</i> to a shared
+     * virtual-thread executor, leaving any async component on its native path.
+     */
+    @Override
+    public CompletableFuture<List<Content>> retrieveAsync(Query query) {
+        CompletableFuture<List<Content>> result = new CompletableFuture<>();
+        CancellationChain chain = new CancellationChain(result);
+        chain.track(nativeOrOffload(() -> embedQueryAsync(query.text()), () -> embedQuery(query.text())))
+                .thenCompose(embedding -> {
+                    EmbeddingSearchRequest searchRequest = EmbeddingSearchRequest.builder()
+                            .query(query.text())
+                            .queryEmbedding(embedding)
+                            .maxResults(maxResultsProvider.apply(query))
+                            .minScore(minScoreProvider.apply(query))
+                            .filter(filterProvider.apply(query))
+                            .build();
+                    return chain.track(nativeOrOffload(
+                            () -> embeddingStore.searchAsync(searchRequest),
+                            () -> embeddingStore.search(searchRequest)));
+                })
+                .thenApply(this::toContents)
+                .whenComplete((contents, error) -> {
+                    if (error != null) {
+                        result.completeExceptionally(unwrapCompletionException(error));
+                    } else {
+                        result.complete(contents);
+                    }
+                });
+        return result;
+    }
+
+    /**
+     * Runs {@code asyncCall} (a component's async method). If it is blocking - i.e. it reports being unimplemented
+     * via an {@link AsyncNotSupportedException} - then either offload the corresponding blocking call to a shared
+     * virtual-thread executor (when {@code offloadBlocking}) or fail with an actionable message. Any other error
+     * propagates unchanged. No reflection: the (un)availability of async is discovered by calling it.
+     */
+    private <T> CompletableFuture<T> nativeOrOffload(Supplier<CompletableFuture<T>> asyncCall, Supplier<T> blockingCall) {
+        CompletableFuture<T> async;
+        try {
+            async = asyncCall.get();
+        } catch (Throwable t) {
+            async = CompletableFuture.failedFuture(t);
+        }
+        CompletableFuture<T> result = async.exceptionallyCompose(error -> {
+            Throwable cause = unwrapCompletionException(error);
+            if (cause instanceof AsyncNotSupportedException) {
+                if (offloadBlocking) {
+                    return CompletableFuture.supplyAsync(blockingCall, DefaultExecutorProvider.getDefaultExecutor());
+                }
+                return CompletableFuture.failedFuture(new UnsupportedFeatureException(cause.getMessage()
+                        + " Build the retriever with EmbeddingStoreContentRetriever.builder().offloadBlocking(true)"
+                        + " to offload this blocking component to a virtual-thread executor instead."));
+            }
+            return CompletableFuture.failedFuture(error);
+        });
+        // Link the caller-facing derived stage back to the raw call so cancellation reaches the in-flight I/O.
+        propagateCancellation(result, async);
+        return result;
+    }
+
+    private CompletableFuture<Embedding> embedQueryAsync(String text) {
+        EmbeddingRequest.Builder builder = EmbeddingRequest.builder().input(text);
+        if (embeddingInputType != null) {
+            builder.inputType(embeddingInputType);
+        }
+        return embeddingModel.embedAsync(builder.build()).thenApply(response -> response.embeddings().get(0));
+    }
+
+    private List<Content> toContents(EmbeddingSearchResult<TextSegment> searchResult) {
         return searchResult.matches().stream()
                 .map(embeddingMatch -> Content.from(
                         embeddingMatch.embedded(),

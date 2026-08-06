@@ -18,8 +18,8 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,19 +37,14 @@ public class StdioMcpTransport implements McpTransport {
     private static final Logger log = LoggerFactory.getLogger(StdioMcpTransport.class);
     private volatile McpOperationHandler messageHandler;
     private volatile ProcessStderrHandler stderrHandler;
-    private ExecutorService executorService;
-    private boolean shouldShutdownExecutorService;
+    private final Executor executor;
 
     public StdioMcpTransport(Builder builder) {
         this.command = builder.command;
         this.environment = builder.environment;
         this.logEvents = builder.logEvents;
         this.logger = builder.logger;
-        this.executorService =
-                getOrDefault(builder.executorService, DefaultExecutorProvider::getDefaultExecutorService);
-        // FIXME: are there actually any cases where we should shut down the executor service?
-        // the DefaultExecutorProvider always returns a single shared instance, so we can't shut it down
-        this.shouldShutdownExecutorService = false;
+        this.executor = getOrDefault(builder.executorService, DefaultExecutorProvider::getDefaultExecutor);
     }
 
     @Override
@@ -77,8 +72,8 @@ public class StdioMcpTransport implements McpTransport {
         jsonRpcIoHandler = new JsonRpcIoHandler(
                 process.getInputStream(), process.getOutputStream(), messageHandler::handle, logEvents, logger);
         stderrHandler = new ProcessStderrHandler(process);
-        executorService.submit(jsonRpcIoHandler);
-        executorService.submit(stderrHandler);
+        executor.execute(jsonRpcIoHandler);
+        executor.execute(stderrHandler);
     }
 
     @Override
@@ -165,17 +160,7 @@ public class StdioMcpTransport implements McpTransport {
     @Override
     public void close() throws IOException {
         stopCurrentProcess();
-        if (executorService != null && shouldShutdownExecutorService) {
-            executorService.shutdown();
-            try {
-                if (!executorService.awaitTermination(5, TimeUnit.SECONDS)) {
-                    executorService.shutdownNow();
-                }
-            } catch (InterruptedException e) {
-                executorService.shutdownNow();
-                Thread.currentThread().interrupt();
-            }
-        }
+        // the executor is shared (DefaultExecutorProvider) and host-owned, so it is intentionally not shut down here
     }
 
     public static Builder builder() {
@@ -228,10 +213,10 @@ public class StdioMcpTransport implements McpTransport {
 
         /**
          * Sets the {@link ExecutorService} to use for background I/O operations.
-         * If not provided, will use {@link DefaultExecutorProvider#getDefaultExecutorService()}.
+         * If not provided, will use {@link DefaultExecutorProvider#getDefaultExecutor()}.
          * <p>
          * Frameworks like Quarkus should provide their managed executor here.
-         * If an executor is provided, it will not be shut down when the transport is closed.
+         * The provided executor is never shut down when the transport is closed.
          *
          * @param executorService the executor service to use
          * @return {@code this}

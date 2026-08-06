@@ -1,6 +1,8 @@
 package dev.langchain4j.model.anthropic;
 
+import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptionsAsync;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.ModelProvider.ANTHROPIC;
@@ -42,6 +44,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
@@ -840,7 +843,35 @@ public class AnthropicChatModel implements ChatModel {
         AnthropicChatRequestParameters parameters = (AnthropicChatRequestParameters) chatRequest.parameters();
         validate(parameters);
 
-        AnthropicCreateMessageRequest anthropicRequest = createAnthropicRequest(
+        AnthropicCreateMessageRequest anthropicRequest = toAnthropicRequest(chatRequest, parameters);
+
+        ParsedAndRawResponse response =
+                withRetryMappingExceptions(() -> client.createMessageWithRawResponse(anthropicRequest), maxRetries);
+
+        return createChatResponse(response, getOrDefault(parameters.returnThinking(), false));
+    }
+
+    @Override
+    public CompletableFuture<ChatResponse> doChatAsync(ChatRequest chatRequest) {
+        AnthropicChatRequestParameters parameters = (AnthropicChatRequestParameters) chatRequest.parameters();
+        validate(parameters);
+
+        AnthropicCreateMessageRequest anthropicRequest = toAnthropicRequest(chatRequest, parameters);
+        boolean returnThinking = getOrDefault(parameters.returnThinking(), false);
+
+        CompletableFuture<ParsedAndRawResponse> rawFuture = withRetryMappingExceptionsAsync(
+                () -> client.createMessageWithRawResponseAsync(anthropicRequest), maxRetries);
+
+        CompletableFuture<ChatResponse> result =
+                rawFuture.thenApply(response -> createChatResponse(response, returnThinking));
+
+        propagateCancellation(result, rawFuture);
+        return result;
+    }
+
+    private AnthropicCreateMessageRequest toAnthropicRequest(
+            ChatRequest chatRequest, AnthropicChatRequestParameters parameters) {
+        return createAnthropicRequest(
                 chatRequest,
                 toThinking(parameters.thinkingType(), parameters.thinkingBudgetTokens(), this.thinkingDisplay),
                 getOrDefault(parameters.sendThinking(), true),
@@ -858,12 +889,6 @@ public class AnthropicChatModel implements ChatModel {
                 this.strictTools,
                 getOrDefault(parameters.returnCacheDiagnostics(), false),
                 parameters.previousMessageId());
-
-        ParsedAndRawResponse response =
-                withRetryMappingExceptions(() -> client.createMessageWithRawResponse(anthropicRequest), maxRetries);
-
-        boolean returnThinking = getOrDefault(parameters.returnThinking(), false);
-        return createChatResponse(response, returnThinking);
     }
 
     private ChatResponse createChatResponse(ParsedAndRawResponse parsedAndRawResponse, boolean returnThinking) {

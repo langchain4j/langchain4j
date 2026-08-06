@@ -1,10 +1,7 @@
 package dev.langchain4j.model.chat;
 
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.model.ModelProvider.OTHER;
-import static dev.langchain4j.model.chat.ChatModelListenerUtils.onRequest;
-import static dev.langchain4j.model.chat.ChatModelListenerUtils.onResponse;
-
+import dev.langchain4j.exception.AsyncNotSupportedException;
+import dev.langchain4j.internal.AsyncNotSupported;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.ModelProvider;
@@ -12,19 +9,21 @@ import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
-import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.chat.response.CompleteToolCall;
-import dev.langchain4j.model.chat.response.PartialResponse;
-import dev.langchain4j.model.chat.response.PartialResponseContext;
-import dev.langchain4j.model.chat.response.PartialThinking;
-import dev.langchain4j.model.chat.response.PartialThinkingContext;
-import dev.langchain4j.model.chat.response.PartialToolCall;
-import dev.langchain4j.model.chat.response.PartialToolCallContext;
-import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.chat.response.*;
+
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Flow.Publisher;
+import java.util.concurrent.Flow.Subscriber;
+import java.util.concurrent.Flow.Subscription;
+
+import static dev.langchain4j.internal.InternalFlowUtils.EMPTY_SUBSCRIPTION;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.model.ModelProvider.OTHER;
+import static dev.langchain4j.model.chat.ChatModelListenerUtils.onRequest;
+import static dev.langchain4j.model.chat.ChatModelListenerUtils.onResponse;
 
 /**
  * Represents a language model that has a chat API and can stream a response one token at a time.
@@ -126,6 +125,131 @@ public interface StreamingChatModel {
         throw new RuntimeException("Not implemented");
     }
 
+    /**
+     * Reactive entry point: sends a chat request and returns a {@link Publisher} of {@link ChatModelStreamingEvent}s.
+     * <p>
+     * The publisher is cold: each {@code subscribe()} call initiates a new LLM request.
+     * It emits events in this order:
+     * <ul>
+     *     <li>0..N {@link dev.langchain4j.model.chat.response.PartialThinking} (thinking/reasoning chunks),</li>
+     *     <li>0..N {@link dev.langchain4j.model.chat.response.PartialResponse} (text chunks),</li>
+     *     <li>0..N {@link dev.langchain4j.model.chat.response.PartialToolCall} (tool-call argument chunks),</li>
+     *     <li>0..N {@link dev.langchain4j.model.chat.response.CompleteToolCall} (assembled tool calls),</li>
+     *     <li>0..N {@link dev.langchain4j.model.chat.response.RawStreamingEvent} (provider-specific raw events,
+     *         interleaved with the above),</li>
+     *     <li>exactly one terminal {@link CompleteResponse} (wrapping the aggregated final {@link ChatResponse}),</li>
+     * </ul>
+     * followed by {@code onComplete}. On failure, {@code onError} is signaled after {@code onSubscribe}.
+     * <p>
+     * Registered {@link ChatModelListener}s are invoked: {@code onRequest} on each new subscription
+     * (just before the underlying request goes out), {@code onResponse} after the terminal
+     * {@link ChatResponse} is emitted, {@code onError} on failure.
+     * <p>
+     * If the {@link Subscriber} throws from {@code onNext} (or any other signal method), it violates the
+     * Reactive Streams contract (Rule 2.13): the stream is cancelled and no further events are delivered,
+     * and no {@link ChatModelListener} callback fires for it — neither {@code onResponse} nor
+     * {@code onError}. This differs from the handler-based
+     * {@link #chat(ChatRequest, StreamingChatResponseHandler)} path, which catches exceptions thrown from
+     * handler callbacks, reports them to {@code onError}, and keeps streaming.
+     * <p>
+     * Subscribers must be prepared to receive {@link ChatModelStreamingEvent} subtypes they do not recognize and
+     * ignore them. New event types may be introduced over time (and providers may surface unmapped events
+     * as {@link dev.langchain4j.model.chat.response.RawStreamingEvent}), so consuming this stream with an
+     * exhaustive type switch that lacks a default branch is unsafe.
+     * <p>
+     * <b>Demand and back-pressure.</b> This streams a finite, bounded-rate source — an LLM response over HTTP.
+     * Implementations are <b>not</b> required to propagate subscriber demand to the model: meaningfully
+     * throttling an LLM is impractical (its work and cost are incurred regardless of how fast the response is
+     * read, and stalling the transport to slow it down only risks provider/proxy idle timeouts). An
+     * implementation therefore typically consumes the response eagerly and relays events through a
+     * <b>bounded</b> internal buffer. A subscriber that requests fewer items than are produced may thus cause
+     * buffering and, once the buffer is exhausted, a terminal error. Subscribers should request liberally
+     * (e.g. {@code Long.MAX_VALUE}) and must <b>not</b> block or perform heavy work in {@code onNext} — offload
+     * it to another thread.
+     *
+     * @since 1.19.0
+     */
+    default Publisher<ChatModelStreamingEvent> chat(ChatRequest request) {
+
+        ChatRequest finalChatRequest = ChatRequest.builder()
+                .messages(request.messages())
+                .parameters(defaultRequestParameters().overrideWith(request.parameters()))
+                .build();
+
+        List<ChatModelListener> listeners = listeners();
+
+        ModelProvider provider = provider();
+
+        return new Publisher<ChatModelStreamingEvent>() {
+
+            @Override
+            public void subscribe(Subscriber<? super ChatModelStreamingEvent> downstream) {
+
+                Map<Object, Object> attributes = new ConcurrentHashMap<>();
+
+                Publisher<ChatModelStreamingEvent> innerPublisher;
+                try {
+                    onRequest(finalChatRequest, provider, attributes, listeners);
+                    innerPublisher = doChat(finalChatRequest);
+                } catch (Throwable error) {
+                    ChatModelListenerUtils.onError(error, finalChatRequest, provider, attributes, listeners);
+                    downstream.onSubscribe(EMPTY_SUBSCRIPTION);
+                    downstream.onError(error);
+                    return;
+                }
+
+                innerPublisher.subscribe(new Subscriber<>() {
+
+                    private ChatResponse completeResponse;
+
+                    @Override
+                    public void onSubscribe(Subscription subscription) {
+                        downstream.onSubscribe(subscription);
+                    }
+
+                    @Override
+                    public void onNext(ChatModelStreamingEvent event) {
+                        if (event instanceof CompleteResponse completeResponseEvent) {
+                            completeResponse = completeResponseEvent.chatResponse();
+                        }
+                        downstream.onNext(event);
+                    }
+
+                    @Override
+                    public void onError(Throwable throwable) {
+                        ChatModelListenerUtils.onError(throwable, finalChatRequest, provider, attributes, listeners);
+                        downstream.onError(throwable);
+                    }
+
+                    @Override
+                    public void onComplete() {
+                        if (completeResponse != null) {
+                            onResponse(completeResponse, finalChatRequest, provider, attributes, listeners);
+                        }
+                        downstream.onComplete();
+                    }
+                });
+            }
+        };
+    }
+
+    /**
+     * Provider-specific implementation of the reactive stream returned by {@link #chat(ChatRequest)} (which wraps
+     * it with {@link ChatModelListener} invocation). Implementations must honor the event ordering and the
+     * demand / back-pressure expectations documented on {@link #chat(ChatRequest)} — in particular, they
+     * typically consume the response eagerly and relay {@link ChatModelStreamingEvent}s through a bounded buffer rather
+     * than propagating subscriber demand to the model.
+     * <p>
+     * The default implementation returns an immediately-failing Publisher carrying {@link AsyncNotSupportedException} to signal that this model has no
+     * native reactive-streaming implementation; a provider that does not support reactive streaming leaves it
+     * unimplemented (consistent with {@code ChatModel#doChatAsync} and the other async defaults).
+     *
+     * @since 1.19.0
+     */
+    default Publisher<ChatModelStreamingEvent> doChat(ChatRequest chatRequest) {
+        return AsyncNotSupported.failingPublisher(getClass(), "doChat");
+    }
+
     default ChatRequestParameters defaultRequestParameters() {
         return DefaultChatRequestParameters.EMPTY;
     }
@@ -151,6 +275,79 @@ public interface StreamingChatModel {
         ChatRequest chatRequest = ChatRequest.builder().messages(messages).build();
 
         chat(chatRequest, handler);
+    }
+
+    /**
+     * Reactive convenience counterpart of {@link #chat(String, StreamingChatResponseHandler)}: returns a cold
+     * {@code Publisher} that streams the model's textual response to {@code userMessage}, token by token.
+     * <p>
+     * This is the streaming analog of the simplified {@link ChatModel#chat(String)} (which returns the response
+     * {@code String}): it emits only the text chunks ({@link PartialResponse#text()}), filtering out the other
+     * {@link ChatModelStreamingEvent}s of the underlying {@link #chat(ChatRequest)} stream. For the full event stream,
+     * use {@link #chat(ChatMessage...)} / {@link #chat(List)} / {@link #chat(ChatRequest)}.
+     *
+     * @since 1.19.0
+     */
+    default Publisher<String> chat(String userMessage) {
+
+        ChatRequest chatRequest =
+                ChatRequest.builder().messages(UserMessage.from(userMessage)).build();
+
+        return downstream -> chat(chatRequest).subscribe(new Subscriber<>() {
+
+            private Subscription subscription;
+
+            @Override
+            public void onSubscribe(Subscription subscription) {
+                this.subscription = subscription;
+                downstream.onSubscribe(subscription);
+            }
+
+            @Override
+            public void onNext(ChatModelStreamingEvent event) {
+                if (event instanceof PartialResponse partialResponse) {
+                    downstream.onNext(partialResponse.text());
+                } else {
+                    subscription.request(1);
+                }
+            }
+
+            @Override
+            public void onError(Throwable throwable) {
+                downstream.onError(throwable);
+            }
+
+            @Override
+            public void onComplete() {
+                downstream.onComplete();
+            }
+        });
+    }
+
+    /**
+     * Reactive convenience overload accepting the messages directly: returns a cold {@code Publisher} that streams
+     * the response to {@code messages}.
+     *
+     * @since 1.19.0
+     */
+    default Publisher<ChatModelStreamingEvent> chat(ChatMessage... messages) {
+
+        ChatRequest chatRequest = ChatRequest.builder().messages(messages).build();
+
+        return chat(chatRequest);
+    }
+
+    /**
+     * Reactive convenience counterpart of {@link #chat(List, StreamingChatResponseHandler)}: returns a cold
+     * {@code Publisher} that streams the response to {@code messages}.
+     *
+     * @since 1.19.0
+     */
+    default Publisher<ChatModelStreamingEvent> chat(List<ChatMessage> messages) {
+
+        ChatRequest chatRequest = ChatRequest.builder().messages(messages).build();
+
+        return chat(chatRequest);
     }
 
     default Set<Capability> supportedCapabilities() {

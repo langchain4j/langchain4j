@@ -25,6 +25,13 @@
             <artifactId>slf4j-api</artifactId>
         </dependency>
 
+        <!-- test: the shared non-blocking publisher TCK (AbstractHttpClientPublisherNonBlockingIT) uses BlockHound -->
+        <dependency>
+            <groupId>io.projectreactor.tools</groupId>
+            <artifactId>blockhound</artifactId>
+            <scope>test</scope>
+        </dependency>
+
     </dependencies>
 
     <build>

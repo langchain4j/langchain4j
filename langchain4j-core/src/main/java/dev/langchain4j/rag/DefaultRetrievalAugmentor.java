@@ -1,7 +1,11 @@
 package dev.langchain4j.rag;
 
+import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.internal.CancellationChain;
+import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.aggregator.ContentAggregator;
 import dev.langchain4j.rag.content.aggregator.DefaultContentAggregator;
@@ -15,6 +19,7 @@ import dev.langchain4j.rag.query.transformer.DefaultQueryTransformer;
 import dev.langchain4j.rag.query.transformer.QueryTransformer;
 
 import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -24,14 +29,18 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
+import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
+import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.util.Collections.emptyMap;
 import static java.util.Collections.singletonList;
 import static java.util.Collections.singletonMap;
 import static java.util.concurrent.CompletableFuture.allOf;
+import static java.util.concurrent.CompletableFuture.completedFuture;
 import static java.util.concurrent.CompletableFuture.supplyAsync;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.stream.Collectors.toMap;
@@ -98,6 +107,10 @@ import static java.util.stream.Collectors.toMap;
  * Otherwise, an {@link Executor} is used to parallelize the processing.
  * By default, a modified (keepAliveTime is 1 second instead of 60 seconds) {@link Executors#newCachedThreadPool()}
  * is used, but you can provide a custom {@link Executor} instance.
+ * <br>
+ * On the asynchronous {@code augmentAsync} path, a blocking stage that is offloaded (see {@code offloadBlocking})
+ * runs on the shared virtual-thread executor (non-pinning for I/O; the {@link dev.langchain4j.spi.ExecutorProvider}
+ * default), independently of the synchronous fan-out {@link Executor} above.
  *
  * @see DefaultQueryTransformer
  * @see DefaultQueryRouter
@@ -111,17 +124,28 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
     private final ContentAggregator contentAggregator;
     private final ContentInjector contentInjector;
     private final Executor executor;
+    private final boolean offloadBlocking;
 
     public DefaultRetrievalAugmentor(QueryTransformer queryTransformer,
                                      QueryRouter queryRouter,
                                      ContentAggregator contentAggregator,
                                      ContentInjector contentInjector,
                                      Executor executor) {
+        this(queryTransformer, queryRouter, contentAggregator, contentInjector, executor, false);
+    }
+
+    public DefaultRetrievalAugmentor(QueryTransformer queryTransformer,
+                                     QueryRouter queryRouter,
+                                     ContentAggregator contentAggregator,
+                                     ContentInjector contentInjector,
+                                     Executor executor,
+                                     boolean offloadBlocking) {
         this.queryTransformer = getOrDefault(queryTransformer, DefaultQueryTransformer::new);
         this.queryRouter = ensureNotNull(queryRouter, "queryRouter");
         this.contentAggregator = getOrDefault(contentAggregator, DefaultContentAggregator::new);
         this.contentInjector = getOrDefault(contentInjector, DefaultContentInjector::new);
         this.executor = getOrDefault(executor, DefaultRetrievalAugmentor::createDefaultExecutor);
+        this.offloadBlocking = offloadBlocking;
     }
 
     private static ExecutorService createDefaultExecutor() {
@@ -156,6 +180,117 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
             .chatMessage(augmentedChatMessage)
             .contents(contents)
             .build();
+    }
+
+    @Override
+    public CompletableFuture<AugmentationResult> augmentAsync(AugmentationRequest augmentationRequest) {
+        CompletableFuture<AugmentationResult> result = new CompletableFuture<>();
+        CancellationChain chain = new CancellationChain(result);
+        try {
+            ChatMessage chatMessage = augmentationRequest.chatMessage();
+            if (!(chatMessage instanceof UserMessage userMessage)) {
+                throw new IllegalArgumentException("Unsupported message type: " + chatMessage.type());
+            }
+            Query originalQuery = Query.from(userMessage.singleText(), augmentationRequest.metadata());
+
+            // Each stage runs on its component's native async path when available (query transformation, routing,
+            // retrieval and aggregation can call an LLM, an embedding model, a vector store, ...); a stage that is not
+            // async either offloads to the executor (offloadBlocking) or fails loudly - see nativeOrOffload. The stages
+            // are composed, not joined, so the caller thread is never blocked; cancelling the returned future cancels
+            // every in-flight stage via the CancellationChain (best-effort - see augmentAsync's javadoc).
+            chain.track(nativeOrOffload(
+                            () -> queryTransformer.transformAsync(originalQuery),
+                            () -> queryTransformer.transform(originalQuery)))
+                .thenCompose(queries -> processAsync(chain, queries))
+                .thenCompose(queryToContents -> chain.track(nativeOrOffload(
+                        () -> contentAggregator.aggregateAsync(queryToContents),
+                        () -> contentAggregator.aggregate(queryToContents))))
+                .thenApply(contents -> AugmentationResult.builder()
+                    .chatMessage(contentInjector.inject(contents, chatMessage))
+                    .contents(contents)
+                    .build())
+                .whenComplete((augmentationResult, error) -> {
+                    if (error != null) {
+                        result.completeExceptionally(unwrapCompletionException(error));
+                    } else {
+                        result.complete(augmentationResult);
+                    }
+                });
+        } catch (Throwable t) {
+            result.completeExceptionally(t);
+        }
+        return result;
+    }
+
+    private CompletableFuture<Map<Query, Collection<List<Content>>>> processAsync(
+        CancellationChain chain, Collection<Query> queries) {
+        if (queries.isEmpty()) {
+            return completedFuture(emptyMap());
+        }
+        // Preserve request order (LinkedHashMap) so aggregation sees queries in the same order as the sync path.
+        Map<Query, CompletableFuture<Collection<List<Content>>>> queryToFutureContents = new LinkedHashMap<>();
+        for (Query query : queries) {
+            CompletableFuture<Collection<List<Content>>> futureContents = chain.track(
+                            nativeOrOffload(() -> queryRouter.routeAsync(query), () -> queryRouter.route(query)))
+                    .thenCompose(retrievers -> retrieveFromAllAsync(chain, retrievers, query));
+            queryToFutureContents.put(query, futureContents);
+        }
+        return chain.track(allOf(queryToFutureContents.values().toArray(new CompletableFuture[0])))
+            .thenApply(ignored -> {
+                Map<Query, Collection<List<Content>>> queryToContents = new LinkedHashMap<>();
+                // join() never blocks here: allOf has already completed all futures.
+                queryToFutureContents.forEach((query, future) -> queryToContents.put(query, future.join()));
+                return queryToContents;
+            });
+    }
+
+    private CompletableFuture<Collection<List<Content>>> retrieveFromAllAsync(
+        CancellationChain chain, Collection<ContentRetriever> retrievers, Query query) {
+        List<CompletableFuture<List<Content>>> futureContents = retrievers.stream()
+            .map(retriever -> chain.track(retrieveOneAsync(retriever, query)))
+            .collect(Collectors.toList());
+
+        return chain.track(allOf(futureContents.toArray(new CompletableFuture[0])))
+            .thenApply(ignored -> futureContents.stream()
+                .map(CompletableFuture::join)
+                .collect(Collectors.toList()));
+    }
+
+    private CompletableFuture<List<Content>> retrieveOneAsync(ContentRetriever retriever, Query query) {
+        return nativeOrOffload(() -> retriever.retrieveAsync(query), () -> retriever.retrieve(query));
+    }
+
+    /**
+     * Runs a stage on its component's native async method. A stage that is not genuinely async (its {@code *Async}
+     * method reports being unimplemented via an {@link AsyncNotSupportedException}) is either offloaded - its
+     * blocking counterpart runs on the async offload executor (the shared virtual-thread executor by default) - when
+     * {@code offloadBlocking}, or fails with an actionable message. Any other error propagates unchanged. No
+     * reflection: async availability is discovered by calling it.
+     */
+    private <T> CompletableFuture<T> nativeOrOffload(Supplier<CompletableFuture<T>> asyncCall, Supplier<T> blockingCall) {
+        CompletableFuture<T> async;
+        try {
+            async = asyncCall.get();
+        } catch (Throwable t) {
+            async = CompletableFuture.failedFuture(t);
+        }
+        CompletableFuture<T> result = async.exceptionallyCompose(error -> {
+            Throwable cause = unwrapCompletionException(error);
+            if (cause instanceof AsyncNotSupportedException) {
+                if (offloadBlocking) {
+                    return supplyAsync(blockingCall, DefaultExecutorProvider.getDefaultExecutor());
+                }
+                return CompletableFuture.failedFuture(new UnsupportedFeatureException(cause.getMessage()
+                        + " The RAG pipeline is not fully asynchronous. Either use async-capable components, or build"
+                        + " this DefaultRetrievalAugmentor with offloadBlocking(true) to offload the blocking stage to"
+                        + " the configured executor."));
+            }
+            return CompletableFuture.failedFuture(error);
+        });
+        // Cancellation does not flow to the stages a future is derived from, so link the caller-facing derived stage
+        // back to the raw in-flight call - otherwise cancelling the pipeline never aborts the leaf I/O.
+        propagateCancellation(result, async);
+        return result;
     }
 
     private Map<Query, Collection<List<Content>>> process(Collection<Query> queries) {
@@ -222,6 +357,7 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
         private ContentAggregator contentAggregator;
         private ContentInjector contentInjector;
         private Executor executor;
+        private boolean offloadBlocking;
 
         DefaultRetrievalAugmentorBuilder() {
         }
@@ -256,8 +392,30 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
             return this;
         }
 
+        /**
+         * Controls what {@link #augmentAsync(AugmentationRequest)} does when a pipeline stage (query transformation,
+         * routing, retrieval or aggregation) is not genuinely asynchronous (its {@code *Async} method is not
+         * implemented).
+         * <p>
+         * By default ({@code false}), {@code augmentAsync} fails with an actionable error naming the blocking stage,
+         * so a not-truly-async pipeline is never silently made "async" by parking a thread. Set to {@code true} to
+         * instead offload the blocking stage to the shared virtual-thread executor (the
+         * {@link dev.langchain4j.spi.ExecutorProvider} default) - not the synchronous fan-out
+         * {@link #executor(Executor) executor}. Has no effect on the synchronous {@link #augment(AugmentationRequest)}.
+         */
+        public DefaultRetrievalAugmentorBuilder offloadBlocking(boolean offloadBlocking) {
+            this.offloadBlocking = offloadBlocking;
+            return this;
+        }
+
         public DefaultRetrievalAugmentor build() {
-            return new DefaultRetrievalAugmentor(this.queryTransformer, this.queryRouter, this.contentAggregator, this.contentInjector, this.executor);
+            return new DefaultRetrievalAugmentor(
+                    this.queryTransformer,
+                    this.queryRouter,
+                    this.contentAggregator,
+                    this.contentInjector,
+                    this.executor,
+                    this.offloadBlocking);
         }
     }
 }

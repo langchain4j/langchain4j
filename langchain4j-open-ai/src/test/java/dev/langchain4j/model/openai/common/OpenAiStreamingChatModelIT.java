@@ -1,12 +1,11 @@
 package dev.langchain4j.model.openai.common;
 
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
+import dev.langchain4j.model.chat.common.StreamingMode;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
-import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.openai.OpenAiChatRequestParameters;
 import dev.langchain4j.model.openai.OpenAiChatResponseMetadata;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
@@ -14,19 +13,16 @@ import dev.langchain4j.model.openai.OpenAiTokenUsage;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
-import org.mockito.InOrder;
 
 import java.util.List;
 import java.util.Set;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_5_MINI;
 import static dev.langchain4j.model.openai.common.OpenAiChatModelIT.adjustForGpt5;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.argThat;
-import static org.mockito.Mockito.atLeast;
 
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 class OpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
@@ -42,7 +38,7 @@ class OpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Override
-    protected List<StreamingChatModel> models() {
+    protected List<StreamingChatModel> baseModels() {
         return List.of(
                 defaultStreamingModelBuilder()
                         .build(),
@@ -58,7 +54,12 @@ class OpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Override
-    protected List<StreamingChatModel> modelsSupportingTools() {
+    protected List<StreamingMode> streamingModes() {
+        return List.of(StreamingMode.HANDLER, StreamingMode.PUBLISHER);
+    }
+
+    @Override
+    protected List<StreamingChatModel> baseModelsSupportingTools() {
         return List.of(
                 defaultStreamingModelBuilder()
                         .modelName(GPT_5_MINI)
@@ -72,17 +73,14 @@ class OpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     @Override
     protected StreamingChatModel createModelWith(ChatRequestParameters parameters) {
-        OpenAiStreamingChatModel.OpenAiStreamingChatModelBuilder openAiStreamingChatModelBuilder = OpenAiStreamingChatModel.builder()
+        return OpenAiStreamingChatModel.builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                 .defaultRequestParameters(adjustForGpt5(parameters))
+                .modelName(getOrDefault(parameters.modelName(), GPT_5_MINI.toString()))
                 .logRequests(true)
-                .logResponses(true);
-        if (parameters.modelName() == null) {
-            openAiStreamingChatModelBuilder.modelName(GPT_5_MINI);
-        }
-        return openAiStreamingChatModelBuilder
+                .logResponses(true)
                 .build();
     }
 
@@ -162,60 +160,4 @@ class OpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
                 .listeners(List.of(listener))
                 .build();
     }
-
-    @Override
-    protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id) {
-        io.verify(handler, atLeast(1)).onPartialToolCall(argThat(toolCall ->
-                toolCall.index() == 0
-                        && toolCall.id().equals(id)
-                        && toolCall.name().equals("getWeather")
-                        && !toolCall.partialArguments().isBlank()
-        ), any());
-        io.verify(handler).onCompleteToolCall(argThat(toolCall ->
-                {
-                    ToolExecutionRequest request = toolCall.toolExecutionRequest();
-                    return toolCall.index() == 0
-                            && request.id().equals(id)
-                            && request.name().equals("getWeather")
-                            && request.arguments().replace(" ", "").equals("{\"city\":\"Munich\"}");
-                }
-        ));
-    }
-
-    @Override
-    protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id1, String id2) {
-        io.verify(handler, atLeast(1)).onPartialToolCall(argThat(toolCall ->
-                toolCall.index() == 0
-                        && toolCall.id().equals(id1)
-                        && toolCall.name().equals("getWeather")
-                        && !toolCall.partialArguments().isBlank()
-        ), any());
-        io.verify(handler).onCompleteToolCall(argThat(toolCall ->
-                {
-                    ToolExecutionRequest request = toolCall.toolExecutionRequest();
-                    return toolCall.index() == 0
-                            && request.id().equals(id1)
-                            && request.name().equals("getWeather")
-                            && request.arguments().replace(" ", "").equals("{\"city\":\"Munich\"}");
-                }
-        ));
-
-        io.verify(handler, atLeast(1)).onPartialToolCall(argThat(toolCall ->
-                toolCall.index() == 1
-                        && toolCall.id().equals(id2)
-                        && toolCall.name().equals("getTime")
-                        && !toolCall.partialArguments().isBlank()
-        ), any());
-        io.verify(handler).onCompleteToolCall(argThat(toolCall ->
-                {
-                    ToolExecutionRequest request = toolCall.toolExecutionRequest();
-                    return toolCall.index() == 1
-                            && request.id().equals(id2)
-                            && request.name().equals("getTime")
-                            && request.arguments().replace(" ", "").equals("{\"country\":\"France\"}");
-                }
-        ));
-    }
-
-    // TODO OpenAI-specific tests
 }

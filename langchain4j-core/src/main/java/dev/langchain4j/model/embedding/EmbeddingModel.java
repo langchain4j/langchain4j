@@ -1,5 +1,9 @@
 package dev.langchain4j.model.embedding;
 
+import dev.langchain4j.exception.AsyncNotSupportedException;
+import dev.langchain4j.internal.AsyncNotSupported;
+import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
+import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.ModelProvider.OTHER;
 
@@ -25,6 +29,8 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 /**
@@ -49,36 +55,7 @@ public interface EmbeddingModel {
     @Experimental
     default EmbeddingResponse embed(EmbeddingRequest request) {
 
-        EmbeddingRequestParameters finalParameters =
-                defaultRequestParameters().overrideWith(request.parameters());
-
-        Set<EmbeddingParameter<?>> unsupported = new LinkedHashSet<>(finalParameters.presentParameters());
-        unsupported.removeAll(supportedParameters());
-        if (!unsupported.isEmpty()) {
-            String names = unsupported.stream().map(EmbeddingParameter::name).collect(Collectors.joining(", "));
-            throw new UnsupportedFeatureException("EmbeddingModel '" + getClass().getName()
-                    + "' does not support the following per-call parameter(s): " + names
-                    + ". Only the following are supported: "
-                    + supportedParameters().stream()
-                            .map(EmbeddingParameter::name)
-                            .collect(Collectors.joining(", ")));
-        }
-
-        Set<ContentType> unsupportedContentTypes = new LinkedHashSet<>();
-        for (EmbeddingInput input : request.inputs()) {
-            unsupportedContentTypes.addAll(input.contentTypes());
-        }
-        unsupportedContentTypes.removeAll(supportedContentTypes());
-        if (!unsupportedContentTypes.isEmpty()) {
-            throw new UnsupportedFeatureException("EmbeddingModel '" + getClass().getName()
-                    + "' does not support the following content type(s): " + unsupportedContentTypes
-                    + ". Only the following are supported: " + supportedContentTypes());
-        }
-
-        EmbeddingRequest finalRequest = EmbeddingRequest.builder()
-                .inputs(request.inputs())
-                .parameters(finalParameters)
-                .build();
+        EmbeddingRequest finalRequest = validatedRequest(request);
 
         List<EmbeddingModelListener> listeners = listeners();
         if (isNullOrEmpty(listeners)) {
@@ -125,6 +102,129 @@ public interface EmbeddingModel {
                     listeners);
             throw error;
         }
+    }
+
+    /**
+     * Non-blocking counterpart of {@link #embed(EmbeddingRequest)}: embeds the request's inputs and completes the
+     * returned future with the embeddings, without blocking the calling thread. The request's parameters are merged
+     * with {@link #defaultRequestParameters()} and validated exactly as in {@link #embed(EmbeddingRequest)}, but a
+     * validation failure completes the future exceptionally rather than being thrown, so callers always observe
+     * errors through the future. {@link #listeners()} are notified around the asynchronous call. Cancelling the
+     * returned future cancels the in-flight embedding call for providers whose {@link #doEmbedAsync(EmbeddingRequest)}
+     * honors cancellation (best-effort).
+     *
+     * @param request the inputs to embed and the per-call parameters.
+     * @return a {@link CompletableFuture} of the embeddings and the response metadata.
+     * @since 1.19.0
+     */
+    @Experimental
+    default CompletableFuture<EmbeddingResponse> embedAsync(EmbeddingRequest request) {
+
+        EmbeddingRequest finalRequest;
+        try {
+            finalRequest = validatedRequest(request);
+        } catch (Exception validationError) {
+            return CompletableFuture.failedFuture(validationError);
+        }
+
+        List<EmbeddingModelListener> listeners = listeners();
+        if (isNullOrEmpty(listeners)) {
+            return invokeDoEmbedAsync(finalRequest);
+        }
+
+        List<TextSegment> textSegments = finalRequest.inputs().stream()
+                .map(input -> TextSegment.from(input.text()))
+                .toList();
+        Map<Object, Object> attributes = new java.util.concurrent.ConcurrentHashMap<>();
+
+        EmbeddingModelListenerUtils.onRequest(
+                EmbeddingModelRequestContext.builder()
+                        .textSegments(textSegments)
+                        .embeddingRequest(finalRequest)
+                        .embeddingModel(this)
+                        .attributes(attributes)
+                        .build(),
+                listeners);
+
+        CompletableFuture<EmbeddingResponse> inFlight = invokeDoEmbedAsync(finalRequest);
+        CompletableFuture<EmbeddingResponse> result = inFlight.whenComplete((response, error) -> {
+            if (error != null) {
+                Throwable cause = unwrapCompletionException(error);
+                // Cancellation is a caller action, not a model failure: do not report it to listeners as an error
+                // (mirrors ChatModel.chatAsync).
+                if (!(cause instanceof CancellationException)) {
+                    EmbeddingModelListenerUtils.onError(
+                            EmbeddingModelErrorContext.builder()
+                                    .error(cause)
+                                    .textSegments(textSegments)
+                                    .embeddingRequest(finalRequest)
+                                    .embeddingModel(this)
+                                    .attributes(attributes)
+                                    .build(),
+                            listeners);
+                }
+            } else {
+                Response<List<Embedding>> legacyResponse =
+                        Response.from(response.embeddings(), response.metadata().tokenUsage());
+                EmbeddingModelListenerUtils.onResponse(
+                        EmbeddingModelResponseContext.builder()
+                                .embeddingRequest(finalRequest)
+                                .embeddingResponse(response)
+                                .embeddingModel(this)
+                                .attributes(attributes)
+                                .response(legacyResponse)
+                                .textSegments(textSegments)
+                                .build(),
+                        listeners);
+            }
+        });
+        // cancelling the caller-facing future cancels the in-flight call (whenComplete does not propagate cancellation)
+        propagateCancellation(result, inFlight);
+        return result;
+    }
+
+    private CompletableFuture<EmbeddingResponse> invokeDoEmbedAsync(EmbeddingRequest finalRequest) {
+        // A provider's doEmbedAsync should return a failed future on error, but guard a synchronous throw so the
+        // async contract holds regardless.
+        try {
+            return doEmbedAsync(finalRequest);
+        } catch (Exception error) {
+            return CompletableFuture.failedFuture(error);
+        }
+    }
+
+    private EmbeddingRequest validatedRequest(EmbeddingRequest request) {
+
+        EmbeddingRequestParameters finalParameters =
+                defaultRequestParameters().overrideWith(request.parameters());
+
+        Set<EmbeddingParameter<?>> unsupported = new LinkedHashSet<>(finalParameters.presentParameters());
+        unsupported.removeAll(supportedParameters());
+        if (!unsupported.isEmpty()) {
+            String names = unsupported.stream().map(EmbeddingParameter::name).collect(Collectors.joining(", "));
+            throw new UnsupportedFeatureException("EmbeddingModel '" + getClass().getName()
+                    + "' does not support the following per-call parameter(s): " + names
+                    + ". Only the following are supported: "
+                    + supportedParameters().stream()
+                            .map(EmbeddingParameter::name)
+                            .collect(Collectors.joining(", ")));
+        }
+
+        Set<ContentType> unsupportedContentTypes = new LinkedHashSet<>();
+        for (EmbeddingInput input : request.inputs()) {
+            unsupportedContentTypes.addAll(input.contentTypes());
+        }
+        unsupportedContentTypes.removeAll(supportedContentTypes());
+        if (!unsupportedContentTypes.isEmpty()) {
+            throw new UnsupportedFeatureException("EmbeddingModel '" + getClass().getName()
+                    + "' does not support the following content type(s): " + unsupportedContentTypes
+                    + ". Only the following are supported: " + supportedContentTypes());
+        }
+
+        return EmbeddingRequest.builder()
+                .inputs(request.inputs())
+                .parameters(finalParameters)
+                .build();
     }
 
     /**
@@ -179,6 +279,27 @@ public interface EmbeddingModel {
                         .tokenUsage(legacy.tokenUsage())
                         .build())
                 .build();
+    }
+
+    /**
+     * Non-blocking counterpart of {@link #doEmbed(EmbeddingRequest)}, called by {@link #embedAsync(EmbeddingRequest)}
+     * after the request's parameters have been merged and validated. A provider backed by remote HTTP I/O overrides
+     * this to return a genuinely non-blocking future (no thread is parked).
+     * <p>
+     * The default returns a failed future carrying {@link AsyncNotSupportedException}: a model that is not genuinely asynchronous does not
+     * pretend to be. It must opt in by overriding this method, so it can choose an execution strategy appropriate to
+     * how it works - real async I/O for a network model, a bounded compute pool (or nothing) for a CPU-bound
+     * in-process model - rather than being silently offloaded to a (possibly wrong) thread. A model that has not
+     * opted in is still usable from the non-blocking RAG path: {@code EmbeddingStoreContentRetriever.retrieveAsync}
+     * offloads its blocking {@link #embed(EmbeddingRequest)} for it.
+     *
+     * @param request the request, with parameters already merged and validated.
+     * @return a {@link CompletableFuture} of the response.
+     * @since 1.19.0
+     */
+    @Experimental
+    default CompletableFuture<EmbeddingResponse> doEmbedAsync(EmbeddingRequest request) {
+        return AsyncNotSupported.failedFuture(getClass(), "doEmbedAsync");
     }
 
     /**

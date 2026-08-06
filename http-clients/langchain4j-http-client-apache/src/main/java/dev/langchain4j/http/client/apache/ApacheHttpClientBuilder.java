@@ -9,6 +9,7 @@ public class ApacheHttpClientBuilder implements HttpClientBuilder {
     private org.apache.hc.client5.http.impl.async.HttpAsyncClientBuilder httpAsyncClientBuilder;
     private Duration connectTimeout;
     private Duration readTimeout;
+    private Integer streamingBufferSize;
 
     public org.apache.hc.client5.http.impl.classic.HttpClientBuilder httpClientBuilder() {
         return httpClientBuilder;
@@ -49,6 +50,25 @@ public class ApacheHttpClientBuilder implements HttpClientBuilder {
     @Override
     public ApacheHttpClientBuilder readTimeout(Duration readTimeout) {
         this.readTimeout = readTimeout;
+        return this;
+    }
+
+    public Integer streamingBufferSize() {
+        return streamingBufferSize;
+    }
+
+    /**
+     * Sets the size of the bounded back-pressure buffer used by the streaming ({@code stream})
+     * path. Server-sent events are relayed to the subscriber through this buffer; if the subscriber consumes
+     * slower than the server produces and the buffer overflows, the stream terminates with an error.
+     * <p>
+     * The default is {@value ApacheHttpClient#DEFAULT_STREAMING_BUFFER_SIZE}.
+     *
+     * @param streamingBufferSize the buffer size; must be greater than zero
+     * @return the builder instance
+     */
+    public ApacheHttpClientBuilder streamingBufferSize(Integer streamingBufferSize) {
+        this.streamingBufferSize = streamingBufferSize;
         return this;
     }
 

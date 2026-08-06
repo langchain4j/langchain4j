@@ -22,6 +22,7 @@ import dev.langchain4j.model.bedrock.BedrockTokenUsage;
 import dev.langchain4j.model.bedrock.TestedModels;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
+import dev.langchain4j.model.chat.common.StreamingMode;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
@@ -47,7 +48,7 @@ import org.mockito.InOrder;
 class BedrockStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     @Override
-    protected List<StreamingChatModel> models() {
+    protected List<StreamingChatModel> baseModels() {
         return List.of(
                 //                TestedModelsWithConverseAPI.STREAMING_AWS_NOVA_MICRO,
                 TestedModels.STREAMING_AWS_NOVA_LITE, TestedModels.STREAMING_AWS_NOVA_PRO);
@@ -55,6 +56,11 @@ class BedrockStreamingChatModelIT extends AbstractStreamingChatModelIT {
         //                TestedModelsWithConverseAPI.STREAMING_CLAUDE_3_HAIKU,
         //                TestedModelsWithConverseAPI.STREAMING_COHERE_COMMAND_R_PLUS,
         //                TestedModelsWithConverseAPI.STREAMING_MISTRAL_LARGE);
+    }
+
+    @Override
+    protected List<StreamingMode> streamingModes() {
+        return List.of(StreamingMode.HANDLER, StreamingMode.PUBLISHER);
     }
 
     @Override

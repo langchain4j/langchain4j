@@ -650,6 +650,15 @@ public abstract class AiServices<T> {
      * See {@link #executeToolsConcurrently()}'s Javadoc for more info.
      * <p>
      * If {@code null} is specified, the default {@link Executor} will be used.
+     * <p>
+     * <b>Running tools sequentially.</b> The asynchronous AI Service modes (methods returning a
+     * {@link java.util.concurrent.CompletableFuture} or a reactive {@link java.util.concurrent.Flow.Publisher})
+     * execute tools concurrently by default. To run them one at a time instead — e.g. for tools that are not
+     * thread-safe, that must preserve the order of their side effects, or that need to be rate-limited — pass a
+     * single-threaded executor such as {@link java.util.concurrent.Executors#newSingleThreadExecutor()}. Tools
+     * are then submitted in request order and executed serially, while still being kept off the
+     * model-response thread. (The synchronous and {@link TokenStream} modes already execute tools sequentially
+     * by default.)
      *
      * @param executor The {@link Executor} to be used to execute tools.
      * @return builder
@@ -678,6 +687,25 @@ public abstract class AiServices<T> {
      */
     public AiServices<T> maxToolCallingRoundTrips(int maxToolCallingRoundTrips) {
         context.toolService.maxToolCallingRoundTrips(maxToolCallingRoundTrips);
+        return this;
+    }
+
+    /**
+     * Sets the size of the bounded back-pressure buffer used by the reactive ({@code Flow.Publisher}) streaming
+     * path. Events are relayed to the subscriber through this buffer; if the subscriber consumes slower than the
+     * model produces and the buffer overflows, the stream terminates with an {@link IllegalStateException}.
+     * <p>
+     * The default is {@value AiServiceStreamingEventPublisher#DEFAULT_BUFFER_SIZE}. Raise it for a slow-but-correct
+     * consumer on long responses, or set it to {@link Integer#MAX_VALUE} for an effectively unbounded buffer
+     * (accepting the {@link OutOfMemoryError} risk). Has no effect on the synchronous, {@code CompletableFuture}
+     * or {@code TokenStream} return types.
+     *
+     * @param streamingBufferSize the buffer size; must be greater than zero
+     * @return the builder instance
+     * @since 1.19.0
+     */
+    public AiServices<T> streamingBufferSize(int streamingBufferSize) {
+        context.streamingBufferSize = streamingBufferSize;
         return this;
     }
 
@@ -841,6 +869,11 @@ public abstract class AiServices<T> {
      * This method provides a straightforward approach for those who do not require
      * a customized {@link RetrievalAugmentor}.
      * It configures a {@link DefaultRetrievalAugmentor} with the provided {@link ContentRetriever}.
+     * <br>
+     * On the asynchronous/reactive return types, if the retriever is not genuinely non-blocking the pipeline fails
+     * loudly. To offload a blocking retriever instead, build the augmentor explicitly and pass it via
+     * {@link #retrievalAugmentor(RetrievalAugmentor)}:
+     * {@code DefaultRetrievalAugmentor.builder().contentRetriever(r).offloadBlocking(true).build()}.
      *
      * @param contentRetriever The content retriever to be used by the AI Service.
      * @return builder
@@ -1280,14 +1313,17 @@ public abstract class AiServices<T> {
     public static void verifyModerationIfNeeded(Future<Moderation> moderationFuture) {
         if (moderationFuture != null) {
             try {
-                Moderation moderation = moderationFuture.get();
-                if (moderation.flagged()) {
-                    throw new ModerationException(
-                            String.format("Text \"%s\" violates content policy", moderation.flaggedText()), moderation);
-                }
+                verifyModeration(moderationFuture.get());
             } catch (InterruptedException | ExecutionException e) {
                 throw new RuntimeException(e);
             }
+        }
+    }
+
+    static void verifyModeration(Moderation moderation) {
+        if (moderation.flagged()) {
+            throw new ModerationException(
+                    String.format("Text \"%s\" violates content policy", moderation.flaggedText()), moderation);
         }
     }
 }

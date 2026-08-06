@@ -37,7 +37,7 @@ class OpenAiStreamingChatModelDeepSeekIT { // TODO extends AbstractStreamingChat
 
         // when
         ChatResponseAndStreamingMetadata chatResponseAndStreamingMetadata =
-                AbstractStreamingChatModelIT.chat(model, chatRequest, ignored -> {
+                AbstractStreamingChatModelIT.chatViaHandler(model, chatRequest, ignored -> {
                 }, 60, true);
         ChatResponse chatResponse = chatResponseAndStreamingMetadata.chatResponse();
 

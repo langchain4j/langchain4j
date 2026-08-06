@@ -8,6 +8,7 @@ import dev.langchain4j.mcp.client.McpClient;
 import dev.langchain4j.service.tool.ToolExecutionResult;
 import dev.langchain4j.service.tool.ToolExecutor;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * @since 1.4.0
@@ -42,6 +43,19 @@ public class McpToolExecutor implements ToolExecutor {
     public ToolExecutionResult executeWithContext(
             ToolExecutionRequest executionRequest, InvocationContext invocationContext) {
         return mcpClient.executeTool(sanitizeToolName(executionRequest), invocationContext);
+    }
+
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Non-blocking: delegates to
+     * {@link McpClient#executeToolAsync(ToolExecutionRequest, InvocationContext)}, so no thread is held
+     * while the tool executes on the MCP server.
+     */
+    @Override
+    public CompletableFuture<ToolExecutionResult> executeAsync(
+            ToolExecutionRequest executionRequest, InvocationContext invocationContext) {
+        return mcpClient.executeToolAsync(sanitizeToolName(executionRequest), invocationContext);
     }
 
     private ToolExecutionRequest sanitizeToolName(ToolExecutionRequest executionRequest) {
