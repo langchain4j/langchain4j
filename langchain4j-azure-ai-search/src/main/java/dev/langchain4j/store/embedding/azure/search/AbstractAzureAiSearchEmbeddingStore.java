@@ -356,11 +356,19 @@ public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingSt
                 Object key = keyValue.get("key");
                 Object value = keyValue.get("value");
                 if (key != null && value != null) {
-                    attributesMap.put(key.toString(), value.toString());
+                    String keyString = key.toString();
+                    if (isNullOrBlank(keyString)) {
+                        continue;
+                    }
+                    attributesMap.put(keyString, value.toString());
                 }
             }
         }
-        return Metadata.from(attributesMap);
+        try {
+            return Metadata.from(attributesMap);
+        } catch (IllegalArgumentException e) {
+            return Metadata.from(Collections.emptyMap());
+        }
     }
 
     private void addInternal(String id, Embedding embedding, TextSegment embedded) {
