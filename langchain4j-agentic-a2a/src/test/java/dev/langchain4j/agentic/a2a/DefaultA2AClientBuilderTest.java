@@ -81,6 +81,7 @@ class DefaultA2AClientBuilderTest {
         A2ATaskInterruptedException cause = (A2ATaskInterruptedException) getCause(future);
         assertThat(cause.taskId()).isEqualTo("task-111");
         assertThat(cause.state()).isEqualTo(TaskState.TASK_STATE_INPUT_REQUIRED);
+        assertThat(cause.reason()).isEqualTo("What is your email address?");
     }
 
     @Test
@@ -99,10 +100,33 @@ class DefaultA2AClientBuilderTest {
         assertThatThrownBy(future::get)
                 .hasCauseInstanceOf(A2ATaskInterruptedException.class)
                 .hasMessageContaining("task-222")
-                .hasMessageContaining("TASK_STATE_AUTH_REQUIRED");
+                .hasMessageContaining("TASK_STATE_AUTH_REQUIRED")
+                .hasMessageContaining("waiting for authentication");
         A2ATaskInterruptedException cause = (A2ATaskInterruptedException) getCause(future);
         assertThat(cause.taskId()).isEqualTo("task-222");
         assertThat(cause.state()).isEqualTo(TaskState.TASK_STATE_AUTH_REQUIRED);
+        // The fallback description only goes into the exception message; reason() stays null so
+        // callers can tell "the agent sent no prompt" apart from a prompt it actually sent.
+        assertThat(cause.reason()).isNull();
+    }
+
+    @Test
+    void completeFromTask_inputRequiredWithoutReason_fallsBackToStateSpecificDescription() {
+        Task interruptedTask = Task.builder()
+                .id("task-444")
+                .contextId("ctx-8")
+                .status(new TaskStatus(TaskState.TASK_STATE_INPUT_REQUIRED))
+                .artifacts(List.of())
+                .build();
+
+        CompletableFuture<String> future = new CompletableFuture<>();
+        DefaultA2AClientBuilder.completeFromTask(interruptedTask, future);
+
+        assertThat(future).isCompletedExceptionally();
+        assertThatThrownBy(future::get)
+                .hasCauseInstanceOf(A2ATaskInterruptedException.class)
+                .hasMessageContaining("task-444")
+                .hasMessageContaining("waiting for additional input");
     }
 
     @Test

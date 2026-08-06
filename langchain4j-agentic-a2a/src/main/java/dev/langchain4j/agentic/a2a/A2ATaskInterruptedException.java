@@ -17,12 +17,14 @@ public class A2ATaskInterruptedException extends RuntimeException {
 
     private final String taskId;
     private final TaskState state;
+    private final String reason;
 
     public A2ATaskInterruptedException(String taskId, TaskState state, String reason) {
-        super("A2A task " + taskId + " is interrupted in state " + state.name()
-                + (reason == null || reason.isEmpty() ? "" : ": " + reason));
+        super("A2A task " + taskId + " is interrupted in state " + state.name() + ": "
+                + (reason == null || reason.isEmpty() ? defaultReason(state) : reason));
         this.taskId = taskId;
         this.state = state;
+        this.reason = reason == null || reason.isEmpty() ? null : reason;
     }
 
     /**
@@ -42,5 +44,23 @@ public class A2ATaskInterruptedException extends RuntimeException {
      */
     public TaskState state() {
         return state;
+    }
+
+    /**
+     * The status message sent by the remote agent when it interrupted the task — typically the
+     * question asking for the missing input, or the authentication challenge. Returns {@code null}
+     * when the remote agent interrupted the task without sending one; the generic description used
+     * in {@link #getMessage()} in that case is not reported here, so callers can tell the two apart.
+     *
+     * @since 1.19.0
+     */
+    public String reason() {
+        return reason;
+    }
+
+    private static String defaultReason(TaskState state) {
+        return state == TaskState.TASK_STATE_AUTH_REQUIRED
+                ? "waiting for authentication"
+                : "waiting for additional input";
     }
 }
