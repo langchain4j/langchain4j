@@ -4,8 +4,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Map;
 import org.junit.jupiter.api.Test;
+import software.amazon.awssdk.services.bedrockruntime.model.CacheTTL;
 
 class BedrockChatRequestParametersTest {
+
+    private static final BedrockGuardrailConfiguration GUARDRAIL = BedrockGuardrailConfiguration.builder()
+            .guardrailIdentifier("guardrail")
+            .guardrailVersion("1")
+            .build();
 
     @Test
     void should_enable_prompt_caching_with_placement() {
@@ -321,5 +327,111 @@ class BedrockChatRequestParametersTest {
         Map<String, Object> reasoningConfig =
                 (Map<String, Object>) params.additionalModelRequestFields().get("reasoning_config");
         assertThat(reasoningConfig).containsEntry("type", "adaptive");
+    }
+
+    @Test
+    void should_be_equal_when_all_parameters_match() {
+        BedrockChatRequestParameters first = fullyPopulated().build();
+        BedrockChatRequestParameters second = fullyPopulated().build();
+
+        assertThat(first).isEqualTo(second).hasSameHashCodeAs(second);
+    }
+
+    @Test
+    void should_not_be_equal_when_additional_model_request_fields_differ() {
+        BedrockChatRequestParameters first = BedrockChatRequestParameters.builder()
+                .additionalModelRequestField("a", 1)
+                .build();
+        BedrockChatRequestParameters second = BedrockChatRequestParameters.builder()
+                .additionalModelRequestField("a", 2)
+                .build();
+
+        assertThat(first).isNotEqualTo(second);
+        assertThat(first.hashCode()).isNotEqualTo(second.hashCode());
+    }
+
+    @Test
+    void should_not_be_equal_when_cache_point_placement_differs() {
+        BedrockChatRequestParameters first = BedrockChatRequestParameters.builder()
+                .promptCaching(BedrockCachePointPlacement.AFTER_SYSTEM)
+                .build();
+        BedrockChatRequestParameters second = BedrockChatRequestParameters.builder()
+                .promptCaching(BedrockCachePointPlacement.AFTER_USER_MESSAGE)
+                .build();
+
+        assertThat(first).isNotEqualTo(second);
+    }
+
+    @Test
+    void should_not_be_equal_when_cache_ttl_differs() {
+        BedrockChatRequestParameters first = BedrockChatRequestParameters.builder()
+                .promptCaching(BedrockCachePointPlacement.AFTER_SYSTEM, CacheTTL.VALUE_5_M)
+                .build();
+        BedrockChatRequestParameters second = BedrockChatRequestParameters.builder()
+                .promptCaching(BedrockCachePointPlacement.AFTER_SYSTEM, CacheTTL.VALUE_1_H)
+                .build();
+
+        assertThat(first).isNotEqualTo(second);
+    }
+
+    @Test
+    void should_not_be_equal_when_guardrail_configuration_differs() {
+        BedrockChatRequestParameters first = BedrockChatRequestParameters.builder()
+                .guardrailConfiguration(BedrockGuardrailConfiguration.builder()
+                        .guardrailIdentifier("first")
+                        .guardrailVersion("1")
+                        .build())
+                .build();
+        BedrockChatRequestParameters second = BedrockChatRequestParameters.builder()
+                .guardrailConfiguration(BedrockGuardrailConfiguration.builder()
+                        .guardrailIdentifier("second")
+                        .guardrailVersion("1")
+                        .build())
+                .build();
+
+        assertThat(first).isNotEqualTo(second);
+    }
+
+    @Test
+    void should_not_be_equal_when_service_tier_differs() {
+        BedrockChatRequestParameters first = BedrockChatRequestParameters.builder()
+                .serviceTier(BedrockServiceTier.DEFAULT)
+                .build();
+        BedrockChatRequestParameters second = BedrockChatRequestParameters.builder()
+                .serviceTier(BedrockServiceTier.FLEX)
+                .build();
+
+        assertThat(first).isNotEqualTo(second);
+    }
+
+    @Test
+    void should_not_be_equal_when_an_inherited_parameter_differs() {
+        BedrockChatRequestParameters first = fullyPopulated().temperature(0.1).build();
+        BedrockChatRequestParameters second = fullyPopulated().temperature(0.2).build();
+
+        assertThat(first).isNotEqualTo(second);
+    }
+
+    @Test
+    void should_include_bedrock_parameters_in_to_string() {
+        BedrockChatRequestParameters parameters = fullyPopulated().build();
+
+        assertThat(parameters.toString())
+                .startsWith("BedrockChatRequestParameters{")
+                .contains("additionalModelRequestFields=")
+                .contains("cachePointPlacement=AFTER_SYSTEM")
+                .contains("cacheTtl=")
+                .contains("bedrockGuardrailConfiguration=")
+                .contains("serviceTier=DEFAULT");
+    }
+
+    private static BedrockChatRequestParameters.Builder fullyPopulated() {
+        return BedrockChatRequestParameters.builder()
+                .modelName("model")
+                .temperature(0.5)
+                .additionalModelRequestField("key", "value")
+                .promptCaching(BedrockCachePointPlacement.AFTER_SYSTEM, CacheTTL.VALUE_5_M)
+                .guardrailConfiguration(GUARDRAIL)
+                .serviceTier(BedrockServiceTier.DEFAULT);
     }
 }
