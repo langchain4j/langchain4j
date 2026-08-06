@@ -13,7 +13,7 @@ sidebar_position: 2
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-anthropic</artifactId>
-    <version>1.11.9</version>
+    <version>1.18.1</version>
 </dependency>
 ```
 
@@ -132,6 +132,65 @@ model.chat("Say 'Hello World'", new StreamingChatResponseHandler() {
 ### Customizing AnthropicStreamingChatModel
 
 Identical to the `AnthropicChatModel`, see above.
+
+## Batch API
+
+The [Message Batches API](https://docs.anthropic.com/en/api/creating-message-batches) processes many chat requests
+asynchronously at 50% of the standard per-token price. `AnthropicBatchChatModel` implements the core `BatchChatModel`
+interface (`submit`, `retrieve`, `cancel`, `list`). Each request is submitted with the same parameters an
+`AnthropicChatModel` call would use.
+
+```java
+AnthropicBatchChatModel model = AnthropicBatchChatModel.builder()
+    .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+    .modelName("claude-sonnet-4-5")
+    .maxTokens(1024)
+    .build();
+
+// Submit a batch of requests
+BatchResponse<ChatResponse> submitted = model.submit(new BatchRequest<>(List.of(
+    ChatRequest.builder().messages(UserMessage.from("What is the capital of France?")).build(),
+    ChatRequest.builder().messages(UserMessage.from("What is the capital of Germany?")).build())));
+
+String batchId = submitted.batchId();
+
+// Poll until the batch reaches a terminal state (typically well under an hour)
+BatchResponse<ChatResponse> batch = model.retrieve(batchId);
+while (!batch.state().isTerminal()) {
+    TimeUnit.SECONDS.sleep(30); // throws InterruptedException
+    batch = model.retrieve(batchId);
+}
+
+// Read the per-request results, in submission order
+for (BatchItemResult<ChatResponse> result : batch.results()) {
+    if (result.isSuccess()) {
+        System.out.println(result.response().aiMessage().text());
+    } else {
+        System.out.println("Failed: " + result.error().message());
+    }
+}
+```
+
+Use `model.list(...)` to page through recent batches and `model.cancel(batchId)` to cancel one that is still processing.
+A batch that you cancel also finishes in the `ended` state on Anthropic's side, and is reported as `BatchState.CANCELLED`;
+it may still contain results for the requests that completed before the cancellation took effect.
+
+Anthropic-specific options such as thinking or prompt caching are configured through `defaultRequestParameters(...)`,
+exactly as for `AnthropicChatModel`, and can be overridden per request:
+
+```java
+AnthropicBatchChatModel model = AnthropicBatchChatModel.builder()
+    .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+    .modelName("claude-sonnet-4-5")
+    .maxTokens(4096)
+    .defaultRequestParameters(AnthropicChatRequestParameters.builder()
+        .thinkingType("enabled")
+        .thinkingBudgetTokens(2000)
+        .cacheSystemMessages(true)
+        .build())
+    .returnThinking(true) // store the returned thinking in AiMessage.thinking()
+    .build();
+```
 
 ## Tools
 
@@ -763,7 +822,7 @@ Import Spring Boot starter for Anthropic:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-anthropic-spring-boot-starter</artifactId>
-    <version>1.11.9-beta19</version>
+    <version>1.18.1-beta28</version>
 </dependency>
 ```
 

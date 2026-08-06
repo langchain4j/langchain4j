@@ -194,22 +194,25 @@ public class AnthropicMapper {
                 }
             } else if (content instanceof ImageContent imageContent) {
                 Image image = imageContent.image();
+                AnthropicCacheControl cacheControl = applyCache ? AnthropicCacheType.EPHEMERAL.cacheControl() : null;
                 if (image.url() != null) {
                     anthropicContents.add(
-                            AnthropicImageContent.fromUrl(image.url().toString()));
+                            AnthropicImageContent.fromUrl(image.url().toString(), cacheControl));
                 } else {
                     anthropicContents.add(AnthropicImageContent.fromBase64(
                             ensureNotBlank(image.mimeType(), "mimeType"),
-                            ensureNotBlank(image.base64Data(), "base64Data")));
+                            ensureNotBlank(image.base64Data(), "base64Data"),
+                            cacheControl));
                 }
             } else if (content instanceof PdfFileContent pdfFileContent) {
                 PdfFile pdfFile = pdfFileContent.pdfFile();
+                AnthropicCacheControl cacheControl = applyCache ? AnthropicCacheType.EPHEMERAL.cacheControl() : null;
                 if (pdfFile.url() != null) {
                     anthropicContents.add(
-                            AnthropicPdfContent.fromUrl(pdfFile.url().toString()));
+                            AnthropicPdfContent.fromUrl(pdfFile.url().toString(), cacheControl));
                 } else {
                     anthropicContents.add(AnthropicPdfContent.fromBase64(
-                            pdfFile.mimeType(), ensureNotBlank(pdfFile.base64Data(), "base64Data")));
+                            pdfFile.mimeType(), ensureNotBlank(pdfFile.base64Data(), "base64Data"), cacheControl));
                 }
             } else {
                 throw illegalArgument("Unknown content type: " + content);
