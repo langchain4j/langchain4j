@@ -35,7 +35,7 @@ import static java.util.Collections.emptyList;
  */
 public class DeepSeekChatModel implements ChatModel {
 
-    private static final String DEFAULT_BASE_URL = "https://api.deepseek.com/v1";
+    private static final String DEFAULT_BASE_URL = "https://api.deepseek.com";
 
     private final OpenAiChatModel delegate;
     private final String modelName;

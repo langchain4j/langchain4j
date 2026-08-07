@@ -29,7 +29,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
  */
 public class DeepSeekStreamingChatModel implements StreamingChatModel {
 
-    private static final String DEFAULT_BASE_URL = "https://api.deepseek.com/v1";
+    private static final String DEFAULT_BASE_URL = "https://api.deepseek.com";
 
     private final OpenAiStreamingChatModel delegate;
 

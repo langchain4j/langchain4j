@@ -8,16 +8,16 @@ package dev.langchain4j.model.deepseek;
 public enum DeepSeekChatModelName {
 
     /**
-     * DeepSeek-V3 chat model. Latest flagship model with 671B total parameters.
-     * Supports 64K context window.
+     * DeepSeek-V4 Flash model. Fast, cost-effective model suitable for
+     * most everyday tasks with lower latency.
      */
-    DEEPSEEK_CHAT("deepseek-chat"),
+    DEEPSEEK_V4_FLASH("deepseek-v4-flash"),
 
     /**
-     * DeepSeek-R1 reasoning model. Specialized for complex reasoning tasks
-     * with chain-of-thought capabilities.
+     * DeepSeek-V4 Pro model. Full-featured flagship model with advanced
+     * reasoning capabilities, larger context window, and higher accuracy.
      */
-    DEEPSEEK_REASONER("deepseek-reasoner");
+    DEEPSEEK_V4_PRO("deepseek-v4-pro");
 
     private final String stringValue;
 
