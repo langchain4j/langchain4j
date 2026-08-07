@@ -1,17 +1,10 @@
-package dev.langchain4j.store.embedding.azure.cosmos.mongo.vcore;
+package dev.langchain4j.store.embedding.azure.documentdb;
 
 import java.util.List;
 import java.util.Map;
 import org.bson.codecs.pojo.annotations.BsonId;
 
-/**
- * @deprecated Replaced by
- * {@code dev.langchain4j.store.embedding.azure.documentdb.AzureDocumentDbDocument}
- * in the {@code langchain4j-azure-documentdb} module. See
- * {@link AzureCosmosDbMongoVCoreEmbeddingStore} for migration details.
- */
-@Deprecated(forRemoval = true)
-public class AzureCosmosDbMongoVCoreDocument {
+public class AzureDocumentDbDocument {
 
     @BsonId
     private String id;
@@ -20,18 +13,17 @@ public class AzureCosmosDbMongoVCoreDocument {
     private String text;
     private Map<String, String> metadata;
 
-    public AzureCosmosDbMongoVCoreDocument(
-            String id, List<Float> embedding, String text, Map<String, String> metadata) {
+    public AzureDocumentDbDocument(String id, List<Float> embedding, String text, Map<String, String> metadata) {
         this.id = id;
         this.embedding = embedding;
         this.text = text;
         this.metadata = metadata;
     }
 
-    public AzureCosmosDbMongoVCoreDocument() {}
+    public AzureDocumentDbDocument() {}
 
-    public static AzureCosmosDbMongoVCoreDocumentBuilder builder() {
-        return new AzureCosmosDbMongoVCoreDocumentBuilder();
+    public static AzureDocumentDbDocumentBuilder builder() {
+        return new AzureDocumentDbDocumentBuilder();
     }
 
     public String getId() {
@@ -68,8 +60,8 @@ public class AzureCosmosDbMongoVCoreDocument {
 
     public boolean equals(final Object o) {
         if (o == this) return true;
-        if (!(o instanceof AzureCosmosDbMongoVCoreDocument)) return false;
-        final AzureCosmosDbMongoVCoreDocument other = (AzureCosmosDbMongoVCoreDocument) o;
+        if (!(o instanceof AzureDocumentDbDocument)) return false;
+        final AzureDocumentDbDocument other = (AzureDocumentDbDocument) o;
         if (!other.canEqual((Object) this)) return false;
         final Object this$id = this.getId();
         final Object other$id = other.getId();
@@ -87,7 +79,7 @@ public class AzureCosmosDbMongoVCoreDocument {
     }
 
     protected boolean canEqual(final Object other) {
-        return other instanceof AzureCosmosDbMongoVCoreDocument;
+        return other instanceof AzureDocumentDbDocument;
     }
 
     public int hashCode() {
@@ -105,45 +97,45 @@ public class AzureCosmosDbMongoVCoreDocument {
     }
 
     public String toString() {
-        return "AzureCosmosDbMongoVCoreDocument(id=" + this.getId() + ", embedding=" + this.getEmbedding() + ", text="
+        return "AzureDocumentDbDocument(id=" + this.getId() + ", embedding=" + this.getEmbedding() + ", text="
                 + this.getText() + ", metadata=" + this.getMetadata() + ")";
     }
 
-    public static class AzureCosmosDbMongoVCoreDocumentBuilder {
+    public static class AzureDocumentDbDocumentBuilder {
         private String id;
         private List<Float> embedding;
         private String text;
         private Map<String, String> metadata;
 
-        AzureCosmosDbMongoVCoreDocumentBuilder() {}
+        AzureDocumentDbDocumentBuilder() {}
 
-        public AzureCosmosDbMongoVCoreDocumentBuilder id(String id) {
+        public AzureDocumentDbDocumentBuilder id(String id) {
             this.id = id;
             return this;
         }
 
-        public AzureCosmosDbMongoVCoreDocumentBuilder embedding(List<Float> embedding) {
+        public AzureDocumentDbDocumentBuilder embedding(List<Float> embedding) {
             this.embedding = embedding;
             return this;
         }
 
-        public AzureCosmosDbMongoVCoreDocumentBuilder text(String text) {
+        public AzureDocumentDbDocumentBuilder text(String text) {
             this.text = text;
             return this;
         }
 
-        public AzureCosmosDbMongoVCoreDocumentBuilder metadata(Map<String, String> metadata) {
+        public AzureDocumentDbDocumentBuilder metadata(Map<String, String> metadata) {
             this.metadata = metadata;
             return this;
         }
 
-        public AzureCosmosDbMongoVCoreDocument build() {
-            return new AzureCosmosDbMongoVCoreDocument(this.id, this.embedding, this.text, this.metadata);
+        public AzureDocumentDbDocument build() {
+            return new AzureDocumentDbDocument(this.id, this.embedding, this.text, this.metadata);
         }
 
         public String toString() {
-            return "AzureCosmosDbMongoVCoreDocument.AzureCosmosDbMongoVCoreDocumentBuilder(id=" + this.id
-                    + ", embedding=" + this.embedding + ", text=" + this.text + ", metadata=" + this.metadata + ")";
+            return "AzureDocumentDbDocument.AzureDocumentDbDocumentBuilder(id=" + this.id + ", embedding="
+                    + this.embedding + ", text=" + this.text + ", metadata=" + this.metadata + ")";
         }
     }
 }
