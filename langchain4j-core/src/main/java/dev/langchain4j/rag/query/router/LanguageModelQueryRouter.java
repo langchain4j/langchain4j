@@ -122,7 +122,8 @@ public class LanguageModelQueryRouter implements QueryRouter {
     }
 
     protected Collection<ContentRetriever> parse(String choices) {
-        return stream(choices.split(","))
+        String firstLine = choices.stripLeading().lines().findFirst().orElse(choices);
+        return stream(firstLine.split(","))
                 .map(String::trim)
                 .map(Integer::parseInt)
                 .map(this::retrieverById)
