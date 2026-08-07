@@ -146,6 +146,7 @@
         <!-- internal -->
         <module>internal/langchain4j-internal-test-retry</module>
         <module>internal/langchain4j-docu-chatbot-updater</module>
+        <module>langchain4j-deepseek</module>
     </modules>
 
     <properties>
