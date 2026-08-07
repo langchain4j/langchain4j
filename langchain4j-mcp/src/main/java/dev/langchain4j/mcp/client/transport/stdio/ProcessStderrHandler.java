@@ -10,11 +10,15 @@ import org.slf4j.LoggerFactory;
 class ProcessStderrHandler implements Runnable, Closeable {
 
     private final Process process;
-    private static final Logger log = LoggerFactory.getLogger(ProcessStderrHandler.class);
+    // Resolved per instance (in the constructor) rather than in a static initializer so that the
+    // logger reflects any LoggerFactory configuration in effect when the handler is created, and is
+    // not fixed at class-load time (which also makes this class testable in isolation).
+    private final Logger log;
     private volatile boolean closed = false;
 
     public ProcessStderrHandler(final Process process) {
         this.process = process;
+        this.log = LoggerFactory.getLogger(ProcessStderrHandler.class);
     }
 
     @Override

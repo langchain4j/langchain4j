@@ -126,6 +126,7 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
     private Executor concurrentToolsExecutor;
     private ToolArgumentsErrorHandler toolArgumentsErrorHandler;
     private ToolExecutionErrorHandler toolExecutionErrorHandler;
+    boolean compensateOnError;
 
     java.util.function.Function<InternalAgent, Object> agentInstanceFactory;
 
@@ -166,6 +167,7 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
 
         this.async = agent.async();
         this.optional = agent.optional();
+        this.compensateOnError = agent.compensateOnError();
         if (agent.summarizedContext() != null && agent.summarizedContext().length > 0) {
             this.contextProvidingAgents = agent.summarizedContext();
         }
@@ -217,7 +219,11 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
                 aiServices.chatRequestTransformer(
                         new Context.AgenticScopeContextGenerator(agenticScope, contextProvider));
             } else {
-                aiServices.chatRequestTransformer(new Context.Summarizer(agenticScope, model, contextProvidingAgents));
+                ChatModel summarizerModel = model;
+                if (summarizerModel == null && chatModelProvider != null) {
+                    summarizerModel = chatModelProvider.apply(agenticScope);
+                }
+                aiServices.chatRequestTransformer(new Context.Summarizer(agenticScope, summarizerModel, contextProvidingAgents));
             }
         }
 
@@ -251,6 +257,10 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
                     agentListener.beforeAgentToolExecution(new BeforeAgentToolExecution(agent, beforeToolExecution)));
             aiServices.afterToolExecution(afterToolExecution ->
                     agentListener.afterAgentToolExecution(new AfterAgentToolExecution(agent, afterToolExecution)));
+        }
+
+        if (compensateOnError) {
+            ((InternalAgent) agent).enableCrossAgentCompensation();
         }
 
         return (T) agent;
@@ -677,6 +687,12 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
      */
     public B optional(boolean optional) {
         this.optional = optional;
+        return (B) this;
+    }
+
+    @SuppressWarnings("unchecked")
+    public B compensateOnError(boolean compensateOnError) {
+        this.compensateOnError = compensateOnError;
         return (B) this;
     }
 

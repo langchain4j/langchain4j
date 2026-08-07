@@ -13,7 +13,7 @@ sidebar_position: 2
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-anthropic</artifactId>
-    <version>1.17.1</version>
+    <version>1.18.1</version>
 </dependency>
 ```
 
@@ -132,6 +132,65 @@ model.chat("Say 'Hello World'", new StreamingChatResponseHandler() {
 ### Customizing AnthropicStreamingChatModel
 
 Identical to the `AnthropicChatModel`, see above.
+
+## Batch API
+
+The [Message Batches API](https://docs.anthropic.com/en/api/creating-message-batches) processes many chat requests
+asynchronously at 50% of the standard per-token price. `AnthropicBatchChatModel` implements the core `BatchChatModel`
+interface (`submit`, `retrieve`, `cancel`, `list`). Each request is submitted with the same parameters an
+`AnthropicChatModel` call would use.
+
+```java
+AnthropicBatchChatModel model = AnthropicBatchChatModel.builder()
+    .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+    .modelName("claude-sonnet-4-5")
+    .maxTokens(1024)
+    .build();
+
+// Submit a batch of requests
+BatchResponse<ChatResponse> submitted = model.submit(new BatchRequest<>(List.of(
+    ChatRequest.builder().messages(UserMessage.from("What is the capital of France?")).build(),
+    ChatRequest.builder().messages(UserMessage.from("What is the capital of Germany?")).build())));
+
+String batchId = submitted.batchId();
+
+// Poll until the batch reaches a terminal state (typically well under an hour)
+BatchResponse<ChatResponse> batch = model.retrieve(batchId);
+while (!batch.state().isTerminal()) {
+    TimeUnit.SECONDS.sleep(30); // throws InterruptedException
+    batch = model.retrieve(batchId);
+}
+
+// Read the per-request results, in submission order
+for (BatchItemResult<ChatResponse> result : batch.results()) {
+    if (result.isSuccess()) {
+        System.out.println(result.response().aiMessage().text());
+    } else {
+        System.out.println("Failed: " + result.error().message());
+    }
+}
+```
+
+Use `model.list(...)` to page through recent batches and `model.cancel(batchId)` to cancel one that is still processing.
+A batch that you cancel also finishes in the `ended` state on Anthropic's side, and is reported as `BatchState.CANCELLED`;
+it may still contain results for the requests that completed before the cancellation took effect.
+
+Anthropic-specific options such as thinking or prompt caching are configured through `defaultRequestParameters(...)`,
+exactly as for `AnthropicChatModel`, and can be overridden per request:
+
+```java
+AnthropicBatchChatModel model = AnthropicBatchChatModel.builder()
+    .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+    .modelName("claude-sonnet-4-5")
+    .maxTokens(4096)
+    .defaultRequestParameters(AnthropicChatRequestParameters.builder()
+        .thinkingType("enabled")
+        .thinkingBudgetTokens(2000)
+        .cacheSystemMessages(true)
+        .build())
+    .returnThinking(true) // store the returned thinking in AiMessage.thinking()
+    .build();
+```
 
 ## Tools
 
@@ -475,23 +534,45 @@ to see an example of specifying tool `metadata` in the low-level `ToolSpecificat
 
 ## Caching
 
-`AnthropicChatModel` and `AnthropicStreamingChatModel` support caching of system messages and tools.
-Caching is disabled by default.
-It can be enabled by setting the `cacheSystemMessages` and `cacheTools` parameters, respectively.
-
-When enabled,`cache_control` blocks will be added to the last system message and tool, respectively.
-
-`AnthropicChatModel` and `AnthropicStreamingChatModel` return `AnthropicTokenUsage` in response which
-contains `cacheCreationInputTokens` and `cacheReadInputTokens`.
+`AnthropicChatModel` and `AnthropicStreamingChatModel` return `AnthropicTokenUsage` in the response,
+which contains `cacheCreationInputTokens` and `cacheReadInputTokens`.
 
 More info on caching can be found [here](https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching).
-### Caching User Messages
 
-To enable prompt caching for a `UserMessage`, you need to set the `cache_control` attribute to `ephemeral`. The cache control marker will be automatically applied to the last content block of the message.
+### Caching System Messages and Tools
+
+Caching of system messages and tools is disabled by default.
+It can be enabled by setting the `cacheSystemMessages` and `cacheTools` parameters, respectively.
+
+When enabled, `cache_control` blocks will be added to the last system message and tool, respectively.
+
+### Caching Individual Messages
+
+`UserMessage`, `AiMessage`, and `ToolExecutionResultMessage` can each be marked for caching by setting
+the `cache_control` attribute to `ephemeral`. The cache control marker is automatically applied to the
+last content block of the message (for `ToolExecutionResultMessage`, this is the `tool_result` block
+itself).
+
+`UserMessage` exposes a mutable attributes map:
 
 ```java
 UserMessage userMessage = UserMessage.from("Hello cached world");
 userMessage.attributes().put("cache_control", "ephemeral");
+```
+
+`AiMessage` and `ToolExecutionResultMessage` carry an immutable attributes map, so set it via
+`toBuilder()`. This is especially useful in an agentic tool-execution loop, where the conversation
+history grows on every turn: marking the last message of a turn as `ephemeral` lets subsequent, larger
+requests reuse the cached prefix instead of re-billing the whole growing history at full price.
+
+```java
+AiMessage aiMessage = someAiMessage.toBuilder()
+        .attributes(Map.of("cache_control", "ephemeral"))
+        .build();
+
+ToolExecutionResultMessage toolExecutionResultMessage = someToolExecutionResultMessage.toBuilder()
+        .attributes(Map.of("cache_control", "ephemeral"))
+        .build();
 ```
 
 ### Cache Diagnostics
@@ -741,7 +822,7 @@ Import Spring Boot starter for Anthropic:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-anthropic-spring-boot-starter</artifactId>
-    <version>1.17.1-beta27</version>
+    <version>1.18.1-beta28</version>
 </dependency>
 ```
 

@@ -5,6 +5,7 @@ import static dev.langchain4j.agentic.scope.DefaultAgenticScope.isSerializable;
 import dev.langchain4j.agentic.agent.AgentInvocationException;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
+import dev.langchain4j.agentic.scope.AgenticSystemSuspendedException;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
@@ -80,6 +81,11 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements 
 
             Object response = agentResponse(agenticScope, invokedAgent, planner, args, async);
             return completeAgentInvocation(response, agenticScope, invokedAgent, planner, args);
+        } catch (AgenticSystemSuspendedException e) {
+            if (planner != null) {
+                planner.onSubagentSuspended();
+            }
+            return null;
         } catch (AgentInvocationException e) {
             return handleAgentFailure(e, agenticScope, invokedAgent, planner, args, false);
         }
@@ -196,6 +202,16 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements 
     @Override
     public void setParent(InternalAgent parent) {
         agentInvoker.setParent(parent);
+    }
+
+    @Override
+    public boolean compensateOnError() {
+        return agentInvoker.compensateOnError();
+    }
+
+    @Override
+    public void enableCrossAgentCompensation() {
+        agentInvoker.enableCrossAgentCompensation();
     }
 
     @Override

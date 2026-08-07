@@ -1781,7 +1781,7 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
             return "HibernateEmbeddingStore.DynamicBuilder(jdbcUrl=" + this.jdbcUrl
                     + ", databaseKind=" + this.databaseKind
                     + ", user=" + this.user
-                    + ", password=" + this.password
+                    + ", password=" + (this.password == null ? null : "********")
                     + ", table=" + this.table
                     + ", dimension=" + this.dimension
                     + ", createIndex=" + this.createIndex
