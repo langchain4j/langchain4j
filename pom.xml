@@ -43,7 +43,6 @@
         <module>langchain4j-ovh-ai</module>
         <module>langchain4j-open-ai</module>
         <module>langchain4j-open-ai-official</module>
-        <module>langchain4j-deepseek</module>
         <module>langchain4j-github-models</module>
         <module>langchain4j-google-ai-gemini</module>
         <module>langchain4j-google-genai</module>
@@ -147,6 +146,7 @@
         <!-- internal -->
         <module>internal/langchain4j-internal-test-retry</module>
         <module>internal/langchain4j-docu-chatbot-updater</module>
+        <module>langchain4j-deepseek</module>
     </modules>
 
     <properties>
