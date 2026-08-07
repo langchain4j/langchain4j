@@ -5,26 +5,25 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 
 /**
- * A {@link StreamingChatModel} implementation that integrates IBM watsonx.ai foundation models with LangChain4j.
+ * A {@link StreamingChatModel} implementation that integrates the IBM watsonx.ai Model Gateway with LangChain4j.
  * <p>
  * <b>Example usage:</b>
  *
  * <pre>{@code
  *
- * StreamingChatModel chatModel = WatsonxStreamingChatModel.builder()
+ * StreamingChatModel chatModel = WatsonxGatewayStreamingChatModel.builder()
  *     .baseUrl("https://...") // or use CloudRegion
  *     .apiKey("...")
- *     .projectId("...")
- *     .modelName("ibm/granite-4-h-small")
+ *     .modelName("gpt-4o")
  *     .maxOutputTokens(0)
  *     .temperature(0.7)
  *     .build();
  * }</pre>
  *
  */
-public class WatsonxStreamingChatModel extends WatsonxChat implements StreamingChatModel {
+public class WatsonxGatewayStreamingChatModel extends WatsonxGatewayChat implements StreamingChatModel {
 
-    private WatsonxStreamingChatModel(Builder builder) {
+    private WatsonxGatewayStreamingChatModel(Builder builder) {
         super(builder);
     }
 
@@ -39,11 +38,10 @@ public class WatsonxStreamingChatModel extends WatsonxChat implements StreamingC
      * <b>Example usage:</b>
      *
      * <pre>{@code
-     * StreamingChatModel chatModel = WatsonxStreamingChatModel.builder()
+     * StreamingChatModel chatModel = WatsonxGatewayStreamingChatModel.builder()
      *     .baseUrl("https://...") // or use CloudRegion
      *     .apiKey("...")
-     *     .projectId("...")
-     *     .modelName("ibm/granite-4-h-small")
+     *     .modelName("gpt-4o")
      *     .maxOutputTokens(0)
      *     .temperature(0.7)
      *     .build();
@@ -57,14 +55,14 @@ public class WatsonxStreamingChatModel extends WatsonxChat implements StreamingC
     }
 
     /**
-     * Builder class for constructing {@link WatsonxStreamingChatModel} instances with configurable parameters.
+     * Builder class for constructing {@link WatsonxGatewayStreamingChatModel} instances with configurable parameters.
      */
-    public static class Builder extends WatsonxChat.Builder<Builder> {
+    public static class Builder extends WatsonxGatewayChat.Builder<Builder> {
 
         private Builder() {}
 
-        public WatsonxStreamingChatModel build() {
-            return new WatsonxStreamingChatModel(this);
+        public WatsonxGatewayStreamingChatModel build() {
+            return new WatsonxGatewayStreamingChatModel(this);
         }
     }
 }
