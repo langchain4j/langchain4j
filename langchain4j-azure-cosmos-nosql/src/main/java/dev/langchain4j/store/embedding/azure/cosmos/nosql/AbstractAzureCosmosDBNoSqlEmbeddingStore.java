@@ -66,6 +66,7 @@ public class AbstractAzureCosmosDBNoSqlEmbeddingStore implements EmbeddingStore<
     private static final Logger logger = LoggerFactory.getLogger(AbstractAzureCosmosDBNoSqlEmbeddingStore.class);
     protected AzureCosmosDBNoSqlFilterMapper filterMapper;
     private CosmosAsyncClient cosmosClient;
+    private boolean closeCosmosClient;
     private String databaseName;
     private String containerName;
     private String partitionKeyPath;
@@ -91,20 +92,16 @@ public class AbstractAzureCosmosDBNoSqlEmbeddingStore implements EmbeddingStore<
             AzureCosmosDBNoSqlFilterMapper filterMapper) {
         ensureNotNull(endpoint, "%s", "endpoint cannot be null or empty for Azure CosmosDB NoSql Embedding Store.");
 
-        if (filterMapper == null) {
-            this.filterMapper = new DefaultAzureCosmosDBNoSqlFilterMapper();
-        } else {
-            this.filterMapper = filterMapper;
-        }
+        CosmosAsyncClient cosmosClient;
         try {
             if (keyCredential != null) {
-                this.cosmosClient = new CosmosClientBuilder()
+                cosmosClient = new CosmosClientBuilder()
                         .endpoint(endpoint)
                         .credential(keyCredential)
                         .userAgentSuffix(USER_AGENT)
                         .buildAsyncClient();
             } else {
-                this.cosmosClient = new CosmosClientBuilder()
+                cosmosClient = new CosmosClientBuilder()
                         .endpoint(endpoint)
                         .credential(tokenCredential)
                         .userAgentSuffix(USER_AGENT)
@@ -113,6 +110,65 @@ public class AbstractAzureCosmosDBNoSqlEmbeddingStore implements EmbeddingStore<
 
         } catch (Exception e) {
             throw new RuntimeException("Error creating cosmosClient: {}", e);
+        }
+
+        initialize(
+                cosmosClient,
+                databaseName,
+                containerName,
+                partitionKeyPath,
+                indexingPolicy,
+                cosmosVectorEmbeddingPolicy,
+                cosmosFullTextPolicy,
+                vectorStoreThroughput,
+                searchQueryType,
+                filterMapper,
+                true);
+    }
+
+    protected void initialize(
+            CosmosAsyncClient cosmosClient,
+            String databaseName,
+            String containerName,
+            String partitionKeyPath,
+            IndexingPolicy indexingPolicy,
+            CosmosVectorEmbeddingPolicy cosmosVectorEmbeddingPolicy,
+            CosmosFullTextPolicy cosmosFullTextPolicy,
+            Integer vectorStoreThroughput,
+            AzureCosmosDBSearchQueryType searchQueryType,
+            AzureCosmosDBNoSqlFilterMapper filterMapper) {
+        initialize(
+                cosmosClient,
+                databaseName,
+                containerName,
+                partitionKeyPath,
+                indexingPolicy,
+                cosmosVectorEmbeddingPolicy,
+                cosmosFullTextPolicy,
+                vectorStoreThroughput,
+                searchQueryType,
+                filterMapper,
+                false);
+    }
+
+    private void initialize(
+            CosmosAsyncClient cosmosClient,
+            String databaseName,
+            String containerName,
+            String partitionKeyPath,
+            IndexingPolicy indexingPolicy,
+            CosmosVectorEmbeddingPolicy cosmosVectorEmbeddingPolicy,
+            CosmosFullTextPolicy cosmosFullTextPolicy,
+            Integer vectorStoreThroughput,
+            AzureCosmosDBSearchQueryType searchQueryType,
+            AzureCosmosDBNoSqlFilterMapper filterMapper,
+            boolean closeCosmosClient) {
+        this.cosmosClient = ensureNotNull(cosmosClient, "cosmosClient");
+        this.closeCosmosClient = closeCosmosClient;
+        if (filterMapper == null) {
+            this.filterMapper = new DefaultAzureCosmosDBNoSqlFilterMapper();
+        } else {
+            this.filterMapper = filterMapper;
         }
 
         this.databaseName = getOrDefault(databaseName, DEFAULT_DATABASE_NAME);
@@ -561,11 +617,11 @@ public class AbstractAzureCosmosDBNoSqlEmbeddingStore implements EmbeddingStore<
     }
 
     /**
-     * Closes the CosmosDB client and releases resources.
-     * This method should be called when the store is no longer needed to prevent resource leaks.
+     * Closes the CosmosDB client created by this store and releases resources.
+     * Caller-provided clients remain caller-owned and are not closed by this method.
      */
     public void close() {
-        if (this.cosmosClient != null) {
+        if (this.closeCosmosClient && this.cosmosClient != null) {
             this.cosmosClient.close();
         }
     }
