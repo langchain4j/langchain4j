@@ -398,7 +398,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     return fireEventAndReturn(invocationContext, lastNonNull.resultObject());
                                 }
                                 throw illegalConfiguration(
-                                        "AI Service method '%s' call cannot resolve return type from tool executions with ReturnBehavior.%s/%s. Use %s as your return type.",
+                                        "AI Service method '%s' call cannot resolve return type from tool executions"
+                                                + " with ReturnBehavior.%s/%s. Use %s as your return type.",
                                         method.getName(), IMMEDIATE, IMMEDIATE_IF_LAST, Result.class.getName());
                             }
                         }
@@ -615,6 +616,9 @@ class DefaultAiServices<T> extends AiServices<T> {
     private Optional<String> findSystemMessageTemplate(InvocationContext invocationContext, Method method) {
         dev.langchain4j.service.SystemMessage annotation =
                 method.getAnnotation(dev.langchain4j.service.SystemMessage.class);
+        if (annotation == null) {
+            annotation = method.getDeclaringClass().getAnnotation(dev.langchain4j.service.SystemMessage.class);
+        }
         if (annotation != null) {
             return Optional.of(getTemplate(
                     method, "System", annotation.fromResource(), annotation.value(), annotation.delimiter()));

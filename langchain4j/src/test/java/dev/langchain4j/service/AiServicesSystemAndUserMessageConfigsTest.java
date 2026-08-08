@@ -122,6 +122,47 @@ class AiServicesSystemAndUserMessageConfigsTest {
         String illegalChat2(@V("answerInstructions") String answerInstructions, String userMessage);
     }
 
+    @SystemMessage("Given a name of a country, answer with a name of it's capital")
+    interface AiServiceWithDefaultSystemMessage {
+
+        String chat(String userMessage);
+
+        @SystemMessage("Answer using only the country capital")
+        String chatWithMethodSystemMessage(String userMessage);
+    }
+
+    @Test
+    void interface_system_message_should_take_precedence_over_system_message_provider() {
+
+        AiServiceWithDefaultSystemMessage aiService = AiServices.builder(AiServiceWithDefaultSystemMessage.class)
+                .chatModel(model)
+                .systemMessage("This message should be ignored")
+                .build();
+
+        assertThat(aiService.chat("Country: Germany")).containsIgnoringCase("Berlin");
+        verify(model)
+                .chat(ChatRequest.builder()
+                        .messages(
+                                systemMessage("Given a name of a country, answer with a name of it's capital"),
+                                userMessage("Country: Germany"))
+                        .build());
+    }
+
+    @Test
+    void method_system_message_should_take_precedence_over_interface_system_message() {
+
+        AiServiceWithDefaultSystemMessage aiService = AiServices.builder(AiServiceWithDefaultSystemMessage.class)
+                .chatModel(model)
+                .build();
+
+        assertThat(aiService.chatWithMethodSystemMessage("Country: Germany")).containsIgnoringCase("Berlin");
+        verify(model)
+                .chat(ChatRequest.builder()
+                        .messages(
+                                systemMessage("Answer using only the country capital"), userMessage("Country: Germany"))
+                        .build());
+    }
+
     @Test
     void system_message_configuration_1() {
 
@@ -519,8 +560,8 @@ class AiServicesSystemAndUserMessageConfigsTest {
         verify(model)
                 .chat(ChatRequest.builder()
                         .messages(
-                                systemMessage(
-                                        "This message should take precedence over the one provided by systemMessageProvider"),
+                                systemMessage("This message should take precedence over the one provided by"
+                                        + " systemMessageProvider"),
                                 userMessage("What is the capital of Germany?"))
                         .build());
     }
@@ -583,8 +624,8 @@ class AiServicesSystemAndUserMessageConfigsTest {
         verify(model)
                 .chat(ChatRequest.builder()
                         .messages(
-                                systemMessage(
-                                        "This message should take precedence over the one provided by systemMessageProvider"),
+                                systemMessage("This message should take precedence over the one provided by"
+                                        + " systemMessageProvider"),
                                 userMessage("What is the capital of Germany?"))
                         .build());
     }
@@ -599,9 +640,9 @@ class AiServicesSystemAndUserMessageConfigsTest {
         // when-then
         assertThatThrownBy(() -> aiService.illegalChat1("a name of it's capital", "Country: Germany"))
                 .isExactlyInstanceOf(IllegalConfigurationException.class)
-                .hasMessage(
-                        "The parameter 'arg1' in the method 'illegalChat1' of the class dev.langchain4j.service.AiServicesSystemAndUserMessageConfigsTest$AiService"
-                                + VALIDATION_ERROR_MESSAGE_SUFFIX);
+                .hasMessage("The parameter 'arg1' in the method 'illegalChat1' of the class"
+                        + " dev.langchain4j.service.AiServicesSystemAndUserMessageConfigsTest$AiService"
+                        + VALIDATION_ERROR_MESSAGE_SUFFIX);
     }
 
     @Test
@@ -616,8 +657,8 @@ class AiServicesSystemAndUserMessageConfigsTest {
         // when-then
         assertThatThrownBy(() -> aiService.illegalChat2("a name of it's capital", "Country: Germany"))
                 .isExactlyInstanceOf(IllegalConfigurationException.class)
-                .hasMessage(
-                        "The parameter 'arg1' in the method 'illegalChat2' of the class dev.langchain4j.service.AiServicesSystemAndUserMessageConfigsTest$AiService"
-                                + VALIDATION_ERROR_MESSAGE_SUFFIX);
+                .hasMessage("The parameter 'arg1' in the method 'illegalChat2' of the class"
+                        + " dev.langchain4j.service.AiServicesSystemAndUserMessageConfigsTest$AiService"
+                        + VALIDATION_ERROR_MESSAGE_SUFFIX);
     }
 }
