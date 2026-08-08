@@ -38,9 +38,9 @@ class StreamingProgrammaticCreatedImmediateReturnToolTest {
                 .description("Performs calculation")
                 .build();
 
-        ToolExecutor executor = (toolExecutionRequest, memoryId) -> {
+        ToolExecutor executor = (toolExecutionRequest, context) -> {
             toolExecuted.set(true);
-            return "4";
+            return ToolExecutionResult.from("4");
         };
 
         // The mock has only ONE message queued: a tool call. If IMMEDIATE is honored,

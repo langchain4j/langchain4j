@@ -1,5 +1,8 @@
 package dev.langchain4j.mcp.client.transport.docker;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.exception.ToolExecutionException;
@@ -10,19 +13,16 @@ import dev.langchain4j.mcp.client.transport.McpTransport;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProviderResult;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIf;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.Map;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIf;
 
 @EnabledIf("dockerSocketExists")
 class DockerMcpTransportIT {
@@ -80,7 +80,8 @@ class DockerMcpTransportIT {
                 .name("get_current_time")
                 .arguments("{\"timezone\": \"Europe/Paris\"}")
                 .build();
-        String toolExecutionResultString = executor.execute(toolExecutionRequest, null);
+        String toolExecutionResultString =
+                executor.execute(toolExecutionRequest, null).resultText();
         assertThat(toolExecutionResultString).isNotNull();
         assertThat(toolExecutionResultString).contains("timezone", "Europe/Paris", "datetime");
         String currentDate = LocalDate.now(ZoneId.of("Europe/Paris")).toString();
@@ -99,13 +100,15 @@ class DockerMcpTransportIT {
                 .toolExecutionTimeout(Duration.ofSeconds(4))
                 .build();
 
-        ToolProviderResult toolProviderResult =  McpToolProvider.builder().mcpClients(mcpClient).build().provideTools(null);
+        ToolProviderResult toolProviderResult =
+                McpToolProvider.builder().mcpClients(mcpClient).build().provideTools(null);
         ToolExecutor executor = toolProviderResult.toolExecutorByName("add");
         ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
                 .name("add")
                 .arguments("{\"a\": 5, \"b\": 6}")
                 .build();
-        String toolExecutionResultString = executor.execute(toolExecutionRequest, null);
+        String toolExecutionResultString =
+                executor.execute(toolExecutionRequest, null).resultText();
         assertThat(toolExecutionResultString).isNotNull();
         assertThat(toolExecutionResultString).contains("11");
     }
@@ -118,7 +121,9 @@ class DockerMcpTransportIT {
                 .name("get_current_time")
                 .arguments("{\"timezone\": \"unknown\"}")
                 .build();
-        assertThrows(ToolExecutionException.class, () -> executor.execute(toolExecutionRequest, null));
+        assertThrows(
+                ToolExecutionException.class,
+                () -> executor.execute(toolExecutionRequest, null).resultText());
     }
 
     ToolProviderResult obtainTools() {

@@ -13,17 +13,18 @@ import dev.langchain4j.agentic.observability.AgentRequest;
 import dev.langchain4j.agentic.observability.AgentResponse;
 import dev.langchain4j.agentic.observability.BeforeAgentToolExecution;
 import dev.langchain4j.agentic.scope.AgenticScope;
+import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
+import dev.langchain4j.service.tool.ToolExecutionResult;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProvider;
 import dev.langchain4j.service.tool.ToolProviderResult;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
-
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 @EnabledIfEnvironmentVariable(named = "GOOGLE_AI_GEMINI_API_KEY", matches = ".+")
@@ -64,7 +65,7 @@ public class SingleAgentIT {
                         .build())
                 .build();
 
-        ToolExecutor executor = (ToolExecutionRequest request, Object memoryId) -> {
+        ToolExecutor executor = (ToolExecutionRequest request, InvocationContext context) -> {
             String topic = null;
             try {
                 Map<?, ?> args = mapper.readValue(request.arguments(), Map.class);
@@ -74,7 +75,7 @@ public class SingleAgentIT {
                 // demo only
             }
             String t = (topic == null || topic.isBlank()) ? "your topic" : topic.trim();
-            return "Opening hint: when you stare at \"" + t + "\", the story ignites.";
+            return ToolExecutionResult.from("Opening hint: when you stare at \"" + t + "\", the story ignites.");
         };
 
         return ignored -> ToolProviderResult.builder().add(spec, executor).build();
@@ -91,15 +92,15 @@ public class SingleAgentIT {
         @Override
         public void beforeAgentInvocation(AgentRequest request) {
             BEFORE_AGENT_INVOKED.set(true);
-            System.out.println(tag + " beforeAgentInvocation agent=" + request.agent().name()
-                    + " inputs=" + request.inputs());
+            System.out.println(
+                    tag + " beforeAgentInvocation agent=" + request.agent().name() + " inputs=" + request.inputs());
         }
 
         @Override
         public void afterAgentInvocation(AgentResponse response) {
             AFTER_AGENT_INVOKED.set(true);
-            System.out.println(tag + " afterAgentInvocation agent=" + response.agent().name()
-                    + " output=" + response.output());
+            System.out.println(
+                    tag + " afterAgentInvocation agent=" + response.agent().name() + " output=" + response.output());
         }
 
         @Override

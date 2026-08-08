@@ -341,9 +341,9 @@ ToolSpecification validateOrder = ToolSpecification.builder()
         .addParameter("orderId", JsonSchemaProperty.STRING, JsonSchemaProperty.description("The order ID"))
         .build();
 
-ToolExecutor validateOrderExecutor = (request, memoryId) -> {
+ToolExecutor validateOrderExecutor = (request, context) -> {
     String orderId = parseOrderId(request.arguments());
-    return validate(orderId);
+    return ToolExecutionResult.from(validate(orderId));
 };
 
 Skill skill = Skill.builder()

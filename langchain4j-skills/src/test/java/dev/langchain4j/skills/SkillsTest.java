@@ -1,5 +1,16 @@
 package dev.langchain4j.skills;
 
+import static dev.langchain4j.service.AiServicesIT.verifyNoMoreInteractionsFor;
+import static dev.langchain4j.service.tool.ToolExecutionResult.from;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.atLeast;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -13,25 +24,14 @@ import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.Result;
 import dev.langchain4j.service.tool.ToolProvider;
 import dev.langchain4j.service.tool.ToolProviderResult;
-import org.junit.jupiter.api.Test;
-import org.mockito.InOrder;
-
 import java.net.URISyntaxException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
-
-import static dev.langchain4j.service.AiServicesIT.verifyNoMoreInteractionsFor;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.argThat;
-import static org.mockito.Mockito.atLeast;
-import static org.mockito.Mockito.inOrder;
-import static org.mockito.Mockito.spy;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
+import org.junit.jupiter.api.Test;
+import org.mockito.InOrder;
 
 class SkillsTest {
 
@@ -57,12 +57,10 @@ class SkillsTest {
         }
 
         @Tool
-        void finish() {
-        }
+        void finish() {}
 
         @Tool
-        void reset() {
-        }
+        void reset() {}
 
         @Tool
         String poll() {
@@ -84,8 +82,13 @@ class SkillsTest {
         assertThat(getToolNames(skills.toolProvider()))
                 .containsExactlyInAnyOrder("activate_skill", "read_skill_resource");
         assertThat(skills.toolProvider().provideTools(null).tools().keySet().stream()
-                .filter(it -> it.name().equals("read_skill_resource")).findFirst().get()
-                .parameters().properties().get("relative_path").description())
+                        .filter(it -> it.name().equals("read_skill_resource"))
+                        .findFirst()
+                        .get()
+                        .parameters()
+                        .properties()
+                        .get("relative_path")
+                        .description())
                 .matches(".*For example: references/\\d+\\.md");
 
         // given
@@ -112,8 +115,7 @@ class SkillsTest {
                         .name("reset")
                         .arguments("{}")
                         .build()),
-                AiMessage.from("Done.")
-        );
+                AiMessage.from("Done."));
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(chatModelMock)
@@ -142,25 +144,24 @@ class SkillsTest {
                 .content("""
                         When user asks you to use the 'process' tool, you need to first call the 'generate' tool with
                         2 arguments: arg0 (surname) and arg1 (name).
-                        
+
                         When you have an id, call the 'process' tool with 3 arguments:
                         arg0 (name), arg1 (id), arg2 (surname).
-                        
+
                         If 'process' tool returns code 17, proceed with [this](references/17.md) guide,
                         if it returns code 25, proceed with [this](references/25.md) guide.
                         """)
                 .resources(List.of(
                         SkillResource.builder()
                                 .relativePath("references/17.md")
-                                .content("If 'process' tool returns code 17, you need to call the 'finish' tool. " +
-                                        "Do not call the 'reset' tool!")
+                                .content("If 'process' tool returns code 17, you need to call the 'finish' tool. "
+                                        + "Do not call the 'reset' tool!")
                                 .build(),
                         SkillResource.builder()
                                 .relativePath("references/25.md")
-                                .content("If 'process' tool returns code 25, you need to call the 'reset' tool. " +
-                                        "Do not call the 'finish' tool!")
-                                .build()
-                ))
+                                .content("If 'process' tool returns code 25, you need to call the 'reset' tool. "
+                                        + "Do not call the 'finish' tool!")
+                                .build()))
                 .build();
 
         // when
@@ -195,8 +196,7 @@ class SkillsTest {
                         .name("reset")
                         .arguments("{}")
                         .build()),
-                AiMessage.from("Done.")
-        );
+                AiMessage.from("Done."));
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(chatModelMock)
@@ -270,8 +270,7 @@ class SkillsTest {
                         .name("reset")
                         .arguments("{}")
                         .build()),
-                AiMessage.from("Done.")
-        );
+                AiMessage.from("Done."));
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(chatModelMock)
@@ -305,11 +304,12 @@ class SkillsTest {
                 .description("Describes how to query and manage the internal inventory system")
                 .content("When asked about inventory or stock levels, use the 'query_inventory' tool.")
                 .toolProviders(request -> ToolProviderResult.builder()
-                        .add(ToolSpecification.builder()
+                        .add(
+                                ToolSpecification.builder()
                                         .name("query_inventory")
                                         .description("Queries the internal inventory system for stock levels")
                                         .build(),
-                                (req, memoryId) -> "47 units in stock")
+                                (req, memoryId) -> from("47 units in stock"))
                         .build())
                 .build();
 
@@ -329,8 +329,7 @@ class SkillsTest {
                                 .name("query_inventory")
                                 .description("Queries the internal inventory system for stock levels")
                                 .build(),
-                        (req, memoryId) -> "47 units in stock"
-                ))
+                        (req, memoryId) -> from("47 units in stock")))
                 .build();
 
         verifyToolsHiddenBeforeActivationAndVisibleAfter(skill);
@@ -360,11 +359,12 @@ class SkillsTest {
                 .content("When asked about inventory or stock levels, use the 'query_inventory' tool.")
                 .tools(new InventoryTools())
                 .toolProviders(request -> ToolProviderResult.builder()
-                        .add(ToolSpecification.builder()
+                        .add(
+                                ToolSpecification.builder()
                                         .name("update_inventory")
                                         .description("Updates inventory stock level")
                                         .build(),
-                                (req, memoryId) -> "updated")
+                                (req, memoryId) -> from("updated"))
                         .build())
                 .build();
 
@@ -379,8 +379,7 @@ class SkillsTest {
                         .name("query_inventory")
                         .arguments("{}")
                         .build()),
-                AiMessage.from("There are 47 units in stock for widgets.")
-        );
+                AiMessage.from("There are 47 units in stock for widgets."));
         ChatModel spyChatModel = spy(chatModelMock);
 
         Assistant assistant = AiServices.builder(Assistant.class)
@@ -401,17 +400,15 @@ class SkillsTest {
         // then
         InOrder inOrder = inOrder(spyChatModel);
 
-        inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
-                containsTool(request, "activate_skill")
+        inOrder.verify(spyChatModel)
+                .chat(argThat((ChatRequest request) -> containsTool(request, "activate_skill")
                         && !containsTool(request, "query_inventory")
-                        && !containsTool(request, "update_inventory")
-        ));
+                        && !containsTool(request, "update_inventory")));
 
-        inOrder.verify(spyChatModel, atLeast(1)).chat(argThat((ChatRequest request) ->
-                containsTool(request, "activate_skill")
+        inOrder.verify(spyChatModel, atLeast(1))
+                .chat(argThat((ChatRequest request) -> containsTool(request, "activate_skill")
                         && containsTool(request, "query_inventory")
-                        && containsTool(request, "update_inventory")
-        ));
+                        && containsTool(request, "update_inventory")));
 
         verifyNoMoreInteractionsFor(spyChatModel);
     }
@@ -441,8 +438,7 @@ class SkillsTest {
                         .name("query_inventory")
                         .arguments("{}")
                         .build()),
-                AiMessage.from("There are 47 units in stock for gadgets.")
-        );
+                AiMessage.from("There are 47 units in stock for gadgets."));
         ChatModel spyChatModel = spy(chatModelMock);
 
         Assistant assistant = AiServices.builder(Assistant.class)
@@ -463,15 +459,13 @@ class SkillsTest {
         // then
         InOrder inOrder = inOrder(spyChatModel);
 
-        inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
-                containsTool(request, "activate_skill")
-                        && !containsTool(request, "query_inventory")
-        ));
+        inOrder.verify(spyChatModel)
+                .chat(argThat((ChatRequest request) ->
+                        containsTool(request, "activate_skill") && !containsTool(request, "query_inventory")));
 
-        inOrder.verify(spyChatModel, times(2)).chat(argThat((ChatRequest request) ->
-                containsTool(request, "activate_skill")
-                        && containsTool(request, "query_inventory")
-        ));
+        inOrder.verify(spyChatModel, times(2))
+                .chat(argThat((ChatRequest request) ->
+                        containsTool(request, "activate_skill") && containsTool(request, "query_inventory")));
 
         verifyNoMoreInteractionsFor(spyChatModel);
 
@@ -479,10 +473,9 @@ class SkillsTest {
         assistant.chat("Now check the inventory for gadgets");
 
         // then
-        inOrder.verify(spyChatModel, times(2)).chat(argThat((ChatRequest request) ->
-                containsTool(request, "activate_skill")
-                        && containsTool(request, "query_inventory")
-        ));
+        inOrder.verify(spyChatModel, times(2))
+                .chat(argThat((ChatRequest request) ->
+                        containsTool(request, "activate_skill") && containsTool(request, "query_inventory")));
 
         verifyNoMoreInteractionsFor(spyChatModel);
     }
@@ -506,7 +499,7 @@ class SkillsTest {
                 .description("A weather skill")
                 .content("When asked about weather, use the 'get_weather' tool.")
                 .toolProviders(request -> ToolProviderResult.builder()
-                        .add(weatherTool, (req, memoryId) -> "Sunny")
+                        .add(weatherTool, (req, memoryId) -> from("Sunny"))
                         .build())
                 .build();
 
@@ -515,7 +508,7 @@ class SkillsTest {
                 .description("A time skill")
                 .content("When asked about time, use the 'get_time' tool.")
                 .toolProviders(request -> ToolProviderResult.builder()
-                        .add(timeTool, (req, memoryId) -> "12:00")
+                        .add(timeTool, (req, memoryId) -> from("12:00"))
                         .build())
                 .build();
 
@@ -530,8 +523,7 @@ class SkillsTest {
                         .name("get_weather")
                         .arguments("{}")
                         .build()),
-                AiMessage.from("The weather is sunny.")
-        );
+                AiMessage.from("The weather is sunny."));
         ChatModel spyChatModel = spy(chatModelMock);
 
         Assistant assistant = AiServices.builder(Assistant.class)
@@ -555,17 +547,15 @@ class SkillsTest {
         InOrder inOrder = inOrder(spyChatModel);
 
         // First call: only activate_skill, no skill-specific tools
-        inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
-                containsTool(request, "activate_skill")
+        inOrder.verify(spyChatModel)
+                .chat(argThat((ChatRequest request) -> containsTool(request, "activate_skill")
                         && !containsTool(request, "get_weather")
-                        && !containsTool(request, "get_time")
-        ));
+                        && !containsTool(request, "get_time")));
 
         // After activating weather skill: get_weather should appear, get_time should NOT
-        inOrder.verify(spyChatModel, atLeast(1)).chat(argThat((ChatRequest request) ->
-                containsTool(request, "get_weather")
-                        && !containsTool(request, "get_time")
-        ));
+        inOrder.verify(spyChatModel, atLeast(1))
+                .chat(argThat((ChatRequest request) ->
+                        containsTool(request, "get_weather") && !containsTool(request, "get_time")));
 
         verifyNoMoreInteractionsFor(spyChatModel);
     }
@@ -584,7 +574,7 @@ class SkillsTest {
                 .description("Describes how to query and manage the internal inventory system")
                 .content("When asked about inventory or stock levels, use the 'query_inventory' tool.")
                 .toolProviders(request -> ToolProviderResult.builder()
-                        .add(skillTool, (req, memoryId) -> "47 units in stock")
+                        .add(skillTool, (req, memoryId) -> from("47 units in stock"))
                         .build())
                 .build();
 
@@ -601,8 +591,7 @@ class SkillsTest {
                         .name("query_inventory")
                         .arguments("{}")
                         .build()),
-                AiMessage.from("There are 47 units in stock.")
-        );
+                AiMessage.from("There are 47 units in stock."));
         ChatModel spyChatModel = spy(chatModelMock);
 
         Assistant assistant = AiServices.builder(Assistant.class)
@@ -625,23 +614,21 @@ class SkillsTest {
         InOrder inOrder = inOrder(spyChatModel);
 
         // first call: normal tools + activate_skill, but NOT query_inventory (skill not yet activated)
-        inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
-                containsTool(request, "activate_skill")
+        inOrder.verify(spyChatModel)
+                .chat(argThat((ChatRequest request) -> containsTool(request, "activate_skill")
                         && containsTool(request, "process")
                         && containsTool(request, "generate")
                         && containsTool(request, "finish")
                         && containsTool(request, "reset")
                         && containsTool(request, "poll")
-                        && !containsTool(request, "query_inventory")
-        ));
+                        && !containsTool(request, "query_inventory")));
 
         // after activation: normal tools still present alongside skill-scoped tool
-        inOrder.verify(spyChatModel, atLeast(1)).chat(argThat((ChatRequest request) ->
-                containsTool(request, "activate_skill")
+        inOrder.verify(spyChatModel, atLeast(1))
+                .chat(argThat((ChatRequest request) -> containsTool(request, "activate_skill")
                         && containsTool(request, "process")
                         && containsTool(request, "generate")
-                        && containsTool(request, "query_inventory")
-        ));
+                        && containsTool(request, "query_inventory")));
 
         verifyNoMoreInteractionsFor(spyChatModel);
     }
@@ -655,16 +642,18 @@ class SkillsTest {
                 .description("Inventory management")
                 .content("Use query_inventory to check stock and reorder_item to reorder.")
                 .toolProviders(request -> ToolProviderResult.builder()
-                        .add(ToolSpecification.builder()
+                        .add(
+                                ToolSpecification.builder()
                                         .name("query_inventory")
                                         .description("Queries inventory levels")
                                         .build(),
-                                (req, memoryId) -> "47 units")
-                        .add(ToolSpecification.builder()
+                                (req, memoryId) -> from("47 units"))
+                        .add(
+                                ToolSpecification.builder()
                                         .name("reorder_item")
                                         .description("Reorders an item")
                                         .build(),
-                                (req, memoryId) -> "reordered")
+                                (req, memoryId) -> from("reordered"))
                         .build())
                 .build();
 
@@ -673,16 +662,18 @@ class SkillsTest {
                 .description("Reporting")
                 .content("Use query_inventory to get data and generate_report to produce a report.")
                 .toolProviders(request -> ToolProviderResult.builder()
-                        .add(ToolSpecification.builder()
+                        .add(
+                                ToolSpecification.builder()
                                         .name("query_inventory")
                                         .description("Queries inventory levels")
                                         .build(),
-                                (req, memoryId) -> "47 units")
-                        .add(ToolSpecification.builder()
+                                (req, memoryId) -> from("47 units"))
+                        .add(
+                                ToolSpecification.builder()
                                         .name("generate_report")
                                         .description("Generates a report")
                                         .build(),
-                                (req, memoryId) -> "report generated")
+                                (req, memoryId) -> from("report generated"))
                         .build())
                 .build();
 
@@ -707,8 +698,7 @@ class SkillsTest {
                         .name("generate_report")
                         .arguments("{}")
                         .build()),
-                AiMessage.from("Report generated.")
-        );
+                AiMessage.from("Report generated."));
         ChatModel spyChatModel = spy(chatModelMock);
 
         Assistant assistant = AiServices.builder(Assistant.class)
@@ -731,12 +721,11 @@ class SkillsTest {
         InOrder inOrder = inOrder(spyChatModel);
 
         // first call: only activate_skill, no skill-scoped tools
-        inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
-                containsTool(request, "activate_skill")
+        inOrder.verify(spyChatModel)
+                .chat(argThat((ChatRequest request) -> containsTool(request, "activate_skill")
                         && !containsTool(request, "query_inventory")
                         && !containsTool(request, "reorder_item")
-                        && !containsTool(request, "generate_report")
-        ));
+                        && !containsTool(request, "generate_report")));
 
         // after activation(s): all unique tools present, no duplicates
         inOrder.verify(spyChatModel, atLeast(1)).chat(argThat((ChatRequest request) -> {
@@ -777,10 +766,11 @@ class SkillsTest {
                 .description("Inventory management skill")
                 .content("Use query_inventory to check stock.")
                 .tools(Map.of(
-                        ToolSpecification.builder().name("query_inventory")
-                                .description("Queries inventory").build(),
-                        (req, memoryId) -> "47 units"
-                ))
+                        ToolSpecification.builder()
+                                .name("query_inventory")
+                                .description("Queries inventory")
+                                .build(),
+                        (req, memoryId) -> from("47 units")))
                 .build();
 
         Skills skills = Skills.from(skill);
@@ -794,8 +784,7 @@ class SkillsTest {
                         .name("activate_skill")
                         .arguments("{\"skill_name\": \"inventory\"}")
                         .build()),
-                AiMessage.from("Done.")
-        );
+                AiMessage.from("Done."));
         ChatModelMock spyChatModel = spy(chatModel);
 
         Assistant assistant = AiServices.builder(Assistant.class)
@@ -817,10 +806,9 @@ class SkillsTest {
         InOrder inOrder = inOrder(spyChatModel);
 
         // first call: no skill tools yet
-        inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
-                containsTool(request, "activate_skill")
-                        && !containsTool(request, "query_inventory")
-        ));
+        inOrder.verify(spyChatModel)
+                .chat(argThat((ChatRequest request) ->
+                        containsTool(request, "activate_skill") && !containsTool(request, "query_inventory")));
 
         // subsequent calls: query_inventory visible, no duplicates
         inOrder.verify(spyChatModel, times(2)).chat(argThat((ChatRequest request) -> {
@@ -837,21 +825,18 @@ class SkillsTest {
     void activating_invalid_skill_should_return_error_to_llm() {
 
         // given
-        Skills skills = Skills.from(
-                Skill.builder()
-                        .name("inventory")
-                        .description("Inventory management skill")
-                        .content("Use query_inventory to check stock.")
-                        .build()
-        );
+        Skills skills = Skills.from(Skill.builder()
+                .name("inventory")
+                .description("Inventory management skill")
+                .content("Use query_inventory to check stock.")
+                .build());
 
         ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds(
                 AiMessage.from(ToolExecutionRequest.builder()
                         .name("activate_skill")
                         .arguments("{\"skill_name\": \"non-existent\"}")
                         .build()),
-                AiMessage.from("Sorry, that skill doesn't exist.")
-        );
+                AiMessage.from("Sorry, that skill doesn't exist."));
         ChatModelMock spyChatModel = spy(chatModel);
 
         Assistant assistant = AiServices.builder(Assistant.class)
@@ -870,18 +855,15 @@ class SkillsTest {
         var inOrder = inOrder(spyChatModel);
 
         // LLM call 1: activate_skill with invalid name
-        inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
-                containsTool(request, "activate_skill")
-        ));
+        inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) -> containsTool(request, "activate_skill")));
 
         // LLM call 2: error message sent back containing available skill names
-        inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
-                request.messages().stream()
+        inOrder.verify(spyChatModel)
+                .chat(argThat((ChatRequest request) -> request.messages().stream()
                         .filter(msg -> msg instanceof ToolExecutionResultMessage)
                         .map(msg -> (ToolExecutionResultMessage) msg)
-                        .anyMatch(msg -> msg.text().contains("'inventory'")
-                                && msg.text().contains("non-existent"))
-        ));
+                        .anyMatch(msg ->
+                                msg.text().contains("'inventory'") && msg.text().contains("non-existent"))));
 
         verifyNoMoreInteractionsFor(spyChatModel);
     }

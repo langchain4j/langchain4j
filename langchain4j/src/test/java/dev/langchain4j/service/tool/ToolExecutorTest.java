@@ -1,5 +1,6 @@
 package dev.langchain4j.service.tool;
 
+import static dev.langchain4j.service.tool.ToolExecutionResult.from;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -273,7 +274,11 @@ class ToolExecutorTest {
         DefaultToolExecutor toolExecutor =
                 new DefaultToolExecutor(testTool, TestTool.class.getDeclaredMethod(methodName, arg0Type, arg1Type));
 
-        String result = toolExecutor.execute(request, "DEFAULT");
+        String result = toolExecutor
+                .execute(
+                        request,
+                        InvocationContext.builder().chatMemoryId("DEFAULT").build())
+                .resultText();
 
         assertThat(result).isEqualTo(expectedResult);
     }
@@ -287,7 +292,9 @@ class ToolExecutorTest {
         DefaultToolExecutor toolExecutor =
                 new DefaultToolExecutor(testTool, TestTool.class.getDeclaredMethod(methodName, arg0Type, arg1Type));
 
-        assertThatThrownBy(() -> toolExecutor.execute(request, "DEFAULT"))
+        assertThatThrownBy(() -> toolExecutor.execute(
+                        request,
+                        InvocationContext.builder().chatMemoryId("DEFAULT").build()))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining(expectedError);
     }
@@ -295,19 +302,17 @@ class ToolExecutorTest {
     @Test
     void should_specify_tool_executor_as_lambda() {
 
-        ToolExecutor toolExecutor = (request, memoryId) -> "result";
+        ToolExecutor toolExecutor = (request, context) -> from("result");
 
-        assertThat(toolExecutor.execute(null, null)).isEqualTo("result");
-        assertThat(toolExecutor.executeWithContext(null, null).resultText()).isEqualTo("result");
+        assertThat(toolExecutor.execute(null, null).resultText()).isEqualTo("result");
     }
 
     @Test
     void should_specify_tool_executor_as_lambda_typed() {
 
-        ToolExecutor toolExecutor = (ToolExecutionRequest request, Object memoryId) -> "result";
+        ToolExecutor toolExecutor = (ToolExecutionRequest request, InvocationContext context) -> from("result");
 
-        assertThat(toolExecutor.execute(null, null)).isEqualTo("result");
-        assertThat(toolExecutor.executeWithContext(null, null).resultText()).isEqualTo("result");
+        assertThat(toolExecutor.execute(null, null).resultText()).isEqualTo("result");
     }
 
     @Test
@@ -316,16 +321,15 @@ class ToolExecutorTest {
         ToolExecutor toolExecutor = new ToolExecutor() {
 
             @Override
-            public String execute(ToolExecutionRequest toolExecutionRequest, Object memoryId) {
-                return "result";
+            public ToolExecutionResult execute(ToolExecutionRequest toolExecutionRequest, InvocationContext context) {
+                return from("result");
             }
 
             public void dummyMethod() { // ensure anonymous class cannot be converted into lambda during refactoring
             }
         };
 
-        assertThat(toolExecutor.execute(null, null)).isEqualTo("result");
-        assertThat(toolExecutor.executeWithContext(null, null).resultText()).isEqualTo("result");
+        assertThat(toolExecutor.execute(null, null).resultText()).isEqualTo("result");
     }
 
     @Test
@@ -334,17 +338,11 @@ class ToolExecutorTest {
         ToolExecutor toolExecutor = new ToolExecutor() {
 
             @Override
-            public ToolExecutionResult executeWithContext(ToolExecutionRequest request, InvocationContext context) {
-                return ToolExecutionResult.builder().resultText("result").build();
-            }
-
-            @Override
-            public String execute(ToolExecutionRequest request, Object memoryId) {
-                return null;
+            public ToolExecutionResult execute(ToolExecutionRequest request, InvocationContext context) {
+                return from("result");
             }
         };
 
-        assertThat(toolExecutor.execute(null, null)).isNull();
-        assertThat(toolExecutor.executeWithContext(null, null).resultText()).isEqualTo("result");
+        assertThat(toolExecutor.execute(null, null).resultText()).isEqualTo("result");
     }
 }

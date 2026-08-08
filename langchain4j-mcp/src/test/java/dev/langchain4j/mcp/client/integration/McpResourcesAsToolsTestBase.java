@@ -52,8 +52,10 @@ public abstract class McpResourcesAsToolsTestBase {
         assertThat(toolNames).containsExactlyInAnyOrder("list_resources", "get_resource");
 
         // call the list_resources tool and verify the output
-        String listResourcesResult =
-                toolProviderResult.toolExecutorByName("list_resources").execute(null, null);
+        String listResourcesResult = toolProviderResult
+                .toolExecutorByName("list_resources")
+                .execute(null, null)
+                .resultText();
         ArrayNode resources = Json.fromJson(listResourcesResult, ArrayNode.class);
         assertThat(resources.size()).isEqualTo(1);
         assertThat(resources.get(0).get("mcpServer").asText()).isEqualTo("alice");
@@ -68,8 +70,10 @@ public abstract class McpResourcesAsToolsTestBase {
                 .name("get_resource")
                 .arguments("{\"mcpServer\": \"alice\", \"uri\": \"file:///info\"}")
                 .build();
-        String getBasicInfoResult =
-                toolProviderResult.toolExecutorByName("get_resource").execute(request, null);
+        String getBasicInfoResult = toolProviderResult
+                .toolExecutorByName("get_resource")
+                .execute(request, null)
+                .resultText();
         assertThat(getBasicInfoResult).isEqualTo("Alice was born in 1962 and lives in Manchester.");
     }
 
@@ -92,7 +96,8 @@ public abstract class McpResourcesAsToolsTestBase {
         String out = toolProvider
                 .provideTools(null)
                 .toolExecutorByName("list_resources")
-                .execute(request, null);
+                .execute(request, null)
+                .resultText();
         System.out.println(out);
 
         String aliceResponse = service.chat("When was Alice born?");

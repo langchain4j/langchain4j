@@ -354,7 +354,10 @@ class DefaultToolExecutorTest implements WithAssertions {
         DefaultToolExecutor executor =
                 new DefaultToolExecutor(new ThrowingTool(), ThrowingTool.class.getDeclaredMethod("throwsWithMessage"));
 
-        String result = executor.execute(request, "DEFAULT");
+        String result = executor.execute(
+                        request,
+                        InvocationContext.builder().chatMemoryId("DEFAULT").build())
+                .resultText();
         assertThat(result).isEqualTo("something went wrong");
     }
 
@@ -369,7 +372,10 @@ class DefaultToolExecutorTest implements WithAssertions {
         DefaultToolExecutor executor = new DefaultToolExecutor(
                 new ThrowingTool(), ThrowingTool.class.getDeclaredMethod("throwsWithoutMessage"));
 
-        String result = executor.execute(request, "DEFAULT");
+        String result = executor.execute(
+                        request,
+                        InvocationContext.builder().chatMemoryId("DEFAULT").build())
+                .resultText();
         assertThat(result).isEqualTo(NullPointerException.class.getName());
     }
 
@@ -384,7 +390,11 @@ class DefaultToolExecutorTest implements WithAssertions {
         DefaultToolExecutor toolExecutor =
                 new DefaultToolExecutor(new TestTool(), TestTool.class.getDeclaredMethod("addOne", int.class));
 
-        String result = toolExecutor.execute(request, "DEFAULT");
+        String result = toolExecutor
+                .execute(
+                        request,
+                        InvocationContext.builder().chatMemoryId("DEFAULT").build())
+                .resultText();
 
         assertThat(result).isEqualTo("3");
     }
@@ -399,7 +409,11 @@ class DefaultToolExecutorTest implements WithAssertions {
 
         DefaultToolExecutor toolExecutor = new DefaultToolExecutor(new TestTool(), request);
 
-        String result = toolExecutor.execute(request, "DEFAULT");
+        String result = toolExecutor
+                .execute(
+                        request,
+                        InvocationContext.builder().chatMemoryId("DEFAULT").build())
+                .resultText();
 
         assertThat(result).isEqualTo("3");
     }
@@ -441,7 +455,11 @@ class DefaultToolExecutorTest implements WithAssertions {
                 .build();
 
         DefaultToolExecutor toolExecutor = new DefaultToolExecutor(new TestNullArgumentTool(), request);
-        String result = toolExecutor.execute(request, "DEFAULT");
+        String result = toolExecutor
+                .execute(
+                        request,
+                        InvocationContext.builder().chatMemoryId("DEFAULT").build())
+                .resultText();
 
         assertThat(result).isEqualTo(expectedResult);
     }
@@ -520,7 +538,11 @@ class DefaultToolExecutorTest implements WithAssertions {
 
         DefaultToolExecutor toolExecutor = new DefaultToolExecutor(new PersonTool(), request);
 
-        String result = toolExecutor.execute(request, "DEFAULT");
+        String result = toolExecutor
+                .execute(
+                        request,
+                        InvocationContext.builder().chatMemoryId("DEFAULT").build())
+                .resultText();
         assertThat(result).isEqualToIgnoringWhitespace("{\"name\": \"Klaus\",\"age\": 42}");
 
         ToolExecutionRequest request2 = ToolExecutionRequest.builder()
@@ -529,7 +551,11 @@ class DefaultToolExecutorTest implements WithAssertions {
                 .arguments("{ \"arg0\": [ {\"name\": \"Klaus\", \"age\": 42}, {\"name\": \"Peter\", \"age\": 43} ] }")
                 .build();
         DefaultToolExecutor toolExecutor2 = new DefaultToolExecutor(new PersonTool(), request2);
-        String result2 = toolExecutor2.execute(request2, "DEFAULT");
+        String result2 = toolExecutor2
+                .execute(
+                        request2,
+                        InvocationContext.builder().chatMemoryId("DEFAULT").build())
+                .resultText();
         assertThat(result2).isEqualToIgnoringWhitespace("""
                 [
                   {
@@ -548,7 +574,11 @@ class DefaultToolExecutorTest implements WithAssertions {
                 .arguments("{ \"arg0\": [ {\"name\": \"Klaus\", \"age\": 42}, {\"name\": \"Peter\", \"age\": 43} ] }")
                 .build();
         DefaultToolExecutor toolExecutor3 = new DefaultToolExecutor(new PersonTool(), request3);
-        String result3 = toolExecutor3.execute(request3, "DEFAULT");
+        String result3 = toolExecutor3
+                .execute(
+                        request3,
+                        InvocationContext.builder().chatMemoryId("DEFAULT").build())
+                .resultText();
         assertThat(result3).isEqualToIgnoringWhitespace("""
                 [
                   {
@@ -568,7 +598,11 @@ class DefaultToolExecutorTest implements WithAssertions {
                         "{ \"arg0\": { \"p1\" : {\"name\": \"Klaus\", \"age\": 42}, \"p2\" : {\"name\": \"Peter\", \"age\": 43} } }")
                 .build();
         DefaultToolExecutor toolExecutor4 = new DefaultToolExecutor(new PersonTool(), request4);
-        String result4 = toolExecutor4.execute(request4, "DEFAULT");
+        String result4 = toolExecutor4
+                .execute(
+                        request4,
+                        InvocationContext.builder().chatMemoryId("DEFAULT").build())
+                .resultText();
         assertThat(result4).isEqualToIgnoringWhitespace("""
                 {
                   "p1": {
@@ -587,7 +621,11 @@ class DefaultToolExecutorTest implements WithAssertions {
                 .arguments("{ \"arg0\": [ {\"name\": \"Klaus\", \"age\": 42}, {\"name\": \"Peter\", \"age\": 43} ] }")
                 .build();
         DefaultToolExecutor toolExecutor5 = new DefaultToolExecutor(new PersonTool(), request5);
-        String result5 = toolExecutor5.execute(request5, "DEFAULT");
+        String result5 = toolExecutor5
+                .execute(
+                        request5,
+                        InvocationContext.builder().chatMemoryId("DEFAULT").build())
+                .resultText();
         assertThat(result5).isEqualToIgnoringWhitespace("""
                 [
                   {
@@ -620,7 +658,9 @@ class DefaultToolExecutorTest implements WithAssertions {
                 new DefaultToolExecutor(new Tools(), Tools.class.getDeclaredMethod("tool", String.class));
 
         // when-then
-        assertThatThrownBy(() -> toolExecutor.execute(toolRequest, "default"))
+        assertThatThrownBy(() -> toolExecutor.execute(
+                        toolRequest,
+                        InvocationContext.builder().chatMemoryId("default").build()))
                 .isExactlyInstanceOf(RuntimeException.class)
                 .hasCauseExactlyInstanceOf(JsonParseException.class)
                 .hasMessageContaining("was expecting double-quote");
@@ -646,13 +686,17 @@ class DefaultToolExecutorTest implements WithAssertions {
                 ToolExecutionRequest.builder().name("tool").arguments("{}").build();
 
         // when
-        String toolResult = toolExecutor.execute(toolRequest, "default");
+        String toolResult = toolExecutor
+                .execute(
+                        toolRequest,
+                        InvocationContext.builder().chatMemoryId("default").build())
+                .resultText();
 
         // then
         assertThat(toolResult).isEqualTo(errorMessage);
 
         // when
-        ToolExecutionResult toolExecutionResult = toolExecutor.executeWithContext(toolRequest, null);
+        ToolExecutionResult toolExecutionResult = toolExecutor.execute(toolRequest, null);
 
         // then
         assertThat(toolExecutionResult.isError()).isTrue();
@@ -744,7 +788,12 @@ class DefaultToolExecutorTest implements WithAssertions {
                 .build();
 
         assertThatExceptionOfType(ToolArgumentsException.class)
-                .isThrownBy(() -> executor.execute(request, "DEFAULT"))
+                .isThrownBy(() -> executor.execute(
+                                request,
+                                InvocationContext.builder()
+                                        .chatMemoryId("DEFAULT")
+                                        .build())
+                        .resultText())
                 .withCauseInstanceOf(IllegalArgumentException.class);
     }
 
@@ -769,7 +818,7 @@ class DefaultToolExecutorTest implements WithAssertions {
                 .build();
 
         ToolExecutionResult result =
-                executor.executeWithContext(request, InvocationContext.builder().build());
+                executor.execute(request, InvocationContext.builder().build());
 
         assertThat(result.isError()).isTrue();
         assertThat(result.resultText()).isEqualTo("Test exception with details");

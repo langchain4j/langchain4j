@@ -1,5 +1,6 @@
 package dev.langchain4j.service.tool;
 
+import static dev.langchain4j.service.tool.ToolExecutionResult.from;
 import static dev.langchain4j.service.tool.ToolService.executeWithErrorHandling;
 import static dev.langchain4j.service.tool.ToolService.refreshDynamicProviders;
 import static dev.langchain4j.service.tool.ToolService.shouldReturnImmediately;
@@ -197,7 +198,7 @@ class ToolServiceTest {
         ToolProvider dynamicProvider = request -> {
             seenByProvider.set(request.userMessage());
             return ToolProviderResult.builder()
-                    .add(ToolSpecification.builder().name("dynamic_tool").build(), (req, memoryId) -> "ok")
+                    .add(ToolSpecification.builder().name("dynamic_tool").build(), (req, memoryId) -> from("ok"))
                     .build();
         };
 
@@ -223,7 +224,7 @@ class ToolServiceTest {
         InvocationContext invocationContext = InvocationContext.builder().build();
 
         ToolProvider dynamicProvider = request -> ToolProviderResult.builder()
-                .add(ToolSpecification.builder().name("dynamic_tool").build(), (req, memoryId) -> "ok")
+                .add(ToolSpecification.builder().name("dynamic_tool").build(), (req, memoryId) -> from("ok"))
                 .build();
 
         ToolServiceContext context = contextWith(dynamicProvider);

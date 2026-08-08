@@ -1,5 +1,18 @@
 package dev.langchain4j.skills;
 
+import static dev.langchain4j.agent.tool.SearchBehavior.ALWAYS_VISIBLE;
+import static dev.langchain4j.agent.tool.ToolSpecification.METADATA_SEARCH_BEHAVIOR;
+import static dev.langchain4j.service.AiServicesIT.verifyNoMoreInteractionsFor;
+import static dev.langchain4j.service.AiServicesWithToolSearchToolIT.containsTool;
+import static dev.langchain4j.service.AiServicesWithToolSearchToolIT.hasSearchableTools;
+import static dev.langchain4j.service.tool.ToolExecutionResult.from;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
@@ -13,22 +26,9 @@ import dev.langchain4j.service.tool.ToolProviderRequest;
 import dev.langchain4j.service.tool.ToolProviderResult;
 import dev.langchain4j.service.tool.search.ToolSearchRequest;
 import dev.langchain4j.service.tool.search.simple.SimpleToolSearchStrategy;
-import org.junit.jupiter.api.Test;
-
 import java.util.List;
 import java.util.Map;
-
-import static dev.langchain4j.agent.tool.SearchBehavior.ALWAYS_VISIBLE;
-import static dev.langchain4j.agent.tool.ToolSpecification.METADATA_SEARCH_BEHAVIOR;
-import static dev.langchain4j.service.AiServicesIT.verifyNoMoreInteractionsFor;
-import static dev.langchain4j.service.AiServicesWithToolSearchToolIT.containsTool;
-import static dev.langchain4j.service.AiServicesWithToolSearchToolIT.hasSearchableTools;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.argThat;
-import static org.mockito.Mockito.inOrder;
-import static org.mockito.Mockito.spy;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
+import org.junit.jupiter.api.Test;
 
 class SkillsWithToolSearchTest {
 
@@ -40,18 +40,15 @@ class SkillsWithToolSearchTest {
     void skill_management_tools_should_have_always_visible_metadata() {
 
         // given
-        Skills skills = Skills.from(
-                Skill.builder()
-                        .name("my-skill")
-                        .description("A skill")
-                        .content("instructions")
-                        .resources(List.of(
-                                SkillResource.builder()
-                                        .relativePath("ref.md")
-                                        .content("reference content")
-                                        .build()))
-                        .build()
-        );
+        Skills skills = Skills.from(Skill.builder()
+                .name("my-skill")
+                .description("A skill")
+                .content("instructions")
+                .resources(List.of(SkillResource.builder()
+                        .relativePath("ref.md")
+                        .content("reference content")
+                        .build()))
+                .build());
 
         // when
         ToolProviderResult result = skills.toolProvider().provideTools(dummyRequest());
@@ -71,15 +68,15 @@ class SkillsWithToolSearchTest {
 
         // given
         ToolSpecification getWeather = ToolSpecification.builder()
-                .name("getWeather").description("Gets weather").build();
+                .name("getWeather")
+                .description("Gets weather")
+                .build();
 
-        Skills skills = Skills.from(
-                Skill.builder()
-                        .name("my-skill")
-                        .description("Describes how to use tools")
-                        .content("instructions")
-                        .build()
-        );
+        Skills skills = Skills.from(Skill.builder()
+                .name("my-skill")
+                .description("Describes how to use tools")
+                .content("instructions")
+                .build());
 
         // LLM call 1: sees activate_skill + tool_search_tool, responds with text
         ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds("I don't need any skill.");
@@ -88,7 +85,7 @@ class SkillsWithToolSearchTest {
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(spyChatModel)
                 .chatMemory(MessageWindowChatMemory.withMaxMessages(100))
-                .tools(Map.of(getWeather, (req, memoryId) -> "sunny"))
+                .tools(Map.of(getWeather, (req, memoryId) -> from("sunny")))
                 .toolSearchStrategy(new SimpleToolSearchStrategy())
                 .toolProvider(skills.toolProvider())
                 .systemMessage("You have skills: " + skills.formatAvailableSkills())
@@ -98,11 +95,10 @@ class SkillsWithToolSearchTest {
         assistant.chat("Hello");
 
         // then - first (and only) LLM call has activate_skill + tool_search_tool, NOT getWeather
-        verify(spyChatModel).chat(argThat((ChatRequest request) ->
-                containsTool(request, "activate_skill")
+        verify(spyChatModel)
+                .chat(argThat((ChatRequest request) -> containsTool(request, "activate_skill")
                         && containsTool(request, "tool_search_tool")
-                        && !containsTool(request, "getWeather")
-        ));
+                        && !containsTool(request, "getWeather")));
 
         verifyNoMoreInteractionsFor(spyChatModel);
     }
@@ -112,20 +108,21 @@ class SkillsWithToolSearchTest {
 
         // given
         ToolSpecification getWeather = ToolSpecification.builder()
-                .name("getWeather").description("Gets weather").build();
+                .name("getWeather")
+                .description("Gets weather")
+                .build();
 
-        Skills skills = Skills.from(
-                Skill.builder()
-                        .name("my-skill")
-                        .description("A skill with tools")
-                        .content("Use query_inventory tool")
-                        .tools(Map.of(
-                                ToolSpecification.builder().name("query_inventory")
-                                        .description("Queries inventory").build(),
-                                (req, memoryId) -> "47 units"
-                        ))
-                        .build()
-        );
+        Skills skills = Skills.from(Skill.builder()
+                .name("my-skill")
+                .description("A skill with tools")
+                .content("Use query_inventory tool")
+                .tools(Map.of(
+                        ToolSpecification.builder()
+                                .name("query_inventory")
+                                .description("Queries inventory")
+                                .build(),
+                        (req, memoryId) -> from("47 units")))
+                .build());
 
         SimpleToolSearchStrategy spyStrategy = spy(new SimpleToolSearchStrategy());
 
@@ -136,14 +133,13 @@ class SkillsWithToolSearchTest {
                         .name("tool_search_tool")
                         .arguments("{\"terms\": [\"inventory\"]}")
                         .build()),
-                AiMessage.from("No inventory tool found via search.")
-        );
+                AiMessage.from("No inventory tool found via search."));
         ChatModelMock spyChatModel = spy(chatModel);
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(spyChatModel)
                 .chatMemory(MessageWindowChatMemory.withMaxMessages(100))
-                .tools(Map.of(getWeather, (req, memoryId) -> "sunny"))
+                .tools(Map.of(getWeather, (req, memoryId) -> from("sunny")))
                 .toolSearchStrategy(spyStrategy)
                 .toolProvider(skills.toolProvider())
                 .systemMessage("You have skills: " + skills.formatAvailableSkills())
@@ -156,24 +152,21 @@ class SkillsWithToolSearchTest {
         var inOrder = inOrder(spyChatModel, spyStrategy);
 
         // LLM call 1: activate_skill + tool_search_tool visible
-        inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
-                containsTool(request, "activate_skill")
+        inOrder.verify(spyChatModel)
+                .chat(argThat((ChatRequest request) -> containsTool(request, "activate_skill")
                         && containsTool(request, "tool_search_tool")
                         && !containsTool(request, "query_inventory")
-                        && !containsTool(request, "getWeather")
-        ));
+                        && !containsTool(request, "getWeather")));
 
         // tool search is invoked — searchable pool has only getWeather, not query_inventory
-        inOrder.verify(spyStrategy).search(argThat((ToolSearchRequest request) ->
-                hasSearchableTools(request, "getWeather")
-        ));
+        inOrder.verify(spyStrategy)
+                .search(argThat((ToolSearchRequest request) -> hasSearchableTools(request, "getWeather")));
 
         // LLM call 2: search found nothing for "inventory" (only getWeather was searchable)
-        inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
-                containsTool(request, "activate_skill")
+        inOrder.verify(spyChatModel)
+                .chat(argThat((ChatRequest request) -> containsTool(request, "activate_skill")
                         && containsTool(request, "tool_search_tool")
-                        && !containsTool(request, "query_inventory")
-        ));
+                        && !containsTool(request, "query_inventory")));
 
         verifyNoMoreInteractionsFor(spyChatModel);
     }
@@ -182,18 +175,17 @@ class SkillsWithToolSearchTest {
     void skill_scoped_tools_should_appear_after_activation_with_tool_search() {
 
         // given
-        Skills skills = Skills.from(
-                Skill.builder()
-                        .name("inventory")
-                        .description("Inventory management skill")
-                        .content("Use query_inventory to check stock.")
-                        .tools(Map.of(
-                                ToolSpecification.builder().name("query_inventory")
-                                        .description("Queries inventory").build(),
-                                (req, memoryId) -> "47 units"
-                        ))
-                        .build()
-        );
+        Skills skills = Skills.from(Skill.builder()
+                .name("inventory")
+                .description("Inventory management skill")
+                .content("Use query_inventory to check stock.")
+                .tools(Map.of(
+                        ToolSpecification.builder()
+                                .name("query_inventory")
+                                .description("Queries inventory")
+                                .build(),
+                        (req, memoryId) -> from("47 units")))
+                .build());
 
         // LLM call 1: calls activate_skill
         // LLM call 2: calls query_inventory (now visible after activation)
@@ -210,8 +202,7 @@ class SkillsWithToolSearchTest {
                         .build()),
                 AiMessage.from("There are 47 units in stock."),
                 // second invocation
-                AiMessage.from("Still 47 units in stock.")
-        );
+                AiMessage.from("Still 47 units in stock."));
         ChatModelMock spyChatModel = spy(chatModel);
 
         Assistant assistant = AiServices.builder(Assistant.class)
@@ -231,19 +222,17 @@ class SkillsWithToolSearchTest {
         var inOrder = inOrder(spyChatModel);
 
         // LLM call 1: only activate_skill + tool_search_tool, no skill-scoped tools
-        inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
-                containsTool(request, "activate_skill")
+        inOrder.verify(spyChatModel)
+                .chat(argThat((ChatRequest request) -> containsTool(request, "activate_skill")
                         && containsTool(request, "tool_search_tool")
-                        && !containsTool(request, "query_inventory")
-        ));
+                        && !containsTool(request, "query_inventory")));
 
         // LLM call 2: after activation, query_inventory now visible
         // LLM call 3: query_inventory still visible
-        inOrder.verify(spyChatModel, times(2)).chat(argThat((ChatRequest request) ->
-                containsTool(request, "activate_skill")
+        inOrder.verify(spyChatModel, times(2))
+                .chat(argThat((ChatRequest request) -> containsTool(request, "activate_skill")
                         && containsTool(request, "tool_search_tool")
-                        && containsTool(request, "query_inventory")
-        ));
+                        && containsTool(request, "query_inventory")));
 
         verifyNoMoreInteractionsFor(spyChatModel);
 
@@ -251,11 +240,10 @@ class SkillsWithToolSearchTest {
         assistant.chat("Check inventory again");
 
         // then - skill-scoped tools remain active from the first invocation
-        inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
-                containsTool(request, "activate_skill")
+        inOrder.verify(spyChatModel)
+                .chat(argThat((ChatRequest request) -> containsTool(request, "activate_skill")
                         && containsTool(request, "tool_search_tool")
-                        && containsTool(request, "query_inventory")
-        ));
+                        && containsTool(request, "query_inventory")));
 
         verifyNoMoreInteractionsFor(spyChatModel);
     }
@@ -265,20 +253,21 @@ class SkillsWithToolSearchTest {
 
         // given
         ToolSpecification getWeather = ToolSpecification.builder()
-                .name("getWeather").description("Gets weather forecast").build();
+                .name("getWeather")
+                .description("Gets weather forecast")
+                .build();
 
-        Skills skills = Skills.from(
-                Skill.builder()
-                        .name("inventory")
-                        .description("Inventory management skill")
-                        .content("Use query_inventory to check stock.")
-                        .tools(Map.of(
-                                ToolSpecification.builder().name("query_inventory")
-                                        .description("Queries inventory").build(),
-                                (req, memoryId) -> "47 units"
-                        ))
-                        .build()
-        );
+        Skills skills = Skills.from(Skill.builder()
+                .name("inventory")
+                .description("Inventory management skill")
+                .content("Use query_inventory to check stock.")
+                .tools(Map.of(
+                        ToolSpecification.builder()
+                                .name("query_inventory")
+                                .description("Queries inventory")
+                                .build(),
+                        (req, memoryId) -> from("47 units")))
+                .build());
 
         SimpleToolSearchStrategy spyStrategy = spy(new SimpleToolSearchStrategy());
 
@@ -302,14 +291,13 @@ class SkillsWithToolSearchTest {
                         .build()),
                 AiMessage.from("The weather is sunny and we have 47 units."),
                 // second invocation: getWeather already effective from first invocation
-                AiMessage.from("Still sunny.")
-        );
+                AiMessage.from("Still sunny."));
         ChatModelMock spyChatModel = spy(chatModel);
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(spyChatModel)
                 .chatMemory(MessageWindowChatMemory.withMaxMessages(100))
-                .tools(Map.of(getWeather, (req, memoryId) -> "sunny"))
+                .tools(Map.of(getWeather, (req, memoryId) -> from("sunny")))
                 .toolSearchStrategy(spyStrategy)
                 .toolProvider(skills.toolProvider())
                 .systemMessage("You have skills: " + skills.formatAvailableSkills())
@@ -324,32 +312,28 @@ class SkillsWithToolSearchTest {
         var inOrder = inOrder(spyChatModel, spyStrategy);
 
         // LLM call 1: activate_skill + tool_search_tool only
-        inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
-                containsTool(request, "activate_skill")
+        inOrder.verify(spyChatModel)
+                .chat(argThat((ChatRequest request) -> containsTool(request, "activate_skill")
                         && containsTool(request, "tool_search_tool")
                         && !containsTool(request, "query_inventory")
-                        && !containsTool(request, "getWeather")
-        ));
+                        && !containsTool(request, "getWeather")));
 
         // LLM call 2: skill activated, query_inventory now visible; calls tool_search_tool
-        inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
-                containsTool(request, "activate_skill")
+        inOrder.verify(spyChatModel)
+                .chat(argThat((ChatRequest request) -> containsTool(request, "activate_skill")
                         && containsTool(request, "tool_search_tool")
                         && containsTool(request, "query_inventory")
-                        && !containsTool(request, "getWeather")
-        ));
+                        && !containsTool(request, "getWeather")));
 
         // tool search: getWeather is searchable (regular tool), query_inventory is NOT (skill-scoped)
-        inOrder.verify(spyStrategy).search(argThat((ToolSearchRequest request) ->
-                hasSearchableTools(request, "getWeather")
-        ));
+        inOrder.verify(spyStrategy)
+                .search(argThat((ToolSearchRequest request) -> hasSearchableTools(request, "getWeather")));
 
         // LLM call 3: getWeather is now found and visible alongside query_inventory
         // LLM call 4: responds with text, same tools visible
-        inOrder.verify(spyChatModel, times(2)).chat(argThat((ChatRequest request) ->
-                containsTool(request, "query_inventory")
-                        && containsTool(request, "getWeather")
-        ));
+        inOrder.verify(spyChatModel, times(2))
+                .chat(argThat((ChatRequest request) ->
+                        containsTool(request, "query_inventory") && containsTool(request, "getWeather")));
 
         verifyNoMoreInteractionsFor(spyChatModel);
 
@@ -357,12 +341,11 @@ class SkillsWithToolSearchTest {
         assistant.chat("Check weather again");
 
         // then - query_inventory still active, getWeather still effective (found in first invocation)
-        inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
-                containsTool(request, "activate_skill")
+        inOrder.verify(spyChatModel)
+                .chat(argThat((ChatRequest request) -> containsTool(request, "activate_skill")
                         && containsTool(request, "tool_search_tool")
                         && containsTool(request, "query_inventory")
-                        && containsTool(request, "getWeather")
-        ));
+                        && containsTool(request, "getWeather")));
 
         verifyNoMoreInteractionsFor(spyChatModel);
     }
@@ -377,22 +360,23 @@ class SkillsWithToolSearchTest {
                         .description("Weather skill")
                         .content("Use get_weather tool.")
                         .tools(Map.of(
-                                ToolSpecification.builder().name("get_weather")
-                                        .description("Gets weather").build(),
-                                (req, memoryId) -> "sunny"
-                        ))
+                                ToolSpecification.builder()
+                                        .name("get_weather")
+                                        .description("Gets weather")
+                                        .build(),
+                                (req, memoryId) -> from("sunny")))
                         .build(),
                 Skill.builder()
                         .name("time")
                         .description("Time skill")
                         .content("Use get_time tool.")
                         .tools(Map.of(
-                                ToolSpecification.builder().name("get_time")
-                                        .description("Gets time").build(),
-                                (req, memoryId) -> "12:00"
-                        ))
-                        .build()
-        );
+                                ToolSpecification.builder()
+                                        .name("get_time")
+                                        .description("Gets time")
+                                        .build(),
+                                (req, memoryId) -> from("12:00")))
+                        .build());
 
         // LLM call 1: activates weather skill only
         // LLM call 2: calls get_weather
@@ -409,8 +393,7 @@ class SkillsWithToolSearchTest {
                         .build()),
                 AiMessage.from("It is sunny."),
                 // second invocation
-                AiMessage.from("Still sunny.")
-        );
+                AiMessage.from("Still sunny."));
         ChatModelMock spyChatModel = spy(chatModel);
 
         Assistant assistant = AiServices.builder(Assistant.class)
@@ -430,18 +413,16 @@ class SkillsWithToolSearchTest {
         var inOrder = inOrder(spyChatModel);
 
         // LLM call 1: no skill-scoped tools yet
-        inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
-                containsTool(request, "activate_skill")
+        inOrder.verify(spyChatModel)
+                .chat(argThat((ChatRequest request) -> containsTool(request, "activate_skill")
                         && !containsTool(request, "get_weather")
-                        && !containsTool(request, "get_time")
-        ));
+                        && !containsTool(request, "get_time")));
 
         // LLM call 2: only weather's get_weather appears, NOT time's get_time
         // LLM call 3: responds with text, same tools visible
-        inOrder.verify(spyChatModel, times(2)).chat(argThat((ChatRequest request) ->
-                containsTool(request, "get_weather")
-                        && !containsTool(request, "get_time")
-        ));
+        inOrder.verify(spyChatModel, times(2))
+                .chat(argThat((ChatRequest request) ->
+                        containsTool(request, "get_weather") && !containsTool(request, "get_time")));
 
         verifyNoMoreInteractionsFor(spyChatModel);
 
@@ -449,11 +430,10 @@ class SkillsWithToolSearchTest {
         assistant.chat("What's the weather now?");
 
         // then - get_weather still active, get_time still not visible
-        inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
-                containsTool(request, "activate_skill")
+        inOrder.verify(spyChatModel)
+                .chat(argThat((ChatRequest request) -> containsTool(request, "activate_skill")
                         && containsTool(request, "get_weather")
-                        && !containsTool(request, "get_time")
-        ));
+                        && !containsTool(request, "get_time")));
 
         verifyNoMoreInteractionsFor(spyChatModel);
     }
