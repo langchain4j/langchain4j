@@ -80,7 +80,7 @@ public abstract class DeferredResponse<T> implements DelayedResponse<T> {
             if (cause instanceof Error error) {
                 throw error;
             }
-            throw e;
+            throw new RuntimeException(cause);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
