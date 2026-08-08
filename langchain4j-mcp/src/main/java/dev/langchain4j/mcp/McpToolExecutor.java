@@ -30,17 +30,7 @@ public class McpToolExecutor implements ToolExecutor {
     }
 
     @Override
-    public String execute(ToolExecutionRequest executionRequest, Object memoryId) {
-        InvocationContext invocationContext =
-                InvocationContext.builder().chatMemoryId(memoryId).build();
-        return mcpClient
-                .executeTool(sanitizeToolName(executionRequest), invocationContext)
-                .resultText();
-    }
-
-    @Override
-    public ToolExecutionResult executeWithContext(
-            ToolExecutionRequest executionRequest, InvocationContext invocationContext) {
+    public ToolExecutionResult execute(ToolExecutionRequest executionRequest, InvocationContext invocationContext) {
         return mcpClient.executeTool(sanitizeToolName(executionRequest), invocationContext);
     }
 

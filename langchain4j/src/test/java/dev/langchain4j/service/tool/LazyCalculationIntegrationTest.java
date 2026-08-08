@@ -84,7 +84,7 @@ class LazyCalculationIntegrationTest {
                 .build();
 
         ToolExecutionResult result =
-                executor.executeWithContext(request, InvocationContext.builder().build());
+                executor.execute(request, InvocationContext.builder().build());
 
         // Result should be available
         Object resultObject = result.result();
@@ -107,7 +107,7 @@ class LazyCalculationIntegrationTest {
                 .build();
 
         ToolExecutionResult result =
-                executor.executeWithContext(request, InvocationContext.builder().build());
+                executor.execute(request, InvocationContext.builder().build());
 
         // Result should be available
         assertThat(result.result()).isInstanceOf(LargeResultObject.class);

@@ -27,7 +27,7 @@ class ListResourcesToolExecutor implements ToolExecutor {
     }
 
     @Override
-    public ToolExecutionResult executeWithContext(ToolExecutionRequest request, InvocationContext invocationContext) {
+    public ToolExecutionResult execute(ToolExecutionRequest request, InvocationContext invocationContext) {
         try {
             return ToolExecutionResult.builder()
                     .resultText(doExecute(invocationContext))
@@ -35,11 +35,6 @@ class ListResourcesToolExecutor implements ToolExecutor {
         } catch (Exception e) {
             throw new ToolExecutionException(unwrapRuntimeException(e));
         }
-    }
-
-    @Override
-    public String execute(ToolExecutionRequest toolExecutionRequest, Object memoryId) {
-        return executeWithContext(toolExecutionRequest, null).resultText();
     }
 
     private String doExecute(InvocationContext invocationContext) {

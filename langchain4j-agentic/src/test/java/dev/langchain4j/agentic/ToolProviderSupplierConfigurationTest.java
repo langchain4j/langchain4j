@@ -1,5 +1,6 @@
 package dev.langchain4j.agentic;
 
+import static dev.langchain4j.service.tool.ToolExecutionResult.from;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -82,7 +83,7 @@ class ToolProviderSupplierConfigurationTest {
                     .description("A test tool")
                     .build();
             return request -> ToolProviderResult.builder()
-                    .add(tool, (toolExecutionRequest, memoryId) -> "tool result")
+                    .add(tool, (toolExecutionRequest, memoryId) -> from("tool result"))
                     .build();
         }
     }

@@ -3,7 +3,6 @@ package dev.langchain4j.skills;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.toBase64;
 
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.internal.Json;
@@ -46,10 +45,5 @@ abstract class AbstractSkillToolExecutor implements ToolExecutor {
         } else {
             throw e == null ? new ToolExecutionException(message) : new ToolExecutionException(message, e);
         }
-    }
-
-    @Override
-    public String execute(ToolExecutionRequest request, Object memoryId) {
-        throw new IllegalStateException("executeWithContext must be called instead");
     }
 }

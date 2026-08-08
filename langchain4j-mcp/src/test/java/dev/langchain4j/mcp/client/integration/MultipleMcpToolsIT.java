@@ -137,7 +137,8 @@ class MultipleMcpToolsIT {
                 .name("echoInteger")
                 .arguments("{\"input\": 2}")
                 .build();
-        String toolExecutionResultString = executor.execute(toolExecutionRequest, null);
+        String toolExecutionResultString =
+                executor.execute(toolExecutionRequest, null).resultText();
         assertThat(toolExecutionResultString).isEqualTo("2");
     }
 
@@ -161,7 +162,8 @@ class MultipleMcpToolsIT {
                 .name(duplicatedToolName)
                 .arguments("{\"input\": 2}")
                 .build();
-        String toolExecutionResultString = executor.execute(toolExecutionRequest, null);
+        String toolExecutionResultString =
+                executor.execute(toolExecutionRequest, null).resultText();
         assertThat(toolExecutionResultString).isEqualTo("3");
     }
 
@@ -182,7 +184,8 @@ class MultipleMcpToolsIT {
                 .name("echoInteger")
                 .arguments("{\"input\": 2}")
                 .build();
-        String toolExecutionResultString = executor.execute(toolExecutionRequest, null);
+        String toolExecutionResultString =
+                executor.execute(toolExecutionRequest, null).resultText();
         // use tool from mcpBaseClient
         assertThat(toolExecutionResultString).isEqualTo("2");
 
@@ -196,8 +199,10 @@ class MultipleMcpToolsIT {
         toolProvider.addFilter((mcpClient, tool) -> mcpClient.key().equals("numeric-mcp"));
         toolProviderResult = toolProvider.provideTools(null);
         assertThat(toolProviderResult.tools()).hasSize(1);
-        toolExecutionResultString =
-                toolProviderResult.toolExecutorByName("echoInteger").execute(toolExecutionRequest, null);
+        toolExecutionResultString = toolProviderResult
+                .toolExecutorByName("echoInteger")
+                .execute(toolExecutionRequest, null)
+                .resultText();
         // use tool from mcpNumericClient
         assertThat(toolExecutionResultString).isEqualTo("3");
 
@@ -212,8 +217,10 @@ class MultipleMcpToolsIT {
         toolProviderResult = toolProvider.provideTools(null);
         // all filters are removed, so we have all tools from mcpNumericClient
         assertThat(toolProviderResult.tools()).hasSize(4);
-        toolExecutionResultString =
-                toolProviderResult.toolExecutorByName("echoInteger").execute(toolExecutionRequest, null);
+        toolExecutionResultString = toolProviderResult
+                .toolExecutorByName("echoInteger")
+                .execute(toolExecutionRequest, null)
+                .resultText();
         // use tool from mcpNumericClient
         assertThat(toolExecutionResultString).isEqualTo("3");
     }

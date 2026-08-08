@@ -13,6 +13,40 @@
           "code": "java.annotation.removed",
           "new": "class dev.langchain4j.service.tool.AiServiceTool",
           "justification": "@Internal removed intentionally: AiServiceTool is now part of the public API and can be constructed and passed to AiServices directly by users (e.g. via AiServices.tools(List<AiServiceTool>))."
+        },
+        {
+          "code": "java.method.parameterTypeChanged",
+          "old": "parameter java.lang.String dev.langchain4j.service.tool.DefaultToolExecutor::execute(dev.langchain4j.agent.tool.ToolExecutionRequest, ===java.lang.Object===)",
+          "new": "parameter dev.langchain4j.service.tool.ToolExecutionResult dev.langchain4j.service.tool.DefaultToolExecutor::execute(dev.langchain4j.agent.tool.ToolExecutionRequest, ===dev.langchain4j.invocation.InvocationContext===)",
+          "justification": "The ToolExecutor API now accepts InvocationContext directly so tool implementations have access to invocation-scoped metadata without a separate execution method."
+        },
+        {
+          "code": "java.method.returnTypeChanged",
+          "old": "method java.lang.String dev.langchain4j.service.tool.DefaultToolExecutor::execute(dev.langchain4j.agent.tool.ToolExecutionRequest, java.lang.Object)",
+          "new": "method dev.langchain4j.service.tool.ToolExecutionResult dev.langchain4j.service.tool.DefaultToolExecutor::execute(dev.langchain4j.agent.tool.ToolExecutionRequest, dev.langchain4j.invocation.InvocationContext)",
+          "justification": "The ToolExecutor API now returns ToolExecutionResult so tool execution can provide structured result metadata in addition to text."
+        },
+        {
+          "code": "java.method.removed",
+          "old": "method dev.langchain4j.service.tool.ToolExecutionResult dev.langchain4j.service.tool.DefaultToolExecutor::executeWithContext(dev.langchain4j.agent.tool.ToolExecutionRequest, dev.langchain4j.invocation.InvocationContext)",
+          "justification": "executeWithContext was intentionally consolidated into execute now that InvocationContext and ToolExecutionResult are part of the primary ToolExecutor contract."
+        },
+        {
+          "code": "java.method.parameterTypeChanged",
+          "old": "parameter java.lang.String dev.langchain4j.service.tool.ToolExecutor::execute(dev.langchain4j.agent.tool.ToolExecutionRequest, ===java.lang.Object===)",
+          "new": "parameter dev.langchain4j.service.tool.ToolExecutionResult dev.langchain4j.service.tool.ToolExecutor::execute(dev.langchain4j.agent.tool.ToolExecutionRequest, ===dev.langchain4j.invocation.InvocationContext===)",
+          "justification": "The ToolExecutor API now accepts InvocationContext directly so tool implementations have access to invocation-scoped metadata without a separate execution method."
+        },
+        {
+          "code": "java.method.returnTypeChanged",
+          "old": "method java.lang.String dev.langchain4j.service.tool.ToolExecutor::execute(dev.langchain4j.agent.tool.ToolExecutionRequest, java.lang.Object)",
+          "new": "method dev.langchain4j.service.tool.ToolExecutionResult dev.langchain4j.service.tool.ToolExecutor::execute(dev.langchain4j.agent.tool.ToolExecutionRequest, dev.langchain4j.invocation.InvocationContext)",
+          "justification": "The ToolExecutor API now returns ToolExecutionResult so tool execution can provide structured result metadata in addition to text."
+        },
+        {
+          "code": "java.method.removed",
+          "old": "method dev.langchain4j.service.tool.ToolExecutionResult dev.langchain4j.service.tool.ToolExecutor::executeWithContext(dev.langchain4j.agent.tool.ToolExecutionRequest, dev.langchain4j.invocation.InvocationContext)",
+          "justification": "executeWithContext was intentionally consolidated into execute now that InvocationContext and ToolExecutionResult are part of the primary ToolExecutor contract."
         }
       ]
     }

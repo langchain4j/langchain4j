@@ -5,6 +5,7 @@ import static dev.langchain4j.model.output.FinishReason.STOP;
 import static dev.langchain4j.service.AiServicesIT.verifyNoMoreInteractionsFor;
 import static dev.langchain4j.service.AiServicesWithToolSearchToolIT.containsTool;
 import static dev.langchain4j.service.AiServicesWithToolsIT.TransactionService.EXPECTED_SPECIFICATION;
+import static dev.langchain4j.service.tool.ToolExecutionResult.from;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonMap;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -27,8 +28,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.LoggingChatModelListener;
-import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.CompensateFor;
+import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -691,10 +692,10 @@ class AiServicesWithToolsIT {
                         .build())
                 .build();
 
-        ToolExecutor toolExecutor = (toolExecutionRequest, memoryId) -> {
+        ToolExecutor toolExecutor = (toolExecutionRequest, context) -> {
             Map<String, Object> arguments = toMap(toolExecutionRequest.arguments());
             assertThat(arguments).containsExactly(entry("bookingNumber", "123-456"));
-            return "Booking period: from 1 July 2027 to 10 July 2027";
+            return from("Booking period: from 1 July 2027 to 10 July 2027");
         };
 
         Assistant assistant = AiServices.builder(Assistant.class)
@@ -712,10 +713,10 @@ class AiServicesWithToolsIT {
     static class BookingToolExecutor implements ToolExecutor {
 
         @Override
-        public String execute(ToolExecutionRequest request, Object memoryId) {
+        public ToolExecutionResult execute(ToolExecutionRequest request, InvocationContext context) {
             Map<String, Object> arguments = toMap(request.arguments());
             assertThat(arguments).containsExactly(entry("bookingNumber", "123-456"));
-            return "Booking period: from 1 July 2027 to 10 July 2027";
+            return ToolExecutionResult.from("Booking period: from 1 July 2027 to 10 July 2027");
         }
     }
 
@@ -787,8 +788,7 @@ class AiServicesWithToolsIT {
 
         Result<String> result = assistant.chat("When does my booking 123-456 starts?");
         assertThat(result.content()).contains("2027");
-        verify(toolExecutor).executeWithContext(any(), any(InvocationContext.class));
-        verify(toolExecutor).execute(any(), any(Object.class));
+        verify(toolExecutor).execute(any(), any(InvocationContext.class));
         verifyNoMoreInteractions(toolExecutor);
     }
 
@@ -806,7 +806,7 @@ class AiServicesWithToolsIT {
                             .build())
                     .build();
             return ToolProviderResult.builder()
-                    .add(toolSpecification, (request, memoryId) -> "does not matter")
+                    .add(toolSpecification, (request, memoryId) -> from("does not matter"))
                     .build();
         };
 
@@ -820,7 +820,7 @@ class AiServicesWithToolsIT {
                             .build())
                     .build();
             return ToolProviderResult.builder()
-                    .add(toolSpecification, (request, memoryId) -> "does not matter")
+                    .add(toolSpecification, (request, memoryId) -> from("does not matter"))
                     .build();
         };
 
@@ -881,8 +881,7 @@ class AiServicesWithToolsIT {
         verify(calculator).xyz(2027);
         verifyNoMoreInteractions(calculator);
 
-        verify(toolExecutor).executeWithContext(any(), any(InvocationContext.class));
-        verify(toolExecutor).execute(any(), any(Object.class));
+        verify(toolExecutor).execute(any(), any(InvocationContext.class));
         verifyNoMoreInteractions(toolExecutor);
     }
 
@@ -899,10 +898,10 @@ class AiServicesWithToolsIT {
                             .build())
                     .build();
             return ToolProviderResult.builder()
-                    .add(toolSpecification, (ToolExecutionRequest toolExecutionRequest, Object memoryId) -> {
+                    .add(toolSpecification, (ToolExecutionRequest toolExecutionRequest, InvocationContext context) -> {
                         Map<String, Object> arguments = toMap(toolExecutionRequest.arguments());
                         assertThat(arguments).containsExactly(entry("number", 2027));
-                        return "3000";
+                        return from("3000");
                     })
                     .build();
         };
@@ -1135,7 +1134,7 @@ class AiServicesWithToolsIT {
                         .add(toolSpecification, new ToolExecutor() {
 
                             @Override
-                            public ToolExecutionResult executeWithContext(
+                            public ToolExecutionResult execute(
                                     ToolExecutionRequest request, InvocationContext context) {
                                 assertThat((boolean)
                                                 context.invocationParameters().get(includeToolsKey))
@@ -1145,11 +1144,6 @@ class AiServicesWithToolsIT {
                                 return ToolExecutionResult.builder()
                                         .resultText("3000")
                                         .build();
-                            }
-
-                            @Override
-                            public String execute(ToolExecutionRequest request, Object memoryId) {
-                                throw new RuntimeException("should not be called");
                             }
                         })
                         .build();
@@ -1637,7 +1631,7 @@ class AiServicesWithToolsIT {
                         .description("Gets the weather for a city")
                         .build();
                 return ToolProviderResult.builder()
-                        .add(getWeather, (req, memoryId) -> "sunny")
+                        .add(getWeather, (req, memoryId) -> from("sunny"))
                         .build();
             }
         });
@@ -1650,7 +1644,7 @@ class AiServicesWithToolsIT {
                         .description("Gets the current time")
                         .build();
                 return ToolProviderResult.builder()
-                        .add(getTime, (req, memoryId) -> "12:00")
+                        .add(getTime, (req, memoryId) -> from("12:00"))
                         .build();
             }
 
@@ -1710,14 +1704,14 @@ class AiServicesWithToolsIT {
                                 .name("getWeather")
                                 .description("Gets the weather")
                                 .build(),
-                        (req, memoryId) -> "sunny");
+                        (req, memoryId) -> from("sunny"));
                 if (call >= 2) {
                     builder.add(
                             ToolSpecification.builder()
                                     .name("getTime")
                                     .description("Gets the time")
                                     .build(),
-                            (req, memoryId) -> "12:00");
+                            (req, memoryId) -> from("12:00"));
                 }
                 return builder.build();
             }
@@ -1781,7 +1775,7 @@ class AiServicesWithToolsIT {
                                 .name("getWeather")
                                 .description("Gets the weather")
                                 .build(),
-                        (req, memoryId) -> "sunny");
+                        (req, memoryId) -> from("sunny"));
                 if (call == 1) {
                     // Only returned on first call
                     builder.add(
@@ -1789,7 +1783,7 @@ class AiServicesWithToolsIT {
                                     .name("getTime")
                                     .description("Gets the time")
                                     .build(),
-                            (req, memoryId) -> "12:00");
+                            (req, memoryId) -> from("12:00"));
                 }
                 return builder.build();
             }
@@ -2199,8 +2193,9 @@ class AiServicesWithToolsIT {
         }
 
         @Tool("credits money to a bank account")
-        void credit(@P(name = "name", description = "account holder name") String name,
-                    @P(name = "amount", description = "amount to credit") double amount) {
+        void credit(
+                @P(name = "name", description = "account holder name") String name,
+                @P(name = "amount", description = "amount to credit") double amount) {
             accounts.merge(name, amount, Double::sum);
         }
 
@@ -2210,8 +2205,9 @@ class AiServicesWithToolsIT {
         }
 
         @Tool("withdraws money from a bank account")
-        void withdraw(@P(name = "name", description = "account holder name") String name,
-                      @P(name = "amount", description = "amount to withdraw") double amount) {
+        void withdraw(
+                @P(name = "name", description = "account holder name") String name,
+                @P(name = "amount", description = "amount to withdraw") double amount) {
             if (accounts.getOrDefault(name, 0.0) < amount) {
                 throw new RuntimeException("Insufficient funds in " + name + "'s account");
             }
@@ -2327,8 +2323,9 @@ class AiServicesWithToolsIT {
             }
 
             @Tool("credits money to a bank account")
-            String credit(@P(name = "name", description = "account holder name") String name,
-                          @P(name = "amount", description = "amount to credit") double amount) {
+            String credit(
+                    @P(name = "name", description = "account holder name") String name,
+                    @P(name = "amount", description = "amount to credit") double amount) {
                 accounts.merge(name, amount, Double::sum);
                 return "TX-42";
             }
@@ -2341,8 +2338,9 @@ class AiServicesWithToolsIT {
             }
 
             @Tool("withdraws money from a bank account")
-            void withdraw(@P(name = "name", description = "account holder name") String name,
-                          @P(name = "amount", description = "amount to withdraw") double amount) {
+            void withdraw(
+                    @P(name = "name", description = "account holder name") String name,
+                    @P(name = "amount", description = "amount to withdraw") double amount) {
                 if (accounts.getOrDefault(name, 0.0) < amount) {
                     throw new RuntimeException("Insufficient funds in " + name + "'s account");
                 }
@@ -2448,12 +2446,21 @@ class AiServicesWithToolsIT {
 
         ChatModel chatModel = ChatModelMock.thatAlwaysResponds(
                 AiMessage.from(
-                        ToolExecutionRequest.builder().id("1").name("bookFlight")
-                                .arguments("{\"destination\": \"Paris\"}").build(),
-                        ToolExecutionRequest.builder().id("2").name("bookHotel")
-                                .arguments("{\"destination\": \"Paris\"}").build(),
-                        ToolExecutionRequest.builder().id("3").name("rentCar")
-                                .arguments("{\"destination\": \"Paris\"}").build()),
+                        ToolExecutionRequest.builder()
+                                .id("1")
+                                .name("bookFlight")
+                                .arguments("{\"destination\": \"Paris\"}")
+                                .build(),
+                        ToolExecutionRequest.builder()
+                                .id("2")
+                                .name("bookHotel")
+                                .arguments("{\"destination\": \"Paris\"}")
+                                .build(),
+                        ToolExecutionRequest.builder()
+                                .id("3")
+                                .name("rentCar")
+                                .arguments("{\"destination\": \"Paris\"}")
+                                .build()),
                 AiMessage.from("Trip booked"));
 
         interface TravelAssistant {
@@ -2470,9 +2477,10 @@ class AiServicesWithToolsIT {
         String response = assistant.chat("Book a trip to Paris");
 
         // then - rollback in reverse: cancelHotel before cancelFlight
-        assertThat(travelService.executionLog).containsExactly(
-                "bookFlight", "bookHotel",
-                "cancelHotel:HT-456", "cancelFlight:FL-123");
+        assertThat(travelService.executionLog)
+                .containsExactly(
+                        "bookFlight", "bookHotel",
+                        "cancelHotel:HT-456", "cancelFlight:FL-123");
         assertThat(response).isEqualTo("Trip booked");
     }
 
@@ -2484,12 +2492,21 @@ class AiServicesWithToolsIT {
 
         ChatModel chatModel = ChatModelMock.thatAlwaysResponds(
                 AiMessage.from(
-                        ToolExecutionRequest.builder().id("1").name("bookFlight")
-                                .arguments("{\"destination\": \"Rome\"}").build(),
-                        ToolExecutionRequest.builder().id("2").name("bookHotel")
-                                .arguments("{\"destination\": \"Rome\"}").build(),
-                        ToolExecutionRequest.builder().id("3").name("rentCar")
-                                .arguments("{\"destination\": \"Rome\"}").build()),
+                        ToolExecutionRequest.builder()
+                                .id("1")
+                                .name("bookFlight")
+                                .arguments("{\"destination\": \"Rome\"}")
+                                .build(),
+                        ToolExecutionRequest.builder()
+                                .id("2")
+                                .name("bookHotel")
+                                .arguments("{\"destination\": \"Rome\"}")
+                                .build(),
+                        ToolExecutionRequest.builder()
+                                .id("3")
+                                .name("rentCar")
+                                .arguments("{\"destination\": \"Rome\"}")
+                                .build()),
                 AiMessage.from("Trip booked"));
 
         interface TravelAssistant {
@@ -2506,9 +2523,10 @@ class AiServicesWithToolsIT {
         String response = assistant.chat("Book a trip to Rome");
 
         // then - flight and car succeeded, hotel failed, rollback in reverse: cancelCar then cancelFlight
-        assertThat(travelService.executionLog).containsExactly(
-                "bookFlight", "rentCar",
-                "cancelCar:CR-789", "cancelFlight:FL-123");
+        assertThat(travelService.executionLog)
+                .containsExactly(
+                        "bookFlight", "rentCar",
+                        "cancelCar:CR-789", "cancelFlight:FL-123");
         assertThat(response).isEqualTo("Trip booked");
     }
 
@@ -2520,12 +2538,21 @@ class AiServicesWithToolsIT {
 
         ChatModel chatModel = ChatModelMock.thatAlwaysResponds(
                 AiMessage.from(
-                        ToolExecutionRequest.builder().id("1").name("bookFlight")
-                                .arguments("{\"destination\": \"Tokyo\"}").build(),
-                        ToolExecutionRequest.builder().id("2").name("bookHotel")
-                                .arguments("{\"destination\": \"Tokyo\"}").build(),
-                        ToolExecutionRequest.builder().id("3").name("rentCar")
-                                .arguments("{\"destination\": \"Tokyo\"}").build()),
+                        ToolExecutionRequest.builder()
+                                .id("1")
+                                .name("bookFlight")
+                                .arguments("{\"destination\": \"Tokyo\"}")
+                                .build(),
+                        ToolExecutionRequest.builder()
+                                .id("2")
+                                .name("bookHotel")
+                                .arguments("{\"destination\": \"Tokyo\"}")
+                                .build(),
+                        ToolExecutionRequest.builder()
+                                .id("3")
+                                .name("rentCar")
+                                .arguments("{\"destination\": \"Tokyo\"}")
+                                .build()),
                 AiMessage.from("Trip booked"));
 
         interface TravelAssistant {
@@ -2542,9 +2569,10 @@ class AiServicesWithToolsIT {
         String response = assistant.chat("Book a trip to Tokyo");
 
         // then - hotel and car succeeded, flight failed, rollback in reverse: cancelCar then cancelHotel
-        assertThat(travelService.executionLog).containsExactly(
-                "bookHotel", "rentCar",
-                "cancelCar:CR-789", "cancelHotel:HT-456");
+        assertThat(travelService.executionLog)
+                .containsExactly(
+                        "bookHotel", "rentCar",
+                        "cancelCar:CR-789", "cancelHotel:HT-456");
         assertThat(response).isEqualTo("Trip booked");
     }
 
@@ -2616,12 +2644,21 @@ class AiServicesWithToolsIT {
 
         ChatModel chatModel = ChatModelMock.thatAlwaysResponds(
                 AiMessage.from(
-                        ToolExecutionRequest.builder().id("1").name("bookFlight")
-                                .arguments("{\"destination\": \"Berlin\"}").build(),
-                        ToolExecutionRequest.builder().id("2").name("bookHotel")
-                                .arguments("{\"destination\": \"Berlin\"}").build(),
-                        ToolExecutionRequest.builder().id("3").name("rentCar")
-                                .arguments("{\"destination\": \"Berlin\"}").build()),
+                        ToolExecutionRequest.builder()
+                                .id("1")
+                                .name("bookFlight")
+                                .arguments("{\"destination\": \"Berlin\"}")
+                                .build(),
+                        ToolExecutionRequest.builder()
+                                .id("2")
+                                .name("bookHotel")
+                                .arguments("{\"destination\": \"Berlin\"}")
+                                .build(),
+                        ToolExecutionRequest.builder()
+                                .id("3")
+                                .name("rentCar")
+                                .arguments("{\"destination\": \"Berlin\"}")
+                                .build()),
                 AiMessage.from("Sorry, I could not complete the booking because no hotels are available in Berlin."));
 
         interface TravelAssistant {
@@ -2657,8 +2694,7 @@ class AiServicesWithToolsIT {
                 .contains("bookHotel");
 
         // bookHotel failed — normal error message
-        assertThat(toolResultMessages.get(1).text())
-                .contains("No hotels available");
+        assertThat(toolResultMessages.get(1).text()).contains("No hotels available");
 
         // rentCar succeeded but was rolled back
         assertThat(toolResultMessages.get(2).isError()).isTrue();
@@ -2736,8 +2772,7 @@ class AiServicesWithToolsIT {
         ToolExecutionResultMessage rolledbackWithdraw = toolResultMessages.get(1);
         assertThat(rolledbackWithdraw.toolName()).isEqualTo("withdraw");
         assertThat(rolledbackWithdraw.isError()).isTrue();
-        assertThat(rolledbackWithdraw.text())
-                .contains("Insufficient funds");
+        assertThat(rolledbackWithdraw.text()).contains("Insufficient funds");
 
         assertThat(response).isEqualTo("Transfer failed");
     }
@@ -2748,12 +2783,10 @@ class AiServicesWithToolsIT {
         class MisconfiguredService {
 
             @Tool("credits money to a bank account")
-            void credit(String name, double amount) {
-            }
+            void credit(String name, double amount) {}
 
             @CompensateFor("credit")
-            void uncredit(String name) {
-            }
+            void uncredit(String name) {}
         }
 
         assertThatExceptionOfType(IllegalConfigurationException.class)
@@ -2772,12 +2805,10 @@ class AiServicesWithToolsIT {
         class MisconfiguredService {
 
             @Tool("credits money to a bank account")
-            void credit(String name, double amount) {
-            }
+            void credit(String name, double amount) {}
 
             @CompensateFor("credit")
-            void uncredit(String name) {
-            }
+            void uncredit(String name) {}
         }
 
         // Should NOT throw — the user never enabled compensateOnToolErrors,
@@ -2798,8 +2829,9 @@ class AiServicesWithToolsIT {
         }
 
         @Tool("credits money to a bank account")
-        void credit(@P(name = "name", description = "account holder name") String name,
-                    @P(name = "amount", description = "amount to credit") double amount) {
+        void credit(
+                @P(name = "name", description = "account holder name") String name,
+                @P(name = "amount", description = "amount to credit") double amount) {
             accounts.merge(name, amount, Double::sum);
         }
 
@@ -2812,8 +2844,9 @@ class AiServicesWithToolsIT {
     static class ExtendedBankAccountService extends BaseBankAccountService {
 
         @Tool("withdraws money from a bank account")
-        void withdraw(@P(name = "name", description = "account holder name") String name,
-                      @P(name = "amount", description = "amount to withdraw") double amount) {
+        void withdraw(
+                @P(name = "name", description = "account holder name") String name,
+                @P(name = "amount", description = "amount to withdraw") double amount) {
             if (accounts.getOrDefault(name, 0.0) < amount) {
                 throw new RuntimeException("Insufficient funds in " + name + "'s account");
             }
@@ -2908,12 +2941,21 @@ class AiServicesWithToolsIT {
 
         ChatModel chatModel = ChatModelMock.thatAlwaysResponds(
                 AiMessage.from(
-                        ToolExecutionRequest.builder().id("1").name("bookFlight")
-                                .arguments("{\"destination\": \"Paris\"}").build(),
-                        ToolExecutionRequest.builder().id("2").name("bookHotel")
-                                .arguments("{\"destination\": \"Paris\"}").build(),
-                        ToolExecutionRequest.builder().id("3").name("rentCar")
-                                .arguments("{\"destination\": \"Paris\"}").build()),
+                        ToolExecutionRequest.builder()
+                                .id("1")
+                                .name("bookFlight")
+                                .arguments("{\"destination\": \"Paris\"}")
+                                .build(),
+                        ToolExecutionRequest.builder()
+                                .id("2")
+                                .name("bookHotel")
+                                .arguments("{\"destination\": \"Paris\"}")
+                                .build(),
+                        ToolExecutionRequest.builder()
+                                .id("3")
+                                .name("rentCar")
+                                .arguments("{\"destination\": \"Paris\"}")
+                                .build()),
                 AiMessage.from("Trip booking failed"));
 
         interface TravelAssistant {

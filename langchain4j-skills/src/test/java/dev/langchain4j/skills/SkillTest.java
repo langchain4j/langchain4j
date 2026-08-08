@@ -1,5 +1,6 @@
 package dev.langchain4j.skills;
 
+import static dev.langchain4j.service.tool.ToolExecutionResult.from;
 import static dev.langchain4j.skills.ActivateSkillToolExecutor.ACTIVATED_SKILL_ATTRIBUTE;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -96,7 +97,7 @@ class SkillTest {
                                 .name("my_tool")
                                 .description("Does something")
                                 .build(),
-                        (request, memoryId) -> "result"))
+                        (request, memoryId) -> from("result")))
                 .build();
 
         Skills skills = Skills.from(skill);
@@ -123,7 +124,7 @@ class SkillTest {
                                 .name("my_tool")
                                 .description("Does something")
                                 .build(),
-                        (request, memoryId) -> "result"))
+                        (request, memoryId) -> from("result")))
                 .build();
 
         Skills skills = Skills.from(skill);
@@ -149,7 +150,7 @@ class SkillTest {
                                 .name("my_tool")
                                 .description("Does something")
                                 .build(),
-                        (request, memoryId) -> "result"))
+                        (request, memoryId) -> from("result")))
                 .build();
 
         Skills skills = Skills.from(skill);
@@ -176,7 +177,7 @@ class SkillTest {
                                 .name("tool_a")
                                 .description("Tool A")
                                 .build(),
-                        (request, memoryId) -> "a"))
+                        (request, memoryId) -> from("a")))
                 .build();
 
         Skill skill2 = Skill.builder()
@@ -188,7 +189,7 @@ class SkillTest {
                                 .name("tool_b")
                                 .description("Tool B")
                                 .build(),
-                        (request, memoryId) -> "b"))
+                        (request, memoryId) -> from("b")))
                 .build();
 
         Skills skills = Skills.from(skill1, skill2);
@@ -215,7 +216,7 @@ class SkillTest {
                                 .name("tool_a")
                                 .description("Tool A")
                                 .build(),
-                        (request, memoryId) -> "a"))
+                        (request, memoryId) -> from("a")))
                 .build();
 
         Skill skill2 = Skill.builder()
@@ -227,7 +228,7 @@ class SkillTest {
                                 .name("tool_b")
                                 .description("Tool B")
                                 .build(),
-                        (request, memoryId) -> "b"))
+                        (request, memoryId) -> from("b")))
                 .build();
 
         Skills skills = Skills.from(skill1, skill2);
@@ -268,7 +269,7 @@ class SkillTest {
                 .name("greet")
                 .description("Greets someone")
                 .build();
-        ToolExecutor toolExecutor = (request, memoryId) -> "Hello, World!";
+        ToolExecutor toolExecutor = (request, memoryId) -> from("Hello, World!");
 
         Skill skill = Skill.builder()
                 .name("greeting-skill")
@@ -287,12 +288,14 @@ class SkillTest {
 
         // then
         assertThat(resolvedExecutor).isNotNull();
-        assertThat(resolvedExecutor.execute(
-                        ToolExecutionRequest.builder()
-                                .name("greet")
-                                .arguments("{}")
-                                .build(),
-                        null))
+        assertThat(resolvedExecutor
+                        .execute(
+                                ToolExecutionRequest.builder()
+                                        .name("greet")
+                                        .arguments("{}")
+                                        .build(),
+                                null)
+                        .resultText())
                 .isEqualTo("Hello, World!");
     }
 
@@ -356,7 +359,7 @@ class SkillTest {
                                 .name("dynamic_tool")
                                 .description("A dynamic tool")
                                 .build(),
-                        (req, memoryId) -> "dynamic result")
+                        (req, memoryId) -> from("dynamic result"))
                 .build();
 
         Skill skill = Skill.builder()
@@ -380,7 +383,7 @@ class SkillTest {
                                 .name("dynamic_tool")
                                 .description("A dynamic tool")
                                 .build(),
-                        (req, memoryId) -> "dynamic result")
+                        (req, memoryId) -> from("dynamic result"))
                 .build();
 
         Skill skill = Skill.builder()
@@ -410,7 +413,7 @@ class SkillTest {
                                 .name("mcp_tool")
                                 .description("An MCP tool")
                                 .build(),
-                        (req, memoryId) -> "mcp result")
+                        (req, memoryId) -> from("mcp result"))
                 .build();
 
         Skill skill = Skill.builder()
@@ -449,7 +452,7 @@ class SkillTest {
                 .name("manual_tool")
                 .description("A manual tool")
                 .build();
-        ToolExecutor manualExecutor = (request, memoryId) -> "manual";
+        ToolExecutor manualExecutor = (request, memoryId) -> from("manual");
 
         Skill skill = Skill.builder()
                 .name("my-skill")
@@ -478,7 +481,7 @@ class SkillTest {
                 .name("manual_tool")
                 .description("A manual tool")
                 .build();
-        ToolExecutor manualExecutor = (request, memoryId) -> "manual";
+        ToolExecutor manualExecutor = (request, memoryId) -> from("manual");
 
         Skill skill = Skill.builder()
                 .name("my-skill")
@@ -535,8 +538,8 @@ class SkillTest {
                 .name("my-skill")
                 .description("A skill")
                 .content("Use all tools")
-                .tools(Map.of(tool1, (request, memoryId) -> "1"))
-                .tools(Map.of(tool2, (request, memoryId) -> "2"))
+                .tools(Map.of(tool1, (request, memoryId) -> from("1")))
+                .tools(Map.of(tool2, (request, memoryId) -> from("2")))
                 .build();
 
         Skills skills = Skills.from(skill);
@@ -560,7 +563,7 @@ class SkillTest {
                                 .name("provider1_tool")
                                 .description("P1")
                                 .build(),
-                        (req, memoryId) -> "p1")
+                        (req, memoryId) -> from("p1"))
                 .build();
         ToolProvider provider2 = request -> ToolProviderResult.builder()
                 .add(
@@ -568,7 +571,7 @@ class SkillTest {
                                 .name("provider2_tool")
                                 .description("P2")
                                 .build(),
-                        (req, memoryId) -> "p2")
+                        (req, memoryId) -> from("p2"))
                 .build();
 
         Skill skill = Skill.builder()
@@ -591,7 +594,7 @@ class SkillTest {
                 .name("manual_tool")
                 .description("A manual tool")
                 .build();
-        ToolExecutor manualExecutor = (request, memoryId) -> "manual";
+        ToolExecutor manualExecutor = (request, memoryId) -> from("manual");
 
         ToolProvider dynamicProvider = request -> ToolProviderResult.builder()
                 .add(
@@ -599,7 +602,7 @@ class SkillTest {
                                 .name("dynamic_tool")
                                 .description("Dynamic")
                                 .build(),
-                        (req, memoryId) -> "dynamic")
+                        (req, memoryId) -> from("dynamic"))
                 .build();
 
         Skill skill = Skill.builder()
@@ -636,7 +639,7 @@ class SkillTest {
                                 .name("vararg_tool")
                                 .description("Vararg")
                                 .build(),
-                        (req, memoryId) -> "vararg")
+                        (req, memoryId) -> from("vararg"))
                 .build();
         ToolProvider provider2 = request -> ToolProviderResult.builder()
                 .add(
@@ -644,7 +647,7 @@ class SkillTest {
                                 .name("collection_tool")
                                 .description("Collection")
                                 .build(),
-                        (req, memoryId) -> "collection")
+                        (req, memoryId) -> from("collection"))
                 .build();
 
         Skill skill = Skill.builder()
@@ -714,7 +717,7 @@ class SkillTest {
                                 .name("dynamic_tool")
                                 .description("dynamic")
                                 .build(),
-                        (req, memoryId) -> "result")
+                        (req, memoryId) -> from("result"))
                 .build();
 
         // when
@@ -799,7 +802,7 @@ class SkillTest {
                                 .name("dynamic_tool")
                                 .description("dynamic")
                                 .build(),
-                        (req, memoryId) -> "result")
+                        (req, memoryId) -> from("result"))
                 .build();
 
         // when
@@ -857,12 +860,12 @@ class SkillTest {
                 .name("my-skill")
                 .description("My skill")
                 .content("Use tools")
-                .tools(Map.of(tool1, (request, memoryId) -> "1"))
+                .tools(Map.of(tool1, (request, memoryId) -> from("1")))
                 .build();
 
         // when
         DefaultSkill replaced = original.toBuilder()
-                .tools(Map.of(tool2, (request, memoryId) -> "2"))
+                .tools(Map.of(tool2, (request, memoryId) -> from("2")))
                 .build();
 
         Skills skills = Skills.from(replaced);
@@ -885,7 +888,7 @@ class SkillTest {
                                 .name("original_dynamic")
                                 .description("Original")
                                 .build(),
-                        (req, memoryId) -> "original")
+                        (req, memoryId) -> from("original"))
                 .build();
         DefaultSkill original = Skill.builder()
                 .name("my-skill")
@@ -901,7 +904,7 @@ class SkillTest {
                                 .name("new_dynamic")
                                 .description("New")
                                 .build(),
-                        (req, memoryId) -> "new")
+                        (req, memoryId) -> from("new"))
                 .build();
 
         // when - swap providers via toBuilder
@@ -931,7 +934,7 @@ class SkillTest {
                                 .name("dynamic_tool")
                                 .description("Dynamic")
                                 .build(),
-                        (req, memoryId) -> "dynamic")
+                        (req, memoryId) -> from("dynamic"))
                 .build();
 
         DefaultSkill original = Skill.builder()
@@ -939,7 +942,7 @@ class SkillTest {
                 .description("My skill")
                 .content("Use tools")
                 .tools(new MyTools())
-                .tools(Map.of(manualTool, (request, memoryId) -> "manual"))
+                .tools(Map.of(manualTool, (request, memoryId) -> from("manual")))
                 .toolProviders(dynamicProvider)
                 .build();
 

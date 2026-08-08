@@ -1,5 +1,6 @@
 package dev.langchain4j.service.tool;
 
+import static dev.langchain4j.service.tool.ToolExecutionResult.from;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -35,7 +36,7 @@ class DynamicToolProviderMemoryEvictionTest {
                                     .name("get_time")
                                     .description("Returns the current time")
                                     .build(),
-                            (req, memoryId) -> "12:00")
+                            (req, memoryId) -> from("12:00"))
                     .build();
         }
 

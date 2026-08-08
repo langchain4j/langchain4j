@@ -32,7 +32,7 @@ class RunShellCommandToolExecutorTest {
     void should_throw_ToolExecutionException_when_command_argument_value_is_null() {
         RunShellCommandToolExecutor executor = executor(false);
 
-        assertThatThrownBy(() -> executor.executeWithContext(requestWithRawArguments("{\"command\": null}"), null))
+        assertThatThrownBy(() -> executor.execute(requestWithRawArguments("{\"command\": null}"), null))
                 .isInstanceOf(ToolExecutionException.class)
                 .hasMessageContaining("Missing required tool argument");
     }
@@ -41,7 +41,7 @@ class RunShellCommandToolExecutorTest {
     void should_throw_ToolArgumentsException_when_command_argument_value_is_null() {
         RunShellCommandToolExecutor executor = executor(true);
 
-        assertThatThrownBy(() -> executor.executeWithContext(requestWithRawArguments("{\"command\": null}"), null))
+        assertThatThrownBy(() -> executor.execute(requestWithRawArguments("{\"command\": null}"), null))
                 .isInstanceOf(ToolArgumentsException.class)
                 .hasMessageContaining("Missing required tool argument");
     }
@@ -50,7 +50,7 @@ class RunShellCommandToolExecutorTest {
     void should_throw_ToolExecutionException_when_timeout_seconds_is_not_a_number() {
         RunShellCommandToolExecutor executor = executor(false);
 
-        assertThatThrownBy(() -> executor.executeWithContext(
+        assertThatThrownBy(() -> executor.execute(
                         requestWithRawArguments("{\"command\": \"echo x\", \"timeout_seconds\": \"abc\"}"), null))
                 .isInstanceOf(ToolExecutionException.class)
                 .hasMessageContaining("Invalid value for tool argument");
@@ -60,7 +60,7 @@ class RunShellCommandToolExecutorTest {
     void should_throw_ToolArgumentsException_when_timeout_seconds_is_not_a_number() {
         RunShellCommandToolExecutor executor = executor(true);
 
-        assertThatThrownBy(() -> executor.executeWithContext(
+        assertThatThrownBy(() -> executor.execute(
                         requestWithRawArguments("{\"command\": \"echo x\", \"timeout_seconds\": \"abc\"}"), null))
                 .isInstanceOf(ToolArgumentsException.class)
                 .hasMessageContaining("Invalid value for tool argument");
@@ -69,7 +69,7 @@ class RunShellCommandToolExecutorTest {
     @Test
     @DisabledOnOs(OS.WINDOWS)
     void should_not_truncate_stdout_on_success_when_within_limit_on_unix() {
-        ToolExecutionResult result = executor(100, 100).executeWithContext(request("echo hello"), null);
+        ToolExecutionResult result = executor(100, 100).execute(request("echo hello"), null);
 
         assertThat(result.isError()).isFalse();
         assertThat(result.resultText()).contains("hello");
@@ -79,7 +79,7 @@ class RunShellCommandToolExecutorTest {
     @Test
     @EnabledOnOs(OS.WINDOWS)
     void should_not_truncate_stdout_on_success_when_within_limit_on_windows() {
-        ToolExecutionResult result = executor(100, 100).executeWithContext(request("echo hello"), null);
+        ToolExecutionResult result = executor(100, 100).execute(request("echo hello"), null);
 
         assertThat(result.isError()).isFalse();
         assertThat(result.resultText()).contains("hello");
@@ -90,7 +90,7 @@ class RunShellCommandToolExecutorTest {
     @DisabledOnOs(OS.WINDOWS)
     void should_truncate_stdout_on_success_when_exceeds_limit_on_unix() {
         // seq 1 100 produces ~292 chars; limit of 20 forces truncation
-        ToolExecutionResult result = executor(20, 100).executeWithContext(request("seq 1 100"), null);
+        ToolExecutionResult result = executor(20, 100).execute(request("seq 1 100"), null);
 
         assertThat(result.isError()).isFalse();
         assertThat(result.resultText()).contains("[truncated:");
@@ -101,8 +101,7 @@ class RunShellCommandToolExecutorTest {
     @Test
     @EnabledOnOs(OS.WINDOWS)
     void should_truncate_stdout_on_success_when_exceeds_limit_on_windows() {
-        ToolExecutionResult result =
-                executor(20, 100).executeWithContext(request("for /l %i in (1,1,100) do @echo %i"), null);
+        ToolExecutionResult result = executor(20, 100).execute(request("for /l %i in (1,1,100) do @echo %i"), null);
 
         assertThat(result.isError()).isFalse();
         assertThat(result.resultText()).contains("[truncated:");
@@ -112,7 +111,7 @@ class RunShellCommandToolExecutorTest {
     @Test
     @DisabledOnOs(OS.WINDOWS)
     void should_truncate_stdout_on_error_when_exceeds_limit_on_unix() {
-        ToolExecutionResult result = executor(20, 100).executeWithContext(request("seq 1 100; exit 1"), null);
+        ToolExecutionResult result = executor(20, 100).execute(request("seq 1 100; exit 1"), null);
 
         assertThat(result.isError()).isTrue();
         assertThat(result.resultText()).contains("<stdout>");
@@ -124,7 +123,7 @@ class RunShellCommandToolExecutorTest {
     @EnabledOnOs(OS.WINDOWS)
     void should_truncate_stdout_on_error_when_exceeds_limit_on_windows() {
         ToolExecutionResult result =
-                executor(20, 100).executeWithContext(request("(for /l %i in (1,1,100) do @echo %i) & exit /b 1"), null);
+                executor(20, 100).execute(request("(for /l %i in (1,1,100) do @echo %i) & exit /b 1"), null);
 
         assertThat(result.isError()).isTrue();
         assertThat(result.resultText()).contains("<stdout>");
@@ -135,7 +134,7 @@ class RunShellCommandToolExecutorTest {
     @Test
     @DisabledOnOs(OS.WINDOWS)
     void should_not_truncate_stderr_on_error_when_within_limit_on_unix() {
-        ToolExecutionResult result = executor(100, 100).executeWithContext(request("echo err >&2; exit 1"), null);
+        ToolExecutionResult result = executor(100, 100).execute(request("echo err >&2; exit 1"), null);
 
         assertThat(result.isError()).isTrue();
         assertThat(result.resultText()).contains("<stderr>");
@@ -146,7 +145,7 @@ class RunShellCommandToolExecutorTest {
     @Test
     @EnabledOnOs(OS.WINDOWS)
     void should_not_truncate_stderr_on_error_when_within_limit_on_windows() {
-        ToolExecutionResult result = executor(100, 100).executeWithContext(request("echo err 1>&2 & exit /b 1"), null);
+        ToolExecutionResult result = executor(100, 100).execute(request("echo err 1>&2 & exit /b 1"), null);
 
         assertThat(result.isError()).isTrue();
         assertThat(result.resultText()).contains("<stderr>");
@@ -157,7 +156,7 @@ class RunShellCommandToolExecutorTest {
     @Test
     @DisabledOnOs(OS.WINDOWS)
     void should_truncate_stderr_on_error_when_exceeds_limit_on_unix() {
-        ToolExecutionResult result = executor(100, 20).executeWithContext(request("seq 1 100 >&2; exit 1"), null);
+        ToolExecutionResult result = executor(100, 20).execute(request("seq 1 100 >&2; exit 1"), null);
 
         assertThat(result.isError()).isTrue();
         assertThat(result.resultText()).contains("<stderr>");
@@ -168,8 +167,8 @@ class RunShellCommandToolExecutorTest {
     @Test
     @EnabledOnOs(OS.WINDOWS)
     void should_truncate_stderr_on_error_when_exceeds_limit_on_windows() {
-        ToolExecutionResult result = executor(100, 20)
-                .executeWithContext(request("(for /l %i in (1,1,100) do @echo %i 1>&2) & exit /b 1"), null);
+        ToolExecutionResult result =
+                executor(100, 20).execute(request("(for /l %i in (1,1,100) do @echo %i 1>&2) & exit /b 1"), null);
 
         assertThat(result.isError()).isTrue();
         assertThat(result.resultText()).contains("<stderr>");
