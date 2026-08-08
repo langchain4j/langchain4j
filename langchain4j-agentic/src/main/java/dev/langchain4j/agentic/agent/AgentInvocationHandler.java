@@ -151,7 +151,11 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
         }
 
         if (method.getDeclaringClass() == AgentInstance.class || method.getDeclaringClass() == InternalAgent.class) {
-            return method.invoke(this, args);
+            try {
+                return method.invoke(this, args);
+            } catch (Exception e) {
+                throw e.getCause() != null ? (Exception) e.getCause() : e;
+            }
         }
 
         if (method.getDeclaringClass() == MonitoredAgent.class) {
