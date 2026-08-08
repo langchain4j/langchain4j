@@ -9,6 +9,7 @@ import dev.langchain4j.Internal;
 import dev.langchain4j.http.client.HttpRequest;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import org.slf4j.Logger;
@@ -21,18 +22,13 @@ class HttpRequestLogger {
 
     static void log(Logger log, HttpRequest httpRequest) {
         try {
-            log.info(
-                    """
+            log.info("""
                             HTTP request:
                             - method: {}
                             - url: {}
                             - headers: {}
                             - body: {}
-                            """,
-                    httpRequest.method(),
-                    httpRequest.url(),
-                    format(httpRequest.headers()),
-                    httpRequest.body());
+                            """, httpRequest.method(), httpRequest.url(), format(httpRequest.headers()), httpRequest.body());
         } catch (Exception e) {
             log.warn("Exception occurred while logging HTTP request: {}", e.getMessage());
         }
@@ -45,8 +41,8 @@ class HttpRequestLogger {
     }
 
     static String format(String headerKey, List<String> headerValues) {
-        if (COMMON_SECRET_HEADERS.contains(headerKey.toLowerCase())
-                || headerKey.toLowerCase().contains("api-key")) {
+        String lowerCaseHeaderKey = headerKey.toLowerCase(Locale.ROOT);
+        if (COMMON_SECRET_HEADERS.contains(lowerCaseHeaderKey) || lowerCaseHeaderKey.contains("api-key")) {
             headerValues =
                     headerValues.stream().map(HttpRequestLogger::maskSecretKey).collect(toList());
         }
