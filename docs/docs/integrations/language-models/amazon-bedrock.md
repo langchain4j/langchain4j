@@ -35,6 +35,7 @@ ChatModel model = BedrockChatModel.builder()
         .modelId("us.amazon.nova-lite-v1:0")
         .returnThinking(...)
         .sendThinking(...)
+        .strictTools(...)
         .timeout(...)
         .maxRetries(...)
         .logRequests(...)
@@ -52,6 +53,7 @@ ChatModel model = BedrockChatModel.builder()
                 .additionalModelRequestField(...)
                 .enableReasoning(...)
                 .promptCaching(...)
+                .strictTools(...)
                 .build())
         .build();
 ```
@@ -78,6 +80,7 @@ StreamingChatModel model = BedrockStreamingChatModel.builder()
         .modelId("us.amazon.nova-lite-v1:0")
         .returnThinking(...)
         .sendThinking(...)
+        .strictTools(...)
         .timeout(...)
         .logRequests(...)
         .logResponses(...)
@@ -94,6 +97,7 @@ StreamingChatModel model = BedrockStreamingChatModel.builder()
                 .additionalModelRequestField(...)
                 .enableReasoning(...)
                 .promptCaching(...)
+                .strictTools(...)
                 .build())
         .build();
 ```
@@ -102,6 +106,35 @@ StreamingChatModel model = BedrockStreamingChatModel.builder()
 
 - [BedrockStreamingChatModelExample](https://github.com/langchain4j/langchain4j-examples/blob/main/bedrock-examples/src/main/java/converse/BedrockStreamingChatModelExample.java)
 
+
+## Strict Tools
+
+For Bedrock Converse models that support strict tool use, such as Anthropic Claude models,
+set `.strictTools(true)` when building the model:
+
+```java
+ChatModel model = BedrockChatModel.builder()
+        .modelId("anthropic.claude-3-5-sonnet-20241022-v2:0")
+        .strictTools(true)
+        .build();
+```
+
+When enabled, LangChain4j sends `strict: true` in Bedrock tool definitions and sets
+`additionalProperties=false` for object schemas. The default is disabled, so existing requests
+continue to omit `strict` and keep the current schema shape.
+
+You can also set `strictTools` in `BedrockChatRequestParameters` when configuring default
+or per-request parameters. Individual tools can override the model-level setting with
+`ToolSpecification.builder().strict(true)` or `ToolSpecification.builder().strict(false)`.
+
+Bedrock structured outputs support internal JSON Schema references, but do not support
+recursive schemas. If a strict Bedrock tool uses a recursive POJO schema, LangChain4j
+rejects it before sending the request. Disable strict mode for that tool with
+`ToolSpecification.builder().strict(false)`.
+
+Open map parameters also do not fit Bedrock strict schemas because strict object schemas
+are closed with `additionalProperties=false`. Use per-tool `strict(false)` for tools that
+need arbitrary map keys.
 
 ## Additional Model Request Fields
 

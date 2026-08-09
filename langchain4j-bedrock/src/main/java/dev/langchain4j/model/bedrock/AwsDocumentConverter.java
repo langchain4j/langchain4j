@@ -9,11 +9,19 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.internal.JsonSchemaElementUtils;
+import dev.langchain4j.model.chat.request.json.JsonAnyOfSchema;
+import dev.langchain4j.model.chat.request.json.JsonArraySchema;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonReferenceSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import software.amazon.awssdk.core.document.Document;
 import software.amazon.awssdk.core.document.internal.MapDocument;
 
@@ -106,17 +114,28 @@ class AwsDocumentConverter {
     }
 
     public static Document convertJsonObjectSchemaToDocument(ToolSpecification toolSpecification) {
-        Map<String, Object> schemaMap = new HashMap<>();
-        schemaMap.put("type", "object");
+        return convertJsonObjectSchemaToDocument(toolSpecification, false);
+    }
 
-        if (toolSpecification.parameters() != null) {
-            Map<String, Map<String, Object>> propertiesMap =
-                    JsonSchemaElementUtils.toMap(toolSpecification.parameters().properties());
-            schemaMap.put("properties", propertiesMap);
+    public static Document convertJsonObjectSchemaToDocument(ToolSpecification toolSpecification, boolean strict) {
+        Map<String, Object> schemaMap;
 
-            List<String> required =
-                    new ArrayList<>(toolSpecification.parameters().required());
-            schemaMap.put("required", required);
+        if (toolSpecification.parameters() == null) {
+            schemaMap = new LinkedHashMap<>();
+            schemaMap.put("type", "object");
+
+            if (strict) {
+                schemaMap.put("properties", Map.of());
+                schemaMap.put("required", List.of());
+                schemaMap.put("additionalProperties", false);
+            }
+        } else {
+            if (strict && containsRecursiveDefinitions(toolSpecification.parameters())) {
+                throw new IllegalArgumentException(
+                        "Amazon Bedrock strict tool use does not support recursive JSON schemas. "
+                                + "Disable strict mode for this tool with ToolSpecification.strict(false).");
+            }
+            schemaMap = JsonSchemaElementUtils.toMap(toolSpecification.parameters(), strict);
         }
 
         try {
@@ -125,6 +144,54 @@ class AwsDocumentConverter {
         } catch (JsonProcessingException e) {
             throw new RuntimeException("Failed to convert schema to Document", e);
         }
+    }
+
+    private static boolean containsRecursiveDefinitions(JsonObjectSchema rootSchema) {
+        Map<String, JsonSchemaElement> definitions = rootSchema.definitions();
+        if (definitions == null || definitions.isEmpty()) {
+            return false;
+        }
+
+        return definitions.entrySet().stream()
+                .anyMatch(
+                        entry -> referencesDefinition(entry.getValue(), entry.getKey(), definitions, new HashSet<>()));
+    }
+
+    private static boolean referencesDefinition(
+            JsonSchemaElement element,
+            String targetReference,
+            Map<String, JsonSchemaElement> definitions,
+            Set<String> visitedReferences) {
+        if (element instanceof JsonReferenceSchema referenceSchema) {
+            String reference = referenceSchema.reference();
+            if (targetReference.equals(reference)) {
+                return true;
+            }
+            if (!visitedReferences.add(reference)) {
+                return false;
+            }
+            JsonSchemaElement definition = definitions.get(reference);
+            return definition != null
+                    && referencesDefinition(definition, targetReference, definitions, visitedReferences);
+        }
+
+        if (element instanceof JsonObjectSchema objectSchema) {
+            return objectSchema.properties().values().stream()
+                    .anyMatch(property -> referencesDefinition(
+                            property, targetReference, definitions, new HashSet<>(visitedReferences)));
+        }
+
+        if (element instanceof JsonArraySchema arraySchema && arraySchema.items() != null) {
+            return referencesDefinition(arraySchema.items(), targetReference, definitions, visitedReferences);
+        }
+
+        if (element instanceof JsonAnyOfSchema anyOfSchema) {
+            return anyOfSchema.anyOf().stream()
+                    .anyMatch(item ->
+                            referencesDefinition(item, targetReference, definitions, new HashSet<>(visitedReferences)));
+        }
+
+        return false;
     }
 
     public static Document convertAdditionalModelRequestFields(Map<String, Object> additionalModelRequestFields) {
