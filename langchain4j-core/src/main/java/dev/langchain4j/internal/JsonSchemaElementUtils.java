@@ -33,6 +33,13 @@ import java.lang.reflect.TypeVariable;
 import java.lang.reflect.WildcardType;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.OffsetDateTime;
+import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -51,6 +58,14 @@ public class JsonSchemaElementUtils {
             String fieldDescription,
             boolean areSubFieldsRequiredByDefault,
             Map<Class<?>, VisitedClassMetadata> visited) {
+        String stringFormat = jsonStringFormatOf(clazz);
+        if (stringFormat != null) {
+            return JsonStringSchema.builder()
+                    .format(stringFormat)
+                    .description(Optional.ofNullable(fieldDescription).orElse(descriptionFrom(clazz)))
+                    .build();
+        }
+
         if (isJsonString(clazz)) {
             return JsonStringSchema.builder()
                     .description(Optional.ofNullable(fieldDescription).orElse(descriptionFrom(clazz)))
@@ -479,6 +494,9 @@ public class JsonSchemaElementUtils {
             if (jsonStringSchema.description() != null) {
                 map.put("description", jsonStringSchema.description());
             }
+            if (jsonStringSchema.format() != null) {
+                map.put("format", jsonStringSchema.format());
+            }
             return map;
         } else if (jsonSchemaElement instanceof JsonIntegerSchema jsonIntegerSchema) {
             Map<String, Object> map = new LinkedHashMap<>();
@@ -570,6 +588,28 @@ public class JsonSchemaElementUtils {
                 || type == Character.class
                 || CharSequence.class.isAssignableFrom(type)
                 || type == UUID.class;
+    }
+
+    static String jsonStringFormatOf(Class<?> type) {
+        if (type == UUID.class) {
+            return "uuid";
+        }
+        if (type == LocalDate.class) {
+            return "date";
+        }
+        if (type == LocalTime.class) {
+            return "time";
+        }
+        if (type == LocalDateTime.class
+                || type == Instant.class
+                || type == OffsetDateTime.class
+                || type == ZonedDateTime.class) {
+            return "date-time";
+        }
+        if (type == Duration.class) {
+            return "duration";
+        }
+        return null;
     }
 
     static boolean isJsonArray(Class<?> type) {
