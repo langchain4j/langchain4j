@@ -116,6 +116,8 @@ class PojoListOutputParserTest {
             strings = {
                 "{\"values\":{\"name\":\"Alice\"}}",
                 "{\"values\":[\"Alice\"]}",
+                "[\"Alice\"]",
+                "[{\"name\":\"Alice\"}] and more",
             })
     void should_fail_to_parse_malformed_json(String malformedJson) {
         assertThatThrownBy(() -> new PojoListOutputParser<>(Person.class).parse(malformedJson))

@@ -64,7 +64,11 @@ class EnumListOutputParserTest {
                 Arguments.of("[\"CAT\"]", List.of(CAT)),
                 Arguments.of("[\"CAT\", \"DOG\"]", List.of(CAT, DOG)),
                 Arguments.of("[]", List.of()),
-                Arguments.of("  [\"CAT\", \"DOG\"]  ", List.of(CAT, DOG)));
+                Arguments.of("  [\"CAT\", \"DOG\"]  ", List.of(CAT, DOG)),
+
+                // Text that only looks like a bare JSON array: still parsed line by line
+                Arguments.of("[CAT]", List.of(CAT)),
+                Arguments.of("[CAT]\n[DOG]", List.of(CAT, DOG)));
     }
 
     @ParameterizedTest
@@ -79,7 +83,15 @@ class EnumListOutputParserTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"BANANA", "{\"values\":[\"BANANA\"]}", "{\"values\":\"CAT\"}", "{\"banana\":[\"CAT\"]}"})
+    @ValueSource(
+            strings = {
+                "BANANA",
+                "{\"values\":[\"BANANA\"]}",
+                "{\"values\":\"CAT\"}",
+                "{\"banana\":[\"CAT\"]}",
+                "[\"BANANA\"]",
+                "[\"CAT\"",
+            })
     void should_fail_to_parse_invalid_input(String text) {
 
         // given

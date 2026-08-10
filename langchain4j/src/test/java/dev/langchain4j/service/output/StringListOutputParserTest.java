@@ -48,7 +48,14 @@ class StringListOutputParserTest {
                 Arguments.of("[\"CAT\"]", List.of("CAT")),
                 Arguments.of("[\"CAT\", \"DOG\"]", List.of("CAT", "DOG")),
                 Arguments.of("[]", List.of()),
-                Arguments.of("  [\"CAT\", \"DOG\"]  ", List.of("CAT", "DOG")));
+                Arguments.of("  [\"CAT\", \"DOG\"]  ", List.of("CAT", "DOG")),
+                Arguments.of("[\n  \"CAT\",\n  \"DOG\"\n]", List.of("CAT", "DOG")),
+
+                // Text that only looks like a bare JSON array: still parsed line by line
+                Arguments.of("[CAT]\n[DOG]", List.of("[CAT]", "[DOG]")),
+                Arguments.of("[1] CAT\n[2] DOG", List.of("[1] CAT", "[2] DOG")),
+                Arguments.of("[\"CAT\"] and more", List.of("[\"CAT\"] and more")),
+                Arguments.of("[CAT", List.of("[CAT")));
     }
 
     @ParameterizedTest

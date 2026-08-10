@@ -22,7 +22,7 @@ class ParsingUtils {
             throw outputParsingException(text, type);
         }
 
-        if (isJson(text)) {
+        if (isJsonObject(text)) {
             Map<?, ?> map = Json.fromJson(text, Map.class);
             if (isNullOrEmpty(map)) {
                 throw outputParsingException(text, type);
@@ -46,10 +46,10 @@ class ParsingUtils {
         }
 
         if (isJsonArray(text)) {
-            // A bare JSON array, e.g. ["A", "B"] or [{...}, {...}].
-            // This is a common shape returned by LLMs for list-typed results.
-            Collection<?> values = Json.fromJson(text, Collection.class);
-            return parseCollectionValues(values, parser, emptyCollectionSupplier, type);
+            Collection<?> values = parseJsonArrayOrNull(text);
+            if (values != null) {
+                return parseCollectionValues(values, parser, emptyCollectionSupplier, type);
+            }
         } else if (isJsonObject(text)) {
             Map<?, ?> map = Json.fromJson(text, Map.class);
             if (isNullOrEmpty(map)) {
@@ -62,16 +62,29 @@ class ParsingUtils {
             }
 
             return parseCollectionValues((Collection<?>) values, parser, emptyCollectionSupplier, type);
-        } else {
-            CT collection = emptyCollectionSupplier.get();
-            for (String line : text.split("\n")) {
-                if (isNullOrBlank(line)) {
-                    continue;
-                }
-                collection.add(parse(line.trim(), parser, type));
-            }
-            return collection;
         }
+
+        return parseLines(text, parser, emptyCollectionSupplier, type);
+    }
+
+    private static Collection<?> parseJsonArrayOrNull(String text) {
+        try {
+            return Json.fromJson(text.trim(), Collection.class);
+        } catch (RuntimeException e) {
+            return null; // the text only looks like a JSON array, e.g. "[apple]\n[banana]"
+        }
+    }
+
+    private static <T, CT extends Collection<T>> CT parseLines(
+            String text, Function<String, T> parser, Supplier<CT> emptyCollectionSupplier, String type) {
+        CT collection = emptyCollectionSupplier.get();
+        for (String line : text.split("\n")) {
+            if (isNullOrBlank(line)) {
+                continue;
+            }
+            collection.add(parse(line.trim(), parser, type));
+        }
+        return collection;
     }
 
     private static <T, CT extends Collection<T>> CT parseCollectionValues(
@@ -89,16 +102,13 @@ class ParsingUtils {
         return collection;
     }
 
-    private static boolean isJson(String text) {
-        return isJsonObject(text);
-    }
-
     private static boolean isJsonObject(String text) {
         return text.trim().startsWith("{");
     }
 
     private static boolean isJsonArray(String text) {
-        return text.trim().startsWith("[");
+        String trimmed = text.trim();
+        return trimmed.startsWith("[") && trimmed.endsWith("]");
     }
 
     private static <T> T parse(String text, Function<String, T> parser, Type type) {
