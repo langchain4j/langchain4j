@@ -256,6 +256,13 @@ System.out.println("Gemini> " + tokyoWeather);
 //         with a temperature of 32 degrees.
 ```
 
+### Raw Tool Parameters
+
+Tool parameters are normally sent through the `parameters` field of the Gemini API, which accepts a fixed set of
+schema fields. When the parameters contain a `JsonRawSchema` or a `JsonReferenceSchema`, they are sent through
+`parametersJsonSchema` instead, which accepts plain JSON Schema. This keeps keywords such as `minimum`, along with
+`$ref` and `$defs`, instead of dropping them.
+
 ## Structured Outputs
 
 See more info on Structured Outputs [here](/tutorials/structured-outputs).

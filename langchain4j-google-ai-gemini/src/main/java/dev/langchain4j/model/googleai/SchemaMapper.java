@@ -8,6 +8,8 @@ import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
 import dev.langchain4j.model.chat.request.json.JsonNullSchema;
 import dev.langchain4j.model.chat.request.json.JsonNumberSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonRawSchema;
+import dev.langchain4j.model.chat.request.json.JsonReferenceSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
@@ -15,6 +17,30 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 class SchemaMapper {
+
+    /**
+     * Whether {@link #fromJsonSchemaToGSchema} can convert this element and everything below it.
+     * {@link JsonRawSchema} and {@link JsonReferenceSchema} are the two the typed {@link GeminiSchema}
+     * has no shape for.
+     */
+    static boolean canBeMapped(JsonSchemaElement jsonSchema) {
+        if (jsonSchema instanceof JsonRawSchema || jsonSchema instanceof JsonReferenceSchema) {
+            return false;
+        }
+        if (jsonSchema instanceof JsonObjectSchema jsonObjectSchema) {
+            // Definitions exist to be referenced, and a reference has no typed form.
+            return jsonObjectSchema.definitions().isEmpty()
+                    && jsonObjectSchema.properties().values().stream().allMatch(SchemaMapper::canBeMapped);
+        }
+        if (jsonSchema instanceof JsonArraySchema jsonArraySchema) {
+            return jsonArraySchema.items() == null || canBeMapped(jsonArraySchema.items());
+        }
+        if (jsonSchema instanceof JsonAnyOfSchema jsonAnyOfSchema) {
+            return jsonAnyOfSchema.anyOf().stream().allMatch(SchemaMapper::canBeMapped);
+        }
+        return true;
+    }
+
     static GeminiSchema fromJsonSchemaToGSchema(JsonSchema jsonSchema) {
         return fromJsonSchemaToGSchema(jsonSchema.rootElement());
     }
