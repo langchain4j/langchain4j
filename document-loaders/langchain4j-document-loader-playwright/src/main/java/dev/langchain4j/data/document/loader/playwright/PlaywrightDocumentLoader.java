@@ -9,6 +9,7 @@ import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentParser;
 import dev.langchain4j.data.document.Metadata;
 import java.io.ByteArrayInputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -63,7 +64,8 @@ public class PlaywrightDocumentLoader implements AutoCloseable {
 
         String pageContent = pageContent(url);
 
-        Document parsedDocument = documentParser.parse(new ByteArrayInputStream(pageContent.getBytes()));
+        Document parsedDocument =
+                documentParser.parse(new ByteArrayInputStream(pageContent.getBytes(StandardCharsets.UTF_8)));
 
         parsedDocument.metadata().put(Document.URL, url);
         return parsedDocument;

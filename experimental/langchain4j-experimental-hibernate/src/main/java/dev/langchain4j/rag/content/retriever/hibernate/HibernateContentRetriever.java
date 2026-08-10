@@ -167,13 +167,20 @@ public class HibernateContentRetriever implements ContentRetriever {
 
     protected String clean(String hqlQuery) {
         if (hqlQuery.contains("```hql")) {
-            return hqlQuery.substring(hqlQuery.indexOf("```hql") + 6, hqlQuery.lastIndexOf("```"));
+            return stripCodeFence(hqlQuery, hqlQuery.indexOf("```hql") + 6);
         } else if (hqlQuery.contains("```sql")) {
-            return hqlQuery.substring(hqlQuery.indexOf("```sql") + 6, hqlQuery.lastIndexOf("```"));
+            return stripCodeFence(hqlQuery, hqlQuery.indexOf("```sql") + 6);
         } else if (hqlQuery.contains("```")) {
-            return hqlQuery.substring(hqlQuery.indexOf("```") + 3, hqlQuery.lastIndexOf("```"));
+            return stripCodeFence(hqlQuery, hqlQuery.indexOf("```") + 3);
         }
         return hqlQuery;
+    }
+
+    private static String stripCodeFence(String hqlQuery, int contentStart) {
+        int closingFence = hqlQuery.lastIndexOf("```");
+        return closingFence > contentStart
+                ? hqlQuery.substring(contentStart, closingFence)
+                : hqlQuery.substring(contentStart);
     }
 
     protected String execute(String hqlQuery) {

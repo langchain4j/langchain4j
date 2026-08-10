@@ -16,6 +16,11 @@
         },
         {
           "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class ai.docling.serve.api.convert.response.InBodyConvertDocumentResponse",
+          "justification": "Docling Serve API type intentionally exposed to allow custom document text extraction"
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
           "new": "missing-class dev.langchain4j.data.document.Document",
           "justification": "Core langchain4j type intentionally part of the document parser API"
         }

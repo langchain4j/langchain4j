@@ -51,6 +51,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.condition.DisabledIf;
 import org.junit.jupiter.api.condition.EnabledIf;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.InOrder;
@@ -64,6 +65,7 @@ import org.mockito.InOrder;
  * @param <M> The type of the model: either {@link ChatModel} or {@link StreamingChatModel}
  */
 @TestInstance(PER_CLASS)
+@ExtendWith(LastChatExchange.class)
 public abstract class AbstractBaseChatModelIT<M> {
 
     // TODO https://github.com/langchain4j/langchain4j/issues/2219
@@ -1044,6 +1046,8 @@ public abstract class AbstractBaseChatModelIT<M> {
                 assertThat(threads.iterator().next()).isNotEqualTo(Thread.currentThread());
             }
         }
+
+        sleepIfNeeded();
 
         // given
         ChatRequest chatRequest2 = ChatRequest.builder()
