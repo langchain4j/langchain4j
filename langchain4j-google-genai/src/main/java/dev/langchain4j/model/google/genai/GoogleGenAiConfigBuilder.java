@@ -25,6 +25,7 @@ import dev.langchain4j.model.chat.request.ToolChoice;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 
 class GoogleGenAiConfigBuilder {
 
@@ -42,6 +43,38 @@ class GoogleGenAiConfigBuilder {
             String vertexSearchDatastore,
             Map<String, String> labels,
             String cachedContent) {
+        return buildConfig(
+                parameters,
+                systemInstruction,
+                safetySettings,
+                thinkingBudget,
+                thinkingLevel,
+                seed,
+                googleSearchEnabled,
+                googleMapsEnabled,
+                urlContextEnabled,
+                allowedFunctionNames,
+                vertexSearchDatastore,
+                labels,
+                cachedContent,
+                null);
+    }
+
+    static GenerateContentConfig buildConfig(
+            ChatRequestParameters parameters,
+            Content systemInstruction,
+            List<SafetySetting> safetySettings,
+            Integer thinkingBudget,
+            String thinkingLevel,
+            Integer seed,
+            boolean googleSearchEnabled,
+            boolean googleMapsEnabled,
+            boolean urlContextEnabled,
+            List<String> allowedFunctionNames,
+            String vertexSearchDatastore,
+            Map<String, String> labels,
+            String cachedContent,
+            Consumer<GenerateContentConfig.Builder> generateContentConfigCustomizer) {
 
         GenerateContentConfig.Builder configBuilder = GenerateContentConfig.builder();
 
@@ -121,6 +154,9 @@ class GoogleGenAiConfigBuilder {
                 allowedFunctionNames,
                 vertexSearchDatastore);
 
+        if (generateContentConfigCustomizer != null) {
+            generateContentConfigCustomizer.accept(configBuilder);
+        }
         return configBuilder.build();
     }
 

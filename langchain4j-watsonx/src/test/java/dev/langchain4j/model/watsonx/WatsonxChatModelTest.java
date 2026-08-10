@@ -300,7 +300,8 @@ public class WatsonxChatModelTest {
     @Test
     void should_extract_thinking_when_configured_in_model_builder() throws Exception {
 
-        var extractionTags = ExtractionTags.of("think", "response");
+        var extractionTags =
+                ExtractionTags.of(new Think("<think>", "</think>"), new Response("<response>", "</response>"));
         var resultMessage = new ResultMessage(
                 AssistantMessage.ROLE, "<think>I'm thinking</think><response>Hello</response>", null, null, null);
         var resultChoice = new ChatResponse.ResultChoice(0, resultMessage, "stop");
