@@ -1,6 +1,6 @@
 package dev.langchain4j.agentic.mcp;
 
-import static dev.langchain4j.agentic.scope.DefaultAgenticScope.isSerializable;
+import static dev.langchain4j.agentic.internal.AgentUtil.untypedAgentInvocationArguments;
 
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
@@ -109,17 +109,7 @@ public class McpClientAgentInvoker implements AgentInvoker {
 
     @Override
     public AgentInvocationArguments toInvocationArguments(AgenticScope agenticScope) {
-        return isUntyped() ? untypedInvocationArguments(agenticScope) : agentInvocationArguments(agenticScope);
-    }
-
-    private AgentInvocationArguments untypedInvocationArguments(AgenticScope agenticScope) {
-        Map<String, Object> args = new HashMap<>();
-        for (var entry : agenticScope.state().entrySet()) {
-            if (isSerializable(entry.getValue())) {
-                args.put(entry.getKey(), entry.getValue());
-            }
-        }
-        return new AgentInvocationArguments(args, new Object[] {args});
+        return isUntyped() ? untypedAgentInvocationArguments(agenticScope) : agentInvocationArguments(agenticScope);
     }
 
     private AgentInvocationArguments agentInvocationArguments(AgenticScope agenticScope) {
