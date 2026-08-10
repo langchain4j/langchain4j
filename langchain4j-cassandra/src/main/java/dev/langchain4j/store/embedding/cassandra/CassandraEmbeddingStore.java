@@ -350,8 +350,9 @@ public class CassandraEmbeddingStore implements EmbeddingStore<TextSegment> {
                     new Metadata(record.getEmbedded().getMetadata()));
         }
         return new EmbeddingMatch<>(
-                // Score: the Cassandra similarity_* CQL functions already return a value in [0..1],
-                // which is the scale LangChain4j uses for relevance scores.
+                // Score: the Cassandra similarity_* CQL functions already return a relevance score in [0..1],
+                // so no further normalization is needed. For COSINE this is exactly
+                // RelevanceScore.fromCosineSimilarity, i.e. 0.5 means orthogonal.
                 (double) record.getSimilarity(),
                 // EmbeddingId : unique identifier
                 record.getEmbedded().getRowId(),
