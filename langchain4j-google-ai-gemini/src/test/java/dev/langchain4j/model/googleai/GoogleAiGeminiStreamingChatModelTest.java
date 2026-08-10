@@ -200,7 +200,7 @@ class GoogleAiGeminiStreamingChatModelTest {
                     .build();
             GeminiGenerateContentRequest result = chatModel.createGenerateContentRequest(DEFAULT_REQUEST);
 
-            assertThat(result.generationConfig().enableEnhancedCivicAnswers()).isFalse();
+            assertThat(result.generationConfig().enableEnhancedCivicAnswers()).isNull();
         }
     }
 }

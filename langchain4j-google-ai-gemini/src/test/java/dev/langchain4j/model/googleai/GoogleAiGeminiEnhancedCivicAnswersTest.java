@@ -47,7 +47,7 @@ class GoogleAiGeminiEnhancedCivicAnswersTest {
     }
 
     @Test
-    void shouldDefaultEnableEnhancedCivicAnswersToFalse() {
+    void shouldDefaultEnableEnhancedCivicAnswersToNull() {
         var model = GoogleAiGeminiChatModel.builder()
                 .apiKey("test-key")
                 .modelName(TEST_MODEL_NAME)
@@ -61,7 +61,7 @@ class GoogleAiGeminiEnhancedCivicAnswersTest {
 
         verify(mockGeminiService).generateContent(eq(TEST_MODEL_NAME), requestCaptor.capture());
         assertThat(requestCaptor.getValue().generationConfig().enableEnhancedCivicAnswers())
-                .isFalse();
+                .isNull();
     }
 
     private GeminiGenerateContentResponse createSimpleResponse(String text) {

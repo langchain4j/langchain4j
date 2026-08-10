@@ -75,7 +75,7 @@ class BaseGeminiChatModel {
         this.sendThinking = getOrDefault(builder.sendThinking, false);
         this.seed = builder.seed;
         this.responseLogprobs = getOrDefault(builder.responseLogprobs, false);
-        this.enableEnhancedCivicAnswers = getOrDefault(builder.enableEnhancedCivicAnswers, false);
+        this.enableEnhancedCivicAnswers = builder.enableEnhancedCivicAnswers;
         this.logprobs = builder.logprobs;
         this.mediaResolution = builder.mediaResolution;
         this.mediaResolutionPerPartEnabled = getOrDefault(builder.mediaResolutionPerPartEnabled, false);

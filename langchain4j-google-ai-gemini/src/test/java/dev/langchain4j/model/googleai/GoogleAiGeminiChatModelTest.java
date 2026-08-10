@@ -396,7 +396,6 @@ class GoogleAiGeminiChatModelTest {
                             .seed(42)
                             .candidateCount(1)
                             .responseLogprobs(false)
-                            .enableEnhancedCivicAnswers(false)
                             .build());
         }
 
