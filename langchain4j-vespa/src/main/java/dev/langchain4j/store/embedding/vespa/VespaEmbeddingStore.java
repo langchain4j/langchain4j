@@ -170,6 +170,12 @@ public class VespaEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     @Override
     public void addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
+        if (isNullOrEmpty(ids) || isNullOrEmpty(embeddings)) {
+            return;
+        }
+        if (ids.size() != embeddings.size()) {
+            throw new IllegalArgumentException("The list of ids and embeddings must have the same size");
+        }
         if (embedded != null && embeddings.size() != embedded.size()) {
             throw new IllegalArgumentException("The list of embeddings and embedded must have the same size");
         }

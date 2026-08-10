@@ -129,7 +129,9 @@ public class GoogleGenAiImageModel implements ImageModel {
         }
 
         GenerateContentResponse response = withRetryMappingExceptions(
-                () -> client.models.generateContent(modelName, contents, config), maxRetries);
+                () -> client.models.generateContent(modelName, contents, config),
+                maxRetries,
+                GoogleGenAiExceptionMapper.INSTANCE);
 
         Response<Image> imageResponse = toResponse(response);
 

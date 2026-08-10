@@ -35,7 +35,9 @@ import dev.langchain4j.code.CodeExecutionEngine;
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.time.OffsetDateTime;
+import java.util.Base64;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -127,6 +129,45 @@ class SessionsREPLToolTest {
         assertThat(result).containsKey("result");
         assertThat(result).containsKey("stdout");
         assertThat(result).containsKey("stderr");
+    }
+
+    @Test
+    void testDownloadFilePreservesBinaryBytes() {
+        // A blob with bytes that are not valid UTF-8 (a fake PNG-ish header).
+        byte[] binaryBytes = new byte[] {(byte) 0xFF, (byte) 0xFE, (byte) 0x00, (byte) 0x01, (byte) 0xC0};
+
+        // Return a real SuccessfulHttpResponse so body()/bodyBytes() behave as in production.
+        SuccessfulHttpResponse response = SuccessfulHttpResponse.builder()
+                .statusCode(200)
+                .body(binaryBytes)
+                .headers(Collections.emptyMap())
+                .build();
+        when(mockHttpClient.execute(any(HttpRequest.class))).thenReturn(response);
+
+        SessionsREPLTool.DefaultFileDownloader downloader = sessionsREPLTool.new DefaultFileDownloader();
+
+        String result = downloader.downloadFile("some/file.png");
+
+        // Base64 must be computed from the canonical raw bytes, not a lossy String round-trip.
+        assertThat(result).isEqualTo(Base64.getEncoder().encodeToString(binaryBytes));
+    }
+
+    @Test
+    void testDownloadFileRoundTripsValidUtf8Text() {
+        byte[] textBytes = "hello, world".getBytes(StandardCharsets.UTF_8);
+
+        SuccessfulHttpResponse response = SuccessfulHttpResponse.builder()
+                .statusCode(200)
+                .body(textBytes)
+                .headers(Collections.emptyMap())
+                .build();
+        when(mockHttpClient.execute(any(HttpRequest.class))).thenReturn(response);
+
+        SessionsREPLTool.DefaultFileDownloader downloader = sessionsREPLTool.new DefaultFileDownloader();
+
+        String result = downloader.downloadFile("notes.txt");
+
+        assertThat(result).isEqualTo(Base64.getEncoder().encodeToString(textBytes));
     }
 
     /**

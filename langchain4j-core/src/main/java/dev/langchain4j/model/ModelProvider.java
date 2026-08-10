@@ -16,5 +16,8 @@ public enum ModelProvider {
     OLLAMA,
     OPEN_AI,
     WATSONX,
+    COHERE,
+    VOYAGE_AI,
+    JINA,
     OTHER
 }

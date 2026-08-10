@@ -128,14 +128,17 @@ class ToolExecutorTest {
     }
 
     @ParameterizedTest
-    @ValueSource(
-            strings = {
-                "{\"arg0\": 2, \"arg1\": 2}",
-                "{\"arg0\": 2.0, \"arg1\": 2.0}",
-                "{\"arg0\": 1.9, \"arg1\": 2.1}",
-            })
-    void should_execute_tool_with_parameters_of_type_BigDecimal(String arguments) throws NoSuchMethodException {
-        executeAndAssert(arguments, "bigDecimals", BigDecimal.class, BigDecimal.class, "4.0");
+    @CsvSource({
+        // BigDecimal arguments are now converted preserving their exact value/scale instead of being
+        // routed through double, so a JSON integer 2 becomes BigDecimal("2") (2 + 2 = 4) while a JSON
+        // decimal 2.0 becomes BigDecimal("2.0") (2.0 + 2.0 = 4.0).
+        "'{\"arg0\": 2, \"arg1\": 2}', 4",
+        "'{\"arg0\": 2.0, \"arg1\": 2.0}', 4.0",
+        "'{\"arg0\": 1.9, \"arg1\": 2.1}', 4.0",
+    })
+    void should_execute_tool_with_parameters_of_type_BigDecimal(String arguments, String expectedResult)
+            throws NoSuchMethodException {
+        executeAndAssert(arguments, "bigDecimals", BigDecimal.class, BigDecimal.class, expectedResult);
     }
 
     @ParameterizedTest

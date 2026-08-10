@@ -1,6 +1,8 @@
 package dev.langchain4j.model.openai.internal;
 
 import dev.langchain4j.http.client.HttpClientBuilder;
+import dev.langchain4j.model.openai.internal.audio.texttospeech.OpenAiTextToSpeechRequest;
+import dev.langchain4j.model.openai.internal.audio.texttospeech.OpenAiTextToSpeechResponse;
 import dev.langchain4j.model.openai.internal.audio.transcription.OpenAiAudioTranscriptionRequest;
 import dev.langchain4j.model.openai.internal.audio.transcription.OpenAiAudioTranscriptionResponse;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionRequest;
@@ -40,6 +42,10 @@ public abstract class OpenAiClient {
 
     public SyncOrAsync<OpenAiAudioTranscriptionResponse> audioTranscription(OpenAiAudioTranscriptionRequest request) {
         throw new UnsupportedOperationException("Audio transcription is not supported by this client implementation");
+    }
+
+    public SyncOrAsync<OpenAiTextToSpeechResponse> textToSpeech(OpenAiTextToSpeechRequest request) {
+        throw new UnsupportedOperationException("Text-to-speech is not supported by this client implementation");
     }
 
     public SyncOrAsync<ModelsListResponse> listModels() {

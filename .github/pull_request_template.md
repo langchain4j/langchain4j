@@ -2,8 +2,8 @@
 Thank you so much for your contribution!
 
 Please fill in all the sections below.
-Please open the PR as a draft initially. Once it is reviewed and approved, we will ask you to add documentation and examples.
-Please note that PRs with breaking changes or without tests will be rejected.
+Please open the PR as ready for review (not as a draft), with tests and documentation already included.
+Please note that PRs with breaking changes, or without tests and documentation, will be rejected.
 
 Please note that PRs will be reviewed based on the priority of the issues they address.
 We ask for your patience. We are doing our best to review your PR as quickly as possible.
@@ -25,7 +25,6 @@ Closes #
 - [ ] The tests cover both positive and negative cases
 - [ ] I have manually run all the unit and integration tests in the module I have added/changed, and they are all green
 - [ ] I have manually run all the unit and integration tests in the [core](https://github.com/langchain4j/langchain4j/tree/main/langchain4j-core) and [main](https://github.com/langchain4j/langchain4j/tree/main/langchain4j) modules, and they are all green
-<!-- Before adding documentation and example(s) (below), please wait until the PR is reviewed and approved. -->
 - [ ] I have added/updated the [documentation](https://github.com/langchain4j/langchain4j/tree/main/docs/docs)
 - [ ] I have added an example in the [examples repo](https://github.com/langchain4j/langchain4j-examples) (only for "big" features)
 - [ ] I have added/updated [Spring Boot starter(s)](https://github.com/langchain4j/langchain4j-spring) (if applicable)
