@@ -1,7 +1,6 @@
 package dev.langchain4j.model.chat.common;
 
 import static dev.langchain4j.MockitoUtils.ignoreInteractions;
-import static dev.langchain4j.internal.Utils.readBytes;
 import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static dev.langchain4j.model.output.FinishReason.STOP;
@@ -42,6 +41,9 @@ import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
@@ -78,6 +80,10 @@ public abstract class AbstractBaseChatModelIT<M> {
             "https://upload.wikimedia.org/wikipedia/commons/e/e9/Felis_silvestris_silvestris_small_gradual_decrease_of_quality.png";
     static final String DICE_IMAGE_URL =
             "https://upload.wikimedia.org/wikipedia/commons/4/47/PNG_transparency_demonstration_1.png";
+
+    // Bundled with the tests (see /images/README.md) so that the base64 tests do not depend on an external host
+    static final String CAT_IMAGE_RESOURCE = "/images/cat.jpg";
+    static final String DICE_IMAGE_RESOURCE = "/images/dice.jpg";
 
     static final ToolSpecification WEATHER_TOOL = ToolSpecification.builder()
             .name("getWeather")
@@ -118,8 +124,7 @@ public abstract class AbstractBaseChatModelIT<M> {
     }
 
     protected ImageContent catImageContentBase64() {
-        String base64Data = Base64.getEncoder().encodeToString(readBytes(catImageUrl()));
-        return ImageContent.from(base64Data, "image/png");
+        return imageContentFrom(CAT_IMAGE_RESOURCE);
     }
 
     protected String diceImageUrl() {
@@ -131,8 +136,16 @@ public abstract class AbstractBaseChatModelIT<M> {
     }
 
     protected ImageContent diceImageContentBase64() {
-        String base64Data = Base64.getEncoder().encodeToString(readBytes(diceImageUrl()));
-        return ImageContent.from(base64Data, "image/png");
+        return imageContentFrom(DICE_IMAGE_RESOURCE);
+    }
+
+    private static ImageContent imageContentFrom(String resource) {
+        try (InputStream inputStream = AbstractBaseChatModelIT.class.getResourceAsStream(resource)) {
+            String base64Data = Base64.getEncoder().encodeToString(inputStream.readAllBytes());
+            return ImageContent.from(base64Data, "image/jpeg");
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
     }
 
     protected abstract ChatResponseAndStreamingMetadata chat(M model, ChatRequest chatRequest);
