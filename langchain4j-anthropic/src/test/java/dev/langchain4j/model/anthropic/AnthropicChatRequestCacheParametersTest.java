@@ -208,6 +208,57 @@ class AnthropicChatRequestCacheParametersTest {
     }
 
     @Test
+    void should_send_tool_choice_name_when_tool_choice_is_not_set() {
+        AnthropicChatModel model = modelBuilder().toolChoiceName("weather_tool").build();
+
+        ChatRequest request = ChatRequest.builder()
+                .messages(UserMessage.from("What is the weather?"))
+                .parameters(AnthropicChatRequestParameters.builder()
+                        .toolSpecifications(weatherTool())
+                        .build())
+                .build();
+
+        model.chat(request);
+
+        String body = lastRequestBody();
+        assertThat(body).contains("\"tool_choice\"");
+        assertThat(body).contains("\"type\" : \"tool\"");
+        assertThat(body).contains("\"name\" : \"weather_tool\"");
+    }
+
+    @Test
+    void should_send_tool_choice_name_together_with_disable_parallel_tool_use_when_tool_choice_is_not_set() {
+        AnthropicChatModel model = modelBuilder()
+                .toolChoiceName("weather_tool")
+                .disableParallelToolUse(true)
+                .build();
+
+        ChatRequest request = ChatRequest.builder()
+                .messages(UserMessage.from("What is the weather?"))
+                .parameters(AnthropicChatRequestParameters.builder()
+                        .toolSpecifications(weatherTool())
+                        .build())
+                .build();
+
+        model.chat(request);
+
+        String body = lastRequestBody();
+        assertThat(body).contains("\"type\" : \"tool\"");
+        assertThat(body).contains("\"name\" : \"weather_tool\"");
+        assertThat(body).contains("\"disable_parallel_tool_use\" : true");
+    }
+
+    @Test
+    void should_not_send_tool_choice_name_when_no_tools_are_present() {
+        // Anthropic rejects a request that forces a tool which is not in the (here absent) tools list.
+        AnthropicChatModel model = modelBuilder().toolChoiceName("weather_tool").build();
+
+        model.chat(ChatRequest.builder().messages(UserMessage.from("Hi")).build());
+
+        assertThat(lastRequestBody()).doesNotContain("\"tool_choice\"");
+    }
+
+    @Test
     void should_override_user_id_per_request() {
         AnthropicChatModel model = modelBuilder().userId("model-user").build();
 
