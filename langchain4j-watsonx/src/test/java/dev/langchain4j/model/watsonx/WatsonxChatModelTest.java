@@ -1020,9 +1020,9 @@ public class WatsonxChatModelTest {
             var jsonSchema = chatRequestCaptor.getValue().parameters().jsonSchema();
             var schema = assertInstanceOf(Map.class, jsonSchema.schema());
 
-            assertFalse(jsonSchema.strict());
-            assertEquals(List.of("content"), schema.get("required"));
-            assertFalse(schema.containsKey("additionalProperties"));
+            assertTrue(jsonSchema.strict());
+            assertEquals(List.of("content", "flag"), schema.get("required"));
+            assertEquals(false, schema.get("additionalProperties"));
         });
 
         withChatServiceMock(() -> {
@@ -1032,16 +1032,16 @@ public class WatsonxChatModelTest {
                     .projectId("project-id")
                     .apiKey("api-key")
                     .responseFormat(responseFormat)
-                    .strictJsonSchema(true)
+                    .strictJsonSchema(false)
                     .build();
 
             chatModel.chat("hello");
             var jsonSchema = chatRequestCaptor.getValue().parameters().jsonSchema();
             var schema = assertInstanceOf(Map.class, jsonSchema.schema());
 
-            assertTrue(jsonSchema.strict());
-            assertEquals(List.of("content", "flag"), schema.get("required"));
-            assertEquals(false, schema.get("additionalProperties"));
+            assertFalse(jsonSchema.strict());
+            assertEquals(List.of("content"), schema.get("required"));
+            assertFalse(schema.containsKey("additionalProperties"));
         });
     }
 

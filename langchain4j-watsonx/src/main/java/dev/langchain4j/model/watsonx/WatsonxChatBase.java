@@ -50,7 +50,7 @@ abstract class WatsonxChatBase<R extends BaseChatRequest> {
         this.listeners = copy(builder.listeners);
         this.supportedCapabilities = copy(builder.supportedCapabilities);
         this.defaultRequestParameters = defaultRequestParameters;
-        this.strictJsonSchema = getOrDefault(builder.strictJsonSchema, false);
+        this.strictJsonSchema = getOrDefault(builder.strictJsonSchema, true);
     }
 
     protected abstract ChatProvider<R, ? extends TextChatResponse> chatProvider();
@@ -305,7 +305,11 @@ abstract class WatsonxChatBase<R extends BaseChatRequest> {
         }
 
         /**
-         * Enables the strict mode for the JSON Schema used by structured outputs. Defaults to {@code false}.
+         * Enables the strict mode for the JSON Schema used by structured outputs. Defaults to {@code true}.
+         *
+         * <p>In strict mode the model is required to adhere to the schema, every property is marked as
+         * {@code required} and {@code additionalProperties} is set to {@code false}. Set it to {@code false} to let
+         * the model treat the schema as a hint instead of a constraint.
          *
          * @param strictJsonSchema {@code true} to enable the strict mode
          * @return {@code this}

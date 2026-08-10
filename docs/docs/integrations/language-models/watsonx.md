@@ -458,6 +458,34 @@ System.out.println(answer);
 > **NOTE:** Ensure your selected model supports tool use.
 ---
 
+## Structured Outputs
+
+All the watsonx.ai chat models can constrain the response to a JSON Schema. The generic LangChain4j documentation is available [here](/tutorials/structured-outputs), while this section describes the watsonx.ai specific behavior.
+
+The `strictJsonSchema(...)` builder method controls how the schema is sent to the service and defaults to `true`. In strict mode the model is required to adhere to the schema, every property is marked as `required`, `additionalProperties` is set to `false` and the properties left out of the required list are made nullable.
+
+```java
+import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.watsonx.WatsonxChatModel;
+import com.ibm.watsonx.ai.CloudRegion;
+
+ChatModel chatModel = WatsonxChatModel.builder()
+    .baseUrl(CloudRegion.FRANKFURT)
+    .apiKey("your-api-key")
+    .projectId("your-project-id")
+    .modelName("ibm/granite-4-h-small")
+    .supportedCapabilities(RESPONSE_FORMAT_JSON_SCHEMA)
+    .strictJsonSchema(true) // default value
+    .build();
+```
+
+> Use `strictJsonSchema(false)` to send the schema as a hint instead of a constraint. The model still tries to produce a response that adheres to the schema, but the request does not fail when the response diverges from it, the required list is sent as declared and `additionalProperties` is left out. This is the mode to use when optional fields must stay optional.
+
+> `supportedCapabilities(RESPONSE_FORMAT_JSON_SCHEMA)` is needed only when the model is used through AI Services, where the JSON Schema is generated from the return type of the AI Service method.
+
+The root element of the JSON Schema must be a `JsonObjectSchema` or a `JsonRawSchema`. Any other root element makes the request fail with an `IllegalArgumentException`.
+
 ## Enabling Thinking / Reasoning Output
 
 Some foundation models can include internal *reasoning* (also referred to as *thinking*) steps as part of their responses.  
