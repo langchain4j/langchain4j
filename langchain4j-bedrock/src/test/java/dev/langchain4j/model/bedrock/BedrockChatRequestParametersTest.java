@@ -8,11 +8,6 @@ import software.amazon.awssdk.services.bedrockruntime.model.CacheTTL;
 
 class BedrockChatRequestParametersTest {
 
-    private static final BedrockGuardrailConfiguration GUARDRAIL = BedrockGuardrailConfiguration.builder()
-            .guardrailIdentifier("guardrail")
-            .guardrailVersion("1")
-            .build();
-
     @Test
     void should_enable_prompt_caching_with_placement() {
         // Given & When
@@ -431,7 +426,14 @@ class BedrockChatRequestParametersTest {
                 .temperature(0.5)
                 .additionalModelRequestField("key", "value")
                 .promptCaching(BedrockCachePointPlacement.AFTER_SYSTEM, CacheTTL.VALUE_5_M)
-                .guardrailConfiguration(GUARDRAIL)
+                .guardrailConfiguration(guardrail())
                 .serviceTier(BedrockServiceTier.DEFAULT);
+    }
+
+    private static BedrockGuardrailConfiguration guardrail() {
+        return BedrockGuardrailConfiguration.builder()
+                .guardrailIdentifier("guardrail")
+                .guardrailVersion("1")
+                .build();
     }
 }
