@@ -1,5 +1,7 @@
 package dev.langchain4j.data.message;
 
+import static org.assertj.core.api.Assertions.entry;
+
 import java.util.LinkedHashMap;
 import java.util.Map;
 import org.assertj.core.api.WithAssertions;
@@ -12,7 +14,12 @@ class CustomMessageTest implements WithAssertions {
         attributes.put("content", "The sky is blue.");
         attributes.put("myAttribute", "myValue");
         CustomMessage message = new CustomMessage(attributes);
-        assertThat(message.attributes()).isEqualTo(attributes);
+
+        // mutate original
+        attributes.put("attributeAfterInstantiation", "valueAfterInstantiation");
+
+        assertThat(message.attributes())
+                .containsExactly(entry("content", "The sky is blue."), entry("myAttribute", "myValue"));
         assertThat(message.type()).isEqualTo(ChatMessageType.CUSTOM);
 
         assertThat(message)
