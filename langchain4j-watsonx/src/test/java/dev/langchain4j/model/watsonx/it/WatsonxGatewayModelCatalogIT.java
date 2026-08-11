@@ -11,11 +11,11 @@ import dev.langchain4j.model.watsonx.WatsonxGatewayModelCatalog;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
-@EnabledIfEnvironmentVariable(named = "WATSONX_API_KEY_GATEWAY", matches = ".+")
+@EnabledIfEnvironmentVariable(named = "WATSONX_API_KEY", matches = ".+")
 @EnabledIfEnvironmentVariable(named = "WATSONX_URL", matches = ".+")
 public class WatsonxGatewayModelCatalogIT {
 
-    static final String API_KEY = System.getenv("WATSONX_API_KEY_GATEWAY");
+    static final String API_KEY = System.getenv("WATSONX_API_KEY");
     static final String URL = System.getenv("WATSONX_URL");
 
     static final ModelCatalog modelCatalog = WatsonxGatewayModelCatalog.builder()

@@ -1,174 +1,116 @@
 package dev.langchain4j.model.watsonx.it;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.model.watsonx.it.WatsonxToolCallbacksVerifier.verifyToolCall;
 
-import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
-import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.chat.response.CompleteToolCall;
-import dev.langchain4j.model.chat.response.PartialToolCall;
+import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
-import dev.langchain4j.model.output.FinishReason;
+import dev.langchain4j.model.watsonx.WatsonxChatResponseMetadata;
 import dev.langchain4j.model.watsonx.WatsonxGatewayChatRequestParameters;
 import dev.langchain4j.model.watsonx.WatsonxGatewayStreamingChatModel;
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.mockito.InOrder;
 
-@EnabledIfEnvironmentVariable(named = "WATSONX_API_KEY_GATEWAY", matches = ".+")
+@EnabledIfEnvironmentVariable(named = "WATSONX_API_KEY", matches = ".+")
 @EnabledIfEnvironmentVariable(named = "WATSONX_URL", matches = ".+")
 @EnabledIfEnvironmentVariable(named = "WATSONX_GATEWAY_MODEL", matches = ".+")
-public class WatsonxGatewayStreamingChatModelIT {
+public class WatsonxGatewayStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
-    static final String API_KEY = System.getenv("WATSONX_API_KEY_GATEWAY");
+    static final String API_KEY = System.getenv("WATSONX_API_KEY");
     static final String URL = System.getenv("WATSONX_URL");
     static final String MODEL = System.getenv("WATSONX_GATEWAY_MODEL");
+    static final String CUSTOM_MODEL = getOrDefault(System.getenv("WATSONX_GATEWAY_CUSTOM_MODEL"), "claude-sonnet-5");
+    static final String STOP_SEQUENCES_MODEL =
+            getOrDefault(System.getenv("WATSONX_GATEWAY_STOP_SEQUENCES_MODEL"), "gemini-3.6-flash");
 
-    @Test
-    void should_do_streaming_chat() throws Exception {
-
-        var streamingChatModel = createStreamingChatModel().build();
-
-        var handler = new CollectingHandler();
-        streamingChatModel.chat("What is the capital of Italy? Answer in one word.", handler);
-
-        var response = handler.await();
-        var text = response.aiMessage().text();
-
-        assertNotNull(text);
-        assertTrue(text.toLowerCase().contains("rome"));
-        assertFalse(handler.partialResponses.isEmpty());
-        assertEquals(text, String.join("", handler.partialResponses));
-        assertEquals(FinishReason.STOP, response.finishReason());
-        assertNotNull(response.id());
-        assertNotNull(response.modelName());
-        assertTrue(response.tokenUsage().outputTokenCount() > 0);
+    @Override
+    protected List<StreamingChatModel> models() {
+        return List.of(createStreamingChatModel(MODEL).build());
     }
 
-    @Test
-    void should_stream_a_tool_call() throws Exception {
+    @Override
+    protected String customModelName() {
+        return CUSTOM_MODEL;
+    }
 
-        var weatherTool = ToolSpecification.builder()
-                .name("getWeather")
-                .description("Returns the current weather of a city")
-                .parameters(JsonObjectSchema.builder()
-                        .addStringProperty("city")
-                        .required("city")
-                        .build())
+    @Override
+    protected StreamingChatModel createModelWith(ChatRequestParameters parameters) {
+        String defaultModel = isNullOrEmpty(parameters.stopSequences()) ? MODEL : STOP_SEQUENCES_MODEL;
+        return createStreamingChatModel(getOrDefault(parameters.modelName(), defaultModel))
+                .defaultRequestParameters(parameters)
                 .build();
-
-        var streamingChatModel =
-                createStreamingChatModel().toolSpecifications(weatherTool).build();
-
-        var handler = new CollectingHandler();
-        streamingChatModel.chat("What is the weather in Rome?", handler);
-
-        var response = handler.await();
-        var toolExecutionRequests = response.aiMessage().toolExecutionRequests();
-
-        assertEquals(FinishReason.TOOL_EXECUTION, response.finishReason());
-        assertEquals(1, toolExecutionRequests.size());
-        assertEquals("getWeather", toolExecutionRequests.get(0).name());
-        assertTrue(toolExecutionRequests.get(0).arguments().toLowerCase().contains("rome"));
-        assertFalse(handler.completeToolCalls.isEmpty());
-        assertEquals(
-                "getWeather",
-                handler.completeToolCalls.get(0).toolExecutionRequest().name());
     }
 
-    @Test
-    void should_respect_stop_sequences() throws Exception {
-
-        // A stop sequence is sent only when it is not empty, since the Model Gateway rejects an empty "stop" array.
-        var streamingChatModel =
-                createStreamingChatModel().stopSequences("Three").build();
-
-        var handler = new CollectingHandler();
-        streamingChatModel.chat(
-                "Count from one to five. Write one capitalized word per line, without punctuation.", handler);
-
-        var response = handler.await();
-        var text = response.aiMessage().text();
-
-        assertNotNull(text);
-        assertFalse(text.toLowerCase().contains("four"));
-        assertEquals(FinishReason.STOP, response.finishReason());
+    @Override
+    @ParameterizedTest
+    @MethodSource("models")
+    @EnabledIf("supportsStopSequencesParameter")
+    protected void should_respect_stopSequences_in_chat_request(StreamingChatModel model) {
+        super.should_respect_stopSequences_in_chat_request(
+                createStreamingChatModel(STOP_SEQUENCES_MODEL).build());
     }
 
-    @Test
-    void should_override_builder_defaults_with_per_request_parameters() throws Exception {
+    @Override
+    public StreamingChatModel createModelWith(ChatModelListener listener) {
+        return createStreamingChatModel(MODEL).listeners(List.of(listener)).build();
+    }
 
-        var streamingChatModel = createStreamingChatModel().maxOutputTokens(200).build();
-
-        var chatRequest = ChatRequest.builder()
-                .messages(UserMessage.from("Say hi."))
-                .parameters(WatsonxGatewayChatRequestParameters.builder()
-                        .maxOutputTokens(5)
-                        .build())
+    @Override
+    protected ChatRequestParameters createIntegrationSpecificParameters(int maxOutputTokens) {
+        return WatsonxGatewayChatRequestParameters.builder()
+                .maxOutputTokens(maxOutputTokens)
                 .build();
-
-        var handler = new CollectingHandler();
-        streamingChatModel.chat(chatRequest, handler);
-
-        var response = handler.await();
-
-        assertNotNull(response.aiMessage().text());
-        assertNotNull(response.modelName());
-        assertTrue(response.tokenUsage().outputTokenCount() <= 5);
     }
 
-    // The temperature is left unset, since some models exposed by the gateway accept only their own default value.
-    private WatsonxGatewayStreamingChatModel.Builder createStreamingChatModel() {
+    @Override
+    protected Class<? extends ChatResponseMetadata> chatResponseMetadataType(StreamingChatModel model) {
+        return WatsonxChatResponseMetadata.class;
+    }
+
+    @Override
+    public boolean supportsSingleImageInputAsPublicURL() {
+        // Watsonx does not support images as URLs, only as Base64-encoded strings
+        return false;
+    }
+
+    @Override
+    protected boolean supportsStreamingCancellation() {
+        return false;
+    }
+
+    @Override
+    protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id) {
+        verifyToolCall(handler, io, 0, id, "getWeather", "{\"city\": \"Munich\"}");
+    }
+
+    @Override
+    protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id1, String id2) {
+        verifyToolCallbacks(handler, io, id1);
+        verifyToolCall(handler, io, 1, id2, "getTime", "{\"country\": \"France\"}");
+    }
+
+    @Override
+    protected boolean assertThreads() {
+        // The watsonx.ai SDK dispatches every callback of a response through a virtual thread per task executor, so
+        // the callbacks stay sequential but do not share a single thread
+        return false;
+    }
+
+    private WatsonxGatewayStreamingChatModel.Builder createStreamingChatModel(String model) {
         return WatsonxGatewayStreamingChatModel.builder()
                 .baseUrl(URL)
                 .apiKey(API_KEY)
-                .modelName(MODEL)
+                .modelName(model)
                 .timeout(Duration.ofSeconds(120));
-    }
-
-    static class CollectingHandler implements StreamingChatResponseHandler {
-
-        final List<String> partialResponses = new ArrayList<>();
-        final List<PartialToolCall> partialToolCalls = new ArrayList<>();
-        final List<CompleteToolCall> completeToolCalls = new ArrayList<>();
-        final CompletableFuture<ChatResponse> future = new CompletableFuture<>();
-
-        @Override
-        public void onPartialResponse(String partialResponse) {
-            partialResponses.add(partialResponse);
-        }
-
-        @Override
-        public void onPartialToolCall(PartialToolCall partialToolCall) {
-            partialToolCalls.add(partialToolCall);
-        }
-
-        @Override
-        public void onCompleteToolCall(CompleteToolCall completeToolCall) {
-            completeToolCalls.add(completeToolCall);
-        }
-
-        @Override
-        public void onCompleteResponse(ChatResponse completeResponse) {
-            future.complete(completeResponse);
-        }
-
-        @Override
-        public void onError(Throwable error) {
-            future.completeExceptionally(error);
-        }
-
-        ChatResponse await() throws Exception {
-            return future.get(150, TimeUnit.SECONDS);
-        }
     }
 }

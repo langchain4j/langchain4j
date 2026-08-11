@@ -315,6 +315,53 @@ public class WatsonxDeploymentStreamingChatModelTest {
     }
 
     @Test
+    void should_throw_exception_for_chat_request_with_model_name() {
+
+        var streamingChatModel = WatsonxDeploymentStreamingChatModel.builder()
+                .baseUrl("https://test.com")
+                .deploymentId("deployment-id")
+                .apiKey("api-key")
+                .build();
+
+        assertThrows(
+                UnsupportedFeatureException.class,
+                () -> streamingChatModel.chat(
+                        ChatRequest.builder()
+                                .messages(UserMessage.from("Hello"))
+                                .modelName("my-model")
+                                .build(),
+                        new StreamingChatResponseHandler() {
+
+                            @Override
+                            public void onPartialResponse(String partialResponse) {
+                                throw new UnsupportedOperationException("Unimplemented method 'onPartialResponse'");
+                            }
+
+                            @Override
+                            public void onCompleteResponse(
+                                    dev.langchain4j.model.chat.response.ChatResponse completeResponse) {
+                                throw new UnsupportedOperationException("Unimplemented method 'onCompleteResponse'");
+                            }
+
+                            @Override
+                            public void onError(Throwable error) {
+                                throw new UnsupportedOperationException("Unimplemented method 'onError'");
+                            }
+                        }));
+
+        assertThrows(
+                UnsupportedFeatureException.class,
+                () -> WatsonxDeploymentStreamingChatModel.builder()
+                        .baseUrl("https://test.com")
+                        .deploymentId("deployment-id")
+                        .apiKey("api-key")
+                        .defaultRequestParameters(ChatRequestParameters.builder()
+                                .modelName("my-model")
+                                .build())
+                        .build());
+    }
+
+    @Test
     void should_support_capabilities() {
 
         var streamingChatModel = WatsonxDeploymentStreamingChatModel.builder()

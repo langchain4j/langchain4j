@@ -216,6 +216,34 @@ public class WatsonxDeploymentChatModelTest {
     }
 
     @Test
+    void should_throw_exception_for_chat_request_with_model_name() {
+
+        var chatModel = WatsonxDeploymentChatModel.builder()
+                .baseUrl("https://test.com")
+                .deploymentId("deployment-id")
+                .apiKey("api-key")
+                .build();
+
+        assertThrows(
+                UnsupportedFeatureException.class,
+                () -> chatModel.chat(ChatRequest.builder()
+                        .messages(dev.langchain4j.data.message.UserMessage.from("Hello"))
+                        .modelName("my-model")
+                        .build()));
+
+        assertThrows(
+                UnsupportedFeatureException.class,
+                () -> WatsonxDeploymentChatModel.builder()
+                        .baseUrl("https://test.com")
+                        .deploymentId("deployment-id")
+                        .apiKey("api-key")
+                        .defaultRequestParameters(ChatRequestParameters.builder()
+                                .modelName("my-model")
+                                .build())
+                        .build());
+    }
+
+    @Test
     void should_support_capabilities() {
 
         var chatModel = WatsonxDeploymentChatModel.builder()

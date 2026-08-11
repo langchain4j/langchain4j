@@ -80,6 +80,28 @@ public class WatsonxExceptionMapperTest {
         assertInstanceOf(InternalServerException.class, ex);
     }
 
+    @Test
+    void testUnknownErrorCode() {
+        assertUnknownErrorCode(400, InvalidRequestException.class, "model invalid-model not found");
+        assertUnknownErrorCode(401, AuthenticationException.class, "unauthorized");
+        assertUnknownErrorCode(403, AuthenticationException.class, "forbidden");
+        assertUnknownErrorCode(408, TimeoutException.class, "request timeout");
+        assertUnknownErrorCode(429, RateLimitException.class, "too many requests");
+        assertUnknownErrorCode(503, InternalServerException.class, "service unavailable");
+        assertUnknownErrorCode(404, LangChain4jException.class, "not found");
+    }
+
+    private void assertUnknownErrorCode(int statusCode, Class<? extends Exception> expectedClass, String message) {
+        var details = new WatsonxError(
+                statusCode,
+                "301a82ca2fdf101f930be912ebcad3c5",
+                List.of(new WatsonxError.Error("Bad Request", message, null)));
+        var ex = mapper.mapException(new WatsonxException("Bad Request", statusCode, details));
+        assertEquals(expectedClass, ex.getClass());
+        assertEquals(message, ex.getMessage());
+        assertInstanceOf(WatsonxException.class, ex.getCause());
+    }
+
     private WatsonxError createWatsonxError(WatsonxError.Code code, int statusCode, String message) {
         return new WatsonxError(
                 statusCode,

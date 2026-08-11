@@ -31,7 +31,9 @@ import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.PartialThinking;
+import dev.langchain4j.model.chat.response.PartialToolCallContext;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.chat.response.StreamingHandle;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -40,6 +42,8 @@ import java.util.Set;
 
 @Internal
 abstract class WatsonxChatBase<R extends BaseChatRequest> {
+
+    private static final StreamingHandle CANCELLATION_UNSUPPORTED = new CancellationUnsupportedStreamingHandle();
 
     protected final List<ChatModelListener> listeners;
     protected final ChatRequestParameters defaultRequestParameters;
@@ -137,7 +141,9 @@ abstract class WatsonxChatBase<R extends BaseChatRequest> {
 
             @Override
             public void onPartialToolCall(PartialToolCall partialToolCall) {
-                handler.onPartialToolCall(Converter.toPartialToolCall(partialToolCall));
+                handler.onPartialToolCall(
+                        Converter.toPartialToolCall(partialToolCall),
+                        new PartialToolCallContext(CANCELLATION_UNSUPPORTED));
             }
         });
     }
@@ -182,6 +188,19 @@ abstract class WatsonxChatBase<R extends BaseChatRequest> {
     private static void validate(ChatRequestParameters parameters) {
         if (nonNull(parameters.topK()))
             throw new UnsupportedFeatureException("'topK' parameter is not supported by watsonx.ai");
+    }
+
+    private static final class CancellationUnsupportedStreamingHandle implements StreamingHandle {
+
+        @Override
+        public void cancel() {
+            throw new UnsupportedFeatureException("Streaming cancellation is not supported by watsonx.ai");
+        }
+
+        @Override
+        public boolean isCancelled() {
+            return false;
+        }
     }
 
     @SuppressWarnings("unchecked")

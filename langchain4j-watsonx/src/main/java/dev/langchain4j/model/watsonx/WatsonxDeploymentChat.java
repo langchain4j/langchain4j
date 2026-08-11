@@ -13,6 +13,7 @@ import com.ibm.watsonx.ai.chat.model.Tool;
 import com.ibm.watsonx.ai.deployment.DeploymentChatRequest;
 import com.ibm.watsonx.ai.deployment.DeploymentService;
 import dev.langchain4j.Internal;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import java.util.List;
 import java.util.Set;
@@ -49,6 +50,8 @@ abstract class WatsonxDeploymentChat extends WatsonxChatBase<DeploymentChatReque
     protected DeploymentChatRequest buildChatRequest(
             List<ChatMessage> messages, List<Tool> tools, ChatRequestParameters parameters) {
 
+        validateModelName(parameters);
+
         var requestBuilder = DeploymentChatRequest.builder()
                 .deploymentId(deploymentId)
                 .messages(messages)
@@ -70,6 +73,8 @@ abstract class WatsonxDeploymentChat extends WatsonxChatBase<DeploymentChatReque
 
     private static WatsonxChatRequestParameters mergeParameters(Builder<?> builder) {
 
+        validateModelName(builder.defaultRequestParameters);
+
         var watsonxParameters = builder.defaultRequestParameters instanceof WatsonxChatRequestParameters parameters
                 ? parameters
                 : WatsonxChatRequestParameters.EMPTY;
@@ -90,6 +95,12 @@ abstract class WatsonxDeploymentChat extends WatsonxChatBase<DeploymentChatReque
                 .lengthPenalty(getOrDefault(builder.lengthPenalty, watsonxParameters.lengthPenalty()))
                 .repetitionPenalty(getOrDefault(builder.repetitionPenalty, watsonxParameters.repetitionPenalty()))
                 .build();
+    }
+
+    private static void validateModelName(ChatRequestParameters parameters) {
+        if (nonNull(parameters) && nonNull(parameters.modelName()))
+            throw new UnsupportedFeatureException(
+                    "The 'modelName' parameter is not supported, the deployment id defines the model to call");
     }
 
     @SuppressWarnings("unchecked")
