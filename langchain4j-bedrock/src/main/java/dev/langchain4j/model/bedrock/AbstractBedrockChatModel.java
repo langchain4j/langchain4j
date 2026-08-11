@@ -177,10 +177,12 @@ abstract class AbstractBedrockChatModel {
                 .stopSequences(commonParameters.stopSequences())
                 .toolSpecifications(commonParameters.toolSpecifications())
                 .toolChoice(commonParameters.toolChoice())
+                .responseFormat(commonParameters.responseFormat())
                 // Bedrock-specific parameters
                 .additionalModelRequestFields(bedrockParameters.additionalModelRequestFields())
                 .promptCaching(bedrockParameters.cachePointPlacement(), bedrockParameters.cacheTtl())
                 .guardrailConfiguration(bedrockParameters.bedrockGuardrailConfiguration())
+                .serviceTier(bedrockParameters.serviceTier())
                 .build();
     }
 
