@@ -10,6 +10,7 @@ import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.model.output.structured.Description;
 import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.Collection;
@@ -781,5 +782,72 @@ class ToolSpecificationsTest implements WithAssertions {
                 .containsExactlyInAnyOrder("staticMethod", "instanceMethod");
         assertThat(specs).extracting(ToolSpecification::description)
                 .containsExactlyInAnyOrder("static tool", "instance tool");
+    }
+
+    // These tests need both a parameter whose name survived compilation and one whose name did not.
+    // This module is compiled without the -parameters javac flag, so an ordinary method supplies the
+    // second case, while the canonical constructor of a record supplies the first: javac always emits
+    // parameter names for those, flag or no flag.
+    // The warning is deduplicated per declaring class, so each test needs its own holder class.
+
+    @SuppressWarnings("unused")
+    static class UnnamedParameters {
+        static void f(String first, int second) {}
+    }
+
+    @SuppressWarnings("unused")
+    static class MoreUnnamedParameters {
+        static void f(String first) {}
+    }
+
+    record RecordWithNamedParameters(String named) {}
+
+    private static Parameter firstParameterOf(Class<?> holder, Class<?>... parameterTypes)
+            throws NoSuchMethodException {
+        return holder.getDeclaredMethod("f", parameterTypes).getParameters()[0];
+    }
+
+    @Test
+    void should_warn_when_parameter_name_is_unavailable() throws NoSuchMethodException {
+        Parameter parameter = firstParameterOf(UnnamedParameters.class, String.class, int.class);
+        assertThat(parameter.isNamePresent()).isFalse();
+
+        assertThat(ToolSpecifications.unavailableParameterNameWarning(parameter))
+                .contains("Parameter 'arg0'")
+                .contains(UnnamedParameters.class.getName())
+                .contains("-parameters")
+                .contains("@P(name = \"...\")");
+    }
+
+    @Test
+    void should_not_warn_when_parameter_name_is_available() {
+        Parameter parameter = RecordWithNamedParameters.class.getDeclaredConstructors()[0].getParameters()[0];
+        assertThat(parameter.isNamePresent()).isTrue();
+
+        assertThat(ToolSpecifications.unavailableParameterNameWarning(parameter)).isNull();
+    }
+
+    @Test
+    void should_warn_only_once_per_declaring_class() throws NoSuchMethodException {
+        Parameter parameter = firstParameterOf(MoreUnnamedParameters.class, String.class);
+
+        assertThat(ToolSpecifications.unavailableParameterNameWarning(parameter)).isNotNull();
+        assertThat(ToolSpecifications.unavailableParameterNameWarning(parameter)).isNull();
+    }
+
+    @SuppressWarnings("unused")
+    public static class ToolWithExplicitlyNamedParameter {
+        @Tool("named parameter")
+        public String f(@P(name = "city", value = "The city") String p0) {
+            return p0;
+        }
+    }
+
+    @Test
+    void should_prefer_explicit_parameter_name_over_the_compiled_one() {
+        ToolSpecification spec = ToolSpecifications.toolSpecificationsFrom(new ToolWithExplicitlyNamedParameter())
+                .get(0);
+
+        assertThat(spec.parameters().properties()).containsOnlyKeys("city");
     }
 }
