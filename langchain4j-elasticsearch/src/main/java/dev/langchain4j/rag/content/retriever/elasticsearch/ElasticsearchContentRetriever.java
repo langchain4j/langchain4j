@@ -37,6 +37,7 @@ import org.slf4j.LoggerFactory;
 public class ElasticsearchContentRetriever extends AbstractElasticsearchEmbeddingStore implements ContentRetriever {
 
     private static final Logger log = LoggerFactory.getLogger(ElasticsearchContentRetriever.class);
+    private static final int DEFAULT_MAX_RESULTS = 3;
     private final EmbeddingModel embeddingModel;
     private final int maxResults;
     private final double minScore;
@@ -152,7 +153,7 @@ public class ElasticsearchContentRetriever extends AbstractElasticsearchEmbeddin
         private ElasticsearchConfiguration configuration =
                 ElasticsearchConfigurationKnn.builder().build();
         private EmbeddingModel embeddingModel;
-        private int maxResults;
+        private int maxResults = DEFAULT_MAX_RESULTS;
         private double minScore;
         private Filter filter;
 
