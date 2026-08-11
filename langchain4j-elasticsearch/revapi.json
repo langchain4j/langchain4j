@@ -1,0 +1,15 @@
+[
+  {
+    "extension": "revapi.differences",
+    "configuration": {
+      "ignore": true,
+      "differences": [
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.store.embedding.EmbeddingMatch",
+          "justification": "AbstractElasticsearchEmbeddingStore.fullTextSearchMatches() returns EmbeddingMatch, the same core type already returned by search() and hybridSearch() via EmbeddingSearchResult"
+        }
+      ]
+    }
+  }
+]

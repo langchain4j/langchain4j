@@ -329,8 +329,7 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
             return;
         }
         crossAgentCompensationEnabled = true;
-        subagents.stream().map(InternalAgent.class::cast)
-                .forEach(InternalAgent::enableCrossAgentCompensation);
+        subagents.stream().map(InternalAgent.class::cast).forEach(InternalAgent::enableCrossAgentCompensation);
     }
 
     @Override
@@ -492,7 +491,14 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
                 Thread.currentThread().interrupt();
                 throw new RuntimeException(e);
             } catch (ExecutionException e) {
-                throw new RuntimeException(e);
+                Throwable cause = e.getCause();
+                if (cause instanceof RuntimeException runtimeException) {
+                    throw runtimeException;
+                }
+                if (cause instanceof Error error) {
+                    throw error;
+                }
+                throw new RuntimeException(cause);
             }
         }
 
