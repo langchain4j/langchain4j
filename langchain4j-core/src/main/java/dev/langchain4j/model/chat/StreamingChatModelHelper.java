@@ -74,7 +74,12 @@ public final class StreamingChatModelHelper {
 
             @Override
             public void onComplete() {
-                future.complete(response != null ? response : ChatResponse.builder().build());
+                if (response != null) {
+                    future.complete(response);
+                } else {
+                    future.completeExceptionally(new IllegalStateException(
+                            "The streaming model completed without emitting a CompleteResponse"));
+                }
             }
         });
         return future;

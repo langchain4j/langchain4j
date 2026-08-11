@@ -247,9 +247,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                             Flow.Publisher<?> mapped = elementType == AiServiceStreamingEvent.class
                                     ? failingEvents
                                     : AiServiceStreamingEventPublisher.toTextPublisher(
-                                            failingEvents,
-                                            context.guardrailService().hasOutputGuardrails(method),
-                                            context.streamingBufferSize);
+                                            failingEvents, context.guardrailService().hasOutputGuardrails(method));
                             return Optional.of(
                                     publisherAdapter != null ? publisherAdapter.fromPublisher(returnType, mapped) : mapped);
                         }
@@ -612,9 +610,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                             Flow.Publisher<?> mapped = elementType == AiServiceStreamingEvent.class
                                     ? events
                                     : AiServiceStreamingEventPublisher.toTextPublisher(
-                                            events,
-                                            context.guardrailService().hasOutputGuardrails(method),
-                                            context.streamingBufferSize);
+                                            events, context.guardrailService().hasOutputGuardrails(method));
 
                             return publisherAdapter != null
                                     ? publisherAdapter.fromPublisher(returnType, mapped)
