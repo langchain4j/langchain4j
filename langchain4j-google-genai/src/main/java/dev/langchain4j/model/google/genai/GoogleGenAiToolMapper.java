@@ -13,6 +13,7 @@ import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonBooleanSchema;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
 import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
+import dev.langchain4j.model.chat.request.json.JsonNullSchema;
 import dev.langchain4j.model.chat.request.json.JsonNumberSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
@@ -126,6 +127,10 @@ class GoogleGenAiToolMapper {
                             .toList())
                     .description(getOrDefault(anyOfSchema.description(), ""))
                     .build();
+        }
+
+        if (element instanceof JsonNullSchema) {
+            return Schema.builder().type(Type.Known.NULL).build();
         }
 
         throw new IllegalArgumentException("Unknown schema type: " + element.getClass());

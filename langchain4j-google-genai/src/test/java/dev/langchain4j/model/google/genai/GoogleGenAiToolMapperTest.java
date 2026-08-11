@@ -12,6 +12,7 @@ import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonBooleanSchema;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
 import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
+import dev.langchain4j.model.chat.request.json.JsonNullSchema;
 import dev.langchain4j.model.chat.request.json.JsonNumberSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
@@ -410,7 +411,7 @@ class GoogleGenAiToolMapperTest {
                 .name("test")
                 .description("test")
                 .parameters(JsonObjectSchema.builder()
-                        .addProperties(java.util.Map.of(
+                        .addProperty(
                                 "shape",
                                 JsonAnyOfSchema.builder()
                                         .description("a shape")
@@ -419,7 +420,7 @@ class GoogleGenAiToolMapperTest {
                                                         .addNumberProperty("radius", "circle radius")
                                                         .build(),
                                                 JsonStringSchema.builder().build())
-                                        .build()))
+                                        .build())
                         .build())
                 .build();
 
@@ -439,13 +440,13 @@ class GoogleGenAiToolMapperTest {
                 .name("test")
                 .description("test")
                 .parameters(JsonObjectSchema.builder()
-                        .addProperties(java.util.Map.of(
+                        .addProperty(
                                 "shape",
                                 JsonAnyOfSchema.builder()
                                         .anyOf(
                                                 JsonStringSchema.builder().build(),
                                                 JsonIntegerSchema.builder().build())
-                                        .build()))
+                                        .build())
                         .build())
                 .build();
 
@@ -454,6 +455,35 @@ class GoogleGenAiToolMapperTest {
 
         assertThat(shapeSchema.description().get()).isEqualTo("");
         assertThat(shapeSchema.anyOf().get()).hasSize(2);
+    }
+
+    @Test
+    void should_convert_any_of_schema_containing_null_schema() {
+        ToolSpecification spec = ToolSpecification.builder()
+                .name("test")
+                .description("test")
+                .parameters(JsonObjectSchema.builder()
+                        .addProperty(
+                                "nickname",
+                                JsonAnyOfSchema.builder()
+                                        .anyOf(JsonStringSchema.builder().build(), new JsonNullSchema())
+                                        .build())
+                        .build())
+                .build();
+
+        FunctionDeclaration fd = GoogleGenAiToolMapper.convertToGoogleFunction(spec);
+        Schema nicknameSchema = fd.parameters().get().properties().get().get("nickname");
+
+        assertThat(nicknameSchema.anyOf().get()).hasSize(2);
+        assertThat(nicknameSchema.anyOf().get().get(0).type().get()).hasToString("STRING");
+        assertThat(nicknameSchema.anyOf().get().get(1).type().get()).hasToString("NULL");
+    }
+
+    @Test
+    void should_convert_null_schema() {
+        Schema schema = GoogleGenAiToolMapper.convertToGoogleSchema(new JsonNullSchema());
+
+        assertThat(schema.type().get()).hasToString("NULL");
     }
 
     @Test
