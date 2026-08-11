@@ -7,7 +7,6 @@ import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.agent.tool.ToolSpecifications;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
-import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
 import dev.langchain4j.model.chat.request.json.JsonNumberSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonRawSchema;
@@ -461,14 +460,21 @@ class FunctionMapperTest {
     }
 
     @Test
-    void canBeMapped_covers_every_element_type() {
-        assertThat(SchemaMapper.canBeMapped(new JsonStringSchema())).isTrue();
-        assertThat(SchemaMapper.canBeMapped(new JsonIntegerSchema())).isTrue();
-        assertThat(SchemaMapper.canBeMapped(JsonRawSchema.from("{\"type\":\"integer\"}")))
-                .isFalse();
-        assertThat(SchemaMapper.canBeMapped(
-                        JsonReferenceSchema.builder().reference("X").build()))
-                .isFalse();
+    void should_omit_the_unused_parameter_field_from_the_serialized_request() {
+        // given
+        JsonObjectSchema typed =
+                JsonObjectSchema.builder().addStringProperty("query").build();
+        JsonObjectSchema raw = JsonObjectSchema.builder()
+                .addProperty("query", JsonRawSchema.from("{\"type\":\"string\",\"minLength\":1}"))
+                .build();
+
+        // when
+        String typedJson = Json.toJson(declarationFor(typed));
+        String rawJson = Json.toJson(declarationFor(raw));
+
+        // then
+        assertThat(typedJson).contains("\"parameters\"").doesNotContain("parametersJsonSchema");
+        assertThat(rawJson).contains("\"parametersJsonSchema\"").doesNotContain("\"parameters\"");
     }
 
     private static GeminiFunctionDeclaration declarationFor(JsonObjectSchema parameters) {

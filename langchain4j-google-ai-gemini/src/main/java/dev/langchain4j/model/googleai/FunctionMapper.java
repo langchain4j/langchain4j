@@ -53,7 +53,6 @@ class FunctionMapper {
                     }
 
                     if (specification.parameters() != null) {
-                        // The two parameter fields are mutually exclusive, so only one is ever set.
                         if (canBeMapped(specification.parameters())) {
                             fnBuilder.parameters(fromJsonSchemaToGSchema(specification.parameters()));
                         } else {

@@ -20,13 +20,14 @@ class SchemaMapper {
 
     /**
      * Whether {@link #fromJsonSchemaToGSchema} can convert this element and everything below it.
-     * {@link JsonRawSchema} and {@link JsonReferenceSchema} are the two the typed {@link GeminiSchema}
-     * has no shape for.
+     * Callers that have an alternative, such as sending plain JSON Schema, should ask this first
+     * instead of catching the exception the mapper throws.
+     *
+     * <p>The listed types are exactly the ones the mapper handles. Anything else, including
+     * {@link JsonRawSchema}, {@link JsonReferenceSchema} and any element type added later, is
+     * reported as not mappable, so a new element type takes the alternative instead of throwing.
      */
     static boolean canBeMapped(JsonSchemaElement jsonSchema) {
-        if (jsonSchema instanceof JsonRawSchema || jsonSchema instanceof JsonReferenceSchema) {
-            return false;
-        }
         if (jsonSchema instanceof JsonObjectSchema jsonObjectSchema) {
             // Definitions exist to be referenced, and a reference has no typed form.
             return jsonObjectSchema.definitions().isEmpty()
@@ -38,7 +39,12 @@ class SchemaMapper {
         if (jsonSchema instanceof JsonAnyOfSchema jsonAnyOfSchema) {
             return jsonAnyOfSchema.anyOf().stream().allMatch(SchemaMapper::canBeMapped);
         }
-        return true;
+        return jsonSchema instanceof JsonStringSchema
+                || jsonSchema instanceof JsonBooleanSchema
+                || jsonSchema instanceof JsonNumberSchema
+                || jsonSchema instanceof JsonIntegerSchema
+                || jsonSchema instanceof JsonEnumSchema
+                || jsonSchema instanceof JsonNullSchema;
     }
 
     static GeminiSchema fromJsonSchemaToGSchema(JsonSchema jsonSchema) {
