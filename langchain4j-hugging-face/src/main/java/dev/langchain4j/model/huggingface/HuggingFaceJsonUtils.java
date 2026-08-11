@@ -1,5 +1,8 @@
 package dev.langchain4j.model.huggingface;
 
+import static com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility.ANY;
+import static com.fasterxml.jackson.annotation.PropertyAccessor.FIELD;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -10,7 +13,7 @@ class HuggingFaceJsonUtils {
         throw new InstantiationException("Can't instantiate this utility class.");
     }
 
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper().setVisibility(FIELD, ANY);
 
     static String toJson(Object object) {
         try {
