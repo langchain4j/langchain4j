@@ -76,6 +76,7 @@ abstract class OllamaBaseChatModel {
                 .minP(getOrDefault(builder.minP, ollamaParameters.minP()))
                 .keepAlive(ollamaParameters.keepAlive())
                 .think(getOrDefault(builder.think, ollamaParameters.think()))
+                .truncate(getOrDefault(builder.truncate, ollamaParameters.truncate()))
                 .numThread(ollamaParameters.numThread())
                 .numKeep(ollamaParameters.numKeep())
                 .typicalP(ollamaParameters.typicalP())
@@ -116,6 +117,7 @@ abstract class OllamaBaseChatModel {
         protected Double minP;
         protected ResponseFormat responseFormat;
         protected Boolean think;
+        protected Boolean truncate;
         protected Boolean returnThinking;
         protected Duration timeout;
         protected Supplier<Map<String, String>> customHeadersSupplier;
@@ -237,6 +239,23 @@ abstract class OllamaBaseChatModel {
          */
         public B think(Boolean think) {
             this.think = think;
+            return self();
+        }
+
+        /**
+         * Controls what Ollama does with a prompt that does not fit the context window.
+         * <pre>
+         * <code>true</code>: the server drops the part of the prompt that does not fit and answers from the rest
+         * <code>false</code>: the server rejects the request with HTTP 400, reporting the prompt size and the context size
+         * <code>null</code> (not set): the server default applies, which is <code>true</code>
+         * </pre>
+         * <p>The default discards input without reporting it, so a shortened prompt is not visible in the
+         * response or in the token usage. Set this to {@code false} to get an error instead.</p>
+         *
+         * @see #numCtx(Integer)
+         */
+        public B truncate(Boolean truncate) {
+            this.truncate = truncate;
             return self();
         }
 
