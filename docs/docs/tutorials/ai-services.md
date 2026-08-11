@@ -128,6 +128,22 @@ This will be converted into a `SystemMessage` behind the scenes and sent to the 
 `@SystemMessage` can also load a prompt template from resources:
 `@SystemMessage(fromResource = "my-prompt-template.txt")`
 
+`@SystemMessage` can also be declared on the AI Service interface,
+in which case it applies to all methods exposed by that AI Service, including inherited ones:
+
+```java
+@SystemMessage("You are a good friend of mine. Answer using slang.")
+interface Friend {
+
+    String chat(String userMessage);
+
+    String chatAgain(String userMessage);
+}
+```
+
+A `@SystemMessage` declared on a method takes precedence over one declared on the interface.
+A `@SystemMessage` declared only on a parent interface is not inherited by a child AI Service interface.
+
 ### System Message Provider
 System messages can also be defined dynamically with the system message provider:
 ```java
