@@ -1,6 +1,5 @@
 package dev.langchain4j.model.googleai;
 
-import static dev.langchain4j.model.googleai.PartsAndContentsMapper.THINKING_SIGNATURE_KEY;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.data.image.Image;
@@ -85,17 +84,6 @@ class GeminiStreamingResponseBuilderTest {
     }
 
     @Test
-    void should_join_thinking_signatures_from_every_chunk() {
-        GeminiStreamingResponseBuilder thinkingBuilder = new GeminiStreamingResponseBuilder(false, true);
-        thinkingBuilder.append(chunkWith(thoughtPart("thinking about it", "sig-1")));
-        thinkingBuilder.append(chunkWith(thoughtPart("still thinking", "sig-2")));
-
-        AiMessage aiMessage = thinkingBuilder.build().aiMessage();
-
-        assertThat(aiMessage.attributes()).containsEntry(THINKING_SIGNATURE_KEY, "sig-1\n\nsig-2");
-    }
-
-    @Test
     void should_keep_accumulating_text_and_tools_across_chunks() {
         builder.append(chunkWith(GeminiPart.ofText("Hello ")));
         builder.append(chunkWith(imagePart("AAAA")));
@@ -110,10 +98,6 @@ class GeminiStreamingResponseBuilderTest {
     private static GeminiPart imagePart(String base64Data) {
         return new GeminiPart(
                 null, new GeminiBlob("image/png", base64Data), null, null, null, null, null, null, null, null);
-    }
-
-    private static GeminiPart thoughtPart(String thinking, String signature) {
-        return new GeminiPart(thinking, null, null, null, null, null, null, true, signature, null);
     }
 
     private static GeminiGenerateContentResponse chunkWith(GeminiPart part) {

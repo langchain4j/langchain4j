@@ -3,7 +3,6 @@ package dev.langchain4j.model.googleai;
 import static dev.langchain4j.data.message.AiMessage.GENERATED_IMAGES_KEY;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.model.googleai.FinishReasonMapper.fromGFinishReasonToFinishReason;
-import static dev.langchain4j.model.googleai.PartsAndContentsMapper.THINKING_SIGNATURE_KEY;
 import static dev.langchain4j.model.googleai.PartsAndContentsMapper.fromGPartsToAiMessage;
 import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 
@@ -149,8 +148,6 @@ class GeminiStreamingResponseBuilder {
         partialAttributes.forEach((key, value) -> {
             if (GENERATED_IMAGES_KEY.equals(key)) {
                 attributes.merge(key, value, GeminiStreamingResponseBuilder::concatenate);
-            } else if (THINKING_SIGNATURE_KEY.equals(key)) {
-                attributes.merge(key, value, (existing, added) -> existing + "\n\n" + added);
             } else {
                 attributes.put(key, value);
             }
