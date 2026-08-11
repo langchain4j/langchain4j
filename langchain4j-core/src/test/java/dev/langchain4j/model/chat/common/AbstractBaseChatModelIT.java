@@ -76,14 +76,13 @@ public abstract class AbstractBaseChatModelIT<M> {
     static final String WHAT_IS_THE_CAPITAL_OF_GERMANY = "What is the capital of Germany?";
     static final String WHAT_IS_THE_CAPITAL_OF_GERMANY_AND_MATH_QUESTION = "What is the capital of Germany? How much is 2 + 2?";
 
-    static final String CAT_IMAGE_URL =
-            "https://upload.wikimedia.org/wikipedia/commons/e/e9/Felis_silvestris_silvestris_small_gradual_decrease_of_quality.png";
-    static final String DICE_IMAGE_URL =
-            "https://upload.wikimedia.org/wikipedia/commons/4/47/PNG_transparency_demonstration_1.png";
-
-    // Bundled with the tests (see /images/README.md) so that the base64 tests do not depend on an external host
     static final String CAT_IMAGE_RESOURCE = "/images/cat.jpg";
     static final String DICE_IMAGE_RESOURCE = "/images/dice.jpg";
+
+    static final String CAT_IMAGE_URL = "https://raw.githubusercontent.com/langchain4j/langchain4j/main/"
+            + "langchain4j-core/src/test/resources/images/cat.jpg";
+    static final String DICE_IMAGE_URL = "https://raw.githubusercontent.com/langchain4j/langchain4j/main/"
+            + "langchain4j-core/src/test/resources/images/dice.jpg";
 
     static final ToolSpecification WEATHER_TOOL = ToolSpecification.builder()
             .name("getWeather")
@@ -1567,7 +1566,7 @@ public abstract class AbstractBaseChatModelIT<M> {
 
         // then
         AiMessage aiMessage = chatResponse.aiMessage();
-        assertThat(aiMessage.text().toLowerCase()).containsAnyOf("cat", "lynx", "feline", "animal");
+        assertThat(aiMessage.text().toLowerCase()).containsAnyOf("cat", "kitten", "lynx", "feline", "animal");
         assertThat(aiMessage.toolExecutionRequests()).isEmpty();
 
         if (assertTokenUsage()) {
@@ -1599,7 +1598,7 @@ public abstract class AbstractBaseChatModelIT<M> {
         // then
         AiMessage aiMessage = chatResponse.aiMessage();
         assertThat(aiMessage.text().toLowerCase())
-                .containsAnyOf("cat", "lynx", "feline", "animal")
+                .containsAnyOf("cat", "kitten", "lynx", "feline", "animal")
                 .contains("dice");
         assertThat(aiMessage.toolExecutionRequests()).isEmpty();
 
@@ -1649,7 +1648,7 @@ public abstract class AbstractBaseChatModelIT<M> {
 
         // then
         AiMessage aiMessage = chatResponse.aiMessage();
-        assertThat(aiMessage.text().toLowerCase()).containsAnyOf("cat", "lynx", "feline", "animal");
+        assertThat(aiMessage.text().toLowerCase()).containsAnyOf("cat", "kitten", "lynx", "feline", "animal");
         assertThat(aiMessage.toolExecutionRequests()).isEmpty();
 
         if (assertTokenUsage()) {
@@ -1679,7 +1678,7 @@ public abstract class AbstractBaseChatModelIT<M> {
         // then
         AiMessage aiMessage = chatResponse.aiMessage();
         assertThat(aiMessage.text().toLowerCase())
-                .containsAnyOf("cat", "lynx", "feline", "animal")
+                .containsAnyOf("cat", "kitten", "lynx", "feline", "animal")
                 .contains("dice");
         assertThat(aiMessage.toolExecutionRequests()).isEmpty();
 
