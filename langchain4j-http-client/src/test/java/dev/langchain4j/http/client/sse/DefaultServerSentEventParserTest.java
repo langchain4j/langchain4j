@@ -229,18 +229,27 @@ class DefaultServerSentEventParserTest {
     }
 
     @Test
-    void parse_trims_data_and_event_field_values() {
-        // Note: the parser trims field values fully (not just a single leading space).
+    void parse_trims_event_field_and_strips_one_leading_space_from_data() {
+        // Note: event field values are trimmed fully, data field values lose only a single leading space.
         String input = "event:   spaced-event   \ndata:   spaced value   \n\n";
         parser.parse(new ByteArrayInputStream(input.getBytes(UTF_8)), listener);
 
-        verify(listener).onEvent(eq(new ServerSentEvent("spaced-event", "spaced value")), any());
+        verify(listener).onEvent(eq(new ServerSentEvent("spaced-event", "  spaced value   ")), any());
     }
 
     // ---------- incremental() ----------
 
     private static ByteBuffer buf(String s) {
         return ByteBuffer.wrap(s.getBytes(UTF_8));
+    }
+
+    @Test
+    void incremental_trims_event_field_and_strips_one_leading_space_from_data() {
+        // Must match parse(InputStream): the two parsers may not diverge on whitespace handling.
+        ServerSentEventParser.Incremental incremental = parser.incremental();
+
+        assertThat(incremental.feed(buf("event:   spaced-event   \ndata:   spaced value   \n\n")))
+                .containsExactly(new ServerSentEvent("spaced-event", "  spaced value   "));
     }
 
     @Test

@@ -39,16 +39,10 @@ public class DefaultServerSentEventParser implements ServerSentEventParser {
                 if (line.startsWith("event:")) {
                     event = line.substring("event:".length()).trim();
                 } else if (line.startsWith("data:")) {
-                    String content = line.substring("data:".length());
-                    // Per the WHATWG HTML Living Standard (Server-sent events), if the field value
-                    // starts with a single U+0020 SPACE, only that one space is removed.
-                    if (content.startsWith(" ")) {
-                        content = content.substring(1);
-                    }
                     if (!data.isEmpty()) {
                         data.append("\n");
                     }
-                    data.append(content);
+                    data.append(dataFieldValue(line));
                 }
             }
 
@@ -64,6 +58,16 @@ public class DefaultServerSentEventParser implements ServerSentEventParser {
     @Override
     public Incremental incremental() {
         return new DefaultIncremental();
+    }
+
+    /**
+     * Extracts the value of a {@code data:} line. Per the WHATWG HTML Living Standard (Server-sent events), if the
+     * field value starts with a single U+0020 SPACE, only that one space is removed; any further leading whitespace
+     * and all trailing whitespace are preserved.
+     */
+    private static String dataFieldValue(String line) {
+        String content = line.substring("data:".length());
+        return content.startsWith(" ") ? content.substring(1) : content;
     }
 
     /**
@@ -133,11 +137,10 @@ public class DefaultServerSentEventParser implements ServerSentEventParser {
             if (line.startsWith("event:")) {
                 currentEvent = line.substring("event:".length()).trim();
             } else if (line.startsWith("data:")) {
-                String content = line.substring("data:".length());
                 if (!currentData.isEmpty()) {
                     currentData.append("\n");
                 }
-                currentData.append(content.trim());
+                currentData.append(dataFieldValue(line));
             }
             // Other SSE fields (id:, retry:, comment lines) intentionally ignored — same as parse().
         }
