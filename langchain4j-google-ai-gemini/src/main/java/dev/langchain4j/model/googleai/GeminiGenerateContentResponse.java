@@ -30,7 +30,16 @@ record GeminiGenerateContentResponse(
             PROHIBITED_CONTENT,
             SPII,
             MALFORMED_FUNCTION_CALL,
-            IMAGE_RECITATION
+            IMAGE_RECITATION,
+            IMAGE_SAFETY,
+            IMAGE_PROHIBITED_CONTENT,
+            IMAGE_OTHER,
+            NO_IMAGE,
+            UNEXPECTED_TOOL_CALL,
+            TOO_MANY_TOOL_CALLS,
+            MISSING_THOUGHT_SIGNATURE,
+            MALFORMED_RESPONSE,
+            ESCALATION
         }
     }
 
