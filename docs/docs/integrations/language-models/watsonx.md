@@ -382,8 +382,8 @@ In addition to the common chat parameters, `WatsonxGatewayChatRequestParameters`
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.watsonx.WatsonxGatewayChatRequestParameters;
-import com.ibm.watsonx.ai.gateway.ModelGatewayParameters.ReasoningEffort;
-import com.ibm.watsonx.ai.gateway.ModelGatewayParameters.ServiceTier;
+import com.ibm.watsonx.ai.gateway.chat.ModelGatewayParameters.ReasoningEffort;
+import com.ibm.watsonx.ai.gateway.chat.ModelGatewayParameters.ServiceTier;
 
 ChatRequest request = ChatRequest.builder()
     .messages(UserMessage.from("Solve this step by step."))
