@@ -26,7 +26,6 @@ import co.elastic.clients.transport.rest_client.RestClientTransport;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.rag.content.ContentMetadata;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
@@ -200,16 +199,33 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
         }
     }
 
-    public List<TextSegment> fullTextSearch(String textQuery) {
+    /**
+     * Searches the index with a full text (non-vector) query.
+     *
+     * @param textQuery the text to search for
+     * @return the matching documents, each carrying its Elasticsearch document ID and relevance score
+     */
+    public List<EmbeddingMatch<TextSegment>> fullTextSearchMatches(String textQuery) {
         log.debug("full text search([...{}...])", textQuery.length());
         try {
             SearchResponse<Document> response = this.configuration.fullTextSearch(client, indexName, textQuery);
             log.trace("found [{}] results", response);
 
-            return toTextList(response);
+            return toMatches(response);
         } catch (ElasticsearchException | IOException e) {
             throw new ElasticsearchRequestFailedException(e);
         }
+    }
+
+    /**
+     * @deprecated Use {@link #fullTextSearchMatches(String)} instead. It returns the same text segments,
+     * but also the Elasticsearch document ID and the relevance score of each match.
+     */
+    @Deprecated(forRemoval = true)
+    public List<TextSegment> fullTextSearch(String textQuery) {
+        return fullTextSearchMatches(textQuery).stream()
+                .map(match -> match == null ? null : match.embedded())
+                .collect(toList());
     }
 
     @Override
@@ -361,24 +377,7 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
                                         .orElse(new float[] {})),
                                 document.getText() == null
                                         ? null
-                                        : TextSegment.from(
-                                                document.getText(),
-                                                new Metadata(document.getMetadata())
-                                                        .put(ContentMetadata.SCORE.name(), hit.score())
-                                                        .put(ContentMetadata.EMBEDDING_ID.name(), hit.id()))))
-                        .orElse(null))
-                .collect(toList());
-    }
-
-    private List<TextSegment> toTextList(SearchResponse<Document> response) {
-        return response.hits().hits().stream()
-                .map(hit -> Optional.ofNullable(hit.source())
-                        .filter(document -> document.getText() != null)
-                        .map(document -> TextSegment.from(
-                                document.getText(),
-                                new Metadata(document.getMetadata())
-                                        .put(ContentMetadata.SCORE.name(), hit.score())
-                                        .put(ContentMetadata.EMBEDDING_ID.name(), hit.id())))
+                                        : TextSegment.from(document.getText(), new Metadata(document.getMetadata()))))
                         .orElse(null))
                 .collect(toList());
     }
