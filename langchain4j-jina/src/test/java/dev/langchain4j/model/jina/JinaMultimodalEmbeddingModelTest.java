@@ -17,7 +17,24 @@ class JinaMultimodalEmbeddingModelTest {
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private static JinaEmbeddingModel model(String modelName) {
-        return JinaEmbeddingModel.builder().apiKey("test-key").modelName(modelName).build();
+        return JinaEmbeddingModel.builder()
+                .apiKey("test-key")
+                .modelName(modelName)
+                .build();
+    }
+
+    private static JinaEmbeddingModel model(String modelName, Boolean lateChunking) {
+        return JinaEmbeddingModel.builder()
+                .apiKey("test-key")
+                .modelName(modelName)
+                .lateChunking(lateChunking)
+                .build();
+    }
+
+    private static String multimodalRequestJson(JinaEmbeddingModel model) throws Exception {
+        JinaMultimodalEmbeddingRequest request = model.buildMultimodalRequest(
+                EmbeddingRequest.builder().input("a caption").build());
+        return MAPPER.writeValueAsString(request);
     }
 
     @Test
@@ -66,6 +83,28 @@ class JinaMultimodalEmbeddingModelTest {
         String json = MAPPER.writeValueAsString(request);
 
         assertThat(json).contains("data:image/png;base64,aGVsbG8=");
+    }
+
+    @Test
+    void sends_late_chunking_when_enabled_on_multimodal_model() throws Exception {
+        String json = multimodalRequestJson(model("jina-embeddings-v4", true));
+
+        assertThat(json).contains("\"late_chunking\":true");
+    }
+
+    @Test
+    void omits_late_chunking_when_not_configured() throws Exception {
+        String json = multimodalRequestJson(model("jina-clip-v2"));
+
+        // jina-clip-v2 does not accept late_chunking, and false is the Jina default anyway
+        assertThat(json).doesNotContain("late_chunking");
+    }
+
+    @Test
+    void omits_late_chunking_when_explicitly_disabled() throws Exception {
+        String json = multimodalRequestJson(model("jina-embeddings-v4", false));
+
+        assertThat(json).doesNotContain("late_chunking");
     }
 
     @Test
