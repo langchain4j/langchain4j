@@ -1,6 +1,7 @@
 package dev.langchain4j.internal;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureBetween;
+import static dev.langchain4j.internal.ValidationUtils.ensureConsistentSizes;
 import static dev.langchain4j.internal.ValidationUtils.ensureEq;
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNegative;
@@ -258,5 +259,51 @@ class ValidationUtilsTest implements WithAssertions {
                     .isThrownBy(() -> ValidationUtils.ensureBetween(-1L, 0, 1, "test"))
                     .withMessageContaining("test must be between 0 and 1, but is: -1");
         }
+    }
+
+    @Test
+    void ensure_consistent_sizes_accepts_matching_sizes() {
+        ensureConsistentSizes(List.of("id1", "id2"), List.of("e1", "e2"), List.of("s1", "s2"));
+        ensureConsistentSizes(List.of("id1", "id2"), List.of("e1", "e2"), null);
+    }
+
+    @Test
+    void ensure_consistent_sizes_accepts_empty_input() {
+        ensureConsistentSizes(List.of(), List.of(), List.of());
+        ensureConsistentSizes(List.of(), List.of(), null);
+        ensureConsistentSizes(null, null, null);
+    }
+
+    @Test
+    void ensure_consistent_sizes_rejects_ids_size_mismatch() {
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> ensureConsistentSizes(List.of("id1"), List.of("e1", "e2"), null))
+                .withMessage("ids size (1) is not equal to embeddings size (2)");
+
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> ensureConsistentSizes(List.of("id1", "id2"), List.of("e1"), null))
+                .withMessage("ids size (2) is not equal to embeddings size (1)");
+    }
+
+    @Test
+    void ensure_consistent_sizes_treats_null_ids_and_embeddings_as_empty() {
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> ensureConsistentSizes(null, List.of("e1"), null))
+                .withMessage("ids size (0) is not equal to embeddings size (1)");
+
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> ensureConsistentSizes(List.of("id1"), null, null))
+                .withMessage("ids size (1) is not equal to embeddings size (0)");
+    }
+
+    @Test
+    void ensure_consistent_sizes_rejects_embedded_size_mismatch() {
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> ensureConsistentSizes(List.of("id1", "id2"), List.of("e1", "e2"), List.of("s1")))
+                .withMessage("embeddings size (2) is not equal to embedded size (1)");
+
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> ensureConsistentSizes(List.of("id1"), List.of("e1"), List.of()))
+                .withMessage("embeddings size (1) is not equal to embedded size (0)");
     }
 }
