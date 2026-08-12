@@ -26,6 +26,7 @@ import java.util.List;
 
 import static com.openai.client.okhttp.OkHttpClient.*;
 import static dev.langchain4j.MockitoUtils.ignoreInteractions;
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static java.util.List.of;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -40,6 +41,8 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 class OpenAiOfficialResponsesStreamingChatModelThinkingIT {
 
     private static final String ENCRYPTED_REASONING_KEY = "encrypted_reasoning";
+
+    private static final int MAX_REASONING_SUMMARY_ATTEMPTS = 3;
 
     private static final ToolSpecification WEATHER_TOOL = ToolSpecification.builder()
             .name("getWeather")
@@ -79,11 +82,20 @@ class OpenAiOfficialResponsesStreamingChatModelThinkingIT {
                         + "How much does the ball cost? Think carefully step by step.");
 
         // when
-        TestStreamingChatResponseHandler spyHandler = spy(new TestStreamingChatResponseHandler());
-        model.chat(of(userMessage), spyHandler);
+        // A summary of "auto" lets the model decide whether to produce a reasoning summary at all, so it sometimes
+        // returns none. What is under test is that LangChain4j surfaces the summary it is given, not that OpenAI
+        // always produces one, so retry until the model actually emits one.
+        TestStreamingChatResponseHandler spyHandler;
+        ChatResponse chatResponse;
+        int attempt = 0;
+        do {
+            spyHandler = spy(new TestStreamingChatResponseHandler());
+            model.chat(of(userMessage), spyHandler);
+            chatResponse = spyHandler.get();
+            attempt++;
+        } while (isNullOrBlank(chatResponse.aiMessage().thinking()) && attempt < MAX_REASONING_SUMMARY_ATTEMPTS);
 
         // then
-        ChatResponse chatResponse = spyHandler.get();
         AiMessage aiMessage = chatResponse.aiMessage();
         assertThat(aiMessage.text()).isNotBlank();
         assertThat(aiMessage.thinking()).isNotBlank();

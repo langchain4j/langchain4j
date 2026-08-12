@@ -23,12 +23,15 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import java.util.List;
 
 import static com.openai.client.okhttp.OkHttpClient.*;
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 class OpenAiOfficialResponsesChatModelThinkingIT {
 
     private static final String ENCRYPTED_REASONING_KEY = "encrypted_reasoning";
+
+    private static final int MAX_REASONING_SUMMARY_ATTEMPTS = 3;
 
     private static final ToolSpecification WEATHER_TOOL = ToolSpecification.builder()
             .name("getWeather")
@@ -68,7 +71,15 @@ class OpenAiOfficialResponsesChatModelThinkingIT {
                         + "How much does the ball cost? Think carefully step by step.");
 
         // when
-        ChatResponse chatResponse = model.chat(userMessage);
+        // A summary of "auto" lets the model decide whether to produce a reasoning summary at all, so it sometimes
+        // returns none. What is under test is that LangChain4j surfaces the summary it is given, not that OpenAI
+        // always produces one, so retry until the model actually emits one.
+        ChatResponse chatResponse;
+        int attempt = 0;
+        do {
+            chatResponse = model.chat(userMessage);
+            attempt++;
+        } while (isNullOrBlank(chatResponse.aiMessage().thinking()) && attempt < MAX_REASONING_SUMMARY_ATTEMPTS);
 
         // then
         AiMessage aiMessage = chatResponse.aiMessage();
