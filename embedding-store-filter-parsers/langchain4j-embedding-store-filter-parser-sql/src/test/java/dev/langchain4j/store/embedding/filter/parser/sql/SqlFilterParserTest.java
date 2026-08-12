@@ -46,7 +46,11 @@ class SqlFilterParserTest {
                 // eq
                 .add(of("name = 'Klaus'", metadataKey("name").isEqualTo("Klaus")))
                 .add(of("age = 18", metadataKey("age").isEqualTo(18L)))
+                .add(of("age = +18", metadataKey("age").isEqualTo(18L)))
+                .add(of("age = -18", metadataKey("age").isEqualTo(-18L)))
                 .add(of("weight = 67.8", metadataKey("weight").isEqualTo(67.8d)))
+                .add(of("weight = +67.8", metadataKey("weight").isEqualTo(67.8d)))
+                .add(of("weight = -67.8", metadataKey("weight").isEqualTo(-67.8d)))
 
                 // ne
                 .add(of("name != 'Klaus'", metadataKey("name").isNotEqualTo("Klaus")))
@@ -77,8 +81,11 @@ class SqlFilterParserTest {
                 .add(of("name IN ('Klaus', 'Francine')", metadataKey("name").isIn("Klaus", "Francine")))
                 .add(of("age IN (18, 42)", metadataKey("age").isIn(18L, 42L)))
                 .add(of("age IN (-18, 42)", metadataKey("age").isIn(-18L, 42L)))
+                .add(of("age IN (+18, 42)", metadataKey("age").isIn(18L, 42L)))
+                .add(of("age IN (-9223372036854775808)", metadataKey("age").isIn(Long.MIN_VALUE)))
                 .add(of("weight IN (67.8, 78.9)", metadataKey("weight").isIn(67.8d, 78.9d)))
                 .add(of("weight IN (-67.8, 78.9)", metadataKey("weight").isIn(-67.8d, 78.9d)))
+                .add(of("weight IN (+67.8, 78.9)", metadataKey("weight").isIn(67.8d, 78.9d)))
 
                 // nin
                 .add(of("name NOT IN ('Klaus', 'Francine')", metadataKey("name").isNotIn("Klaus", "Francine")))
@@ -1523,6 +1530,10 @@ class SqlFilterParserTest {
                 .hasMessageContaining("Unsupported expression");
 
         assertThatThrownBy(() -> parser.parse("age IN (SELECT age FROM other_table)"))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Unsupported expression");
+
+        assertThatThrownBy(() -> parser.parse("age IN (other_column)"))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Unsupported expression");
     }

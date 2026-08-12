@@ -64,6 +64,9 @@ import net.sf.jsqlparser.statement.select.PlainSelect;
  *
  * - Parentheses: {@code (name = 'Klaus' OR name = 'Francine') AND age = 18}. Expressions within parentheses are evaluated first.
  * </pre>
+ * Values inside {@code IN}/{@code NOT IN} lists can be any of the expressions listed above,
+ * for example {@code age IN (-1, 2 + 3)} or {@code year IN (YEAR(CURDATE()), YEAR(CURDATE()) - 1)}.
+ * <br>
  * If you require additional operations,
  * please <a href="https://github.com/langchain4j/langchain4j/issues/new/choose">open an issue</a>.
  * <br>
@@ -232,15 +235,15 @@ public class SqlFilterParser implements FilterParser {
             return ((LongValue) expression).getValue();
         } else if (expression instanceof DoubleValue) {
             return ((DoubleValue) expression).getValue();
-        } else if (expression instanceof SignedExpression) {
-            SignedExpression signedExpression = (SignedExpression) expression;
-            if (signedExpression.getSign() == '-') {
-                if (signedExpression.getExpression() instanceof LongValue) {
-                    String stringValue = signedExpression.getExpression().toString();
-                    return Long.parseLong("-" + stringValue);
-                } else if (signedExpression.getExpression() instanceof DoubleValue) {
-                    String stringValue = signedExpression.getExpression().toString();
-                    return Double.parseDouble("-" + stringValue);
+        } else if (expression instanceof SignedExpression signedExpression) {
+            char sign = signedExpression.getSign();
+            if (sign == '-' || sign == '+') {
+                Expression innerExpression = signedExpression.getExpression();
+                String stringValue = sign + innerExpression.toString();
+                if (innerExpression instanceof LongValue) {
+                    return Long.parseLong(stringValue);
+                } else if (innerExpression instanceof DoubleValue) {
+                    return Double.parseDouble(stringValue);
                 }
             }
         } else if (expression instanceof Function) {
