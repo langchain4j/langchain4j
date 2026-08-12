@@ -821,7 +821,7 @@ abstract class AbstractBedrockChatModel {
 
     protected GuardrailAssessmentSummary guardrailAssessmentSummaryFrom(ConverseTrace trace) {
 
-        if (trace == null) {
+        if (trace == null || trace.guardrail() == null) {
             return null;
         }
 
