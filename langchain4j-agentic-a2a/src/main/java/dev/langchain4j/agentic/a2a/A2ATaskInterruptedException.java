@@ -17,13 +17,19 @@ import org.a2aproject.sdk.spec.TaskState;
 public class A2ATaskInterruptedException extends LangChain4jException {
 
     private final String taskId;
+    private final String contextId;
     private final TaskState state;
     private final String reason;
 
     public A2ATaskInterruptedException(String taskId, TaskState state, String reason) {
+        this(taskId, null, state, reason);
+    }
+
+    public A2ATaskInterruptedException(String taskId, String contextId, TaskState state, String reason) {
         super("A2A task " + taskId + " is interrupted in state " + state.name() + ": "
                 + (reason == null || reason.isEmpty() ? defaultReason(state) : reason));
         this.taskId = taskId;
+        this.contextId = contextId;
         this.state = state;
         this.reason = reason == null || reason.isEmpty() ? null : reason;
     }
@@ -35,6 +41,16 @@ public class A2ATaskInterruptedException extends LangChain4jException {
      */
     public String taskId() {
         return taskId;
+    }
+
+    /**
+     * The id of the context containing the interrupted task. This can be used together with
+     * {@link #taskId()} when sending the input or authentication needed to resume the task.
+     *
+     * @since 1.19.0
+     */
+    public String contextId() {
+        return contextId;
     }
 
     /**

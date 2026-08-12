@@ -24,11 +24,13 @@ import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.a2aproject.sdk.A2A;
 import org.a2aproject.sdk.client.Client;
@@ -63,6 +65,7 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
     private final AgentCard agentCard;
     private Client a2aClient;
     private Consumer<ClientBuilder> clientCustomizer;
+    private Function<A2ATaskInterruptedException, String> inputProvider;
 
     private final String name;
     private String agentId;
@@ -211,6 +214,35 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
         }
         Message message = messageBuilder.build();
 
+        A2AResponse response = sendMessage(message);
+
+        while (response.interruption != null && inputProvider != null) {
+            response =
+                    sendMessage(continuationMessage(response.interruption, inputProvider.apply(response.interruption)));
+        }
+
+        if (response.interruption != null) {
+            throw response.interruption;
+        }
+
+        LOG.debug("Response: {}", response.text);
+        Object parsedResult = serviceOutputParser.parseText(returnType, response.text);
+        return new A2AInvocationResult(parsedResult, contextIdKey, response.contextId, taskIdKey, response.taskId);
+    }
+
+    private record A2AResponse(
+            String text, String contextId, String taskId, A2ATaskInterruptedException interruption) {}
+
+    static Message continuationMessage(A2ATaskInterruptedException interruption, String input) {
+        return Message.builder()
+                .role(Message.Role.ROLE_USER)
+                .parts(List.of(new TextPart(Objects.requireNonNull(input, "A2A input provider returned null"))))
+                .contextId(interruption.contextId())
+                .taskId(interruption.taskId())
+                .build();
+    }
+
+    private A2AResponse sendMessage(Message message) throws A2AClientException {
         final CompletableFuture<String> messageResponse = new CompletableFuture<>();
         AtomicReference<String> responseContextId = new AtomicReference<>();
         AtomicReference<String> responseTaskId = new AtomicReference<>();
@@ -235,20 +267,21 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
         Consumer<Throwable> streamingErrorHandler = error -> handleStreamEnd(error, messageResponse);
         a2aClient.sendMessage(message, consumers, streamingErrorHandler, null);
 
-        String finalContextIdKey = contextIdKey;
-        String finalTaskIdKey = taskIdKey;
         try {
             String responseText = messageResponse.get();
-            LOG.debug("Response: {}", responseText);
-            Object parsedResult = serviceOutputParser.parseText(returnType, responseText);
-            return new A2AInvocationResult(
-                    parsedResult, finalContextIdKey, responseContextId.get(), finalTaskIdKey, responseTaskId.get());
+            return new A2AResponse(responseText, responseContextId.get(), responseTaskId.get(), null);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             LOG.error("Failed to get response: {}", e.getMessage(), e);
             throw new RuntimeException("Failed to get response: " + e.getMessage(), e);
         } catch (ExecutionException e) {
+            if (e.getCause() instanceof A2ATaskInterruptedException interruption) {
+                return new A2AResponse(null, interruption.contextId(), interruption.taskId(), interruption);
+            }
             LOG.error("Failed to get response: {}", e.getMessage(), e);
+            if (e.getCause() instanceof RuntimeException runtimeException) {
+                throw runtimeException;
+            }
             throw new RuntimeException("Failed to get response: " + e.getMessage(), e);
         }
     }
@@ -283,7 +316,8 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
             // on its own, so this must complete exceptionally rather than being left pending forever.
             Message statusMessage = task.status().message();
             String reason = statusMessage != null ? extractTextFromParts(statusMessage.parts()) : "";
-            messageResponse.completeExceptionally(new A2ATaskInterruptedException(task.id(), state, reason));
+            messageResponse.completeExceptionally(
+                    new A2ATaskInterruptedException(task.id(), task.contextId(), state, reason));
             return;
         }
         if (!isTerminalState(state) && task.artifacts().isEmpty()) {
@@ -351,6 +385,13 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
         if (clientCustomizer != null) {
             this.clientCustomizer = (Consumer<ClientBuilder>) clientCustomizer;
         }
+        return this;
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public DefaultA2AClientBuilder<T> inputProvider(Function<?, String> inputProvider) {
+        this.inputProvider = (Function<A2ATaskInterruptedException, String>) inputProvider;
         return this;
     }
 

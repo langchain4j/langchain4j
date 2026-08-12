@@ -3162,6 +3162,33 @@ ResultWithAgenticScope<String> result = workflow.converse("hello");
 
 In this sequence, the first agent sends a message with no `contextId`/`taskId` (they are `null` in the scope). The server creates a new task and context. The response IDs are written to the scope. When the second agent runs, it reads the now-populated `contextId` and `taskId` from the scope and sends them on the message envelope, continuing the same conversation.
 
+### Human-in-the-loop A2A agents
+
+An A2A server can pause a task in the `input-required` or `auth-required` state. A declarative A2A
+client agent can handle this by defining a static method annotated with `@A2AInputProvider`. The
+method receives an `A2ATaskInterruptedException` containing the server's prompt and task details,
+and returns the input that should be sent to resume the task.
+
+Declare the provider alongside the A2A client agent method:
+
+```java
+public interface ApprovalAgent {
+
+    @A2AClientAgent(a2aServerUrl = "http://localhost:8080", outputKey = "response")
+    String invoke(@V("message") String message);
+
+    @A2AInputProvider
+    static String provideInput(A2ATaskInterruptedException interruption) {
+        return requestInputFromUser(interruption.reason());
+    }
+}
+```
+
+When the remote agent requests input, LangChain4j calls the input provider and sends its return value
+with the `contextId` and `taskId` of the existing remote task. This repeats if the agent requests input
+more than once. Without an `@A2AInputProvider`, the client throws `A2ATaskInterruptedException`,
+allowing the interruption to be handled manually.
+
 ### Customizing the A2A client
 
 By default, A2A agents use a JSONRPC transport with a default configuration. The `clientCustomizer` method exposes the underlying a2a-java SDK `ClientBuilder`, allowing you to configure a different transport, set a custom HTTP client, add interceptors, or change any other client setting.

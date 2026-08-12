@@ -2,6 +2,7 @@ package dev.langchain4j.agentic.internal;
 
 import dev.langchain4j.agentic.observability.AgentListener;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 /**
  * Builder for creating A2A client proxies that communicate with remote agents
@@ -56,6 +57,15 @@ public interface A2AClientBuilder<T> {
      * @return this builder for method chaining
      */
     A2AClientBuilder<T> clientCustomizer(Consumer<?> clientCustomizer);
+
+    /**
+     * Sets a function that provides input when the remote A2A task is interrupted.
+     *
+     * @param inputProvider a function that accepts an A2A task interruption and returns the input
+     *                      required to resume it
+     * @return this builder for method chaining
+     */
+    A2AClientBuilder<T> inputProvider(Function<?, String> inputProvider);
 
     /**
      * Builds the A2A client proxy implementing the agent service interface.
