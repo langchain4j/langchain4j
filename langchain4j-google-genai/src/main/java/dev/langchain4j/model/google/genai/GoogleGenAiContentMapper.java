@@ -120,6 +120,10 @@ class GoogleGenAiContentMapper {
     }
 
     static List<Content> toContents(List<ChatMessage> messages) {
+        return toContents(messages, false);
+    }
+
+    static List<Content> toContents(List<ChatMessage> messages, boolean sendThinking) {
         List<Content> contents = new ArrayList<>();
         List<Part> currentFunctionParts = new ArrayList<>();
 
@@ -156,7 +160,7 @@ class GoogleGenAiContentMapper {
                             .build());
                     currentFunctionParts = new ArrayList<>();
                 }
-                contents.add(toContent(message));
+                contents.add(toContent(message, sendThinking));
             }
         }
 
@@ -171,11 +175,18 @@ class GoogleGenAiContentMapper {
     }
 
     static Content toContent(ChatMessage message) {
+        return toContent(message, false);
+    }
+
+    static Content toContent(ChatMessage message, boolean sendThinking) {
         if (message instanceof UserMessage userMessage) {
             return Content.builder().role(USER_ROLE).parts(toParts(userMessage)).build();
 
         } else if (message instanceof AiMessage aiMsg) {
             List<Part> parts = new ArrayList<>();
+            if (sendThinking && !isNullOrEmpty(aiMsg.thinking())) {
+                parts.add(Part.builder().text(aiMsg.thinking()).thought(true).build());
+            }
             if (aiMsg.text() != null) {
                 parts.add(Part.builder().text(aiMsg.text()).build());
             }
@@ -214,6 +225,10 @@ class GoogleGenAiContentMapper {
     }
 
     static ChatResponse toChatResponse(GenerateContentResponse response, String modelName) {
+        return toChatResponse(response, modelName, null);
+    }
+
+    static ChatResponse toChatResponse(GenerateContentResponse response, String modelName, Boolean returnThinking) {
         List<Candidate> candidates = response.candidates().orElse(List.of());
 
         if (candidates.isEmpty()) {
@@ -231,13 +246,24 @@ class GoogleGenAiContentMapper {
         Content content = candidate.content().orElse(null);
 
         StringBuilder textBuilder = new StringBuilder();
+        StringBuilder thinkingBuilder = new StringBuilder();
         List<ToolExecutionRequest> toolRequests = new ArrayList<>();
         Map<String, Object> attributes = new HashMap<>();
 
         if (content != null) {
             List<Part> parts = content.parts().orElse(List.of());
             for (Part part : parts) {
-                if (part.text().isPresent()) textBuilder.append(part.text().get());
+                if (part.text().isPresent()) {
+                    if (part.thought().orElse(false)) {
+                        if (Boolean.TRUE.equals(returnThinking)) {
+                            thinkingBuilder.append(part.text().get());
+                        } else if (returnThinking == null) {
+                            textBuilder.append(part.text().get());
+                        }
+                    } else {
+                        textBuilder.append(part.text().get());
+                    }
+                }
 
                 if (part.functionCall().isPresent()) {
                     FunctionCall fc = part.functionCall().get();
@@ -276,6 +302,10 @@ class GoogleGenAiContentMapper {
             aiMessageBuilder.toolExecutionRequests(toolRequests);
         } else {
             aiMessageBuilder.text(text);
+        }
+
+        if (thinkingBuilder.length() > 0) {
+            aiMessageBuilder.thinking(thinkingBuilder.toString());
         }
 
         if (!attributes.isEmpty()) {
