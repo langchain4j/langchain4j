@@ -79,7 +79,8 @@ import java.util.function.UnaryOperator;
  * <p>
  * Currently, AI Services support:
  * <pre>
- * - Static system message templates, configured via @{@link SystemMessage} annotation on top of the method
+ * - Static system message templates, configured via @{@link SystemMessage} annotation
+ *   on top of the method or on the AI Service interface
  * - Dynamic system message templates, configured via {@link #systemMessageProvider(Function)}
  * - Static user message templates, configured via @{@link UserMessage} annotation on top of the method
  * - Dynamic user message templates, configured via method parameter annotated with @{@link UserMessage}

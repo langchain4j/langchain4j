@@ -298,10 +298,12 @@ class GoogleGenAiContentMapper {
                 })
                 .orElse(new TokenUsage(0, 0));
 
-        FinishReason finishReason = candidate
-                .finishReason()
-                .map(GoogleGenAiContentMapper::mapFinishReason)
-                .orElseGet(() -> !toolRequests.isEmpty() ? FinishReason.TOOL_EXECUTION : FinishReason.STOP);
+        FinishReason finishReason = !toolRequests.isEmpty()
+                ? FinishReason.TOOL_EXECUTION
+                : candidate
+                        .finishReason()
+                        .map(GoogleGenAiContentMapper::mapFinishReason)
+                        .orElse(FinishReason.STOP);
 
         GoogleGenAiChatResponseMetadata metadata = GoogleGenAiChatResponseMetadata.builder()
                 .modelName(modelName)

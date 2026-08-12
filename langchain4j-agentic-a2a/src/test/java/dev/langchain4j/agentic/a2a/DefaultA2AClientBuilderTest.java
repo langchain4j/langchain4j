@@ -57,6 +57,100 @@ class DefaultA2AClientBuilderTest {
     }
 
     @Test
+    void completeFromTask_inputRequiredWithReason_completesExceptionallyWithInterruptedException() {
+        Message inputRequiredMessage = Message.builder()
+                .role(Message.Role.ROLE_AGENT)
+                .parts(List.of(new TextPart("What is your email address?")))
+                .build();
+        Task interruptedTask = Task.builder()
+                .id("task-111")
+                .contextId("ctx-5")
+                .status(new TaskStatus(TaskState.TASK_STATE_INPUT_REQUIRED, inputRequiredMessage, null))
+                .artifacts(List.of())
+                .build();
+
+        CompletableFuture<String> future = new CompletableFuture<>();
+        DefaultA2AClientBuilder.completeFromTask(interruptedTask, future);
+
+        assertThat(future).isCompletedExceptionally();
+        assertThatThrownBy(future::get)
+                .hasCauseInstanceOf(A2ATaskInterruptedException.class)
+                .hasMessageContaining("task-111")
+                .hasMessageContaining("TASK_STATE_INPUT_REQUIRED")
+                .hasMessageContaining("What is your email address?");
+        A2ATaskInterruptedException cause = (A2ATaskInterruptedException) getCause(future);
+        assertThat(cause.taskId()).isEqualTo("task-111");
+        assertThat(cause.state()).isEqualTo(TaskState.TASK_STATE_INPUT_REQUIRED);
+        assertThat(cause.reason()).isEqualTo("What is your email address?");
+    }
+
+    @Test
+    void completeFromTask_authRequiredWithoutReason_completesExceptionallyWithInterruptedException() {
+        Task interruptedTask = Task.builder()
+                .id("task-222")
+                .contextId("ctx-6")
+                .status(new TaskStatus(TaskState.TASK_STATE_AUTH_REQUIRED))
+                .artifacts(List.of())
+                .build();
+
+        CompletableFuture<String> future = new CompletableFuture<>();
+        DefaultA2AClientBuilder.completeFromTask(interruptedTask, future);
+
+        assertThat(future).isCompletedExceptionally();
+        assertThatThrownBy(future::get)
+                .hasCauseInstanceOf(A2ATaskInterruptedException.class)
+                .hasMessageContaining("task-222")
+                .hasMessageContaining("TASK_STATE_AUTH_REQUIRED")
+                .hasMessageContaining("waiting for authentication");
+        A2ATaskInterruptedException cause = (A2ATaskInterruptedException) getCause(future);
+        assertThat(cause.taskId()).isEqualTo("task-222");
+        assertThat(cause.state()).isEqualTo(TaskState.TASK_STATE_AUTH_REQUIRED);
+        // The fallback description only goes into the exception message; reason() stays null so
+        // callers can tell "the agent sent no prompt" apart from a prompt it actually sent.
+        assertThat(cause.reason()).isNull();
+    }
+
+    @Test
+    void completeFromTask_inputRequiredWithoutReason_fallsBackToStateSpecificDescription() {
+        Task interruptedTask = Task.builder()
+                .id("task-444")
+                .contextId("ctx-8")
+                .status(new TaskStatus(TaskState.TASK_STATE_INPUT_REQUIRED))
+                .artifacts(List.of())
+                .build();
+
+        CompletableFuture<String> future = new CompletableFuture<>();
+        DefaultA2AClientBuilder.completeFromTask(interruptedTask, future);
+
+        assertThat(future).isCompletedExceptionally();
+        assertThatThrownBy(future::get)
+                .hasCauseInstanceOf(A2ATaskInterruptedException.class)
+                .hasMessageContaining("task-444")
+                .hasMessageContaining("waiting for additional input");
+    }
+
+    @Test
+    void completeFromTask_inputRequiredWithArtifacts_stillCompletesExceptionally() {
+        Artifact artifact = Artifact.builder()
+                .artifactId("artifact-partial")
+                .parts(List.<Part<?>>of(new TextPart("partial answer")))
+                .build();
+        Task interruptedTask = Task.builder()
+                .id("task-333")
+                .contextId("ctx-7")
+                .status(new TaskStatus(TaskState.TASK_STATE_INPUT_REQUIRED))
+                .artifacts(List.of(artifact))
+                .build();
+
+        CompletableFuture<String> future = new CompletableFuture<>();
+        DefaultA2AClientBuilder.completeFromTask(interruptedTask, future);
+
+        // Even though artifacts are present, an interrupted task must not be treated as complete.
+        assertThat(future).isCompletedExceptionally();
+        assertThatThrownBy(future::get).hasCauseInstanceOf(A2ATaskInterruptedException.class);
+    }
+
+    @Test
     void completeFromTask_completedTaskWithArtifact_completesNormally() throws Exception {
         Artifact artifact = Artifact.builder()
                 .artifactId("artifact-1")
@@ -133,5 +227,14 @@ class DefaultA2AClientBuilderTest {
 
         assertThat(future).isCompleted();
         assertThat(future.get()).isEqualTo("the answer");
+    }
+
+    private static Throwable getCause(CompletableFuture<?> future) {
+        try {
+            future.get();
+            throw new AssertionError("Expected future to be completed exceptionally");
+        } catch (Exception e) {
+            return e.getCause();
+        }
     }
 }
