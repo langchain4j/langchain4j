@@ -169,24 +169,16 @@ public class SqlFilterParser implements FilterParser {
     private Filter mapInExpression(InExpression inExpression) {
         String key = getKey(inExpression.getLeftExpression());
 
+        Expression rightExpression = inExpression.getRightExpression();
+        if (!(rightExpression instanceof ExpressionList<?> expressionList)) {
+            throw illegalArgument(
+                    "Unsupported expression: '%s'%s", rightExpression, createGithubIssueLink(rightExpression));
+        }
+
         Collection<Object> comparisonValues = new ArrayList<>();
-        inExpression.getRightExpression().accept(new ExpressionVisitorAdapter() {
-
-            @Override
-            public void visit(StringValue value) {
-                comparisonValues.add(value.getValue());
-            }
-
-            @Override
-            public void visit(LongValue value) {
-                comparisonValues.add(value.getValue());
-            }
-
-            @Override
-            public void visit(DoubleValue value) {
-                comparisonValues.add(value.getValue());
-            }
-        });
+        for (Expression expression : expressionList) {
+            comparisonValues.add(getValue(expression));
+        }
 
         if (inExpression.isNot()) {
             return new IsNotIn(key, comparisonValues);

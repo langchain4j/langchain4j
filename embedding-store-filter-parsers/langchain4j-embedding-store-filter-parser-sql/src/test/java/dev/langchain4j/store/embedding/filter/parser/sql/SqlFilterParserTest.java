@@ -7,6 +7,7 @@ import static java.time.temporal.IsoFields.WEEK_OF_WEEK_BASED_YEAR;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.params.provider.Arguments.of;
 
 import dev.langchain4j.data.document.Metadata;
@@ -75,12 +76,16 @@ class SqlFilterParserTest {
                 // in
                 .add(of("name IN ('Klaus', 'Francine')", metadataKey("name").isIn("Klaus", "Francine")))
                 .add(of("age IN (18, 42)", metadataKey("age").isIn(18L, 42L)))
+                .add(of("age IN (-18, 42)", metadataKey("age").isIn(-18L, 42L)))
                 .add(of("weight IN (67.8, 78.9)", metadataKey("weight").isIn(67.8d, 78.9d)))
+                .add(of("weight IN (-67.8, 78.9)", metadataKey("weight").isIn(-67.8d, 78.9d)))
 
                 // nin
                 .add(of("name NOT IN ('Klaus', 'Francine')", metadataKey("name").isNotIn("Klaus", "Francine")))
                 .add(of("age NOT IN (18, 42)", metadataKey("age").isNotIn(18L, 42L)))
+                .add(of("age NOT IN (-18, -42)", metadataKey("age").isNotIn(-18L, -42L)))
                 .add(of("weight NOT IN (67.8, 78.9)", metadataKey("weight").isNotIn(67.8d, 78.9d)))
+                .add(of("weight NOT IN (-67.8, -78.9)", metadataKey("weight").isNotIn(-67.8d, -78.9d)))
 
                 // and
                 .add(of(
@@ -1501,6 +1506,25 @@ class SqlFilterParserTest {
                 .isEqualTo(metadataKey("year")
                         .isEqualTo(2024L)
                         .and(metadataKey("genre").isIn("comedy", "drama")));
+    }
+
+    @Test
+    void should_support_arithmetic_and_date_functions_inside_IN_list() {
+
+        assertThat(parser.parse("year IN (YEAR(CURDATE()), YEAR(CURDATE()) - 1)"))
+                .isEqualTo(metadataKey("year").isIn(currentYear(), currentYear() - 1));
+    }
+
+    @Test
+    void should_fail_on_unsupported_expression_inside_IN_list() {
+
+        assertThatThrownBy(() -> parser.parse("age IN (1, NULL)"))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Unsupported expression");
+
+        assertThatThrownBy(() -> parser.parse("age IN (SELECT age FROM other_table)"))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Unsupported expression");
     }
 
     @Test
