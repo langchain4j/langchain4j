@@ -153,6 +153,7 @@ public class WatsonxDeploymentStreamingChatModelIT extends AbstractStreamingChat
                 .baseUrl(URL)
                 .apiKey(API_KEY)
                 .deploymentId(deploymentId)
+                .temperature(0.0)
                 .timeout(Duration.ofSeconds(120));
     }
 }

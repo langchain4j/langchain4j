@@ -35,7 +35,7 @@ abstract class WatsonxTextChatBase<R extends BaseChatRequest> extends WatsonxCha
      * @param parameters the parameters of the current request
      * @return {@code requestBuilder}
      */
-    protected final <B extends NativeChatRequest.Builder<B>> B applyChatRequest(
+    final <B extends NativeChatRequest.Builder<B>> B applyChatRequest(
             B requestBuilder, List<ChatMessage> messages, List<Tool> tools, ChatRequestParameters parameters) {
 
         requestBuilder

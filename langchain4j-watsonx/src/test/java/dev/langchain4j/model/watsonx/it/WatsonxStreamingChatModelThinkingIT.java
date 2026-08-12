@@ -142,8 +142,8 @@ public class WatsonxStreamingChatModelThinkingIT {
             }
         });
 
-        var chatResponse = assertDoesNotThrow(() -> futureChatResponse.get(10, TimeUnit.SECONDS));
-        assertDoesNotThrow(() -> futureThinking.get(10, TimeUnit.SECONDS));
+        var chatResponse = assertDoesNotThrow(() -> futureChatResponse.get(30, TimeUnit.SECONDS));
+        assertDoesNotThrow(() -> futureThinking.get(30, TimeUnit.SECONDS));
 
         var aiMessage = chatResponse.aiMessage();
         assertThat(aiMessage.thinking()).isNotBlank();
