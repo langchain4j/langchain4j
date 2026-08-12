@@ -22,10 +22,6 @@ public class JinaMultimodalEmbeddingRequest {
     public Boolean lateChunking;
     public List<JinaMultimodalInput> input;
 
-    public JinaMultimodalEmbeddingRequest(String model, List<JinaMultimodalInput> input) {
-        this(model, null, input);
-    }
-
     public JinaMultimodalEmbeddingRequest(String model, Boolean lateChunking, List<JinaMultimodalInput> input) {
         this.model = model;
         this.lateChunking = lateChunking;
