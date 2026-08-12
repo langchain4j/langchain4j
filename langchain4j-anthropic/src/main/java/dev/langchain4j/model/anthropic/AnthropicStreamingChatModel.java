@@ -590,8 +590,11 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         }
 
         /**
-         * Sets the name of the specific tool the model must use when {@link ToolChoice}
-         * is set to {@link ToolChoice#REQUIRED}.
+         * Sets the name of the tool that the model is forced to call.
+         * <p>
+         * It can be set on its own; it does not require {@link #toolChoice(ToolChoice)}.
+         * When {@link #toolChoice(ToolChoice)} is set as well, the named tool takes precedence over it.
+         * It has no effect when the request contains no tools.
          *
          * @param toolChoiceName the name of the tool to force
          * @return {@code this}

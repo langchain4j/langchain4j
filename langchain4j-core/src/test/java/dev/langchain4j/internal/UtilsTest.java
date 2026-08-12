@@ -32,6 +32,8 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -395,6 +397,113 @@ class UtilsTest {
         assertThat(Utils.copy((Map<?, ?>) null)).isEmpty();
         assertThat(Utils.copy(emptyMap())).isEmpty();
         assertThat(Utils.copy(singletonMap("key", "value"))).containsExactly(entry("key", "value"));
+    }
+
+    @Test
+    void copy_list_is_not_a_view_of_the_source() {
+        List<String> source = new ArrayList<>(List.of("one"));
+
+        List<String> copy = Utils.copy(source);
+        source.add("two");
+        source.remove("one");
+
+        assertThat(copy).containsExactly("one");
+    }
+
+    @Test
+    void copy_if_not_null_list_is_not_a_view_of_the_source() {
+        List<String> source = new ArrayList<>(List.of("one"));
+
+        List<String> copy = Utils.copyIfNotNull(source);
+        source.add("two");
+        source.remove("one");
+
+        assertThat(copy).containsExactly("one");
+    }
+
+    @Test
+    void copy_set_is_not_a_view_of_the_source() {
+        Set<String> source = new LinkedHashSet<>(List.of("one"));
+
+        Set<String> copy = Utils.copy(source);
+        source.add("two");
+        source.remove("one");
+
+        assertThat(copy).containsExactly("one");
+    }
+
+    @Test
+    void copy_if_not_null_set_is_not_a_view_of_the_source() {
+        Set<String> source = new LinkedHashSet<>(List.of("one"));
+
+        Set<String> copy = Utils.copyIfNotNull(source);
+        source.add("two");
+        source.remove("one");
+
+        assertThat(copy).containsExactly("one");
+    }
+
+    @Test
+    void copy_map_is_not_a_view_of_the_source() {
+        Map<String, String> source = new LinkedHashMap<>(Map.of("key", "value"));
+
+        Map<String, String> copy = Utils.copy(source);
+        source.put("key2", "value2");
+        source.remove("key");
+
+        assertThat(copy).containsExactly(entry("key", "value"));
+    }
+
+    @Test
+    void copy_if_not_null_map_is_not_a_view_of_the_source() {
+        Map<String, String> source = new LinkedHashMap<>(Map.of("key", "value"));
+
+        Map<String, String> copy = Utils.copyIfNotNull(source);
+        source.put("key2", "value2");
+        source.remove("key");
+
+        assertThat(copy).containsExactly(entry("key", "value"));
+    }
+
+    @Test
+    void copy_returns_unmodifiable_collections() {
+        List<String> list = Utils.copy(new ArrayList<>(List.of("one")));
+        assertThatExceptionOfType(UnsupportedOperationException.class).isThrownBy(() -> list.add("two"));
+
+        Set<String> set = Utils.copy(new LinkedHashSet<>(List.of("one")));
+        assertThatExceptionOfType(UnsupportedOperationException.class).isThrownBy(() -> set.add("two"));
+
+        Map<String, String> map = Utils.copy(new LinkedHashMap<>(Map.of("key", "value")));
+        assertThatExceptionOfType(UnsupportedOperationException.class).isThrownBy(() -> map.put("k", "v"));
+
+        List<String> listIfNotNull = Utils.copyIfNotNull(new ArrayList<>(List.of("one")));
+        assertThatExceptionOfType(UnsupportedOperationException.class).isThrownBy(() -> listIfNotNull.add("two"));
+
+        Set<String> setIfNotNull = Utils.copyIfNotNull(new LinkedHashSet<>(List.of("one")));
+        assertThatExceptionOfType(UnsupportedOperationException.class).isThrownBy(() -> setIfNotNull.add("two"));
+
+        Map<String, String> mapIfNotNull = Utils.copyIfNotNull(new LinkedHashMap<>(Map.of("key", "value")));
+        assertThatExceptionOfType(UnsupportedOperationException.class).isThrownBy(() -> mapIfNotNull.put("k", "v"));
+    }
+
+    @Test
+    void copy_preserves_iteration_order_and_null_elements() {
+        List<String> list = new ArrayList<>();
+        list.add("one");
+        list.add(null);
+        list.add("two");
+        assertThat(Utils.copy(list)).containsExactly("one", null, "two");
+
+        Set<String> set = new LinkedHashSet<>();
+        set.add("one");
+        set.add(null);
+        set.add("two");
+        assertThat(Utils.copy(set)).containsExactly("one", null, "two");
+
+        Map<String, String> map = new LinkedHashMap<>();
+        map.put("one", "1");
+        map.put("two", null);
+        assertThat(Utils.copy(map)).containsExactly(entry("one", "1"), entry("two", null));
     }
 
     @Test
