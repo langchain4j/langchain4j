@@ -210,6 +210,58 @@ class AiServiceStreamingPublisherTest {
     }
 
     @Test
+    void completes_the_text_stream_when_the_subscriber_requests_one_item_at_a_time() throws Exception {
+        // The last event is always a FinalResponseEvent, which contributes no string. It must still be drained, or
+        // onComplete stays stuck behind it once the subscriber has taken the last string and stops requesting.
+        StreamingEventChatModelMock model = StreamingEventChatModelMock.thatStreams(AiMessage.from("Hello"));
+
+        StringStreamer assistant = AiServices.builder(StringStreamer.class)
+                .streamingChatModel(model)
+                .build();
+
+        List<String> items = new CopyOnWriteArrayList<>();
+        CountDownLatch completed = new CountDownLatch(1);
+        AtomicReference<Flow.Subscription> subscription = new AtomicReference<>();
+
+        assistant.chat("Hi").subscribe(new Flow.Subscriber<>() {
+
+            @Override
+            public void onSubscribe(Flow.Subscription s) {
+                subscription.set(s);
+            }
+
+            @Override
+            public void onNext(String item) {
+                items.add(item);
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                completed.countDown();
+            }
+
+            @Override
+            public void onComplete() {
+                completed.countDown();
+            }
+        });
+
+        // The mock streams one PartialResponse per character. Request exactly that many, one at a time, and then
+        // request no more.
+        for (int requested = 1; requested <= "Hello".length(); requested++) {
+            subscription.get().request(1);
+            while (items.size() < requested) {
+                Thread.sleep(10);
+            }
+        }
+
+        assertThat(completed.await(5, TimeUnit.SECONDS))
+                .as("stream completed without any further demand")
+                .isTrue();
+        assertThat(String.join("", items)).isEqualTo("Hello");
+    }
+
+    @Test
     void streams_events_without_tools() throws Exception {
         StreamingEventChatModelMock model = StreamingEventChatModelMock.thatStreams(AiMessage.from("Hello"));
 

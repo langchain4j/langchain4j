@@ -65,8 +65,6 @@ import mutiny.zero.BackpressureStrategy;
 import mutiny.zero.Tube;
 import mutiny.zero.TubeConfiguration;
 import mutiny.zero.ZeroPublisher;
-import mutiny.zero.operators.Select;
-import mutiny.zero.operators.Transform;
 
 /**
  * A cold, non-blocking reactive stream for an AI Service method that returns a
@@ -179,25 +177,66 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
      * {@link FinalResponseEvent} is emitted. This loses no streaming granularity in practice: with output guardrails
      * the rich event stream does not emit {@link PartialResponseEvent}s at all (they cannot be reconciled with a
      * possibly-rewritten final answer), so the whole answer would arrive at the very end regardless.
+     * <p>
+     * The event stream is drained with unbounded demand into a bounded buffer rather than mapped with demand-passing
+     * operators (such as mutiny-zero's {@code Select}/{@code Transform}). The last event of a round-trip is always a
+     * {@link FinalResponseEvent}, which contributes no string when there are no output guardrails: a demand-passing
+     * filter would only replenish upstream demand upon <i>receiving</i> that event, so once the subscriber has taken
+     * the last string and stops requesting, the trailing event - and the {@code onComplete} behind it - would never
+     * be delivered and the stream would hang.
      *
      * @param events             the rich event stream to adapt
      * @param hasOutputGuardrails whether the AI Service method has output guardrails configured
+     * @param bufferSize         the back-pressure buffer size
      */
     public static Flow.Publisher<String> toTextPublisher(
-            Flow.Publisher<AiServiceStreamingEvent> events, boolean hasOutputGuardrails) {
-        if (hasOutputGuardrails) {
-            Flow.Publisher<AiServiceStreamingEvent> finalResponses = new Select<>(
-                    events,
-                    event -> event instanceof FinalResponseEvent finalResponse
-                            && finalResponse.chatResponse().aiMessage().text() != null);
-            return new Transform<>(finalResponses, event ->
-                    ((FinalResponseEvent) event).chatResponse().aiMessage().text());
-        }
+            Flow.Publisher<AiServiceStreamingEvent> events, boolean hasOutputGuardrails, int bufferSize) {
+        TubeConfiguration config = new TubeConfiguration()
+                .withBackpressureStrategy(BackpressureStrategy.BUFFER)
+                .withBufferSize(bufferSize);
+        return ZeroPublisher.create(config, tube -> events.subscribe(new Flow.Subscriber<>() {
 
-        Flow.Publisher<AiServiceStreamingEvent> partialResponses =
-                new Select<>(events, event -> event instanceof PartialResponseEvent);
-        return new Transform<>(partialResponses, event ->
-                ((PartialResponseEvent) event).partialResponse().text());
+            @Override
+            public void onSubscribe(Flow.Subscription subscription) {
+                if (tube.cancelled()) {
+                    subscription.cancel();
+                    return;
+                }
+                tube.whenTerminates(subscription::cancel);
+                subscription.request(Long.MAX_VALUE);
+            }
+
+            @Override
+            public void onNext(AiServiceStreamingEvent event) {
+                if (tube.cancelled()) {
+                    return;
+                }
+                if (hasOutputGuardrails) {
+                    if (event instanceof FinalResponseEvent finalResponseEvent) {
+                        String text = finalResponseEvent.chatResponse().aiMessage().text();
+                        if (text != null) {
+                            tube.send(text);
+                        }
+                    }
+                } else if (event instanceof PartialResponseEvent partialResponseEvent) {
+                    tube.send(partialResponseEvent.partialResponse().text());
+                }
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                if (!tube.cancelled()) {
+                    tube.fail(error);
+                }
+            }
+
+            @Override
+            public void onComplete() {
+                if (!tube.cancelled()) {
+                    tube.complete();
+                }
+            }
+        }));
     }
 
     /**
