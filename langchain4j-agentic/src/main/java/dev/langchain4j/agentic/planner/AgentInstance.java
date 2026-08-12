@@ -21,6 +21,10 @@ public interface AgentInstance {
 
     boolean async();
 
+    default boolean optional() {
+        return false;
+    }
+
     List<AgentArgument> arguments();
 
     AgentInstance parent();

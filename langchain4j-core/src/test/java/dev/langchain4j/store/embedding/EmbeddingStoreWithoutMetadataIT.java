@@ -273,13 +273,11 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
     protected void should_find_with_min_score() {
 
         // given
-        String firstId = randomUUID();
         Embedding firstEmbedding = embeddingModel().embed("hello").content();
-        embeddingStore().add(firstId, firstEmbedding);
+        String firstId = embeddingStore().add(firstEmbedding);
 
-        String secondId = randomUUID();
         Embedding secondEmbedding = embeddingModel().embed("hi").content();
-        embeddingStore().add(secondId, secondEmbedding);
+        String secondId = embeddingStore().add(secondEmbedding);
         awaitUntilAsserted(() -> assertThat(getAllEmbeddings()).hasSize(2));
 
         EmbeddingSearchRequest searchRequest = EmbeddingSearchRequest.builder()
@@ -327,7 +325,9 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
                 .queryEmbedding(firstEmbedding)
                 .query("hello")
                 .maxResults(10)
-                .minScore(secondMatch.score())
+                // An exact match might not work with all data stores,
+                // because the min-score is expected to be rounded to 8 decimal places
+                .minScore(secondMatch.score() - 0.00000001)
                 .build();
 
         // when

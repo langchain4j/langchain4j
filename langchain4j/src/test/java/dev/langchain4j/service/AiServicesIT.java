@@ -20,6 +20,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.data.MapEntry.entry;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -29,10 +30,12 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.ChatRequestOptions;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.input.structured.StructuredPrompt;
 import dev.langchain4j.model.moderation.ModerationModel;
+import dev.langchain4j.model.moderation.ModerationRequest;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.openai.OpenAiChatRequestParameters;
 import dev.langchain4j.model.openai.OpenAiModerationModel;
@@ -97,6 +100,7 @@ public class AiServicesIT {
         ignoreInteractions(model).supportedCapabilities();
         ignoreInteractions(model).listeners();
         ignoreInteractions(model).provider();
+        ignoreInteractions(model).chat(any(ChatRequest.class), any(ChatRequestOptions.class));
         verifyNoMoreInteractions(model);
     }
 
@@ -831,7 +835,13 @@ public class AiServicesIT {
                 });
 
         verify(chatModel).chat(chatRequest(message));
-        verify(moderationModel).moderate(singletonList(userMessage(message)));
+
+        verify(moderationModel).doModerate(argThat(req -> req.texts().equals(List.of(message))));
+        ignoreInteractions(moderationModel).moderate(any(List.class));
+        ignoreInteractions(moderationModel).moderate(any(ModerationRequest.class));
+        ignoreInteractions(moderationModel).modelName();
+        ignoreInteractions(moderationModel).provider();
+        ignoreInteractions(moderationModel).listeners();
     }
 
     @Test
@@ -849,7 +859,13 @@ public class AiServicesIT {
         assertThat(response).isNotBlank();
 
         verify(chatModel).chat(chatRequest(message));
-        verify(moderationModel).moderate(singletonList(userMessage(message)));
+
+        verify(moderationModel).doModerate(argThat(req -> req.texts().equals(List.of(message))));
+        ignoreInteractions(moderationModel).moderate(any(List.class));
+        ignoreInteractions(moderationModel).moderate(any(ModerationRequest.class));
+        ignoreInteractions(moderationModel).modelName();
+        ignoreInteractions(moderationModel).provider();
+        ignoreInteractions(moderationModel).listeners();
     }
 
     interface AssistantReturningResult {

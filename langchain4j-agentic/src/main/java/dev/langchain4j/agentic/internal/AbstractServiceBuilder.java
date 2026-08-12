@@ -3,6 +3,7 @@ package dev.langchain4j.agentic.internal;
 import static dev.langchain4j.agentic.internal.AgentUtil.agentsToExecutors;
 import static dev.langchain4j.agentic.internal.AgentUtil.buildAgent;
 import static dev.langchain4j.agentic.internal.AgentUtil.keyName;
+import static dev.langchain4j.agentic.observability.ComposedAgentListener.listenerOfType;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 
 import dev.langchain4j.agentic.Agent;
@@ -12,6 +13,7 @@ import dev.langchain4j.agentic.declarative.TypedKey;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.observability.AgentMonitor;
 import dev.langchain4j.agentic.observability.ComposedAgentListener;
+import dev.langchain4j.agentic.observability.MonitoredAgent;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.Planner;
 import dev.langchain4j.agentic.scope.AgenticScope;
@@ -19,6 +21,7 @@ import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.function.Consumer;
@@ -44,6 +47,10 @@ public abstract class AbstractServiceBuilder<T, S> {
     protected final List<AgentExecutor> subagents = new ArrayList<>();
 
     protected Function<ErrorContext, ErrorRecoveryResult> errorHandler;
+
+    protected boolean compensateOnError = false;
+
+    protected Function<InternalAgent, Object> agentInstanceFactory;
 
     protected Executor executor;
 
@@ -110,16 +117,21 @@ public abstract class AbstractServiceBuilder<T, S> {
     }
 
     public S subAgents(Object... agents) {
-        return subAgents(agentsToExecutors(agents));
+        return subAgents(List.of(agents));
     }
 
-    public S subAgents(List<AgentExecutor> agentExecutors) {
-        addSubagents(agentExecutors);
+    public S subAgents(Collection<?> agents) {
+        addSubagents(agentsToExecutors(agents));
         return (S) this;
     }
 
     public S errorHandler(Function<ErrorContext, ErrorRecoveryResult> errorHandler) {
         this.errorHandler = errorHandler;
+        return (S) this;
+    }
+
+    public S compensateOnError(boolean compensateOnError) {
+        this.compensateOnError = compensateOnError;
         return (S) this;
     }
 
@@ -134,6 +146,11 @@ public abstract class AbstractServiceBuilder<T, S> {
         return (S) this;
     }
 
+    public S agentInstanceFactory(Function<InternalAgent, Object> factory) {
+        this.agentInstanceFactory = factory;
+        return (S) this;
+    }
+
     public S executor(Executor executor) {
         this.executor = executor;
         return (S) this;
@@ -144,22 +161,22 @@ public abstract class AbstractServiceBuilder<T, S> {
     }
 
     public T build(Supplier<Planner> plannerSupplier) {
+        AgentMonitor monitor = listenerOfType(agentListener, AgentMonitor.class);
+        if (MonitoredAgent.class.isAssignableFrom(agentServiceClass) && monitor == null) {
+            monitor = new AgentMonitor();
+            listener(monitor);
+        }
         AgentInstance agent = (AgentInstance) build(new PlannerBasedInvocationHandler(this, plannerSupplier));
-        registerRootAgentOnMonitor(agent);
+        if (monitor != null) {
+            monitor.setRootAgent(agent);
+        }
         return (T) agent;
     }
 
-    private void registerRootAgentOnMonitor(AgentInstance agent) {
-        if (agentListener instanceof AgentMonitor monitor) {
-            monitor.setRootAgent(agent);
-        } else if (agentListener instanceof ComposedAgentListener composed) {
-            composed.listeners().stream().filter(AgentMonitor.class::isInstance)
-                    .map(AgentMonitor.class::cast)
-                    .forEach(monitor -> monitor.setRootAgent(agent));
-        }
-    }
-
     public T build(InvocationHandler invocationHandler) {
+        if (agentInstanceFactory != null) {
+            return (T) agentInstanceFactory.apply((InternalAgent) invocationHandler);
+        }
         return buildAgent(agentServiceClass, invocationHandler);
     }
 

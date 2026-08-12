@@ -3,15 +3,25 @@ package dev.langchain4j.model.openaiofficial.openai;
 import static dev.langchain4j.model.openaiofficial.openai.InternalOpenAiOfficialTestHelper.CHAT_MODEL_NAME_ALTERNATE;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import dev.langchain4j.data.message.PdfFileContent;
+import dev.langchain4j.data.message.TextContent;
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.data.pdf.PdfFile;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialChatModel;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialChatRequestParameters;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialChatResponseMetadata;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialTokenUsage;
 import dev.langchain4j.model.output.TokenUsage;
+
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Base64;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -27,6 +37,7 @@ class OpenAiOfficialChatModelIT extends AbstractChatModelIT {
     @Override
     protected ChatModel createModelWith(ChatRequestParameters parameters) {
         OpenAiOfficialChatModel.Builder openAiChatModelBuilder = OpenAiOfficialChatModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .defaultRequestParameters(parameters);
 
@@ -58,21 +69,12 @@ class OpenAiOfficialChatModelIT extends AbstractChatModelIT {
         return OpenAiOfficialTokenUsage.class;
     }
 
-    @Override
-    protected String catImageUrl() {
-        return "https://images.all-free-download.com/images/graphicwebp/cat_hangover_relax_213869.webp";
-    }
-
-    @Override
-    protected String diceImageUrl() {
-        return "https://images.all-free-download.com/images/graphicwebp/double_six_dice_196084.webp";
-    }
-
     @Test
     void should_work_with_o_models() {
 
         // given
         ChatModel model = OpenAiOfficialChatModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .modelName("o4-mini")
                 .build();
@@ -82,5 +84,38 @@ class OpenAiOfficialChatModelIT extends AbstractChatModelIT {
 
         // then
         assertThat(answer).contains("Berlin");
+    }
+
+    @Test
+    void should_accept_pdf_file_content() throws Exception {
+
+        // given
+        OpenAiOfficialChatModel model = OpenAiOfficialChatModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
+                .apiKey(System.getenv("OPENAI_API_KEY"))
+                .modelName("gpt-5-nano")
+                .build();
+
+        Path file =
+                Paths.get(getClass().getClassLoader().getResource("sample.pdf").toURI());
+        String pdfBase64 = Base64.getEncoder().encodeToString(Files.readAllBytes(file));
+        PdfFile pdfFile = PdfFile.builder()
+                .base64Data(pdfBase64)
+                .mimeType("application/pdf")
+                .build();
+
+        UserMessage userMessage = UserMessage.builder()
+                .addContent(TextContent.from("What information is in the attached PDF? Return only the exacted text."))
+                .addContent(PdfFileContent.from(pdfFile))
+                .build();
+
+        // when
+        ChatResponse response = model.chat(userMessage);
+
+        // then
+        assertThat(response.aiMessage().text())
+                .containsIgnoringCase("Berlin")
+                .containsIgnoringCase("capital")
+                .containsIgnoringCase("Germany");
     }
 }

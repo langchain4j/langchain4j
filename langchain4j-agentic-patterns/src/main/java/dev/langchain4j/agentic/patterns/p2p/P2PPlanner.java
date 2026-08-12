@@ -91,8 +91,10 @@ public class P2PPlanner implements Planner {
         }
 
         AgentActivator lastExecutedAgent = agentActivators.get(planningContext.previousAgentInvocation().agentId());
-        lastExecutedAgent.finishExecution();
-        agentActivators.values().forEach(a -> a.onStateChanged(lastExecutedAgent.agent.outputKey()));
+        if (lastExecutedAgent != null) {
+            lastExecutedAgent.finishExecution();
+            agentActivators.values().forEach(a -> a.onStateChanged(lastExecutedAgent.agent.outputKey()));
+        }
 
         return nextCallAction(planningContext.agenticScope());
     }
@@ -158,6 +160,19 @@ public class P2PPlanner implements Planner {
             throw new IllegalArgumentException("ChatModel must be provided for P2PAgent to extract variables from user's prompt.");
         }
         return AiServices.builder(VariablesExtractorAgent.class).chatModel(chatModel).build();
+    }
+
+    @Override
+    public Map<String, Object> executionState() {
+        return Map.of("invocationCounter", invocationCounter);
+    }
+
+    @Override
+    public void restoreExecutionState(Map<String, Object> state) {
+        Object savedCounter = state.get("invocationCounter");
+        if (savedCounter instanceof Number n) {
+            this.invocationCounter = n.intValue();
+        }
     }
 
     @Override

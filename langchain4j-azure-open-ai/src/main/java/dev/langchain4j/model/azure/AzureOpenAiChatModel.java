@@ -4,6 +4,7 @@ import static com.azure.ai.openai.models.CompletionsFinishReason.CONTENT_FILTERE
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.ModelProvider.AZURE_OPEN_AI;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.aiMessageFrom;
@@ -31,6 +32,7 @@ import com.azure.core.http.HttpClientProvider;
 import com.azure.core.http.ProxyOptions;
 import com.azure.core.http.policy.RetryOptions;
 import dev.langchain4j.exception.ContentFilteredException;
+import dev.langchain4j.exception.InternalServerException;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.azure.spi.AzureOpenAiChatModelBuilderFactory;
 import dev.langchain4j.model.chat.Capability;
@@ -61,7 +63,7 @@ import java.util.Set;
  * You need to provide the OpenAI API Key as a parameter, using the apiKey() method in the Builder, or the apiKey parameter in the constructor:
  * For example, you would use `builder.apiKey("{key}")`.
  * <p>
- * 2. non-Azure OpenAI API Key Authentication: this method allows to use the OpenAI service, instead of Azure OpenAI.
+ * 2. non-Azure OpenAI API Key Authentication: this method allows you to use the OpenAI service, instead of Azure OpenAI.
  * You can use the nonAzureApiKey() method in the Builder, which will also automatically set the endpoint to "https://api.openai.com/v1".
  * For example, you would use `builder.nonAzureApiKey("{key}")`.
  * The constructor requires a KeyCredential instance, which can be created using `new AzureKeyCredential("{key}")`, and doesn't set up the endpoint.
@@ -213,6 +215,10 @@ public class AzureOpenAiChatModel implements ChatModel {
 
         ChatCompletions chatCompletions = AzureOpenAiExceptionMapper.INSTANCE.withExceptionMapper(
                 () -> client.getChatCompletions(parameters.modelName(), options));
+
+        if (isNullOrEmpty(chatCompletions.getChoices())) {
+            throw new InternalServerException("Chat completion failed: no choices returned in response");
+        }
 
         ChatChoice chatChoice = chatCompletions.getChoices().get(0);
 

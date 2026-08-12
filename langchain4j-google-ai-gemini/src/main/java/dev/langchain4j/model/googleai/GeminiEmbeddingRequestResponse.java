@@ -17,14 +17,18 @@ public final class GeminiEmbeddingRequestResponse {
             @JsonProperty("outputDimensionality") Integer outputDimensionality) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    public record GeminiEmbeddingResponse(GeminiEmbeddingResponseValues embedding) {
+    public record GeminiEmbeddingResponse(
+            @JsonProperty("embedding") GeminiEmbeddingResponseValues embedding) {
         @JsonIgnoreProperties(ignoreUnknown = true)
-        public record GeminiEmbeddingResponseValues(List<Float> values) {}
+        public record GeminiEmbeddingResponseValues(
+                @JsonProperty("values") List<Float> values) {}
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    record GeminiBatchEmbeddingRequest(List<GeminiEmbeddingRequest> requests) {}
+    record GeminiBatchEmbeddingRequest(
+            @JsonProperty("requests") List<GeminiEmbeddingRequest> requests) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    record GeminiBatchEmbeddingResponse(List<GeminiEmbeddingResponseValues> embeddings) {}
+    record GeminiBatchEmbeddingResponse(
+            @JsonProperty("embeddings") List<GeminiEmbeddingResponseValues> embeddings) {}
 }

@@ -4,14 +4,17 @@ import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolCall;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialThinking;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onUnmappedRawEvent;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
 import static dev.langchain4j.model.ModelProvider.AMAZON_BEDROCK;
 import static java.util.Objects.isNull;
 
+import dev.langchain4j.internal.MappingTrackingStreamingChatResponseHandler;
 import dev.langchain4j.internal.ToolCallBuilder;
 import dev.langchain4j.model.ModelProvider;
+import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -19,6 +22,7 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.chat.response.StreamingHandle;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 import org.reactivestreams.Subscriber;
@@ -27,6 +31,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeAsyncClient;
+import software.amazon.awssdk.services.bedrockruntime.model.CacheTTL;
 import software.amazon.awssdk.services.bedrockruntime.model.ContentBlockDelta;
 import software.amazon.awssdk.services.bedrockruntime.model.ContentBlockDeltaEvent;
 import software.amazon.awssdk.services.bedrockruntime.model.ContentBlockStart;
@@ -79,8 +84,13 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
         AtomicReference<ContentBlockDelta.Type> currentContentType = new AtomicReference<>();
         AtomicReference<StreamingHandle> streamingHandle = new AtomicReference<>();
 
+        StreamingChatResponseHandler targetHandler = handler;
+
         ConverseStreamResponseHandler converseStreamResponseHandler = ConverseStreamResponseHandler.builder()
                 .onEventStream(publisher -> publisher.subscribe(new Subscriber<ConverseStreamOutput>() {
+
+                    final MappingTrackingStreamingChatResponseHandler handler =
+                            new MappingTrackingStreamingChatResponseHandler(targetHandler);
 
                     volatile Subscription subscription;
 
@@ -93,6 +103,7 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
 
                     @Override
                     public void onNext(ConverseStreamOutput output) {
+                        handler.resetMappingTracking();
                         if (output instanceof MessageStartEvent event) {
                             if (logResponses) {
                                 log.debug("onMessageStart: {}", event);
@@ -120,7 +131,7 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
                             } else if (currentContentType.get() == ContentBlockDelta.Type.REASONING_CONTENT) {
                                 ReasoningContentBlockDelta reasoningContent = delta.reasoningContent();
                                 String thinking = reasoningContent.text();
-                                if (isNotNullOrEmpty(thinking)) {
+                                if (returnThinking && isNotNullOrEmpty(thinking)) {
                                     onPartialThinking(handler, thinking, streamingHandle.get());
                                 }
                             } else if (currentContentType.get() == ContentBlockDelta.Type.TOOL_USE) {
@@ -151,6 +162,10 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
                             ChatResponse response =
                                     responseFrom(responseBuilder.build(), converseStreamRequest.modelId());
                             onCompleteResponse(handler, response);
+                        }
+
+                        if (!handler.wasMapped()) {
+                            onUnmappedRawEvent(handler, output);
                         }
 
                         subscription.request(1);
@@ -185,7 +200,9 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
         BedrockChatRequestParameters parameters = (BedrockChatRequestParameters) chatRequest.parameters();
 
         BedrockCachePointPlacement cachePointPlacement = parameters.cachePointPlacement();
+        CacheTTL cacheTtl = parameters.cacheTtl();
         BedrockGuardrailConfiguration bedrockGuardrailConfiguration = parameters.bedrockGuardrailConfiguration();
+        BedrockServiceTier bedrockServiceTier = parameters.serviceTier();
 
         // Validate total cache points don't exceed AWS limit
         boolean hasTools = chatRequest.toolSpecifications() != null
@@ -195,11 +212,13 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
         return ConverseStreamRequest.builder()
                 .modelId(chatRequest.modelName())
                 .inferenceConfig(inferenceConfigFrom(chatRequest.parameters()))
-                .system(extractSystemMessages(chatRequest.messages(), cachePointPlacement))
-                .messages(extractRegularMessages(chatRequest.messages(), cachePointPlacement))
-                .toolConfig(extractToolConfigurationFrom(chatRequest, cachePointPlacement))
+                .system(extractSystemMessages(chatRequest.messages(), cachePointPlacement, cacheTtl))
+                .messages(extractRegularMessages(chatRequest.messages(), cachePointPlacement, cacheTtl))
+                .toolConfig(extractToolConfigurationFrom(chatRequest, cachePointPlacement, cacheTtl))
                 .additionalModelRequestFields(additionalRequestModelFieldsFrom(chatRequest.parameters()))
                 .guardrailConfig(guardrailStreamConfigFrom(bedrockGuardrailConfiguration))
+                .outputConfig(outputConfigFrom(chatRequest.responseFormat()))
+                .serviceTier(serviceTierFor(bedrockServiceTier))
                 .build();
     }
 
@@ -222,6 +241,11 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
     }
 
     @Override
+    public Set<Capability> supportedCapabilities() {
+        return supportedCapabilities;
+    }
+
+    @Override
     public ModelProvider provider() {
         return AMAZON_BEDROCK;
     }
@@ -238,6 +262,8 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
                     config.apiCallTimeout(this.timeout);
                     if (logRequests || logResponses)
                         config.addExecutionInterceptor(new AwsLoggingInterceptor(logRequests, logResponses, logger));
+                    if (customHeadersSupplier != null)
+                        config.addExecutionInterceptor(new BedrockCustomHeadersInterceptor(customHeadersSupplier));
                 })
                 .build();
     }

@@ -5,6 +5,7 @@ import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOf
 
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import java.math.BigInteger;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -79,8 +80,7 @@ class AwsDocumentConverterTest {
     @Test
     void convert_json_to_primitive_types() {
         // Given
-        String json =
-                """
+        String json = """
                 {
                     "string": "test",
                     "integer": 42,
@@ -102,8 +102,7 @@ class AwsDocumentConverterTest {
     @Test
     void convert_json_to_list() {
         // Given
-        String json =
-                """
+        String json = """
                 {
                     "list": ["item1", 2, true]
                 }
@@ -122,8 +121,7 @@ class AwsDocumentConverterTest {
     @Test
     void convert_json_to_nested_object() {
         // Given
-        String json =
-                """
+        String json = """
                 {
                     "nested": {
                         "inner_key": "inner_value"
@@ -473,6 +471,44 @@ class AwsDocumentConverterTest {
         assertThat(json)
                 .containsIgnoringWhitespaces("\"longValue\": " + Long.MAX_VALUE)
                 .containsIgnoringWhitespaces("\"bigDecimal\": " + Double.MAX_VALUE);
+    }
+
+    @Test
+    void documentFromJson_preserves_long_value() {
+        // Given - a JSON integer larger than Integer.MAX_VALUE
+        String json = "{\"id\":9223372036854775807}";
+
+        // When
+        Document document = AwsDocumentConverter.documentFromJson(json);
+
+        // Then - the full long value must be preserved (no narrowing to int)
+        assertThat(document.asMap().get("id").asNumber().longValue()).isEqualTo(Long.MAX_VALUE);
+    }
+
+    @Test
+    void documentFromJson_preserves_big_integer_value() {
+        // Given - a JSON integer larger than Long.MAX_VALUE
+        BigInteger huge = BigInteger.valueOf(Long.MAX_VALUE).add(BigInteger.ONE);
+        String json = "{\"id\":" + huge + "}";
+
+        // When
+        Document document = AwsDocumentConverter.documentFromJson(json);
+
+        // Then - the full BigInteger value must be preserved
+        assertThat(document.asMap().get("id").asNumber().bigDecimalValue().toBigIntegerExact())
+                .isEqualTo(huge);
+    }
+
+    @Test
+    void documentFromJson_preserves_int_value() {
+        // Given - a regular int value (regression: in-range values stay unchanged)
+        String json = "{\"id\":42}";
+
+        // When
+        Document document = AwsDocumentConverter.documentFromJson(json);
+
+        // Then
+        assertThat(document.asMap().get("id").asNumber().intValue()).isEqualTo(42);
     }
 
     @Test

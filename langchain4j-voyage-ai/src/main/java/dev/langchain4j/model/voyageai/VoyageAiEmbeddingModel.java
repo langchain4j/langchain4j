@@ -1,6 +1,7 @@
 package dev.langchain4j.model.voyageai;
 
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
+import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.voyageai.VoyageAiClient.DEFAULT_BASE_URL;
@@ -8,10 +9,22 @@ import static java.time.Duration.ofSeconds;
 import static java.util.stream.Collectors.toList;
 
 import dev.langchain4j.data.embedding.Embedding;
+import dev.langchain4j.data.message.Content;
+import dev.langchain4j.data.message.ContentType;
+import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.http.client.HttpClientBuilder;
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.embedding.listener.EmbeddingModelListener;
+import dev.langchain4j.model.embedding.request.EmbeddingInput;
+import dev.langchain4j.model.embedding.request.EmbeddingInputType;
+import dev.langchain4j.model.embedding.request.EmbeddingParameter;
+import dev.langchain4j.model.embedding.request.EmbeddingRequestParameters;
+import dev.langchain4j.model.embedding.response.EmbeddingResponseMetadata;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import java.time.Duration;
@@ -19,6 +32,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Supplier;
 import org.slf4j.Logger;
 
@@ -35,6 +49,8 @@ public class VoyageAiEmbeddingModel extends DimensionAwareEmbeddingModel {
     private final Boolean truncation;
     private final String encodingFormat;
     private final Integer maxSegmentsPerBatch;
+    private final boolean multimodal;
+    private final List<EmbeddingModelListener> listeners;
 
     @Deprecated(forRemoval = true, since = "1.4.0")
     public VoyageAiEmbeddingModel(
@@ -57,6 +73,8 @@ public class VoyageAiEmbeddingModel extends DimensionAwareEmbeddingModel {
         this.truncation = truncation;
         this.inputType = inputType;
         this.encodingFormat = encodingFormat;
+        this.multimodal = isMultimodalModel(this.modelName);
+        this.listeners = List.of();
 
         this.client = VoyageAiClient.builder()
                 .httpClientBuilder(httpClientBuilder)
@@ -76,6 +94,8 @@ public class VoyageAiEmbeddingModel extends DimensionAwareEmbeddingModel {
         this.truncation = builder.truncation;
         this.inputType = builder.inputType;
         this.encodingFormat = builder.encodingFormat;
+        this.multimodal = getOrDefault(builder.multimodal, isMultimodalModel(this.modelName));
+        this.listeners = copy(builder.listeners);
 
         this.client = VoyageAiClient.builder()
                 .httpClientBuilder(builder.httpClientBuilder)
@@ -90,10 +110,99 @@ public class VoyageAiEmbeddingModel extends DimensionAwareEmbeddingModel {
     }
 
     @Override
-    public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
-        List<String> texts = textSegments.stream().map(TextSegment::text).collect(toList());
+    public Set<ContentType> supportedContentTypes() {
+        return multimodal ? Set.of(ContentType.TEXT, ContentType.IMAGE) : Set.of(ContentType.TEXT);
+    }
 
-        return embedTexts(texts);
+    @Override
+    public Set<EmbeddingParameter<?>> supportedParameters() {
+        return Set.of(EmbeddingRequestParameters.INPUT_TYPE);
+    }
+
+    @Override
+    public dev.langchain4j.model.embedding.response.EmbeddingResponse doEmbed(
+            dev.langchain4j.model.embedding.request.EmbeddingRequest request) {
+
+        String effectiveInputType = getOrDefault(toVoyageInputType(request.inputType()), inputType);
+
+        List<Embedding> embeddings = new ArrayList<>();
+        int totalTokens = 0;
+
+        List<EmbeddingInput> inputs = request.inputs();
+        String responseModelName = null;
+        for (int i = 0; i < inputs.size(); i += maxSegmentsPerBatch) {
+            List<EmbeddingInput> batch = inputs.subList(i, Math.min(i + maxSegmentsPerBatch, inputs.size()));
+
+            EmbeddingResponse wireResponse;
+            if (multimodal) {
+                MultimodalEmbeddingRequest wireRequest = MultimodalEmbeddingRequest.builder()
+                        .inputs(batch.stream().map(this::toMultimodalInput).collect(toList()))
+                        .model(modelName)
+                        .inputType(effectiveInputType)
+                        .truncation(truncation)
+                        .build();
+                wireResponse = withRetryMappingExceptions(() -> client.multimodalEmbed(wireRequest), maxRetries);
+            } else {
+                EmbeddingRequest wireRequest = EmbeddingRequest.builder()
+                        .input(batch.stream().map(EmbeddingInput::text).collect(toList()))
+                        .model(modelName)
+                        .inputType(effectiveInputType)
+                        .truncation(truncation)
+                        .encodingFormat(encodingFormat)
+                        .build();
+                wireResponse = withRetryMappingExceptions(() -> client.embed(wireRequest), maxRetries);
+            }
+            embeddings.addAll(getEmbeddings(wireResponse));
+            totalTokens += getTokenUsage(wireResponse);
+            if (responseModelName == null) {
+                responseModelName = wireResponse.getModel();
+            }
+        }
+
+        return dev.langchain4j.model.embedding.response.EmbeddingResponse.builder()
+                .embeddings(embeddings)
+                .metadata(EmbeddingResponseMetadata.builder()
+                        .modelName(getOrDefault(responseModelName, modelName))
+                        .tokenUsage(new TokenUsage(totalTokens))
+                        .build())
+                .build();
+    }
+
+    private MultimodalEmbeddingRequest.MultimodalInput toMultimodalInput(EmbeddingInput input) {
+        return new MultimodalEmbeddingRequest.MultimodalInput(
+                input.contents().stream().map(this::toContentBlock).collect(toList()));
+    }
+
+    private MultimodalEmbeddingRequest.ContentBlock toContentBlock(Content content) {
+        if (content instanceof TextContent textContent) {
+            return MultimodalEmbeddingRequest.ContentBlock.text(textContent.text());
+        }
+        if (content instanceof ImageContent imageContent) {
+            var image = imageContent.image();
+            if (image.url() != null) {
+                return MultimodalEmbeddingRequest.ContentBlock.imageUrl(image.url().toString());
+            }
+            if (image.base64Data() != null) {
+                String dataUrl = "data:" + getOrDefault(image.mimeType(), "image/png") + ";base64," + image.base64Data();
+                return MultimodalEmbeddingRequest.ContentBlock.imageBase64(dataUrl);
+            }
+            throw new UnsupportedFeatureException("ImageContent must have either a URL or base64 data");
+        }
+        throw new UnsupportedFeatureException("Unsupported content type: " + content.type());
+    }
+
+    private static String toVoyageInputType(EmbeddingInputType inputType) {
+        if (inputType == null) {
+            return null;
+        }
+        return switch (inputType) {
+            case QUERY -> "query";
+            case DOCUMENT -> "document";
+        };
+    }
+
+    private static boolean isMultimodalModel(String modelName) {
+        return modelName != null && modelName.contains("multimodal");
     }
 
     @Override
@@ -101,28 +210,14 @@ public class VoyageAiEmbeddingModel extends DimensionAwareEmbeddingModel {
         return this.modelName;
     }
 
-    private Response<List<Embedding>> embedTexts(List<String> texts) {
-        List<Embedding> embeddings = new ArrayList<>();
-        int inputTokenCount = 0;
+    @Override
+    public List<EmbeddingModelListener> listeners() {
+        return listeners;
+    }
 
-        for (int i = 0; i < texts.size(); i += maxSegmentsPerBatch) {
-            List<String> batch = texts.subList(i, Math.min(i + maxSegmentsPerBatch, texts.size()));
-
-            EmbeddingRequest request = EmbeddingRequest.builder()
-                    .input(batch)
-                    .inputType(inputType)
-                    .model(modelName)
-                    .truncation(truncation)
-                    .encodingFormat(encodingFormat)
-                    .build();
-
-            EmbeddingResponse response = withRetryMappingExceptions(() -> this.client.embed(request), maxRetries);
-
-            embeddings.addAll(getEmbeddings(response));
-            inputTokenCount += getTokenUsage(response);
-        }
-
-        return Response.from(embeddings, new TokenUsage(inputTokenCount));
+    @Override
+    public ModelProvider provider() {
+        return ModelProvider.VOYAGE_AI;
     }
 
     @Override
@@ -165,7 +260,16 @@ public class VoyageAiEmbeddingModel extends DimensionAwareEmbeddingModel {
         private Boolean logResponses;
         private Logger logger;
         private Integer maxSegmentsPerBatch;
+        private Boolean multimodal;
+        private List<EmbeddingModelListener> listeners;
 
+        /**
+         * Sets a custom HTTP client builder, allowing fine-grained control over the HTTP client
+         * configuration such as timeouts and proxy settings.
+         *
+         * @param httpClientBuilder the HTTP client builder
+         * @return {@code this}
+         */
         public Builder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
             this.httpClientBuilder = httpClientBuilder;
             return this;
@@ -189,21 +293,47 @@ public class VoyageAiEmbeddingModel extends DimensionAwareEmbeddingModel {
             return this;
         }
 
+        /**
+         * Sets the base URL of the Voyage AI API.
+         * Defaults to {@code "https://api.voyageai.com/v1/"}.
+         *
+         * @param baseUrl the base URL
+         * @return {@code this}
+         */
         public Builder baseUrl(String baseUrl) {
             this.baseUrl = baseUrl;
             return this;
         }
 
+        /**
+         * Sets the HTTP request timeout. Defaults to 60 seconds.
+         *
+         * @param timeout the request timeout
+         * @return {@code this}
+         */
         public Builder timeout(Duration timeout) {
             this.timeout = timeout;
             return this;
         }
 
+        /**
+         * Sets the maximum number of retries on transient errors. Defaults to {@code 3}.
+         *
+         * @param maxRetries the maximum number of retries
+         * @return {@code this}
+         */
         public Builder maxRetries(Integer maxRetries) {
             this.maxRetries = maxRetries;
             return this;
         }
 
+        /**
+         * Sets the Voyage AI API key used to authenticate requests.
+         * See <a href="https://dash.voyageai.com/api-keys">Voyage AI dashboard</a> to obtain a key.
+         *
+         * @param apiKey the Voyage AI API key
+         * @return {@code this}
+         */
         public Builder apiKey(String apiKey) {
             this.apiKey = apiKey;
             return this;
@@ -277,11 +407,23 @@ public class VoyageAiEmbeddingModel extends DimensionAwareEmbeddingModel {
             return this;
         }
 
+        /**
+         * Enables debug logging of request bodies sent to the Voyage AI API.
+         *
+         * @param logRequests {@code true} to enable request logging
+         * @return {@code this}
+         */
         public Builder logRequests(Boolean logRequests) {
             this.logRequests = logRequests;
             return this;
         }
 
+        /**
+         * Enables debug logging of response bodies received from the Voyage AI API.
+         *
+         * @param logResponses {@code true} to enable response logging
+         * @return {@code this}
+         */
         public Builder logResponses(Boolean logResponses) {
             this.logResponses = logResponses;
             return this;
@@ -296,8 +438,30 @@ public class VoyageAiEmbeddingModel extends DimensionAwareEmbeddingModel {
             return this;
         }
 
+        /**
+         * Sets the maximum number of text segments to include in a single embedding batch request.
+         * Defaults to {@code 72}.
+         *
+         * @param maxSegmentsPerBatch the maximum number of segments per batch
+         * @return {@code this}
+         */
         public Builder maxSegmentsPerBatch(Integer maxSegmentsPerBatch) {
             this.maxSegmentsPerBatch = maxSegmentsPerBatch;
+            return this;
+        }
+
+        /**
+         * Whether this is a multimodal model (e.g. {@code voyage-multimodal-3.5}), which is served on Voyage's
+         * {@code /multimodalembeddings} endpoint and can embed interleaved text and images. When not set, it is
+         * auto-detected from the model name (names containing {@code "multimodal"}).
+         */
+        public Builder multimodal(Boolean multimodal) {
+            this.multimodal = multimodal;
+            return this;
+        }
+
+        public Builder listeners(List<EmbeddingModelListener> listeners) {
+            this.listeners = listeners;
             return this;
         }
 

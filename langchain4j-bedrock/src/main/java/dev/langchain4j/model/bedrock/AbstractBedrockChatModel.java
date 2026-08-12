@@ -1,5 +1,6 @@
 package dev.langchain4j.model.bedrock;
 
+import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
@@ -19,6 +20,7 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static java.util.Objects.nonNull;
 import static software.amazon.awssdk.core.SdkBytes.fromByteArray;
+import static software.amazon.awssdk.services.bedrockruntime.model.OutputFormatType.JSON_SCHEMA;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -33,25 +35,33 @@ import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.internal.Json;
+import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
+import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.ToolChoice;
+import dev.langchain4j.model.chat.request.json.JsonRawSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.FinishReason;
 import java.net.URI;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -59,6 +69,9 @@ import software.amazon.awssdk.core.SdkBytes;
 import software.amazon.awssdk.core.document.Document;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.bedrockruntime.model.AnyToolChoice;
+import software.amazon.awssdk.services.bedrockruntime.model.CachePointBlock;
+import software.amazon.awssdk.services.bedrockruntime.model.CachePointType;
+import software.amazon.awssdk.services.bedrockruntime.model.CacheTTL;
 import software.amazon.awssdk.services.bedrockruntime.model.ContentBlock;
 import software.amazon.awssdk.services.bedrockruntime.model.ConversationRole;
 import software.amazon.awssdk.services.bedrockruntime.model.ConverseResponse;
@@ -68,13 +81,20 @@ import software.amazon.awssdk.services.bedrockruntime.model.DocumentFormat;
 import software.amazon.awssdk.services.bedrockruntime.model.DocumentSource;
 import software.amazon.awssdk.services.bedrockruntime.model.GuardrailConfiguration;
 import software.amazon.awssdk.services.bedrockruntime.model.GuardrailStreamConfiguration;
+import software.amazon.awssdk.services.bedrockruntime.model.GuardrailStreamProcessingMode;
 import software.amazon.awssdk.services.bedrockruntime.model.GuardrailTrace;
 import software.amazon.awssdk.services.bedrockruntime.model.ImageBlock;
 import software.amazon.awssdk.services.bedrockruntime.model.ImageSource;
 import software.amazon.awssdk.services.bedrockruntime.model.InferenceConfiguration;
+import software.amazon.awssdk.services.bedrockruntime.model.JsonSchemaDefinition;
 import software.amazon.awssdk.services.bedrockruntime.model.Message;
+import software.amazon.awssdk.services.bedrockruntime.model.OutputConfig;
+import software.amazon.awssdk.services.bedrockruntime.model.OutputFormat;
+import software.amazon.awssdk.services.bedrockruntime.model.OutputFormatStructure;
 import software.amazon.awssdk.services.bedrockruntime.model.ReasoningContentBlock;
 import software.amazon.awssdk.services.bedrockruntime.model.ReasoningTextBlock;
+import software.amazon.awssdk.services.bedrockruntime.model.ServiceTier;
+import software.amazon.awssdk.services.bedrockruntime.model.ServiceTierType;
 import software.amazon.awssdk.services.bedrockruntime.model.StopReason;
 import software.amazon.awssdk.services.bedrockruntime.model.SystemContentBlock;
 import software.amazon.awssdk.services.bedrockruntime.model.Tool;
@@ -98,13 +118,24 @@ abstract class AbstractBedrockChatModel {
     private static final int MAX_CACHE_POINTS_PER_REQUEST = 4;
 
     /**
-     * Reusable cache point block - AWS SDK model objects are immutable.
+     * Default cache point block with no TTL (5-minute default).
      */
-    private static final SystemContentBlock CACHE_POINT_BLOCK = SystemContentBlock.builder()
-            .cachePoint(software.amazon.awssdk.services.bedrockruntime.model.CachePointBlock.builder()
-                    .type(software.amazon.awssdk.services.bedrockruntime.model.CachePointType.DEFAULT)
-                    .build())
-            .build();
+    private static final CachePointBlock DEFAULT_CACHE_POINT =
+            CachePointBlock.builder().type(CachePointType.DEFAULT).build();
+
+    /**
+     * Creates a CachePointBlock with the specified TTL.
+     * If cacheTtl is null, returns the default cache point (5-minute TTL).
+     */
+    private static CachePointBlock buildCachePoint(CacheTTL cacheTtl) {
+        if (cacheTtl == null) {
+            return DEFAULT_CACHE_POINT;
+        }
+        return CachePointBlock.builder()
+                .type(CachePointType.DEFAULT)
+                .ttl(cacheTtl)
+                .build();
+    }
 
     protected final Region region;
     protected final Duration timeout;
@@ -112,6 +143,8 @@ abstract class AbstractBedrockChatModel {
     protected final boolean sendThinking;
     protected final BedrockChatRequestParameters defaultRequestParameters;
     protected final List<ChatModelListener> listeners;
+    protected final Set<Capability> supportedCapabilities;
+    protected final Supplier<Map<String, String>> customHeadersSupplier;
 
     protected AbstractBedrockChatModel(AbstractBuilder<?> builder) {
         this.region = getOrDefault(builder.region, Region.US_EAST_1);
@@ -119,6 +152,8 @@ abstract class AbstractBedrockChatModel {
         this.returnThinking = getOrDefault(builder.returnThinking, false);
         this.sendThinking = getOrDefault(builder.sendThinking, true);
         this.listeners = copy(builder.listeners);
+        this.supportedCapabilities = copy(builder.supportedCapabilities);
+        this.customHeadersSupplier = builder.customHeadersSupplier;
 
         ChatRequestParameters commonParameters;
         if (builder.defaultRequestParameters != null) {
@@ -142,19 +177,26 @@ abstract class AbstractBedrockChatModel {
                 .stopSequences(commonParameters.stopSequences())
                 .toolSpecifications(commonParameters.toolSpecifications())
                 .toolChoice(commonParameters.toolChoice())
+                .responseFormat(commonParameters.responseFormat())
                 // Bedrock-specific parameters
                 .additionalModelRequestFields(bedrockParameters.additionalModelRequestFields())
-                .promptCaching(bedrockParameters.cachePointPlacement())
+                .promptCaching(bedrockParameters.cachePointPlacement(), bedrockParameters.cacheTtl())
                 .guardrailConfiguration(bedrockParameters.bedrockGuardrailConfiguration())
+                .serviceTier(bedrockParameters.serviceTier())
                 .build();
     }
 
     protected List<SystemContentBlock> extractSystemMessages(List<ChatMessage> messages) {
-        return extractSystemMessages(messages, null);
+        return extractSystemMessages(messages, null, null);
     }
 
     protected List<SystemContentBlock> extractSystemMessages(
             List<ChatMessage> messages, BedrockCachePointPlacement cachePointPlacement) {
+        return extractSystemMessages(messages, cachePointPlacement, null);
+    }
+
+    protected List<SystemContentBlock> extractSystemMessages(
+            List<ChatMessage> messages, BedrockCachePointPlacement cachePointPlacement, CacheTTL cacheTtl) {
         if (messages == null) {
             return new ArrayList<>();
         }
@@ -178,7 +220,9 @@ abstract class AbstractBedrockChatModel {
 
                         // Add cache point AFTER this content block if marked
                         if (textContent.hasCachePoint()) {
-                            systemBlocks.add(CACHE_POINT_BLOCK);
+                            systemBlocks.add(SystemContentBlock.builder()
+                                    .cachePoint(buildCachePoint(cacheTtl))
+                                    .build());
                         }
                     } else {
                         // Fail fast for unknown content types to prevent silent data loss
@@ -202,7 +246,9 @@ abstract class AbstractBedrockChatModel {
         // 3. The LAST system message was a core SystemMessage (not BedrockSystemMessage)
         if (cachePointPlacement == BedrockCachePointPlacement.AFTER_SYSTEM && !systemBlocks.isEmpty()) {
             if (lastWasCoreSystemMessage) {
-                systemBlocks.add(CACHE_POINT_BLOCK);
+                systemBlocks.add(SystemContentBlock.builder()
+                        .cachePoint(buildCachePoint(cacheTtl))
+                        .build());
             } else {
                 log.warn("BedrockCachePointPlacement.AFTER_SYSTEM is configured but ignored because "
                         + "the last system message is a BedrockSystemMessage with granular cache points. "
@@ -215,11 +261,16 @@ abstract class AbstractBedrockChatModel {
     }
 
     protected List<Message> extractRegularMessages(List<ChatMessage> messages) {
-        return extractRegularMessages(messages, null);
+        return extractRegularMessages(messages, null, null);
     }
 
     protected List<Message> extractRegularMessages(
             List<ChatMessage> messages, BedrockCachePointPlacement cachePointPlacement) {
+        return extractRegularMessages(messages, cachePointPlacement, null);
+    }
+
+    protected List<Message> extractRegularMessages(
+            List<ChatMessage> messages, BedrockCachePointPlacement cachePointPlacement, CacheTTL cacheTtl) {
         if (messages == null) {
             return new ArrayList<>();
         }
@@ -228,6 +279,17 @@ abstract class AbstractBedrockChatModel {
         List<ContentBlock> currentBlocks = new ArrayList<>();
         boolean firstUserMessageProcessed = false;
 
+        // Find the index of the last user message for AFTER_LAST_USER_MESSAGE placement
+        int lastUserMessageIndex = -1;
+        if (cachePointPlacement == BedrockCachePointPlacement.AFTER_LAST_USER_MESSAGE) {
+            for (int i = messages.size() - 1; i >= 0; i--) {
+                if (messages.get(i) instanceof UserMessage) {
+                    lastUserMessageIndex = i;
+                    break;
+                }
+            }
+        }
+
         for (int i = 0; i < messages.size(); i++) {
             ChatMessage msg = messages.get(i);
             if (msg == null) {
@@ -235,26 +297,32 @@ abstract class AbstractBedrockChatModel {
             }
             if (msg instanceof ToolExecutionResultMessage toolResult) {
                 handleToolResult(toolResult, currentBlocks, bedrockMessages, i, messages);
-            } else if (!(msg instanceof SystemMessage) && !(msg instanceof BedrockSystemMessage)) {
+            } else if ((msg instanceof UserMessage) || (msg instanceof AiMessage)) {
                 Message bedrockMessage = convertToBedRockMessage(msg);
 
-                if (cachePointPlacement == BedrockCachePointPlacement.AFTER_USER_MESSAGE
-                        && msg instanceof UserMessage
-                        && !firstUserMessageProcessed) {
+                boolean shouldAddCachePoint = false;
 
+                if (msg instanceof UserMessage) {
+                    if (cachePointPlacement == BedrockCachePointPlacement.AFTER_USER_MESSAGE
+                            && !firstUserMessageProcessed) {
+                        shouldAddCachePoint = true;
+                        firstUserMessageProcessed = true;
+                    } else if (cachePointPlacement == BedrockCachePointPlacement.AFTER_LAST_USER_MESSAGE
+                            && i == lastUserMessageIndex) {
+                        shouldAddCachePoint = true;
+                    }
+                }
+
+                if (shouldAddCachePoint) {
                     List<ContentBlock> contentWithCachePoint = new ArrayList<>(bedrockMessage.content());
                     contentWithCachePoint.add(ContentBlock.builder()
-                            .cachePoint(software.amazon.awssdk.services.bedrockruntime.model.CachePointBlock.builder()
-                                    .type(software.amazon.awssdk.services.bedrockruntime.model.CachePointType.DEFAULT)
-                                    .build())
+                            .cachePoint(buildCachePoint(cacheTtl))
                             .build());
 
                     bedrockMessage = Message.builder()
                             .role(bedrockMessage.role())
                             .content(contentWithCachePoint)
                             .build();
-
-                    firstUserMessageProcessed = true;
                 }
 
                 bedrockMessages.add(bedrockMessage);
@@ -285,12 +353,45 @@ abstract class AbstractBedrockChatModel {
     }
 
     protected ContentBlock createToolResultBlock(ToolExecutionResultMessage toolResult) {
+        if (toolResult.hasSingleText()) {
+            return ContentBlock.builder()
+                    .toolResult(ToolResultBlock.builder()
+                            .toolUseId(toolResult.id())
+                            .content(ToolResultContentBlock.builder()
+                                    .text(toolResult.text())
+                                    .build())
+                            .build())
+                    .build();
+        }
+
+        List<ToolResultContentBlock> contentBlocks = new ArrayList<>();
+        for (Content content : toolResult.contents()) {
+            if (content instanceof TextContent textContent) {
+                contentBlocks.add(ToolResultContentBlock.builder()
+                        .text(textContent.text())
+                        .build());
+            } else if (content instanceof ImageContent imageContent) {
+                SdkBytes bytes = fromByteArray(
+                        nonNull(imageContent.image().base64Data())
+                                ? Base64.getDecoder()
+                                        .decode(imageContent.image().base64Data())
+                                : readBytes(String.valueOf(imageContent.image().url())));
+                String imgFormat = extractAndValidateFormat(imageContent.image());
+                contentBlocks.add(ToolResultContentBlock.builder()
+                        .image(ImageBlock.builder()
+                                .format(imgFormat)
+                                .source(ImageSource.builder().bytes(bytes).build())
+                                .build())
+                        .build());
+            } else {
+                throw new UnsupportedFeatureException("Bedrock does not support content type '" + content.type()
+                        + "' in tool results. Only text and image content are supported.");
+            }
+        }
         return ContentBlock.builder()
                 .toolResult(ToolResultBlock.builder()
                         .toolUseId(toolResult.id())
-                        .content(ToolResultContentBlock.builder()
-                                .text(toolResult.text())
-                                .build())
+                        .content(contentBlocks)
                         .build())
                 .build();
     }
@@ -398,11 +499,16 @@ abstract class AbstractBedrockChatModel {
     }
 
     protected ToolConfiguration extractToolConfigurationFrom(ChatRequest chatRequest) {
-        return extractToolConfigurationFrom(chatRequest, null);
+        return extractToolConfigurationFrom(chatRequest, null, null);
     }
 
     protected ToolConfiguration extractToolConfigurationFrom(
             ChatRequest chatRequest, BedrockCachePointPlacement cachePointPlacement) {
+        return extractToolConfigurationFrom(chatRequest, cachePointPlacement, null);
+    }
+
+    protected ToolConfiguration extractToolConfigurationFrom(
+            ChatRequest chatRequest, BedrockCachePointPlacement cachePointPlacement, CacheTTL cacheTtl) {
         List<ToolSpecification> toolSpecifications = chatRequest.toolSpecifications();
         ChatRequestParameters parameters = chatRequest.parameters();
 
@@ -428,11 +534,8 @@ abstract class AbstractBedrockChatModel {
             allTools.addAll(tools);
 
             if (cachePointPlacement == BedrockCachePointPlacement.AFTER_TOOLS) {
-                allTools.add(Tool.builder()
-                        .cachePoint(software.amazon.awssdk.services.bedrockruntime.model.CachePointBlock.builder()
-                                .type(software.amazon.awssdk.services.bedrockruntime.model.CachePointType.DEFAULT)
-                                .build())
-                        .build());
+                allTools.add(
+                        Tool.builder().cachePoint(buildCachePoint(cacheTtl)).build());
             }
         }
 
@@ -488,6 +591,7 @@ abstract class AbstractBedrockChatModel {
      *       Note: AFTER_SYSTEM is ignored if the last system message is a BedrockSystemMessage,
      *       as granular cache points take precedence.</li>
      *   <li><b>AFTER_USER_MESSAGE placement:</b> Adds 1 cache point if configured and user messages exist</li>
+     *   <li><b>AFTER_LAST_USER_MESSAGE placement:</b> Adds 1 cache point if configured and user messages exist</li>
      *   <li><b>AFTER_TOOLS placement:</b> Adds 1 cache point if configured and tools are present</li>
      * </ol>
      *
@@ -539,6 +643,10 @@ abstract class AbstractBedrockChatModel {
             }
             // AFTER_USER_MESSAGE adds cache point after the first user message
             if (cachePointPlacement == BedrockCachePointPlacement.AFTER_USER_MESSAGE && hasUserMessage) {
+                count++;
+            }
+            // AFTER_LAST_USER_MESSAGE adds cache point after the last user message
+            if (cachePointPlacement == BedrockCachePointPlacement.AFTER_LAST_USER_MESSAGE && hasUserMessage) {
                 count++;
             }
             // AFTER_TOOLS adds cache point after tool definitions (only if tools exist)
@@ -660,11 +768,39 @@ abstract class AbstractBedrockChatModel {
             return null;
         }
 
+        GuardrailStreamProcessingMode mode = null;
+
+        if (bedrockGuardrailConfiguration.streamProcessingMode() != null) {
+            switch (bedrockGuardrailConfiguration.streamProcessingMode()) {
+                case SYNC -> mode = GuardrailStreamProcessingMode.SYNC;
+                case ASYNC -> mode = GuardrailStreamProcessingMode.ASYNC;
+            }
+        }
+
         return GuardrailStreamConfiguration.builder()
                 .guardrailVersion(bedrockGuardrailConfiguration.guardrailVersion())
                 .guardrailIdentifier(bedrockGuardrailConfiguration.guardrailIdentifier())
                 .trace(GuardrailTrace.ENABLED)
+                .streamProcessingMode(mode)
                 .build();
+    }
+
+    protected ServiceTier serviceTierFor(BedrockServiceTier bedrockServiceTier) {
+        if (bedrockServiceTier == null) {
+            return null;
+        }
+
+        ServiceTierType serviceTierType;
+
+        switch (bedrockServiceTier) {
+            case PRIORITY -> serviceTierType = ServiceTierType.PRIORITY;
+            case DEFAULT -> serviceTierType = ServiceTierType.DEFAULT;
+            case FLEX -> serviceTierType = ServiceTierType.FLEX;
+            case RESERVED -> serviceTierType = ServiceTierType.RESERVED;
+            default -> throw new IllegalArgumentException("Unknown service tier type: " + bedrockServiceTier);
+        }
+
+        return ServiceTier.builder().type(serviceTierType).build();
     }
 
     protected Document additionalRequestModelFieldsFrom(ChatRequestParameters chatRequestParameters) {
@@ -685,7 +821,7 @@ abstract class AbstractBedrockChatModel {
 
     protected GuardrailAssessmentSummary guardrailAssessmentSummaryFrom(ConverseTrace trace) {
 
-        if (trace == null) {
+        if (trace == null || trace.guardrail() == null) {
             return null;
         }
 
@@ -879,7 +1015,7 @@ abstract class AbstractBedrockChatModel {
                 }
             }
 
-            builder.ouputAssessments(outputAssessments);
+            builder.outputAssessments(outputAssessments);
         }
 
         return builder.build();
@@ -897,10 +1033,44 @@ abstract class AbstractBedrockChatModel {
         if (parameters.presencePenalty() != null) {
             throw new UnsupportedFeatureException(String.format(errorTemplate, "'presencePenalty' parameter"));
         }
-        if (nonNull(parameters.responseFormat())
-                && parameters.responseFormat().type().equals(ResponseFormatType.JSON)) {
-            throw new UnsupportedFeatureException(String.format(errorTemplate, "JSON response format"));
+    }
+
+    /**
+     * Builds OutputConfig for structured output support based on the ResponseFormat.
+     * When a JSON schema is provided, it creates the appropriate TextFormat configuration.
+     *
+     * @param responseFormat the response format specification
+     * @return OutputConfig if JSON format with schema is requested, null otherwise
+     */
+    protected static OutputConfig outputConfigFrom(ResponseFormat responseFormat) {
+        if (responseFormat == null || responseFormat.type() != ResponseFormatType.JSON) {
+            return null;
         }
+
+        JsonSchema jsonSchema = responseFormat.jsonSchema();
+        if (jsonSchema == null) {
+            throw new UnsupportedFeatureException("JSON response format is not supported without a schema");
+        }
+
+        String jsonSchemaString;
+        if (jsonSchema.rootElement() instanceof JsonRawSchema rawSchema) {
+            jsonSchemaString = rawSchema.schema();
+        } else {
+            Map<String, Object> jsonSchemaMap = toMap(jsonSchema.rootElement(), true, true, "string");
+            jsonSchemaString = Json.toJson(jsonSchemaMap);
+        }
+
+        return OutputConfig.builder()
+                .textFormat(OutputFormat.builder()
+                        .type(JSON_SCHEMA)
+                        .structure(OutputFormatStructure.builder()
+                                .jsonSchema(JsonSchemaDefinition.builder()
+                                        .schema(jsonSchemaString)
+                                        .name(jsonSchema.name())
+                                        .build())
+                                .build())
+                        .build())
+                .build();
     }
 
     protected static Float dblToFloat(Double d) {
@@ -930,6 +1100,8 @@ abstract class AbstractBedrockChatModel {
         protected Boolean logResponses;
         protected Logger logger;
         protected List<ChatModelListener> listeners;
+        protected Set<Capability> supportedCapabilities;
+        protected Supplier<Map<String, String>> customHeadersSupplier;
 
         @SuppressWarnings("unchecked")
         public T self() {
@@ -1034,6 +1206,26 @@ abstract class AbstractBedrockChatModel {
 
         public T listeners(ChatModelListener... listeners) {
             return listeners(asList(listeners));
+        }
+
+        public T supportedCapabilities(Set<Capability> supportedCapabilities) {
+            this.supportedCapabilities = supportedCapabilities;
+            return self();
+        }
+
+        public T supportedCapabilities(Capability... supportedCapabilities) {
+            this.supportedCapabilities = Arrays.stream(supportedCapabilities).collect(Collectors.toSet());
+            return self();
+        }
+
+        public T customHeaders(Map<String, String> customHeaders) {
+            this.customHeadersSupplier = () -> customHeaders;
+            return self();
+        }
+
+        public T customHeaders(Supplier<Map<String, String>> customHeadersSupplier) {
+            this.customHeadersSupplier = customHeadersSupplier;
+            return self();
         }
     }
 }

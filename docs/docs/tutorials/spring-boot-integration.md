@@ -20,14 +20,27 @@ and other core LangChain4j components through properties.
 To use one of the [Spring Boot starters](https://github.com/langchain4j/langchain4j-spring),
 import the corresponding dependency.
 
-The naming convention for the Spring Boot starter dependency is: `langchain4j-{integration-name}-spring-boot-starter`.
+The naming convention for the Spring Boot starter dependency is:
+- `langchain4j-{integration-name}-spring-boot-starter` for **Spring Boot 3**
+- `langchain4j-{integration-name}-spring-boot4-starter` for **Spring Boot 4**
 
-For example, for OpenAI (`langchain4j-open-ai`), the dependency name would be `langchain4j-open-ai-spring-boot-starter`:
+For example, for OpenAI (`langchain4j-open-ai`):
+
+**Spring Boot 3:**
+ ```xml
+ <dependency>
+     <groupId>dev.langchain4j</groupId>
+     <artifactId>langchain4j-open-ai-spring-boot-starter</artifactId>
+     <version>1.18.1-beta28</version>
+ </dependency>
+```
+
+**Spring Boot 4:**
 ```xml
 <dependency>
     <groupId>dev.langchain4j</groupId>
-    <artifactId>langchain4j-open-ai-spring-boot-starter</artifactId>
-    <version>1.11.0-beta19</version>
+    <artifactId>langchain4j-open-ai-spring-boot4-starter</artifactId>
+    <version>1.18.1-beta28</version>
 </dependency>
 ```
 
@@ -73,12 +86,23 @@ LangChain4j provides a Spring Boot starter for auto-configuring
 [AI Services](/tutorials/ai-services), [RAG](/tutorials/rag), [Tools](/tutorials/tools) etc.
 
 Assuming you have already imported one of the integrations starters (see above),
-import `langchain4j-spring-boot-starter`:
+import `langchain4j-spring-boot-starter` (Spring Boot 3) or `langchain4j-spring-boot4-starter` (Spring Boot 4):
+
+**Spring Boot 3:**
 ```xml
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-spring-boot-starter</artifactId>
-    <version>1.11.0-beta19</version>
+    <version>1.18.1-beta28</version>
+</dependency>
+```
+
+**Spring Boot 4:**
+```xml
+<dependency>
+    <groupId>dev.langchain4j</groupId>
+    <artifactId>langchain4j-spring-boot4-starter</artifactId>
+    <version>1.18.1-beta28</version>
 </dependency>
 ```
 
@@ -187,7 +211,8 @@ interface OllamaAssistant {
 In this case, you must explicitly specify **all** components.
 :::
 
-More details can be found [here](https://github.com/langchain4j/langchain4j-spring/blob/main/langchain4j-spring-boot-starter/src/main/java/dev/langchain4j/service/spring/AiService.java).
+More details can be found [here](https://github.com/langchain4j/langchain4j-spring/blob/main/langchain4j-spring-boot-starter/src/main/java/dev/langchain4j/service/spring/AiService.java)
+(same API for the Spring Boot 4 variant).
 
 ### Listening for AI Service Registration Events
 
@@ -273,12 +298,12 @@ For Maven:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-micrometer-metrics</artifactId>
-    <version>1.12.0-beta20</version>
+    <version>1.18.1-beta28</version>
 </dependency>
 ```
 For Gradle:
 ```gradle
-implementation 'dev.langchain4j:langchain4j-micrometer-metrics:1.12.0-beta20'
+implementation 'dev.langchain4j:langchain4j-micrometer-metrics:1.18.1-beta28'
 ```
 
 #### Micrometer (Actuator) Configuration
@@ -357,6 +382,44 @@ The `gen_ai.token.type` tag indicates whether the tokens were used for input or 
 
 > **Note**: The `gen_ai.client.token.usage` metric is a histogram (DistributionSummary). The endpoint without any tags shows aggregated statistics (count, total, max) across all token types, models, and providers.
 
+### Micrometer Observation API
+
+This implements the `ChatModelListener` using the [Micrometer Observation API](https://docs.micrometer.io/micrometer/reference/observation.html) allowing transparent generation of Metrics and Traces by adding the following dependency:
+
+For Maven:
+```xml
+<dependency>
+    <groupId>dev.langchain4j</groupId>
+    <artifactId>langchain4j-observation</artifactId>
+</dependency>
+```
+For Gradle:
+```gradle
+implementation 'dev.langchain4j:langchain4j-observation'
+```
+
+You need to instantiate the Observation listener as follows...
+
+#### Configure the ObservationChatModelListener bean
+
+```java
+@Configuration
+public class ObservationConfig {
+
+    @Bean
+    public ObservationChatModelListener listener(ObservationRegistry observationRegistry, MeterRegistry meterRegistry) {
+        return new ObservationChatModelListener(observationRegistry, meterRegistry);
+    }
+}
+```
+
+This dependency requires the configuration of the [SpringBoot Actuator](spring-boot-integration.md#micrometer-actuator-configuration), as described above.
+
+For additional observability requirements on a SpringBoot application please follow:
+[Building Your First Observed Application](https://spring.io/blog/2022/10/12/observability-with-spring-boot-3#building-your-first-observed-application)
+
+For more details about the `langchain4j-observation` library, please check the [Observability documentation](observability.md#micrometer-observation-api). 
+
 
 ## Testing
 
@@ -364,9 +427,11 @@ The `gen_ai.token.type` tag indicates whether the tokens were used for input or 
 
 ## Supported versions
 
-LangChain4j Spring Boot integration requires Java 17 and Spring Boot 3.5, in line with the [Spring Boot OSS support policy](https://spring.io/projects/spring-boot#support).
+LangChain4j Spring Boot integration requires Java 17 and supports both:
+- **Spring Boot 3** (3.5+) — use starters with the `-spring-boot-starter` suffix, in line with the [Spring Boot OSS support policy](https://spring.io/projects/spring-boot#support)
+- **Spring Boot 4** (4.0+) — use starters with the `-spring-boot4-starter` suffix
 
-Support for Spring Boot 4.x is not available yet in LangChain4j, but it's planned for a future release.
+Both families are released together and share the same version number. Choose the set of starters that matches the Spring Boot version in your project.
 
 ## Examples
 - [Low-level Spring Boot example](https://github.com/langchain4j/langchain4j-examples/blob/main/spring-boot-example/src/main/java/dev/langchain4j/example/lowlevel/ChatModelController.java) using [ChatModel API](/tutorials/chat-and-language-models)

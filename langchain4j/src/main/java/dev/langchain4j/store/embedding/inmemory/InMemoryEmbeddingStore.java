@@ -128,19 +128,19 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
         entries.removeIf(entry -> idSet.contains(entry.id));
     }
 
+    /**
+     * Removes all entries whose embedded object matches the given {@link Filter}.
+     * <p>
+     * Filtering is applied only to entries whose embedded object is a {@link TextSegment},
+     * by testing the filter against the segment's {@link Metadata}.
+     * Entries whose embedded object is {@code null} or is not a {@link TextSegment} are considered
+     * non-matching and are therefore never removed.
+     */
     @Override
     public void removeAll(Filter filter) {
         ensureNotNull(filter, "filter");
 
-        entries.removeIf(entry -> {
-            if (entry.embedded instanceof TextSegment) {
-                return filter.test(((TextSegment) entry.embedded).metadata());
-            } else if (entry.embedded == null) {
-                return false;
-            } else {
-                throw new UnsupportedOperationException("Not supported yet.");
-            }
-        });
+        entries.removeIf(entry -> matchesFilter(entry.embedded, filter));
     }
 
     @Override
@@ -148,6 +148,16 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
         entries.clear();
     }
 
+    /**
+     * Searches for the embeddings most similar to the query embedding, optionally constrained by a {@link Filter}.
+     * <p>
+     * When a filter is present, it is applied only to entries whose embedded object is a {@link TextSegment},
+     * by testing the filter against the segment's {@link Metadata}.
+     * Entries whose embedded object is {@code null} or is not a {@link TextSegment} are considered
+     * non-matching and are therefore excluded from the results.
+     * <p>
+     * When no filter is present, all entries are eligible regardless of their embedded object type.
+     */
     @Override
     public EmbeddingSearchResult<Embedded> search(EmbeddingSearchRequest embeddingSearchRequest) {
 
@@ -158,11 +168,8 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
 
         for (Entry<Embedded> entry : entries) {
 
-            if (filter != null && entry.embedded instanceof TextSegment) {
-                Metadata metadata = ((TextSegment) entry.embedded).metadata();
-                if (!filter.test(metadata)) {
-                    continue;
-                }
+            if (!matchesFilter(entry.embedded, filter)) {
+                continue;
             }
 
             double cosineSimilarity =
@@ -255,6 +262,23 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
     public static <Embedded> InMemoryEmbeddingStore<Embedded> merge(
             InMemoryEmbeddingStore<Embedded> first, InMemoryEmbeddingStore<Embedded> second) {
         return merge(asList(first, second));
+    }
+
+    /**
+     * Tests whether an embedded object matches the given {@link Filter}.
+     *
+     * @return {@code true} if the filter is {@code null} (no filtering requested), or if the embedded object
+     *         is a {@link TextSegment} whose {@link Metadata} passes the filter;
+     *         {@code false} otherwise, including when the embedded object is {@code null} or not a {@link TextSegment}.
+     */
+    private static boolean matchesFilter(Object embedded, Filter filter) {
+        if (filter == null) {
+            return true;
+        }
+        if (embedded instanceof TextSegment) {
+            return filter.test(((TextSegment) embedded).metadata());
+        }
+        return false;
     }
 
     static class Entry<Embedded> {

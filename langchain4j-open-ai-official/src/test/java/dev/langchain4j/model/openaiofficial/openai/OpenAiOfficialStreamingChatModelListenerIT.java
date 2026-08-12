@@ -15,6 +15,7 @@ class OpenAiOfficialStreamingChatModelListenerIT extends AbstractStreamingChatMo
     @Override
     protected StreamingChatModel createModel(ChatModelListener listener) {
         return OpenAiOfficialStreamingChatModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .modelName(modelName())
                 .temperature(temperature())

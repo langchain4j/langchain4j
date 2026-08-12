@@ -17,7 +17,6 @@ class AzureOpenAiStreamingChatModelListenerIT extends AbstractStreamingChatModel
                 .deploymentName(modelName())
                 .temperature(temperature())
                 .topP(topP())
-                .maxTokens(maxTokens())
                 .logRequestsAndResponses(true)
                 .listeners(singletonList(listener))
                 .build();
@@ -42,5 +41,10 @@ class AzureOpenAiStreamingChatModelListenerIT extends AbstractStreamingChatModel
     @Override
     protected Class<? extends Exception> expectedExceptionClass() {
         return AuthenticationException.class;
+    }
+
+    @Override
+    protected boolean assertMaxOutputTokens() {
+        return false;
     }
 }

@@ -4,8 +4,6 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.Calendar;
-import java.util.Date;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
 
@@ -19,7 +17,7 @@ class OutputParserTest implements WithAssertions {
         assertThat(parser.parse("3.14")).isEqualTo(new BigDecimal("3.14"));
         assertThat(parser.parse(" 3.14 ")).isEqualTo(new BigDecimal("3.14"));
 
-        assertThatExceptionOfType(NumberFormatException.class).isThrownBy(() -> parser.parse("3.14.15"));
+        assertThatExceptionOfType(OutputParsingException.class).isThrownBy(() -> parser.parse("3.14.15"));
     }
 
     @Test
@@ -30,7 +28,7 @@ class OutputParserTest implements WithAssertions {
         assertThat(parser.parse("42")).isEqualTo(42);
         assertThat(parser.parse(" 42 ")).isEqualTo(42);
 
-        assertThatExceptionOfType(NumberFormatException.class).isThrownBy(() -> parser.parse("42.0"));
+        assertThatExceptionOfType(OutputParsingException.class).isThrownBy(() -> parser.parse("42.0"));
     }
 
     @Test
@@ -41,24 +39,10 @@ class OutputParserTest implements WithAssertions {
         assertThat(parser.parse("42")).isEqualTo((byte) 42);
         assertThat(parser.parse(" 42 ")).isEqualTo((byte) 42);
         assertThat(parser.parse("-42")).isEqualTo((byte) -42);
+        // A whole number expressed with a trailing ".0" is now accepted, consistent with IntegerOutputParser.
+        assertThat(parser.parse("42.0")).isEqualTo((byte) 42);
 
-        assertThatExceptionOfType(NumberFormatException.class).isThrownBy(() -> parser.parse("42.0"));
-    }
-
-    @Test
-    @SuppressWarnings("deprecation")
-    void date() {
-        DateOutputParser parser = new DateOutputParser();
-        assertThat(parser.formatInstructions()).isEqualTo("yyyy-MM-dd");
-
-        assertThat(parser.parse("2020-01-12"))
-                .isEqualTo(parser.parse("2020-01-12"))
-                .isEqualTo(parser.parse(" 2020-01-12 "))
-                .isEqualTo(new Date(120, Calendar.JANUARY, 12));
-
-        assertThatExceptionOfType(RuntimeException.class)
-                .isThrownBy(() -> parser.parse("01-12-2020"))
-                .withMessage("Invalid date format: 01-12-2020");
+        assertThatExceptionOfType(OutputParsingException.class).isThrownBy(() -> parser.parse("not a byte"));
     }
 
     @Test
@@ -111,7 +95,9 @@ class OutputParserTest implements WithAssertions {
         assertThat(parser.parse("42")).isEqualTo((short) 42);
         assertThat(parser.parse(" 42 ")).isEqualTo((short) 42);
         assertThat(parser.parse("-42")).isEqualTo((short) -42);
+        // A whole number expressed with a trailing ".0" is now accepted, consistent with IntegerOutputParser.
+        assertThat(parser.parse("42.0")).isEqualTo((short) 42);
 
-        assertThatExceptionOfType(NumberFormatException.class).isThrownBy(() -> parser.parse("42.0"));
+        assertThatExceptionOfType(OutputParsingException.class).isThrownBy(() -> parser.parse("not a short"));
     }
 }

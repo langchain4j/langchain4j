@@ -29,9 +29,6 @@ class GoogleAiGeminiChatModelThinkingIT {
     private static final String GOOGLE_AI_GEMINI_API_KEY = System.getenv("GOOGLE_AI_GEMINI_API_KEY");
     static final int THOUGHT_LENGTH_THRESHOLD = 100; // TODO this is brittle, check raw HTTP responses instead
 
-    private final SpyingHttpClient spyingHttpClient =
-            new SpyingHttpClient(JdkHttpClient.builder().build());
-
     @ParameterizedTest
     @ValueSource(booleans = {true, false})
     void should_think_and_return_thinking(boolean sendThinking) {
@@ -39,6 +36,8 @@ class GoogleAiGeminiChatModelThinkingIT {
         // given
         boolean includeThoughts = true;
         boolean returnThinking = true;
+
+        SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder().build());
 
         GeminiThinkingConfig thinkingConfig = GeminiThinkingConfig.builder()
                 .includeThoughts(includeThoughts)
@@ -151,6 +150,8 @@ class GoogleAiGeminiChatModelThinkingIT {
                         .required("city")
                         .build())
                 .build();
+
+        SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder().build());
 
         ChatModel model = GoogleAiGeminiChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))

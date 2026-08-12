@@ -74,6 +74,11 @@ public abstract class AbstractAgentInvoker implements AgentInvoker, InternalAgen
     }
 
     @Override
+    public boolean optional() {
+        return agent.optional();
+    }
+
+    @Override
     public AgentInvocationArguments toInvocationArguments(AgenticScope agenticScope) throws MissingArgumentException {
         return AgentUtil.agentInvocationArguments(agenticScope, arguments());
     }
@@ -127,6 +132,16 @@ public abstract class AbstractAgentInvoker implements AgentInvoker, InternalAgen
         return "MethodAgentInvoker[" +
                 "method=" + method + ", " +
                 "agentInstance=" + agent + ']';
+    }
+
+    @Override
+    public boolean compensateOnError() {
+        return agent.compensateOnError();
+    }
+
+    @Override
+    public void enableCrossAgentCompensation() {
+        agent.enableCrossAgentCompensation();
     }
 
     @Override

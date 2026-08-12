@@ -13,7 +13,7 @@ import com.ibm.watsonx.ai.core.Json;
 import com.ibm.watsonx.ai.core.auth.ibmcloud.IBMCloudAuthenticator;
 import com.ibm.watsonx.ai.core.provider.HttpClientProvider;
 import com.ibm.watsonx.ai.embedding.EmbeddingParameters;
-import com.ibm.watsonx.ai.embedding.EmbeddingRequest;
+import com.ibm.watsonx.ai.embedding.EmbeddingPayload;
 import com.ibm.watsonx.ai.embedding.EmbeddingResponse;
 import com.ibm.watsonx.ai.embedding.EmbeddingService;
 import dev.langchain4j.data.embedding.Embedding;
@@ -101,7 +101,7 @@ public class WatsonxEmbeddingModelTest {
             embeddingModel.embed(TextSegment.from("test1"));
 
             var embeddingRequest =
-                    Json.fromJson(HttpUtils.bodyPublisherToString(mockHttpRequest), EmbeddingRequest.class);
+                    Json.fromJson(HttpUtils.bodyPublisherToString(mockHttpRequest), EmbeddingPayload.class);
             assertEquals("model-name", embeddingRequest.modelId());
             assertEquals("project-id", embeddingRequest.projectId());
             assertEquals("space-id", embeddingRequest.spaceId());
@@ -122,7 +122,7 @@ public class WatsonxEmbeddingModelTest {
                 new EmbeddingResponse.Result(List.of(0f, 1f), "test1"),
                 new EmbeddingResponse.Result(List.of(0f, 1f), "test2"));
 
-        when(mockEmbeddingService.embedding(List.of("test1", "test2"), null))
+        when(mockEmbeddingService.embed(List.of("test1", "test2"), null))
                 .thenReturn(new EmbeddingResponse("modelId", "createdAt", results, 10));
 
         withEmbeddingServiceMock(() -> {
@@ -163,7 +163,7 @@ public class WatsonxEmbeddingModelTest {
                     .apiKey("apiKey")
                     .build();
 
-            when(mockEmbeddingService.embedding(List.of("test1", "test2"), parameters))
+            when(mockEmbeddingService.embed(List.of("test1", "test2"), parameters))
                     .thenReturn(new EmbeddingResponse("modelId", "createdAt", results, 10));
 
             var response =

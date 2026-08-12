@@ -108,7 +108,7 @@ public abstract class AbstractStreamingAiServiceIT {
 
             @Tool
             LocalDate currentDate() {
-                return LocalDate.of(2019, 1, 7);
+                return LocalDate.now();
             }
         }
 
@@ -151,12 +151,16 @@ public abstract class AbstractStreamingAiServiceIT {
         assertThat(tokenUsage).isExactlyInstanceOf(tokenUsageType(streamingChatModel));
         assertThat(tokenUsage.inputTokenCount()).isPositive();
         assertThat(tokenUsage.outputTokenCount()).isPositive();
-        assertThat(tokenUsage.totalTokenCount())
-                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+        assertTotalTokenCount(tokenUsage);
     }
 
     protected Class<? extends TokenUsage> tokenUsageType(StreamingChatModel streamingChatModel) {
         return TokenUsage.class;
+    }
+
+    protected void assertTotalTokenCount(TokenUsage tokenUsage) {
+        assertThat(tokenUsage.totalTokenCount())
+                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
     }
 
     protected boolean assertTokenUsage() {

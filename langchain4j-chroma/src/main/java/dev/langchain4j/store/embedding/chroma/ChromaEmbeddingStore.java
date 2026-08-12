@@ -1,7 +1,9 @@
 package dev.langchain4j.store.embedding.chroma;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.randomUUID;
+import static dev.langchain4j.internal.ValidationUtils.ensureConsistentSizes;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.store.embedding.chroma.ChromaApiVersion.*;
@@ -12,6 +14,7 @@ import static java.util.stream.Collectors.toList;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.internal.Utils;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
@@ -23,6 +26,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 
 /**
  * Represents a store for embeddings using the Chroma backend.
@@ -47,6 +51,8 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
             this.chromaClient = new ChromaClientV1.Builder()
                     .baseUrl(builder.baseUrl)
                     .timeout(getOrDefault(builder.timeout, ofSeconds(5)))
+                    .httpClientBuilder(builder.httpClientBuilder)
+                    .customHeaders(builder.customHeadersSupplier)
                     .logRequests(builder.logRequests)
                     .logResponses(builder.logResponses)
                     .build();
@@ -57,6 +63,8 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
                     .tenantName(builder.tenantName)
                     .databaseName(builder.databaseName)
                     .timeout(getOrDefault(builder.timeout, ofSeconds(5)))
+                    .httpClientBuilder(builder.httpClientBuilder)
+                    .customHeaders(builder.customHeadersSupplier)
                     .logRequests(builder.logRequests)
                     .logResponses(builder.logResponses)
                     .build();
@@ -106,6 +114,8 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
         private String databaseName;
         private String collectionName;
         private Duration timeout;
+        private HttpClientBuilder httpClientBuilder;
+        private Supplier<Map<String, String>> customHeadersSupplier;
         private boolean logRequests;
         private boolean logResponses;
 
@@ -162,6 +172,44 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
             return this;
         }
 
+        /**
+         * Sets the {@link HttpClientBuilder} that will be used to create the HTTP client
+         * that will be used to communicate with Chroma.
+         * <p>
+         * NOTE: {@link #timeout(Duration)} overrides timeouts set on the {@link HttpClientBuilder}.
+         *
+         * @param httpClientBuilder The HTTP client builder.
+         * @return builder
+         */
+        public Builder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
+            this.httpClientBuilder = httpClientBuilder;
+            return this;
+        }
+
+        /**
+         * Sets custom HTTP headers.
+         *
+         * @param customHeaders The custom HTTP headers.
+         * @return builder
+         */
+        public Builder customHeaders(Map<String, String> customHeaders) {
+            this.customHeadersSupplier = () -> customHeaders;
+            return this;
+        }
+
+        /**
+         * Sets a supplier for custom HTTP headers.
+         * The supplier is called before each request, allowing dynamic header values.
+         * For example, this is useful for OAuth2 tokens that expire and need refreshing.
+         *
+         * @param customHeadersSupplier The custom HTTP headers supplier.
+         * @return builder
+         */
+        public Builder customHeaders(Supplier<Map<String, String>> customHeadersSupplier) {
+            this.customHeadersSupplier = customHeadersSupplier;
+            return this;
+        }
+
         public Builder logRequests(boolean logRequests) {
             this.logRequests = logRequests;
             return this;
@@ -211,6 +259,11 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     @Override
     public void addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> textSegments) {
+        ensureConsistentSizes(ids, embeddings, textSegments);
+        if (isNullOrEmpty(embeddings)) {
+            return;
+        }
+
         int size = embeddings.size();
 
         List<Map<String, Object>> metadatas;

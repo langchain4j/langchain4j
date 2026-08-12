@@ -226,25 +226,47 @@ List<String> prompts = List.of(
 );
 
 // Submit batch
-BatchResponse<?> response = batchModel.createBatchInline(prompts, "image-batch");
-BatchName batchName = getBatchName(response);
+BatchResponse<Response<Image>> response = batchModel.submit(GeminiBatchRequest.from(
+    prompts, "image-batch"));
+String batchId = response.batchId();
 
 // Poll for completion
-do {
+while (!response.state().isTerminal()) {
     Thread.sleep(10000);
-    response = batchModel.retrieveBatchResults(batchName);
-} while (response instanceof BatchIncomplete);
+    response = batchModel.retrieve(batchId);
+}
 
 // Process results
-if (response instanceof BatchSuccess<?> success) {
-    for (Image image : success.images()) {
+if (response.state() == BatchState.SUCCEEDED) {
+    for (Response<Image> imageResponse : response.responses()) {
+        Image image = imageResponse.content();
         byte[] imageBytes = Base64.getDecoder().decode(image.base64Data());
         // Save or process each image
     }
 }
 
 // Clean up
-batchModel.deleteBatchJob(batchName);
+batchModel.deleteBatchJob(batchId);
+```
+
+`responses()` and `errors()` are flat convenience views (never `null`, empty when there is nothing to
+report) that don't tell you which prompt produced which image. To map each outcome back to its prompt,
+use `results()`: it returns one `BatchItemResult` per request, **in the same order as the submitted
+prompts**, each being a `BatchItemResult.Success` (with `response()`) or a `BatchItemResult.Failure`
+(with `error()`):
+
+```java
+List<BatchItemResult<Response<Image>>> results = response.results();
+for (int i = 0; i < results.size(); i++) {
+    BatchItemResult<Response<Image>> item = results.get(i);
+    if (item.isSuccess()) {
+        Image image = item.response().content();
+        // Save or process the image generated for prompts.get(i)
+    } else {
+        BatchError error = item.error();
+        System.err.println("Prompt #" + i + " failed: " + error.code() + " - " + error.message());
+    }
+}
 ```
 
 ## Limitations

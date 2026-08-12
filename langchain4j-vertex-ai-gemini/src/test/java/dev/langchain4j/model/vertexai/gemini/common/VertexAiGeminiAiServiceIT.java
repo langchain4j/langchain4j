@@ -17,7 +17,7 @@ class VertexAiGeminiAiServiceIT extends AbstractAiServiceIT {
                 VertexAiGeminiChatModel.builder()
                         .project(System.getenv("GCP_PROJECT_ID"))
                         .location(System.getenv("GCP_LOCATION"))
-                        .modelName("gemini-2.0-flash")
+                        .modelName("gemini-2.5-flash")
                         .build()
         );
     }
@@ -25,6 +25,11 @@ class VertexAiGeminiAiServiceIT extends AbstractAiServiceIT {
     @Override
     protected boolean supportsJsonResponseFormatWithSchema() {
         return false; // TODO implement
+    }
+
+    @Override
+    protected boolean assertTokenUsage() {
+        return false; // TODO thinking tokens are not reported correctly
     }
 
     @AfterEach

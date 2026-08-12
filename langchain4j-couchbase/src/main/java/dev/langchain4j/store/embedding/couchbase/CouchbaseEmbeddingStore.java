@@ -13,7 +13,6 @@ import com.couchbase.client.java.search.vector.VectorSearch;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.internal.ValidationUtils;
 import dev.langchain4j.store.embedding.*;
 import reactor.util.annotation.NonNull;
 import reactor.util.annotation.Nullable;
@@ -183,7 +182,6 @@ public class CouchbaseEmbeddingStore implements EmbeddingStore<TextSegment> {
         metadata.put("fields", new ArrayList<>());
         return metadata;
     }
-
 
     private Map<String, Object> embedding(Integer dimensions) {
         Map<String, Object> embedding = new HashMap<>();

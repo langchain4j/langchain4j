@@ -110,6 +110,12 @@ public class WatsonxScoringModel implements ScoringModel {
 
         private Builder() {}
 
+        /**
+         * Sets the watsonx.ai reranking model ID, e.g. {@code "ibm/slate-125m-english-rtrvr-v2"}.
+         *
+         * @param modelName the model ID
+         * @return {@code this}
+         */
         public Builder modelName(String modelName) {
             this.modelName = modelName;
             return this;

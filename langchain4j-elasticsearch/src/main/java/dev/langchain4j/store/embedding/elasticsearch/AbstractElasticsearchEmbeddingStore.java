@@ -26,7 +26,6 @@ import co.elastic.clients.transport.rest_client.RestClientTransport;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.rag.content.ContentMetadata;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
@@ -62,11 +61,13 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
     /**
      * Initialize using a RestClient
      *
-     * @param configuration         Elasticsearch configuration to use (Knn or Script)
+     * @param configuration         Elasticsearch configuration to use (Knn, Script, FullText or Hybrid)
      * @param restClient            Elasticsearch Rest Client (mandatory)
      * @param indexName             Elasticsearch index name (optional). Default value: "default".
      *                              Index will be created automatically if not exists.
+     * @deprecated Use now {@link #initialize(ElasticsearchConfiguration, ElasticsearchClient, String)}
      */
+    @Deprecated(forRemoval = true)
     protected void initialize(ElasticsearchConfiguration configuration, RestClient restClient, String indexName) {
         JsonpMapper mapper = new JacksonJsonpMapper();
         ElasticsearchTransport transport = new RestClientTransport(restClient, mapper);
@@ -75,6 +76,22 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
         String version = Version.VERSION == null ? "Unknown" : Version.VERSION.toString();
         this.client = new ElasticsearchClient(transport)
                 .withTransportOptions(t -> t.addHeader("user-agent", "langchain4j elastic-java/" + version));
+        this.indexName = ensureNotNull(indexName, "indexName");
+    }
+
+    /**
+     * Initialize using an ElasticsearchClient
+     *
+     * @param configuration         Elasticsearch configuration to use (Knn or Script)
+     * @param client                Elasticsearch Client (mandatory)
+     * @param indexName             Elasticsearch index name (optional). Default value: "default".
+     *                              Index will be created automatically if not exists.
+     */
+    protected void initialize(ElasticsearchConfiguration configuration, ElasticsearchClient client, String indexName) {
+        this.configuration = configuration;
+        String version = Version.VERSION == null ? "Unknown" : Version.VERSION.toString();
+        this.client =
+                client.withTransportOptions(t -> t.addHeader("user-agent", "langchain4j elastic-java/" + version));
         this.indexName = ensureNotNull(indexName, "indexName");
     }
 
@@ -145,7 +162,7 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
             return new EmbeddingSearchResult<>(results);
         } catch (ElasticsearchException e) {
             if (e.getLocalizedMessage().contains("Unknown key for a VALUE_BOOLEAN in [exclude_vectors]")
-                    && this.configuration.includeVectorResponse) {
+                    && this.configuration.isIncludeVectorResponse()) {
                 log.warn(
                         "Property [includeVectorResponse] is not needed for elasticsearch server versions previous to 9.2, remove it to fix the exception.");
             }
@@ -172,7 +189,7 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
             return new EmbeddingSearchResult<>(results);
         } catch (ElasticsearchException e) {
             if (e.getLocalizedMessage().contains("Unknown key for a VALUE_BOOLEAN in [exclude_vectors]")
-                    && this.configuration.includeVectorResponse) {
+                    && this.configuration.isIncludeVectorResponse()) {
                 log.warn(
                         "Property [includeVectorResponse] is not needed for elasticsearch server versions previous to 9.2, remove it to fix the exception.");
             }
@@ -182,17 +199,33 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
         }
     }
 
-    public List<TextSegment> fullTextSearch(String textQuery) {
+    /**
+     * Searches the index with a full text (non-vector) query.
+     *
+     * @param textQuery the text to search for
+     * @return the matching documents, each carrying its Elasticsearch document ID and relevance score
+     */
+    public List<EmbeddingMatch<TextSegment>> fullTextSearchMatches(String textQuery) {
         log.debug("full text search([...{}...])", textQuery.length());
         try {
             SearchResponse<Document> response = this.configuration.fullTextSearch(client, indexName, textQuery);
             log.trace("found [{}] results", response);
 
-            List<TextSegment> results = toTextList(response);
-            return results;
+            return toMatches(response);
         } catch (ElasticsearchException | IOException e) {
             throw new ElasticsearchRequestFailedException(e);
         }
+    }
+
+    /**
+     * @deprecated Use {@link #fullTextSearchMatches(String)} instead. It returns the same text segments,
+     * but also the Elasticsearch document ID and the relevance score of each match.
+     */
+    @Deprecated(forRemoval = true)
+    public List<TextSegment> fullTextSearch(String textQuery) {
+        return fullTextSearchMatches(textQuery).stream()
+                .map(match -> match == null ? null : match.embedded())
+                .collect(toList());
     }
 
     @Override
@@ -345,20 +378,6 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
                                 document.getText() == null
                                         ? null
                                         : TextSegment.from(document.getText(), new Metadata(document.getMetadata()))))
-                        .orElse(null))
-                .collect(toList());
-    }
-
-    private List<TextSegment> toTextList(SearchResponse<Document> response) {
-        return response.hits().hits().stream()
-                .map(hit -> Optional.ofNullable(hit.source())
-                        .map(document -> document.getText() == null
-                                ? null
-                                : TextSegment.from(
-                                        document.getText(),
-                                        new Metadata(document.getMetadata())
-                                                .put(ContentMetadata.SCORE.name(), hit.score())
-                                                .put(ContentMetadata.EMBEDDING_ID.name(), hit.id())))
                         .orElse(null))
                 .collect(toList());
     }

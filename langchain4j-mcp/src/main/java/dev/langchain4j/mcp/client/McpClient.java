@@ -6,6 +6,7 @@ import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.service.tool.ToolExecutionResult;
 import java.util.List;
 import java.util.Map;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Represents a client that can communicate with an MCP server over a given transport protocol,
@@ -17,6 +18,13 @@ public interface McpClient extends AutoCloseable {
      * Returns the unique key of this client.
      */
     String key();
+
+    /**
+     * Returns the server instructions from the initialize result, or null if the server did not provide any.
+     */
+    default @Nullable String instructions() {
+        return null;
+    }
 
     /**
      * Obtains a list of tools from the MCP server.
@@ -71,6 +79,18 @@ public interface McpClient extends AutoCloseable {
      * works for dynamic resources (templates).
      */
     McpReadResourceResult readResource(String uri, InvocationContext invocationContext);
+
+    /**
+     * Subscribes to updates for the resource with the specified URI.
+     * When the resource changes, the server will send a {@code notifications/resources/updated} notification.
+     * The client will invoke the {@code onResourceUpdated} callback (if configured) with the URI of the updated resource.
+     */
+    void subscribeToResource(String uri);
+
+    /**
+     * Unsubscribes from updates for the resource with the specified URI.
+     */
+    void unsubscribeFromResource(String uri);
 
     /**
      * Obtain a list of prompts available on the MCP server.

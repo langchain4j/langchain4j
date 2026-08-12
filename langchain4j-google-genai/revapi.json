@@ -1,0 +1,28 @@
+[
+  {
+    "extension": "revapi.differences",
+    "configuration": {
+      "ignore": true,
+      "differences": [
+        {
+          "regex": true,
+          "code": "java\\.class\\.externalClassExposedInAPI",
+          "new": "missing-class com\\.google\\.genai\\..*",
+          "justification": "Google Gen AI SDK types are intentionally exposed on the public API of this module."
+        },
+        {
+          "regex": true,
+          "code": "java\\.class\\.externalClassExposedInAPI",
+          "new": "missing-class com\\.google\\.auth\\..*",
+          "justification": "Google auth types are intentionally exposed on the public API of this module."
+        },
+        {
+          "regex": true,
+          "code": "java\\.class\\.externalClassExposedInAPI",
+          "new": "missing-class dev\\.langchain4j\\..*",
+          "justification": "LangChain4j core types are intentionally exposed on the public API of this module."
+        }
+      ]
+    }
+  }
+]

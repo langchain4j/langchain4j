@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import dev.langchain4j.model.vertexai.anthropic.internal.Constants;
 import java.util.List;
+import java.util.StringJoiner;
 
 @JsonInclude(NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
@@ -50,5 +51,57 @@ public class AnthropicRequest {
         this.tools = tools;
         this.toolChoice = toolChoice;
         this.anthropicVersion = Constants.ANTHROPIC_VERSION;
+    }
+
+    public String getAnthropicVersion() {
+        return anthropicVersion;
+    }
+
+    public List<AnthropicMessage> getMessages() {
+        return messages;
+    }
+
+    public Integer getMaxTokens() {
+        return maxTokens;
+    }
+
+    public Boolean getStream() {
+        return stream;
+    }
+
+    public Double getTemperature() {
+        return temperature;
+    }
+
+    public Double getTopP() {
+        return topP;
+    }
+
+    public Integer getTopK() {
+        return topK;
+    }
+
+    public List<AnthropicTool> getTools() {
+        return tools;
+    }
+
+    public AnthropicToolChoice getToolChoice() {
+        return toolChoice;
+    }
+
+    @Override
+    public String toString() {
+        return new StringJoiner(", ", "AnthropicRequest [", "]")
+                .add("anthropicVersion=" + this.getAnthropicVersion())
+                .add("messages="
+                        + (this.getMessages() == null ? 0 : this.getMessages().size()))
+                .add("maxTokens=" + this.getMaxTokens())
+                .add("stream=" + this.getStream())
+                .add("temperature=" + this.getTemperature())
+                .add("topP=" + this.getTopP())
+                .add("topK=" + this.getTopK())
+                .add("tools=" + this.getTools())
+                .add("toolsChoice=" + this.getToolChoice())
+                .toString();
     }
 }

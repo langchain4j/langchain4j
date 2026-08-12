@@ -10,6 +10,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.output.TokenUsage;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
@@ -36,7 +37,7 @@ class BedrockCohereEmbeddingModelIT {
 
         assertThat(embedding.vector()).hasSize(1024);
 
-        assertThat(response.tokenUsage()).isNull();
+        assertTokenUsage(response.tokenUsage());
         assertThat(response.finishReason()).isNull();
 
         assertThat(embeddingModel.dimension()).isEqualTo(1024);
@@ -64,7 +65,7 @@ class BedrockCohereEmbeddingModelIT {
         Embedding embedding = embeddings.get(0);
         assertThat(embedding.vector()).hasSize(1024);
 
-        assertThat(response.tokenUsage()).isNull();
+        assertTokenUsage(response.tokenUsage());
         assertThat(response.finishReason()).isNull();
 
         assertThat(embeddingModel.dimension()).isEqualTo(1024);
@@ -102,7 +103,7 @@ class BedrockCohereEmbeddingModelIT {
         // Verify embeddings are not null or empty
         assertThat(embeddings).allMatch(embedding -> embedding.vector() != null && embedding.vector().length > 0);
 
-        assertThat(response.tokenUsage()).isNull();
+        assertTokenUsage(response.tokenUsage());
         assertThat(response.finishReason()).isNull();
         assertThat(embeddingModel.dimension()).isEqualTo(1024);
     }
@@ -134,9 +135,16 @@ class BedrockCohereEmbeddingModelIT {
         // Verify embeddings exists for all textSegments
         assertThat(embeddings).allMatch(embedding -> embedding.vector() != null && embedding.vector().length > 0);
 
-        assertThat(response.tokenUsage()).isNull();
+        assertTokenUsage(response.tokenUsage());
         assertThat(response.finishReason()).isNull();
         assertThat(embeddingModel.dimension()).isEqualTo(1024);
+    }
+
+    private static void assertTokenUsage(TokenUsage tokenUsage) {
+        assertThat(tokenUsage).isNotNull();
+        assertThat(tokenUsage.inputTokenCount()).isPositive();
+        assertThat(tokenUsage.outputTokenCount()).isNull();
+        assertThat(tokenUsage.totalTokenCount()).isEqualTo(tokenUsage.inputTokenCount());
     }
 
     @AfterEach

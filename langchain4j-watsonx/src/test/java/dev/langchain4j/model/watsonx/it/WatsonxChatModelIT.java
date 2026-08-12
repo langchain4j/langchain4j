@@ -1,5 +1,7 @@
 package dev.langchain4j.model.watsonx.it;
 
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
@@ -7,6 +9,7 @@ import dev.langchain4j.model.watsonx.WatsonxChatModel;
 import dev.langchain4j.model.watsonx.WatsonxChatRequestParameters;
 import java.time.Duration;
 import java.util.List;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 @EnabledIfEnvironmentVariable(named = "WATSONX_API_KEY", matches = ".+")
@@ -17,6 +20,7 @@ public class WatsonxChatModelIT extends AbstractChatModelIT {
     static final String API_KEY = System.getenv("WATSONX_API_KEY");
     static final String PROJECT_ID = System.getenv("WATSONX_PROJECT_ID");
     static final String URL = System.getenv("WATSONX_URL");
+    static final String DEPLOYMENT_ID = System.getenv("WATSONX_DEPLOYMENT_ID");
 
     @Override
     protected List<ChatModel> models() {
@@ -100,6 +104,20 @@ public class WatsonxChatModelIT extends AbstractChatModelIT {
     protected void should_respect_JSON_response_format_with_schema(ChatModel model) {
         super.should_respect_JSON_response_format_with_schema(
                 createChatModel("ibm/granite-4-h-small").build());
+    }
+
+    @Test
+    @EnabledIfEnvironmentVariable(named = "WATSONX_DEPLOYMENT_ID", matches = ".+")
+    void should_use_deployed_model_with_deployment_id() {
+        var chatModel = WatsonxChatModel.builder()
+                .baseUrl(URL)
+                .apiKey(API_KEY)
+                .deploymentId(DEPLOYMENT_ID)
+                .timeout(Duration.ofSeconds(30))
+                .build();
+
+        var response = chatModel.chat("Hello");
+        assertNotNull(response);
     }
 
     private WatsonxChatModel.Builder createChatModel(String model) {

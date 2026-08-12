@@ -26,13 +26,13 @@ import org.junit.jupiter.params.provider.ValueSource;
 @EnabledIfEnvironmentVariable(named = "DEEPSEEK_API_KEY", matches = ".+")
 class OpenAiChatModelDeepSeekThinkingIT {
 
-    private final SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder().build());
-
     @Test
     void should_return_thinking() {
 
         // given
         boolean returnThinking = true;
+
+        SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder().build());
 
         ChatModel model = OpenAiChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
@@ -81,6 +81,8 @@ class OpenAiChatModelDeepSeekThinkingIT {
         boolean returnThinking = true;
         boolean sendThinking = true;
 
+        SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder().build());
+
         ChatModel model = OpenAiChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
                 .baseUrl("https://api.deepseek.com/v1")
@@ -125,6 +127,8 @@ class OpenAiChatModelDeepSeekThinkingIT {
         boolean returnThinking = true;
         boolean sendThinking = true;
         String thinkingFieldName = "my_reason";
+
+        SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder().build());
 
         ChatModel model = OpenAiChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))

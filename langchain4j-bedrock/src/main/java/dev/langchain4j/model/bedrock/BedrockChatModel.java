@@ -6,14 +6,17 @@ import static dev.langchain4j.model.ModelProvider.AMAZON_BEDROCK;
 import static java.util.Objects.isNull;
 
 import dev.langchain4j.model.ModelProvider;
+import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import java.util.List;
+import java.util.Set;
 import org.slf4j.Logger;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeClient;
+import software.amazon.awssdk.services.bedrockruntime.model.CacheTTL;
 import software.amazon.awssdk.services.bedrockruntime.model.ConverseRequest;
 import software.amazon.awssdk.services.bedrockruntime.model.ConverseResponse;
 
@@ -72,7 +75,9 @@ public class BedrockChatModel extends AbstractBedrockChatModel implements ChatMo
         BedrockChatRequestParameters parameters = (BedrockChatRequestParameters) chatRequest.parameters();
 
         BedrockCachePointPlacement cachePointPlacement = parameters.cachePointPlacement();
+        CacheTTL cacheTtl = parameters.cacheTtl();
         BedrockGuardrailConfiguration bedrockGuardrailConfiguration = parameters.bedrockGuardrailConfiguration();
+        BedrockServiceTier bedrockServiceTier = parameters.serviceTier();
 
         // Validate total cache points don't exceed AWS limit
         boolean hasTools = chatRequest.toolSpecifications() != null
@@ -82,17 +87,24 @@ public class BedrockChatModel extends AbstractBedrockChatModel implements ChatMo
         return ConverseRequest.builder()
                 .modelId(chatRequest.modelName())
                 .inferenceConfig(inferenceConfigFrom(chatRequest.parameters()))
-                .system(extractSystemMessages(chatRequest.messages(), cachePointPlacement))
-                .messages(extractRegularMessages(chatRequest.messages(), cachePointPlacement))
-                .toolConfig(extractToolConfigurationFrom(chatRequest, cachePointPlacement))
+                .system(extractSystemMessages(chatRequest.messages(), cachePointPlacement, cacheTtl))
+                .messages(extractRegularMessages(chatRequest.messages(), cachePointPlacement, cacheTtl))
+                .toolConfig(extractToolConfigurationFrom(chatRequest, cachePointPlacement, cacheTtl))
                 .additionalModelRequestFields(additionalRequestModelFieldsFrom(chatRequest.parameters()))
                 .guardrailConfig(guardrailConfigFrom(bedrockGuardrailConfiguration))
+                .outputConfig(outputConfigFrom(chatRequest.responseFormat()))
+                .serviceTier(serviceTierFor(bedrockServiceTier))
                 .build();
     }
 
     @Override
     public List<ChatModelListener> listeners() {
         return listeners;
+    }
+
+    @Override
+    public Set<Capability> supportedCapabilities() {
+        return supportedCapabilities;
     }
 
     @Override
@@ -112,6 +124,8 @@ public class BedrockChatModel extends AbstractBedrockChatModel implements ChatMo
                     config.apiCallTimeout(this.timeout);
                     if (logRequests || logResponses)
                         config.addExecutionInterceptor(new AwsLoggingInterceptor(logRequests, logResponses, logger));
+                    if (customHeadersSupplier != null)
+                        config.addExecutionInterceptor(new BedrockCustomHeadersInterceptor(customHeadersSupplier));
                 })
                 .build();
     }

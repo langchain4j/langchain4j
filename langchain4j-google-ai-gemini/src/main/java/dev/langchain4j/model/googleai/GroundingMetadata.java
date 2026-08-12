@@ -1,16 +1,17 @@
 package dev.langchain4j.model.googleai;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record GroundingMetadata(
-        List<GroundingChunk> groundingChunks,
-        List<GroundingSupport> groundingSupports,
-        List<String> webSearchQueries,
-        SearchEntryPoint searchEntryPoint,
-        RetrievalMetadata retrievalMetadata,
-        String googleMapsWidgetContextToken) {
+        @JsonProperty("groundingChunks") List<GroundingChunk> groundingChunks,
+        @JsonProperty("groundingSupports") List<GroundingSupport> groundingSupports,
+        @JsonProperty("webSearchQueries") List<String> webSearchQueries,
+        @JsonProperty("searchEntryPoint") SearchEntryPoint searchEntryPoint,
+        @JsonProperty("retrievalMetadata") RetrievalMetadata retrievalMetadata,
+        @JsonProperty("googleMapsWidgetContextToken") String googleMapsWidgetContextToken) {
 
     public static Builder builder() {
         return new Builder();
@@ -66,34 +67,60 @@ public record GroundingMetadata(
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    public record GroundingChunk(Web web, RetrievedContext retrievedContext, Maps maps) {
+    public record GroundingChunk(
+            @JsonProperty("web") Web web,
+            @JsonProperty("retrievedContext") RetrievedContext retrievedContext,
+            @JsonProperty("maps") Maps maps) {
         @JsonIgnoreProperties(ignoreUnknown = true)
-        public record Web(String uri, String title) {}
+        public record Web(
+                @JsonProperty("uri") String uri,
+                @JsonProperty("title") String title) {}
 
         @JsonIgnoreProperties(ignoreUnknown = true)
-        public record RetrievedContext(String uri, String title, String text) {}
+        public record RetrievedContext(
+                @JsonProperty("uri") String uri,
+                @JsonProperty("title") String title,
+                @JsonProperty("text") String text) {}
 
         @JsonIgnoreProperties(ignoreUnknown = true)
         public record Maps(
-                String uri, String title, String text, String placeId, PlaceAnswerSources placeAnswerSources) {
+                @JsonProperty("uri") String uri,
+                @JsonProperty("title") String title,
+                @JsonProperty("text") String text,
+                @JsonProperty("placeId") String placeId,
+                @JsonProperty("placeAnswerSources") PlaceAnswerSources placeAnswerSources) {
             @JsonIgnoreProperties(ignoreUnknown = true)
-            public record PlaceAnswerSources(List<ReviewSnippet> reviewSnippets) {}
+            public record PlaceAnswerSources(
+                    @JsonProperty("reviewSnippets") List<ReviewSnippet> reviewSnippets) {}
 
             @JsonIgnoreProperties(ignoreUnknown = true)
-            public record ReviewSnippet(String reviewId, String googleMapsUri, String title) {}
+            public record ReviewSnippet(
+                    @JsonProperty("reviewId") String reviewId,
+                    @JsonProperty("googleMapsUri") String googleMapsUri,
+                    @JsonProperty("title") String title) {}
         }
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record GroundingSupport(
-            List<Integer> groundingChunkIndices, List<Double> confidenceScores, Segment segment) {}
+            @JsonProperty("groundingChunkIndices") List<Integer> groundingChunkIndices,
+            @JsonProperty("confidenceScores") List<Double> confidenceScores,
+            @JsonProperty("segment") Segment segment) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    public record Segment(Integer partIndex, Integer startIndex, Integer endIndex, String text) {}
+    public record Segment(
+            @JsonProperty("partIndex") Integer partIndex,
+            @JsonProperty("startIndex") Integer startIndex,
+            @JsonProperty("endIndex") Integer endIndex,
+            @JsonProperty("text") String text) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    public record SearchEntryPoint(String renderedContent, String sdkBlob) {}
+    public record SearchEntryPoint(
+            @JsonProperty("renderedContent") String renderedContent,
+            @JsonProperty("sdkBlob") String sdkBlob) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    public record RetrievalMetadata(Double googleSearchDynamicRetrievalScore) {}
+    public record RetrievalMetadata(
+            @JsonProperty("googleSearchDynamicRetrievalScore")
+            Double googleSearchDynamicRetrievalScore) {}
 }

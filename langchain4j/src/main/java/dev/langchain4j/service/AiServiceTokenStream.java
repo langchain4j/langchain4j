@@ -28,9 +28,8 @@ import dev.langchain4j.service.tool.BeforeToolExecution;
 import dev.langchain4j.service.tool.ToolArgumentsErrorHandler;
 import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
-import dev.langchain4j.service.tool.ToolExecutor;
+import dev.langchain4j.service.tool.ToolServiceContext;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.Executor;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
@@ -40,9 +39,7 @@ public class AiServiceTokenStream implements TokenStream {
 
     private final List<ChatMessage> messages;
 
-    private final List<ToolSpecification> effectiveTools;
-    private final List<ToolSpecification> availableTools;
-    private final Map<String, ToolExecutor> toolExecutors;
+    private final ToolServiceContext toolServiceContext;
     private final ToolArgumentsErrorHandler toolArgumentsErrorHandler;
     private final ToolExecutionErrorHandler toolExecutionErrorHandler;
     private final Executor toolExecutor;
@@ -62,6 +59,7 @@ public class AiServiceTokenStream implements TokenStream {
     private Consumer<List<Content>> contentsHandler;
     private Consumer<ChatResponse> intermediateResponseHandler;
     private Consumer<BeforeToolExecution> beforeToolExecutionHandler;
+    private Consumer<Object> rawEventHandler;
     private Consumer<ToolExecution> toolExecutionHandler;
     private Consumer<ChatResponse> completeResponseHandler;
     private Consumer<Throwable> errorHandler;
@@ -76,6 +74,7 @@ public class AiServiceTokenStream implements TokenStream {
     private int onCompleteResponseInvoked;
     private int onRetrievedInvoked;
     private int beforeToolExecutionInvoked;
+    private int onUnmappedRawEventInvoked;
     private int onToolExecutedInvoked;
     private int onErrorInvoked;
     private int ignoreErrorsInvoked;
@@ -88,9 +87,7 @@ public class AiServiceTokenStream implements TokenStream {
     public AiServiceTokenStream(AiServiceTokenStreamParameters parameters) {
         ensureNotNull(parameters, "parameters");
         this.messages = copy(ensureNotEmpty(parameters.messages(), "messages"));
-        this.effectiveTools = copy(parameters.effectiveTools());
-        this.availableTools = copy(parameters.availableTools());
-        this.toolExecutors = copy(parameters.toolExecutors());
+        this.toolServiceContext = parameters.toolServiceContext();
         this.toolArgumentsErrorHandler = parameters.toolArgumentsErrorHandler();
         this.toolExecutionErrorHandler = parameters.toolExecutionErrorHandler();
         this.toolExecutor = parameters.toolExecutor();
@@ -166,6 +163,13 @@ public class AiServiceTokenStream implements TokenStream {
     }
 
     @Override
+    public TokenStream onUnmappedRawEvent(Consumer<Object> rawEventHandler) {
+        this.rawEventHandler = rawEventHandler;
+        this.onUnmappedRawEventInvoked++;
+        return this;
+    }
+
+    @Override
     public TokenStream onToolExecuted(Consumer<ToolExecution> toolExecutionHandler) {
         this.toolExecutionHandler = toolExecutionHandler;
         this.onToolExecutedInvoked++;
@@ -197,6 +201,9 @@ public class AiServiceTokenStream implements TokenStream {
     public void start() {
         validateConfiguration();
 
+        List<ToolSpecification> effectiveTools =
+                toolServiceContext != null ? toolServiceContext.effectiveTools() : null;
+
         ChatRequest chatRequest = context.chatRequestTransformer.apply(
                 ChatRequest.builder()
                         .messages(messages)
@@ -223,15 +230,15 @@ public class AiServiceTokenStream implements TokenStream {
                 partialToolCallHandler,
                 partialToolCallWithContextHandler,
                 beforeToolExecutionHandler,
+                rawEventHandler,
                 toolExecutionHandler,
                 intermediateResponseHandler,
                 completeResponseHandler,
                 errorHandler,
                 initTemporaryMemory(context, messages),
                 new TokenUsage(),
-                availableTools,
-                toolExecutors,
-                context.toolService.maxSequentialToolsInvocations(),
+                toolServiceContext,
+                context.toolService.maxToolCallingRoundTrips(),
                 toolArgumentsErrorHandler,
                 toolExecutionErrorHandler,
                 toolExecutor,
@@ -275,6 +282,9 @@ public class AiServiceTokenStream implements TokenStream {
         }
         if (beforeToolExecutionInvoked > 1) {
             throw new IllegalConfigurationException("beforeToolExecution can be invoked on TokenStream at most 1 time");
+        }
+        if (onUnmappedRawEventInvoked > 1) {
+            throw new IllegalConfigurationException("onUnmappedRawEvent can be invoked on TokenStream at most 1 time");
         }
         if (onToolExecutedInvoked > 1) {
             throw new IllegalConfigurationException("onToolExecuted can be invoked on TokenStream at most 1 time");

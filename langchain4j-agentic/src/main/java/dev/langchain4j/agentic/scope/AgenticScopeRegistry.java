@@ -8,6 +8,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.Set;
 
 import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.beforeAgenticScopeDestroyed;
+import static dev.langchain4j.agentic.scope.DefaultAgenticScope.ephemeralAgenticScope;
 
 /**
  * Singleton registry for managing AgenticScope instances.
@@ -57,7 +58,7 @@ public class AgenticScopeRegistry {
     }
 
     public DefaultAgenticScope createEphemeralAgenticScope() {
-        DefaultAgenticScope agenticScope = new DefaultAgenticScope(DefaultAgenticScope.Kind.EPHEMERAL);
+        DefaultAgenticScope agenticScope = ephemeralAgenticScope();
         register(agenticScope);
         return agenticScope;
     }

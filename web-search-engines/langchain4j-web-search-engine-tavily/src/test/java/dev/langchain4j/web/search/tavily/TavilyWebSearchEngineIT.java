@@ -1,6 +1,7 @@
 package dev.langchain4j.web.search.tavily;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import dev.langchain4j.web.search.WebSearchEngine;
 import dev.langchain4j.web.search.WebSearchEngineIT;
@@ -31,6 +32,11 @@ class TavilyWebSearchEngineIT extends WebSearchEngineIT {
         // then
         List<WebSearchOrganicResult> results = webSearchResults.results();
 
+        // Tavily sometimes returns proxied URLs (e.g. "/goto?url=..."), for which it does not provide raw content
+        assumeTrue(
+                results.stream().allMatch(result -> result.url().isAbsolute()),
+                () -> "Tavily returned proxied URLs without raw content: " + results);
+
         results.forEach(result -> {
             assertThat(result.title()).isNotBlank();
             assertThat(result.url()).isNotNull();
@@ -41,6 +47,7 @@ class TavilyWebSearchEngineIT extends WebSearchEngineIT {
         assertThat(results).anyMatch(result -> result.content() != null && result.content().contains("LangChain4j"));
     }
 
+    @Test
     void should_search_with_answer() {
 
         // given

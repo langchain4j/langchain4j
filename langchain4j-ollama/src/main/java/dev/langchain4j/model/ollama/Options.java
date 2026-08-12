@@ -29,8 +29,15 @@ class Options {
     private Integer seed;
     private Integer numPredict;
     private Integer numCtx;
+    private Integer numThread;
     private List<String> stop;
     private Double minP;
+    private Integer numKeep;
+    private Double typicalP;
+    private Integer numBatch;
+    private Integer numGPU;
+    private Integer mainGPU;
+    private Boolean useMmap;
 
     Options() {}
 
@@ -46,8 +53,15 @@ class Options {
         this.seed = builder.seed;
         this.numPredict = builder.numPredict;
         this.numCtx = builder.numCtx;
+        this.numThread = builder.numThread;
         this.stop = builder.stop;
         this.minP = builder.minP;
+        this.numKeep = builder.numKeep;
+        this.typicalP = builder.typicalP;
+        this.numBatch = builder.numBatch;
+        this.numGPU = builder.numGPU;
+        this.mainGPU = builder.mainGPU;
+        this.useMmap = builder.useMmap;
     }
 
     public Integer getMirostat() {
@@ -138,6 +152,14 @@ class Options {
         this.numCtx = numCtx;
     }
 
+    public Integer getNumThread() {
+        return numThread;
+    }
+
+    public void setNumThread(Integer numThread) {
+        this.numThread = numThread;
+    }
+
     public List<String> getStop() {
         return stop;
     }
@@ -152,6 +174,54 @@ class Options {
 
     public void setMinP(Double minP) {
         this.minP = minP;
+    }
+
+    public Boolean getUseMmap() {
+        return useMmap;
+    }
+
+    public void setUseMmap(Boolean useMmap) {
+        this.useMmap = useMmap;
+    }
+
+    public Integer getMainGPU() {
+        return mainGPU;
+    }
+
+    public void setMainGPU(Integer mainGPU) {
+        this.mainGPU = mainGPU;
+    }
+
+    public Integer getNumGPU() {
+        return numGPU;
+    }
+
+    public void setNumGPU(Integer numGPU) {
+        this.numGPU = numGPU;
+    }
+
+    public Integer getNumBatch() {
+        return numBatch;
+    }
+
+    public void setNumBatch(Integer numBatch) {
+        this.numBatch = numBatch;
+    }
+
+    public Double getTypicalP() {
+        return typicalP;
+    }
+
+    public void setTypicalP(Double typicalP) {
+        this.typicalP = typicalP;
+    }
+
+    public Integer getNumKeep() {
+        return numKeep;
+    }
+
+    public void setNumKeep(Integer numKeep) {
+        this.numKeep = numKeep;
     }
 
     static Builder builder() {
@@ -171,8 +241,15 @@ class Options {
         private Integer seed;
         private Integer numPredict;
         private Integer numCtx;
+        private Integer numThread;
         private List<String> stop;
         private Double minP;
+        private Integer numKeep;
+        private Double typicalP;
+        private Integer numBatch;
+        private Integer numGPU;
+        private Integer mainGPU;
+        private Boolean useMmap;
 
         Builder mirostat(Integer mirostat) {
             this.mirostat = mirostat;
@@ -229,6 +306,11 @@ class Options {
             return this;
         }
 
+        Builder numThread(Integer numThread) {
+            this.numThread = numThread;
+            return this;
+        }
+
         Builder stop(List<String> stop) {
             this.stop = stop;
             return this;
@@ -236,6 +318,36 @@ class Options {
 
         Builder minP(Double minP) {
             this.minP = minP;
+            return this;
+        }
+
+        Builder numKeep(Integer numKeep) {
+            this.numKeep = numKeep;
+            return this;
+        }
+
+        Builder typicalP(Double typicalP) {
+            this.typicalP = typicalP;
+            return this;
+        }
+
+        Builder mainGPU(Integer mainGPU) {
+            this.mainGPU = mainGPU;
+            return this;
+        }
+
+        Builder useMmap(Boolean useMmap) {
+            this.useMmap = useMmap;
+            return this;
+        }
+
+        Builder numGPU(Integer numGPU) {
+            this.numGPU = numGPU;
+            return this;
+        }
+
+        Builder numBatch(Integer numBatch) {
+            this.numBatch = numBatch;
             return this;
         }
 

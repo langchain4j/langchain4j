@@ -81,6 +81,13 @@ public class DockerMcpTransport implements McpTransport {
         this.attachTimeout = builder.attachTimeout;
     }
 
+    static DockerHttpClient buildHttpClient(DockerClientConfig config) {
+        return new ApacheDockerHttpClient.Builder()
+                .dockerHost(config.getDockerHost())
+                .sslConfig(config.getSSLConfig())
+                .build();
+    }
+
     @Override
     public void start(McpOperationHandler messageHandler) {
         this.messageHandler = messageHandler;
@@ -97,9 +104,7 @@ public class DockerMcpTransport implements McpTransport {
                 .withRegistryUrl(registryUrl)
                 .withApiVersion(apiVersion)
                 .build();
-        DockerHttpClient httpClient = new ApacheDockerHttpClient.Builder()
-                .dockerHost(config.getDockerHost())
-                .build();
+        DockerHttpClient httpClient = buildHttpClient(config);
         this.dockerClient = DockerClientImpl.getInstance(config, httpClient);
 
         var imageNameWithoutTag = getImageNameWithoutTag(image);
@@ -308,9 +313,17 @@ public class DockerMcpTransport implements McpTransport {
             return this;
         }
 
-        public DockerMcpTransport.Builder dockerTslVerify(Boolean dockerTlsVerify) {
+        public DockerMcpTransport.Builder dockerTlsVerify(Boolean dockerTlsVerify) {
             this.dockerTlsVerify = dockerTlsVerify;
             return this;
+        }
+
+        /**
+         * @deprecated misspelled method name, use {@link #dockerTlsVerify(Boolean)} instead.
+         */
+        @Deprecated
+        public DockerMcpTransport.Builder dockerTslVerify(Boolean dockerTlsVerify) {
+            return dockerTlsVerify(dockerTlsVerify);
         }
 
         public DockerMcpTransport.Builder registryEmail(String registryEmail) {

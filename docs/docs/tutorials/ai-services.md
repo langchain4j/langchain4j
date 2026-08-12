@@ -128,6 +128,22 @@ This will be converted into a `SystemMessage` behind the scenes and sent to the 
 `@SystemMessage` can also load a prompt template from resources:
 `@SystemMessage(fromResource = "my-prompt-template.txt")`
 
+`@SystemMessage` can also be declared on the AI Service interface,
+in which case it applies to all methods exposed by that AI Service, including inherited ones:
+
+```java
+@SystemMessage("You are a good friend of mine. Answer using slang.")
+interface Friend {
+
+    String chat(String userMessage);
+
+    String chatAgain(String userMessage);
+}
+```
+
+A `@SystemMessage` declared on a method takes precedence over one declared on the interface.
+A `@SystemMessage` declared only on a parent interface is not inherited by a child AI Service interface.
+
 ### System Message Provider
 System messages can also be defined dynamically with the system message provider:
 ```java
@@ -137,6 +153,35 @@ Friend friend = AiServices.builder(Friend.class)
     .build();
 ```
 As you can see, you can provide different system messages based on a chat memory ID (user or conversation).
+
+### System Message Transformer
+
+A system message transformer allows you to dynamically modify the system message on every invocation,
+after it has been resolved from `@SystemMessage` or `systemMessageProvider`, but before the
+[`chatRequestTransformer`](#programmatic-chatrequest-rewriting) runs.
+This is useful when you need to append or prepend content to the system message regardless of how it was originally configured.
+
+```java
+Friend friend = AiServices.builder(Friend.class)
+    .chatModel(model)
+    .systemMessageProvider(chatMemoryId -> "You are a good friend of mine. Answer using slang.")
+    .systemMessageTransformer(systemMessage -> systemMessage + " Today's date is " + LocalDate.now() + ".")
+    .build();
+```
+
+If no system message was configured, the transformer receives `null`.
+
+When you also need access to the invocation context (e.g., the method name or its arguments),
+use the two-argument overload that accepts an `InvocationContext`:
+
+```java
+Friend friend = AiServices.builder(Friend.class)
+    .chatModel(model)
+    .systemMessageProvider(chatMemoryId -> "You are a good friend of mine. Answer using slang.")
+    .systemMessageTransformer((systemMessage, context) ->
+            systemMessage + " Tenant: " + context.invocationParameters().get("tenant") + ".")
+    .build();
+```
 
 ## @UserMessage
 
@@ -210,7 +255,6 @@ interface AssistantWithChatParams {
 
 Build the AI Service:
 
-java
 ```java
 AssistantWithChatParams assistant = AiServices.builder(AssistantWithChatParams.class)
     .chatModel(openAiChatModel)  // or whichever model
@@ -580,7 +624,8 @@ GoogleAiGeminiChatModel.builder()
 ```java
 MistralAiChatModel.builder()
     ...
-    .responseFormat(MistralAiResponseFormatType.JSON_OBJECT)
+    .supportedCapabilities(RESPONSE_FORMAT_JSON_SCHEMA)
+    .strictJsonSchema(true)
     .build();
 ```
 
@@ -603,7 +648,6 @@ prompt engineering is your best bet. Also, try lowering the `temperature` for mo
 The AI Service can [stream response](/tutorials/response-streaming) token-by-token
 when using the `TokenStream` return type:
 ```java
-
 interface Assistant {
 
     TokenStream chat(String message);
@@ -631,6 +675,8 @@ tokenStream
     .beforeToolExecution((BeforeToolExecution beforeToolExecution) -> System.out.println(beforeToolExecution))
      // This will be invoked right after a tool is executed. ToolExecution contains ToolExecutionRequest and tool execution result.
     .onToolExecuted((ToolExecution toolExecution) -> System.out.println(toolExecution))
+     // This will be invoked for raw provider streaming events that are not already exposed via the typed callbacks above (e.g. server-tool lifecycle events). See the "Unmapped Raw Events" section of Response Streaming.
+    .onUnmappedRawEvent((Object rawEvent) -> System.out.println(rawEvent))
     .onCompleteResponse((ChatResponse response) -> futureResponse.complete(response))
     .onError((Throwable error) -> futureResponse.completeExceptionally(error))
     .start();
@@ -668,7 +714,7 @@ For this, please import `langchain4j-reactor` module:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-reactor</artifactId>
-    <version>1.11.0-beta19</version>
+    <version>1.18.1-beta28</version>
 </dependency>
 ```
 ```java
@@ -696,7 +742,6 @@ as each user would require their own instance of `ChatMemory` to maintain their 
 
 The solution to this issue is to use `ChatMemoryProvider`:
 ```java
-
 interface Assistant  {
     String chat(@MemoryId int memoryId, @UserMessage String message);
 }
@@ -713,13 +758,12 @@ In this scenario, two distinct instances of `ChatMemory` will be provided by `Ch
 
 When using `ChatMemory` in this way it's also important to evict the memory of a no longer needed conversations in order to avoid memory leaks. To make the chat memories internally used by an AI service accessible it's enough that the interface defining it extends the `ChatMemoryAccess` one.
 ```java
-
 interface Assistant extends ChatMemoryAccess {
     String chat(@MemoryId int memoryId, @UserMessage String message);
 }
 ```
-This makes it possible to both access the `ChatMemory` instance of a single conversation and to get rid of it when the conversation is terminated.
 
+This makes it possible to both access the `ChatMemory` instance of a single conversation and to get rid of it when the conversation is terminated.
 ```java
 String answerToKlaus = assistant.chat(1, "Hello, my name is Klaus");
 String answerToFrancine = assistant.chat(2, "Hello, my name is Francine");
@@ -748,9 +792,7 @@ Currently, AI Service does not implement any mechanism to prevent concurrent cal
 ## Tools (Function Calling)
 
 AI Service can be configured with tools that LLM can use:
-
 ```java
-
 class Tools {
     
     @Tool
@@ -782,7 +824,6 @@ More details about tools can be found [here](/tutorials/tools#high-level-tool-ap
 
 AI Service can be configured with a `ContentRetriever` in order to enable [naive RAG](/tutorials/rag#naive-rag):
 ```java
-
 EmbeddingStore embeddingStore  = ...
 EmbeddingModel embeddingModel = ...
 
@@ -855,7 +896,7 @@ Instead of using a global RetrievalAugmentor, register the retrieval logic as a 
 
 ```java
 Assistant assistant = AiServices.builder(Assistant.class)
-        .chatLanguageModel(model)
+        .chatModel(model)
         .tools(new SearchTool(contentRetriever))
         .build();
 ```

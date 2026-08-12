@@ -1,11 +1,10 @@
 package dev.langchain4j.data.document.splitter;
 
-import dev.langchain4j.Internal;
-
-import java.util.function.Function;
-
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
+import dev.langchain4j.Internal;
+import java.util.function.Function;
 
 /**
  * Segment builder utility class for HierarchicalDocumentSplitter.
@@ -17,7 +16,7 @@ class SegmentBuilder {
     private final Function<String, Integer> sizeFunction;
     private final String joinSeparator;
     private final int joinSeparatorSize;
-    private String segment = "";
+    private StringBuilder segment = new StringBuilder();
     private int segmentSize = 0;
 
     /**
@@ -88,10 +87,10 @@ class SegmentBuilder {
      */
     public void append(String text) {
         if (isNotEmpty()) {
-            segment += joinSeparator;
+            segment.append(joinSeparator);
         }
-        segment += text;
-        segmentSize = sizeOf(segment);
+        segment.append(text);
+        segmentSize = sizeOf(segment.toString());
     }
 
     /**
@@ -101,11 +100,11 @@ class SegmentBuilder {
      */
     public void prepend(String text) {
         if (isNotEmpty()) {
-            segment = text + joinSeparator + segment;
+            segment.insert(0, joinSeparator).insert(0, text);
         } else {
-            segment = text;
+            segment.replace(0, segment.length(), text);
         }
-        segmentSize = sizeOf(segment);
+        segmentSize = sizeOf(segment.toString());
     }
 
     /**
@@ -114,19 +113,19 @@ class SegmentBuilder {
      * @return {@code true} if the current segment is not empty.
      */
     public boolean isNotEmpty() {
-        return !segment.isEmpty();
+        return segment.length() > 0;
     }
 
     @Override
     public String toString() {
-        return segment.trim();
+        return segment.toString().trim();
     }
 
     /**
      * Resets the current segment.
      */
     public void reset() {
-        segment = "";
+        segment.setLength(0);
         segmentSize = 0;
     }
 }

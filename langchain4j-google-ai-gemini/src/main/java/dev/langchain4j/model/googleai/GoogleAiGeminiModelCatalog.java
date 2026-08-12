@@ -40,7 +40,8 @@ public class GoogleAiGeminiModelCatalog implements ModelCatalog {
                 builder.logRequests,
                 builder.logResponses,
                 builder.logger,
-                builder.timeout);
+                builder.timeout,
+                null);
     }
 
     public static Builder builder() {

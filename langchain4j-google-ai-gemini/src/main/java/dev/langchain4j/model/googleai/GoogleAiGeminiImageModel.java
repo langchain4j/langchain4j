@@ -5,6 +5,7 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.googleai.GeminiResponseModality.IMAGE;
+import static java.util.Collections.singletonList;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import dev.langchain4j.Experimental;
@@ -92,7 +93,7 @@ public class GoogleAiGeminiImageModel implements ImageModel {
     private final GeminiService geminiService;
     private final Integer maxRetries;
     private final List<GeminiSafetySetting> safetySettings;
-    private final GeminiTool tools;
+    private final List<GeminiTool> tools;
 
     private GoogleAiGeminiImageModel(GoogleAiGeminiImageModelBuilder builder) {
 
@@ -104,7 +105,8 @@ public class GoogleAiGeminiImageModel implements ImageModel {
                 getOrDefault(builder.logRequests, false),
                 getOrDefault(builder.logResponses, false),
                 builder.logger,
-                builder.timeout);
+                builder.timeout,
+                null);
 
         this.modelName = ensureNotNull(builder.modelName, "modelName");
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
@@ -112,7 +114,7 @@ public class GoogleAiGeminiImageModel implements ImageModel {
         this.safetySettings = builder.safetySettings;
 
         if (getOrDefault(builder.useGoogleSearchGrounding, false)) {
-            this.tools = new GeminiTool(null, null, new GeminiGoogleSearchRetrieval(), null, null);
+            this.tools = singletonList(new GeminiTool(null, null, new GeminiGoogleSearchRetrieval(), null, null));
         } else {
             this.tools = null;
         }
@@ -226,10 +228,13 @@ public class GoogleAiGeminiImageModel implements ImageModel {
 
         TokenUsage tokenUsage = null;
         if (response.usageMetadata() != null) {
-            tokenUsage = new TokenUsage(
-                    response.usageMetadata().promptTokenCount(),
-                    response.usageMetadata().candidatesTokenCount(),
-                    response.usageMetadata().totalTokenCount());
+            tokenUsage = GoogleAiGeminiTokenUsage.builder()
+                    .inputTokenCount(response.usageMetadata().promptTokenCount())
+                    .outputTokenCount(response.usageMetadata().candidatesTokenCount())
+                    .totalTokenCount(response.usageMetadata().totalTokenCount())
+                    .cachedContentTokenCount(response.usageMetadata().cachedContentTokenCount())
+                    .thoughtsTokenCount(response.usageMetadata().thoughtsTokenCount())
+                    .build();
         }
 
         FinishReason finishReason = null;

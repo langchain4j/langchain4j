@@ -13,7 +13,6 @@ import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.service.memory.ChatMemoryService;
 import dev.langchain4j.store.memory.chat.ChatMemoryStore;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
@@ -107,6 +106,7 @@ public class MessageWindowChatMemory implements ChatMemory {
     private void set(List<ChatMessage> messages) {
         Integer maxMessages = this.maxMessagesProvider.apply(this.id);
         ensureGreaterThanZero(maxMessages, "maxMessages");
+        messages = new ArrayList<>(messages);
         ensureCapacity(messages, maxMessages);
         store.updateMessages(id, messages);
     }

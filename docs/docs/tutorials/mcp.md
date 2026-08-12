@@ -60,10 +60,11 @@ McpTransport transport = StreamableHttpMcpTransport.builder()
         .build();
 ```
 
-**_NOTE:_** The Streamable HTTP transport currently does not create a global SSE stream
-(as described in the [spec](https://modelcontextprotocol.io/specification/2025-06-18/basic/transports#listening-for-messages-from-the-server)).
-Depending on the MCP server implementation, this may mean features that require server-initiated requests and notifications may or may not work.
-If the server piggybacks requests and notifications over SSE streams created for client-initiated operations, these will work.
+**_NOTE:_** The Streamable HTTP transport can optionally open a subsidiary
+[GET-based SSE stream](https://modelcontextprotocol.io/specification/2025-11-25/basic/transports#listening-for-messages-from-the-server)
+for receiving server-initiated notifications and requests. Enable it with `.subsidiaryChannel(true)` on the builder.
+It is disabled by default. If the server does not support it, the transport logs a warning and continues without it.
+If the stream breaks after being established, the transport reconnects automatically (respecting the server's `retry` value, defaulting to 5 seconds).
 
 For the WebSocket transport:
 ```java
@@ -138,7 +139,7 @@ server will cause the tool provider to throw an exception.
 
 Moreover, a MCP servers may often provide tens of tools, while a given AI service
 may only need a few of them, both to prevent the usage of an unwanted tool and to 
-reduce the possibility of hallucinations. The `McpToolProvider` allows to filter 
+reduce the possibility of hallucinations. The `McpToolProvider` allows you to filter 
 these tools by name as it follows:
 
 ```java
@@ -150,7 +151,7 @@ McpToolProvider toolProvider = McpToolProvider.builder()
 
 In this way the AI service configured with this `ToolProvider` could only use
 those mentioned 3 tools, allowing it to read existing issues, but preventing it
-from creating new ones. More in general, a `ToolProvider` allows to filter tools
+from creating new ones. More in general, a `ToolProvider` allows you to filter tools
 through a `BiPredicate<McpClient, ToolSpecification>`. This could be also useful
 when multiple MCP clients expose tools with the same and then conflicting names. 
 For example, the following `ToolProvider` takes tools from two MCP clients
@@ -253,6 +254,34 @@ The `title` field that exists directly in the MCP tool definition is exposed und
 `McpToolMetadataKeys.TITLE` key in the metadata map to distinguish it from the title
 that is retrieved from annotations - that one is exposed under the `McpToolMetadataKeys.ANNOTATION_TITLE` key.
 
+If the tool has icons, they are exposed under the `McpToolMetadataKeys.ICONS` key in the metadata map.
+
+## Providing `_meta` fields
+
+The MCP protocol allows clients to attach a `_meta` object to the `params` of every
+request and notification sent to the server. This can be used for passing
+OpenTelemetry trace context, custom application metadata, or any other
+out-of-band information that the server may need.
+
+To supply `_meta` fields, register an `McpMetaSupplier` on the client builder.
+The supplier is called before every request or notification, and the returned
+map is placed into `params._meta`. Unlike HTTP headers, this works across
+all transports (stdio, HTTP, WebSocket).
+
+```java
+McpClient mcpClient = DefaultMcpClient.builder()
+    .transport(transport)
+    .metaSupplier(context -> Map.of(
+        "traceparent", "00-0af7651916cd43dd8448eb211c80319c-00f067aa0ba902b7-01",
+        "custom-key", "custom-value"))
+    .build();
+```
+
+The supplier receives an `McpCallContext` (nullable) that contains the
+message being sent and, when applicable, the `InvocationContext` of the
+AI service call that triggered it. This allows the supplier to vary
+the metadata based on which operation is being performed.
+
 ## Logging
 
 The MCP protocol also defines a way for the server to send log messages to
@@ -275,12 +304,24 @@ McpClient mcpClient = new DefaultMcpClient.Builder()
 The MCP client supports listeners that can listen to events happening
 during the lifetime of the client. The interface
 `dev.langchain4j.mcp.client.McpClientListener` serves as the base
-for listener implementations. The listener will
-be invoked before and after every tool call, prompt rendering
-and resource access. The respective `McpCallContext` is injected when calling
-the listeners. This object contains the actual MCP message being sent to the
-server and an instance of `InvocationContext` when applicable (only when this
+for listener implementations. Multiple listeners can be registered
+on a single client; they will all be invoked before and after every
+tool call, prompt rendering and resource access. The respective
+`McpCallContext` is injected when calling the listeners. This object
+contains the actual MCP message being sent to the server and an
+instance of `InvocationContext` when applicable (only when this
 call happens as part of an AI service invocation).
+
+Listeners can be added one by one or in bulk:
+
+```java
+McpClient mcpClient = DefaultMcpClient.builder()
+    .transport(transport)
+    .addListener(new MyFirstListener())
+    .addListener(new MySecondListener())
+    .addListeners(List.of(new MyThirdListener(), new MyFourthListener()))
+    .build();
+```
 
 ## Resources
 
@@ -343,6 +384,32 @@ it receives this list of resources and can then decide to invoke `read_resource`
 and `get_resource` tools should suffice under most circumstances to explain to an LLM how to use them. However, if you need
 to customize the descriptions of these tools and their arguments, you override them using the methods of
 `DefaultMcpResourcesAsToolsPresenter.Builder`.
+
+### Resource subscriptions
+
+The MCP protocol supports [resource subscriptions](https://modelcontextprotocol.io/specification/2025-11-25/server/resources#subscriptions),
+allowing the client to be notified when a resource changes on the server.
+
+To subscribe to updates for a specific resource, use `client.subscribeToResource(uri)`.
+When the server updates the resource, it sends a `notifications/resources/updated` notification.
+To handle these notifications, register a callback via the `onResourceUpdated` builder method:
+
+```java
+McpClient mcpClient = DefaultMcpClient.builder()
+    .transport(transport)
+    .onResourceUpdated((client, uri) -> {
+        // re-read the updated resource
+        McpReadResourceResult result = client.readResource(uri);
+        // process the updated contents...
+    })
+    .build();
+
+// subscribe to a resource
+mcpClient.subscribeToResource("file:///status");
+
+// later, unsubscribe
+mcpClient.unsubscribeFromResource("file:///status");
+```
 
 ## Prompts
 

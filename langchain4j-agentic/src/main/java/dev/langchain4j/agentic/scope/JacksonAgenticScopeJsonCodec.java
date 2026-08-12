@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.exc.InvalidTypeIdException;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope.AgentMessage;
@@ -26,14 +27,11 @@ class JacksonAgenticScopeJsonCodec implements AgenticScopeJsonCodec {
                 .addMixIn(AgentInvocation.class, AgentInvocationMixin.class);
     }
 
+    static final ConfigurablePolymorphicTypeValidator PTV = new ConfigurablePolymorphicTypeValidator();
+
     static ObjectMapper agenticScopeJsonSerializer() {
         ObjectMapper mapper = agenticScopeJsonMapperBuilder().build();
-
-        // Configure the ObjectMapper to add type information for users types
-        mapper.activateDefaultTyping(
-                mapper.getPolymorphicTypeValidator()
-        );
-
+        mapper.activateDefaultTyping(PTV);
         return mapper;
     }
 
@@ -43,6 +41,8 @@ class JacksonAgenticScopeJsonCodec implements AgenticScopeJsonCodec {
     public DefaultAgenticScope fromJson(String json) {
         try {
             return MAPPER.readValue(json, DefaultAgenticScope.class);
+        } catch (InvalidTypeIdException e) {
+            throw new UnserializableAgenticScopeException(e.getTypeId(), e);
         } catch (JsonProcessingException e) {
             throw new RuntimeException("Failed to deserialize AgenticScope from JSON", e);
         }
@@ -51,7 +51,7 @@ class JacksonAgenticScopeJsonCodec implements AgenticScopeJsonCodec {
     @Override
     public String toJson(DefaultAgenticScope agenticScope) {
         try {
-            return MAPPER.writeValueAsString(agenticScope);
+            return MAPPER.writeValueAsString(agenticScope.serializableCopy());
         } catch (JsonProcessingException e) {
             throw new RuntimeException("Failed to serialize AgenticScope to JSON", e);
         }

@@ -1,8 +1,10 @@
 package dev.langchain4j.model.googleai;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assumptions.abort;
 
 import dev.langchain4j.data.image.Image;
+import dev.langchain4j.exception.InternalServerException;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -10,6 +12,9 @@ import java.nio.file.Paths;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
+
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -38,7 +43,8 @@ class GoogleAiGeminiImageModelIT {
                 .build();
 
         // when
-        var response = subject.generate("Image of A simple red circle on a white background");
+        var response = skipTestOnInternalServerError(
+                () -> subject.generate("Image of A simple red circle on a white background"));
 
         // then
         var image = response.content();
@@ -55,16 +61,17 @@ class GoogleAiGeminiImageModelIT {
         var subject = GoogleAiGeminiImageModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
                 .modelName(MODEL_NAME)
-                .logRequestsAndResponses(true)
                 .build();
 
         // First generate an image to edit
-        var originalResponse = subject.generate("A simple blue square on a white background");
+        var originalResponse =
+                skipTestOnInternalServerError(() -> subject.generate("A simple blue square on a white background"));
         Image originalImage = originalResponse.content();
         saveImage(originalImage, "should_edit_image_original");
 
         // when - edit the generated image
-        var editedResponse = subject.edit(originalImage, "Change the blue square to a green triangle");
+        var editedResponse = skipTestOnInternalServerError(
+                () -> subject.edit(originalImage, "Change the blue square to a green triangle"));
 
         // then
         assertThat(editedResponse).isNotNull();
@@ -82,17 +89,16 @@ class GoogleAiGeminiImageModelIT {
         var subject = GoogleAiGeminiImageModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
                 .modelName(NANO_BANANA_PRO)
-                .logRequestsAndResponses(true)
                 .useGoogleSearchGrounding(true)
                 .aspectRatio("1:1")
                 .build();
 
         // when
-        var imageResponse = subject.generate(
+        var imageResponse = skipTestOnInternalServerError(() -> subject.generate(
                 """
                 A kawaii illustration of the current weather forecast for Paris (France)
                 showing the current temperature (in Celsius)
-                """);
+                """));
         saveImage(imageResponse.content(), "paris_weather_illustration");
 
         // then
@@ -125,8 +131,14 @@ class GoogleAiGeminiImageModelIT {
         Map<String, Object> searchEntryPoint = (Map<String, Object>) groundingMetadata.get("searchEntryPoint");
         assertThat(searchEntryPoint).containsKey("renderedContent");
         assertThat((String) searchEntryPoint.get("renderedContent")).isNotBlank();
+    }
 
-        saveImage(imageResponse.content(), "paris_weather_illustration");
+    private static <T> T skipTestOnInternalServerError(Supplier<T> apiCall) {
+        try {
+            return apiCall.get();
+        } catch (InternalServerException e) {
+            return abort("Google returned an internal server error: " + e.getMessage());
+        }
     }
 
     private static void saveImage(Image image, String fileName) throws IOException {
@@ -149,5 +161,13 @@ class GoogleAiGeminiImageModelIT {
             case "image/webp" -> "webp";
             default -> "png";
         };
+    }
+
+    @AfterEach
+    void afterEach() throws InterruptedException {
+        String ciDelaySeconds = System.getenv("CI_DELAY_SECONDS_GOOGLE_AI_GEMINI");
+        if (ciDelaySeconds != null) {
+            Thread.sleep(Integer.parseInt(ciDelaySeconds) * 1000L);
+        }
     }
 }

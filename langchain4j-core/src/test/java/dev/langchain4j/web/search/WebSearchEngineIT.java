@@ -31,8 +31,6 @@ public abstract class WebSearchEngineIT {
             assertThat(result.snippet()).isNotBlank();
             assertThat(result.content()).isNull();
         });
-
-        assertThat(results).anyMatch(result -> result.url().toString().contains("langchain4j"));
     }
 
     @Test

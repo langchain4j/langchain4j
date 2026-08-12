@@ -1,8 +1,9 @@
 package dev.langchain4j.mcp.client;
 
 /**
- * Constants for MCP tool annotation keys, as defined in the MCP specification.
- * These constants are used as keys in the metadata map inside {@link dev.langchain4j.agent.tool.ToolSpecification}.
+ * Constants for MCP metadata keys, as defined in the MCP specification.
+ * These constants are used as keys in MCP metadata maps, including
+ * {@link dev.langchain4j.agent.tool.ToolSpecification#metadata()}.
  */
 public class McpToolMetadataKeys {
 
@@ -21,6 +22,13 @@ public class McpToolMetadataKeys {
      * Value type: String
      */
     public static final String TITLE = "title";
+
+    /**
+     * Icons associated with an MCP tool when represented as a
+     * {@link dev.langchain4j.agent.tool.ToolSpecification}.
+     * Value type: {@code List<McpIcon>}
+     */
+    public static final String ICONS = "icons";
 
     /**
      * Indicates whether the tool is read-only.
@@ -46,4 +54,11 @@ public class McpToolMetadataKeys {
      */
     public static final String OPEN_WORLD_HINT = "openWorldHint";
 
+    /**
+     * The JSON schema describing the structured output of the tool, as declared in the Tool definition.
+     * Paired with {@code structuredContent} in tool responses.
+     * See <a href="https://github.com/modelcontextprotocol/modelcontextprotocol/blob/2025-06-18/schema/2025-06-18/schema.json">schema.json</a>
+     * Value type: {@code Map<String, Object>}
+     */
+    public static final String OUTPUT_SCHEMA = "outputSchema";
 }

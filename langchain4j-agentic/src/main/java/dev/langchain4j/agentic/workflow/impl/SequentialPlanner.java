@@ -7,6 +7,7 @@ import dev.langchain4j.agentic.planner.InitPlanningContext;
 import dev.langchain4j.agentic.planner.PlanningContext;
 import dev.langchain4j.agentic.planner.Planner;
 import java.util.List;
+import java.util.Map;
 
 public class SequentialPlanner implements Planner {
 
@@ -31,5 +32,21 @@ public class SequentialPlanner implements Planner {
     @Override
     public boolean terminated() {
         return agentCursor >= agents.size();
+    }
+
+    @Override
+    public Map<String, Object> executionState() {
+        // Save cursor - 1: the agent that was just scheduled for execution.
+        // On recovery, firstAction() delegates to nextAction() which calls agents.get(agentCursor++),
+        // so the restored cursor must point to the agent that needs to be (re-)executed.
+        return agentCursor > 0 ? Map.of("cursor", agentCursor - 1) : Map.of();
+    }
+
+    @Override
+    public void restoreExecutionState(Map<String, Object> state) {
+        Object savedCursor = state.get("cursor");
+        if (savedCursor instanceof Number n) {
+            this.agentCursor = n.intValue();
+        }
     }
 }

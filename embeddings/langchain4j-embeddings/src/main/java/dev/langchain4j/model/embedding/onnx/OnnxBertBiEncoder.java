@@ -114,9 +114,13 @@ public class OnnxBertBiEncoder {
             if (to >= tokens.size() - 1) {
                 to = tokens.size() - 1;
             } else {
-                // ensure we don't split word across partitions
-                while (tokens.get(to).startsWith("##")) {
+                // ensure we don't split word across partitions, but keep at least one token of progress
+                while (to > from && tokens.get(to).startsWith("##")) {
                     to--;
+                }
+                if (to == from) {
+                    // a single word's subword run is longer than partitionSize: force a split to make progress
+                    to = from + partitionSize;
                 }
             }
 
@@ -257,12 +261,10 @@ public class OnnxBertBiEncoder {
 
     private byte[] loadModel(InputStream modelInputStream) {
         if (modelInputStream == null) {
-            throw new IllegalStateException(
-                    "Embedding model file is not available. " +
-                            "This usually happens when running LangChain4j tests from sources. " +
-                            "If you are developing LangChain4j locally, run 'mvn generate-resources' " +
-                            "from the project root to download the required model files."
-            );
+            throw new IllegalStateException("Embedding model file is not available. "
+                    + "This usually happens when running LangChain4j tests from sources. "
+                    + "If you are developing LangChain4j locally, run 'mvn generate-resources' "
+                    + "from the project root to download the required model files.");
         }
         try (InputStream inputStream = modelInputStream;
                 ByteArrayOutputStream buffer = new ByteArrayOutputStream()) {

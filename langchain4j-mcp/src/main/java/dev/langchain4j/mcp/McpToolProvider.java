@@ -1,5 +1,10 @@
 package dev.langchain4j.mcp;
 
+import static dev.langchain4j.agent.tool.SearchBehavior.ALWAYS_VISIBLE;
+import static dev.langchain4j.internal.Utils.copy;
+import static dev.langchain4j.internal.Utils.merge;
+import static java.util.Arrays.asList;
+
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.internal.Utils;
 import dev.langchain4j.mcp.client.McpClient;
@@ -21,15 +26,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-
-import static dev.langchain4j.agent.tool.SearchBehavior.ALWAYS_VISIBLE;
-import static dev.langchain4j.internal.Utils.copy;
-import static dev.langchain4j.internal.Utils.merge;
-import static java.util.Arrays.asList;
 
 /**
  * A tool provider backed by one or more MCP clients.
@@ -154,8 +152,19 @@ public class McpToolProvider implements ToolProvider {
 
     protected ToolProviderResult provideTools(
             ToolProviderRequest request, BiPredicate<McpClient, ToolSpecification> mcpToolsFilter) {
+        return provideTools(request, mcpToolsFilter, mcpClients);
+    }
+
+    protected ToolProviderResult provideTools(ToolProviderRequest request, List<McpClient> consideredMcpClients) {
+        return provideTools(request, mcpToolsFilter.get(), consideredMcpClients);
+    }
+
+    protected ToolProviderResult provideTools(
+            ToolProviderRequest request,
+            BiPredicate<McpClient, ToolSpecification> mcpToolsFilter,
+            List<McpClient> consideredMcpClients) {
         ToolProviderResult.Builder builder = ToolProviderResult.builder();
-        for (McpClient mcpClient : mcpClients) {
+        for (McpClient mcpClient : consideredMcpClients) {
             try {
                 for (ToolSpecification originalSpec : mcpClient.listTools()) {
                     if (mcpToolsFilter.test(mcpClient, originalSpec)) {

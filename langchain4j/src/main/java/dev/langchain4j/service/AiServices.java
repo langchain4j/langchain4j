@@ -20,11 +20,14 @@ import dev.langchain4j.guardrail.InputGuardrail;
 import dev.langchain4j.guardrail.OutputGuardrail;
 import dev.langchain4j.guardrail.config.InputGuardrailsConfig;
 import dev.langchain4j.guardrail.config.OutputGuardrailsConfig;
+import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.input.structured.StructuredPrompt;
@@ -38,9 +41,11 @@ import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
+import dev.langchain4j.service.tool.AiServiceTool;
 import dev.langchain4j.service.tool.BeforeToolExecution;
 import dev.langchain4j.service.tool.DefaultToolExecutor;
 import dev.langchain4j.service.tool.ToolArgumentsErrorHandler;
+import dev.langchain4j.service.tool.ToolErrorHandlerResult;
 import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
 import dev.langchain4j.service.tool.ToolExecutor;
@@ -74,7 +79,8 @@ import java.util.function.UnaryOperator;
  * <p>
  * Currently, AI Services support:
  * <pre>
- * - Static system message templates, configured via @{@link SystemMessage} annotation on top of the method
+ * - Static system message templates, configured via @{@link SystemMessage} annotation
+ *   on top of the method or on the AI Service interface
  * - Dynamic system message templates, configured via {@link #systemMessageProvider(Function)}
  * - Static user message templates, configured via @{@link UserMessage} annotation on top of the method
  * - Dynamic user message templates, configured via method parameter annotated with @{@link UserMessage}
@@ -276,6 +282,75 @@ public abstract class AiServices<T> {
     }
 
     /**
+     * Configures a system message provider that provides a system message each time an AI service is invoked.
+     * <p>
+     * This is similar to {@link #systemMessageProvider(Function)}, but the provider receives the full
+     * {@link InvocationContext}, which exposes the {@link ChatRequestParameters} and {@link ModelProvider}
+     * of the {@link ChatModel} or {@link StreamingChatModel} configured for this AI service,
+     * allowing the system message to vary based on the model used.
+     * <p>
+     * When both {@code @SystemMessage} and this provider are configured,
+     * {@code @SystemMessage} takes precedence.
+     *
+     * @param systemMessageProvider A {@link Function} that accepts an {@link InvocationContext}
+     *                              and returns a system message to be used.
+     *                              The returned {@link String} can be either a complete system message
+     *                              or a system message template containing unresolved template variables (e.g. "{{name}}"),
+     *                              which will be resolved using the values of method parameters annotated with @{@link V}.
+     * @return builder
+     */
+    public AiServices<T> systemMessageProviderWithContext(Function<InvocationContext, String> systemMessageProvider) {
+        context.systemMessageProviderWithContext = systemMessageProvider;
+        return this;
+    }
+
+    /**
+     * Configures a transformer that will be applied to the system message on each AI service invocation,
+     * after all other system message configuration (i.e., {@code @SystemMessage} annotation and
+     * {@link #systemMessageProvider(Function)}) has been applied, but before the
+     * {@link #chatRequestTransformer(UnaryOperator)} is invoked.
+     * <p>
+     * This can be used to dynamically modify the content of the system message,
+     * for example to append or prepend additional instructions.
+     * The transformer receives the current system message text (or {@code null} if no system message
+     * has been configured) and must return the new system message text.
+     *
+     * @param systemMessageTransformer A {@link UnaryOperator} that accepts the current system message
+     *                                 text and returns the transformed text.
+     * @return builder
+     * @see #systemMessageTransformer(BiFunction)
+     * @since 1.12.0
+     */
+    public AiServices<T> systemMessageTransformer(UnaryOperator<String> systemMessageTransformer) {
+        context.systemMessageTransformer = (msg, ctx) -> systemMessageTransformer.apply(msg);
+        return this;
+    }
+
+    /**
+     * Configures a transformer that will be applied to the system message on each AI service invocation,
+     * after all other system message configuration (i.e., {@code @SystemMessage} annotation and
+     * {@link #systemMessageProvider(Function)}) has been applied, but before the
+     * {@link #chatRequestTransformer(UnaryOperator)} is invoked.
+     * <p>
+     * This can be used to dynamically modify the content of the system message,
+     * for example to append or prepend additional instructions.
+     * The transformer receives the current system message text (or {@code null} if no system message
+     * has been configured) and the {@link InvocationContext} of the current invocation,
+     * and must return the new system message text.
+     *
+     * @param systemMessageTransformer A {@link BiFunction} that accepts the current system message text
+     *                                 and the {@link InvocationContext}, and returns the transformed text.
+     * @return builder
+     * @see #systemMessageTransformer(UnaryOperator)
+     * @since 1.12.0
+     */
+    public AiServices<T> systemMessageTransformer(
+            BiFunction<String, InvocationContext, String> systemMessageTransformer) {
+        context.systemMessageTransformer = systemMessageTransformer;
+        return this;
+    }
+
+    /**
      * Configures the user message to be used each time an AI service is invoked.
      * It can be either a complete user message or a user message template containing unresolved template
      * variables (e.g. "{{name}}"), which will be resolved using the values of method parameters annotated with @{@link V}.
@@ -431,13 +506,74 @@ public abstract class AiServices<T> {
     }
 
     /**
-     * Configures the tool provider that the LLM can use
+     * Configures a tool provider that dynamically supplies tools for each LLM request.
+     * <p>
+     * Unlike {@link #tools(Object...)}, which registers a fixed set of tools upfront,
+     * a {@link ToolProvider} is invoked on every AI service call and can return a
+     * different set of tools based on the current request context (e.g. the user message,
+     * memory ID, or invocation parameters).
      *
-     * @param toolProvider Decides which tools the LLM could use to handle the request
-     * @return builder
+     * @param toolProvider the tool provider to use
+     * @return this builder
+     * @see #toolProviders(Collection)
+     * @see #toolProviders(ToolProvider...)
+     * @see ToolProvider
      */
     public AiServices<T> toolProvider(ToolProvider toolProvider) {
         context.toolService.toolProvider(toolProvider);
+        return this;
+    }
+
+    /**
+     * Configures multiple tool providers that dynamically supply tools for each LLM request.
+     * <p>
+     * All registered providers are invoked on every AI service call. Tools returned by each
+     * provider are merged and included in the request to the LLM. In case of a conflict
+     * (e.g. duplicate tool names), an exception will be thrown and AI Service invocation will fail.
+     *
+     * @param toolProviders the tool providers to use
+     * @return this builder
+     * @see #toolProvider(ToolProvider)
+     * @see #toolProviders(ToolProvider...)
+     * @see ToolProvider
+     */
+    public AiServices<T> toolProviders(Collection<ToolProvider> toolProviders) {
+        context.toolService.toolProviders(toolProviders);
+        return this;
+    }
+
+    /**
+     * Configures multiple tool providers that dynamically supply tools for each LLM request.
+     * <p>
+     * All registered providers are invoked on every AI service call. Tools returned by each
+     * provider are merged and included in the request to the LLM. In case of a conflict
+     * (e.g. duplicate tool names), an exception will be thrown and AI Service invocation will fail.
+     *
+     * @param toolProviders the tool providers to use
+     * @return this builder
+     * @see #toolProvider(ToolProvider)
+     * @see #toolProviders(Collection)
+     * @see ToolProvider
+     */
+    public AiServices<T> toolProviders(ToolProvider... toolProviders) {
+        if (toolProviders != null && toolProviders.length > 0) {
+            context.toolService.toolProviders(asList(toolProviders));
+        }
+        return this;
+    }
+
+    /**
+     * Configures the tools that the LLM can use.
+     * <p>
+     * Each {@link AiServiceTool} carries its own {@link ToolSpecification}, {@link ToolExecutor},
+     * and {@link ReturnBehavior}.
+     *
+     * @param tools list of {@link AiServiceTool}s to expose to the LLM.
+     * @return builder
+     * @since 1.14.0
+     */
+    public AiServices<T> tools(List<AiServiceTool> tools) {
+        context.toolService.tools(tools);
         return this;
     }
 
@@ -467,7 +603,9 @@ public abstract class AiServices<T> {
      *               perform a llm call with the tool results provided by a {@link ToolExecutor}.
      *               This is similar to using the {@link ReturnBehavior#IMMEDIATE} when using the {@link Tool}-annotated java methods
      * @return builder
+     * @deprecated use {@link #tools(List)} instead in order to specify {@link ReturnBehavior}
      */
+    @Deprecated(since = "1.14.0")
     public AiServices<T> tools(Map<ToolSpecification, ToolExecutor> tools, Set<String> immediateReturnToolNames) {
         context.toolService.tools(tools, immediateReturnToolNames);
         return this;
@@ -525,23 +663,31 @@ public abstract class AiServices<T> {
     }
 
     /**
-     * Sets the maximum number of times the LLM may respond with tool calls.
+     * Sets the maximum number of tool calling round trips (i.e. LLM responses containing tool calls).
      * If this limit is exceeded, an exception is thrown and the AI service invocation is terminated.
      *
      * <p>
-     * NOTE: This value does not represent the total number of tool calls.
-     * Each LLM response that contains one or more tool calls counts as a single invocation
+     * NOTE: This value does not represent the total number of individual tool calls.
+     * Each LLM response that contains one or more tool calls counts as a single round trip
      * and reduces this limit by one.
      *
      * <p>
      * The default value is 100.
      *
-     * @param maxSequentialToolsInvocations the maximum number of LLM responses containing tool calls
+     * @param maxToolCallingRoundTrips the maximum number of LLM responses containing tool calls
      * @return the builder instance
      */
-    public AiServices<T> maxSequentialToolsInvocations(int maxSequentialToolsInvocations) {
-        context.toolService.maxSequentialToolsInvocations(maxSequentialToolsInvocations);
+    public AiServices<T> maxToolCallingRoundTrips(int maxToolCallingRoundTrips) {
+        context.toolService.maxToolCallingRoundTrips(maxToolCallingRoundTrips);
         return this;
+    }
+
+    /**
+     * @deprecated Use {@link #maxToolCallingRoundTrips(int)} instead.
+     */
+    @Deprecated(since = "1.15.0")
+    public AiServices<T> maxSequentialToolsInvocations(int maxSequentialToolsInvocations) {
+        return maxToolCallingRoundTrips(maxSequentialToolsInvocations);
     }
 
     /**
@@ -587,7 +733,7 @@ public abstract class AiServices<T> {
 
     /**
      * Configures the handler to be invoked when errors related to tool arguments occur,
-     * such as JSON parsing failures or mismatched argument types.
+     * such as JSON parsing failures, missing required parameters, or mismatched argument types.
      * <p>
      * Within this handler, you can either:
      * <p>
@@ -595,6 +741,18 @@ public abstract class AiServices<T> {
      * <p>
      * 2. Return a text message (e.g., an error description) that will be sent back to the LLM,
      * allowing it to respond appropriately (for example, by correcting the error and retrying).
+     * <p>
+     * <b>Recommendation:</b> the current default (throw) is rarely what you want.
+     * Argument errors usually originate from the LLM (malformed JSON, missing fields, wrong types),
+     * and LLMs can typically self-correct when given a clear error message. Configuring a handler
+     * that returns the error text via {@link ToolErrorHandlerResult#text(String)} lets the LLM retry,
+     * which is more in line with how agentic systems are expected to behave.
+     * The default will change to "Return a text message" in LangChain4j 2.0.
+     * <p>
+     * Example:
+     * <pre>{@code
+     * .toolArgumentsErrorHandler((error, ctx) -> ToolErrorHandlerResult.text(error.getMessage()))
+     * }</pre>
      * <p>
      * NOTE: If you create a {@link DefaultToolExecutor} manually or use a custom {@link ToolExecutor},
      * ensure that a {@link ToolArgumentsException} is thrown by {@link ToolExecutor} in such cases.
@@ -622,6 +780,20 @@ public abstract class AiServices<T> {
      * allowing it to respond appropriately (for example, by correcting the error and retrying).
      * This is the default behavior if no handler is configured.
      * The {@link Throwable#getMessage()} is sent to the LLM by default.
+     * <p>
+     * <b>Recommendation:</b> the current default sends the raw exception message to the LLM,
+     * which can leak internal application data — stack traces, file paths, downstream API responses,
+     * credentials and/or PII embedded in error strings, etc.
+     * Once fed to the LLM, this content can flow into responses, chat history, observability pipelines,
+     * and the LLM provider's logs. For production use, configure a handler that returns either a
+     * generic message or a sanitized/curated description of the failure, and rely on logs/events for
+     * the underlying detail.
+     * The default will change to "Throw an exception" in LangChain4j 2.0.
+     * <p>
+     * Example:
+     * <pre>{@code
+     * .toolExecutionErrorHandler((error, ctx) -> ToolErrorHandlerResult.text("Tool execution failed."))
+     * }</pre>
      * <p>
      * NOTE: If you create a {@link DefaultToolExecutor} manually or use a custom {@link ToolExecutor},
      * ensure that a {@link ToolExecutionException} is thrown by {@link ToolExecutor} in such cases.
@@ -1069,6 +1241,20 @@ public abstract class AiServices<T> {
      */
     public AiServices<T> storeRetrievedContentInChatMemory(boolean storeRetrievedContentInChatMemory) {
         context.storeRetrievedContentInChatMemory = storeRetrievedContentInChatMemory;
+        return this;
+    }
+
+    /**
+     * Enables or disables compensating actions on tool errors.
+     * When enabled, if any tool execution fails, all previously executed tools'
+     * compensating actions (declared via {@link dev.langchain4j.agent.tool.CompensateFor}) are called
+     * in reverse order to undo the effects of the successful tool calls.
+     *
+     * @param compensateOnToolErrors whether to run compensating actions on tool errors
+     * @return builder
+     */
+    public AiServices<T> compensateOnToolErrors(boolean compensateOnToolErrors) {
+        context.toolService.compensateOnToolErrors(compensateOnToolErrors);
         return this;
     }
 

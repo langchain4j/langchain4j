@@ -8,12 +8,15 @@ on:
     paths:
       - '.github/langchain4j-github-bot.yml'
 
+permissions:
+  contents: read
+
 jobs:
   lint:
     name: "langchain4j-github-bot.yml validation"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: install yamllint
         shell: bash
         run: sudo apt-get install -y yamllint

@@ -70,6 +70,7 @@ Some examples of things you could do:
 - Check that there are enough documents in the augmentation results
 - Ensure the user is not asking the same question multiple times
 - Mitigate potential prompt injection attack
+- Rewrite eligible single-text input with the community [Prompt Repetition](/integrations/prompt-repetition/) module
 
 Input guardrails can be used whether the operation is synchronous or asynchronous/streaming.
 
@@ -121,6 +122,10 @@ var assistant = AiServices.builder(Assistant.class)
     .inputGuardrails(new FirstInputGuardrail(), new SecondInputGuardrail())
     .build();
 ```
+
+:::info
+If you want a ready-made experimental input guardrail that rewrites eligible single-text input using prompt repetition, see the community [Prompt Repetition](/integrations/prompt-repetition/) module.
+:::
 
 In the first scenario, classes that implement `InputGuardrail` are passed. New instances of these classes are created dynamically using reflection.
 
@@ -238,6 +243,7 @@ There are several common use cases where implementations of an input guardrail a
 | Guardrail class                                                                                                                                                                              | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 |:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | [`MessageModeratorInputGuardrail`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-guardrails/src/main/java/dev/langchain4j/guardrails/MessageModeratorInputGuardrail.java) | An input guardrail that validates user messages using a [`ModerationModel`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/model/moderation/ModerationModel.java) to detect potentially harmful, inappropriate, or policy-violating content.<br/> - Checks incoming messages for hate speech, violence, self-harm, sexual content, or other categories defined by the moderation model.<br/> - If the message is flagged, validation fails with a fatal result, preventing the message from being processed further.<br/> - Useful for ensuring user inputs comply with content policies before being sent to an LLM. |
+| [`PatternBasedPromptInjectionGuardrail`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-guardrails/src/main/java/dev/langchain4j/guardrails/PatternBasedPromptInjectionGuardrail.java) | A pattern-based input guardrail that detects prompt injection attempts using regular expressions derived from [OWASP LLM01](https://genai.owasp.org/llmrisk/llm01-prompt-injection/).<br/> - Covers instruction override, role hijacking, jailbreaks, system prompt leakage, delimiter injection, and encoded payloads.<br/> - Zero external dependencies and sub-millisecond latency, making it suitable as the first (cheapest) gate in a guardrail chain before any LLM-based classifier.<br/> - Subclasses can add domain-specific patterns and customise the failure message. |
 
 ## Output Guardrails
 
@@ -514,7 +520,7 @@ public class MyObjectJsonOutputGuardrail extends JsonExtractorOutputGuardrail<My
 public interface Assistant {
     String chat(String message);
     
-    @InputGuardrails(PromptInjectionGuardrail.class)
+    @InputGuardrails(PatternBasedPromptInjectionGuardrail.class)
     @OutputGuardrails(MyObjectJsonOutputGuardrail.class)
     MyObject chatAndReturnJson(String message);
 }

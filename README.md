@@ -1,4 +1,4 @@
-# LangChain for Java: Supercharge your Java application with the power of LLMs
+# LangChain4j: idiomatic, open-source Java library for building LLM-powered applications on the JVM
 
 [![Build Status](https://img.shields.io/github/actions/workflow/status/langchain4j/langchain4j/main.yaml?branch=main&style=for-the-badge&label=CI%20BUILD&logo=github)](https://github.com/langchain4j/langchain4j/actions/workflows/main.yaml)
 [![Nightly Build](https://img.shields.io/github/actions/workflow/status/langchain4j/langchain4j/nightly_jdk17.yaml?branch=main&style=for-the-badge&label=NIGHTLY%20BUILD&logo=github)](https://github.com/langchain4j/langchain4j/actions/workflows/nightly_jdk17.yaml)
@@ -38,8 +38,11 @@ Here's how:
 LangChain4j began development in early 2023 amid the ChatGPT hype.
 We noticed a lack of Java counterparts to the numerous Python and JavaScript LLM libraries and frameworks,
 and we had to fix that!
-Although "LangChain" is in our name, the project is a fusion of ideas and concepts from LangChain, Haystack,
-LlamaIndex, and the broader community, spiced up with a touch of our own innovation.
+
+**Despite the name, LangChain4j is not a Java port of LangChain (Python) — it is built for Java, not ported to it.**
+It is an idiomatic Java library designed from the ground up around Java conventions:
+type safety, POJOs, annotations, interfaces, dependency injection, fluent APIs, and first-class integrations with Quarkus, Spring Boot, Helidon, and Micronaut.
+Its API, internals, and release cycle are independent of the Python LangChain project.
 
 We actively monitor community developments, aiming to quickly incorporate new techniques and integrations,
 ensuring you stay up-to-date.

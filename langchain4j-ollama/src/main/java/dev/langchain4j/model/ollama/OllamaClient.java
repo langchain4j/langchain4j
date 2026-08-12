@@ -8,9 +8,11 @@ import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolCall;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialThinking;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onUnmappedRawEvent;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
@@ -32,6 +34,7 @@ import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventContext;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.internal.ExceptionMapper;
+import dev.langchain4j.internal.MappingTrackingStreamingChatResponseHandler;
 import dev.langchain4j.internal.ToolCallBuilder;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -122,6 +125,7 @@ class OllamaClient {
         HttpRequest httpRequest = HttpRequest.builder()
                 .method(POST)
                 .url(baseUrl, "api/generate")
+                .addHeader("Content-Type", "application/json")
                 .addHeaders(buildRequestHeaders())
                 .body(toJson(request))
                 .build();
@@ -134,6 +138,13 @@ class OllamaClient {
             public void onEvent(ServerSentEvent event) {
 
                 CompletionResponse completionResponse = fromJson(event.data(), CompletionResponse.class);
+
+                String error = completionResponse.getError();
+                if (!isNullOrBlank(error)) {
+                    onError(new OllamaStreamingException(error));
+                    return;
+                }
+
                 contentBuilder.append(completionResponse.getResponse());
                 handler.onNext(completionResponse.getResponse());
 
@@ -160,12 +171,17 @@ class OllamaClient {
         HttpRequest httpRequest = HttpRequest.builder()
                 .method(POST)
                 .url(baseUrl, "api/chat")
+                .addHeader("Content-Type", "application/json")
                 .addHeaders(buildRequestHeaders())
                 .body(toJson(ollamaChatRequest))
                 .build();
 
+        StreamingChatResponseHandler targetHandler = handler;
+
         httpClient.execute(httpRequest, new OllamaServerSentEventParser(), new ServerSentEventListener() {
 
+            final MappingTrackingStreamingChatResponseHandler handler =
+                    new MappingTrackingStreamingChatResponseHandler(targetHandler);
             final ToolCallBuilder toolCallBuilder = new ToolCallBuilder();
             final OllamaStreamingResponseBuilder responseBuilder =
                     new OllamaStreamingResponseBuilder(toolCallBuilder, returnThinking);
@@ -182,11 +198,21 @@ class OllamaClient {
                     streamingHandle = toStreamingHandle(context.parsingHandle());
                 }
 
+                handler.resetMappingTracking();
+
                 OllamaChatResponse ollamaChatResponse = fromJson(event.data(), OllamaChatResponse.class);
+
+                String error = ollamaChatResponse.getError();
+                if (!isNullOrBlank(error)) {
+                    onError(new OllamaStreamingException(error));
+                    return;
+                }
+
                 responseBuilder.append(ollamaChatResponse);
 
                 Message message = ollamaChatResponse.getMessage();
                 if (message == null) {
+                    onUnmappedRawEvent(handler, event);
                     return;
                 }
 
@@ -211,6 +237,7 @@ class OllamaClient {
                         }
 
                         toolCallBuilder.updateName(toolCall.getFunction().getName());
+                        toolCallBuilder.updateId(toolCall.getId());
 
                         String partialArguments =
                                 toJsonWithoutIdent(toolCall.getFunction().getArguments());
@@ -227,6 +254,10 @@ class OllamaClient {
 
                     ChatResponse completeResponse = responseBuilder.build(ollamaChatResponse);
                     onCompleteResponse(handler, completeResponse);
+                }
+
+                if (!handler.wasMapped()) {
+                    onUnmappedRawEvent(handler, event);
                 }
             }
 

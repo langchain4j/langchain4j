@@ -1,11 +1,13 @@
 package dev.langchain4j.agentic.internal;
 
 import dev.langchain4j.agentic.agent.AgentInvocationException;
+import dev.langchain4j.agentic.agent.ChatMessagesAccess;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.scope.AgenticScope;
+import dev.langchain4j.agentic.scope.AgenticSystemSuspendedException;
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import dev.langchain4j.invocation.LangChain4jManaged;
@@ -31,7 +33,13 @@ public interface AgentInvoker extends AgentInstance, InternalAgent {
         AgentListener listener = listener();
         beforeAgentInvocation(listener, agenticScope, this, args.namedArgs());
         Object result = internalInvoke(agenticScope, listener, agent, args);
-        afterAgentInvocation(listener, agenticScope, this, args.namedArgs(), result);
+        if (agent instanceof ChatMessagesAccess chatMessagesAccess) {
+            afterAgentInvocation(listener, agenticScope, this, args.namedArgs(), result,
+                    chatMessagesAccess.lastChatRequest(agenticScope.memoryId()),
+                    chatMessagesAccess.lastChatResponse(agenticScope.memoryId()));
+        } else {
+            afterAgentInvocation(listener, agenticScope, this, args.namedArgs(), result);
+        }
         return result;
     }
 
@@ -40,6 +48,10 @@ public interface AgentInvoker extends AgentInstance, InternalAgent {
         try {
             return method().invoke(agent, args.positionalArgs());
         } catch (Exception e) {
+            Throwable cause = e instanceof java.lang.reflect.InvocationTargetException ? e.getCause() : e;
+            if (cause instanceof AgenticSystemSuspendedException suspended) {
+                throw suspended;
+            }
             AgentInvocationException invocationException = new AgentInvocationException("Failed to invoke agent method: " + method(), e);
             agentError(listener, agenticScope, this, args.namedArgs(), invocationException);
             throw invocationException;
@@ -49,11 +61,13 @@ public interface AgentInvoker extends AgentInstance, InternalAgent {
     }
 
     static AgentInvoker fromSpec(AgentSpecsProvider spec, Method agenticMethod, String name) {
-        List<AgentArgument> arguments = List.of(new AgentArgument(AgenticScope.class, AGENTIC_SCOPE_ARG_NAME));
+        List<AgentArgument> arguments = spec.arguments() != null
+                ? spec.arguments()
+                : List.of(new AgentArgument(AgenticScope.class, AGENTIC_SCOPE_ARG_NAME));
         InternalAgent agentInstance = new NonAiAgentInstance(agenticMethod.getDeclaringClass(),
                 name, spec.description(), agenticMethod.getGenericReturnType(), spec.outputKey(), spec.async(), arguments,
                 spec.listener());
-        return new MethodAgentInvoker(agenticMethod, agentInstance);
+        return new SpecAgentInvoker(agenticMethod, agentInstance);
     }
 
     static AgentInvoker fromMethod(InternalAgent agent, Method method) {

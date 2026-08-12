@@ -6,13 +6,23 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.request.ResponseFormat;
+import dev.langchain4j.model.chat.request.ResponseFormatType;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonRawSchema;
+import dev.langchain4j.model.chat.request.json.JsonReferenceSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiCandidate;
 import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiCandidate.GeminiFinishReason;
 import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiUsageMetadata;
+import dev.langchain4j.model.googleai.GeminiGenerationConfig.GeminiImageConfig;
 import dev.langchain4j.model.output.FinishReason;
 import java.util.List;
 import java.util.Map;
@@ -208,9 +218,60 @@ class GoogleAiGeminiChatModelTest {
             var chatResponse = subject.chat(chatRequest);
 
             // Then
+            assertThat(chatResponse.metadata().tokenUsage()).isInstanceOf(GoogleAiGeminiTokenUsage.class);
             assertThat(chatResponse.metadata().tokenUsage().inputTokenCount()).isEqualTo(15);
             assertThat(chatResponse.metadata().tokenUsage().outputTokenCount()).isEqualTo(25);
             assertThat(chatResponse.metadata().tokenUsage().totalTokenCount()).isEqualTo(40);
+            GoogleAiGeminiTokenUsage geminiTokenUsage =
+                    (GoogleAiGeminiTokenUsage) chatResponse.metadata().tokenUsage();
+            assertThat(geminiTokenUsage.cachedContentTokenCount()).isNull();
+            assertThat(geminiTokenUsage.thoughtsTokenCount()).isNull();
+        }
+
+        @Test
+        void shouldExposeCachedAndThinkingTokenCountsInResponse() {
+            GeminiUsageMetadata usageMetadata = GeminiUsageMetadata.builder()
+                    .promptTokenCount(120)
+                    .candidatesTokenCount(30)
+                    .totalTokenCount(200)
+                    .cachedContentTokenCount(80)
+                    .thoughtsTokenCount(50)
+                    .build();
+
+            GeminiCandidate candidate = new GeminiCandidate(
+                    new GeminiContent(
+                            List.of(GeminiContent.GeminiPart.builder()
+                                    .text("Cached + thinking response")
+                                    .build()),
+                            "model"),
+                    GeminiFinishReason.STOP,
+                    null,
+                    null);
+
+            GeminiGenerateContentResponse geminiResponse = new GeminiGenerateContentResponse(
+                    "cache-thinking-id", "gemini-2.5-pro", List.of(candidate), usageMetadata, null);
+
+            when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class)))
+                    .thenReturn(geminiResponse);
+
+            GoogleAiGeminiChatModel subject = GoogleAiGeminiChatModel.builder()
+                    .apiKey("test-api-key")
+                    .modelName(TEST_MODEL_NAME)
+                    .build(mockGeminiService);
+
+            ChatRequest chatRequest =
+                    ChatRequest.builder().messages(new UserMessage("Hello")).build();
+
+            ChatResponse chatResponse = subject.chat(chatRequest);
+
+            assertThat(chatResponse.metadata().tokenUsage()).isInstanceOf(GoogleAiGeminiTokenUsage.class);
+            GoogleAiGeminiTokenUsage tokenUsage =
+                    (GoogleAiGeminiTokenUsage) chatResponse.metadata().tokenUsage();
+            assertThat(tokenUsage.inputTokenCount()).isEqualTo(120);
+            assertThat(tokenUsage.outputTokenCount()).isEqualTo(30);
+            assertThat(tokenUsage.totalTokenCount()).isEqualTo(200);
+            assertThat(tokenUsage.cachedContentTokenCount()).isEqualTo(80);
+            assertThat(tokenUsage.thoughtsTokenCount()).isEqualTo(50);
         }
 
         @Test
@@ -246,6 +307,41 @@ class GoogleAiGeminiChatModelTest {
 
             // Then
             assertThat(chatResponse.metadata().finishReason()).isEqualTo(FinishReason.LENGTH);
+        }
+
+        @Test
+        void shouldMapImageRecitationToContentFilter() {
+            // Given
+            var candidate = new GeminiCandidate(
+                    new GeminiContent(
+                            List.of(GeminiContent.GeminiPart.builder()
+                                    .text("Image response")
+                                    .build()),
+                            "model"),
+                    GeminiFinishReason.IMAGE_RECITATION,
+                    null,
+                    null);
+
+            var geminiResponse = new GeminiGenerateContentResponse(
+                    "image-recitation-id", "gemini-pro-v1", List.of(candidate), createUsageMetadata(10, 20, 30), null);
+
+            when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class)))
+                    .thenReturn(geminiResponse);
+
+            var subject = GoogleAiGeminiChatModel.builder()
+                    .apiKey("test-api-key")
+                    .modelName(TEST_MODEL_NAME)
+                    .build(mockGeminiService);
+
+            var chatRequest = ChatRequest.builder()
+                    .messages(new UserMessage("Generate image"))
+                    .build();
+
+            // When
+            var chatResponse = subject.chat(chatRequest);
+
+            // Then
+            assertThat(chatResponse.metadata().finishReason()).isEqualTo(FinishReason.CONTENT_FILTER);
         }
     }
 
@@ -306,8 +402,362 @@ class GoogleAiGeminiChatModelTest {
                             .stopSequences(List.of("STOP", "END"))
                             .seed(42)
                             .candidateCount(1)
-                            .responseLogprobs(false)
                             .build());
+        }
+
+        @Test
+        void shouldSendImageConfigWhenConfigured() {
+            // Given
+            var expectedResponse = createGeminiResponse("Response");
+            when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class)))
+                    .thenReturn(expectedResponse);
+
+            var subject = GoogleAiGeminiChatModel.builder()
+                    .apiKey("test-api-key")
+                    .modelName(TEST_MODEL_NAME)
+                    .imageAspectRatio("16:9")
+                    .imageSize("2K")
+                    .build(mockGeminiService);
+
+            var chatRequest = ChatRequest.builder()
+                    .messages(new UserMessage("Generate image"))
+                    .build();
+
+            // When
+            subject.chat(chatRequest);
+
+            // Then
+            verify(mockGeminiService).generateContent(eq(TEST_MODEL_NAME), requestCaptor.capture());
+            var request = requestCaptor.getValue();
+
+            assertThat(request.generationConfig()).isNotNull();
+            assertThat(request.generationConfig().imageConfig())
+                    .isEqualTo(GeminiImageConfig.builder()
+                            .aspectRatio("16:9")
+                            .imageSize("2K")
+                            .build());
+        }
+
+        @Test
+        void shouldUseRequestLevelImageConfigWhenProvided() {
+            // Given
+            var expectedResponse = createGeminiResponse("Response");
+            when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class)))
+                    .thenReturn(expectedResponse);
+
+            var subject = GoogleAiGeminiChatModel.builder()
+                    .apiKey("test-api-key")
+                    .modelName(TEST_MODEL_NAME)
+                    .imageAspectRatio("16:9")
+                    .imageSize("2K")
+                    .build(mockGeminiService);
+
+            var chatRequest = ChatRequest.builder()
+                    .messages(new UserMessage("Generate image"))
+                    .parameters(GoogleAiGeminiChatRequestParameters.builder()
+                            .imageAspectRatio("1:1")
+                            .imageSize("1K")
+                            .build())
+                    .build();
+
+            // When
+            subject.chat(chatRequest);
+
+            // Then
+            verify(mockGeminiService).generateContent(eq(TEST_MODEL_NAME), requestCaptor.capture());
+            var request = requestCaptor.getValue();
+
+            assertThat(request.generationConfig()).isNotNull();
+            assertThat(request.generationConfig().imageConfig())
+                    .isEqualTo(GeminiImageConfig.builder()
+                            .aspectRatio("1:1")
+                            .imageSize("1K")
+                            .build());
+        }
+
+        @Test
+        void shouldFallbackToBuilderImageConfigWhenRequestLevelNotProvided() {
+            // Given
+            var expectedResponse = createGeminiResponse("Response");
+            when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class)))
+                    .thenReturn(expectedResponse);
+
+            var subject = GoogleAiGeminiChatModel.builder()
+                    .apiKey("test-api-key")
+                    .modelName(TEST_MODEL_NAME)
+                    .imageAspectRatio("16:9")
+                    .imageSize("2K")
+                    .build(mockGeminiService);
+
+            var chatRequest = ChatRequest.builder()
+                    .messages(new UserMessage("Generate image"))
+                    .parameters(ChatRequestParameters.builder().temperature(0.2).build())
+                    .build();
+
+            // When
+            subject.chat(chatRequest);
+
+            // Then
+            verify(mockGeminiService).generateContent(eq(TEST_MODEL_NAME), requestCaptor.capture());
+            var request = requestCaptor.getValue();
+
+            assertThat(request.generationConfig()).isNotNull();
+            assertThat(request.generationConfig().imageConfig())
+                    .isEqualTo(GeminiImageConfig.builder()
+                            .aspectRatio("16:9")
+                            .imageSize("2K")
+                            .build());
+        }
+    }
+
+    @Nested
+    class ResponseFormatTest {
+        @Captor
+        ArgumentCaptor<GeminiGenerateContentRequest> requestCaptor;
+
+        @Test
+        void shouldSendTypedResponseSchemaWhenEveryElementHasATypedForm() {
+            // Given
+            var subject = modelReturning("Response");
+            var responseFormat = jsonResponseFormat(
+                    JsonObjectSchema.builder().addStringProperty("name").build());
+
+            // When
+            subject.chat(ChatRequest.builder()
+                    .messages(new UserMessage("Hi"))
+                    .responseFormat(responseFormat)
+                    .build());
+
+            // Then
+            verify(mockGeminiService).generateContent(eq(TEST_MODEL_NAME), requestCaptor.capture());
+
+            var generationConfig = requestCaptor.getValue().generationConfig();
+            assertThat(generationConfig.responseJsonSchema()).isNull();
+            assertThat(generationConfig.responseSchema().getType()).isEqualTo(GeminiType.OBJECT);
+        }
+
+        @Test
+        void shouldSendResponseJsonSchemaWhenTheRootIsRaw() {
+            // Given
+            var subject = modelReturning("Response");
+            var responseFormat = jsonResponseFormat(
+                    JsonRawSchema.from("{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"}}}"));
+
+            // When
+            subject.chat(ChatRequest.builder()
+                    .messages(new UserMessage("Hi"))
+                    .responseFormat(responseFormat)
+                    .build());
+
+            // Then
+            verify(mockGeminiService).generateContent(eq(TEST_MODEL_NAME), requestCaptor.capture());
+
+            var generationConfig = requestCaptor.getValue().generationConfig();
+            assertThat(generationConfig.responseSchema()).isNull();
+            assertThat(generationConfig.responseJsonSchema()).containsEntry("type", "object");
+        }
+
+        @Test
+        void shouldSendResponseJsonSchemaWhenAnElementBelowTheRootHasNoTypedForm() {
+            // Given
+            var subject = modelReturning("Response");
+            var address = JsonObjectSchema.builder().addStringProperty("city").build();
+            var responseFormat = jsonResponseFormat(JsonObjectSchema.builder()
+                    .definitions(Map.of("Address", address))
+                    .addStringProperty("name")
+                    .addProperty(
+                            "address",
+                            JsonReferenceSchema.builder().reference("Address").build())
+                    .build());
+
+            // When
+            subject.chat(ChatRequest.builder()
+                    .messages(new UserMessage("Hi"))
+                    .responseFormat(responseFormat)
+                    .build());
+
+            // Then
+            verify(mockGeminiService).generateContent(eq(TEST_MODEL_NAME), requestCaptor.capture());
+
+            var generationConfig = requestCaptor.getValue().generationConfig();
+            assertThat(generationConfig.responseSchema()).isNull();
+            assertThat(generationConfig.responseJsonSchema()).containsKey("$defs");
+        }
+
+        private GoogleAiGeminiChatModel modelReturning(String text) {
+            when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class)))
+                    .thenReturn(createGeminiResponse(text));
+
+            return GoogleAiGeminiChatModel.builder()
+                    .apiKey("test-api-key")
+                    .modelName(TEST_MODEL_NAME)
+                    .build(mockGeminiService);
+        }
+
+        private ResponseFormat jsonResponseFormat(JsonSchemaElement rootElement) {
+            return ResponseFormat.builder()
+                    .type(ResponseFormatType.JSON)
+                    .jsonSchema(JsonSchema.builder()
+                            .name("Response")
+                            .rootElement(rootElement)
+                            .build())
+                    .build();
+        }
+    }
+
+    @Nested
+    class ToolConfigTest {
+        @Captor
+        ArgumentCaptor<GeminiGenerateContentRequest> requestCaptor;
+
+        @Test
+        void shouldSendValidatedModeInRequest() {
+            // Given
+            var expectedResponse = createGeminiResponse("Response");
+            when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class)))
+                    .thenReturn(expectedResponse);
+
+            var subject = GoogleAiGeminiChatModel.builder()
+                    .apiKey("test-api-key")
+                    .modelName(TEST_MODEL_NAME)
+                    .toolConfig(GeminiMode.VALIDATED)
+                    .build(mockGeminiService);
+
+            var chatRequest = ChatRequest.builder()
+                    .messages(new UserMessage("Call a function"))
+                    .toolSpecifications(
+                            ToolSpecification.builder().name("myTool").build())
+                    .build();
+
+            // When
+            subject.chat(chatRequest);
+
+            // Then
+            verify(mockGeminiService).generateContent(eq(TEST_MODEL_NAME), requestCaptor.capture());
+            var request = requestCaptor.getValue();
+            assertThat(request.toolConfig()).isNotNull();
+            assertThat(request.toolConfig().functionCallingConfig().getMode()).isEqualTo(GeminiMode.VALIDATED);
+        }
+
+        @Test
+        void shouldSendValidatedModeWithAllowedFunctionNames() {
+            // Given
+            var expectedResponse = createGeminiResponse("Response");
+            when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class)))
+                    .thenReturn(expectedResponse);
+
+            var subject = GoogleAiGeminiChatModel.builder()
+                    .apiKey("test-api-key")
+                    .modelName(TEST_MODEL_NAME)
+                    .toolConfig(GeminiMode.VALIDATED, "func1")
+                    .build(mockGeminiService);
+
+            var chatRequest = ChatRequest.builder()
+                    .messages(new UserMessage("Call a function"))
+                    .toolSpecifications(
+                            ToolSpecification.builder().name("func1").build())
+                    .build();
+
+            // When
+            subject.chat(chatRequest);
+
+            // Then
+            verify(mockGeminiService).generateContent(eq(TEST_MODEL_NAME), requestCaptor.capture());
+            var request = requestCaptor.getValue();
+            assertThat(request.toolConfig()).isNotNull();
+            assertThat(request.toolConfig().functionCallingConfig().getMode()).isEqualTo(GeminiMode.VALIDATED);
+            assertThat(request.toolConfig().functionCallingConfig().getAllowedFunctionNames())
+                    .containsExactly("func1");
+        }
+
+        @Test
+        void shouldSendAutoModeInRequest() {
+            // Given
+            var expectedResponse = createGeminiResponse("Response");
+            when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class)))
+                    .thenReturn(expectedResponse);
+
+            var subject = GoogleAiGeminiChatModel.builder()
+                    .apiKey("test-api-key")
+                    .modelName(TEST_MODEL_NAME)
+                    .toolConfig(GeminiMode.AUTO)
+                    .build(mockGeminiService);
+
+            var chatRequest = ChatRequest.builder()
+                    .messages(new UserMessage("Call a function"))
+                    .toolSpecifications(
+                            ToolSpecification.builder().name("myTool").build())
+                    .build();
+
+            // When
+            subject.chat(chatRequest);
+
+            // Then
+            verify(mockGeminiService).generateContent(eq(TEST_MODEL_NAME), requestCaptor.capture());
+            var request = requestCaptor.getValue();
+            assertThat(request.toolConfig()).isNotNull();
+            assertThat(request.toolConfig().functionCallingConfig().getMode()).isEqualTo(GeminiMode.AUTO);
+        }
+
+        @Test
+        void shouldSendAnyModeWithAllowedFunctionNamesInRequest() {
+            // Given
+            var expectedResponse = createGeminiResponse("Response");
+            when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class)))
+                    .thenReturn(expectedResponse);
+
+            var subject = GoogleAiGeminiChatModel.builder()
+                    .apiKey("test-api-key")
+                    .modelName(TEST_MODEL_NAME)
+                    .toolConfig(GeminiMode.ANY, "func1", "func2")
+                    .build(mockGeminiService);
+
+            var chatRequest = ChatRequest.builder()
+                    .messages(new UserMessage("Call a function"))
+                    .toolSpecifications(
+                            ToolSpecification.builder().name("func1").build(),
+                            ToolSpecification.builder().name("func2").build())
+                    .build();
+
+            // When
+            subject.chat(chatRequest);
+
+            // Then
+            verify(mockGeminiService).generateContent(eq(TEST_MODEL_NAME), requestCaptor.capture());
+            var request = requestCaptor.getValue();
+            assertThat(request.toolConfig()).isNotNull();
+            assertThat(request.toolConfig().functionCallingConfig().getMode()).isEqualTo(GeminiMode.ANY);
+            assertThat(request.toolConfig().functionCallingConfig().getAllowedFunctionNames())
+                    .containsExactly("func1", "func2");
+        }
+
+        @Test
+        void shouldSendNoneModeInRequest() {
+            // Given
+            var expectedResponse = createGeminiResponse("Response");
+            when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class)))
+                    .thenReturn(expectedResponse);
+
+            var subject = GoogleAiGeminiChatModel.builder()
+                    .apiKey("test-api-key")
+                    .modelName(TEST_MODEL_NAME)
+                    .toolConfig(GeminiMode.NONE)
+                    .build(mockGeminiService);
+
+            var chatRequest = ChatRequest.builder()
+                    .messages(new UserMessage("Call a function"))
+                    .toolSpecifications(
+                            ToolSpecification.builder().name("myTool").build())
+                    .build();
+
+            // When
+            subject.chat(chatRequest);
+
+            // Then
+            verify(mockGeminiService).generateContent(eq(TEST_MODEL_NAME), requestCaptor.capture());
+            var request = requestCaptor.getValue();
+            assertThat(request.toolConfig()).isNotNull();
+            assertThat(request.toolConfig().functionCallingConfig().getMode()).isEqualTo(GeminiMode.NONE);
         }
     }
 

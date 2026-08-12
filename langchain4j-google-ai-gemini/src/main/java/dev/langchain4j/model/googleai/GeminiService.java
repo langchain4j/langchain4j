@@ -8,6 +8,7 @@ import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolCall;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialThinking;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onUnmappedRawEvent;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.Utils.firstNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -26,6 +27,7 @@ import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventContext;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.internal.ExceptionMapper;
+import dev.langchain4j.internal.MappingTrackingStreamingChatResponseHandler;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
@@ -38,7 +40,9 @@ import dev.langchain4j.model.googleai.GeminiEmbeddingRequestResponse.GeminiEmbed
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.jspecify.annotations.Nullable;
@@ -54,6 +58,7 @@ class GeminiService {
     private final HttpClient httpClient;
     private final String baseUrl;
     private final String apiKey;
+    private final Supplier<Map<String, String>> customHeadersSupplier;
 
     enum BatchOperationType {
         BATCH_GENERATE_CONTENT("batchGenerateContent"),
@@ -78,9 +83,11 @@ class GeminiService {
             final boolean logRequests,
             final boolean logResponses,
             final Logger logger,
-            final Duration timeout) {
+            final Duration timeout,
+            final @Nullable Supplier<Map<String, String>> customHeadersSupplier) {
         this.apiKey = apiKey;
         this.baseUrl = getOrDefault(baseUrl, GeminiService.GEMINI_AI_ENDPOINT);
+        this.customHeadersSupplier = customHeadersSupplier;
         final var builder = getOrDefault(httpClientBuilder, HttpClientBuilderLoader::loadHttpClientBuilder);
         HttpClient httpClient = builder.connectTimeout(
                         firstNotNull("connectTimeout", timeout, builder.connectTimeout(), DEFAULT_CONNECT_TIMEOUT))
@@ -206,7 +213,12 @@ class GeminiService {
         GeminiStreamingResponseBuilder responseBuilder =
                 new GeminiStreamingResponseBuilder(includeCodeExecutionOutput, returnThinking);
 
+        StreamingChatResponseHandler targetHandler = handler;
+
         httpClient.execute(httpRequest, new ServerSentEventListener() {
+
+            final MappingTrackingStreamingChatResponseHandler handler =
+                    new MappingTrackingStreamingChatResponseHandler(targetHandler);
 
             AtomicInteger toolIndex = new AtomicInteger(0);
             volatile StreamingHandle streamingHandle;
@@ -221,6 +233,8 @@ class GeminiService {
                 if (streamingHandle == null) {
                     streamingHandle = toStreamingHandle(context.parsingHandle());
                 }
+
+                handler.resetMappingTracking();
 
                 GeminiGenerateContentResponse response = fromJson(event.data(), GeminiGenerateContentResponse.class);
                 GeminiStreamingResponseBuilder.TextAndTools textAndTools = responseBuilder.append(response);
@@ -238,6 +252,10 @@ class GeminiService {
                     CompleteToolCall completeToolCall = new CompleteToolCall(toolIndex.get(), tool);
                     onCompleteToolCall(handler, completeToolCall);
                     toolIndex.incrementAndGet();
+                }
+
+                if (!handler.wasMapped()) {
+                    onUnmappedRawEvent(handler, event);
                 }
             }
 
@@ -265,6 +283,12 @@ class GeminiService {
                 .addHeader("User-Agent", "LangChain4j");
         if (apiKey != null) {
             builder.addHeader(API_KEY_HEADER_NAME, apiKey);
+        }
+        if (customHeadersSupplier != null) {
+            Map<String, String> customHeaders = customHeadersSupplier.get();
+            if (customHeaders != null) {
+                customHeaders.forEach(builder::addHeader);
+            }
         }
         if (body != null) {
             builder.body(Json.toJson(body));

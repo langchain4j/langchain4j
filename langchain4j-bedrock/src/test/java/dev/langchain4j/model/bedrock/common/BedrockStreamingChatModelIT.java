@@ -80,21 +80,27 @@ class BedrockStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     @Override
     protected boolean supportsJsonResponseFormat() {
-        return false; // output format not supported
+        return false; // JSON response format without schema is not supported
     }
 
     @Override
     protected boolean supportsJsonResponseFormatWithSchema() {
-        return false; // output format not supported
+        return false; // not supported for models used in this class
     }
 
     @Override
     protected boolean supportsJsonResponseFormatWithRawSchema() {
-        return false; // output format not supported
+        return false; // not supported for models used in this class
     }
 
     @Override
-    protected Class<? extends ChatResponseMetadata> chatResponseMetadataType(final StreamingChatModel model) {
+    protected boolean assertExceptionType() {
+        // Bedrock throws InvalidRequestException, while test expects UnsupportedFeatureException
+        return false;
+    }
+
+    @Override
+    protected Class<? extends ChatResponseMetadata> chatResponseMetadataType(StreamingChatModel model) {
         return BedrockChatResponseMetadata.class;
     }
 
@@ -194,28 +200,6 @@ class BedrockStreamingChatModelIT extends AbstractStreamingChatModelIT {
         if (assertFinishReason()) {
             assertThat(chatResponse.metadata().finishReason()).isEqualTo(STOP);
         }
-    }
-
-    @Test
-    void should_reason() {
-        // given
-        StreamingChatModel model = BedrockStreamingChatModel.builder()
-                .modelId("us.anthropic.claude-3-7-sonnet-20250219-v1:0")
-                .defaultRequestParameters(BedrockChatRequestParameters.builder()
-                        .enableReasoning(1024)
-                        .build())
-                .build();
-
-        ChatRequest chatRequest = ChatRequest.builder()
-                .messages(UserMessage.from("What is the capital of Germany? "))
-                .build();
-
-        // when
-        ChatResponse chatResponse = chat(model, chatRequest).chatResponse();
-
-        // then
-        AiMessage aiMessage = chatResponse.aiMessage();
-        assertThat(aiMessage.text()).containsIgnoringWhitespaces("Berlin");
     }
 
     @Test

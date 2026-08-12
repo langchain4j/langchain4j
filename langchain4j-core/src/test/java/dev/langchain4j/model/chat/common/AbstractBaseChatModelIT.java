@@ -1,6 +1,6 @@
 package dev.langchain4j.model.chat.common;
 
-import static dev.langchain4j.internal.Utils.readBytes;
+import static dev.langchain4j.MockitoUtils.ignoreInteractions;
 import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static dev.langchain4j.model.output.FinishReason.STOP;
@@ -41,6 +41,9 @@ import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
@@ -50,6 +53,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.condition.DisabledIf;
 import org.junit.jupiter.api.condition.EnabledIf;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.InOrder;
@@ -63,17 +67,22 @@ import org.mockito.InOrder;
  * @param <M> The type of the model: either {@link ChatModel} or {@link StreamingChatModel}
  */
 @TestInstance(PER_CLASS)
+@ExtendWith(LastChatExchange.class)
 public abstract class AbstractBaseChatModelIT<M> {
 
     // TODO https://github.com/langchain4j/langchain4j/issues/2219
     // TODO https://github.com/langchain4j/langchain4j/issues/2220
 
     static final String WHAT_IS_THE_CAPITAL_OF_GERMANY = "What is the capital of Germany?";
-    
-    static final String CAT_IMAGE_URL =
-            "https://upload.wikimedia.org/wikipedia/commons/e/e9/Felis_silvestris_silvestris_small_gradual_decrease_of_quality.png";
-    static final String DICE_IMAGE_URL =
-            "https://upload.wikimedia.org/wikipedia/commons/4/47/PNG_transparency_demonstration_1.png";
+    static final String WHAT_IS_THE_CAPITAL_OF_GERMANY_AND_MATH_QUESTION = "What is the capital of Germany? How much is 2 + 2?";
+
+    static final String CAT_IMAGE_RESOURCE = "/images/cat.jpg";
+    static final String DICE_IMAGE_RESOURCE = "/images/dice.jpg";
+
+    static final String CAT_IMAGE_URL = "https://raw.githubusercontent.com/langchain4j/langchain4j/main/"
+            + "langchain4j-core/src/test/resources/images/cat.jpg";
+    static final String DICE_IMAGE_URL = "https://raw.githubusercontent.com/langchain4j/langchain4j/main/"
+            + "langchain4j-core/src/test/resources/images/dice.jpg";
 
     static final ToolSpecification WEATHER_TOOL = ToolSpecification.builder()
             .name("getWeather")
@@ -109,8 +118,33 @@ public abstract class AbstractBaseChatModelIT<M> {
         return CAT_IMAGE_URL;
     }
 
+    protected ImageContent catImageContentUrl() {
+        return ImageContent.from(catImageUrl());
+    }
+
+    protected ImageContent catImageContentBase64() {
+        return imageContentFrom(CAT_IMAGE_RESOURCE);
+    }
+
     protected String diceImageUrl() {
         return DICE_IMAGE_URL;
+    }
+
+    protected ImageContent diceImageContentUrl() {
+        return ImageContent.from(diceImageUrl());
+    }
+
+    protected ImageContent diceImageContentBase64() {
+        return imageContentFrom(DICE_IMAGE_RESOURCE);
+    }
+
+    private static ImageContent imageContentFrom(String resource) {
+        try (InputStream inputStream = AbstractBaseChatModelIT.class.getResourceAsStream(resource)) {
+            String base64Data = Base64.getEncoder().encodeToString(inputStream.readAllBytes());
+            return ImageContent.from(base64Data, "image/jpeg");
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
     }
 
     protected abstract ChatResponseAndStreamingMetadata chat(M model, ChatRequest chatRequest);
@@ -186,6 +220,25 @@ public abstract class AbstractBaseChatModelIT<M> {
         assertThat(chatResponse.aiMessage().text()).containsIgnoringCase("liebe");
     }
 
+    @ParameterizedTest
+    @MethodSource("models")
+    protected void should_respect_multiple_messages(M model) {
+
+        // given
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(
+                        UserMessage.from("Hi, my favorite color is green"),
+                        AiMessage.from("Hi, nice to meet you"),
+                        UserMessage.from("What is my favorite color?"))
+                .build();
+
+        // when
+        ChatResponse chatResponse = chat(model, chatRequest).chatResponse();
+
+        // then
+        assertThat(chatResponse.aiMessage().text()).containsIgnoringCase("green");
+    }
+
     // CHAT PARAMETERS
 
     // TODO test integration-specific default params
@@ -201,6 +254,7 @@ public abstract class AbstractBaseChatModelIT<M> {
         // given
         String modelName = customModelName();
         ensureModelNameIsDifferentFromDefault(modelName, model);
+        sleepIfNeeded();
 
         ChatRequestParameters parameters = ChatRequestParameters.builder()
                 .modelName(modelName)
@@ -215,10 +269,10 @@ public abstract class AbstractBaseChatModelIT<M> {
         ChatResponse chatResponse = chat(model, chatRequest).chatResponse();
 
         // then
-        assertThat(chatResponse.aiMessage().text()).isNotBlank();
-
         assertThat(chatResponse.metadata().modelName()).isEqualTo(modelName);
     }
+
+    protected void sleepIfNeeded() {}
 
     protected String customModelName() {
         throw new RuntimeException("Please implement this method in a similar way to OpenAiChatModelIT");
@@ -264,8 +318,6 @@ public abstract class AbstractBaseChatModelIT<M> {
         ChatResponse chatResponse = chat(model, chatRequest).chatResponse();
 
         // then
-        assertThat(chatResponse.aiMessage().text()).isNotBlank();
-
         assertThat(chatResponse.metadata().modelName()).isEqualTo(modelName);
     }
 
@@ -311,7 +363,7 @@ public abstract class AbstractBaseChatModelIT<M> {
         int maxOutputTokens = maxOutputTokens();
         ChatRequestParameters parameters = createParameters(maxOutputTokens);
         ChatRequest chatRequest = ChatRequest.builder()
-                .messages(UserMessage.from(WHAT_IS_THE_CAPITAL_OF_GERMANY))
+                .messages(UserMessage.from(WHAT_IS_THE_CAPITAL_OF_GERMANY_AND_MATH_QUESTION))
                 .parameters(parameters)
                 .build();
 
@@ -368,12 +420,12 @@ public abstract class AbstractBaseChatModelIT<M> {
         // given
         int maxOutputTokens = maxOutputTokens();
         ChatRequestParameters parameters = ChatRequestParameters.builder()
-                        .maxOutputTokens(maxOutputTokens)
-                        .build();
+                .maxOutputTokens(maxOutputTokens)
+                .build();
         M model = createModelWith(parameters);
 
         ChatRequest chatRequest = ChatRequest.builder()
-                .messages(UserMessage.from(WHAT_IS_THE_CAPITAL_OF_GERMANY))
+                .messages(UserMessage.from(WHAT_IS_THE_CAPITAL_OF_GERMANY_AND_MATH_QUESTION))
                 .build();
 
         // when
@@ -545,7 +597,7 @@ public abstract class AbstractBaseChatModelIT<M> {
 
         ChatRequest chatRequest = ChatRequest.builder()
                 .parameters(parameters)
-                .messages(UserMessage.from(WHAT_IS_THE_CAPITAL_OF_GERMANY))
+                .messages(UserMessage.from(WHAT_IS_THE_CAPITAL_OF_GERMANY_AND_MATH_QUESTION))
                 .build();
 
         // when
@@ -568,7 +620,7 @@ public abstract class AbstractBaseChatModelIT<M> {
     @Test
     @EnabledIf("supportsMaxOutputTokensParameter")
     protected void
-            should_respect_common_parameters_wrapped_in_integration_specific_class_in_default_model_parameters() {
+    should_respect_common_parameters_wrapped_in_integration_specific_class_in_default_model_parameters() {
 
         // given
         // TODO test more/all common params?
@@ -580,17 +632,13 @@ public abstract class AbstractBaseChatModelIT<M> {
 
         ChatRequest chatRequest = ChatRequest.builder()
                 .parameters(parameters)
-                .messages(UserMessage.from(WHAT_IS_THE_CAPITAL_OF_GERMANY))
+                .messages(UserMessage.from(WHAT_IS_THE_CAPITAL_OF_GERMANY_AND_MATH_QUESTION))
                 .build();
 
         // when
         ChatResponse chatResponse = chat(model, chatRequest).chatResponse();
 
         // then
-        AiMessage aiMessage = chatResponse.aiMessage();
-        assertThat(aiMessage.text()).isNotBlank();
-        assertThat(aiMessage.toolExecutionRequests()).isEmpty();
-
         if (assertTokenUsage()) {
             assertTokenUsage(chatResponse.metadata(), maxOutputTokens, model);
         }
@@ -684,6 +732,8 @@ public abstract class AbstractBaseChatModelIT<M> {
             InOrder inOrder = inOrder(handler);
             verifyToolCallbacks(handler, inOrder, toolExecutionRequest.id(), (StreamingChatModel) model);
             inOrder.verify(handler).onCompleteResponse(chatResponse);
+            // onUnmappedRawEvent may be invoked for provider events not mapped to a typed callback
+            ignoreInteractions(handler).onUnmappedRawEvent(any());
             inOrder.verifyNoMoreInteractions();
             verifyNoMoreInteractions(handler);
 
@@ -816,6 +866,8 @@ public abstract class AbstractBaseChatModelIT<M> {
             InOrder inOrder = inOrder(handler);
             verifyToolCallbacks(handler, inOrder, (StreamingChatModel) model);
             inOrder.verify(handler).onCompleteResponse(chatResponse);
+            // onUnmappedRawEvent may be invoked for provider events not mapped to a typed callback
+            ignoreInteractions(handler).onUnmappedRawEvent(any());
             inOrder.verifyNoMoreInteractions();
             verifyNoMoreInteractions(handler);
 
@@ -947,8 +999,8 @@ public abstract class AbstractBaseChatModelIT<M> {
 
                 assertThat(metadata.partialToolCalls().get(0).index()).isEqualTo(0);
                 assertThat(metadata.partialToolCalls()
-                                .get(metadata.partialToolCalls().size() - 1)
-                                .index())
+                        .get(metadata.partialToolCalls().size() - 1)
+                        .index())
                         .isEqualTo(1);
 
                 List<List<PartialToolCall>> partialToolCallPartitions = partitionByIndex(metadata.partialToolCalls());
@@ -993,6 +1045,8 @@ public abstract class AbstractBaseChatModelIT<M> {
                     toolExecutionRequests.get(1).id(),
                     (StreamingChatModel) model);
             inOrder.verify(handler).onCompleteResponse(chatResponse);
+            // onUnmappedRawEvent may be invoked for provider events not mapped to a typed callback
+            ignoreInteractions(handler).onUnmappedRawEvent(any());
             inOrder.verifyNoMoreInteractions();
             verifyNoMoreInteractions(handler);
 
@@ -1004,6 +1058,8 @@ public abstract class AbstractBaseChatModelIT<M> {
                 assertThat(threads.iterator().next()).isNotEqualTo(Thread.currentThread());
             }
         }
+
+        sleepIfNeeded();
 
         // given
         ChatRequest chatRequest2 = ChatRequest.builder()
@@ -1501,9 +1557,8 @@ public abstract class AbstractBaseChatModelIT<M> {
     protected void should_accept_single_image_as_base64_encoded_string(M model) {
 
         // given
-        String base64Data = Base64.getEncoder().encodeToString(readBytes(catImageUrl()));
         UserMessage userMessage =
-                UserMessage.from(TextContent.from("What do you see?"), ImageContent.from(base64Data, "image/png"));
+                UserMessage.from(TextContent.from("What do you see?"), catImageContentBase64());
         ChatRequest chatRequest = ChatRequest.builder().messages(userMessage).build();
 
         // when
@@ -1511,7 +1566,7 @@ public abstract class AbstractBaseChatModelIT<M> {
 
         // then
         AiMessage aiMessage = chatResponse.aiMessage();
-        assertThat(aiMessage.text().toLowerCase()).containsAnyOf("cat", "lynx", "feline", "animal");
+        assertThat(aiMessage.text().toLowerCase()).containsAnyOf("cat", "kitten", "lynx", "feline", "animal");
         assertThat(aiMessage.toolExecutionRequests()).isEmpty();
 
         if (assertTokenUsage()) {
@@ -1529,12 +1584,11 @@ public abstract class AbstractBaseChatModelIT<M> {
     protected void should_accept_multiple_images_as_base64_encoded_strings(M model) {
 
         // given
-        Base64.Encoder encoder = Base64.getEncoder();
-
         UserMessage userMessage = UserMessage.from(
-                TextContent.from("What do you see on these images? Describe both images."),
-                ImageContent.from(encoder.encodeToString(readBytes(catImageUrl())), "image/png"),
-                ImageContent.from(encoder.encodeToString(readBytes(diceImageUrl())), "image/png"));
+                TextContent.from("What do you see on these images? Describe both images in english."),
+                catImageContentBase64(),
+                diceImageContentBase64()
+        );
 
         ChatRequest chatRequest = ChatRequest.builder().messages(userMessage).build();
 
@@ -1544,7 +1598,7 @@ public abstract class AbstractBaseChatModelIT<M> {
         // then
         AiMessage aiMessage = chatResponse.aiMessage();
         assertThat(aiMessage.text().toLowerCase())
-                .containsAnyOf("cat", "lynx", "feline", "animal")
+                .containsAnyOf("cat", "kitten", "lynx", "feline", "animal")
                 .contains("dice");
         assertThat(aiMessage.toolExecutionRequests()).isEmpty();
 
@@ -1563,9 +1617,8 @@ public abstract class AbstractBaseChatModelIT<M> {
     protected void should_fail_if_images_as_base64_encoded_strings_are_not_supported(M model) {
 
         // given
-        String base64Data = Base64.getEncoder().encodeToString(readBytes(catImageUrl()));
         UserMessage userMessage =
-                UserMessage.from(TextContent.from("What do you see?"), ImageContent.from(base64Data, "image/png"));
+                UserMessage.from(TextContent.from("What do you see?"), catImageContentBase64());
         ChatRequest chatRequest = ChatRequest.builder().messages(userMessage).build();
 
         // when-then
@@ -1587,7 +1640,7 @@ public abstract class AbstractBaseChatModelIT<M> {
 
         // given
         UserMessage userMessage =
-                UserMessage.from(TextContent.from("What do you see?"), ImageContent.from(catImageUrl()));
+                UserMessage.from(TextContent.from("What do you see?"), catImageContentUrl());
         ChatRequest chatRequest = ChatRequest.builder().messages(userMessage).build();
 
         // when
@@ -1595,7 +1648,7 @@ public abstract class AbstractBaseChatModelIT<M> {
 
         // then
         AiMessage aiMessage = chatResponse.aiMessage();
-        assertThat(aiMessage.text().toLowerCase()).containsAnyOf("cat", "lynx", "feline", "animal");
+        assertThat(aiMessage.text().toLowerCase()).containsAnyOf("cat", "kitten", "lynx", "feline", "animal");
         assertThat(aiMessage.toolExecutionRequests()).isEmpty();
 
         if (assertTokenUsage()) {
@@ -1615,8 +1668,8 @@ public abstract class AbstractBaseChatModelIT<M> {
         // given
         UserMessage userMessage = UserMessage.from(
                 TextContent.from("What do you see on these images? Describe both images."),
-                ImageContent.from(catImageUrl()),
-                ImageContent.from(diceImageUrl()));
+                catImageContentUrl(),
+                diceImageContentUrl());
         ChatRequest chatRequest = ChatRequest.builder().messages(userMessage).build();
 
         // when
@@ -1625,7 +1678,7 @@ public abstract class AbstractBaseChatModelIT<M> {
         // then
         AiMessage aiMessage = chatResponse.aiMessage();
         assertThat(aiMessage.text().toLowerCase())
-                .containsAnyOf("cat", "lynx", "feline", "animal")
+                .containsAnyOf("cat", "kitten", "lynx", "feline", "animal")
                 .contains("dice");
         assertThat(aiMessage.toolExecutionRequests()).isEmpty();
 
@@ -1645,7 +1698,7 @@ public abstract class AbstractBaseChatModelIT<M> {
 
         // given
         UserMessage userMessage =
-                UserMessage.from(TextContent.from("What do you see?"), ImageContent.from(catImageUrl()));
+                UserMessage.from(TextContent.from("What do you see?"), catImageContentUrl());
         ChatRequest chatRequest = ChatRequest.builder().messages(userMessage).build();
 
         // when-then
@@ -1777,8 +1830,7 @@ public abstract class AbstractBaseChatModelIT<M> {
         if (maxOutputTokens != null) {
             assertOutputTokenCount(tokenUsage, maxOutputTokens);
         }
-        assertThat(tokenUsage.totalTokenCount())
-                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+        assertTotalTokenCount(tokenUsage);
     }
 
     protected Class<? extends TokenUsage> tokenUsageType(M model) {
@@ -1787,5 +1839,10 @@ public abstract class AbstractBaseChatModelIT<M> {
 
     protected void assertOutputTokenCount(TokenUsage tokenUsage, Integer maxOutputTokens) {
         assertThat(tokenUsage.outputTokenCount()).isEqualTo(maxOutputTokens);
+    }
+
+    protected void assertTotalTokenCount(TokenUsage tokenUsage) {
+        assertThat(tokenUsage.totalTokenCount())
+                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
     }
 }

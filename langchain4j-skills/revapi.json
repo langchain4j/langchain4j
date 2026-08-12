@@ -1,0 +1,34 @@
+[
+  {
+    "extension": "revapi.differences",
+    "configuration": {
+      "ignore": true,
+      "differences": [
+        {
+          "code": "java.method.returnTypeChanged",
+          "old": "method dev.langchain4j.skills.FileSystemSkill dev.langchain4j.skills.ClassPathSkillLoader::loadSkill(java.lang.String)",
+          "new": "method dev.langchain4j.skills.Skill dev.langchain4j.skills.ClassPathSkillLoader::loadSkill(java.lang.String)",
+          "justification": "ClassPathSkillLoader no longer exposes FileSystemSkill because skills loaded from JARs do not have a meaningful filesystem base path"
+        },
+        {
+          "code": "java.method.returnTypeChanged",
+          "old": "method dev.langchain4j.skills.FileSystemSkill dev.langchain4j.skills.ClassPathSkillLoader::loadSkill(java.lang.String, java.lang.ClassLoader)",
+          "new": "method dev.langchain4j.skills.Skill dev.langchain4j.skills.ClassPathSkillLoader::loadSkill(java.lang.String, java.lang.ClassLoader)",
+          "justification": "ClassPathSkillLoader no longer exposes FileSystemSkill because skills loaded from JARs do not have a meaningful filesystem base path"
+        },
+        {
+          "code": "java.method.returnTypeTypeParametersChanged",
+          "old": "method java.util.List<dev.langchain4j.skills.FileSystemSkill> dev.langchain4j.skills.ClassPathSkillLoader::loadSkills(java.lang.String)",
+          "new": "method java.util.List<dev.langchain4j.skills.Skill> dev.langchain4j.skills.ClassPathSkillLoader::loadSkills(java.lang.String)",
+          "justification": "ClassPathSkillLoader no longer exposes FileSystemSkill because skills loaded from JARs do not have a meaningful filesystem base path"
+        },
+        {
+          "code": "java.method.returnTypeTypeParametersChanged",
+          "old": "method java.util.List<dev.langchain4j.skills.FileSystemSkill> dev.langchain4j.skills.ClassPathSkillLoader::loadSkills(java.lang.String, java.lang.ClassLoader)",
+          "new": "method java.util.List<dev.langchain4j.skills.Skill> dev.langchain4j.skills.ClassPathSkillLoader::loadSkills(java.lang.String, java.lang.ClassLoader)",
+          "justification": "ClassPathSkillLoader no longer exposes FileSystemSkill because skills loaded from JARs do not have a meaningful filesystem base path"
+        }
+      ]
+    }
+  }
+]

@@ -2,13 +2,23 @@ package dev.langchain4j.service.output;
 
 import static dev.langchain4j.internal.JsonParsingUtils.extractAndParseJson;
 import static dev.langchain4j.internal.JsonSchemaElementUtils.jsonObjectOrReferenceSchemaFrom;
+import static dev.langchain4j.internal.JsonSchemaElementUtils.polymorphicSchemaFrom;
+import static dev.langchain4j.internal.JsonSchemaElementUtils.referenceIfRecursive;
+import static dev.langchain4j.internal.JsonSchemaElementUtils.wrapPolymorphic;
+import static dev.langchain4j.internal.PolymorphicTypes.isPolymorphic;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
 import static dev.langchain4j.service.output.ParsingUtils.outputParsingException;
 import static java.lang.String.format;
+import static java.lang.reflect.Modifier.isAbstract;
 
 import dev.langchain4j.Internal;
+import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.internal.Json;
+import dev.langchain4j.internal.JsonSchemaElementUtils.VisitedClassMetadata;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.output.structured.Description;
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
@@ -17,6 +27,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
@@ -36,7 +47,19 @@ class PojoOutputParser<T> implements OutputParser<T> {
         }
 
         try {
-            return extractAndParseJson(text, type).value();
+            if (isPolymorphic(type)) {
+                return extractAndParseJson(text, json -> {
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> map = Json.fromJson(json, Map.class);
+                    if (map != null && map.size() == 1 && map.containsKey("value")) {
+                        return Json.fromJson(Json.toJson(map.get("value")), type);
+                    } else {
+                        return Json.fromJson(json, type);
+                    }
+                }).value();
+            } else {
+                return extractAndParseJson(text, type).value();
+            }
         } catch (Exception e) {
             throw outputParsingException(text, type.getTypeName(), e);
         }
@@ -44,11 +67,27 @@ class PojoOutputParser<T> implements OutputParser<T> {
 
     @Override
     public Optional<JsonSchema> jsonSchema() {
-        JsonSchema jsonSchema = JsonSchema.builder()
+        JsonSchemaElement root;
+        if (isPolymorphic(type)) {
+            Map<Class<?>, VisitedClassMetadata> visited = new LinkedHashMap<>();
+            JsonSchemaElement anyOf = polymorphicSchemaFrom(type, null, false, visited);
+            root = wrapPolymorphic("value", referenceIfRecursive(anyOf, type, visited), visited);
+        } else {
+            root = jsonObjectOrReferenceSchemaFrom(type, null, false, new LinkedHashMap<>(), true);
+        }
+
+        if (root instanceof JsonObjectSchema obj && obj.properties().isEmpty() && isAbstract(type.getModifiers())) {
+            throw new UnsupportedFeatureException(String.format(
+                    "Type %s is an interface or abstract class with no permitted subtypes discoverable "
+                            + "by langchain4j, which produced an empty JSON schema. To use it as a "
+                            + "polymorphic return type, either make it sealed or annotate it with @JsonSubTypes.",
+                    type.getName()));
+        }
+
+        return Optional.of(JsonSchema.builder()
                 .name(type.getSimpleName())
-                .rootElement(jsonObjectOrReferenceSchemaFrom(type, null, false, new LinkedHashMap<>(), true))
-                .build();
-        return Optional.of(jsonSchema);
+                .rootElement(root)
+                .build());
     }
 
     @Override

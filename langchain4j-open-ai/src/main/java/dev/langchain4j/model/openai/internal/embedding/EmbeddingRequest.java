@@ -3,6 +3,7 @@ package dev.langchain4j.model.openai.internal.embedding;
 import static java.util.Arrays.asList;
 import static java.util.Collections.unmodifiableList;
 
+import com.fasterxml.jackson.annotation.JsonAnyGetter;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -11,8 +12,8 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
-
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 @JsonDeserialize(builder = EmbeddingRequest.Builder.class)
@@ -35,12 +36,15 @@ public final class EmbeddingRequest {
     @JsonProperty
     private final String encodingFormat;
 
+    private final Map<String, Object> customParameters;
+
     public EmbeddingRequest(Builder builder) {
         this.model = builder.model;
         this.input = builder.input;
         this.dimensions = builder.dimensions;
         this.user = builder.user;
         this.encodingFormat = builder.encodingFormat;
+        this.customParameters = builder.customParameters;
     }
 
     public String model() {
@@ -63,6 +67,11 @@ public final class EmbeddingRequest {
         return encodingFormat;
     }
 
+    @JsonAnyGetter
+    public Map<String, Object> customParameters() {
+        return customParameters;
+    }
+
     @Override
     @JacocoIgnoreCoverageGenerated
     public boolean equals(Object another) {
@@ -76,7 +85,8 @@ public final class EmbeddingRequest {
                 && Objects.equals(input, another.input)
                 && Objects.equals(dimensions, another.dimensions)
                 && Objects.equals(user, another.user)
-                && Objects.equals(encodingFormat, another.encodingFormat);
+                && Objects.equals(encodingFormat, another.encodingFormat)
+                && Objects.equals(customParameters, another.customParameters);
     }
 
     @Override
@@ -88,6 +98,7 @@ public final class EmbeddingRequest {
         h += (h << 5) + Objects.hashCode(dimensions);
         h += (h << 5) + Objects.hashCode(user);
         h += (h << 5) + Objects.hashCode(encodingFormat);
+        h += (h << 5) + Objects.hashCode(customParameters);
         return h;
     }
 
@@ -100,6 +111,7 @@ public final class EmbeddingRequest {
                 + ", dimensions=" + dimensions
                 + ", user=" + user
                 + ", encodingFormat=" + encodingFormat
+                + ", customParameters=" + customParameters
                 + "}";
     }
 
@@ -117,6 +129,7 @@ public final class EmbeddingRequest {
         private Integer dimensions;
         private String user;
         private String encodingFormat;
+        private Map<String, Object> customParameters;
 
         public Builder model(String model) {
             this.model = model;
@@ -146,6 +159,11 @@ public final class EmbeddingRequest {
 
         public Builder encodingFormat(String encodingFormat) {
             this.encodingFormat = encodingFormat;
+            return this;
+        }
+
+        public Builder customParameters(Map<String, Object> customParameters) {
+            this.customParameters = customParameters;
             return this;
         }
 

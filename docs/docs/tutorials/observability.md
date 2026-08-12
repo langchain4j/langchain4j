@@ -243,6 +243,25 @@ model.chat("Tell me a joke about Java");
 
 The `attributes` map allows passing information between the `onRequest`, `onResponse`, and `onError` methods of the same
 `ChatModelListener`, as well as between multiple `ChatModelListener`s.
+If you need to provide per-invocation metadata to listeners, use `ChatRequestOptions`.
+For example, you can pass tenant or correlation identifiers to `ChatModelListener`s
+through `listenerAttributes`. These options are used only within the LangChain4j invocation chain;
+they are not sent to the LLM provider.
+
+```java
+ChatRequest chatRequest = ChatRequest.builder()
+        .messages(UserMessage.from("Tell me a joke about Java"))
+        .build();
+
+ChatRequestOptions options = ChatRequestOptions.builder()
+        .addListenerAttribute("tenantId", "tenant-123")
+        .addListenerAttribute("correlationId", "corr-456")
+        .build();
+
+model.chat(chatRequest, options);
+```
+
+The same applies to `StreamingChatModel.chat(chatRequest, options, handler)`.
 
 ### How listeners work
 
@@ -271,6 +290,97 @@ The `attributes` map allows passing information between the `onRequest`, `onResp
   `StreamingChatResponseHandler.onCompleteResponse()` is called. The `ChatModelListener.onError()` is called
   before the `StreamingChatResponseHandler.onError()` is called.
 
+## Moderation Model Observability
+
+Implementations of `ModerationModel` that support listeners (such as `OpenAiModerationModel`, `MistralAiModerationModel`,
+and `WatsonxModerationModel`) allow configuring `ModerationModelListener`(s) to listen for events such as:
+- Requests to the moderation API
+- Responses from the moderation API
+- Errors
+
+Here is an example of using `ModerationModelListener`:
+```java
+ModerationModelListener listener = new ModerationModelListener() {
+
+    @Override
+    public void onRequest(ModerationModelRequestContext requestContext) {
+        ModerationRequest moderationRequest = requestContext.moderationRequest();
+
+        // Access texts being moderated
+        System.out.println("Moderating texts: " + moderationRequest.texts());
+
+        System.out.println(requestContext.modelProvider());
+        System.out.println(moderationRequest.modelName());
+
+        Map<Object, Object> attributes = requestContext.attributes();
+        attributes.put("startTime", System.currentTimeMillis());
+    }
+
+    @Override
+    public void onResponse(ModerationModelResponseContext responseContext) {
+        ModerationResponse moderationResponse = responseContext.moderationResponse();
+
+        Moderation moderation = moderationResponse.moderation();
+        System.out.println("Flagged: " + moderation.flagged());
+        if (moderation.flagged()) {
+            System.out.println("Flagged text: " + moderation.flaggedText());
+        }
+
+        ModerationRequest moderationRequest = responseContext.moderationRequest();
+        System.out.println(moderationRequest);
+
+        System.out.println(responseContext.modelProvider());
+        System.out.println(moderationRequest.modelName());
+
+        Map<Object, Object> attributes = responseContext.attributes();
+        Long startTime = (Long) attributes.get("startTime");
+        if (startTime != null) {
+            System.out.println("Duration: " + (System.currentTimeMillis() - startTime) + "ms");
+        }
+    }
+
+    @Override
+    public void onError(ModerationModelErrorContext errorContext) {
+        Throwable error = errorContext.error();
+        error.printStackTrace();
+
+        ModerationRequest moderationRequest = errorContext.moderationRequest();
+        System.out.println(moderationRequest);
+
+        System.out.println(errorContext.modelProvider());
+        System.out.println(moderationRequest.modelName());
+
+        Map<Object, Object> attributes = errorContext.attributes();
+        System.out.println(attributes.get("startTime"));
+    }
+};
+
+ModerationModel model = OpenAiModerationModel.builder()
+        .apiKey(System.getenv("OPENAI_API_KEY"))
+        .listeners(List.of(listener))
+        .build();
+
+model.moderate("Text to check for policy violations");
+```
+
+The `attributes` map allows passing information between the `onRequest`, `onResponse`, and `onError` methods of the same
+`ModerationModelListener`, as well as between multiple `ModerationModelListener`s.
+
+### How listeners work
+
+- Listeners are specified as a `List<ModerationModelListener>` and are called in the order of iteration.
+- Listeners are called synchronously and in the same thread.
+- The `ModerationModelListener.onRequest()` method is called right before calling the moderation API.
+- The `ModerationModelListener.onRequest()` method is called only once per request.
+  If an error occurs while calling the moderation API and a retry happens,
+  `ModerationModelListener.onRequest()` will **_not_** be called for every retry.
+- The `ModerationModelListener.onResponse()` method is called only once,
+  immediately after receiving a successful response.
+- The `ModerationModelListener.onError()` method is called only once.
+  If an error occurs while calling the moderation API and a retry happens,
+  `ModerationModelListener.onError()` will **_not_** be called for every retry.
+- If an exception is thrown from one of the `ModerationModelListener` methods,
+  it will be logged at the `WARN` level. The execution of subsequent listeners will continue as usual.
 
 ## RAG Observability (EmbeddingModel, EmbeddingStore and ContentRetriever)
 
@@ -294,13 +404,15 @@ public class MyEmbeddingModelListener implements EmbeddingModelListener {
     @Override
     public void onRequest(EmbeddingModelRequestContext requestContext) {
         requestContext.attributes().put("startNanos", System.nanoTime());
+        // requestContext.embeddingRequest() exposes the inputs, per-call parameters (input_type, dimensions, ...)
+        // and multimodal content. requestContext.modelProvider() identifies the provider.
     }
 
     @Override
     public void onResponse(EmbeddingModelResponseContext responseContext) {
         long startNanos = (long) responseContext.attributes().get("startNanos");
         long durationNanos = System.nanoTime() - startNanos;
-        // Do something with duration and/or responseContext.response()
+        // Do something with duration and/or responseContext.embeddingResponse() (embeddings + metadata)
     }
 
     @Override
@@ -310,13 +422,34 @@ public class MyEmbeddingModelListener implements EmbeddingModelListener {
 }
 ```
 
-Attach listeners using `EmbeddingModel#addListener(s)`:
+Attach listeners via the model builder's `listeners(...)` method (recommended):
+
+```java
+EmbeddingModel model = OpenAiEmbeddingModel.builder()
+        .apiKey(System.getenv("OPENAI_API_KEY"))
+        .modelName("text-embedding-3-small")
+        .listeners(List.of(new MyEmbeddingModelListener()))
+        .build();
+
+model.embed("hello");
+```
+
+The listener is notified around `embed(EmbeddingRequest)` as well as the `embed(String)` / `embed(TextSegment)`
+convenience methods.
+
+:::note
+You can also attach a listener by wrapping an already-built model with `EmbeddingModel#addListener(s)`:
 
 ```java
 EmbeddingModel observedModel = embeddingModel.addListener(new MyEmbeddingModelListener());
 
 observedModel.embed("hello");
 ```
+
+This is convenient for adding a listener to an already-built model, or to a model whose builder does not expose
+`listeners(...)`. When the builder does expose `listeners(...)`, prefer that approach, as it does not require
+wrapping.
+:::
 
 ### EmbeddingStore listener
 
@@ -477,11 +610,61 @@ ChatResponse response = chatModel.chat(ChatRequest.builder()
         .build());
 ```
 
+## Micrometer Observation API
+
+This implements the `ChatModelListener` using the [Micrometer Observation API](https://docs.micrometer.io/micrometer/reference/observation.html) allowing transparent generation of Metrics and Traces. 
+
+This is implemnted in the  `langchain4j-observation` module.
+
+### Produced telemetry
+
+#### Traces 
+
+This will provide spans per chat interaction.
+
+Example:
+![observation trace](../../static/img/observation-trace.png)
+
+#### Metrics
+Histograms for:
+- gen_ai_client_token_usage
+- gen_ai_client_operation_duration
+
+Example:
+```log
+# HELP gen_ai_client_operation_duration_active_seconds  
+# TYPE gen_ai_client_operation_duration_active_seconds summary
+gen_ai_client_operation_duration_active_seconds_count{gen_ai_operation_name="chat",gen_ai_provider_name="OPEN_AI",gen_ai_request_model="gpt-4o-mini",gen_ai_response_model="unknown",outcome="SUCCESS"} 0
+gen_ai_client_operation_duration_active_seconds_sum{gen_ai_operation_name="chat",gen_ai_provider_name="OPEN_AI",gen_ai_request_model="gpt-4o-mini",gen_ai_response_model="unknown",outcome="SUCCESS"} 0.0
+# HELP gen_ai_client_operation_duration_active_seconds_max  
+# TYPE gen_ai_client_operation_duration_active_seconds_max gauge
+gen_ai_client_operation_duration_active_seconds_max{gen_ai_operation_name="chat",gen_ai_provider_name="OPEN_AI",gen_ai_request_model="gpt-4o-mini",gen_ai_response_model="unknown",outcome="SUCCESS"} 0.0
+# HELP gen_ai_client_operation_duration_seconds  
+# TYPE gen_ai_client_operation_duration_seconds summary
+gen_ai_client_operation_duration_seconds_count{error="none",gen_ai_operation_name="chat",gen_ai_provider_name="OPEN_AI",gen_ai_request_model="gpt-4o-mini",gen_ai_response_model="gpt-4o-mini-2024-07-18",outcome="SUCCESS"} 2
+gen_ai_client_operation_duration_seconds_sum{error="none",gen_ai_operation_name="chat",gen_ai_provider_name="OPEN_AI",gen_ai_request_model="gpt-4o-mini",gen_ai_response_model="gpt-4o-mini-2024-07-18",outcome="SUCCESS"} 3.384050045
+# HELP gen_ai_client_operation_duration_seconds_max  
+# TYPE gen_ai_client_operation_duration_seconds_max gauge
+gen_ai_client_operation_duration_seconds_max{error="none",gen_ai_operation_name="chat",gen_ai_provider_name="OPEN_AI",gen_ai_request_model="gpt-4o-mini",gen_ai_response_model="gpt-4o-mini-2024-07-18",outcome="SUCCESS"} 2.115592691
+# HELP gen_ai_client_token_usage_tokens Measures the quantity of used tokens
+# TYPE gen_ai_client_token_usage_tokens summary
+gen_ai_client_token_usage_tokens_count{gen_ai_operation_name="chat",gen_ai_provider_name="OPEN_AI",gen_ai_request_model="gpt-4o-mini",gen_ai_response_model="gpt-4o-mini-2024-07-18",gen_ai_token_type="input"} 2
+gen_ai_client_token_usage_tokens_sum{gen_ai_operation_name="chat",gen_ai_provider_name="OPEN_AI",gen_ai_request_model="gpt-4o-mini",gen_ai_response_model="gpt-4o-mini-2024-07-18",gen_ai_token_type="input"} 508.0
+gen_ai_client_token_usage_tokens_count{gen_ai_operation_name="chat",gen_ai_provider_name="OPEN_AI",gen_ai_request_model="gpt-4o-mini",gen_ai_response_model="gpt-4o-mini-2024-07-18",gen_ai_token_type="output"} 2
+gen_ai_client_token_usage_tokens_sum{gen_ai_operation_name="chat",gen_ai_provider_name="OPEN_AI",gen_ai_request_model="gpt-4o-mini",gen_ai_response_model="gpt-4o-mini-2024-07-18",gen_ai_token_type="output"} 53.0
+# HELP gen_ai_client_token_usage_tokens_max Measures the quantity of used tokens
+# TYPE gen_ai_client_token_usage_tokens_max gauge
+gen_ai_client_token_usage_tokens_max{gen_ai_operation_name="chat",gen_ai_provider_name="OPEN_AI",gen_ai_request_model="gpt-4o-mini",gen_ai_response_model="gpt-4o-mini-2024-07-18",gen_ai_token_type="input"} 273.0
+gen_ai_client_token_usage_tokens_max{gen_ai_operation_name="chat",gen_ai_provider_name="OPEN_AI",gen_ai_request_model="gpt-4o-mini",gen_ai_response_model="gpt-4o-mini-2024-07-18",gen_ai_token_type="output"} 27.0
+```
+
 ## Observability in Spring Boot Application
 
 See more details [here](/tutorials/spring-boot-integration#observability).
 
 See more details on how to collect Micrometer Metrics in Spring Boot application [here](/tutorials/spring-boot-integration#micrometer-metrics). 
+
+Details on how to integrate the Micrometer Observation API library with SpringBoot can be found [here](spring-boot-integration.md#micrometer-observation).
 
 ## Third-party Integrations
 
@@ -493,7 +676,7 @@ The community-maintained [otel-genai-bridges](https://github.com/dineshkumarkumm
 
 #### Why use it?
 
-- Wraps any `ChatLanguageModel` bean and emits spans, events, and metrics.
+- Wraps any `ChatModel` bean and emits spans, events, and metrics.
 - Captures prompts, completions, tool calls, latency, token usage, cost, and RAG retrieval latency out of the box.
 - Provides Docker Compose samples (Collector → Tempo/Prometheus → Grafana) with prebuilt Grafana dashboards.
 
@@ -528,7 +711,7 @@ otel:
 
 The nested `cost` stanza is optional; include it when you want cost-per-token metrics.
 
-With the dependency on the classpath, the starter locates `ChatLanguageModel` beans automatically and wraps them with telemetry.
+With the dependency on the classpath, the starter locates `ChatModel` beans automatically and wraps them with telemetry.
 
 #### Observability view
 

@@ -12,11 +12,9 @@ import java.time.Duration;
 import java.util.concurrent.TimeoutException;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Disabled;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-@Disabled("Tool list updates not working over streamable-http transport yet - opening a global SSE stream is necessary")
 class McpToolUpdatesStreamableHttpTransportIT extends McpToolUpdatesTestBase {
 
     private static final Logger log = LoggerFactory.getLogger(McpToolUpdatesStreamableHttpTransportIT.class);
@@ -30,6 +28,7 @@ class McpToolUpdatesStreamableHttpTransportIT extends McpToolUpdatesTestBase {
                 .url("http://localhost:8080/mcp")
                 .logRequests(true)
                 .logResponses(true)
+                .subsidiaryChannel(true)
                 .build();
         mcpClient = new DefaultMcpClient.Builder()
                 .transport(transport)

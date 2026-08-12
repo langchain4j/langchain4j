@@ -46,6 +46,7 @@ We maintain collection of models that are tested in the [HuggingFace](https://hu
 * Qwen3.0
 * Phi-3
 * DeepSeek-R1-Distill-Qwen-1.5B-GGUF
+* IBM Granite 3.2, 3.3 and 4.0
 ----
 ## Chat Completion
 The chat models allow you to generate human-like responses with a model fined-tuned on conversational data.
@@ -134,7 +135,7 @@ The tests require proper GPULlama3.java and TornadoVM configuration.Prerequisite
 * GPULlama3.java properly configured and installed
 * TornadoVM installed and configured with GPU support
 * JDK 21+ installed
-* TORNADO_SDK environment variable set to your TornadoVM installation path
+* TORNADOVM_HOME environment variable set to your TornadoVM installation path
 * A compatible GGUF model file (e.g., Phi-3-mini-4k-instruct-fp16.gguf) in the project root
 
 ### Running Tests
@@ -186,6 +187,27 @@ Test run finished after 31605 ms
 
 One need to configure TornadoVM to run the example
 Detailed instructions can be found **[Setup & Configure](https://github.com/beehive-lab/GPULlama3.java?tab=readme-ov-file#prerequisites)**
+
+#### Install the TornadoVM SDK on Linux or macOS
+
+Ensure that your JAVA_HOME points to a supported JDK before using the SDK. Download an SDK package matching your OS, architecture, and accelerator backend (opencl, ptx).
+TornadoVM is distributed through our [**official website**](https://www.tornadovm.org/downloads) and **SDKMAN!**. Install a version that matches your OS, architecture, and accelerator backend.
+
+All TornadoVM SDKs are available on the [SDKMAN! TornadoVM page](https://sdkman.io/sdks/tornadovm/).
+
+#### SDKMAN! Installation (Recommended)
+
+##### Install SDKMAN! if not installed already
+```bash
+curl -s "https://get.sdkman.io" | bash
+source "$HOME/.sdkman/bin/sdkman-init.sh"
+sdk version
+```
+##### Install TornadoVM via SDKMAN!
+```bash
+sdk install tornadovm
+```
+
 #### **Step 1 — Get Tornado JVM flags**
 
 Run the following command (You need to have Tornado installed):

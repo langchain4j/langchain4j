@@ -7,14 +7,17 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Corresponds to the {@code ListRootsResult} type from the MCP schema.
+ */
 @Internal
-public class McpRootsListResponse extends McpClientMessage {
+public class McpRootsListResponse extends McpClientResponse {
 
     @JsonInclude(JsonInclude.Include.ALWAYS)
     private final Map<String, Object> result = new HashMap<>();
 
     public McpRootsListResponse(Long id, List<McpRoot> roots) {
-        super(id, null);
+        super(id);
         result.put("roots", roots);
     }
 

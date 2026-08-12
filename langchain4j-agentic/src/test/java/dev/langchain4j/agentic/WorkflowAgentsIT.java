@@ -2,21 +2,24 @@ package dev.langchain4j.agentic;
 
 import static dev.langchain4j.agentic.Models.baseModel;
 import static dev.langchain4j.agentic.Models.throwingModel;
-import static dev.langchain4j.agentic.observability.HtmlReportGenerator.generateReport;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 
 import dev.langchain4j.agent.tool.Tool;
+import dev.langchain4j.agentic.Agents.LoanApplication;
 import dev.langchain4j.agentic.Agents.AudienceEditor;
 import dev.langchain4j.agentic.Agents.CategoryRouter;
 import dev.langchain4j.agentic.Agents.CreativeWriter;
 import dev.langchain4j.agentic.Agents.CreativeWriterWithArgMessage;
 import dev.langchain4j.agentic.Agents.EveningPlan;
 import dev.langchain4j.agentic.Agents.EveningPlannerAgent;
+import dev.langchain4j.agentic.Agents.EveningPlannerAgentWithOutput;
 import dev.langchain4j.agentic.Agents.ExpertInvokerAgentWithMemory;
 import dev.langchain4j.agentic.Agents.ExpertRouterAgent;
 import dev.langchain4j.agentic.Agents.ExpertRouterAgentWithMemory;
@@ -36,18 +39,25 @@ import dev.langchain4j.agentic.Agents.TechnicalExpertWithMemory;
 import dev.langchain4j.agentic.agent.AgentInvocationException;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
+import dev.langchain4j.guardrail.InputGuardrail;
+import dev.langchain4j.guardrail.InputGuardrailResult;
+import dev.langchain4j.guardrail.OutputGuardrail;
+import dev.langchain4j.guardrail.OutputGuardrailResult;
 import dev.langchain4j.agentic.declarative.ChatModelSupplier;
+import dev.langchain4j.agentic.internal.AgenticScopeOwner;
 import dev.langchain4j.agentic.observability.AgentInvocation;
+import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.observability.AgentMonitor;
 import dev.langchain4j.agentic.observability.AgentRequest;
 import dev.langchain4j.agentic.observability.AgentResponse;
-import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.observability.MonitoredExecution;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticSystemConfigurationException;
-import dev.langchain4j.agentic.internal.AgenticScopeOwner;
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.scope.AgenticScope;
+import dev.langchain4j.agentic.scope.AgenticScopeAccess;
+import dev.langchain4j.agentic.scope.AgenticScopeSerializer;
+import dev.langchain4j.agentic.scope.UnserializableAgenticScopeException;
 import dev.langchain4j.agentic.scope.AgenticScopePersister;
 import dev.langchain4j.agentic.scope.AgenticScopeRegistry;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
@@ -56,11 +66,15 @@ import dev.langchain4j.agentic.workflow.HumanInTheLoop;
 import dev.langchain4j.agentic.workflow.LoopAgentInstance;
 import dev.langchain4j.agentic.workflow.impl.LoopPlanner;
 import dev.langchain4j.agentic.workflow.impl.SequentialPlanner;
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.service.MemoryId;
+import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -119,13 +133,13 @@ public class WorkflowAgentsIT {
                 .outputKey("story")
                 .build());
 
-        UntypedAgent novelCreator = asPlanner ?
-                AgenticServices.plannerBuilder()
+        UntypedAgent novelCreator = asPlanner
+                ? AgenticServices.plannerBuilder()
                         .subAgents(creativeWriter, audienceEditor, styleEditor)
                         .outputKey("story")
                         .planner(SequentialPlanner::new)
-                        .build() :
-                AgenticServices.sequenceBuilder()
+                        .build()
+                : AgenticServices.sequenceBuilder()
                         .subAgents(creativeWriter, audienceEditor, styleEditor)
                         .outputKey("story")
                         .build();
@@ -141,6 +155,63 @@ public class WorkflowAgentsIT {
         verify(creativeWriter).generateStory("dragons and wizards");
         verify(audienceEditor).editStory(any(), eq("young adults"));
         verify(styleEditor).editStory(any(), eq("fantasy"));
+    }
+
+    @Test
+    void optional_agent_test() {
+        CreativeWriter creativeWriter = spy(AgenticServices.agentBuilder(CreativeWriter.class)
+                .chatModel(baseModel())
+                .outputKey("story")
+                .build());
+
+        AudienceEditor audienceEditor = spy(AgenticServices.agentBuilder(AudienceEditor.class)
+                .chatModel(baseModel())
+                .optional(true)
+                .outputKey("story")
+                .build());
+
+        StyleEditor styleEditor = spy(AgenticServices.agentBuilder(StyleEditor.class)
+                .chatModel(baseModel())
+                .outputKey("story")
+                .build());
+
+        List<?> subagents = List.of(creativeWriter, audienceEditor, styleEditor);
+
+        UntypedAgent novelCreator = AgenticServices.sequenceBuilder()
+                .subAgents(subagents)
+                .outputKey("story")
+                .build();
+
+        Map<String, Object> completeInput = Map.of(
+                "topic", "dragons and wizards",
+                "style", "fantasy",
+                "audience", "young adults");
+
+        novelCreator.invoke(completeInput);
+
+        verify(creativeWriter).generateStory("dragons and wizards");
+        verify(audienceEditor).editStory(any(), eq("young adults"));
+        verify(styleEditor).editStory(any(), eq("fantasy"));
+
+        reset(creativeWriter, audienceEditor, styleEditor);
+
+        Map<String, Object> missingAudienceInput = Map.of(
+                "topic", "dragons and wizards",
+                "style", "fantasy");
+
+        novelCreator.invoke(missingAudienceInput);
+
+        verify(creativeWriter).generateStory("dragons and wizards");
+        verify(audienceEditor, never())
+                .editStory(any(), any()); // audienceEditor should be skipped due to missing argument
+        verify(styleEditor).editStory(any(), eq("fantasy"));
+
+        Map<String, Object> missingStyleInput = Map.of(
+                "topic", "dragons and wizards",
+                "audience", "young adults");
+
+        assertThat(assertThrows(MissingArgumentException.class, () -> novelCreator.invoke(missingStyleInput)))
+                .hasMessageContaining("style");
     }
 
     @Test
@@ -163,9 +234,9 @@ public class WorkflowAgentsIT {
                 .build());
 
         UntypedAgent novelCreator = AgenticServices.sequenceBuilder()
-                        .subAgents(creativeWriter, audienceEditor, styleEditor)
-                        .outputKey("story")
-                        .build();
+                .subAgents(creativeWriter, audienceEditor, styleEditor)
+                .outputKey("story")
+                .build();
 
         Map<String, Object> input = Map.of(
                 "userMessage", """
@@ -211,15 +282,79 @@ public class WorkflowAgentsIT {
                 .build());
 
         ReviewedWriter novelCreator = AgenticServices.sequenceBuilder(ReviewedWriter.class)
-                        .subAgents(creativeWriter, audienceEditor, styleEditor)
-                        .outputKey("story")
-                        .build();
+                .subAgents(creativeWriter, audienceEditor, styleEditor)
+                .outputKey("story")
+                .build();
 
         String story = novelCreator.writeStory("dragons and wizards", "young adults", "fantasy");
         assertThat(story).containsIgnoringCase("dragon");
 
         verify(audienceEditor).editStory(any(), eq("young adults"));
         verify(styleEditor).editStory(any(), eq("fantasy"));
+    }
+
+    @Test
+    void sequential_agents_with_guardrails_tests() {
+        AtomicBoolean inputGuardrailInvoked = new AtomicBoolean(false);
+        AtomicBoolean outputGuardrailInvoked = new AtomicBoolean(false);
+
+        InputGuardrail topicGuardrail = new InputGuardrail() {
+            @Override
+            public InputGuardrailResult validate(dev.langchain4j.data.message.UserMessage userMessage) {
+                inputGuardrailInvoked.set(true);
+                if (userMessage.singleText().toLowerCase().contains("violence")) {
+                    return fatal("Topic about violence is not allowed");
+                }
+                return success();
+            }
+        };
+
+        OutputGuardrail storyLengthGuardrail = new OutputGuardrail() {
+            @Override
+            public OutputGuardrailResult validate(AiMessage responseFromLLM) {
+                outputGuardrailInvoked.set(true);
+                if (responseFromLLM.text() != null && responseFromLLM.text().length() < 10) {
+                    return fatal("Story is too short");
+                }
+                return success();
+            }
+        };
+
+        CreativeWriter creativeWriter = spy(AgenticServices.agentBuilder(CreativeWriter.class)
+                .chatModel(baseModel())
+                .inputGuardrails(topicGuardrail)
+                .outputKey("story")
+                .build());
+
+        StyleEditor styleEditor = spy(AgenticServices.agentBuilder(StyleEditor.class)
+                .chatModel(baseModel())
+                .outputGuardrails(storyLengthGuardrail)
+                .outputKey("story")
+                .build());
+
+        UntypedAgent novelCreator = AgenticServices.sequenceBuilder()
+                .subAgents(creativeWriter, styleEditor)
+                .outputKey("story")
+                .build();
+
+        Map<String, Object> input = Map.of(
+                "topic", "dragons and wizards",
+                "style", "fantasy");
+
+        String story = (String) novelCreator.invoke(input);
+        System.out.println(story);
+
+        assertThat(inputGuardrailInvoked.get()).isTrue();
+        assertThat(outputGuardrailInvoked.get()).isTrue();
+        verify(creativeWriter).generateStory("dragons and wizards");
+        verify(styleEditor).editStory(any(), eq("fantasy"));
+
+        // Verify input guardrail blocks execution when it fails
+        Map<String, Object> violentInput = Map.of(
+                "topic", "violence and war",
+                "style", "fantasy");
+
+        assertThrows(AgentInvocationException.class, () -> novelCreator.invoke(violentInput));
     }
 
     @Test
@@ -255,13 +390,37 @@ public class WorkflowAgentsIT {
     }
 
     @Test
-    void sequential_agents_with_error_recovery_tests() {
+    void sequential_declarative_agents_with_error_recovery_tests() {
+        sequential_agents_with_error_recovery_tests(false);
+    }
+
+    @Test
+    void sequential_programmatic_agents_with_error_recovery_tests() {
+        sequential_agents_with_error_recovery_tests(true);
+    }
+
+    void sequential_agents_with_error_recovery_tests(boolean useProgrammaticAgent) {
         AtomicBoolean errorRecoveryCalled = new AtomicBoolean(false);
 
-        CreativeWriter creativeWriter = spy(AgenticServices.agentBuilder(CreativeWriter.class)
+        Object creativeWriter = useProgrammaticAgent ?
+            AgenticServices.agentBuilder()
+                .chatModel(baseModel())
+                .name("generateStory")
+                .description("Generate a story based on the given topic")
+                .userMessage("""
+                    You are a creative writer.
+                    Generate a draft of a story long no more than 3 sentence around the given topic.
+                    Return only the story and nothing else.
+                    The topic is {{topic}}.
+                    """)
+                .inputKey(String.class, "topic")
+                .returnType(String.class) // String is the default return type for untyped agents
+                .outputKey("story")
+                .build() :
+            AgenticServices.agentBuilder(CreativeWriter.class)
                 .chatModel(baseModel())
                 .outputKey("story")
-                .build());
+                .build();
 
         AudienceEditor audienceEditor = spy(AgenticServices.agentBuilder(AudienceEditor.class)
                 .chatModel(baseModel())
@@ -299,7 +458,6 @@ public class WorkflowAgentsIT {
 
         assertThat(errorRecoveryCalled.get()).isTrue();
 
-        verify(creativeWriter).generateStory("dragons and wizards");
         verify(audienceEditor).editStory(any(), eq("young adults"));
         verify(styleEditor).editStory(any(), eq("fantasy"));
     }
@@ -539,10 +697,11 @@ public class WorkflowAgentsIT {
         assertThat(writerListener.requestedTopic).isEqualTo("dragons and wizards");
         assertThat(allLevelsListener.finalScore).isGreaterThanOrEqualTo(0.8);
         assertThat(allLevelsListener.createdScopeId).isNotNull().isEqualTo(allLevelsListener.destroyedScopeId);
-        assertThat(allLevelsListener.invocationsCounter).isEqualTo((allLevelsListener.loopCounter*2)-1 + 3);
+        assertThat(allLevelsListener.invocationsCounter).isEqualTo((allLevelsListener.loopCounter * 2) - 1 + 3);
 
         assertThat(monitor.successfulExecutionsFor(agenticScope)).hasSize(1);
-        MonitoredExecution execution = monitor.successfulExecutionsFor(agenticScope).get(0);
+        MonitoredExecution execution =
+                monitor.successfulExecutionsFor(agenticScope).get(0);
         assertThat(execution.done()).isTrue();
         assertThat(execution.ongoingInvocations()).isEmpty();
         AgentInvocation topLevelInvocation = execution.topLevelInvocations();
@@ -550,11 +709,13 @@ public class WorkflowAgentsIT {
 
         assertThat(topLevelInvocation.nestedInvocations()).hasSize(2);
         assertThat(topLevelInvocation.nestedInvocations().get(0).agent().name()).isEqualTo("generateStory");
+        assertThat(topLevelInvocation.nestedInvocations().get(0).totalTokenCount())
+                .isGreaterThan(0);
         assertThat(topLevelInvocation.nestedInvocations().get(1).agent().name()).isEqualTo("reviewLoop");
 
         System.out.println(execution);
 
-//        generateReport(monitor, Path.of("src", "test", "resources", "review-loop.html"));
+        //                generateReport(monitor, Path.of("src", "test", "resources", "review-loop.html"));
     }
 
     @Test
@@ -601,6 +762,45 @@ public class WorkflowAgentsIT {
         assertThat(failed.hasError()).isTrue();
         assertThat(failed.error().error()).isInstanceOf(AgentInvocationException.class);
         assertThat(failed.error().agent().name()).isEqualTo("scoreStyle");
+    }
+
+    @Test
+    void loop_agents_with_error_should_evict_ephemeral_scope() {
+        CreativeWriter creativeWriter = AgenticServices.agentBuilder(CreativeWriter.class)
+                .chatModel(baseModel())
+                .outputKey("story")
+                .build();
+
+        StyleEditor styleEditor = AgenticServices.agentBuilder(StyleEditor.class)
+                .chatModel(baseModel())
+                .outputKey("story")
+                .build();
+
+        StyleScorer styleScorer = AgenticServices.agentBuilder(StyleScorer.class)
+                .chatModel(throwingModel())
+                .outputKey("score")
+                .build();
+
+        UntypedAgent styleReviewLoop = AgenticServices.loopBuilder()
+                .name("reviewLoop")
+                .subAgents(styleScorer, styleEditor)
+                .maxIterations(5)
+                .exitCondition(agenticScope -> agenticScope.readState("score", 0.0) >= 0.8)
+                .build();
+
+        UntypedAgent styledWriter = AgenticServices.sequenceBuilder()
+                .subAgents(creativeWriter, styleReviewLoop)
+                .outputKey("story")
+                .build();
+
+        Map<String, Object> input = Map.of(
+                "topic", "dragons and wizards",
+                "style", "comedy");
+
+        assertThrows(AgentInvocationException.class, () -> styledWriter.invokeWithAgenticScope(input));
+
+        AgenticScopeRegistry registry = ((AgenticScopeOwner) styledWriter).registry();
+        assertThat(registry.getAllAgenticScopeKeysInMemory()).isEmpty();
     }
 
     @Test
@@ -681,13 +881,17 @@ public class WorkflowAgentsIT {
 
         assertThat(agenticScope.agentInvocations("generateStory")).hasSize(1);
 
-        List<dev.langchain4j.agentic.scope.AgentInvocation> scoreAgentInvocations = agenticScope.agentInvocations(StyleScorer.class);
+        List<dev.langchain4j.agentic.scope.AgentInvocation> scoreAgentInvocations =
+                agenticScope.agentInvocations(StyleScorer.class);
         assertThat(scoreAgentInvocations).hasSizeBetween(1, 5).hasSize(loopCount.get());
         System.out.println("Score agent invocations: " + scoreAgentInvocations);
-        assertThat((Double) scoreAgentInvocations.get(scoreAgentInvocations.size() - 1).output())
+        assertThat((Double) scoreAgentInvocations
+                        .get(scoreAgentInvocations.size() - 1)
+                        .output())
                 .isGreaterThanOrEqualTo(0.8);
 
-        List<dev.langchain4j.agentic.scope.AgentInvocation> styleEditorAgentInvocations = agenticScope.agentInvocations(StyleEditor.class);
+        List<dev.langchain4j.agentic.scope.AgentInvocation> styleEditorAgentInvocations =
+                agenticScope.agentInvocations(StyleEditor.class);
         assertThat(styleEditorAgentInvocations).hasSize(testExitAtLoopEnd ? loopCount.get() : loopCount.get() - 1);
     }
 
@@ -717,7 +921,7 @@ public class WorkflowAgentsIT {
         assertThat(score).isGreaterThanOrEqualTo(0.8);
     }
 
-    interface ExpertRouterAgentInstance extends ExpertRouterAgent, AgentInstance { }
+    interface ExpertRouterAgentInstance extends ExpertRouterAgent, AgentInstance {}
 
     @Test
     void conditional_agents_tests() {
@@ -740,11 +944,13 @@ public class WorkflowAgentsIT {
                 .build());
 
         UntypedAgent expertsAgent = AgenticServices.conditionalBuilder()
-                .subAgents("category is medical",
+                .subAgents(
+                        "category is medical",
                         agenticScope ->
                                 agenticScope.readState("category", RequestCategory.UNKNOWN) == RequestCategory.MEDICAL,
                         medicalExpert)
-                .subAgents("category is legal",
+                .subAgents(
+                        "category is legal",
                         agenticScope ->
                                 agenticScope.readState("category", RequestCategory.UNKNOWN) == RequestCategory.LEGAL,
                         legalExpert)
@@ -790,9 +996,12 @@ public class WorkflowAgentsIT {
 
         ConditionalAgentInstance conditionalInstance = conditionalAgentInstance.as(ConditionalAgentInstance.class);
         assertThat(conditionalInstance.conditionalSubagents()).hasSize(3);
-        assertThat(conditionalInstance.conditionalSubagents().get(0).condition()).isEqualTo("category is medical");
-        assertThat(conditionalInstance.conditionalSubagents().get(1).condition()).isEqualTo("category is legal");
-        assertThat(conditionalInstance.conditionalSubagents().get(2).condition()).isEqualTo("<unknown>");
+        assertThat(conditionalInstance.conditionalSubagents().get(0).condition())
+                .isEqualTo("category is medical");
+        assertThat(conditionalInstance.conditionalSubagents().get(1).condition())
+                .isEqualTo("category is legal");
+        assertThat(conditionalInstance.conditionalSubagents().get(2).condition())
+                .isEqualTo("<unknown>");
 
         checkExpertAgent(conditionalAgentInstance, "medical", 0);
         checkExpertAgent(conditionalAgentInstance, "legal", 1);
@@ -887,12 +1096,13 @@ public class WorkflowAgentsIT {
                         technicalExpert)
                 .build();
 
-        assertThat(assertThrows(AgenticSystemConfigurationException.class, () ->
-                AgenticServices.sequenceBuilder(ExpertRouterAgent.class)
-                    .subAgents(routerAgent, expertsAgent)
-                    .outputKey("response")
-                    .build()))
-            .hasMessageContaining("category");
+        assertThat(assertThrows(
+                        AgenticSystemConfigurationException.class,
+                        () -> AgenticServices.sequenceBuilder(ExpertRouterAgent.class)
+                                .subAgents(routerAgent, expertsAgent)
+                                .outputKey("response")
+                                .build()))
+                .hasMessageContaining("category");
     }
 
     @Test
@@ -921,15 +1131,26 @@ public class WorkflowAgentsIT {
                 .outputKey("response")
                 .build();
 
-        ExpertInvokerAgentWithMemory expertsAgent = AgenticServices.conditionalBuilder(ExpertInvokerAgentWithMemory.class)
+        ExpertInvokerAgentWithMemory expertsAgent = AgenticServices.conditionalBuilder(
+                        ExpertInvokerAgentWithMemory.class)
                 .name("router")
                 .outputKey("response")
-                .subAgents("Medical request", scope -> scope.readState("category", RequestCategory.UNKNOWN) == RequestCategory.MEDICAL, medicalExpert)
-                .subAgents("Technical request", scope -> scope.readState("category", RequestCategory.UNKNOWN) == RequestCategory.TECHNICAL, technicalExpert)
-                .subAgents("Legal request", scope -> scope.readState("category", RequestCategory.UNKNOWN) == RequestCategory.LEGAL, legalExpert)
+                .subAgents(
+                        "Medical request",
+                        scope -> scope.readState("category", RequestCategory.UNKNOWN) == RequestCategory.MEDICAL,
+                        medicalExpert)
+                .subAgents(
+                        "Technical request",
+                        scope -> scope.readState("category", RequestCategory.UNKNOWN) == RequestCategory.TECHNICAL,
+                        technicalExpert)
+                .subAgents(
+                        "Legal request",
+                        scope -> scope.readState("category", RequestCategory.UNKNOWN) == RequestCategory.LEGAL,
+                        legalExpert)
                 .build();
 
-        ExpertRouterAgentWithMemory expertRouterAgent = AgenticServices.sequenceBuilder(ExpertRouterAgentWithMemory.class)
+        ExpertRouterAgentWithMemory expertRouterAgent = AgenticServices.sequenceBuilder(
+                        ExpertRouterAgentWithMemory.class)
                 .subAgents(routerAgent, expertsAgent)
                 .listener(monitor)
                 .outputKey("response")
@@ -985,7 +1206,7 @@ public class WorkflowAgentsIT {
         assertThat(expertRouterAgent.evictAgenticScope("Mario")).isFalse();
         assertThat(expertRouterAgent.evictAgenticScope("Dmytro")).isFalse();
 
-//        generateReport(monitor, "Mario", Path.of("src", "test", "resources", "expert-routing.html"));
+        //        generateReport(monitor, "Mario", Path.of("src", "test", "resources", "expert-routing.html"));
 
         AgenticScopePersister.setStore(null);
     }
@@ -993,7 +1214,8 @@ public class WorkflowAgentsIT {
     private static void checkMonitoredExecution(AgentMonitor monitor, Object memoryId, String expertName) {
         List<MonitoredExecution> executions1 = monitor.successfulExecutionsFor(memoryId);
         assertThat(executions1).hasSize(1);
-        List<AgentInvocation> sequenceInvocations = executions1.get(0).topLevelInvocations().nestedInvocations();
+        List<AgentInvocation> sequenceInvocations =
+                executions1.get(0).topLevelInvocations().nestedInvocations();
         assertThat(sequenceInvocations).hasSize(2);
         assertThat(sequenceInvocations.get(0).agent().name()).isEqualTo("classify");
         assertThat(sequenceInvocations.get(1).agent().name()).isEqualTo("router");
@@ -1023,22 +1245,9 @@ public class WorkflowAgentsIT {
                 .outputKey("movies")
                 .build();
 
-        var builder = AgenticServices.parallelBuilder(EveningPlannerAgent.class)
+        var builder = AgenticServices.parallelBuilder(EveningPlannerAgentWithOutput.class)
                 .subAgents(foodExpert, movieExpert)
-                .outputKey("plans")
-                .output(agenticScope -> {
-                    List<String> movies = agenticScope.readState("movies", List.of());
-                    List<String> meals = agenticScope.readState("meals", List.of());
-
-                    List<EveningPlan> moviesAndMeals = new ArrayList<>();
-                    for (int i = 0; i < movies.size(); i++) {
-                        if (i >= meals.size()) {
-                            break;
-                        }
-                        moviesAndMeals.add(new EveningPlan(movies.get(i), meals.get(i)));
-                    }
-                    return moviesAndMeals;
-                });
+                .outputKey("plans");
 
         if (!useDefaultExecutor) {
             builder.executor(Executors.newFixedThreadPool(2));
@@ -1104,8 +1313,7 @@ public class WorkflowAgentsIT {
 
     public interface FoodExpertWithNotification {
 
-        @UserMessage(
-                """
+        @UserMessage("""
             You are a great evening planner.
             Propose a list of 3 meals matching the given mood.
             The mood is {{mood}}.
@@ -1121,8 +1329,7 @@ public class WorkflowAgentsIT {
 
     public interface MovieExpertWithNotification {
 
-        @UserMessage(
-                """
+        @UserMessage("""
             You are a great evening planner.
             Propose a list of 3 movies matching the given mood.
             The mood is {{mood}}.
@@ -1162,8 +1369,7 @@ public class WorkflowAgentsIT {
 
     public interface CreativeWriterDeclarative {
 
-        @UserMessage(
-                """
+        @UserMessage("""
                 You are a creative writer.
                 Generate a draft of a story long no more than 3 sentence around the given topic.
                 Return only the story and nothing else.
@@ -1180,8 +1386,7 @@ public class WorkflowAgentsIT {
 
     public interface AudienceEditorDeclarative {
 
-        @UserMessage(
-                """
+        @UserMessage("""
             You are a professional editor.
             Analyze and rewrite the following story to better align with the target audience of {{audience}}.
             Return only the story and nothing else.
@@ -1193,6 +1398,176 @@ public class WorkflowAgentsIT {
         @ChatModelSupplier
         static ChatModel chatModel() {
             return baseModel();
+        }
+    }
+
+    // --- Parallel Multi-Instance Agent tests ---
+
+    public record Person(String name, String sign) {}
+
+    public interface PersonAstrologyAgent {
+        @SystemMessage("""
+            You are an astrologist that generates horoscopes based on the user's name and zodiac sign.
+            """)
+        @UserMessage("""
+            Generate the horoscope for {{person}}.
+            The person has a name and a zodiac sign. Use both to create a personalized horoscope.
+            """)
+        @Agent(description = "An astrologist that generates horoscopes for a person", outputKey = "horoscope")
+        String horoscope(@V("person") Person person);
+    }
+
+    public interface BatchHoroscopeAgent extends AgentInstance {
+
+        @Agent
+        String[] generateHoroscopes(@V("persons") Person... persons);
+    }
+
+    @Test
+    void parallel_mapper_tests() {
+        PersonAstrologyAgent personAstrologyAgent = AgenticServices.agentBuilder(PersonAstrologyAgent.class)
+                .chatModel(baseModel())
+                .outputKey("horoscope")
+                .build();
+
+        BatchHoroscopeAgent agent = AgenticServices.parallelMapperBuilder(BatchHoroscopeAgent.class)
+                .subAgents(personAstrologyAgent)
+                .build();
+
+        assertThat(agent.name()).isEqualTo("generateHoroscopes");
+        assertThat(agent.topology()).isEqualTo(AgenticSystemTopology.PARALLEL);
+        assertThat(agent.subagents()).hasSize(1);
+
+        AgentInstance subagent = agent.subagents().get(0);
+        assertThat(subagent.name()).isEqualTo("horoscope");
+        assertThat(subagent.outputKey()).isEqualTo("horoscope");
+
+        String[] horoscopes = agent.generateHoroscopes(
+                new Person("Mario", "aries"), new Person("Luigi", "pisces"), new Person("Peach", "leo"));
+        assertThat(horoscopes)
+                .hasSize(3)
+                .allSatisfy(horoscope -> assertThat(horoscope).isNotBlank());
+    }
+
+    @Test
+    void parallel_mapper_with_memory_throws_tests() {
+        PersonAstrologyAgent personAstrologyAgent = AgenticServices.agentBuilder(PersonAstrologyAgent.class)
+                .chatModel(baseModel())
+                .chatMemory(MessageWindowChatMemory.withMaxMessages(10))
+                .outputKey("horoscope")
+                .build();
+
+        assertThat(assertThrows(
+                        Exception.class,
+                        () -> AgenticServices.parallelMapperBuilder(BatchHoroscopeAgent.class)
+                                .subAgents(personAstrologyAgent)
+                                .build()))
+                .rootCause()
+                .isInstanceOf(AgenticSystemConfigurationException.class);
+    }
+
+    @Test
+    void untyped_parallel_mapper_tests() {
+        List<Person> persons =
+                List.of(new Person("Mario", "aries"), new Person("Luigi", "pisces"), new Person("Peach", "leo"));
+
+        PersonAstrologyAgent personAstrologyAgent = AgenticServices.agentBuilder(PersonAstrologyAgent.class)
+                .chatModel(baseModel())
+                .outputKey("horoscope")
+                .build();
+
+        UntypedAgent agent = AgenticServices.parallelMapperBuilder()
+                .subAgents(personAstrologyAgent)
+                .itemsProvider("persons")
+                .executor(Executors.newFixedThreadPool(persons.size()))
+                .build();
+
+        List<String> horoscopes = (List<String>) agent.invoke(Map.of("persons", persons));
+        assertThat(horoscopes)
+                .hasSize(persons.size())
+                .allSatisfy(horoscope -> assertThat(horoscope).isNotBlank());
+    }
+
+    public interface LoanExtractorAgentWithMemory {
+
+        @UserMessage("""
+            Convert user request into a structured LoanApplication.
+            The user request is: '{{request}}'.
+            """)
+        @Agent(description = "Extract a loan application", outputKey = "loanApplication")
+        LoanApplication extract(@MemoryId String memoryId, @V("request") String request);
+    }
+
+    public interface LoanProcessorWithMemory extends AgenticScopeAccess {
+
+        @Agent
+        LoanApplication processLoan(@MemoryId String memoryId, @V("request") String request);
+    }
+
+    @Test
+    void memory_agents_with_unregistered_domain_object_should_fail_deserialization() {
+        LoanExtractorAgentWithMemory extractor = AgenticServices.agentBuilder(LoanExtractorAgentWithMemory.class)
+                .chatModel(baseModel())
+                .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
+                .outputKey("loanApplication")
+                .build();
+
+        LoanProcessorWithMemory processor = AgenticServices.sequenceBuilder(LoanProcessorWithMemory.class)
+                .subAgents(extractor)
+                .outputKey("loanApplication")
+                .build();
+
+        JsonInMemoryAgenticScopeStore store = new JsonInMemoryAgenticScopeStore();
+        AgenticScopePersister.setStore(store);
+
+        try {
+            LoanApplication result = processor.processLoan("user1",
+                    "John Smith, 35 years old, wants a loan of 10000 dollars");
+            assertThat(result).isNotNull();
+
+            AgenticScopeRegistry registry = ((AgenticScopeOwner) processor).registry();
+            registry.clearInMemory();
+
+            UnserializableAgenticScopeException ex = assertThrows(UnserializableAgenticScopeException.class,
+                    () -> processor.processLoan("user1", "What was my previous loan application?"));
+            assertThat(ex.getMessage())
+                    .contains(LoanApplication.class.getName())
+                    .contains("allowDeserializationType");
+        } finally {
+            AgenticScopePersister.setStore(null);
+        }
+    }
+
+    @Test
+    void memory_agents_with_registered_domain_object_should_deserialize_successfully() {
+        AgenticScopeSerializer.allowDeserializationType(LoanApplication.class);
+
+        LoanExtractorAgentWithMemory extractor = AgenticServices.agentBuilder(LoanExtractorAgentWithMemory.class)
+                .chatModel(baseModel())
+                .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
+                .outputKey("loanApplication")
+                .build();
+
+        LoanProcessorWithMemory processor = AgenticServices.sequenceBuilder(LoanProcessorWithMemory.class)
+                .subAgents(extractor)
+                .outputKey("loanApplication")
+                .build();
+
+        JsonInMemoryAgenticScopeStore store = new JsonInMemoryAgenticScopeStore();
+        AgenticScopePersister.setStore(store);
+
+        try {
+            LoanApplication result = processor.processLoan("user1",
+                    "John Smith, 35 years old, wants a loan of 10000 dollars");
+            assertThat(result).isNotNull();
+
+            AgenticScopeRegistry registry = ((AgenticScopeOwner) processor).registry();
+            registry.clearInMemory();
+
+            LoanApplication result2 = processor.processLoan("user1", "What was my previous loan application?");
+            assertThat(result2).isNotNull();
+        } finally {
+            AgenticScopePersister.setStore(null);
         }
     }
 
@@ -1210,5 +1585,77 @@ public class WorkflowAgentsIT {
         String story = (String) novelCreator.invoke(input);
         System.out.println(story);
         assertThat(story).containsIgnoringCase("dragon").containsIgnoringCase("wizard");
+    }
+
+    @Test
+    void single_agent_loop_max_iteration_test() {
+        AtomicInteger callCount = new AtomicInteger(0);
+        ChatModel countingModel = new ChatModel() {
+            @Override
+            public ChatResponse chat(ChatRequest chatRequest) {
+                callCount.incrementAndGet();
+                return ChatResponse.builder()
+                        .aiMessage(AiMessage.from("0.5"))
+                        .build();
+            }
+        };
+
+        Agents.StyleScorer scorer = AgenticServices.agentBuilder(Agents.StyleScorer.class)
+                .chatModel(countingModel)
+                .outputKey("score")
+                .build();
+
+        UntypedAgent loop = AgenticServices.loopBuilder()
+                .name("testLoop")
+                .subAgents(scorer)
+                .maxIterations(3)
+                .exitCondition("score >= 0.8", scope -> scope.readState("score", 0.0) >= 0.8)
+                .build();
+
+        loop.invokeWithAgenticScope(Map.of("story", "A test story", "style", "comedy"));
+        assertThat(callCount.get()).isEqualTo(3);
+    }
+
+    @Test
+    void multiple_agents_loop_max_iteration_test() {
+        ChatModel model = new ChatModel() {
+            @Override
+            public ChatResponse chat(ChatRequest chatRequest) {
+                return ChatResponse.builder()
+                        .aiMessage(AiMessage.from("0.5"))
+                        .build();
+            }
+        };
+
+        AtomicInteger callCount = new AtomicInteger(0);
+        ChatModel countingModel = new ChatModel() {
+            @Override
+            public ChatResponse chat(ChatRequest chatRequest) {
+                callCount.incrementAndGet();
+                return ChatResponse.builder()
+                        .aiMessage(AiMessage.from("0.5"))
+                        .build();
+            }
+        };
+
+        Agents.StyleScorer scorer = AgenticServices.agentBuilder(Agents.StyleScorer.class)
+                .chatModel(model)
+                .outputKey("score")
+                .build();
+
+        Agents.StyleScorer countingScorer = AgenticServices.agentBuilder(Agents.StyleScorer.class)
+                .chatModel(countingModel)
+                .outputKey("score")
+                .build();
+
+        UntypedAgent loop = AgenticServices.loopBuilder()
+                .name("testLoop")
+                .subAgents(scorer, countingScorer)
+                .maxIterations(3)
+                .exitCondition("score >= 0.8", scope -> scope.readState("score", 0.0) >= 0.8)
+                .build();
+
+        loop.invokeWithAgenticScope(Map.of("story", "A test story", "style", "comedy"));
+        assertThat(callCount.get()).isEqualTo(3);
     }
 }

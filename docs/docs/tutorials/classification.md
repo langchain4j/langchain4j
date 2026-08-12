@@ -11,6 +11,12 @@ This example demonstrates **sentiment classification** using LangChain4j's AI-po
 
 ---
 
+LangChain4j supports two common approaches to text classification:
+
+- Use an LLM through **AI Services** when labels depend on nuanced natural language reasoning.
+- Use **embeddings** through `TextClassifier` and `EmbeddingModelTextClassifier` when you have labeled examples
+  for each category and want to classify by semantic similarity.
+
 ## **Sentiment Classification Service**
 The sentiment classification system categorizes input text into one of the following **sentiment categories**:
 - **POSITIVE**
@@ -109,6 +115,49 @@ System.out.println(positive); // Output: false
 ```
 - The AI model classifies a given text into one of the predefined sentiment categories.
 - The `isPositive()` method provides a boolean result.
+
+---
+
+## **Embedding-Based Classification**
+
+`EmbeddingModelTextClassifier` classifies text by embedding the input and comparing it with embedded examples for each
+label. This approach can be useful when you can provide representative examples for every class and do not need an LLM
+call for each classification request.
+
+```java
+import dev.langchain4j.classification.EmbeddingModelTextClassifier;
+import dev.langchain4j.classification.TextClassifier;
+import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
+
+import java.util.List;
+import java.util.Map;
+
+public class EmbeddingBasedSentimentClassification {
+
+    enum Sentiment {
+        POSITIVE, NEUTRAL, NEGATIVE
+    }
+
+    public static void main(String[] args) {
+
+        Map<Sentiment, List<String>> examples = Map.of(
+                Sentiment.POSITIVE, List.of("This is great!", "I love this product."),
+                Sentiment.NEUTRAL, List.of("It is okay.", "This works as expected."),
+                Sentiment.NEGATIVE, List.of("This is terrible.", "I am disappointed."));
+
+        EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
+
+        TextClassifier<Sentiment> classifier = new EmbeddingModelTextClassifier<>(embeddingModel, examples);
+
+        List<Sentiment> sentiments = classifier.classify("Awesome experience!");
+        System.out.println(sentiments); // [POSITIVE]
+    }
+}
+```
+
+You can also use `classifyWithScores(...)` when you need the similarity score for each returned label. The classifier
+can return zero, one, or multiple labels depending on its `maxResults`, `minScore`, and `meanToMaxScoreRatio` settings.
 
 ---
 

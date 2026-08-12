@@ -3,12 +3,13 @@ package dev.langchain4j.model.openai.internal.chat;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
-
+import java.util.Locale;
 import java.util.Objects;
 
 @JsonDeserialize(builder = Content.Builder.class)
@@ -22,8 +23,9 @@ public final class Content {
     @JsonProperty
     private final String text;
 
-    @JsonProperty
     private final ImageUrl imageUrl;
+
+    private final String inputImageUrl;
 
     @JsonProperty
     private final VideoUrl videoUrl;
@@ -38,6 +40,7 @@ public final class Content {
         this.type = builder.type;
         this.text = builder.text;
         this.imageUrl = builder.imageUrl;
+        this.inputImageUrl = builder.inputImageUrl;
         this.videoUrl = builder.videoUrl;
         this.inputAudio = builder.inputAudio;
         this.file = builder.file;
@@ -53,6 +56,10 @@ public final class Content {
 
     public ImageUrl imageUrl() {
         return imageUrl;
+    }
+
+    public String inputImageUrl() {
+        return inputImageUrl;
     }
 
     public VideoUrl videoUrl() {
@@ -79,6 +86,7 @@ public final class Content {
         return Objects.equals(type, another.type)
                 && Objects.equals(text, another.text)
                 && Objects.equals(imageUrl, another.imageUrl)
+                && Objects.equals(inputImageUrl, another.inputImageUrl)
                 && Objects.equals(videoUrl, another.videoUrl)
                 && Objects.equals(inputAudio, another.inputAudio)
                 && Objects.equals(file, another.file);
@@ -91,6 +99,7 @@ public final class Content {
         h += (h << 5) + Objects.hashCode(type);
         h += (h << 5) + Objects.hashCode(text);
         h += (h << 5) + Objects.hashCode(imageUrl);
+        h += (h << 5) + Objects.hashCode(inputImageUrl);
         h += (h << 5) + Objects.hashCode(videoUrl);
         h += (h << 5) + Objects.hashCode(inputAudio);
         h += (h << 5) + Objects.hashCode(file);
@@ -103,7 +112,8 @@ public final class Content {
         return "Content{" + "type="
                 + type + ", text="
                 + text + ", imageUrl="
-                + imageUrl + ", videoUrl="
+                + imageUrl + ", inputImageUrl="
+                + inputImageUrl + ", videoUrl="
                 + videoUrl + ", inputAudio="
                 + inputAudio + ", file="
                 + file + "}";
@@ -111,6 +121,11 @@ public final class Content {
 
     public static Builder builder() {
         return new Builder();
+    }
+
+    @JsonProperty("image_url")
+    private Object imageUrlForSerialization() {
+        return imageUrl != null ? imageUrl : inputImageUrl;
     }
 
     @JsonPOJOBuilder(withPrefix = "")
@@ -121,6 +136,7 @@ public final class Content {
         private ContentType type;
         private String text;
         private ImageUrl imageUrl;
+        private String inputImageUrl;
         private VideoUrl videoUrl;
         private InputAudio inputAudio;
         private PdfFile file;
@@ -137,6 +153,29 @@ public final class Content {
 
         public Builder imageUrl(ImageUrl imageUrl) {
             this.imageUrl = imageUrl;
+            this.inputImageUrl = null;
+            return this;
+        }
+
+        @JsonProperty("image_url")
+        Builder imageUrl(JsonNode imageUrl) {
+            if (imageUrl == null || imageUrl.isNull()) {
+                return this;
+            }
+
+            if (imageUrl.isTextual()) {
+                return inputImageUrl(imageUrl.asText());
+            }
+
+            return imageUrl(ImageUrl.builder()
+                    .url(textValue(imageUrl.get("url")))
+                    .detail(imageDetail(imageUrl.get("detail")))
+                    .build());
+        }
+
+        public Builder inputImageUrl(String inputImageUrl) {
+            this.inputImageUrl = inputImageUrl;
+            this.imageUrl = null;
             return this;
         }
 
@@ -157,6 +196,18 @@ public final class Content {
 
         public Content build() {
             return new Content(this);
+        }
+
+        private static String textValue(JsonNode node) {
+            return node == null || node.isNull() ? null : node.asText();
+        }
+
+        private static ImageDetail imageDetail(JsonNode node) {
+            if (node == null || node.isNull()) {
+                return null;
+            }
+
+            return ImageDetail.valueOf(node.asText().toUpperCase(Locale.ROOT));
         }
     }
 }

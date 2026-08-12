@@ -13,23 +13,29 @@ import dev.langchain4j.agentic.Agents.FoodExpert;
 import dev.langchain4j.agentic.Agents.LegalExpert;
 import dev.langchain4j.agentic.Agents.MedicalExpert;
 import dev.langchain4j.agentic.Agents.MovieExpert;
+import dev.langchain4j.agentic.Agents.OptionalAudienceEditor;
 import dev.langchain4j.agentic.Agents.RequestCategory;
 import dev.langchain4j.agentic.Agents.StyleEditor;
 import dev.langchain4j.agentic.Agents.StyleScorer;
 import dev.langchain4j.agentic.Agents.TechnicalExpert;
 import dev.langchain4j.agentic.agent.AgentInvocationException;
-import dev.langchain4j.agentic.declarative.AgentListenerSupplier;
-import dev.langchain4j.agentic.observability.AgentInvocation;
-import dev.langchain4j.agentic.observability.AgentListener;
-import dev.langchain4j.agentic.observability.AgentMonitor;
-import dev.langchain4j.agentic.observability.AgentRequest;
-import dev.langchain4j.agentic.observability.AgentResponse;
 import dev.langchain4j.agentic.agent.ErrorContext;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.guardrail.InputGuardrail;
+import dev.langchain4j.guardrail.InputGuardrailResult;
+import dev.langchain4j.guardrail.OutputGuardrail;
+import dev.langchain4j.guardrail.OutputGuardrailResult;
+import dev.langchain4j.service.guardrail.InputGuardrails;
+import dev.langchain4j.service.guardrail.OutputGuardrails;
 import dev.langchain4j.agentic.declarative.ActivationCondition;
+import dev.langchain4j.agentic.declarative.AgentListenerSupplier;
 import dev.langchain4j.agentic.declarative.ChatMemoryProviderSupplier;
 import dev.langchain4j.agentic.declarative.ChatModelSupplier;
+import dev.langchain4j.agentic.declarative.SystemMessageProviderSupplier;
+import dev.langchain4j.agentic.declarative.UserMessageProviderSupplier;
+import dev.langchain4j.agentic.declarative.BeforeCall;
 import dev.langchain4j.agentic.declarative.ConditionalAgent;
 import dev.langchain4j.agentic.declarative.ErrorHandler;
 import dev.langchain4j.agentic.declarative.ExitCondition;
@@ -39,15 +45,23 @@ import dev.langchain4j.agentic.declarative.LoopCounter;
 import dev.langchain4j.agentic.declarative.Output;
 import dev.langchain4j.agentic.declarative.ParallelAgent;
 import dev.langchain4j.agentic.declarative.ParallelExecutor;
+import dev.langchain4j.agentic.declarative.ParallelMapperAgent;
 import dev.langchain4j.agentic.declarative.PlannerAgent;
 import dev.langchain4j.agentic.declarative.PlannerSupplier;
 import dev.langchain4j.agentic.declarative.SequenceAgent;
 import dev.langchain4j.agentic.declarative.SupervisorAgent;
 import dev.langchain4j.agentic.declarative.SupervisorRequest;
 import dev.langchain4j.agentic.declarative.ToolsSupplier;
-import dev.langchain4j.agentic.observability.MonitoredExecution;
 import dev.langchain4j.agentic.internal.AgenticScopeOwner;
+import dev.langchain4j.agentic.observability.AgentInvocation;
+import dev.langchain4j.agentic.observability.AgentListener;
+import dev.langchain4j.agentic.observability.AgentMonitor;
+import dev.langchain4j.agentic.observability.AgentRequest;
+import dev.langchain4j.agentic.observability.AgentResponse;
+import dev.langchain4j.agentic.observability.MonitoredAgent;
+import dev.langchain4j.agentic.observability.MonitoredExecution;
 import dev.langchain4j.agentic.planner.AgentInstance;
+import dev.langchain4j.agentic.planner.AgenticSystemConfigurationException;
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.planner.Planner;
 import dev.langchain4j.agentic.scope.AgenticScope;
@@ -69,6 +83,7 @@ import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -78,6 +93,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
@@ -95,8 +111,9 @@ public class DeclarativeAgentIT {
 
     public interface StoryCreator {
 
-        @SequenceAgent( outputKey = "story",
-                subAgents = { CreativeWriter.class, AudienceEditor.class, StyleEditor.class})
+        @SequenceAgent(
+                outputKey = "story",
+                subAgents = {CreativeWriter.class, AudienceEditor.class, StyleEditor.class})
         String write(@V("topic") String topic, @V("style") String style, @V("audience") String audience);
     }
 
@@ -108,10 +125,30 @@ public class DeclarativeAgentIT {
         assertThat(story).isNotBlank();
     }
 
+    public interface StoryCreatorWithOptionalAudience {
+
+        @SequenceAgent(
+                outputKey = "story",
+                subAgents = {CreativeWriter.class, OptionalAudienceEditor.class, StyleEditor.class})
+        String write(@V("topic") String topic, @V("style") String style, @V("audience") String audience);
+    }
+
+    @Test
+    void declarative_optional_sequence_tests() {
+        StoryCreatorWithOptionalAudience storyCreator = AgenticServices.createAgenticSystem(StoryCreatorWithOptionalAudience.class, baseModel());
+
+        String story = storyCreator.write("dragons and wizards", "fantasy", null);
+        assertThat(story).isNotBlank();
+
+        assertThat(assertThrows(MissingArgumentException.class, () -> storyCreator.write("dragons and wizards", null, "young adults")))
+                .hasMessageContaining("style");
+    }
+
     public interface PlannerBasedStoryCreator {
 
-        @PlannerAgent( outputKey = "story",
-                subAgents = { CreativeWriter.class, AudienceEditor.class, StyleEditor.class})
+        @PlannerAgent(
+                outputKey = "story",
+                subAgents = {CreativeWriter.class, AudienceEditor.class, StyleEditor.class})
         String write(@V("topic") String topic, @V("style") String style, @V("audience") String audience);
 
         @PlannerSupplier
@@ -122,16 +159,95 @@ public class DeclarativeAgentIT {
 
     @Test
     void declarative_planner_tests() {
-        PlannerBasedStoryCreator storyCreator = AgenticServices.createAgenticSystem(PlannerBasedStoryCreator.class, baseModel());
+        PlannerBasedStoryCreator storyCreator =
+                AgenticServices.createAgenticSystem(PlannerBasedStoryCreator.class, baseModel());
 
         String story = storyCreator.write("dragons and wizards", "fantasy", "young adults");
         assertThat(story).isNotBlank();
     }
 
+    public static class TopicInputGuardrail implements InputGuardrail {
+        static boolean invoked = false;
+
+        @Override
+        public InputGuardrailResult validate(dev.langchain4j.data.message.UserMessage userMessage) {
+            invoked = true;
+            if (userMessage.singleText().toLowerCase().contains("violence")) {
+                return fatal("Topic about violence is not allowed");
+            }
+            return success();
+        }
+    }
+
+    public static class StoryLengthOutputGuardrail implements OutputGuardrail {
+        static boolean invoked = false;
+
+        @Override
+        public OutputGuardrailResult validate(AiMessage responseFromLLM) {
+            invoked = true;
+            if (responseFromLLM.text() != null && responseFromLLM.text().length() < 10) {
+                return fatal("Story is too short");
+            }
+            return success();
+        }
+    }
+
+    public interface CreativeWriterWithInputGuardrail {
+
+        @UserMessage("""
+                You are a creative writer.
+                Generate a draft of a story long no more than 3 sentence around the given topic.
+                Return only the story and nothing else.
+                The topic is {{topic}}.
+                """)
+        @Agent(description = "Generate a story based on the given topic", outputKey = "story")
+        @InputGuardrails(TopicInputGuardrail.class)
+        String generateStory(@V("topic") String topic);
+    }
+
+    public interface StyleEditorWithOutputGuardrail {
+
+        @UserMessage("""
+                You are a professional editor.
+                Analyze and rewrite the following story to better fit and be more coherent with the {{style}} style.
+                Return only the story and nothing else.
+                The story is "{{story}}".
+                """)
+        @Agent(description = "Edit a story to better fit a given style", outputKey = "story")
+        @OutputGuardrails(StoryLengthOutputGuardrail.class)
+        String editStory(@V("story") String story, @V("style") String style);
+    }
+
+    public interface GuardedStoryCreator {
+
+        @SequenceAgent(
+                outputKey = "story",
+                subAgents = {CreativeWriterWithInputGuardrail.class, StyleEditorWithOutputGuardrail.class})
+        String write(@V("topic") String topic, @V("style") String style);
+    }
+
+    @Test
+    void declarative_sequence_with_guardrails_tests() {
+        TopicInputGuardrail.invoked = false;
+        StoryLengthOutputGuardrail.invoked = false;
+
+        GuardedStoryCreator storyCreator = AgenticServices.createAgenticSystem(GuardedStoryCreator.class, baseModel());
+
+        String story = storyCreator.write("dragons and wizards", "fantasy");
+        assertThat(story).isNotBlank();
+
+        assertThat(TopicInputGuardrail.invoked).isTrue();
+        assertThat(StoryLengthOutputGuardrail.invoked).isTrue();
+
+        // Verify input guardrail blocks execution when it fails
+        assertThrows(AgentInvocationException.class, () -> storyCreator.write("violence and war", "fantasy"));
+    }
+
     public interface StoryCreatorWithConfigurableStyleEditor {
 
-        @SequenceAgent( outputKey = "styledStory",
-                subAgents = { CreativeWriter.class, AudienceEditor.class, StyleEditor.class})
+        @SequenceAgent(
+                outputKey = "styledStory",
+                subAgents = {CreativeWriter.class, AudienceEditor.class, StyleEditor.class})
         String write(@V("topic") String topic, @V("style") String style, @V("audience") String audience);
     }
 
@@ -147,11 +263,12 @@ public class DeclarativeAgentIT {
     @Test
     void declarative_sequence_with_agent_configuration_tests() {
         StoryCreatorWithConfigurableStyleEditor storyCreator =
-                AgenticServices.createAgenticSystem(StoryCreatorWithConfigurableStyleEditor.class, baseModel(), ctx -> {
-                    if (ctx.agentServiceClass() == StyleEditor.class) {
-                        ctx.agentBuilder().outputKey("styledStory");
-                    }
-                });
+                AgenticServices.createAgenticSystem(StoryCreatorWithConfigurableStyleEditor.class, baseModel(),
+                        new AgenticServices.AgentConfigurator(ctx -> {
+                            if (ctx.agentServiceClass() == StyleEditor.class) {
+                                ctx.agentBuilder().outputKey("styledStory");
+                            }
+                        }, null, null));
 
         String story = storyCreator.write("dragons and wizards", "fantasy", "young adults");
         assertThat(story).isNotBlank();
@@ -184,8 +301,9 @@ public class DeclarativeAgentIT {
 
     public interface StoryCreatorWithErrorRecovery {
 
-        @SequenceAgent( outputKey = "story",
-                subAgents = { CreativeWriter.class, AudienceEditor.class, StyleEditor.class})
+        @SequenceAgent(
+                outputKey = "story",
+                subAgents = {CreativeWriter.class, AudienceEditor.class, StyleEditor.class})
         String write(@V("topic") String topic, @V("style") String style, @V("audience") String audience);
 
         @ErrorHandler
@@ -209,14 +327,45 @@ public class DeclarativeAgentIT {
         assertThat(story).isNotBlank();
     }
 
+    public interface StoryCreatorWithBeforeCall {
+
+        @SequenceAgent(outputKey = "story",
+                subAgents = { CreativeWriter.class, StyleEditor.class })
+        ResultWithAgenticScope<String> write(@V("topic") String topic, @V("style") String style);
+
+        @BeforeCall
+        static void beforeCall(AgenticScope agenticScope) {
+            agenticScope.writeStateIfAbsent("style", "comedy");
+        }
+    }
+
+    @Test
+    void declarative_sequence_with_before_call_uses_default() {
+        StoryCreatorWithBeforeCall creator =
+                AgenticServices.createAgenticSystem(StoryCreatorWithBeforeCall.class, baseModel());
+
+        ResultWithAgenticScope<String> result = creator.write("dragons", null);
+        assertThat(result.result()).isNotBlank();
+        assertThat(result.agenticScope().readState("style")).isEqualTo("comedy");
+    }
+
+    @Test
+    void declarative_sequence_with_before_call_explicit_value_wins() {
+        StoryCreatorWithBeforeCall creator =
+                AgenticServices.createAgenticSystem(StoryCreatorWithBeforeCall.class, baseModel());
+
+        ResultWithAgenticScope<String> result = creator.write("dragons", "horror");
+        assertThat(result.result()).isNotBlank();
+        assertThat(result.agenticScope().readState("style")).isEqualTo("horror");
+    }
+
     public interface StyleReviewLoopAgent {
 
         @LoopAgent(
                 description = "Review and score the given story to ensure it aligns with the specified style",
                 outputKey = "story",
                 maxIterations = 5,
-                subAgents = { StyleScorer.class, StyleEditor.class }
-                )
+                subAgents = {StyleScorer.class, StyleEditor.class})
         String reviewAndScore(@V("story") String story);
 
         @ExitCondition
@@ -227,8 +376,9 @@ public class DeclarativeAgentIT {
 
     public interface StoryCreatorWithReview {
 
-        @SequenceAgent( outputKey = "story",
-                subAgents = { CreativeWriter.class, StyleReviewLoopAgent.class })
+        @SequenceAgent(
+                outputKey = "story",
+                subAgents = {CreativeWriter.class, StyleReviewLoopAgent.class})
         ResultWithAgenticScope<String> write(@V("topic") String topic, @V("style") String style);
     }
 
@@ -256,8 +406,7 @@ public class DeclarativeAgentIT {
                 description = "Review the given story to ensure it aligns with the specified style",
                 outputKey = "story",
                 maxIterations = 5,
-                subAgents = { StyleScorer.class, StyleEditor.class }
-        )
+                subAgents = {StyleScorer.class, StyleEditor.class})
         String write(@V("story") String story);
 
         @ExitCondition(testExitAtLoopEnd = true, description = "score greater than 0.8")
@@ -269,8 +418,9 @@ public class DeclarativeAgentIT {
 
     public interface StoryCreatorWithReviewWithCounter extends AgentInstance {
 
-        @SequenceAgent( outputKey = "story",
-                subAgents = { CreativeWriter.class, StyleReviewLoopAgentWithCounter.class })
+        @SequenceAgent(
+                outputKey = "story",
+                subAgents = {CreativeWriter.class, StyleReviewLoopAgentWithCounter.class})
         ResultWithAgenticScope<String> write(@V("topic") String topic, @V("style") String style);
     }
 
@@ -306,10 +456,12 @@ public class DeclarativeAgentIT {
         assertThat(story).isEqualTo(agenticScope.readState("story"));
         assertThat(agenticScope.readState("score", 0.0)).isGreaterThanOrEqualTo(0.8);
 
-        List<dev.langchain4j.agentic.scope.AgentInvocation> scoreAgentInvocations = agenticScope.agentInvocations("scoreStyle");
+        List<dev.langchain4j.agentic.scope.AgentInvocation> scoreAgentInvocations =
+                agenticScope.agentInvocations("scoreStyle");
         assertThat(scoreAgentInvocations).hasSizeBetween(1, 5).hasSize(loopCount.get());
 
-        List<dev.langchain4j.agentic.scope.AgentInvocation> styleEditorAgentInvocations = agenticScope.agentInvocations("editStory");
+        List<dev.langchain4j.agentic.scope.AgentInvocation> styleEditorAgentInvocations =
+                agenticScope.agentInvocations("editStory");
         assertThat(styleEditorAgentInvocations).hasSizeBetween(1, 5).hasSize(loopCount.get());
 
         loopCount = null;
@@ -341,8 +493,9 @@ public class DeclarativeAgentIT {
 
     public interface StoryCreatorWithReviewWithListener {
 
-        @SequenceAgent( outputKey = "story",
-                subAgents = { CreativeWriterWithListener.class, StyleReviewLoopAgentWithListener.class })
+        @SequenceAgent(
+                outputKey = "story",
+                subAgents = {CreativeWriterWithListener.class, StyleReviewLoopAgentWithListener.class})
         ResultWithAgenticScope<String> write(@V("topic") String topic, @V("style") String style);
     }
 
@@ -376,8 +529,9 @@ public class DeclarativeAgentIT {
 
     public interface ExpertsAgent {
 
-        @ConditionalAgent( outputKey = "response",
-                subAgents = { MedicalExpert.class, TechnicalExpert.class, LegalExpert.class } )
+        @ConditionalAgent(
+                outputKey = "response",
+                subAgents = {MedicalExpert.class, TechnicalExpert.class, LegalExpert.class})
         String askExpert(@V("request") String request);
 
         @ActivationCondition(value = MedicalExpert.class, description = "category is medical")
@@ -398,8 +552,9 @@ public class DeclarativeAgentIT {
 
     public interface ExpertRouterAgent extends AgentInstance {
 
-        @SequenceAgent( outputKey = "response",
-                subAgents = { CategoryRouter.class, ExpertsAgent.class })
+        @SequenceAgent(
+                outputKey = "response",
+                subAgents = {CategoryRouter.class, ExpertsAgent.class})
         ResultWithAgenticScope<String> ask(@V("request") String request);
     }
 
@@ -421,9 +576,12 @@ public class DeclarativeAgentIT {
 
         ConditionalAgentInstance conditionalInstance = conditionalAgentInstance.as(ConditionalAgentInstance.class);
         assertThat(conditionalInstance.conditionalSubagents()).hasSize(3);
-        assertThat(conditionalInstance.conditionalSubagents().get(0).condition()).isEqualTo("category is medical");
-        assertThat(conditionalInstance.conditionalSubagents().get(1).condition()).isEqualTo("<unknown>");
-        assertThat(conditionalInstance.conditionalSubagents().get(2).condition()).isEqualTo("category is legal");
+        assertThat(conditionalInstance.conditionalSubagents().get(0).condition())
+                .isEqualTo("category is medical");
+        assertThat(conditionalInstance.conditionalSubagents().get(1).condition())
+                .isEqualTo("<unknown>");
+        assertThat(conditionalInstance.conditionalSubagents().get(2).condition())
+                .isEqualTo("category is legal");
 
         ResultWithAgenticScope<String> result = expertRouterAgent.ask("I broke my leg what should I do");
         String response = result.result();
@@ -433,11 +591,10 @@ public class DeclarativeAgentIT {
         assertThat(agenticScope.readState("category")).isEqualTo(RequestCategory.MEDICAL);
     }
 
-    private static AgentMonitor PARALLEL_AGENTS_MONITOR = new AgentMonitor();
+    public interface EveningPlannerAgent extends MonitoredAgent {
 
-    public interface EveningPlannerAgent {
-
-        @ParallelAgent(outputKey = "plans",
+        @ParallelAgent(
+                outputKey = "plans",
                 subAgents = {FoodExpert.class, MovieExpert.class})
         List<EveningPlan> plan(@V("mood") String mood);
 
@@ -457,11 +614,6 @@ public class DeclarativeAgentIT {
             }
             return moviesAndMeals;
         }
-
-        @AgentListenerSupplier
-        static AgentListener monitor() {
-            return PARALLEL_AGENTS_MONITOR;
-        }
     }
 
     @Test
@@ -471,21 +623,26 @@ public class DeclarativeAgentIT {
         List<Agents.EveningPlan> plans = eveningPlannerAgent.plan("romantic");
         assertThat(plans).hasSize(3);
 
-        MonitoredExecution execution = PARALLEL_AGENTS_MONITOR.successfulExecutions().get(0);
+        AgentMonitor agentMonitor = eveningPlannerAgent.agentMonitor();
+        MonitoredExecution execution = agentMonitor.successfulExecutions().get(0);
         System.out.println(execution);
+
         assertThat(execution.done()).isTrue();
         assertThat(execution.ongoingInvocations()).isEmpty();
         AgentInvocation topLevelInvocation = execution.topLevelInvocations();
         assertThat(topLevelInvocation.agent().name()).isEqualTo("plan");
         assertThat(topLevelInvocation.inputs()).containsKey("mood").containsValue("romantic");
         assertThat(topLevelInvocation.nestedInvocations()).hasSize(2);
+
+        // generateReport(agentMonitor, Path.of("src", "test", "resources", "parallel.html"));
     }
 
     public interface SupervisorStoryCreator {
 
-        @SupervisorAgent( outputKey = "story",
+        @SupervisorAgent(
+                outputKey = "story",
                 responseStrategy = SupervisorResponseStrategy.LAST,
-                subAgents = { CreativeWriter.class, StyleReviewLoopAgent.class })
+                subAgents = {CreativeWriter.class, StyleReviewLoopAgent.class})
         ResultWithAgenticScope<String> write(@V("topic") String topic, @V("style") String style);
 
         @SupervisorRequest
@@ -521,9 +678,12 @@ public class DeclarativeAgentIT {
 
         assertThat(agenticScope.agentInvocations("generateStory")).hasSize(1);
 
-        List<dev.langchain4j.agentic.scope.AgentInvocation> scoreAgentInvocations = agenticScope.agentInvocations("scoreStyle");
+        List<dev.langchain4j.agentic.scope.AgentInvocation> scoreAgentInvocations =
+                agenticScope.agentInvocations("scoreStyle");
         assertThat(scoreAgentInvocations).hasSizeBetween(1, 5);
-        assertThat((Double) scoreAgentInvocations.get(scoreAgentInvocations.size() - 1).output())
+        assertThat((Double) scoreAgentInvocations
+                        .get(scoreAgentInvocations.size() - 1)
+                        .output())
                 .isGreaterThanOrEqualTo(0.8);
     }
 
@@ -557,7 +717,10 @@ public class DeclarativeAgentIT {
             Analyze the following user request under a legal point of view and provide the best possible answer.
             The user request is {{request}}.
             """)
-        @Agent(description = "A legal expert", outputKey = "response", summarizedContext = {"medical", "technical"})
+        @Agent(
+                description = "A legal expert",
+                outputKey = "response",
+                summarizedContext = {"medical", "technical"})
         String legal(@MemoryId String memoryId, @V("request") String request);
 
         @ChatMemoryProviderSupplier
@@ -595,8 +758,10 @@ public class DeclarativeAgentIT {
 
     public interface ExpertsAgentWithMemory {
 
-        @ConditionalAgent( outputKey = "response",
-                subAgents = { MedicalExpertWithMemory.class, TechnicalExpertWithMemory.class, LegalExpertWithMemory.class })
+        @ConditionalAgent(
+                outputKey = "response",
+                subAgents = {MedicalExpertWithMemory.class, TechnicalExpertWithMemory.class, LegalExpertWithMemory.class
+                })
         String askExpert(@V("request") String request);
 
         @ActivationCondition(MedicalExpertWithMemory.class)
@@ -625,8 +790,9 @@ public class DeclarativeAgentIT {
 
     public interface ExpertRouterAgentWithMemory extends AgenticScopeAccess {
 
-        @SequenceAgent( outputKey = "response",
-                subAgents = { CategoryRouterWithModel.class, ExpertsAgentWithMemory.class })
+        @SequenceAgent(
+                outputKey = "response",
+                subAgents = {CategoryRouterWithModel.class, ExpertsAgentWithMemory.class})
         String ask(@MemoryId String memoryId, @V("request") String request);
     }
 
@@ -723,8 +889,11 @@ public class DeclarativeAgentIT {
 
         @SupervisorAgent(
                 responseStrategy = SupervisorResponseStrategy.SUMMARY,
-                subAgents = { WithdrawAgent.class, CreditAgent.class})
+                subAgents = {WithdrawAgent.class, CreditAgent.class})
         String invoke(@V("request") String request);
+    }
+
+    public interface SupervisorBankerWithPlannerModel extends SupervisorBanker {
 
         @ChatModelSupplier
         static ChatModel chatModel() {
@@ -733,11 +902,23 @@ public class DeclarativeAgentIT {
     }
 
     @Test
-    void declarative_tools_tests() {
+    void declarative_tools_with_default_model_tests() {
+        declarative_tools_tests(false);
+    }
+
+    @Test
+    void declarative_tools_with_planner_model_tests() {
+        declarative_tools_tests(true);
+    }
+
+    private void declarative_tools_tests(boolean usePlannerModel) {
+        bankTool.clearAccounts();
         bankTool.createAccount("Mario", 1000.0);
         bankTool.createAccount("Georgios", 1000.0);
 
-        SupervisorBanker bankSupervisor = AgenticServices.createAgenticSystem(SupervisorBanker.class, baseModel());
+        SupervisorBanker bankSupervisor = usePlannerModel ?
+                AgenticServices.createAgenticSystem(SupervisorBankerWithPlannerModel.class, baseModel()) :
+                AgenticServices.createAgenticSystem(SupervisorBanker.class, baseModel());
         String result = bankSupervisor.invoke("Transfer 100 USD from Mario's account to Georgios' one");
         assertThat(result).isNotBlank().contains("Mario").contains("Georgios");
 
@@ -785,9 +966,15 @@ public class DeclarativeAgentIT {
 
     public interface StoryCreatorWithHumanInTheLoop {
 
-        @SequenceAgent( outputKey = "story",
-                subAgents = { AudienceRetriever.class, CreativeWriter.class, HumanResponseSupplier.class,
-                              AudienceEditor.class, AudienceReader.class })
+        @SequenceAgent(
+                outputKey = "story",
+                subAgents = {
+                    AudienceRetriever.class,
+                    CreativeWriter.class,
+                    HumanResponseSupplier.class,
+                    AudienceEditor.class,
+                    AudienceReader.class
+                })
         String write(@V("topic") String topic);
     }
 
@@ -843,5 +1030,211 @@ public class DeclarativeAgentIT {
         assertThat(horoscope).containsIgnoringCase("pisces");
 
         assertThat(signRequest.get()).isEqualTo("hi Mario, what is your zodiac sign?");
+    }
+
+    // --- Parallel Multi-Instance Agent tests ---
+
+    public record Person(String name, String sign) {}
+
+    public interface PersonAstrologyAgent {
+        @SystemMessage(
+                """
+            You are an astrologist that generates horoscopes based on the user's name and zodiac sign.
+            """)
+        @UserMessage(
+                """
+            Generate the horoscope for {{person}}.
+            The person has a name and a zodiac sign. Use both to create a personalized horoscope.
+            """)
+        @Agent(description = "An astrologist that generates horoscopes for a person", outputKey = "horoscope")
+        String horoscope(@V("person") Person person);
+
+        @ChatModelSupplier
+        static ChatModel chatModel() {
+            return baseModel();
+        }
+    }
+
+    public interface BatchHoroscopeAgent extends AgentInstance {
+
+        @ParallelMapperAgent(subAgent = PersonAstrologyAgent.class, outputKey = "horoscopes")
+        Map<String, String> generateHoroscopes(@V("persons") List<Person> persons);
+
+        @ParallelExecutor
+        static Executor executor() {
+            return Executors.newFixedThreadPool(3);
+        }
+
+        @Output
+        static Map<String, String> output(@V("persons") List<Person> persons, @V("horoscopes") List<String> horoscopes) {
+            Map<String, String> output = new HashMap<>();
+            for (int i = 0; i < persons.size(); i++) {
+                output.put(persons.get(i).name(), horoscopes.get(i));
+            }
+            return output;
+        }
+    }
+
+    @Test
+    void declarative_parallel_mapper_tests() {
+        BatchHoroscopeAgent agent = AgenticServices.createAgenticSystem(BatchHoroscopeAgent.class, baseModel());
+
+        assertThat(agent.name()).isEqualTo("generateHoroscopes");
+        assertThat(agent.topology()).isEqualTo(AgenticSystemTopology.PARALLEL);
+        assertThat(agent.subagents()).hasSize(1);
+
+        AgentInstance subagent = agent.subagents().get(0);
+        assertThat(subagent.name()).isEqualTo("horoscope");
+        assertThat(subagent.outputKey()).isEqualTo("horoscope");
+
+        List<Person> persons =
+                List.of(new Person("Mario", "aries"), new Person("Luigi", "pisces"), new Person("Peach", "leo"));
+
+        Map<String, String> horoscopes = agent.generateHoroscopes(persons);
+        assertThat(horoscopes).hasSize(3)
+                .containsKey("Mario").containsKey("Luigi").containsKey("Peach")
+                .allSatisfy((name, horoscope) -> assertThat(horoscope).isNotBlank());
+    }
+
+    public interface BatchHoroscopeAgentWith2Lists extends AgentInstance {
+
+        @ParallelMapperAgent(subAgent = PersonAstrologyAgent.class)
+        List<String> generateHoroscopes(@V("persons") List<Person> persons, @V("moods") List<String> moods);
+    }
+
+    @Test
+    void parallel_mapper_with_ambigous_items_provider_throws_tests() {
+        assertThat(assertThrows(AgenticSystemConfigurationException.class, () ->
+                AgenticServices.createAgenticSystem(BatchHoroscopeAgentWith2Lists.class, baseModel())));
+    }
+
+    private static String PROVIDED_SYSTEM_MESSAGE;
+    private static String PROVIDED_USER_MESSAGE;
+
+    public interface AgentWithBothMessageProviders {
+
+        @Agent(description = "An agent with both message providers")
+        String chat(@MemoryId String memoryId, @V("request") String request);
+
+        @SystemMessageProviderSupplier
+        static String systemMessageProvider(Object memoryId) {
+            String systemMessage = "Conversation " + memoryId + ": You are a concise assistant. Reply with exactly one word.";
+            PROVIDED_SYSTEM_MESSAGE = systemMessage;
+            return systemMessage;
+        }
+
+        @UserMessageProviderSupplier
+        static String userMessageProvider(Object memoryId) {
+            String userMessage = "Conversation " + memoryId + ": What color is the sky?";
+            PROVIDED_USER_MESSAGE = userMessage;
+            return userMessage;
+        }
+
+        @ChatMemoryProviderSupplier
+        static ChatMemory chatMemory(Object memoryId) {
+            return MessageWindowChatMemory.withMaxMessages(10);
+        }
+
+        @ChatModelSupplier
+        static ChatModel chatModel() {
+            return baseModel();
+        }
+    }
+
+    @Test
+    void declarative_both_message_providers_tests() {
+        AgentWithBothMessageProviders agent =
+                AgenticServices.createAgenticSystem(AgentWithBothMessageProviders.class);
+
+        String response = agent.chat("abc", "this is ignored");
+        assertThat(response).isNotBlank();
+        assertThat(PROVIDED_SYSTEM_MESSAGE).isEqualTo("Conversation abc: You are a concise assistant. Reply with exactly one word.");
+        assertThat(PROVIDED_USER_MESSAGE).isEqualTo("Conversation abc: What color is the sky?");
+    }
+
+    public static class CityDataProducer {
+
+        @Agent(description = "Produce city data for further processing", outputKey = "cityData")
+        public static String produceCityData() {
+            return "Rome: population 2.8 million, founded 753 BC, known for the Colosseum and Vatican City";
+        }
+    }
+
+    public interface CitySummarizer {
+
+        @UserMessage("""
+                Summarize the following city data in exactly one sentence.
+                City data: {{cityData}}
+                """)
+        @Agent(description = "Summarize city data into a single sentence", outputKey = "summary")
+        String summarize(@V("cityData") String cityData);
+
+        @ChatModelSupplier
+        static ChatModel chatModel() {
+            return baseModel();
+        }
+    }
+
+    public interface CityDataPipeline {
+
+        @SequenceAgent(
+                outputKey = "summary",
+                subAgents = {CityDataProducer.class, CitySummarizer.class})
+        ResultWithAgenticScope<String> process();
+    }
+
+    @Test
+    void declarative_sequence_non_ai_agent_producing_data_for_ai_agent() {
+        CityDataPipeline pipeline = AgenticServices.createAgenticSystem(CityDataPipeline.class);
+
+        ResultWithAgenticScope<String> result = pipeline.process();
+
+        assertThat(result.result()).isNotBlank();
+        assertThat(result.agenticScope().readState("cityData", "")).contains("Rome");
+        assertThat(result.result()).containsIgnoringCase("Rome");
+    }
+
+    public interface ProducerAgent {
+
+        @UserMessage("Provide a brief analysis of: {{request}}")
+        @Agent(description = "A producer agent", outputKey = "analysis")
+        String produce(@V("request") String request);
+
+        @ChatModelSupplier
+        static ChatModel chatModel() {
+            return baseModel();
+        }
+    }
+
+    public interface ConsumerWithScopeDependentSupplier {
+
+        @UserMessage("You are an expert. The user request is {{request}}.")
+        @Agent(
+                description = "An expert that summarizes context from other agents",
+                outputKey = "response",
+                summarizedContext = {"produce"})
+        String consume(@V("request") String request);
+
+        @ChatModelSupplier
+        static ChatModel chatModel(AgenticScope scope) {
+            return baseModel();
+        }
+    }
+
+    public interface SummarizedContextWithScopeSupplierPipeline {
+
+        @SequenceAgent(
+                outputKey = "response",
+                subAgents = {ProducerAgent.class, ConsumerWithScopeDependentSupplier.class})
+        String process(@V("request") String request);
+    }
+
+    @Test
+    void summarizedContext_with_scope_dependent_chatModelSupplier_should_not_throw() {
+        SummarizedContextWithScopeSupplierPipeline pipeline =
+                AgenticServices.createAgenticSystem(SummarizedContextWithScopeSupplierPipeline.class);
+
+        String response = pipeline.process("test request");
+        assertThat(response).isNotBlank();
     }
 }

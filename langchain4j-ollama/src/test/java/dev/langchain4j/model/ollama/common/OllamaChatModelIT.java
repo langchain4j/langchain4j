@@ -6,7 +6,7 @@ import static dev.langchain4j.model.ollama.AbstractOllamaLanguageModelInfrastruc
 import static dev.langchain4j.model.ollama.AbstractOllamaLanguageModelInfrastructure.ollamaBaseUrl;
 import static dev.langchain4j.model.ollama.OllamaImage.LLAMA_3_1;
 import static dev.langchain4j.model.ollama.OllamaImage.LLAMA_3_2;
-import static dev.langchain4j.model.ollama.OllamaImage.LLAMA_3_2_VISION;
+import static dev.langchain4j.model.ollama.OllamaImage.GEMMA_4;
 import static dev.langchain4j.model.ollama.OllamaImage.OLLAMA_IMAGE;
 import static dev.langchain4j.model.ollama.OllamaImage.localOllamaImage;
 import static dev.langchain4j.model.ollama.OllamaImage.resolve;
@@ -20,14 +20,12 @@ import dev.langchain4j.model.ollama.LC4jOllamaContainer;
 import dev.langchain4j.model.ollama.OllamaChatModel;
 import dev.langchain4j.model.ollama.OllamaChatRequestParameters;
 import dev.langchain4j.model.openai.OpenAiChatModel;
+import dev.langchain4j.model.openai.OpenAiChatResponseMetadata;
+import dev.langchain4j.model.openai.OpenAiTokenUsage;
+import dev.langchain4j.model.output.TokenUsage;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import dev.langchain4j.model.openai.OpenAiChatResponseMetadata;
-import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
-import dev.langchain4j.model.openai.OpenAiTokenUsage;
-import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.condition.DisabledIf;
 import org.junit.jupiter.api.condition.EnabledIf;
@@ -46,7 +44,7 @@ class OllamaChatModelIT extends AbstractChatModelIT {
     private static final String MODEL_WITH_TOOLS = LLAMA_3_1;
     private static LC4jOllamaContainer ollamaWithTools;
 
-    private static final String MODEL_WITH_VISION = LLAMA_3_2_VISION;
+    private static final String MODEL_WITH_VISION = GEMMA_4;
     private static LC4jOllamaContainer ollamaWithVision;
 
     private static final String CUSTOM_MODEL_NAME = LLAMA_3_2;
@@ -121,8 +119,7 @@ class OllamaChatModelIT extends AbstractChatModelIT {
 
     @Override
     @Disabled("llama 3.1 cannot do it properly")
-    protected void should_execute_a_tool_then_answer_respecting_JSON_response_format_with_schema(ChatModel model) {
-    }
+    protected void should_execute_a_tool_then_answer_respecting_JSON_response_format_with_schema(ChatModel model) {}
 
     @Override
     @ParameterizedTest
@@ -221,7 +218,7 @@ class OllamaChatModelIT extends AbstractChatModelIT {
     protected boolean supportsMultipleImageInputsAsPublicURLs() {
         return false; // vision model only supports a single image per message
     }
-    
+
     @Override
     protected boolean assertResponseId() {
         return false; // Ollama does not return response ID
@@ -229,7 +226,7 @@ class OllamaChatModelIT extends AbstractChatModelIT {
 
     @Override
     protected boolean assertToolId(ChatModel model) {
-        return model instanceof OpenAiStreamingChatModel; // Ollama does not return tool ID via Ollama API
+        return true; // Ollama returns tool call id since v0.12.10
     }
 
     @Override

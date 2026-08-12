@@ -2,20 +2,13 @@ package dev.langchain4j.mcp.protocol;
 
 import dev.langchain4j.Internal;
 
+/**
+ * Corresponds to the {@code InitializeRequest} type from the MCP schema.
+ */
 @Internal
-public class McpInitializeRequest extends McpClientMessage {
-
-    private McpInitializeParams params;
+public class McpInitializeRequest extends McpClientRequest {
 
     public McpInitializeRequest(Long id) {
         super(id, McpClientMethod.INITIALIZE);
-    }
-
-    public McpInitializeParams getParams() {
-        return params;
-    }
-
-    public void setParams(final McpInitializeParams params) {
-        this.params = params;
     }
 }
