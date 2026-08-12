@@ -1,0 +1,30 @@
+[
+  {
+    "extension": "revapi.differences",
+    "configuration": {
+      "ignore": true,
+      "differences": [
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.model.embedding.request.EmbeddingRequest",
+          "justification": "Core langchain4j type intentionally exposed by the EmbeddingModel request/response API (embed(EmbeddingRequest), supportedContentTypes())"
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.model.embedding.response.EmbeddingResponse",
+          "justification": "Core langchain4j type intentionally exposed by the EmbeddingModel request/response API (embed(EmbeddingRequest), supportedContentTypes())"
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.data.message.ContentType",
+          "justification": "Core langchain4j type intentionally exposed by the EmbeddingModel request/response API (embed(EmbeddingRequest), supportedContentTypes())"
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.data.image.Image",
+          "justification": "Core langchain4j type exposed by ImagePreprocessor, an internal helper (internal package) of OnnxImageEmbeddingModel, not part of the public API"
+        }
+      ]
+    }
+  }
+]

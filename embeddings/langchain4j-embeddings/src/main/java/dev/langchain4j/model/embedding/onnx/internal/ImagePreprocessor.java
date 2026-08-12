@@ -25,15 +25,21 @@ public class ImagePreprocessor {
      * @return float tensor in [batch, channels, height, width] format
      */
     public float[][][][] process(Image image) {
-        BufferedImage bufferedImage = ImageFactory.load(image);
+        return process(ImageFactory.load(image));
+    }
 
-        if (config.doConvertRgb()) {
-            bufferedImage = ImageFactory.convertToRgb(bufferedImage);
-        }
+    /**
+     * Preprocess a {@link BufferedImage} into a [1, 3, H, W] NCHW float tensor.
+     *
+     * @param image the decoded image
+     * @return float tensor in [batch, channels, height, width] format
+     */
+    public float[][][][] process(BufferedImage image) {
+        BufferedImage rgbImage = config.doConvertRgb() ? ImageFactory.convertToRgb(image) : image;
 
-        int width = bufferedImage.getWidth();
-        int height = bufferedImage.getHeight();
-        int[] pixels = bufferedImage.getRGB(0, 0, width, height, null, 0, width);
+        int width = rgbImage.getWidth();
+        int height = rgbImage.getHeight();
+        int[] pixels = rgbImage.getRGB(0, 0, width, height, null, 0, width);
 
         return process(pixels, width, height);
     }

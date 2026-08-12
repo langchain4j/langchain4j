@@ -32,8 +32,12 @@ public class OnnxModelLoader implements AutoCloseable {
     }
 
     @Override
-    public void close() throws Exception {
-        session.close();
+    public void close() {
+        try {
+            session.close();
+        } catch (OrtException e) {
+            throw new IllegalStateException("Could not close the ONNX session", e);
+        }
     }
 
     static class OnnxModelLoadingException extends RuntimeException {
