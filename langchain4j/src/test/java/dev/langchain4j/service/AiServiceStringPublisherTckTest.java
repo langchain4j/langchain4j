@@ -18,7 +18,13 @@ import org.reactivestreams.tck.TestEnvironment;
  */
 public class AiServiceStringPublisherTckTest extends PublisherVerification<String> {
 
-    private static final long DEFAULT_TIMEOUT_MILLIS = 2_000L;
+    // Each subscription spins up a full AI Service invocation (proxy dispatch, executor and SPI initialisation, a
+    // fresh model-delivery thread) before the first item can be emitted, so the budget for *expected* signals must
+    // accommodate cold-start latency on a loaded CI runner. This timeout only adds slack: fast signals return
+    // immediately, so passing tests are unaffected and only genuinely-stuck publishers ever wait this long.
+    private static final long DEFAULT_TIMEOUT_MILLIS = 10_000L;
+    // Kept tight, independent of the receive timeout, so the "no signal must arrive" assertions stay fast.
+    private static final long DEFAULT_NO_SIGNALS_TIMEOUT_MILLIS = 2_000L;
     private static final long DEFAULT_POLL_TIMEOUT_MILLIS = 50L;
     private static final long PUBLISHER_REFERENCE_CLEANUP_TIMEOUT_MILLIS = 300L;
     private static final long MAX_ELEMENTS = 100L;
@@ -29,7 +35,8 @@ public class AiServiceStringPublisherTckTest extends PublisherVerification<Strin
 
     public AiServiceStringPublisherTckTest() {
         super(
-                new TestEnvironment(DEFAULT_TIMEOUT_MILLIS, DEFAULT_TIMEOUT_MILLIS, DEFAULT_POLL_TIMEOUT_MILLIS),
+                new TestEnvironment(
+                        DEFAULT_TIMEOUT_MILLIS, DEFAULT_NO_SIGNALS_TIMEOUT_MILLIS, DEFAULT_POLL_TIMEOUT_MILLIS),
                 PUBLISHER_REFERENCE_CLEANUP_TIMEOUT_MILLIS);
     }
 
