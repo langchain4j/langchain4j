@@ -20,6 +20,20 @@ class JinaMultimodalEmbeddingModelTest {
         return JinaEmbeddingModel.builder().apiKey("test-key").modelName(modelName).build();
     }
 
+    private static JinaEmbeddingModel model(String modelName, Boolean lateChunking) {
+        return JinaEmbeddingModel.builder()
+                .apiKey("test-key")
+                .modelName(modelName)
+                .lateChunking(lateChunking)
+                .build();
+    }
+
+    private static String multimodalRequestJson(JinaEmbeddingModel model) throws Exception {
+        JinaMultimodalEmbeddingRequest request =
+                model.buildMultimodalRequest(EmbeddingRequest.builder().input("a caption").build());
+        return MAPPER.writeValueAsString(request);
+    }
+
     @Test
     void multimodal_model_supports_text_and_image() {
         assertThat(model("jina-clip-v2").supportedContentTypes())
@@ -66,6 +80,28 @@ class JinaMultimodalEmbeddingModelTest {
         String json = MAPPER.writeValueAsString(request);
 
         assertThat(json).contains("data:image/png;base64,aGVsbG8=");
+    }
+
+    @Test
+    void sends_late_chunking_when_enabled_on_multimodal_model() throws Exception {
+        String json = multimodalRequestJson(model("jina-embeddings-v4", true));
+
+        assertThat(json).contains("\"late_chunking\":true");
+    }
+
+    @Test
+    void sends_late_chunking_false_when_not_configured() throws Exception {
+        String json = multimodalRequestJson(model("jina-embeddings-v4"));
+
+        assertThat(json).contains("\"late_chunking\":false");
+    }
+
+    @Test
+    void sends_late_chunking_for_clip_models_too() throws Exception {
+        // the multimodal path does not filter by model name, matching the text path
+        String json = multimodalRequestJson(model("jina-clip-v2", true));
+
+        assertThat(json).contains("\"late_chunking\":true");
     }
 
     @Test
