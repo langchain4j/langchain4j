@@ -105,7 +105,7 @@ public class ElasticsearchContentRetriever extends AbstractElasticsearchEmbeddin
     public List<Content> retrieve(final Query query) {
         if (configuration instanceof ElasticsearchConfigurationFullText) {
             log.debug("Using a full text search query");
-            return toContentList(this.fullTextSearchMatches(query.text()));
+            return toContentList(this.fullTextSearchMatches(query.text(), maxResults, minScore, filter));
         }
         Embedding referenceEmbedding = embeddingModel.embed(query.text()).content();
         EmbeddingSearchRequest request = EmbeddingSearchRequest.builder()

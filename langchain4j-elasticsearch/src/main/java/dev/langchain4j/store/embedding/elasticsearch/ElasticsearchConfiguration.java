@@ -4,7 +4,7 @@ import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.ElasticsearchException;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
-
+import dev.langchain4j.store.embedding.filter.Filter;
 import java.io.IOException;
 
 public interface ElasticsearchConfiguration {
@@ -32,7 +32,8 @@ public interface ElasticsearchConfiguration {
     default SearchResponse<Document> vectorSearch(
             ElasticsearchClient client, String indexName, EmbeddingSearchRequest embeddingSearchRequest)
             throws ElasticsearchException, IOException {
-        throw new UnsupportedOperationException(this.getClass().getSimpleName() + " configuration does not support vector search");
+        throw new UnsupportedOperationException(
+                this.getClass().getSimpleName() + " configuration does not support vector search");
     }
 
     /**
@@ -47,7 +48,36 @@ public interface ElasticsearchConfiguration {
      */
     default SearchResponse<Document> fullTextSearch(ElasticsearchClient client, String indexName, String textQuery)
             throws ElasticsearchException, IOException {
-        throw new UnsupportedOperationException(this.getClass().getSimpleName() + " configuration does not support fulltext search");
+        throw new UnsupportedOperationException(
+                this.getClass().getSimpleName() + " configuration does not support fulltext search");
+    }
+
+    /**
+     * Used for full text search with retrieval constraints.
+     *
+     * <p>The default implementation delegates to {@link #fullTextSearch(ElasticsearchClient, String, String)}
+     * for backwards compatibility with custom configurations. Implementations that support these constraints
+     * should override this method.
+     *
+     * @param client     The Elasticsearch client
+     * @param indexName  The index name
+     * @param textQuery  The text query
+     * @param maxResults The maximum number of results to return
+     * @param minScore   The minimum score of returned results
+     * @param filter     The metadata filter to apply, or {@code null}
+     * @return The search response
+     * @throws ElasticsearchException if an error occurs during the search
+     * @throws IOException            if an I/O error occurs
+     */
+    default SearchResponse<Document> fullTextSearch(
+            ElasticsearchClient client,
+            String indexName,
+            String textQuery,
+            int maxResults,
+            double minScore,
+            Filter filter)
+            throws ElasticsearchException, IOException {
+        return fullTextSearch(client, indexName, textQuery);
     }
 
     /**
@@ -67,6 +97,7 @@ public interface ElasticsearchConfiguration {
             EmbeddingSearchRequest embeddingSearchRequest,
             String textQuery)
             throws ElasticsearchException, IOException {
-        throw new UnsupportedOperationException(this.getClass().getSimpleName() + " configuration does not support hybrid search");
+        throw new UnsupportedOperationException(
+                this.getClass().getSimpleName() + " configuration does not support hybrid search");
     }
 }

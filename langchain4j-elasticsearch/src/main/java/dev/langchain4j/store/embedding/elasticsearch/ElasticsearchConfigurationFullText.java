@@ -2,7 +2,9 @@ package dev.langchain4j.store.embedding.elasticsearch;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.ElasticsearchException;
+import co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
+import dev.langchain4j.store.embedding.filter.Filter;
 import java.io.IOException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,7 +15,7 @@ import org.slf4j.LoggerFactory;
  *
  * @see <a href="https://www.elastic.co/docs/reference/query-languages/query-dsl/query-dsl-match-query">match query</a>
  */
-public class ElasticsearchConfigurationFullText implements ElasticsearchConfiguration{
+public class ElasticsearchConfigurationFullText implements ElasticsearchConfiguration {
     private static final Logger log = LoggerFactory.getLogger(ElasticsearchConfigurationFullText.class);
 
     public static class Builder {
@@ -36,5 +38,29 @@ public class ElasticsearchConfigurationFullText implements ElasticsearchConfigur
                 s -> s.index(indexName)
                         .query(q -> q.match(m -> m.field(TEXT_FIELD).query(textQuery))),
                 Document.class);
+    }
+
+    @Override
+    public SearchResponse<Document> fullTextSearch(
+            ElasticsearchClient client,
+            String indexName,
+            String textQuery,
+            int maxResults,
+            double minScore,
+            Filter filter)
+            throws ElasticsearchException, IOException {
+        Query matchQuery = Query.of(q -> q.match(m -> m.field(TEXT_FIELD).query(textQuery)));
+        Query query = filter == null
+                ? matchQuery
+                : Query.of(q -> q.bool(b -> b.must(matchQuery).filter(ElasticsearchMetadataFilterMapper.map(filter))));
+
+        log.trace(
+                "Searching for text matches in index [{}] with query [{}] and filter [{}].",
+                indexName,
+                textQuery,
+                filter);
+
+        return client.search(
+                s -> s.index(indexName).query(query).size(maxResults).minScore(minScore), Document.class);
     }
 }

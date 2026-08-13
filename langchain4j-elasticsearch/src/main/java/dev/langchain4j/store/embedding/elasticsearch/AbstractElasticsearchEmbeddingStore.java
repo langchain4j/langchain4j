@@ -218,6 +218,29 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
     }
 
     /**
+     * Searches the index with a full text (non-vector) query and retrieval constraints.
+     *
+     * @param textQuery  the text to search for
+     * @param maxResults the maximum number of results to return
+     * @param minScore   the minimum score of returned results
+     * @param filter     the metadata filter to apply, or {@code null}
+     * @return the matching documents, each carrying its Elasticsearch document ID and relevance score
+     */
+    public List<EmbeddingMatch<TextSegment>> fullTextSearchMatches(
+            String textQuery, int maxResults, double minScore, Filter filter) {
+        log.debug("full text search([...{}...], {}, {})", textQuery.length(), maxResults, minScore);
+        try {
+            SearchResponse<Document> response =
+                    this.configuration.fullTextSearch(client, indexName, textQuery, maxResults, minScore, filter);
+            log.trace("found [{}] results", response);
+
+            return toMatches(response);
+        } catch (ElasticsearchException | IOException e) {
+            throw new ElasticsearchRequestFailedException(e);
+        }
+    }
+
+    /**
      * @deprecated Use {@link #fullTextSearchMatches(String)} instead. It returns the same text segments,
      * but also the Elasticsearch document ID and the relevance score of each match.
      */
