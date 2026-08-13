@@ -83,6 +83,7 @@ public class WatsonxStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     @Override
     protected boolean supportsStreamingCancellation() {
+        // The watsonx models do not expose a StreamingHandle that can stop an ongoing stream
         return false;
     }
 

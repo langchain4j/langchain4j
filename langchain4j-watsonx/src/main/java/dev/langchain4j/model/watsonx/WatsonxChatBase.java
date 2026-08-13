@@ -21,6 +21,7 @@ import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.exception.ContentFilteredException;
 import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
@@ -30,8 +31,6 @@ import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.chat.response.PartialThinking;
-import dev.langchain4j.model.chat.response.PartialToolCallContext;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.chat.response.StreamingHandle;
 import java.util.ArrayList;
@@ -126,7 +125,8 @@ abstract class WatsonxChatBase<R extends BaseChatRequest> {
 
             @Override
             public void onPartialResponse(String partialResponse, PartialChatResponse partialChatResponse) {
-                handler.onPartialResponse(partialResponse);
+                InternalStreamingChatResponseHandlerUtils.onPartialResponse(
+                        handler, partialResponse, CANCELLATION_UNSUPPORTED);
             }
 
             @Override
@@ -136,14 +136,14 @@ abstract class WatsonxChatBase<R extends BaseChatRequest> {
 
             @Override
             public void onPartialThinking(String partialThinking, PartialChatResponse partialChatResponse) {
-                handler.onPartialThinking(new PartialThinking(partialThinking));
+                InternalStreamingChatResponseHandlerUtils.onPartialThinking(
+                        handler, partialThinking, CANCELLATION_UNSUPPORTED);
             }
 
             @Override
             public void onPartialToolCall(PartialToolCall partialToolCall) {
-                handler.onPartialToolCall(
-                        Converter.toPartialToolCall(partialToolCall),
-                        new PartialToolCallContext(CANCELLATION_UNSUPPORTED));
+                InternalStreamingChatResponseHandlerUtils.onPartialToolCall(
+                        handler, Converter.toPartialToolCall(partialToolCall), CANCELLATION_UNSUPPORTED);
             }
         });
     }

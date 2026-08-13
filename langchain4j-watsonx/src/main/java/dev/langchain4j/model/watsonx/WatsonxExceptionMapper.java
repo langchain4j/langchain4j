@@ -51,15 +51,20 @@ class WatsonxExceptionMapper extends ExceptionMapper.DefaultExceptionMapper {
         return t instanceof RuntimeException re ? re : new LangChain4jException(t);
     }
 
+    /**
+     * Maps the errors whose code is not part of {@link WatsonxError.Code} on the HTTP status code, following the same
+     * table as {@link ExceptionMapper.DefaultExceptionMapper#mapHttpStatusCode(Throwable, int)} but keeping the
+     * message returned by the service.
+     */
     private RuntimeException mapUnknownErrorCode(String message, WatsonxException exception) {
         int statusCode = exception.statusCode();
 
+        if (statusCode >= 500 && statusCode < 600) return new InternalServerException(message, exception);
         if (statusCode == 401 || statusCode == 403) return new AuthenticationException(message, exception);
+        if (statusCode == 404) return new ModelNotFoundException(message, exception);
         if (statusCode == 408) return new TimeoutException(message, exception);
         if (statusCode == 429) return new RateLimitException(message, exception);
-        if (statusCode >= 500 && statusCode < 600) return new InternalServerException(message, exception);
-        if (statusCode >= 400 && statusCode < 500 && statusCode != 404)
-            return new InvalidRequestException(message, exception);
+        if (statusCode >= 400 && statusCode < 500) return new InvalidRequestException(message, exception);
 
         return new LangChain4jException(message, exception);
     }

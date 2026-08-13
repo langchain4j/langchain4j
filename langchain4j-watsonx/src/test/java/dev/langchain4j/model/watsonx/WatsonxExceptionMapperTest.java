@@ -82,13 +82,14 @@ public class WatsonxExceptionMapperTest {
 
     @Test
     void testUnknownErrorCode() {
+        assertUnknownErrorCode(302, LangChain4jException.class, "found");
         assertUnknownErrorCode(400, InvalidRequestException.class, "model invalid-model not found");
         assertUnknownErrorCode(401, AuthenticationException.class, "unauthorized");
         assertUnknownErrorCode(403, AuthenticationException.class, "forbidden");
+        assertUnknownErrorCode(404, ModelNotFoundException.class, "deployment not found");
         assertUnknownErrorCode(408, TimeoutException.class, "request timeout");
         assertUnknownErrorCode(429, RateLimitException.class, "too many requests");
         assertUnknownErrorCode(503, InternalServerException.class, "service unavailable");
-        assertUnknownErrorCode(404, LangChain4jException.class, "not found");
     }
 
     private void assertUnknownErrorCode(int statusCode, Class<? extends Exception> expectedClass, String message) {

@@ -1,6 +1,6 @@
 package dev.langchain4j.model.watsonx.it;
 
-import dev.langchain4j.exception.LangChain4jException;
+import dev.langchain4j.exception.ModelNotFoundException;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelListenerIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
@@ -51,7 +51,8 @@ public class WatsonxDeploymentChatModelListenerIT extends AbstractChatModelListe
 
     @Override
     protected Class<? extends Exception> expectedExceptionClass() {
-        return LangChain4jException.class;
+        // An unknown deployment id makes the service answer with HTTP 404
+        return ModelNotFoundException.class;
     }
 
     private WatsonxDeploymentChatModel.Builder createChatModel(String deploymentId) {

@@ -85,6 +85,7 @@ public class WatsonxGatewayStreamingChatModelIT extends AbstractStreamingChatMod
 
     @Override
     protected boolean supportsStreamingCancellation() {
+        // The watsonx models do not expose a StreamingHandle that can stop an ongoing stream
         return false;
     }
 
