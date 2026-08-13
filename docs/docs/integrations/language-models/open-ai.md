@@ -49,25 +49,6 @@ LangChain4j provides 3 different integrations with OpenAI for using chat models,
 To use OpenAI models, you will need an API key.
 You can create one [here](https://platform.openai.com/api-keys).
 
-<details>
-<summary>What if I don't have an API key?</summary>
-
-If you don't have your own OpenAI API key, don't worry.
-You can temporarily use `demo` key, which we provide for free for demonstration purposes.
-Be aware that when using the `demo` key, all requests to the OpenAI API need to go through our proxy,
-which injects the real key before forwarding your request to the OpenAI API.
-We do not collect or use your data in any way.
-The `demo` key has a quota, is restricted to the `gpt-4o-mini` model, and should only be used for demonstration purposes.
-
-```java
-OpenAiChatModel model = OpenAiChatModel.builder()
-    .baseUrl("http://langchain4j.dev/demo/openai/v1")
-    .apiKey("demo")
-    .modelName("gpt-4o-mini")
-    .build();
-```
-</details>
-
 ## Creating `OpenAiChatModel`
 
 ### Plain Java
