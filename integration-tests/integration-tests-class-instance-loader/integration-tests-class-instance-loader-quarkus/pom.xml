@@ -23,6 +23,7 @@
     </licenses>
 
     <properties>
+        <automaticModuleNameSource>dev.langchain4j.integrationtests.classinstanceloader.quarkus</automaticModuleNameSource>
         <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>
         <quarkus.platform.group-id>io.quarkus.platform</quarkus.platform.group-id>
         <quarkus.platform.version>3.26.3</quarkus.platform.version>

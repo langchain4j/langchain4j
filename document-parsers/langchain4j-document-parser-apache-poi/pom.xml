@@ -13,6 +13,7 @@
     <name>LangChain4j :: Document Parser :: Apache POI</name>
 
     <properties>
+        <automaticModuleNameSource>dev.langchain4j.document.parser.apachepoi</automaticModuleNameSource>
         <apache.poi.version>5.5.1</apache.poi.version>
     </properties>
 

@@ -14,6 +14,7 @@
     <name>LangChain4j :: Document Parser :: Apache Tika</name>
 
     <properties>
+        <automaticModuleNameSource>dev.langchain4j.document.parser.apachetika</automaticModuleNameSource>
         <apache-tika.version>3.2.3</apache-tika.version>
         <!-- TODO: remove enforcer.skipRules -->
         <enforcer.skipRules>dependencyConvergence,requireUpperBoundDeps</enforcer.skipRules>

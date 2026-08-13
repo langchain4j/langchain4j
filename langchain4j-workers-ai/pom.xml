@@ -14,6 +14,10 @@
 
     <name>LangChain4j :: Integration :: CloudFlare Workers AI</name>
 
+    <properties>
+        <automaticModuleNameSource>dev.langchain4j.workersai</automaticModuleNameSource>
+    </properties>
+
     <dependencies>
 
         <dependency>

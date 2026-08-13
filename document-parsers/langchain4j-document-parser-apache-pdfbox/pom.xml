@@ -12,6 +12,10 @@
     <artifactId>langchain4j-document-parser-apache-pdfbox</artifactId>
     <name>LangChain4j :: Document Parser :: Apache PDFBox</name>
 
+    <properties>
+        <automaticModuleNameSource>dev.langchain4j.document.parser.apachepdfbox</automaticModuleNameSource>
+    </properties>
+
     <dependencies>
 
         <dependency>

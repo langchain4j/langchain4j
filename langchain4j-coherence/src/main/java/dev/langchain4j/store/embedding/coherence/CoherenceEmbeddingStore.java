@@ -13,11 +13,11 @@ import com.oracle.coherence.ai.Vector;
 import com.oracle.coherence.ai.VectorIndexExtractor;
 import com.oracle.coherence.ai.search.SimilaritySearch;
 import com.oracle.coherence.common.base.Logger;
-import com.tangosol.internal.util.processor.CacheProcessors;
 import com.tangosol.net.Coherence;
 import com.tangosol.net.NamedMap;
 import com.tangosol.net.Session;
 import com.tangosol.util.Filter;
+import com.tangosol.util.Processors;
 import com.tangosol.util.UUID;
 import com.tangosol.util.ValueExtractor;
 import dev.langchain4j.data.document.Metadata;
@@ -121,7 +121,7 @@ public class CoherenceEmbeddingStore implements EmbeddingStore<TextSegment> {
         ensureNotNull(filter, "filter");
 
         Filter<DocumentChunk> chunkFilter = CoherenceMetadataFilterMapper.map(filter);
-        documentChunks.invokeAll(chunkFilter, CacheProcessors.removeBlind());
+        documentChunks.invokeAll(chunkFilter, Processors.remove());
     }
 
     @Override

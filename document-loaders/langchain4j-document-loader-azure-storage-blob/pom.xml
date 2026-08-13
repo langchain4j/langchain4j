@@ -12,6 +12,10 @@
     <artifactId>langchain4j-document-loader-azure-storage-blob</artifactId>
     <name>LangChain4j :: Document Loader :: Azure Blob Storage</name>
 
+    <properties>
+        <automaticModuleNameSource>dev.langchain4j.document.loader.azurestorageblob</automaticModuleNameSource>
+    </properties>
+
     <dependencyManagement>
         <dependencies>
             <dependency>

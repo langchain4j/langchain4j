@@ -13,6 +13,7 @@
     <name>LangChain4j :: Integration :: OpenAI Official</name>
 
     <properties>
+        <automaticModuleNameSource>dev.langchain4j.openai.official</automaticModuleNameSource>
         <openai-java.version>4.41.0</openai-java.version>
         <httpclient5.version>5.4.3</httpclient5.version>
         <enforcer.skipRules>requireUpperBoundDeps</enforcer.skipRules>

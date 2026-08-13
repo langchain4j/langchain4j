@@ -22,6 +22,7 @@
     </developers>
 
     <properties>
+        <automaticModuleNameSource>dev.langchain4j.googleai.gemini</automaticModuleNameSource>
         <maven.compiler.parameters>true</maven.compiler.parameters>
     </properties>
 

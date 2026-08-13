@@ -12,6 +12,10 @@
     <artifactId>langchain4j-vertex-ai</artifactId>
     <name>LangChain4j :: Integration :: Google Vertex AI</name>
 
+    <properties>
+        <automaticModuleNameSource>dev.langchain4j.vertexai</automaticModuleNameSource>
+    </properties>
+
     <dependencyManagement>
         <dependencies>
             <dependency>
@@ -44,7 +48,6 @@
             <groupId>com.google.cloud</groupId>
             <artifactId>google-cloud-discoveryengine</artifactId>
         </dependency>
-
 
         <!-- test dependencies -->
 
