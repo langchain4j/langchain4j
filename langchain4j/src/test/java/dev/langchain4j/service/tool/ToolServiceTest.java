@@ -1,13 +1,22 @@
 package dev.langchain4j.service.tool;
 
 import static dev.langchain4j.service.tool.ToolService.executeWithErrorHandling;
+import static dev.langchain4j.service.tool.ToolService.refreshDynamicProviders;
 import static dev.langchain4j.service.tool.ToolService.shouldReturnImmediately;
 import static org.assertj.core.api.Assertions.*;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.invocation.InvocationContext;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import org.junit.jupiter.api.Test;
 
@@ -157,5 +166,70 @@ class ToolServiceTest {
         ToolService toolService = new ToolService();
         assertThat(toolService.beforeToolExecution()).isNull();
         assertThat(toolService.afterToolExecution()).isNull();
+    }
+
+    // --- refreshDynamicProviders ---
+
+    private static ToolServiceContext contextWith(ToolProvider dynamicProvider) {
+        return ToolServiceContext.builder()
+                .effectiveTools(new ArrayList<>())
+                .availableTools(new ArrayList<>())
+                .toolExecutors(new HashMap<>())
+                .returnBehaviors(new HashMap<>())
+                .dynamicToolProviders(List.of(dynamicProvider))
+                .build();
+    }
+
+    @Test
+    void refreshDynamicProviders_uses_invocation_user_message_when_evicted_from_messages() {
+        List<ChatMessage> messages = List.of(
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .name("previous")
+                        .arguments("{}")
+                        .build()),
+                ToolExecutionResultMessage.from("id", "previous", "result"));
+
+        UserMessage currentUserMessage = UserMessage.from("do the thing");
+        InvocationContext invocationContext =
+                InvocationContext.builder().userMessage(currentUserMessage).build();
+
+        AtomicReference<UserMessage> seenByProvider = new AtomicReference<>();
+        ToolProvider dynamicProvider = request -> {
+            seenByProvider.set(request.userMessage());
+            return ToolProviderResult.builder()
+                    .add(ToolSpecification.builder().name("dynamic_tool").build(), (req, memoryId) -> "ok")
+                    .build();
+        };
+
+        ToolServiceContext refreshed =
+                refreshDynamicProviders(contextWith(dynamicProvider), messages, invocationContext);
+
+        assertThat(seenByProvider.get()).isEqualTo(currentUserMessage);
+        assertThat(refreshed.toolExecutors()).containsKey("dynamic_tool");
+        assertThat(refreshed.effectiveTools())
+                .extracting(ToolSpecification::name)
+                .contains("dynamic_tool");
+    }
+
+    @Test
+    void refreshDynamicProviders_returns_context_unchanged_when_no_user_message_available() {
+        List<ChatMessage> messages = List.of(
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .name("previous")
+                        .arguments("{}")
+                        .build()),
+                ToolExecutionResultMessage.from("id", "previous", "result"));
+
+        InvocationContext invocationContext = InvocationContext.builder().build();
+
+        ToolProvider dynamicProvider = request -> ToolProviderResult.builder()
+                .add(ToolSpecification.builder().name("dynamic_tool").build(), (req, memoryId) -> "ok")
+                .build();
+
+        ToolServiceContext context = contextWith(dynamicProvider);
+        ToolServiceContext refreshed = refreshDynamicProviders(context, messages, invocationContext);
+
+        assertThat(refreshed).isSameAs(context);
+        assertThat(refreshed.toolExecutors()).doesNotContainKey("dynamic_tool");
     }
 }

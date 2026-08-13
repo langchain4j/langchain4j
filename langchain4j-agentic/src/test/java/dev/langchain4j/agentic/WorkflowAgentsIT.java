@@ -12,6 +12,7 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 
 import dev.langchain4j.agent.tool.Tool;
+import dev.langchain4j.agentic.Agents.LoanApplication;
 import dev.langchain4j.agentic.Agents.AudienceEditor;
 import dev.langchain4j.agentic.Agents.CategoryRouter;
 import dev.langchain4j.agentic.Agents.CreativeWriter;
@@ -54,6 +55,9 @@ import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticSystemConfigurationException;
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.scope.AgenticScope;
+import dev.langchain4j.agentic.scope.AgenticScopeAccess;
+import dev.langchain4j.agentic.scope.AgenticScopeSerializer;
+import dev.langchain4j.agentic.scope.UnserializableAgenticScopeException;
 import dev.langchain4j.agentic.scope.AgenticScopePersister;
 import dev.langchain4j.agentic.scope.AgenticScopeRegistry;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
@@ -67,6 +71,7 @@ import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
@@ -760,6 +765,45 @@ public class WorkflowAgentsIT {
     }
 
     @Test
+    void loop_agents_with_error_should_evict_ephemeral_scope() {
+        CreativeWriter creativeWriter = AgenticServices.agentBuilder(CreativeWriter.class)
+                .chatModel(baseModel())
+                .outputKey("story")
+                .build();
+
+        StyleEditor styleEditor = AgenticServices.agentBuilder(StyleEditor.class)
+                .chatModel(baseModel())
+                .outputKey("story")
+                .build();
+
+        StyleScorer styleScorer = AgenticServices.agentBuilder(StyleScorer.class)
+                .chatModel(throwingModel())
+                .outputKey("score")
+                .build();
+
+        UntypedAgent styleReviewLoop = AgenticServices.loopBuilder()
+                .name("reviewLoop")
+                .subAgents(styleScorer, styleEditor)
+                .maxIterations(5)
+                .exitCondition(agenticScope -> agenticScope.readState("score", 0.0) >= 0.8)
+                .build();
+
+        UntypedAgent styledWriter = AgenticServices.sequenceBuilder()
+                .subAgents(creativeWriter, styleReviewLoop)
+                .outputKey("story")
+                .build();
+
+        Map<String, Object> input = Map.of(
+                "topic", "dragons and wizards",
+                "style", "comedy");
+
+        assertThrows(AgentInvocationException.class, () -> styledWriter.invokeWithAgenticScope(input));
+
+        AgenticScopeRegistry registry = ((AgenticScopeOwner) styledWriter).registry();
+        assertThat(registry.getAllAgenticScopeKeysInMemory()).isEmpty();
+    }
+
+    @Test
     void typed_loop_agents_tests() {
         check_typed_loop_agents(false);
     }
@@ -1442,6 +1486,89 @@ public class WorkflowAgentsIT {
         assertThat(horoscopes)
                 .hasSize(persons.size())
                 .allSatisfy(horoscope -> assertThat(horoscope).isNotBlank());
+    }
+
+    public interface LoanExtractorAgentWithMemory {
+
+        @UserMessage("""
+            Convert user request into a structured LoanApplication.
+            The user request is: '{{request}}'.
+            """)
+        @Agent(description = "Extract a loan application", outputKey = "loanApplication")
+        LoanApplication extract(@MemoryId String memoryId, @V("request") String request);
+    }
+
+    public interface LoanProcessorWithMemory extends AgenticScopeAccess {
+
+        @Agent
+        LoanApplication processLoan(@MemoryId String memoryId, @V("request") String request);
+    }
+
+    @Test
+    void memory_agents_with_unregistered_domain_object_should_fail_deserialization() {
+        LoanExtractorAgentWithMemory extractor = AgenticServices.agentBuilder(LoanExtractorAgentWithMemory.class)
+                .chatModel(baseModel())
+                .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
+                .outputKey("loanApplication")
+                .build();
+
+        LoanProcessorWithMemory processor = AgenticServices.sequenceBuilder(LoanProcessorWithMemory.class)
+                .subAgents(extractor)
+                .outputKey("loanApplication")
+                .build();
+
+        JsonInMemoryAgenticScopeStore store = new JsonInMemoryAgenticScopeStore();
+        AgenticScopePersister.setStore(store);
+
+        try {
+            LoanApplication result = processor.processLoan("user1",
+                    "John Smith, 35 years old, wants a loan of 10000 dollars");
+            assertThat(result).isNotNull();
+
+            AgenticScopeRegistry registry = ((AgenticScopeOwner) processor).registry();
+            registry.clearInMemory();
+
+            UnserializableAgenticScopeException ex = assertThrows(UnserializableAgenticScopeException.class,
+                    () -> processor.processLoan("user1", "What was my previous loan application?"));
+            assertThat(ex.getMessage())
+                    .contains(LoanApplication.class.getName())
+                    .contains("allowDeserializationType");
+        } finally {
+            AgenticScopePersister.setStore(null);
+        }
+    }
+
+    @Test
+    void memory_agents_with_registered_domain_object_should_deserialize_successfully() {
+        AgenticScopeSerializer.allowDeserializationType(LoanApplication.class);
+
+        LoanExtractorAgentWithMemory extractor = AgenticServices.agentBuilder(LoanExtractorAgentWithMemory.class)
+                .chatModel(baseModel())
+                .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
+                .outputKey("loanApplication")
+                .build();
+
+        LoanProcessorWithMemory processor = AgenticServices.sequenceBuilder(LoanProcessorWithMemory.class)
+                .subAgents(extractor)
+                .outputKey("loanApplication")
+                .build();
+
+        JsonInMemoryAgenticScopeStore store = new JsonInMemoryAgenticScopeStore();
+        AgenticScopePersister.setStore(store);
+
+        try {
+            LoanApplication result = processor.processLoan("user1",
+                    "John Smith, 35 years old, wants a loan of 10000 dollars");
+            assertThat(result).isNotNull();
+
+            AgenticScopeRegistry registry = ((AgenticScopeOwner) processor).registry();
+            registry.clearInMemory();
+
+            LoanApplication result2 = processor.processLoan("user1", "What was my previous loan application?");
+            assertThat(result2).isNotNull();
+        } finally {
+            AgenticScopePersister.setStore(null);
+        }
     }
 
     @Test

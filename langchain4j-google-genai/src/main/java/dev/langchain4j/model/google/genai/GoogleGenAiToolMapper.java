@@ -8,16 +8,19 @@ import com.google.genai.types.Schema;
 import com.google.genai.types.Tool;
 import com.google.genai.types.Type;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.model.chat.request.json.JsonAnyOfSchema;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonBooleanSchema;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
 import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
+import dev.langchain4j.model.chat.request.json.JsonNullSchema;
 import dev.langchain4j.model.chat.request.json.JsonNumberSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
+import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -53,7 +56,7 @@ class GoogleGenAiToolMapper {
         }
 
         if (element instanceof JsonObjectSchema objectSchema) {
-            Map<String, Schema> properties = new HashMap<>();
+            Map<String, Schema> properties = new LinkedHashMap<>();
             if (objectSchema.properties() != null) {
                 objectSchema
                         .properties()
@@ -61,12 +64,15 @@ class GoogleGenAiToolMapper {
                                 properties.put(key, convertToGoogleSchema(value)));
             }
 
-            return Schema.builder()
+            Schema.Builder builder = Schema.builder()
                     .type(Type.Known.OBJECT)
                     .properties(properties)
                     .required(getOrDefault(objectSchema.required(), Collections.emptyList()))
-                    .description(getOrDefault(objectSchema.description(), ""))
-                    .build();
+                    .description(getOrDefault(objectSchema.description(), ""));
+            if (properties.size() > 1) {
+                builder.propertyOrdering(new ArrayList<>(properties.keySet()));
+            }
+            return builder.build();
         }
 
         if (element instanceof JsonStringSchema stringSchema) {
@@ -112,6 +118,19 @@ class GoogleGenAiToolMapper {
                     .items(convertToGoogleSchema(arraySchema.items()))
                     .description(getOrDefault(arraySchema.description(), ""))
                     .build();
+        }
+
+        if (element instanceof JsonAnyOfSchema anyOfSchema) {
+            return Schema.builder()
+                    .anyOf(anyOfSchema.anyOf().stream()
+                            .map(GoogleGenAiToolMapper::convertToGoogleSchema)
+                            .toList())
+                    .description(getOrDefault(anyOfSchema.description(), ""))
+                    .build();
+        }
+
+        if (element instanceof JsonNullSchema) {
+            return Schema.builder().type(Type.Known.NULL).build();
         }
 
         throw new IllegalArgumentException("Unknown schema type: " + element.getClass());

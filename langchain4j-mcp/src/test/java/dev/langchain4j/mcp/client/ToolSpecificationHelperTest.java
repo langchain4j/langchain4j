@@ -3,6 +3,7 @@ package dev.langchain4j.mcp.client;
 import static dev.langchain4j.mcp.client.McpToolMetadataKeys.DESTRUCTIVE_HINT;
 import static dev.langchain4j.mcp.client.McpToolMetadataKeys.ICONS;
 import static dev.langchain4j.mcp.client.McpToolMetadataKeys.IDEMPOTENT_HINT;
+import static dev.langchain4j.mcp.client.McpToolMetadataKeys.MCP_PARAM_HEADERS;
 import static dev.langchain4j.mcp.client.McpToolMetadataKeys.OPEN_WORLD_HINT;
 import static dev.langchain4j.mcp.client.McpToolMetadataKeys.OUTPUT_SCHEMA;
 import static dev.langchain4j.mcp.client.McpToolMetadataKeys.READ_ONLY_HINT;
@@ -14,6 +15,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.internal.JsonSchemaElementUtils;
 import dev.langchain4j.model.chat.request.json.JsonAnyOfSchema;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonBooleanSchema;
@@ -341,6 +343,82 @@ class ToolSpecificationHelperTest {
         JsonSchemaElement option2 = anyOf.anyOf().get(1);
         assertThat(option2).isInstanceOf(JsonObjectSchema.class);
         assertThat(((JsonObjectSchema) option2).properties()).containsOnlyKeys("path", "line", "body");
+    }
+
+    @Test
+    void toolWithAnyOfAlongsideObjectTypeAtRoot() throws JsonProcessingException {
+        String text =
+                // language=json
+                """
+                [{
+                    "name": "fetch_artifacts",
+                    "description": "Fetch build artifacts",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "version": {
+                          "type": "string",
+                          "description": "Version identifier. Provide this, run_url, or both."
+                        },
+                        "run_url": {
+                          "type": "string",
+                          "description": "Execution run URL. Provide this, version, or both."
+                        },
+                        "filter": {
+                          "type": "string",
+                          "description": "Comma-separated list of names to fetch."
+                        },
+                        "signed": {
+                          "type": "boolean",
+                          "description": "If true, returns signed URLs."
+                        }
+                      },
+                      "anyOf": [
+                        { "required": ["version"] },
+                        { "required": ["run_url"] }
+                      ]
+                    }
+                }]
+                """;
+        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        List<ToolSpecification> toolSpecifications = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
+
+        assertThat(toolSpecifications).hasSize(1);
+        ToolSpecification toolSpecification = toolSpecifications.get(0);
+        assertThat(toolSpecification.name()).isEqualTo("fetch_artifacts");
+        JsonObjectSchema parameters = toolSpecification.parameters();
+        assertThat(parameters.properties()).containsOnlyKeys("version", "run_url", "filter", "signed");
+        assertThat(parameters.properties().get("version")).isInstanceOf(JsonStringSchema.class);
+        assertThat(parameters.properties().get("signed")).isInstanceOf(JsonBooleanSchema.class);
+    }
+
+    @Test
+    void toolWithAnyOfAlongsideObjectTypeAndPropertiesInBranches() throws JsonProcessingException {
+        String text =
+                // language=json
+                """
+                [{
+                    "name": "fetch_by_key",
+                    "inputSchema": {
+                      "type": "object",
+                      "anyOf": [
+                        {
+                          "properties": { "version": { "type": "string" } },
+                          "required": ["version"]
+                        },
+                        {
+                          "properties": { "run_url": { "type": "string" } },
+                          "required": ["run_url"]
+                        }
+                      ]
+                    }
+                }]
+                """;
+        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        List<ToolSpecification> toolSpecifications = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
+
+        assertThat(toolSpecifications).hasSize(1);
+        assertThat(toolSpecifications.get(0).parameters()).isInstanceOf(JsonObjectSchema.class);
     }
 
     @Test
@@ -775,5 +853,470 @@ class ToolSpecificationHelperTest {
         JsonObjectSchema textInputDef =
                 (JsonObjectSchema) parameters.definitions().get("TextInput");
         assertThat(textInputDef.properties()).containsOnlyKeys("text", "language");
+    }
+
+    @Test
+    void toolWithNonDefsRefIsNotTreatedAsReference() throws JsonProcessingException {
+        String text =
+                // language=json
+                """
+                [{
+                    "name": "send-chat-message",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "chatId": { "type": "string" },
+                        "body": {
+                          "type": "object",
+                          "properties": {
+                            "from": {
+                              "type": "object",
+                              "properties": {
+                                "application": { "$ref": "#/properties/body/properties/from/properties/application" }
+                              }
+                            }
+                          }
+                        }
+                      },
+                      "required": ["chatId"]
+                    }
+                }]
+                """;
+        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        List<ToolSpecification> toolSpecifications = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
+        JsonObjectSchema parameters = toolSpecifications.get(0).parameters();
+
+        JsonObjectSchema body = (JsonObjectSchema) parameters.properties().get("body");
+        JsonObjectSchema from = (JsonObjectSchema) body.properties().get("from");
+        JsonSchemaElement application = from.properties().get("application");
+
+        assertThat(application).isNotInstanceOf(JsonReferenceSchema.class);
+        assertThat(application).isInstanceOf(JsonObjectSchema.class);
+        assertThat(JsonSchemaElementUtils.toMap(parameters, false).toString()).doesNotContain("#/$defs/#");
+    }
+
+    @Test
+    void toolWithDefsRefAndBodyPointerRefAreHandledDifferently() throws JsonProcessingException {
+        String text =
+                // language=json
+                """
+                [{
+                    "name": "mixed_refs",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "contact": { "$ref": "#/$defs/Contact" },
+                        "self": { "$ref": "#/properties/contact" }
+                      },
+                      "$defs": {
+                        "Contact": { "type": "object", "properties": { "name": { "type": "string" } } }
+                      }
+                    }
+                }]
+                """;
+        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        List<ToolSpecification> toolSpecifications = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
+        JsonObjectSchema parameters = toolSpecifications.get(0).parameters();
+
+        JsonSchemaElement contact = parameters.properties().get("contact");
+        assertThat(contact).isInstanceOf(JsonReferenceSchema.class);
+        assertThat(((JsonReferenceSchema) contact).reference()).isEqualTo("Contact");
+
+        assertThat(parameters.properties().get("self")).isNotInstanceOf(JsonReferenceSchema.class);
+    }
+
+    @Test
+    void toolWithNonDefsRefKeepsSiblingKeywords() throws JsonProcessingException {
+        String text =
+                // language=json
+                """
+                [{
+                    "name": "mixed_ref_keywords",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "note": {
+                          "$ref": "#/properties/other",
+                          "type": "string",
+                          "description": "a note"
+                        }
+                      }
+                    }
+                }]
+                """;
+        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        List<ToolSpecification> toolSpecifications = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
+        JsonObjectSchema parameters = toolSpecifications.get(0).parameters();
+
+        JsonSchemaElement note = parameters.properties().get("note");
+        assertThat(note).isInstanceOf(JsonStringSchema.class);
+        assertThat(((JsonStringSchema) note).description()).isEqualTo("a note");
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    void toolWithMcpParamHeaders() throws JsonProcessingException {
+        String text =
+                // language=json
+                """
+                [{
+                    "name": "execute_sql",
+                    "description": "Execute SQL on Google Cloud Spanner",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "region": {
+                          "type": "string",
+                          "description": "The region",
+                          "x-mcp-header": "Region"
+                        },
+                        "query": {
+                          "type": "string",
+                          "description": "The SQL query"
+                        }
+                      },
+                      "required": ["region", "query"]
+                    }
+                }]
+                """;
+        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        List<ToolSpecification> tools = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
+        assertThat(tools).hasSize(1);
+        Map<String, String> headers =
+                (Map<String, String>) tools.get(0).metadata().get(MCP_PARAM_HEADERS);
+        assertThat(headers).containsExactly(Map.entry("region", "Region"));
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    void toolWithNestedMcpParamHeaders() throws JsonProcessingException {
+        String text =
+                // language=json
+                """
+                [{
+                    "name": "nested_tool",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "config": {
+                          "type": "object",
+                          "properties": {
+                            "region": {
+                              "type": "string",
+                              "x-mcp-header": "Region"
+                            }
+                          }
+                        }
+                      }
+                    }
+                }]
+                """;
+        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        List<ToolSpecification> tools = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
+        Map<String, String> headers =
+                (Map<String, String>) tools.get(0).metadata().get(MCP_PARAM_HEADERS);
+        assertThat(headers).containsExactly(Map.entry("config.region", "Region"));
+    }
+
+    @Test
+    void toolWithoutMcpParamHeaders() throws JsonProcessingException {
+        String text =
+                // language=json
+                """
+                [{
+                    "name": "plain_tool",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "query": { "type": "string" }
+                      }
+                    }
+                }]
+                """;
+        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        List<ToolSpecification> tools = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
+        assertThat(tools.get(0).metadata()).doesNotContainKey(MCP_PARAM_HEADERS);
+    }
+
+    @Test
+    void toolWithEmptyMcpHeaderIsExcluded() throws JsonProcessingException {
+        String text =
+                // language=json
+                """
+                [{
+                    "name": "bad_tool",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "region": {
+                          "type": "string",
+                          "x-mcp-header": ""
+                        }
+                      }
+                    }
+                }]
+                """;
+        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        List<ToolSpecification> tools = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
+        assertThat(tools).isEmpty();
+    }
+
+    @Test
+    void toolWithInvalidTcharMcpHeaderIsExcluded() throws JsonProcessingException {
+        String text =
+                // language=json
+                """
+                [{
+                    "name": "bad_tool",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "region": {
+                          "type": "string",
+                          "x-mcp-header": "Mcp Name"
+                        }
+                      }
+                    }
+                }]
+                """;
+        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        List<ToolSpecification> tools = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
+        assertThat(tools).isEmpty();
+    }
+
+    @Test
+    void toolWithDuplicateCaseInsensitiveMcpHeaderIsExcluded() throws JsonProcessingException {
+        String text =
+                // language=json
+                """
+                [{
+                    "name": "bad_tool",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "region": {
+                          "type": "string",
+                          "x-mcp-header": "Region"
+                        },
+                        "zone": {
+                          "type": "string",
+                          "x-mcp-header": "region"
+                        }
+                      }
+                    }
+                }]
+                """;
+        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        List<ToolSpecification> tools = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
+        assertThat(tools).isEmpty();
+    }
+
+    @Test
+    void toolWithNumberTypeMcpHeaderIsExcluded() throws JsonProcessingException {
+        String text =
+                // language=json
+                """
+                [{
+                    "name": "bad_tool",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "threshold": {
+                          "type": "number",
+                          "x-mcp-header": "Threshold"
+                        }
+                      }
+                    }
+                }]
+                """;
+        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        List<ToolSpecification> tools = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
+        assertThat(tools).isEmpty();
+    }
+
+    @Test
+    void toolWithNonStringMcpHeaderIsExcluded() throws JsonProcessingException {
+        String text =
+                // language=json
+                """
+                [{
+                    "name": "bad_tool",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "tenant": {
+                          "type": "string",
+                          "x-mcp-header": 42
+                        }
+                      }
+                    }
+                }]
+                """;
+        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        List<ToolSpecification> tools = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
+        assertThat(tools).isEmpty();
+    }
+
+    @Test
+    void toolWithForbiddenTypeAmongMultipleMcpHeaderTypesIsExcluded() throws JsonProcessingException {
+        String text =
+                // language=json
+                """
+                [{
+                    "name": "bad_tool",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "threshold": {
+                          "type": ["number", "null"],
+                          "x-mcp-header": "Threshold"
+                        }
+                      }
+                    }
+                }]
+                """;
+        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        List<ToolSpecification> tools = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
+        assertThat(tools).isEmpty();
+    }
+
+    @Test
+    void nullableStringMcpHeaderIsAccepted() throws JsonProcessingException {
+        String text =
+                // language=json
+                """
+                [{
+                    "name": "good_tool",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "tenant": {
+                          "type": ["string", "null"],
+                          "x-mcp-header": "X-Tenant"
+                        }
+                      }
+                    }
+                }]
+                """;
+        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        List<ToolSpecification> tools = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
+        assertThat(tools).hasSize(1);
+        assertThat(tools.get(0).metadata().get(MCP_PARAM_HEADERS)).isEqualTo(Map.of("tenant", "X-Tenant"));
+    }
+
+    @Test
+    void invalidToolDoesNotAffectValidTools() throws JsonProcessingException {
+        String text =
+                // language=json
+                """
+                [{
+                    "name": "bad_tool",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "region": {
+                          "type": "string",
+                          "x-mcp-header": "invalid header"
+                        }
+                      }
+                    }
+                },
+                {
+                    "name": "good_tool",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "query": { "type": "string" }
+                      }
+                    }
+                }]
+                """;
+        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        List<ToolSpecification> tools = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
+        assertThat(tools).hasSize(1);
+        assertThat(tools.get(0).name()).isEqualTo("good_tool");
+    }
+
+    @Test
+    void toolWithMcpHeaderInsideItemsIsExcluded() throws JsonProcessingException {
+        String text =
+                // language=json
+                """
+                [{
+                    "name": "bad_tool",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "tags": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "x-mcp-header": "Tag"
+                          }
+                        }
+                      }
+                    }
+                }]
+                """;
+        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        List<ToolSpecification> tools = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
+        assertThat(tools).isEmpty();
+    }
+
+    @Test
+    void toolWithMcpHeaderInsideOneOfIsExcluded() throws JsonProcessingException {
+        String text =
+                // language=json
+                """
+                [{
+                    "name": "bad_tool",
+                    "inputSchema": {
+                      "type": "object",
+                      "oneOf": [
+                        {
+                          "properties": {
+                            "region": {
+                              "type": "string",
+                              "x-mcp-header": "Region"
+                            }
+                          }
+                        }
+                      ]
+                    }
+                }]
+                """;
+        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        List<ToolSpecification> tools = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
+        assertThat(tools).isEmpty();
+    }
+
+    @Test
+    void toolWithMcpHeaderInsideAllOfIsExcluded() throws JsonProcessingException {
+        String text =
+                // language=json
+                """
+                [{
+                    "name": "bad_tool",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "query": { "type": "string" }
+                      },
+                      "allOf": [
+                        {
+                          "properties": {
+                            "zone": {
+                              "type": "string",
+                              "x-mcp-header": "Zone"
+                            }
+                          }
+                        }
+                      ]
+                    }
+                }]
+                """;
+        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        List<ToolSpecification> tools = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
+        assertThat(tools).isEmpty();
     }
 }

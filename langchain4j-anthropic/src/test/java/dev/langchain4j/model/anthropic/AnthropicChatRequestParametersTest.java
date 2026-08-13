@@ -259,7 +259,8 @@ class AnthropicChatRequestParametersTest {
                 .isTrue();
 
         // defaults to null
-        assertThat(AnthropicChatRequestParameters.EMPTY.midConversationSystemMessages()).isNull();
+        assertThat(AnthropicChatRequestParameters.EMPTY.midConversationSystemMessages())
+                .isNull();
 
         // overrideWith takes the other value when set
         AnthropicChatRequestParameters overridden = AnthropicChatRequestParameters.builder()

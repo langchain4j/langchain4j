@@ -28,14 +28,6 @@ import org.junit.jupiter.params.provider.CsvSource;
 
 class DefaultToolExecutorTest implements WithAssertions {
 
-    @Test
-    void tesT_hasNoFractionalPart() {
-        assertThat(DefaultToolExecutor.hasNoFractionalPart(3.0)).isTrue();
-        assertThat(DefaultToolExecutor.hasNoFractionalPart(-3.0)).isTrue();
-        assertThat(DefaultToolExecutor.hasNoFractionalPart(3.5)).isFalse();
-        assertThat(DefaultToolExecutor.hasNoFractionalPart(-3.5)).isFalse();
-    }
-
     public enum ExampleEnum {
         A,
         B,
@@ -282,6 +274,52 @@ class DefaultToolExecutorTest implements WithAssertions {
                         List.class,
                         new TypeReference<Map<String, Integer>>() {}.getType()))
                 .isEqualTo(singletonMap("A", 1));
+    }
+
+    @Test
+    void coerce_argument_preserves_precision_of_large_long() {
+        // A JSON integer above 2^53 is deserialized as a Long by Jackson. Converting via double
+        // would silently corrupt it (9007199254740993 -> 9007199254740992).
+        long largeLong = 9007199254740993L; // 2^53 + 1
+
+        assertThat(coerceArgument(largeLong, "arg", long.class, null)).isEqualTo(largeLong);
+        assertThat(coerceArgument(largeLong, "arg", Long.class, null)).isEqualTo(largeLong);
+        assertThat(coerceArgument(Long.MAX_VALUE, "arg", long.class, null)).isEqualTo(Long.MAX_VALUE);
+        assertThat(coerceArgument(Long.MIN_VALUE, "arg", long.class, null)).isEqualTo(Long.MIN_VALUE);
+    }
+
+    @Test
+    void coerce_argument_preserves_precision_of_large_big_integer() {
+        // A JSON integer larger than Long.MAX_VALUE is deserialized as a BigInteger by Jackson.
+        BigInteger largeBigInteger = BigInteger.valueOf(Long.MAX_VALUE).add(BigInteger.TEN);
+
+        assertThat(coerceArgument(largeBigInteger, "arg", BigInteger.class, null))
+                .isEqualTo(largeBigInteger);
+        // A large integral value must not be routed through double for a BigInteger parameter.
+        BigInteger aboveDoublePrecision = new BigInteger("9007199254740993"); // 2^53 + 1
+        assertThat(coerceArgument(aboveDoublePrecision, "arg", BigInteger.class, null))
+                .isEqualTo(aboveDoublePrecision);
+    }
+
+    @Test
+    void coerce_argument_preserves_precision_of_big_decimal() {
+        // 0.1 has no exact double representation; converting via new BigDecimal(double) would yield
+        // 0.1000000000000000055511151231257827021181583404541015625. Rendering via Number.toString()
+        // (as BigDecimal.valueOf(double) does) keeps it as "0.1".
+        assertThat(coerceArgument(0.1, "arg", BigDecimal.class, null)).isEqualTo(new BigDecimal("0.1"));
+        // A BigDecimal argument must be preserved exactly.
+        BigDecimal preciseValue = new BigDecimal("1234567890.123456789");
+        assertThat(coerceArgument(preciseValue, "arg", BigDecimal.class, null)).isEqualTo(preciseValue);
+    }
+
+    @Test
+    void coerce_argument_rejects_fractional_value_for_integer_types() {
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> coerceArgument(1.5, "arg", long.class, null))
+                .withMessageContaining("has non-integer value");
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> coerceArgument(1.5, "arg", BigInteger.class, null))
+                .withMessageContaining("has non-integer value");
     }
 
     private static class TestTool {

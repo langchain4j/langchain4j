@@ -12,6 +12,8 @@ import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.http.client.HttpClientBuilderLoader;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.log.LoggingHttpClient;
+import dev.langchain4j.model.openai.internal.audio.texttospeech.OpenAiTextToSpeechRequest;
+import dev.langchain4j.model.openai.internal.audio.texttospeech.OpenAiTextToSpeechResponse;
 import dev.langchain4j.model.openai.internal.audio.transcription.AudioFile;
 import dev.langchain4j.model.openai.internal.audio.transcription.OpenAiAudioTranscriptionRequest;
 import dev.langchain4j.model.openai.internal.audio.transcription.OpenAiAudioTranscriptionResponse;
@@ -275,6 +277,23 @@ public class DefaultOpenAiClient extends OpenAiClient {
         }
 
         return new RequestExecutor<>(httpClient, httpRequestBuilder.build(), OpenAiAudioTranscriptionResponse.class);
+    }
+
+    @Override
+    public SyncOrAsync<OpenAiTextToSpeechResponse> textToSpeech(OpenAiTextToSpeechRequest request) {
+        HttpRequest httpRequest = HttpRequest.builder()
+                .method(POST)
+                .url(baseUrl, "audio/speech")
+                .addQueryParams(customQueryParams)
+                .addHeader("Content-Type", "application/json")
+                .addHeaders(buildRequestHeaders())
+                .body(Json.toJson(request))
+                .build();
+
+        return new RequestExecutor<>(
+                httpClient,
+                httpRequest,
+                response -> OpenAiTextToSpeechResponse.from(response.bodyBytes(), response.contentType()));
     }
 
     @Override

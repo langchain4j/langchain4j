@@ -1042,6 +1042,7 @@ ToolExecutionRequest request = toolExecution.request();
 String result = toolExecution.result(); // tool execution result as text
 List<Content> resultContents = toolExecution.resultContents(); // tool execution result as content list (may include images)
 Object resultObject = toolExecution.resultObject(); // actual value returned by the tool
+Map<String, Object> attributes = toolExecution.attributes(); // attributes of the tool execution result, see below
 ```
 
 In streaming mode, you can do so by specifying `onToolExecuted` callback:
@@ -1060,6 +1061,38 @@ tokenStream
     .onError(...)
     .start();
 ```
+
+### Tool Result Attributes
+
+A tool execution result can carry attributes: a `Map<String, Object>` that is **not** sent to the LLM.
+Attributes are useful for data that only your application needs, for example the ID of a record
+that the tool has created, or a widget that your UI should render.
+
+Attributes can be set by a custom `ToolExecutor`:
+```java
+ToolExecutor toolExecutor = (toolExecutionRequest, context) -> ToolExecutionResult.builder()
+        .resultText("Sunny, 22 degrees") // sent to the LLM
+        .attributes(Map.of("widget", weatherWidget)) // not sent to the LLM
+        .build();
+```
+For [MCP](/tutorials/mcp) tools, they originate from the `_meta` field of the tool call response.
+For those, the tool provider needs to be configured with
+[`returnToolResultAttributes(true)`](/tutorials/mcp#mcp-tool-result-metadata).
+
+Attributes can be read from the `ToolExecution` (see [Accessing Executed Tools](#accessing-executed-tools) above).
+They are also propagated into `ToolExecutionResultMessage.attributes()`,
+so they are stored in the [`ChatMemory`](/tutorials/chat-memory) together with the message.
+
+:::note
+If you use a `ChatMemoryStore` that persists messages, they are serialized to JSON.
+Make sure that all attribute values can be serialized to JSON and are useful once deserialized:
+- A value that cannot be serialized (for example an `InputStream`) will fail the whole store operation.
+- Values are deserialized as plain JSON types, so a custom object stored as an attribute
+comes back as a `Map` and can no longer be cast to its original type.
+
+Attributes are also stored for every message, so avoid putting large values there
+if the conversation is persisted.
+:::
 
 ### Specifying Tools Programmatically
 

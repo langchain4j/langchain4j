@@ -15,7 +15,7 @@ This integration communicates with a running [docling-serve](https://github.com/
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-document-parser-docling</artifactId>
-    <version>1.17.0-beta27</version>
+    <version>1.18.1-beta28</version>
 </dependency>
 ```
 
@@ -43,19 +43,49 @@ DoclingServeApi api = DoclingServeApi.builder()
         .baseUrl("http://localhost:5001")
         .build();
 
-DoclingDocumentParser parser = new DoclingDocumentParser(api);
+DoclingDocumentParser parser = DoclingDocumentParser.builder()
+        .doclingClient(api)
+        .build();
+
 Document document = parser.parse(inputStream);
 String text = document.text();
 ```
 
-To customize Docling processing, use the constructor that also accepts a [`ConvertDocumentOptions`](https://docling-project.github.io/docling-java/dev/docling-serve/serve-api/#requests-convertdocumentrequest):
+### Conversion Options
+
+To customize Docling processing, pass [`ConvertDocumentOptions`](https://docling-project.github.io/docling-java/dev/docling-serve/serve-api/#requests-convertdocumentrequest) to the builder:
 
 ```java
 ConvertDocumentOptions options = ConvertDocumentOptions.builder()
         // configure options here
         .build();
 
-DoclingDocumentParser parser = new DoclingDocumentParser(api, options);
+DoclingDocumentParser parser = DoclingDocumentParser.builder()
+        .doclingClient(api)
+        .options(options)
+        .build();
+```
+
+### Custom Text Extraction
+
+By default, the parser extracts markdown content from the Docling response. You can customize how text is extracted by providing a `Function<InBodyConvertDocumentResponse, String>` via the `documentTextExtractor` builder method. The function receives the full `InBodyConvertDocumentResponse`, giving access to the converted document in various formats (markdown, HTML, text, doctags, JSON), conversion errors, processing time, and status information.
+
+For example, to extract HTML content instead of markdown:
+
+```java
+DoclingDocumentParser parser = DoclingDocumentParser.builder()
+        .doclingClient(api)
+        .documentTextExtractor(response -> response.getDocument().getHtmlContent())
+        .build();
+```
+
+Or to extract plain text:
+
+```java
+DoclingDocumentParser parser = DoclingDocumentParser.builder()
+        .doclingClient(api)
+        .documentTextExtractor(response -> response.getDocument().getTextContent())
+        .build();
 ```
 
 ## APIs

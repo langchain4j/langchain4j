@@ -1,5 +1,14 @@
 package dev.langchain4j.service.output;
 
+import static dev.langchain4j.service.output.EnumSetOutputParserTest.Animal.BIRD;
+import static dev.langchain4j.service.output.EnumSetOutputParserTest.Animal.CAT;
+import static dev.langchain4j.service.output.EnumSetOutputParserTest.Animal.DOG;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import java.util.Iterator;
+import java.util.Set;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -7,20 +16,12 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
-import java.util.Iterator;
-import java.util.Set;
-import java.util.stream.Stream;
-
-import static dev.langchain4j.service.output.EnumSetOutputParserTest.Animal.BIRD;
-import static dev.langchain4j.service.output.EnumSetOutputParserTest.Animal.CAT;
-import static dev.langchain4j.service.output.EnumSetOutputParserTest.Animal.DOG;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-
 class EnumSetOutputParserTest {
 
     enum Animal {
-        CAT, DOG, BIRD
+        CAT,
+        DOG,
+        BIRD
     }
 
     @ParameterizedTest
@@ -54,8 +55,13 @@ class EnumSetOutputParserTest {
                 Arguments.of("{\"values\":[\"CAT\"]}", Set.of(CAT)),
                 Arguments.of("{\"values\":[\"CAT\", \"DOG\"]}", Set.of(CAT, DOG)),
                 Arguments.of("{\"values\":[]}", Set.of()),
-                Arguments.of("  {\"values\":[\"CAT\"]}  ", Set.of(CAT))
-        );
+                Arguments.of("  {\"values\":[\"CAT\"]}  ", Set.of(CAT)),
+
+                // Bare JSON array (a common shape returned by LLMs)
+                Arguments.of("[\"CAT\"]", Set.of(CAT)),
+                Arguments.of("[\"CAT\", \"DOG\"]", Set.of(CAT, DOG)),
+                Arguments.of("[]", Set.of()),
+                Arguments.of("  [\"CAT\", \"DOG\"]  ", Set.of(CAT, DOG)));
     }
 
     @ParameterizedTest
@@ -70,12 +76,7 @@ class EnumSetOutputParserTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {
-            "BANANA",
-            "{\"values\":[\"BANANA\"]}",
-            "{\"values\":\"CAT\"}",
-            "{\"banana\":[\"CAT\"]}"
-    })
+    @ValueSource(strings = {"BANANA", "{\"values\":[\"BANANA\"]}", "{\"values\":\"CAT\"}", "{\"banana\":[\"CAT\"]}"})
     void should_fail_to_parse_invalid_input(String text) {
 
         // given

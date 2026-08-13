@@ -55,6 +55,26 @@
           "old": "method dev.langchain4j.model.chat.request.ChatRequestParameters dev.langchain4j.model.anthropic.AnthropicStreamingChatModel::defaultRequestParameters()",
           "new": "method dev.langchain4j.model.anthropic.AnthropicChatRequestParameters dev.langchain4j.model.anthropic.AnthropicStreamingChatModel::defaultRequestParameters()",
           "justification": "Narrowing the return type to the Anthropic-specific AnthropicChatRequestParameters subtype is source- and binary-compatible"
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.model.batch.BatchPage",
+          "justification": "Core langchain4j batch type intentionally exposed by the BatchChatModel API implemented by AnthropicBatchChatModel"
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.model.batch.BatchPagination",
+          "justification": "Core langchain4j batch type intentionally exposed by the BatchChatModel API implemented by AnthropicBatchChatModel"
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.model.batch.BatchRequest",
+          "justification": "Core langchain4j batch type intentionally exposed by the BatchChatModel API implemented by AnthropicBatchChatModel"
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.model.batch.BatchResponse",
+          "justification": "Core langchain4j batch type intentionally exposed by the BatchChatModel API implemented by AnthropicBatchChatModel"
         }
       ]
     }

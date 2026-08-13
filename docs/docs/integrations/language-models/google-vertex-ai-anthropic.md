@@ -75,14 +75,14 @@ To get started, add the following dependencies to your project's `pom.xml`:
 <dependency>
   <groupId>dev.langchain4j</groupId>
   <artifactId>langchain4j-vertex-ai-anthropic</artifactId>
-  <version>1.17.0-beta27</version>
+  <version>1.18.1-beta28</version>
 </dependency>
 ```
 
 or project's `build.gradle`:
 
 ```groovy
-implementation 'dev.langchain4j:langchain4j-vertex-ai-anthropic:1.17.0-beta27'
+implementation 'dev.langchain4j:langchain4j-vertex-ai-anthropic:1.18.1-beta28'
 ```
 
 ### Try out an example code
@@ -186,7 +186,7 @@ You can learn about the models in the [Claude model documentation](https://docs.
 ```java
 ChatModel model = VertexAiAnthropicChatModel.builder()
     .project(PROJECT_ID)            // your Google Cloud project ID
-    .location(LOCATION)             // the region where AI inference should take place
+    .location(LOCATION)             // where inference takes place, see "Locations" below
     .modelName(MODEL_NAME)          // the Claude model used
     .maxTokens(4096)               // the maximum number of tokens to generate
     .temperature(0.7)              // temperature (between 0 and 1)
@@ -201,6 +201,30 @@ ChatModel model = VertexAiAnthropicChatModel.builder()
 ```
 
 The same parameters are also available on the streaming chat model.
+
+### Locations
+
+The `location` decides where your requests are processed. Vertex AI offers three kinds of locations,
+and the value you pass to `.location(...)` determines which one is used:
+
+| Location value | Kind | What it does |
+|---|---|---|
+| `"global"` | Global | Routes each request to any region with available capacity. Best availability, no pricing premium. Recommended unless you have data residency requirements. |
+| `"us"`, `"eu"` | Multi-region | Routes each request to a region within that geography, for data residency with high availability. |
+| `"us-east5"`, `"europe-west1"`, ... | Regional | Routes every request through one specific region. Required for single-region data residency and for provisioned throughput. |
+
+```java
+ChatModel model = VertexAiAnthropicChatModel.builder()
+    .project(PROJECT_ID)
+    .location("global")
+    .modelName(MODEL_NAME)
+    .build();
+```
+
+Note that model availability differs per location, and that multi-region and regional locations carry
+a pricing premium over the global one. See
+[Global, multi-region, and regional endpoints](https://platform.claude.com/docs/en/build-with-claude/claude-on-vertex-ai#global-multi-region-and-regional-endpoints)
+for details.
 
 ## More examples
 

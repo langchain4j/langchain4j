@@ -1,6 +1,7 @@
 package dev.langchain4j.model.google.genai;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -13,10 +14,13 @@ import com.google.genai.types.BatchJob;
 import com.google.genai.types.JobState;
 import com.google.genai.types.JobState.Known;
 import com.google.genai.types.ListBatchJobsConfig;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.batch.BatchPage;
 import dev.langchain4j.model.batch.BatchPagination;
+import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import java.lang.reflect.Field;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
@@ -60,5 +64,25 @@ class GoogleGenAiBatchChatModelTest {
         assertThat(response.batches()).hasSize(1);
         assertThat(response.batches().get(0).batchId()).isEqualTo("batches/1");
         assertThat(response.nextPageToken()).isEqualTo("token-123");
+    }
+
+    @Test
+    void should_invoke_generate_content_config_customizer_when_building_the_request() {
+        RuntimeException fromCustomizer = new RuntimeException("customizer invoked");
+        GoogleGenAiBatchChatModel batchModel = GoogleGenAiBatchChatModel.builder()
+                .apiKey("test-key")
+                .modelName("gemini-2.5-flash")
+                .generateContentConfigCustomizer(config -> {
+                    throw fromCustomizer;
+                })
+                .build();
+
+        // customizer runs while assembling the inlined request, before any network access
+        assertThatThrownBy(() -> batchModel.submit(
+                        "test-batch",
+                        List.of(ChatRequest.builder()
+                                .messages(UserMessage.from("hello"))
+                                .build())))
+                .isSameAs(fromCustomizer);
     }
 }

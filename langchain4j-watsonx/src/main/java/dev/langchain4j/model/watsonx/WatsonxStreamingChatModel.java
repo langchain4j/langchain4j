@@ -1,39 +1,11 @@
 package dev.langchain4j.model.watsonx;
 
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
-import static dev.langchain4j.model.ModelProvider.WATSONX;
-import static java.util.Objects.nonNull;
-import static java.util.stream.Collectors.toCollection;
-
-import com.ibm.watsonx.ai.chat.ChatHandler;
-import com.ibm.watsonx.ai.chat.ChatResponse.ResultChoice;
-import com.ibm.watsonx.ai.chat.model.ChatMessage;
-import com.ibm.watsonx.ai.chat.model.ChatUsage;
-import com.ibm.watsonx.ai.chat.model.CompletedToolCall;
-import com.ibm.watsonx.ai.chat.model.PartialChatResponse;
-import com.ibm.watsonx.ai.chat.model.PartialToolCall;
-import com.ibm.watsonx.ai.chat.model.Tool;
-import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.exception.ContentFilteredException;
-import dev.langchain4j.model.ModelProvider;
-import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.StreamingChatModel;
-import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.chat.request.ChatRequestParameters;
-import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
-import dev.langchain4j.model.output.FinishReason;
-import dev.langchain4j.model.output.TokenUsage;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
 
 /**
- * A {@link StreamingChatModel} implementation that integrates IBM watsonx.ai with LangChain4j.
+ * A {@link StreamingChatModel} implementation that integrates IBM watsonx.ai foundation models with LangChain4j.
  * <p>
  * <b>Example usage:</b>
  *
@@ -43,7 +15,7 @@ import java.util.Set;
  *     .baseUrl("https://...") // or use CloudRegion
  *     .apiKey("...")
  *     .projectId("...")
- *     .modelName("ibm/granite-3-3-8b-instruct")
+ *     .modelName("ibm/granite-4-h-small")
  *     .maxOutputTokens(0)
  *     .temperature(0.7)
  *     .build();
@@ -58,124 +30,7 @@ public class WatsonxStreamingChatModel extends WatsonxChat implements StreamingC
 
     @Override
     public void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
-
-        validate(chatRequest.parameters());
-
-        List<ToolSpecification> toolSpecifications = getOrDefault(
-                chatRequest.parameters().toolSpecifications(), defaultRequestParameters.toolSpecifications());
-
-        List<ChatMessage> messages =
-                chatRequest.messages().stream().map(Converter::toChatMessage).collect(toCollection(ArrayList::new));
-
-        List<Tool> tools = nonNull(toolSpecifications) && toolSpecifications.size() > 0
-                ? toolSpecifications.stream().map(Converter::toTool).toList()
-                : null;
-
-        String deploymentId = null;
-        var watsonxChatRequestBuilder = com.ibm.watsonx.ai.chat.ChatRequest.builder();
-
-        if (chatRequest.parameters() instanceof WatsonxChatRequestParameters wcrp) {
-            deploymentId = wcrp.deploymentId();
-            if (nonNull(wcrp.thinking())) watsonxChatRequestBuilder.thinking(wcrp.thinking());
-        }
-
-        var parameters = Converter.toChatParameters(chatRequest.parameters());
-        var watsonxChatRequest = watsonxChatRequestBuilder
-                .messages(messages)
-                .tools(tools)
-                .parameters(parameters)
-                .deploymentId(deploymentId)
-                .build();
-
-        chatProvider.chatStreaming(watsonxChatRequest, new ChatHandler() {
-            @Override
-            public void onCompleteResponse(com.ibm.watsonx.ai.chat.ChatResponse completeResponse) {
-
-                ResultChoice choice = completeResponse.choices().get(0);
-                FinishReason finishReason = Converter.toFinishReason(choice.finishReason());
-                ChatUsage completeUsage = completeResponse.usage();
-                TokenUsage tokenUsage = completeUsage != null
-                        ? new TokenUsage(
-                                completeUsage.promptTokens(),
-                                completeUsage.completionTokens(),
-                                completeUsage.totalTokens())
-                        : null;
-
-                var assistantMessage = completeResponse.toAssistantMessage();
-                var aiMessage = AiMessage.builder();
-
-                if (isNotNullOrBlank(assistantMessage.refusal()))
-                    handler.onError(new ContentFilteredException(assistantMessage.refusal()));
-
-                if (nonNull(assistantMessage.toolCalls())) {
-                    aiMessage.toolExecutionRequests(assistantMessage.toolCalls().stream()
-                            .map(Converter::toToolExecutionRequest)
-                            .toList());
-                }
-
-                aiMessage.thinking(assistantMessage.thinking());
-                aiMessage.text(assistantMessage.content());
-
-                ChatResponse chatResponse = ChatResponse.builder()
-                        .aiMessage(aiMessage.build())
-                        .metadata(WatsonxChatResponseMetadata.builder()
-                                .created(completeResponse.created())
-                                .modelVersion(completeResponse.modelVersion())
-                                .finishReason(finishReason)
-                                .id(completeResponse.id())
-                                .modelName(completeResponse.modelId())
-                                .tokenUsage(tokenUsage)
-                                .build())
-                        .build();
-
-                handler.onCompleteResponse(chatResponse);
-            }
-
-            @Override
-            public void onError(Throwable error) {
-                handler.onError(WatsonxExceptionMapper.INSTANCE.mapException(error));
-            }
-
-            @Override
-            public void onPartialResponse(String partialResponse, PartialChatResponse partialChatResponse) {
-                handler.onPartialResponse(partialResponse);
-            }
-
-            @Override
-            public void onCompleteToolCall(CompletedToolCall completedToolCall) {
-                handler.onCompleteToolCall(Converter.toCompleteToolCall(completedToolCall.toolCall()));
-            }
-
-            @Override
-            public void onPartialThinking(String partialThinking, PartialChatResponse partialChatResponse) {
-                handler.onPartialThinking(new PartialThinking(partialThinking));
-            }
-
-            @Override
-            public void onPartialToolCall(PartialToolCall partialToolCall) {
-                handler.onPartialToolCall(Converter.toPartialToolCall(partialToolCall));
-            }
-        });
-    }
-
-    @Override
-    public List<ChatModelListener> listeners() {
-        return listeners;
-    }
-
-    @Override
-    public ChatRequestParameters defaultRequestParameters() {
-        return this.defaultRequestParameters;
-    }
-
-    @Override
-    public Set<Capability> supportedCapabilities() {
-        return supportedCapabilities;
-    }
-
-    @Override
-    public ModelProvider provider() {
-        return WATSONX;
+        executeChatStreaming(chatRequest, handler);
     }
 
     /**
@@ -188,7 +43,7 @@ public class WatsonxStreamingChatModel extends WatsonxChat implements StreamingC
      *     .baseUrl("https://...") // or use CloudRegion
      *     .apiKey("...")
      *     .projectId("...")
-     *     .modelName("ibm/granite-3-8b-instruct")
+     *     .modelName("ibm/granite-4-h-small")
      *     .maxOutputTokens(0)
      *     .temperature(0.7)
      *     .build();

@@ -9,7 +9,8 @@ public class AsyncResponse<T> implements DelayedResponse<T> {
     private final CompletableFuture<T> futureResponse;
 
     public AsyncResponse(Supplier<T> responseSupplier) {
-        this.futureResponse = CompletableFuture.supplyAsync(responseSupplier, DefaultExecutorProvider.getDefaultExecutorService());
+        this.futureResponse =
+                CompletableFuture.supplyAsync(responseSupplier, DefaultExecutorProvider.getDefaultExecutorService());
     }
 
     @Override
@@ -19,7 +20,7 @@ public class AsyncResponse<T> implements DelayedResponse<T> {
 
     @Override
     public T blockingGet() {
-        return futureResponse.join();
+        return DelayedResponse.join(futureResponse);
     }
 
     @Override
