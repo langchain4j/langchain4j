@@ -36,8 +36,8 @@ class McpProtocolDtoTest {
             }
             """;
         McpDiscoverResult result = MAPPER.readValue(json, McpDiscoverResult.class);
-        assertThat(result.getSupportedVersions()).containsExactly("2026-07-28", "2025-11-25");
-        assertThat(result.getResultType()).isEqualTo("complete");
-        assertThat(result.getInstructions()).isEqualTo("Test server");
+        assertThat(result.supportedVersions()).containsExactly("2026-07-28", "2025-11-25");
+        assertThat(result.resultType()).isEqualTo("complete");
+        assertThat(result.instructions()).isEqualTo("Test server");
     }
 }

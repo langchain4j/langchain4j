@@ -1,66 +1,35 @@
 package dev.langchain4j.mcp.client;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.databind.JsonNode;
-import dev.langchain4j.mcp.protocol.McpImplementation;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import org.jspecify.annotations.Nullable;
 
 /**
- * Corresponds to the {@code DiscoverResult} type from the MCP schema.
+ * What an MCP server reports about itself when the client connects to it, using the
+ * {@code server/discover} request of MCP protocol version 2026-07-28 and later.
+ * It is delivered to {@link McpClientListener#afterServerDiscover(McpCallContext, McpDiscoverResult)}.
+ *
+ * @param supportedVersions the protocol versions the server can speak, never {@code null}
+ * @param capabilities the optional protocol features the server offers, such as {@code tools}
+ *                     or {@code resources}, as a tree of nested maps; never {@code null},
+ *                     but empty for a server that offers none
+ * @param serverInfo which server this is, if it says
+ * @param instructions a hint from the server on how it is meant to be used, if it provides one
+ * @param resultType how the server answered; {@code "complete"} for an ordinary answer
  */
-public class McpDiscoverResult {
+public record McpDiscoverResult(
+        List<String> supportedVersions,
+        Map<String, Object> capabilities,
+        @Nullable McpServerInfo serverInfo,
+        @Nullable String instructions,
+        @Nullable String resultType) {
 
-    private List<String> supportedVersions;
-    private JsonNode capabilities;
-
-    @JsonInclude(JsonInclude.Include.NON_NULL)
-    private McpImplementation serverInfo;
-
-    @JsonInclude(JsonInclude.Include.NON_NULL)
-    private String instructions;
-
-    @JsonInclude(JsonInclude.Include.NON_NULL)
-    private String resultType;
-
-    public McpDiscoverResult() {}
-
-    public List<String> getSupportedVersions() {
-        return supportedVersions;
-    }
-
-    public void setSupportedVersions(List<String> supportedVersions) {
-        this.supportedVersions = supportedVersions;
-    }
-
-    public JsonNode getCapabilities() {
-        return capabilities;
-    }
-
-    public void setCapabilities(JsonNode capabilities) {
-        this.capabilities = capabilities;
-    }
-
-    public McpImplementation getServerInfo() {
-        return serverInfo;
-    }
-
-    public void setServerInfo(McpImplementation serverInfo) {
-        this.serverInfo = serverInfo;
-    }
-
-    public String getInstructions() {
-        return instructions;
-    }
-
-    public void setInstructions(String instructions) {
-        this.instructions = instructions;
-    }
-
-    public String getResultType() {
-        return resultType;
-    }
-
-    public void setResultType(String resultType) {
-        this.resultType = resultType;
+    public McpDiscoverResult {
+        supportedVersions =
+                supportedVersions == null ? List.of() : Collections.unmodifiableList(new ArrayList<>(supportedVersions));
+        capabilities = capabilities == null ? Map.of() : Collections.unmodifiableMap(new LinkedHashMap<>(capabilities));
     }
 }

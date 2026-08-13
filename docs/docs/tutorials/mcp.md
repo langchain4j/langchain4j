@@ -132,12 +132,16 @@ McpClient mcpClient = DefaultMcpClient.builder()
 
 Detection costs one extra round trip when the client starts: it sends a `server/discover`
 request, and treats the server as a legacy server if the answer is an error or does not
-arrive within `protocolDetectionTimeout` (5 seconds by default).
+arrive within `protocolDetectionTimeout`. That timeout defaults to `initializationTimeout`
+(30 seconds), because a server started as a subprocess needs time to boot before it can
+answer anything, and giving up too early would make a modern server look like a legacy one.
+A fallback caused by silence rather than by an error is logged as a warning, since it is the
+case where the server may have been misjudged.
 
 ```java
 McpClient mcpClient = DefaultMcpClient.builder()
     .transport(transport)
-    .protocolDetectionTimeout(Duration.ofSeconds(10)) // for servers that are slow to start up
+    .protocolDetectionTimeout(Duration.ofSeconds(5)) // servers you know answer quickly
     .build();
 ```
 

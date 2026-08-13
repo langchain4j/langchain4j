@@ -815,6 +815,25 @@ public class DefaultMcpClientTest {
     }
 
     @Test
+    public void protocol_detection_falls_back_to_the_initialization_timeout() {
+        McpTransport transport = getMinimalMcpTransportMock();
+        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
+                .thenAnswer(invocation -> new CompletableFuture<>());
+
+        long start = System.currentTimeMillis();
+        DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .initializationTimeout(java.time.Duration.ofMillis(200))
+                .build();
+        long elapsed = System.currentTimeMillis() - start;
+
+        // without an explicit protocolDetectionTimeout the detection request must not impose a
+        // timeout of its own: a slow-to-boot server would otherwise be misdetected as legacy
+        assertThat(client.isModernProtocol()).isFalse();
+        assertThat(elapsed).isLessThan(2_000);
+    }
+
+    @Test
     public void explicit_protocol_version_skips_the_detection_request() {
         McpTransport transport = getMinimalMcpTransportMock();
 

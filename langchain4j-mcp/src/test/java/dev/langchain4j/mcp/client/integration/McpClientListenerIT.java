@@ -274,7 +274,7 @@ public class McpClientListenerIT {
         assertThat(testListener.serverDiscoverContext).isNotNull();
         assertThat(testListener.serverDiscoverContext.message().method).isEqualTo(McpClientMethod.SERVER_DISCOVER);
         assertThat(testListener.serverDiscoverResult).isNotNull();
-        assertThat(testListener.serverDiscoverResult.getCapabilities()).isNotNull();
+        assertThat(testListener.serverDiscoverResult.capabilities()).isNotNull();
 
         // afterInitialize should NOT be called for modern protocol
         assertThat(testListener.initializeAfterContext).isNull();

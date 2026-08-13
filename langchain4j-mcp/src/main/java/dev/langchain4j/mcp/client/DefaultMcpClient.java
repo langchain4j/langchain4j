@@ -89,13 +89,6 @@ public class DefaultMcpClient implements McpClient {
     static final String PROTOCOL_VERSION_LEGACY = "2025-11-25";
     static final String PROTOCOL_VERSION_LEGACY_OLD = "2024-11-05";
 
-    /**
-     * Protocol detection only has to survive one round trip, so it uses a much shorter
-     * timeout than a real initialization: a server that does not answer {@code server/discover}
-     * promptly is treated as a legacy server.
-     */
-    private static final Duration DEFAULT_PROTOCOL_DETECTION_TIMEOUT = Duration.ofSeconds(5);
-
     static final ObjectMapper OBJECT_MAPPER =
             new ObjectMapper().disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
 
@@ -160,8 +153,10 @@ public class DefaultMcpClient implements McpClient {
             clientVersion = getOrDefault(builder.clientVersion, "1.0");
             protocolVersion = builder.protocolVersion;
             initializationTimeout = getOrDefault(builder.initializationTimeout, Duration.ofSeconds(30));
-            protocolDetectionTimeout =
-                    getOrDefault(builder.protocolDetectionTimeout, DEFAULT_PROTOCOL_DETECTION_TIMEOUT);
+            // Defaults to the initialization timeout: a stdio server is usually a subprocess that
+            // has to boot before it can answer anything, and cutting the detection request short
+            // would misdetect it as a legacy server.
+            protocolDetectionTimeout = getOrDefault(builder.protocolDetectionTimeout, initializationTimeout);
             toolExecutionTimeout = getOrDefault(builder.toolExecutionTimeout, Duration.ofSeconds(60));
             resourcesTimeout = getOrDefault(builder.resourcesTimeout, Duration.ofSeconds(60));
             promptsTimeout = getOrDefault(builder.promptsTimeout, Duration.ofSeconds(60));
@@ -288,7 +283,18 @@ public class DefaultMcpClient implements McpClient {
             log.debug("Server does not support modern protocol, falling back to legacy initialize");
             initializeLegacy(legacyFallbackVersion);
         } catch (Exception e) {
-            log.debug("Modern initialization (server/discover) failed, falling back to legacy initialize");
+            if (e.getCause() instanceof TimeoutException) {
+                // Unlike an error answer, silence does not prove the server is a legacy one, so say
+                // so: a server that was merely slow is about to be used with the wrong protocol.
+                log.warn(
+                        "The server did not answer the {} protocol detection request within {}, so it is treated as a {} server. If it does support {}, raise protocolDetectionTimeout or set protocolVersion explicitly.",
+                        modernVersion,
+                        protocolDetectionTimeout,
+                        legacyFallbackVersion,
+                        modernVersion);
+            } else {
+                log.debug("Modern initialization (server/discover) failed, falling back to legacy initialize");
+            }
             try {
                 initializeLegacy(legacyFallbackVersion);
             } catch (RuntimeException legacyFailure) {
@@ -489,28 +495,35 @@ public class DefaultMcpClient implements McpClient {
         }
     }
 
+    @SuppressWarnings("unchecked")
     private static McpDiscoverResult toDiscoverResult(JsonNode response) {
         JsonNode result = response.path("result");
-        McpDiscoverResult discoverResult = new McpDiscoverResult();
+
+        McpServerInfo serverInfo = null;
         JsonNode serverInfoNode = result.path("_meta").path("io.modelcontextprotocol/serverInfo");
         if (!serverInfoNode.isMissingNode() && !serverInfoNode.isNull()) {
-            discoverResult.setServerInfo(OBJECT_MAPPER.convertValue(serverInfoNode, McpImplementation.class));
+            McpImplementation implementation = OBJECT_MAPPER.convertValue(serverInfoNode, McpImplementation.class);
+            serverInfo = new McpServerInfo(
+                    implementation.getName(), implementation.getVersion(), implementation.getTitle());
         }
-        JsonNode capabilities = result.path("capabilities");
-        if (!capabilities.isMissingNode() && !capabilities.isNull()) {
-            discoverResult.setCapabilities(capabilities);
+
+        Map<String, Object> capabilities = Map.of();
+        JsonNode capabilitiesNode = result.path("capabilities");
+        if (capabilitiesNode.isObject()) {
+            capabilities = (Map<String, Object>) ToolExecutionHelper.toObject(capabilitiesNode);
         }
-        discoverResult.setInstructions(result.path("instructions").asText(null));
-        discoverResult.setResultType(result.path("resultType").asText(null));
-        JsonNode supportedVersions = result.path("supportedVersions");
-        if (supportedVersions.isArray()) {
-            List<String> versions = new ArrayList<>();
-            for (JsonNode v : supportedVersions) {
-                versions.add(v.asText());
-            }
-            discoverResult.setSupportedVersions(versions);
+
+        List<String> versions = new ArrayList<>();
+        for (JsonNode version : result.path("supportedVersions")) {
+            versions.add(version.asText());
         }
-        return discoverResult;
+
+        return new McpDiscoverResult(
+                versions,
+                capabilities,
+                serverInfo,
+                result.path("instructions").asText(null),
+                result.path("resultType").asText(null));
     }
 
     private static @Nullable Long toNullableLong(JsonNode node) {
@@ -1562,9 +1575,13 @@ public class DefaultMcpClient implements McpClient {
          * back to the {@code initialize} handshake.
          * <p>
          * This only applies while the protocol version is being detected, which is the case when
-         * no explicit {@link #protocolVersion(String)} is set. Detection is a single round trip,
-         * so this is much shorter than {@link #initializationTimeout(Duration)}: the default is
-         * 5 seconds. Raise it for servers that are slow to respond right after startup.
+         * no explicit {@link #protocolVersion(String)} is set. It defaults to
+         * {@link #initializationTimeout(Duration)}, because a server that is started as a
+         * subprocess needs time to boot before it can answer anything, and a detection request
+         * that gives up too early makes a modern server look like a legacy one.
+         * <p>
+         * Lower it if your servers answer quickly and you would rather not wait on one that
+         * ignores the request instead of rejecting it.
          */
         public Builder protocolDetectionTimeout(Duration protocolDetectionTimeout) {
             this.protocolDetectionTimeout = protocolDetectionTimeout;
