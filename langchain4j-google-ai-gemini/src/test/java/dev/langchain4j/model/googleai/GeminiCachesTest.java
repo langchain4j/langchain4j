@@ -61,6 +61,7 @@ class GeminiCachesTest {
             assertThat(sentBody.contents().get(0).role()).isEqualTo("user");
             assertThat(sentBody.contents().get(0).parts().get(0).text()).isEqualTo("Reusable document context.");
             assertThat(sentBody.ttl()).isEqualTo("300s");
+            assertThat(sentRequest.body()).doesNotContain("\"expireTime\"");
         }
 
         @Test
@@ -139,10 +140,12 @@ class GeminiCachesTest {
                     List.of(UserMessage.from("Reusable document context.")),
                     Instant.parse("2026-07-06T11:00:00Z"));
 
+            String requestBody = mockHttpClient.request().body();
+            assertThat(requestBody).contains("\"expireTime\"").doesNotContain("\"ttl\"");
+
             GeminiCreateCachedContentRequest sentBody =
-                    Json.fromJson(mockHttpClient.request().body(), GeminiCreateCachedContentRequest.class);
+                    Json.fromJson(requestBody, GeminiCreateCachedContentRequest.class);
             assertThat(sentBody.expireTime()).isEqualTo("2026-07-06T11:00:00Z");
-            assertThat(sentBody.ttl()).isNull();
         }
 
         @Test
@@ -154,6 +157,17 @@ class GeminiCachesTest {
                             "gemini-2.5-flash", List.of(UserMessage.from("Reusable document context.")), expireTime))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("expireTime");
+        }
+
+        @Test
+        void shouldThrowWhenTtlIsNull() {
+            GeminiCaches subject = createCaches(MockHttpClient.thatAlwaysResponds(jsonResponse(sampleCachedContent())));
+            Duration ttl = null;
+
+            assertThatThrownBy(() -> subject.createCache(
+                            "gemini-2.5-flash", List.of(UserMessage.from("Reusable document context.")), ttl))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("ttl");
         }
 
         @Test

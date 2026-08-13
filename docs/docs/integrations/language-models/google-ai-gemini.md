@@ -813,7 +813,7 @@ if (file.isActive()) {
 
 ## Context Caching
 
-The [context caching API](https://ai.google.dev/gemini-api/docs/caching) stores large, frequently reused context (a system instruction, long documents) on Google's servers once, so subsequent requests reference it by name instead of resending it, reducing input-token cost and latency.
+The [context caching API](https://ai.google.dev/gemini-api/docs/generate-content/caching) stores large, frequently reused context (a system instruction, long documents) on Google's servers once, so subsequent requests reference it by name instead of resending it, reducing input-token cost and latency.
 
 `GeminiCaches` manages the cache lifecycle (create / get / list / delete). The messages are cached using the same message mapping the chat models use, so you stay in the LangChain4j `ChatMessage` domain:
 
@@ -844,6 +844,8 @@ caches.getCache(cache.name());
 caches.listCaches();
 caches.deleteCache(cache.name());
 ```
+
+`createCache` has three forms for expiration: with no expiration argument it uses the API default (currently 1 hour); with a `Duration` it sets a relative time-to-live; and with an `Instant` it sets an absolute expiry time.
 
 > Note: explicit context caching requires a paid tier; it is not available on the free tier.
 

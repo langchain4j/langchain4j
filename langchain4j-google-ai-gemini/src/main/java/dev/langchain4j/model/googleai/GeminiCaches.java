@@ -23,7 +23,7 @@ import org.slf4j.Logger;
 
 /**
  * Service for creating and managing Gemini
- * <a href="https://ai.google.dev/gemini-api/docs/caching">context caches</a>.
+ * <a href="https://ai.google.dev/gemini-api/docs/generate-content/caching">context caches</a>.
  *
  * <p>Context caching stores large, frequently reused context (a system instruction, long documents,
  * PDFs) on Google's servers once, so subsequent requests can reference it by name instead of
@@ -56,7 +56,7 @@ public final class GeminiCaches {
 
     /**
      * Creates a context cache for the given model from the supplied messages, using the API's default
-     * expiration.
+     * expiration (currently 1 hour).
      *
      * @param modelName the model the cache is bound to (e.g. {@code "gemini-2.5-flash"})
      * @param messages  the messages to cache; a {@code SystemMessage} becomes the cached system
@@ -64,7 +64,9 @@ public final class GeminiCaches {
      * @return the created cache, whose {@link GeminiCachedContent#name()} is used to consume it
      */
     public GeminiCachedContent createCache(String modelName, List<ChatMessage> messages) {
-        return createCache(modelName, messages, (Duration) null);
+        ensureNotBlank(modelName, "modelName");
+        ensureNotEmpty(messages, "messages");
+        return geminiService.createCachedContent(toCreateRequest(modelName, messages, null, null));
     }
 
     /**
@@ -74,18 +76,15 @@ public final class GeminiCaches {
      * @param modelName the model the cache is bound to (e.g. {@code "gemini-2.5-flash"})
      * @param messages  the messages to cache; a {@code SystemMessage} becomes the cached system
      *                  instruction, the rest become cached contents
-     * @param ttl       the time-to-live for the cache (e.g. {@code Duration.ofHours(1)}); if
-     *                  {@code null}, the API default is used
+     * @param ttl       the relative time-to-live for the cache (e.g. {@code Duration.ofHours(1)})
      * @return the created cache, whose {@link GeminiCachedContent#name()} is used to consume it
      */
-    public GeminiCachedContent createCache(String modelName, List<ChatMessage> messages, @Nullable Duration ttl) {
+    public GeminiCachedContent createCache(String modelName, List<ChatMessage> messages, Duration ttl) {
         ensureNotBlank(modelName, "modelName");
         ensureNotEmpty(messages, "messages");
-        if (ttl != null) {
-            ensureTrue(!ttl.isNegative(), "ttl cannot be negative");
-        }
-        return geminiService.createCachedContent(
-                toCreateRequest(modelName, messages, ttl != null ? toTtlString(ttl) : null, null));
+        ensureNotNull(ttl, "ttl");
+        ensureTrue(!ttl.isNegative(), "ttl cannot be negative");
+        return geminiService.createCachedContent(toCreateRequest(modelName, messages, toTtlString(ttl), null));
     }
 
     /**
