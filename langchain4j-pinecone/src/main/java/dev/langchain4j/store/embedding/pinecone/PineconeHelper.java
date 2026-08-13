@@ -24,6 +24,9 @@ class PineconeHelper {
         Map<String, Object> metadataMap = new HashMap<>(filedsMap.size() - 1);
         for (Map.Entry<String, Value> entry : filedsMap.entrySet()) {
             String key = entry.getKey();
+            if (key.equals(metadataTextKey)) {
+                continue;
+            }
             Value value = entry.getValue();
 
             if (value.hasNumberValue()) {
