@@ -6,6 +6,7 @@ import static dev.langchain4j.service.AiServicesWithToolSearchToolIT.containsToo
 import static dev.langchain4j.service.StreamingAiServicesWithToolsIT.TemperatureUnit.CELSIUS;
 import static dev.langchain4j.service.StreamingAiServicesWithToolsIT.TransactionService.EXPECTED_SPECIFICATION;
 import static dev.langchain4j.service.StreamingAiServicesWithToolsIT.WeatherService.TEMPERATURE;
+import static dev.langchain4j.service.tool.ToolExecutionResult.from;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.argThat;
@@ -50,6 +51,7 @@ import dev.langchain4j.service.tool.ToolArgumentsErrorHandler;
 import dev.langchain4j.service.tool.ToolErrorHandlerResult;
 import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
+import dev.langchain4j.service.tool.ToolExecutionResult;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProvider;
 import dev.langchain4j.service.tool.ToolProviderRequest;
@@ -558,8 +560,7 @@ class StreamingAiServicesWithToolsIT {
         assertThat(response.aiMessage().text()).contains("11.1");
 
         // then
-        verify(toolExecutor).executeWithContext(any(), any(InvocationContext.class));
-        verify(toolExecutor).execute(any(), any(Object.class));
+        verify(toolExecutor).execute(any(), any(InvocationContext.class));
         verifyNoMoreInteractions(toolExecutor);
 
         // then
@@ -586,14 +587,14 @@ class StreamingAiServicesWithToolsIT {
         private final TransactionService transactionService = new TransactionService();
 
         @Override
-        public String execute(ToolExecutionRequest request, Object memoryId) {
+        public ToolExecutionResult execute(ToolExecutionRequest request, InvocationContext context) {
 
             Map<String, Object> arguments = toMap(request.arguments());
             String transactionId = arguments.get("arg0").toString();
 
             Double transactionAmount = transactionService.getTransactionAmount(transactionId);
 
-            return transactionAmount.toString();
+            return ToolExecutionResult.from(transactionAmount.toString());
         }
     }
 
@@ -1463,7 +1464,7 @@ class StreamingAiServicesWithToolsIT {
                         .description("Gets the weather for a city")
                         .build();
                 return ToolProviderResult.builder()
-                        .add(getWeather, (req, memoryId) -> "sunny")
+                        .add(getWeather, (req, memoryId) -> from("sunny"))
                         .build();
             }
         });
@@ -1476,7 +1477,7 @@ class StreamingAiServicesWithToolsIT {
                         .description("Gets the current time")
                         .build();
                 return ToolProviderResult.builder()
-                        .add(getTime, (req, memoryId) -> "12:00")
+                        .add(getTime, (req, memoryId) -> from("12:00"))
                         .build();
             }
 
@@ -1541,14 +1542,14 @@ class StreamingAiServicesWithToolsIT {
                                 .name("getWeather")
                                 .description("Gets the weather")
                                 .build(),
-                        (req, memoryId) -> "sunny");
+                        (req, memoryId) -> from("sunny"));
                 if (call >= 2) {
                     builder.add(
                             ToolSpecification.builder()
                                     .name("getTime")
                                     .description("Gets the time")
                                     .build(),
-                            (req, memoryId) -> "12:00");
+                            (req, memoryId) -> from("12:00"));
                 }
                 return builder.build();
             }
@@ -1619,7 +1620,7 @@ class StreamingAiServicesWithToolsIT {
                                 .name("getWeather")
                                 .description("Gets the weather")
                                 .build(),
-                        (req, memoryId) -> "sunny");
+                        (req, memoryId) -> from("sunny"));
                 if (call == 1) {
                     // Only returned on first call
                     builder.add(
@@ -1627,7 +1628,7 @@ class StreamingAiServicesWithToolsIT {
                                     .name("getTime")
                                     .description("Gets the time")
                                     .build(),
-                            (req, memoryId) -> "12:00");
+                            (req, memoryId) -> from("12:00"));
                 }
                 return builder.build();
             }

@@ -6,7 +6,6 @@ import static dev.langchain4j.mcp.client.integration.McpServerHelper.skipTestsIf
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.mcp.McpToolProvider;
 import dev.langchain4j.mcp.client.DefaultMcpClient;
 import dev.langchain4j.mcp.client.McpClient;
@@ -66,11 +65,13 @@ public class McpToolSpecificationMappingIT {
                 .isEqualTo("ECHOES A STRING");
         ToolExecutor echoStringExecutor = toolProviderResult.toolExecutorByName("myprefix_echoString");
         assertThat(echoStringExecutor).isNotNull();
-        String result = echoStringExecutor.execute(
-                ToolExecutionRequest.builder()
-                        .arguments("{\"input\": \"hello\"}")
-                        .build(),
-                null);
+        String result = echoStringExecutor
+                .execute(
+                        ToolExecutionRequest.builder()
+                                .arguments("{\"input\": \"hello\"}")
+                                .build(),
+                        null)
+                .resultText();
         assertThat(result).isEqualTo("hello");
     }
 

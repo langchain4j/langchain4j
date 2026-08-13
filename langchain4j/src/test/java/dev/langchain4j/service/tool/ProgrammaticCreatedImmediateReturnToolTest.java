@@ -27,9 +27,9 @@ public class ProgrammaticCreatedImmediateReturnToolTest {
                 .description("Performs calculation")
                 .build();
 
-        ToolExecutor executor = (toolExecutionRequest, memoryId) -> {
+        ToolExecutor executor = (toolExecutionRequest, context) -> {
             toolExecuted.set(true);
-            return "4";
+            return ToolExecutionResult.from("4");
         };
 
         // Mock model that tracks how many times it's called
@@ -76,9 +76,9 @@ public class ProgrammaticCreatedImmediateReturnToolTest {
                 .description("Performs calculation")
                 .build();
 
-        ToolExecutor executor = (toolExecutionRequest, memoryId) -> {
+        ToolExecutor executor = (toolExecutionRequest, context) -> {
             toolExecuted.set(true);
-            return "4";
+            return ToolExecutionResult.from("4");
         };
 
         // Mock model that tracks calls and returns different responses

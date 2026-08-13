@@ -14,7 +14,7 @@ class ActivateSkillToolExecutorTest {
     void should_throw_ToolExecutionException_when_required_argument_value_is_null() {
         ActivateSkillToolExecutor executor = executor(false);
 
-        assertThatThrownBy(() -> executor.executeWithContext(requestWithRawArguments("{\"skill_name\": null}"), null))
+        assertThatThrownBy(() -> executor.execute(requestWithRawArguments("{\"skill_name\": null}"), null))
                 .isInstanceOf(ToolExecutionException.class)
                 .hasMessageContaining("Missing required tool argument");
     }
@@ -23,7 +23,7 @@ class ActivateSkillToolExecutorTest {
     void should_throw_ToolArgumentsException_when_required_argument_value_is_null() {
         ActivateSkillToolExecutor executor = executor(true);
 
-        assertThatThrownBy(() -> executor.executeWithContext(requestWithRawArguments("{\"skill_name\": null}"), null))
+        assertThatThrownBy(() -> executor.execute(requestWithRawArguments("{\"skill_name\": null}"), null))
                 .isInstanceOf(ToolArgumentsException.class)
                 .hasMessageContaining("Missing required tool argument");
     }
@@ -32,7 +32,7 @@ class ActivateSkillToolExecutorTest {
     void should_throw_ToolExecutionException_when_required_argument_is_missing() {
         ActivateSkillToolExecutor executor = executor(false);
 
-        assertThatThrownBy(() -> executor.executeWithContext(requestWithRawArguments("{}"), null))
+        assertThatThrownBy(() -> executor.execute(requestWithRawArguments("{}"), null))
                 .isInstanceOf(ToolExecutionException.class)
                 .hasMessageContaining("Missing required tool argument");
     }

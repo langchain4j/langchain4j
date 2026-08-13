@@ -24,7 +24,7 @@ class RunShellCommandToolExecutor implements ToolExecutor {
     }
 
     @Override
-    public ToolExecutionResult executeWithContext(ToolExecutionRequest request, InvocationContext context) {
+    public ToolExecutionResult execute(ToolExecutionRequest request, InvocationContext context) {
 
         Map<String, Object> arguments = parseArguments(request.arguments());
         String command = getRequiredArgument(config.commandParameterName, arguments);
@@ -142,10 +142,5 @@ class RunShellCommandToolExecutor implements ToolExecutor {
         if (text.length() <= maxChars) return text;
         return "[truncated: showing last " + maxChars + " of " + text.length() + " chars]\n"
                 + text.substring(text.length() - maxChars);
-    }
-
-    @Override
-    public String execute(ToolExecutionRequest request, Object memoryId) {
-        throw new IllegalStateException("executeWithContext must be called instead");
     }
 }

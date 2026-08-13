@@ -58,14 +58,16 @@ public class McpToolNameMappingIT {
 
         ToolExecutor echoStringExecutor = toolProviderResult.toolExecutorByName("myprefix_echoString");
         assertThat(echoStringExecutor).isNotNull();
-        String result = echoStringExecutor.execute(
-                ToolExecutionRequest.builder()
-                        // note that we don't need to call set the "name" here because this executor was created
-                        // specifically for the tool logically named "myprefix_echoString", physically named
-                        // "echoString"
-                        .arguments("{\"input\": \"hello\"}")
-                        .build(),
-                null);
+        String result = echoStringExecutor
+                .execute(
+                        ToolExecutionRequest.builder()
+                                // note that we don't need to call set the "name" here because this executor was created
+                                // specifically for the tool logically named "myprefix_echoString", physically named
+                                // "echoString"
+                                .arguments("{\"input\": \"hello\"}")
+                                .build(),
+                        null)
+                .resultText();
         assertThat(result).isEqualTo("hello");
     }
 

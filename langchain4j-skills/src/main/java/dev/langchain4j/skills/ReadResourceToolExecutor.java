@@ -1,15 +1,14 @@
 package dev.langchain4j.skills;
 
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.invocation.InvocationContext;
-import dev.langchain4j.service.tool.ToolExecutionResult;
-
-import java.util.List;
-import java.util.Map;
-
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.util.stream.Collectors.joining;
+
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.invocation.InvocationContext;
+import dev.langchain4j.service.tool.ToolExecutionResult;
+import java.util.List;
+import java.util.Map;
 
 class ReadResourceToolExecutor extends AbstractSkillToolExecutor {
 
@@ -23,7 +22,7 @@ class ReadResourceToolExecutor extends AbstractSkillToolExecutor {
     }
 
     @Override
-    public ToolExecutionResult executeWithContext(ToolExecutionRequest request, InvocationContext context) {
+    public ToolExecutionResult execute(ToolExecutionRequest request, InvocationContext context) {
 
         Map<String, Object> arguments = parseArguments(request.arguments());
         String skillName = getRequiredArgument(config.skillNameParameterName, arguments);
@@ -41,8 +40,8 @@ class ReadResourceToolExecutor extends AbstractSkillToolExecutor {
             String availableResources = skill.resources().stream()
                     .map(resource -> "'" + resource.relativePath() + "'")
                     .collect(joining(", "));
-            throwException(("There is no resource for skill '%s' with the path '%s'. " +
-                    "Available resources: [%s]").formatted(skillName, relativePath, availableResources));
+            throwException(("There is no resource for skill '%s' with the path '%s'. " + "Available resources: [%s]")
+                    .formatted(skillName, relativePath, availableResources));
         }
 
         SkillResource resource = resources.get(0);
