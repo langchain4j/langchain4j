@@ -80,6 +80,22 @@ public class DefaultMcpClient implements McpClient {
     private static final Logger log = LoggerFactory.getLogger(DefaultMcpClient.class);
     private static final int DEFAULT_MULTI_ROUND_TRIP_MAX_RETRIES = 3;
 
+    /**
+     * The first MCP protocol version that conveys version, identity and capabilities as
+     * per-request metadata instead of an {@code initialize} handshake.
+     */
+    static final String PROTOCOL_VERSION_MODERN = "2026-07-28";
+
+    static final String PROTOCOL_VERSION_LEGACY = "2025-11-25";
+    static final String PROTOCOL_VERSION_LEGACY_OLD = "2024-11-05";
+
+    /**
+     * Protocol detection only has to survive one round trip, so it uses a much shorter
+     * timeout than a real initialization: a server that does not answer {@code server/discover}
+     * promptly is treated as a legacy server.
+     */
+    private static final Duration DEFAULT_PROTOCOL_DETECTION_TIMEOUT = Duration.ofSeconds(5);
+
     static final ObjectMapper OBJECT_MAPPER =
             new ObjectMapper().disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
 
@@ -91,6 +107,7 @@ public class DefaultMcpClient implements McpClient {
     private final String protocolVersion;
     private volatile boolean modernProtocol;
     private final Duration initializationTimeout;
+    private final Duration protocolDetectionTimeout;
     private final Duration toolExecutionTimeout;
     private final Duration resourcesTimeout;
     private final Duration promptsTimeout;
@@ -129,9 +146,9 @@ public class DefaultMcpClient implements McpClient {
     private final McpToolResultExtractor toolResultExtractor;
     private volatile @Nullable McpInitializeResult initializeResult;
     private final int multiRoundTripMaxRetries;
-    private final Boolean subscribeToToolListChanges;
-    private final Boolean subscribeToPromptListChanges;
-    private final Boolean subscribeToResourceListChanges;
+    private final boolean subscribeToToolListChanges;
+    private final boolean subscribeToPromptListChanges;
+    private final boolean subscribeToResourceListChanges;
     private final Map<Long, CompletableFuture<JsonNode>> activeSubscriptions = new ConcurrentHashMap<>();
     private volatile CompletableFuture<JsonNode> listChangeSubscriptionFuture;
 
@@ -143,6 +160,8 @@ public class DefaultMcpClient implements McpClient {
             clientVersion = getOrDefault(builder.clientVersion, "1.0");
             protocolVersion = builder.protocolVersion;
             initializationTimeout = getOrDefault(builder.initializationTimeout, Duration.ofSeconds(30));
+            protocolDetectionTimeout =
+                    getOrDefault(builder.protocolDetectionTimeout, DEFAULT_PROTOCOL_DETECTION_TIMEOUT);
             toolExecutionTimeout = getOrDefault(builder.toolExecutionTimeout, Duration.ofSeconds(60));
             resourcesTimeout = getOrDefault(builder.resourcesTimeout, Duration.ofSeconds(60));
             promptsTimeout = getOrDefault(builder.promptsTimeout, Duration.ofSeconds(60));
@@ -244,10 +263,11 @@ public class DefaultMcpClient implements McpClient {
         String resolvedVersion = protocolVersion;
 
         if (resolvedVersion == null || resolvedVersion.isEmpty()) {
-            autoDetect("2026-07-28", "2025-11-25");
+            autoDetect(PROTOCOL_VERSION_MODERN, PROTOCOL_VERSION_LEGACY);
         } else if (isModernVersion(resolvedVersion)) {
             initializeModern(resolvedVersion, false);
-        } else if ("2025-11-25".equals(resolvedVersion) || "2024-11-05".equals(resolvedVersion)) {
+        } else if (PROTOCOL_VERSION_LEGACY.equals(resolvedVersion)
+                || PROTOCOL_VERSION_LEGACY_OLD.equals(resolvedVersion)) {
             initializeLegacy(resolvedVersion);
         } else {
             autoDetect(resolvedVersion, resolvedVersion);
@@ -269,7 +289,21 @@ public class DefaultMcpClient implements McpClient {
             initializeLegacy(legacyFallbackVersion);
         } catch (Exception e) {
             log.debug("Modern initialization (server/discover) failed, falling back to legacy initialize");
-            initializeLegacy(legacyFallbackVersion);
+            try {
+                initializeLegacy(legacyFallbackVersion);
+            } catch (RuntimeException legacyFailure) {
+                throw new RuntimeException(
+                        ("%s. The server answered neither the %s protocol detection request nor the %s initialization"
+                                        + " that followed it. If the server does not tolerate being sent a method it"
+                                        + " does not know, skip detection by setting the protocol version explicitly,"
+                                        + " for example .protocolVersion(\"%s\").")
+                                .formatted(
+                                        legacyFailure.getMessage(),
+                                        modernVersion,
+                                        legacyFallbackVersion,
+                                        legacyFallbackVersion),
+                        legacyFailure);
+            }
         }
     }
 
@@ -418,9 +452,11 @@ public class DefaultMcpClient implements McpClient {
             notifyListeners(l -> l.beforeServerDiscover(context));
         }
         applyMeta(request, context);
+        CompletableFuture<JsonNode> resultFuture = null;
         try {
-            CompletableFuture<JsonNode> resultFuture = transport.executeOperationWithResponse(context);
-            JsonNode response = resultFuture.get(initializationTimeout.toMillis(), TimeUnit.MILLISECONDS);
+            resultFuture = transport.executeOperationWithResponse(context);
+            Duration timeout = isProbe ? protocolDetectionTimeout : initializationTimeout;
+            JsonNode response = resultFuture.get(timeout.toMillis(), TimeUnit.MILLISECONDS);
             if (response.has("error")) {
                 JsonNode error = response.get("error");
                 throw new McpException(
@@ -443,6 +479,9 @@ public class DefaultMcpClient implements McpClient {
         } catch (Exception e) {
             if (!isProbe) {
                 notifyListeners(l -> l.onServerDiscoverError(context, e));
+            }
+            if (resultFuture != null) {
+                resultFuture.cancel(true);
             }
             throw new RuntimeException(e);
         } finally {
@@ -499,7 +538,7 @@ public class DefaultMcpClient implements McpClient {
     }
 
     private static boolean isModernVersion(String version) {
-        return version != null && version.compareTo("2026-07-28") >= 0;
+        return version != null && version.compareTo(PROTOCOL_VERSION_MODERN) >= 0;
     }
 
     public boolean isModernProtocol() {
@@ -903,11 +942,11 @@ public class DefaultMcpClient implements McpClient {
 
     @Override
     public void subscribeToResource(String uri) {
+        assertNotClosed();
         if (modernProtocol) {
             throw new UnsupportedOperationException(
                     "subscribeToResource is not supported with MCP 2026-07-28. Use subscribeToResources(List) instead.");
         }
-        assertNotClosed();
         if (onResourceUpdated == null) {
             log.warn(
                     "Subscribing to MCP resource '{}' but no onResourceUpdated callback was registered. The client will"
@@ -942,11 +981,11 @@ public class DefaultMcpClient implements McpClient {
 
     @Override
     public void unsubscribeFromResource(String uri) {
+        assertNotClosed();
         if (modernProtocol) {
             throw new UnsupportedOperationException(
                     "unsubscribeFromResource is not supported with MCP 2026-07-28. Use unsubscribeFromResources(long) instead.");
         }
-        assertNotClosed();
         long operationId = idGenerator.getAndIncrement();
         McpUnsubscribeResourceRequest operation = new McpUnsubscribeResourceRequest(operationId, uri);
         McpCallContext context = new McpCallContext(null, operation);
@@ -1287,7 +1326,7 @@ public class DefaultMcpClient implements McpClient {
     private void applyMeta(McpClientMessage message, McpCallContext context) {
         // For modern protocol, inject required _meta fields on every request and notification
         if (modernProtocol) {
-            String versionToAdvertise = protocolVersion != null ? protocolVersion : "2026-07-28";
+            String versionToAdvertise = protocolVersion != null ? protocolVersion : PROTOCOL_VERSION_MODERN;
             if (message instanceof McpClientRequest request) {
                 if (request.getParams() == null) {
                     request.setParams(new McpClientParams());
@@ -1341,6 +1380,10 @@ public class DefaultMcpClient implements McpClient {
     private Map<String, String> buildMcpParamHeaders(String toolName, ObjectNode arguments) {
         List<ToolSpecification> tools = toolListRefs.get();
         if (tools == null) {
+            log.warn(
+                    "Executing tool '{}' before the tool list is known, so no Mcp-Param headers can be sent."
+                            + " Call listTools() first if the server declares x-mcp-header parameters.",
+                    toolName);
             return null;
         }
         ToolSpecification spec = null;
@@ -1422,6 +1465,7 @@ public class DefaultMcpClient implements McpClient {
         private String clientVersion;
         private String protocolVersion;
         private Duration initializationTimeout;
+        private Duration protocolDetectionTimeout;
         private Duration toolExecutionTimeout;
         private Duration resourcesTimeout;
         private Duration pingTimeout;
@@ -1485,12 +1529,17 @@ public class DefaultMcpClient implements McpClient {
         }
 
         /**
-         * Sets the protocol version. If null or empty, the client will
-         * auto-detect the server's protocol version, preferring 2026-07-28
-         * over 2025-11-25. If explicitly set to "2026-07-28", modern
-         * protocol is forced. If set to "2025-11-25", legacy protocol
-         * is forced. Any other value triggers auto-detection but uses
-         * the given string when advertising the version to the server.
+         * Sets the protocol version. If null or empty (the default), the client detects the
+         * server's protocol version, preferring 2026-07-28 over 2025-11-25. If explicitly set
+         * to "2026-07-28", modern protocol is forced. If set to "2025-11-25", legacy protocol
+         * is forced. Any other value triggers detection but uses the given string when
+         * advertising the version to the server.
+         * <p>
+         * Detection costs one extra round trip at startup: the client sends {@code server/discover}
+         * and falls back to the legacy {@code initialize} handshake if the server answers with an
+         * error or does not answer within {@link #protocolDetectionTimeout(Duration)}. Setting the
+         * version explicitly skips the detection round trip entirely, which is also the way out if
+         * a server reacts badly to being sent a method it does not know.
          */
         public Builder protocolVersion(String protocolVersion) {
             this.protocolVersion = protocolVersion;
@@ -1503,6 +1552,22 @@ public class DefaultMcpClient implements McpClient {
          */
         public Builder initializationTimeout(Duration initializationTimeout) {
             this.initializationTimeout = initializationTimeout;
+            return this;
+        }
+
+        /**
+         * Sets how long the client waits for the server to answer the {@code server/discover}
+         * request that detects which protocol version the server speaks. A server that does not
+         * answer within this time is assumed to speak the legacy protocol, and the client falls
+         * back to the {@code initialize} handshake.
+         * <p>
+         * This only applies while the protocol version is being detected, which is the case when
+         * no explicit {@link #protocolVersion(String)} is set. Detection is a single round trip,
+         * so this is much shorter than {@link #initializationTimeout(Duration)}: the default is
+         * 5 seconds. Raise it for servers that are slow to respond right after startup.
+         */
+        public Builder protocolDetectionTimeout(Duration protocolDetectionTimeout) {
+            this.protocolDetectionTimeout = protocolDetectionTimeout;
             return this;
         }
 

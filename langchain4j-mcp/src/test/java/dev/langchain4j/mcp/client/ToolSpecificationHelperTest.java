@@ -1135,6 +1135,76 @@ class ToolSpecificationHelperTest {
     }
 
     @Test
+    void toolWithNonStringMcpHeaderIsExcluded() throws JsonProcessingException {
+        String text =
+                // language=json
+                """
+                [{
+                    "name": "bad_tool",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "tenant": {
+                          "type": "string",
+                          "x-mcp-header": 42
+                        }
+                      }
+                    }
+                }]
+                """;
+        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        List<ToolSpecification> tools = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
+        assertThat(tools).isEmpty();
+    }
+
+    @Test
+    void toolWithForbiddenTypeAmongMultipleMcpHeaderTypesIsExcluded() throws JsonProcessingException {
+        String text =
+                // language=json
+                """
+                [{
+                    "name": "bad_tool",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "threshold": {
+                          "type": ["number", "null"],
+                          "x-mcp-header": "Threshold"
+                        }
+                      }
+                    }
+                }]
+                """;
+        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        List<ToolSpecification> tools = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
+        assertThat(tools).isEmpty();
+    }
+
+    @Test
+    void nullableStringMcpHeaderIsAccepted() throws JsonProcessingException {
+        String text =
+                // language=json
+                """
+                [{
+                    "name": "good_tool",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "tenant": {
+                          "type": ["string", "null"],
+                          "x-mcp-header": "X-Tenant"
+                        }
+                      }
+                    }
+                }]
+                """;
+        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        List<ToolSpecification> tools = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
+        assertThat(tools).hasSize(1);
+        assertThat(tools.get(0).metadata().get(MCP_PARAM_HEADERS)).isEqualTo(Map.of("tenant", "X-Tenant"));
+    }
+
+    @Test
     void invalidToolDoesNotAffectValidTools() throws JsonProcessingException {
         String text =
                 // language=json

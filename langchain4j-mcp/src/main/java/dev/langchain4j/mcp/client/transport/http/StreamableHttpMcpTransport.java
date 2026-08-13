@@ -312,8 +312,14 @@ public class StreamableHttpMcpTransport implements McpTransport {
                                 && contentType.isPresent()
                                 && contentType.get().contains("text/event-stream")) {
                             // the server has started an SSE stream
-                            SseSubscriber subscriber =
-                                    new SseSubscriber(future, logResponses, operationHandler, trafficLog);
+                            SseSubscriber[] holder = new SseSubscriber[1];
+                            SseSubscriber subscriber = new SseSubscriber(
+                                    future,
+                                    logResponses,
+                                    operationHandler,
+                                    trafficLog,
+                                    () -> activeStreamSubscribers.remove(holder[0]));
+                            holder[0] = subscriber;
                             activeStreamSubscribers.add(subscriber);
                             return HttpResponse.BodySubscribers.fromLineSubscriber(subscriber);
                         } else {

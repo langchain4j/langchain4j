@@ -35,7 +35,8 @@ class SseSubscriber implements Flow.Subscriber<String> {
             CompletableFuture<JsonNode> future,
             boolean logResponses,
             McpOperationHandler operationHandler,
-            Logger logger) {
+            Logger logger,
+            Runnable onStreamEnd) {
         this.future = future;
         this.logResponses = logResponses;
         this.operationHandler = operationHandler;
@@ -43,7 +44,7 @@ class SseSubscriber implements Flow.Subscriber<String> {
         this.subsidiary = false;
         this.lastEventId = null;
         this.retryMs = null;
-        this.onStreamEnd = null;
+        this.onStreamEnd = onStreamEnd;
         // in a regular subscriber, we don't really need this information that the transport is closed
         this.transportClosed = new AtomicBoolean(false);
     }
@@ -115,13 +116,16 @@ class SseSubscriber implements Flow.Subscriber<String> {
 
     @Override
     public void onError(Throwable throwable) {
-        if (subsidiary && !transportClosed.get()) {
+        if (subsidiary) {
             logger.debug("Subsidiary SSE channel error", throwable);
-            if (onStreamEnd != null) {
+            if (onStreamEnd != null && !transportClosed.get()) {
                 onStreamEnd.run();
             }
         } else {
             future.completeExceptionally(throwable);
+            if (onStreamEnd != null) {
+                onStreamEnd.run();
+            }
         }
     }
 
@@ -134,6 +138,9 @@ class SseSubscriber implements Flow.Subscriber<String> {
             }
         } else {
             logger.debug("SSE channel closed");
+            if (onStreamEnd != null) {
+                onStreamEnd.run();
+            }
         }
     }
 }

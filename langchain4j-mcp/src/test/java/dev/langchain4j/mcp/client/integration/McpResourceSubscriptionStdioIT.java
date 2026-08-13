@@ -11,8 +11,19 @@ import java.time.Duration;
 import java.util.List;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 
 class McpResourceSubscriptionStdioIT extends McpResourceSubscriptionTestBase {
+
+    @Disabled("Requires a quarkus-mcp-server release with https://github.com/quarkiverse/quarkus-mcp-server/issues/925"
+            + " fixed: over stdio the server ignores the notifications/cancelled that unsubscribes."
+            + " The Streamable HTTP variant of this test is not affected and runs.")
+    @Test
+    @Override
+    public void unsubscribeStopsNotifications() {
+        super.unsubscribeStopsNotifications();
+    }
 
     @BeforeAll
     static void setup() {

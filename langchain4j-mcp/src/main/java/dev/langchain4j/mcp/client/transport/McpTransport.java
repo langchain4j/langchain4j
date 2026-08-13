@@ -84,6 +84,11 @@ public interface McpTransport extends Closeable {
      * Note: when using the legacy protocol (2025-11-25), the client always sends
      * {@code notifications/cancelled} regardless of this value, because the legacy
      * spec states that disconnection should not be interpreted as cancellation.
+     * <p>
+     * Defaults to {@code true}, which is the safe answer for a transport that shares a
+     * single channel; per-request-stream transports override it.
      */
-    boolean requiresCancellationNotification();
+    default boolean requiresCancellationNotification() {
+        return true;
+    }
 }

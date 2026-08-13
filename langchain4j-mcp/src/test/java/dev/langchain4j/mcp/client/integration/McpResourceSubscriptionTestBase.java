@@ -10,7 +10,6 @@ import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import org.awaitility.Awaitility;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 public abstract class McpResourceSubscriptionTestBase {
@@ -75,8 +74,6 @@ public abstract class McpResourceSubscriptionTestBase {
         mcpClient.unsubscribeFromResources(subscriptionId);
     }
 
-    @Disabled(
-            "Waiting for quarkus-mcp-server release with https://github.com/quarkiverse/quarkus-mcp-server/issues/925 fixed")
     @Test
     public void unsubscribeStopsNotifications() {
         updatedResourceUris.clear();

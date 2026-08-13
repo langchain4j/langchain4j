@@ -369,7 +369,8 @@ public class DefaultMcpClientTest {
     @Test
     public void should_use_custom_tool_result_extractor_for_timeout_fallback() {
         final McpTransport transport = getMinimalMcpTransportMock();
-        when(transport.executeOperationWithResponse(any(McpCallContext.class))).thenReturn(new CompletableFuture<>());
+        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
+                .thenAnswer(invocation -> new CompletableFuture<>());
 
         McpToolResultExtractor extractor = (content, isError) -> ToolExecutionResult.builder()
                 .resultText("custom-timeout:" + content.get(0).get("text").asText())
@@ -790,6 +791,41 @@ public class DefaultMcpClientTest {
         result.put("resultType", "complete");
         result.putArray("content").addObject().put("type", "text").put("text", text);
         return node;
+    }
+
+    @Test
+    public void silent_server_falls_back_to_legacy_within_the_protocol_detection_timeout() {
+        // a server that simply ignores the unknown server/discover request
+        McpTransport transport = getMinimalMcpTransportMock();
+        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
+                .thenAnswer(invocation -> new CompletableFuture<>());
+
+        long start = System.currentTimeMillis();
+        DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolDetectionTimeout(java.time.Duration.ofMillis(200))
+                .initializationTimeout(java.time.Duration.ofSeconds(30))
+                .build();
+        long elapsed = System.currentTimeMillis() - start;
+
+        assertThat(client.isModernProtocol()).isFalse();
+        verify(transport).initialize(any());
+        // the detection timeout has to bound the wait, not the much longer initialization timeout
+        assertThat(elapsed).isLessThan(5_000);
+    }
+
+    @Test
+    public void explicit_protocol_version_skips_the_detection_request() {
+        McpTransport transport = getMinimalMcpTransportMock();
+
+        DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion("2025-11-25")
+                .build();
+
+        assertThat(client.isModernProtocol()).isFalse();
+        verify(transport).initialize(any());
+        verify(transport, never()).executeOperationWithResponse(any(McpCallContext.class));
     }
 
     private static McpTransport getMinimalMcpTransportMock() {

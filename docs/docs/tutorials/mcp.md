@@ -130,6 +130,22 @@ McpClient mcpClient = DefaultMcpClient.builder()
     .build();
 ```
 
+Detection costs one extra round trip when the client starts: it sends a `server/discover`
+request, and treats the server as a legacy server if the answer is an error or does not
+arrive within `protocolDetectionTimeout` (5 seconds by default).
+
+```java
+McpClient mcpClient = DefaultMcpClient.builder()
+    .transport(transport)
+    .protocolDetectionTimeout(Duration.ofSeconds(10)) // for servers that are slow to start up
+    .build();
+```
+
+Setting `protocolVersion` explicitly skips detection altogether. That is worth doing when
+you already know which protocol version your server speaks, and it is also the way out if a
+server reacts badly to receiving a method it does not recognize: some older MCP server
+implementations terminate on an unknown request instead of answering with an error.
+
 ### MCP Tool Provider
 
 Finally, you create an MCP tool provider from the client:
@@ -266,6 +282,41 @@ The `title` field that exists directly in the MCP tool definition is exposed und
 that is retrieved from annotations - that one is exposed under the `McpToolMetadataKeys.ANNOTATION_TITLE` key.
 
 If the tool has icons, they are exposed under the `McpToolMetadataKeys.ICONS` key in the metadata map.
+
+### Tool parameters carried as HTTP headers
+
+With the 2026-07-28 protocol over Streamable HTTP, a server can ask for selected tool
+arguments to be sent as HTTP headers in addition to the request body, so that proxies and
+gateways can route or authorize a call without parsing it. The server marks such a parameter
+with `x-mcp-header` in the tool's input schema:
+
+```json
+{
+  "name": "query_database",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "tenant": { "type": "string", "x-mcp-header": "X-Tenant-Id" },
+      "sql": { "type": "string" }
+    }
+  }
+}
+```
+
+When the tool is called, the client sends the value of `tenant` both in the request body and
+in an `Mcp-Param-X-Tenant-Id` HTTP header. This happens automatically; there is nothing to
+configure. Values that are not safe to put in a header, for example ones containing non-ASCII
+characters, are Base64-encoded as the protocol requires.
+
+Only `string`, `integer` and `boolean` parameters may be marked this way, header names must be
+valid HTTP tokens, and the same header name may not be claimed twice. A tool whose definition
+breaks these rules is excluded from `listTools()` and a warning is logged, because the client
+cannot tell how such a call was meant to reach the server.
+
+The header names are read from the tool definitions, so the client needs to know the tool list
+before it can send them. If you call `executeTool()` on a client that has never listed tools,
+the headers are omitted and a warning is logged; call `listTools()` first. Tool providers do
+this on their own.
 
 ## Providing `_meta` fields
 

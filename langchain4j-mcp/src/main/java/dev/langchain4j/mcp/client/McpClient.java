@@ -88,7 +88,7 @@ public interface McpClient extends AutoCloseable {
      * @deprecated Use {@link #subscribeToResources(List)} for MCP 2026-07-28 and later.
      *             Throws {@link UnsupportedOperationException} when using the modern protocol.
      */
-    @Deprecated(since = "1.19.0")
+    @Deprecated(since = "1.19.0-beta29")
     void subscribeToResource(String uri);
 
     /**
@@ -97,7 +97,7 @@ public interface McpClient extends AutoCloseable {
      * @deprecated Use {@link #unsubscribeFromResources(long)} for MCP 2026-07-28 and later.
      *             Throws {@link UnsupportedOperationException} when using the modern protocol.
      */
-    @Deprecated(since = "1.19.0")
+    @Deprecated(since = "1.19.0-beta29")
     void unsubscribeFromResource(String uri);
 
     /**
@@ -149,6 +149,6 @@ public interface McpClient extends AutoCloseable {
      * @deprecated Roots are deprecated in MCP protocol version 2026-07-28. This method throws
      *     {@link UnsupportedOperationException} when the modern protocol is in use.
      */
-    @Deprecated
+    @Deprecated(since = "1.19.0-beta29")
     void setRoots(List<McpRoot> roots);
 }

@@ -343,33 +343,74 @@ class ToolSpecificationHelper {
         for (Map.Entry<String, JsonNode> entry : properties.properties()) {
             JsonNode propSchema = entry.getValue();
             String propertyPath = pathPrefix.isEmpty() ? entry.getKey() : pathPrefix + "." + entry.getKey();
-            checkForbiddenSubtrees(propSchema, errors);
             JsonNode headerAnnotation = propSchema.get("x-mcp-header");
-            if (headerAnnotation != null && headerAnnotation.isTextual()) {
-                String headerName = headerAnnotation.asText();
-                if (headerName.isEmpty()) {
-                    errors.add("x-mcp-header value must not be empty (property '" + propertyPath + "')");
-                } else if (!isValidToken(headerName)) {
-                    errors.add("x-mcp-header value '" + headerName + "' is not a valid HTTP token (property '"
-                            + propertyPath + "')");
-                }
-                if (!seenHeaderNamesLower.add(headerName.toLowerCase())) {
-                    errors.add("duplicate x-mcp-header value '" + headerName + "' (case-insensitive, property '"
-                            + propertyPath + "')");
-                }
-                String type = propSchema.path("type").asText(null);
-                if (type != null && !ALLOWED_HEADER_PARAM_TYPES.contains(type)) {
-                    errors.add("x-mcp-header on property '" + propertyPath + "' with forbidden type '" + type
-                            + "' (only string, integer, boolean are allowed)");
-                }
-                if (errors.isEmpty()) {
-                    result.put(propertyPath, headerName);
+            if (headerAnnotation != null) {
+                if (!headerAnnotation.isTextual()) {
+                    errors.add("x-mcp-header value must be a string, but property '" + propertyPath + "' declares "
+                            + headerAnnotation.getNodeType().name().toLowerCase());
+                } else {
+                    validateMcpParamHeader(
+                            headerAnnotation.asText(), propSchema, propertyPath, result, seenHeaderNamesLower, errors);
                 }
             }
             if (propSchema.has("properties")) {
                 extractAndValidateMcpParamHeaders(propSchema, propertyPath, result, seenHeaderNamesLower, errors);
+            } else {
+                checkForbiddenSubtrees(propSchema, errors);
             }
         }
+    }
+
+    private static void validateMcpParamHeader(
+            String headerName,
+            JsonNode propSchema,
+            String propertyPath,
+            Map<String, String> result,
+            Set<String> seenHeaderNamesLower,
+            List<String> errors) {
+        if (headerName.isEmpty()) {
+            errors.add("x-mcp-header value must not be empty (property '" + propertyPath + "')");
+        } else if (!isValidToken(headerName)) {
+            errors.add("x-mcp-header value '" + headerName + "' is not a valid HTTP token (property '" + propertyPath
+                    + "')");
+        }
+        if (!seenHeaderNamesLower.add(headerName.toLowerCase())) {
+            errors.add("duplicate x-mcp-header value '" + headerName + "' (case-insensitive, property '" + propertyPath
+                    + "')");
+        }
+        for (String type : declaredTypes(propSchema)) {
+            if (!ALLOWED_HEADER_PARAM_TYPES.contains(type)) {
+                errors.add("x-mcp-header on property '" + propertyPath + "' with forbidden type '" + type
+                        + "' (only string, integer, boolean are allowed)");
+            }
+        }
+        if (errors.isEmpty()) {
+            result.put(propertyPath, headerName);
+        }
+    }
+
+    /**
+     * JSON Schema allows "type" to be either a single name or an array of names,
+     * so a header-carrying property has to be checked against every declared type.
+     * "null" is skipped: it only marks the property as optional.
+     */
+    private static List<String> declaredTypes(JsonNode propSchema) {
+        JsonNode type = propSchema.get("type");
+        if (type == null) {
+            return List.of();
+        }
+        List<String> types = new ArrayList<>();
+        if (type.isTextual()) {
+            types.add(type.asText());
+        } else if (type.isArray()) {
+            for (JsonNode t : type) {
+                if (t.isTextual()) {
+                    types.add(t.asText());
+                }
+            }
+        }
+        types.remove("null");
+        return types;
     }
 
     private static void checkForbiddenSubtrees(JsonNode schema, List<String> errors) {
