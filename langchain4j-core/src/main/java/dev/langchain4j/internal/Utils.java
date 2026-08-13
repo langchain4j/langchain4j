@@ -29,6 +29,8 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.HexFormat;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -398,7 +400,7 @@ public class Utils {
             return null;
         }
 
-        return unmodifiableSet(set);
+        return unmodifiableSet(new LinkedHashSet<>(set));
     }
 
     /**
@@ -414,7 +416,7 @@ public class Utils {
             return Set.of();
         }
 
-        return unmodifiableSet(set);
+        return unmodifiableSet(new LinkedHashSet<>(set));
     }
 
     /**
@@ -430,7 +432,7 @@ public class Utils {
             return null;
         }
 
-        return unmodifiableList(list);
+        return unmodifiableList(new ArrayList<>(list));
     }
 
     /**
@@ -446,7 +448,7 @@ public class Utils {
             return List.of();
         }
 
-        return unmodifiableList(list);
+        return unmodifiableList(new ArrayList<>(list));
     }
 
     /**
@@ -493,7 +495,7 @@ public class Utils {
             return null;
         }
 
-        return unmodifiableMap(map);
+        return unmodifiableMap(new LinkedHashMap<>(map));
     }
 
     /**
@@ -508,7 +510,7 @@ public class Utils {
             return Map.of();
         }
 
-        return unmodifiableMap(map);
+        return unmodifiableMap(new LinkedHashMap<>(map));
     }
 
     /**

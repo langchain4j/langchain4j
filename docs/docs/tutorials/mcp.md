@@ -283,6 +283,58 @@ that is retrieved from annotations - that one is exposed under the `McpToolMetad
 
 If the tool has icons, they are exposed under the `McpToolMetadataKeys.ICONS` key in the metadata map.
 
+### MCP tool result metadata
+
+Besides the actual result, an MCP server can attach a `_meta` object to the response of a tool call.
+This is useful for data that your application needs, but the LLM does not, for example an identifier
+of the record the tool has created, or a widget that your UI should render.
+
+The entries of the `_meta` object are exposed through `ToolExecutionResult.attributes()`, using their
+original keys, with the JSON values converted into nested maps. They are never sent to the LLM.
+Keys that are reserved by the MCP specification, such as `io.modelcontextprotocol/serverInfo`,
+are skipped, because they describe the protocol interaction and not the tool result.
+
+When calling a tool directly on the client, the attributes are always available:
+
+```java
+ToolExecutionResult result = mcpClient.executeTool(toolExecutionRequest);
+Object widget = result.attributes().get("example.org/widget");
+```
+
+When tools are called by an AI service, the attributes are dropped by default,
+because their size and contents are controlled by the MCP server.
+To keep them, enable `returnToolResultAttributes` on the tool provider:
+
+```java
+McpToolProvider toolProvider = McpToolProvider.builder()
+    .mcpClients(mcpClient)
+    .returnToolResultAttributes(true)
+    .build();
+```
+
+They can then be read from the tool executions of the result:
+
+```java
+interface Assistant {
+
+    Result<String> chat(String userMessage);
+}
+
+Result<String> result = assistant.chat("What is the weather in Munich?");
+for (ToolExecution toolExecution : result.toolExecutions()) {
+    Object widget = toolExecution.attributes().get("example.org/widget");
+}
+```
+
+The attributes are also propagated into the `ToolExecutionResultMessage`,
+so they are stored in the chat memory together with the message.
+Keep this in mind when the chat memory is persisted, and see
+[Tool Result Attributes](/tutorials/tools#tool-result-attributes) for more details.
+
+If the tool returns an application-level error, the call ends with a `ToolExecutionException`
+and the `_meta` of the failed response is not available.
+It is still delivered to `McpClientListener.afterExecuteTool()`, which receives the complete raw response.
+
 ### Tool parameters carried as HTTP headers
 
 With the 2026-07-28 protocol over Streamable HTTP, a server can ask for selected tool

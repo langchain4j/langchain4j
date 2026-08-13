@@ -26,6 +26,9 @@ class FinishReasonMapperTest {
             GeminiFinishReason.BLOCKLIST,
             GeminiFinishReason.PROHIBITED_CONTENT,
             GeminiFinishReason.RECITATION,
+            GeminiFinishReason.IMAGE_RECITATION,
+            GeminiFinishReason.IMAGE_SAFETY,
+            GeminiFinishReason.IMAGE_PROHIBITED_CONTENT,
             GeminiFinishReason.SPII,
             GeminiFinishReason.SAFETY,
             GeminiFinishReason.LANGUAGE
@@ -42,7 +45,14 @@ class FinishReasonMapperTest {
         GeminiFinishReason[] otherReasons = {
             GeminiFinishReason.MALFORMED_FUNCTION_CALL,
             GeminiFinishReason.FINISH_REASON_UNSPECIFIED,
-            GeminiFinishReason.OTHER
+            GeminiFinishReason.OTHER,
+            GeminiFinishReason.IMAGE_OTHER,
+            GeminiFinishReason.NO_IMAGE,
+            GeminiFinishReason.UNEXPECTED_TOOL_CALL,
+            GeminiFinishReason.TOO_MANY_TOOL_CALLS,
+            GeminiFinishReason.MISSING_THOUGHT_SIGNATURE,
+            GeminiFinishReason.MALFORMED_RESPONSE,
+            GeminiFinishReason.ESCALATION
         };
         for (GeminiFinishReason reason : otherReasons) {
             assertThat(FinishReasonMapper.fromGFinishReasonToFinishReason(reason))
@@ -57,6 +67,27 @@ class FinishReasonMapperTest {
             assertThat(FinishReasonMapper.fromGFinishReasonToFinishReason(reason))
                     .as("mapping for %s", reason)
                     .isNotNull();
+        }
+    }
+
+    @Test
+    void should_deserialize_image_safety_finish_reason() {
+        GeminiGenerateContentResponse response = Json.fromJson(
+                "{\"candidates\":[{\"finishReason\":\"IMAGE_SAFETY\"}]}", GeminiGenerateContentResponse.class);
+
+        assertThat(response.candidates().get(0).finishReason()).hasToString("IMAGE_SAFETY");
+    }
+
+    @Test
+    void should_deserialize_every_gemini_finish_reason() {
+        for (GeminiFinishReason reason : GeminiFinishReason.values()) {
+            GeminiGenerateContentResponse response = Json.fromJson(
+                    "{\"candidates\":[{\"finishReason\":\"" + reason.name() + "\"}]}",
+                    GeminiGenerateContentResponse.class);
+
+            assertThat(response.candidates().get(0).finishReason())
+                    .as("deserialization of %s", reason)
+                    .isEqualTo(reason);
         }
     }
 }

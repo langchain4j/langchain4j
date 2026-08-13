@@ -67,6 +67,7 @@ import java.util.Optional;
 import java.util.ServiceLoader;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 /**
@@ -292,9 +293,22 @@ public class AgenticServices {
     public record AgentConfigurator(
             Consumer<DeclarativeAgentCreationContext<?>> configurator,
             Function<Class<?>, Object> subAgentResolver,
-            Function<InternalAgent, Object> agentInstanceFactory) {
+            Function<InternalAgent, Object> agentInstanceFactory,
+            Supplier<Object> defaultMemoryIdSupplier) {
 
-        private static final AgentConfigurator EMPTY = new AgentConfigurator(ctx -> {}, null, null);
+        private static final AgentConfigurator EMPTY = new AgentConfigurator(ctx -> {});
+
+        public AgentConfigurator(
+                Consumer<DeclarativeAgentCreationContext<?>> configurator) {
+            this(configurator, null, null, null);
+        }
+
+        public AgentConfigurator(
+                Consumer<DeclarativeAgentCreationContext<?>> configurator,
+                Function<Class<?>, Object> subAgentResolver,
+                Function<InternalAgent, Object> agentInstanceFactory) {
+            this(configurator, subAgentResolver, agentInstanceFactory, null);
+        }
 
         public static AgentConfigurator empty() {
             return EMPTY;
@@ -414,6 +428,10 @@ public class AgenticServices {
     private static void setAgentInstanceFactory(Object builder, AgentConfigurator agentConfigurator) {
         if (agentConfigurator.agentInstanceFactory() != null) {
             ((AbstractServiceBuilder<?, ?>) builder).agentInstanceFactory(agentConfigurator.agentInstanceFactory());
+        }
+        if (agentConfigurator.defaultMemoryIdSupplier() != null) {
+            ((AbstractServiceBuilder<?, ?>) builder)
+                    .defaultMemoryIdSupplier(agentConfigurator.defaultMemoryIdSupplier());
         }
     }
 

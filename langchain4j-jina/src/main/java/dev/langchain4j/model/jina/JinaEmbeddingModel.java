@@ -153,7 +153,7 @@ public class JinaEmbeddingModel extends DimensionAwareEmbeddingModel {
 
     JinaMultimodalEmbeddingRequest buildMultimodalRequest(EmbeddingRequest request) {
         return new JinaMultimodalEmbeddingRequest(
-                modelName, request.inputs().stream().map(this::toMultimodalInput).collect(toList()));
+                modelName, lateChunking, request.inputs().stream().map(this::toMultimodalInput).collect(toList()));
     }
 
     private JinaMultimodalInput toMultimodalInput(EmbeddingInput input) {
