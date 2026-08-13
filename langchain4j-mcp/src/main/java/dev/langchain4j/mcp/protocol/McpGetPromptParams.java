@@ -1,6 +1,7 @@
 package dev.langchain4j.mcp.protocol;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.databind.JsonNode;
 import dev.langchain4j.Internal;
 import java.util.Map;
 
@@ -14,6 +15,12 @@ public class McpGetPromptParams extends McpClientParams {
 
     @JsonInclude(JsonInclude.Include.ALWAYS)
     private Map<String, Object> arguments;
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private Map<String, Object> inputResponses;
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private JsonNode requestState;
 
     public McpGetPromptParams() {}
 
@@ -36,5 +43,21 @@ public class McpGetPromptParams extends McpClientParams {
 
     public void setArguments(Map<String, Object> arguments) {
         this.arguments = arguments;
+    }
+
+    public Map<String, Object> getInputResponses() {
+        return inputResponses;
+    }
+
+    public void setInputResponses(Map<String, Object> inputResponses) {
+        this.inputResponses = inputResponses;
+    }
+
+    public JsonNode getRequestState() {
+        return requestState;
+    }
+
+    public void setRequestState(JsonNode requestState) {
+        this.requestState = requestState;
     }
 }
