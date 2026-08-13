@@ -17,6 +17,7 @@ import dev.langchain4j.model.googleai.GeminiCaches.GeminiCachedContent;
 import dev.langchain4j.model.googleai.GeminiCaches.GeminiCachedContentsListResponse;
 import dev.langchain4j.model.googleai.GeminiCaches.GeminiCreateCachedContentRequest;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -63,14 +64,15 @@ class GeminiCachesTest {
         }
 
         @Test
-        void shouldOmitTtlWhenNullAndSystemInstructionWhenAbsent() {
+        void shouldOmitExpirationAndSystemInstructionWhenUsingDefaultOverload() {
             MockHttpClient mockHttpClient = MockHttpClient.thatAlwaysResponds(jsonResponse(sampleCachedContent()));
             GeminiCaches subject = createCaches(mockHttpClient);
 
-            subject.createCache("gemini-2.5-flash", List.of(UserMessage.from("Reusable document context.")), null);
+            subject.createCache("gemini-2.5-flash", List.of(UserMessage.from("Reusable document context.")));
 
             String sentBody = mockHttpClient.request().body();
             assertThat(sentBody).doesNotContain("\"ttl\"");
+            assertThat(sentBody).doesNotContain("\"expireTime\"");
             assertThat(sentBody).doesNotContain("\"systemInstruction\"");
         }
 
@@ -128,6 +130,33 @@ class GeminiCachesTest {
         }
 
         @Test
+        void shouldSendExpireTimeInRequest() {
+            MockHttpClient mockHttpClient = MockHttpClient.thatAlwaysResponds(jsonResponse(sampleCachedContent()));
+            GeminiCaches subject = createCaches(mockHttpClient);
+
+            subject.createCache(
+                    "gemini-2.5-flash",
+                    List.of(UserMessage.from("Reusable document context.")),
+                    Instant.parse("2026-07-06T11:00:00Z"));
+
+            GeminiCreateCachedContentRequest sentBody =
+                    Json.fromJson(mockHttpClient.request().body(), GeminiCreateCachedContentRequest.class);
+            assertThat(sentBody.expireTime()).isEqualTo("2026-07-06T11:00:00Z");
+            assertThat(sentBody.ttl()).isNull();
+        }
+
+        @Test
+        void shouldThrowWhenExpireTimeIsNull() {
+            GeminiCaches subject = createCaches(MockHttpClient.thatAlwaysResponds(jsonResponse(sampleCachedContent())));
+            Instant expireTime = null;
+
+            assertThatThrownBy(() -> subject.createCache(
+                            "gemini-2.5-flash", List.of(UserMessage.from("Reusable document context.")), expireTime))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("expireTime");
+        }
+
+        @Test
         void shouldSendCustomHeaders() {
             MockHttpClient mockHttpClient = MockHttpClient.thatAlwaysResponds(jsonResponse(sampleCachedContent()));
             GeminiCaches subject = GeminiCaches.builder()
@@ -137,7 +166,7 @@ class GeminiCachesTest {
                     .customHeaders(Map.of("x-custom-header", "custom-value"))
                     .build();
 
-            subject.createCache("gemini-2.5-flash", List.of(UserMessage.from("Reusable document context.")), null);
+            subject.createCache("gemini-2.5-flash", List.of(UserMessage.from("Reusable document context.")));
 
             HttpRequest sentRequest = mockHttpClient.request();
             assertThat(sentRequest.headers().get("x-custom-header")).containsExactly("custom-value");
