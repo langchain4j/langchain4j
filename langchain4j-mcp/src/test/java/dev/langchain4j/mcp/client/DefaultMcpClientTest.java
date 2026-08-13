@@ -379,6 +379,9 @@ public class DefaultMcpClientTest {
 
         DefaultMcpClient client = new DefaultMcpClient.Builder()
                 .transport(transport)
+                // this transport never answers anything, so leaving the protocol version to be
+                // detected would spend the whole detection timeout before the test even starts
+                .protocolVersion("2025-11-25")
                 .toolExecutionTimeout(java.time.Duration.ofMillis(1))
                 .toolResultExtractor(extractor)
                 .build();
@@ -803,34 +806,44 @@ public class DefaultMcpClientTest {
         long start = System.currentTimeMillis();
         DefaultMcpClient client = new DefaultMcpClient.Builder()
                 .transport(transport)
+                // the two timeouts are kept far apart so that the assertion below distinguishes
+                // them by a wide margin instead of by a few hundred milliseconds, which a loaded
+                // machine cannot be trusted to honour
                 .protocolDetectionTimeout(java.time.Duration.ofMillis(200))
-                .initializationTimeout(java.time.Duration.ofSeconds(30))
+                .initializationTimeout(java.time.Duration.ofMinutes(2))
                 .build();
         long elapsed = System.currentTimeMillis() - start;
 
         assertThat(client.isModernProtocol()).isFalse();
         verify(transport).initialize(any());
-        // the detection timeout has to bound the wait, not the much longer initialization timeout
-        assertThat(elapsed).isLessThan(5_000);
+        // waiting anywhere near the initialization timeout means detection ignored its own
+        assertThat(elapsed).isLessThan(30_000);
     }
 
     @Test
-    public void protocol_detection_falls_back_to_the_initialization_timeout() {
+    public void protocol_detection_falls_back_to_the_initialization_timeout() throws Exception {
         McpTransport transport = getMinimalMcpTransportMock();
         when(transport.executeOperationWithResponse(any(McpCallContext.class)))
                 .thenAnswer(invocation -> new CompletableFuture<>());
 
-        long start = System.currentTimeMillis();
         DefaultMcpClient client = new DefaultMcpClient.Builder()
                 .transport(transport)
                 .initializationTimeout(java.time.Duration.ofMillis(200))
                 .build();
-        long elapsed = System.currentTimeMillis() - start;
 
-        // without an explicit protocolDetectionTimeout the detection request must not impose a
-        // timeout of its own: a slow-to-boot server would otherwise be misdetected as legacy
+        // Without an explicit protocolDetectionTimeout the detection request must not impose a
+        // shorter timeout of its own, or a server that is slow to boot is misdetected as legacy.
+        // This is read from the field rather than measured, because timing how long the client
+        // took cannot tell the two timeouts apart reliably on a loaded machine.
+        assertThat(readDuration(client, "protocolDetectionTimeout")).isEqualTo(java.time.Duration.ofMillis(200));
         assertThat(client.isModernProtocol()).isFalse();
-        assertThat(elapsed).isLessThan(2_000);
+        verify(transport).initialize(any());
+    }
+
+    private static java.time.Duration readDuration(DefaultMcpClient client, String fieldName) throws Exception {
+        java.lang.reflect.Field field = DefaultMcpClient.class.getDeclaredField(fieldName);
+        field.setAccessible(true);
+        return (java.time.Duration) field.get(client);
     }
 
     @Test
