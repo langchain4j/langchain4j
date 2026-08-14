@@ -230,7 +230,7 @@ public class SqlFilterParser implements FilterParser {
 
     private Comparable<?> getValue(Expression expression) {
         if (expression instanceof StringValue) {
-            return ((StringValue) expression).getValue();
+            return ((StringValue) expression).getNotExcapedValue();
         } else if (expression instanceof LongValue) {
             return ((LongValue) expression).getValue();
         } else if (expression instanceof DoubleValue) {
