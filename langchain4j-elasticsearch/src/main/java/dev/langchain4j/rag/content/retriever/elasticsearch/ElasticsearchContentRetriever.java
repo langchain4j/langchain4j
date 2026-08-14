@@ -18,6 +18,7 @@ import dev.langchain4j.store.embedding.elasticsearch.ElasticsearchConfigurationF
 import dev.langchain4j.store.embedding.elasticsearch.ElasticsearchConfigurationHybrid;
 import dev.langchain4j.store.embedding.elasticsearch.ElasticsearchConfigurationKnn;
 import dev.langchain4j.store.embedding.elasticsearch.ElasticsearchConfigurationScript;
+import dev.langchain4j.store.embedding.elasticsearch.FullTextSearchRequest;
 import dev.langchain4j.store.embedding.filter.Filter;
 import java.util.List;
 import java.util.Map;
@@ -105,7 +106,13 @@ public class ElasticsearchContentRetriever extends AbstractElasticsearchEmbeddin
     public List<Content> retrieve(final Query query) {
         if (configuration instanceof ElasticsearchConfigurationFullText) {
             log.debug("Using a full text search query");
-            return toContentList(this.fullTextSearchMatches(query.text(), maxResults, minScore, filter));
+            FullTextSearchRequest request = FullTextSearchRequest.builder()
+                    .textQuery(query.text())
+                    .maxResults(maxResults)
+                    .minScore(minScore)
+                    .filter(filter)
+                    .build();
+            return toContentList(this.fullTextSearchMatches(request));
         }
         Embedding referenceEmbedding = embeddingModel.embed(query.text()).content();
         EmbeddingSearchRequest request = EmbeddingSearchRequest.builder()

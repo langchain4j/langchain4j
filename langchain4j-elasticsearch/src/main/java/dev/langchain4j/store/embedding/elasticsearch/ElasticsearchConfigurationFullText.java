@@ -4,7 +4,6 @@ import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.ElasticsearchException;
 import co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
-import dev.langchain4j.store.embedding.filter.Filter;
 import java.io.IOException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,39 +27,39 @@ public class ElasticsearchConfigurationFullText implements ElasticsearchConfigur
         return new ElasticsearchConfigurationFullText.Builder();
     }
 
+    @Deprecated(forRemoval = true)
+    @SuppressWarnings("removal")
     @Override
     public SearchResponse<Document> fullTextSearch(
             final ElasticsearchClient client, final String indexName, final String textQuery)
             throws ElasticsearchException, IOException {
         log.trace("Searching for text matches in index [{}] with query [{}].", indexName, textQuery);
 
-        return client.search(
-                s -> s.index(indexName)
-                        .query(q -> q.match(m -> m.field(TEXT_FIELD).query(textQuery))),
-                Document.class);
+        return client.search(s -> s.index(indexName).query(matchQuery(textQuery)), Document.class);
     }
 
     @Override
     public SearchResponse<Document> fullTextSearch(
-            ElasticsearchClient client,
-            String indexName,
-            String textQuery,
-            int maxResults,
-            double minScore,
-            Filter filter)
+            final ElasticsearchClient client, final String indexName, final FullTextSearchRequest request)
             throws ElasticsearchException, IOException {
-        Query matchQuery = Query.of(q -> q.match(m -> m.field(TEXT_FIELD).query(textQuery)));
-        Query query = filter == null
+        Query matchQuery = matchQuery(request.textQuery());
+        Query query = request.filter() == null
                 ? matchQuery
-                : Query.of(q -> q.bool(b -> b.must(matchQuery).filter(ElasticsearchMetadataFilterMapper.map(filter))));
+                : Query.of(q -> q.bool(
+                        b -> b.must(matchQuery).filter(ElasticsearchMetadataFilterMapper.map(request.filter()))));
 
         log.trace(
                 "Searching for text matches in index [{}] with query [{}] and filter [{}].",
                 indexName,
-                textQuery,
-                filter);
+                request.textQuery(),
+                request.filter());
 
         return client.search(
-                s -> s.index(indexName).query(query).size(maxResults).minScore(minScore), Document.class);
+                s -> s.index(indexName).query(query).size(request.maxResults()).minScore(request.minScore()),
+                Document.class);
+    }
+
+    private static Query matchQuery(String textQuery) {
+        return Query.of(q -> q.match(m -> m.field(TEXT_FIELD).query(textQuery)));
     }
 }

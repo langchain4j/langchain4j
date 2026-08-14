@@ -4,8 +4,8 @@ import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.ElasticsearchException;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
-import dev.langchain4j.store.embedding.filter.Filter;
 import java.io.IOException;
+import org.slf4j.LoggerFactory;
 
 public interface ElasticsearchConfiguration {
     String VECTOR_FIELD = "vector";
@@ -45,7 +45,10 @@ public interface ElasticsearchConfiguration {
      * @return The search response
      * @throws ElasticsearchException if an error occurs during the search
      * @throws IOException            if an I/O error occurs
+     * @deprecated Use {@link #fullTextSearch(ElasticsearchClient, String, FullTextSearchRequest)} instead.
+     * It also applies the {@code maxResults}, {@code minScore} and {@code filter} of the request.
      */
+    @Deprecated(forRemoval = true)
     default SearchResponse<Document> fullTextSearch(ElasticsearchClient client, String indexName, String textQuery)
             throws ElasticsearchException, IOException {
         throw new UnsupportedOperationException(
@@ -53,31 +56,26 @@ public interface ElasticsearchConfiguration {
     }
 
     /**
-     * Used for full text search with retrieval constraints.
+     * Used for full text search.
      *
-     * <p>The default implementation delegates to {@link #fullTextSearch(ElasticsearchClient, String, String)}
-     * for backwards compatibility with custom configurations. Implementations that support these constraints
-     * should override this method.
-     *
-     * @param client     The Elasticsearch client
-     * @param indexName  The index name
-     * @param textQuery  The text query
-     * @param maxResults The maximum number of results to return
-     * @param minScore   The minimum score of returned results
-     * @param filter     The metadata filter to apply, or {@code null}
+     * @param client    The Elasticsearch client
+     * @param indexName The index name
+     * @param request   The full text search request
      * @return The search response
      * @throws ElasticsearchException if an error occurs during the search
      * @throws IOException            if an I/O error occurs
      */
     default SearchResponse<Document> fullTextSearch(
-            ElasticsearchClient client,
-            String indexName,
-            String textQuery,
-            int maxResults,
-            double minScore,
-            Filter filter)
+            ElasticsearchClient client, String indexName, FullTextSearchRequest request)
             throws ElasticsearchException, IOException {
-        return fullTextSearch(client, indexName, textQuery);
+        if (request.filter() != null) {
+            LoggerFactory.getLogger(ElasticsearchConfiguration.class)
+                    .warn(
+                            "[{}] does not implement fullTextSearch(ElasticsearchClient, String, FullTextSearchRequest), "
+                                    + "so the filter, maxResults and minScore are ignored and documents which do not match the filter can be returned.",
+                            this.getClass().getName());
+        }
+        return fullTextSearch(client, indexName, request.textQuery());
     }
 
     /**
