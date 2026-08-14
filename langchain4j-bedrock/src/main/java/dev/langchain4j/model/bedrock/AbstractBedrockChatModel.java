@@ -721,7 +721,7 @@ abstract class AbstractBedrockChatModel {
 
     protected FinishReason finishReasonFrom(StopReason stopReason) {
         if (stopReason == null) {
-            throw new IllegalArgumentException("Unknown stop reason: null");
+            return null;
         }
 
         if (stopReason == StopReason.END_TURN || stopReason == StopReason.STOP_SEQUENCE) {

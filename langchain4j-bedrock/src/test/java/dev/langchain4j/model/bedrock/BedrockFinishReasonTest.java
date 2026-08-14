@@ -1,7 +1,6 @@
 package dev.langchain4j.model.bedrock;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 
 import dev.langchain4j.model.output.FinishReason;
@@ -47,10 +46,8 @@ class BedrockFinishReasonTest {
     }
 
     @Test
-    void should_reject_null_stop_reason() {
-        assertThatThrownBy(() -> model.finishReasonFrom(null))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Unknown stop reason: null");
+    void should_map_null_stop_reason_to_null() {
+        assertThat(model.finishReasonFrom(null)).isNull();
     }
 
     @Test
