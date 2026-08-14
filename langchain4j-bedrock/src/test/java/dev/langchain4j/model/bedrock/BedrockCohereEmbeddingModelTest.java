@@ -17,6 +17,8 @@ import java.util.ArrayDeque;
 import java.util.List;
 import java.util.Queue;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import software.amazon.awssdk.core.SdkBytes;
 import software.amazon.awssdk.http.SdkHttpResponse;
 import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeClient;
@@ -118,27 +120,17 @@ class BedrockCohereEmbeddingModelTest {
         assertThat(response.metadata().modelName()).isEqualTo("cohere.embed-multilingual-v3");
     }
 
-    @Test
-    void should_reject_max_segments_per_batch_below_one() {
-        assertThatThrownBy(() -> modelWithMaxSegmentsPerBatch(0))
+    @ParameterizedTest
+    @ValueSource(ints = {0, -1})
+    void should_reject_non_positive_max_segments_per_batch(int maxSegmentsPerBatch) {
+        assertThatThrownBy(() -> modelWithMaxSegmentsPerBatch(maxSegmentsPerBatch))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("maxSegmentsPerBatch must be between 1 and 96, but is: 0");
-
-        assertThatThrownBy(() -> modelWithMaxSegmentsPerBatch(-1))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("maxSegmentsPerBatch must be between 1 and 96, but is: -1");
+                .hasMessage("maxSegmentsPerBatch must be greater than zero, but is: " + maxSegmentsPerBatch);
     }
 
     @Test
-    void should_reject_max_segments_per_batch_above_the_bedrock_limit() {
-        assertThatThrownBy(() -> modelWithMaxSegmentsPerBatch(97))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("maxSegmentsPerBatch must be between 1 and 96, but is: 97");
-    }
-
-    @Test
-    void should_accept_max_segments_per_batch_at_the_bedrock_limit() {
-        assertThatNoException().isThrownBy(() -> modelWithMaxSegmentsPerBatch(96));
+    void should_accept_positive_max_segments_per_batch() {
+        assertThatNoException().isThrownBy(() -> modelWithMaxSegmentsPerBatch(1));
     }
 
     private static BedrockCohereEmbeddingModel modelWithMaxSegmentsPerBatch(int maxSegmentsPerBatch) {

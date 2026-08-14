@@ -2,7 +2,7 @@ package dev.langchain4j.model.bedrock;
 
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.ValidationUtils.ensureBetween;
+import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.bedrock.Json.fromJson;
 import static dev.langchain4j.model.bedrock.Json.toJson;
@@ -39,7 +39,7 @@ import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelResponse;
  */
 public class BedrockCohereEmbeddingModel extends DimensionAwareEmbeddingModel {
 
-    private static final int MAX_SEGMENTS_PER_BATCH = 96;
+    private static final int DEFAULT_MAX_SEGMENTS_PER_BATCH = 96;
     private static final String INPUT_TOKEN_COUNT_HEADER = "x-amzn-bedrock-input-token-count";
 
     private final BedrockRuntimeClient client;
@@ -55,11 +55,8 @@ public class BedrockCohereEmbeddingModel extends DimensionAwareEmbeddingModel {
         this.inputType = ensureNotBlank(builder.inputType, "inputType");
         this.truncate = builder.truncate;
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
-        this.maxSegmentsPerBatch = ensureBetween(
-                getOrDefault(builder.maxSegmentsPerBatch, MAX_SEGMENTS_PER_BATCH),
-                1,
-                MAX_SEGMENTS_PER_BATCH,
-                "maxSegmentsPerBatch");
+        this.maxSegmentsPerBatch = ensureGreaterThanZero(
+                getOrDefault(builder.maxSegmentsPerBatch, DEFAULT_MAX_SEGMENTS_PER_BATCH), "maxSegmentsPerBatch");
     }
 
     private BedrockRuntimeClient initClient(Builder builder) {
