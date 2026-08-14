@@ -2,6 +2,7 @@ package dev.langchain4j.model.watsonx;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -42,9 +43,12 @@ import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
+import dev.langchain4j.model.chat.response.PartialResponse;
+import dev.langchain4j.model.chat.response.PartialResponseContext;
 import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.chat.response.StreamingHandle;
 import dev.langchain4j.model.output.FinishReason;
 import java.net.URI;
 import java.util.ArrayList;
@@ -53,6 +57,7 @@ import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -894,6 +899,111 @@ public class WatsonxStreamingChatModelTest {
 
         assertEquals(1, chatModel.supportedCapabilities().size());
         assertTrue(chatModel.supportedCapabilities().contains(Capability.RESPONSE_FORMAT_JSON_SCHEMA));
+    }
+
+    @Test
+    void should_cancel_the_streaming() {
+
+        var streamingFuture = new CompletableFuture<ChatResponse>();
+        var chatHandler = new AtomicReference<ChatHandler>();
+
+        doAnswer(invocation -> {
+                    chatHandler.set(invocation.getArgument(1));
+                    return streamingFuture;
+                })
+                .when(mockChatService)
+                .chatStreaming(chatRequestCaptor.capture(), any());
+
+        withChatServiceMock(() -> {
+            var streamingChatModel = WatsonxStreamingChatModel.builder()
+                    .baseUrl("https://test.com")
+                    .modelName("modelId")
+                    .projectId("projectId")
+                    .apiKey("api-key")
+                    .build();
+
+            var streamingHandles = new ArrayList<StreamingHandle>();
+
+            var streamingHandler = new StreamingChatResponseHandler() {
+                @Override
+                public void onPartialResponse(PartialResponse partialResponse, PartialResponseContext context) {
+                    streamingHandles.add(context.streamingHandle());
+                    assertFalse(context.streamingHandle().isCancelled());
+                    context.streamingHandle().cancel();
+                }
+
+                @Override
+                public void onCompleteResponse(dev.langchain4j.model.chat.response.ChatResponse completeResponse) {
+                    fail("Unexpected complete response");
+                }
+
+                @Override
+                public void onError(Throwable error) {
+                    fail("Unexpected error: " + error);
+                }
+            };
+
+            var chatRequest =
+                    ChatRequest.builder().messages(UserMessage.from("Hello")).build();
+
+            streamingChatModel.chat(chatRequest, streamingHandler);
+            chatHandler.get().onPartialResponse("Hello", null);
+
+            assertEquals(1, streamingHandles.size());
+            var streamingHandle = streamingHandles.get(0);
+            assertTrue(streamingHandle.isCancelled());
+            assertTrue(streamingFuture.isCancelled());
+
+            // Cancelling an already cancelled streaming does nothing
+            assertDoesNotThrow(streamingHandle::cancel);
+            assertTrue(streamingHandle.isCancelled());
+        });
+    }
+
+    @Test
+    void should_cancel_the_streaming_when_the_partial_response_arrives_before_the_streaming_future() {
+
+        var streamingFuture = new CompletableFuture<ChatResponse>();
+
+        doAnswer(invocation -> {
+                    ChatHandler handler = invocation.getArgument(1);
+                    handler.onPartialResponse("Hello", null);
+                    return streamingFuture;
+                })
+                .when(mockChatService)
+                .chatStreaming(chatRequestCaptor.capture(), any());
+
+        withChatServiceMock(() -> {
+            var streamingChatModel = WatsonxStreamingChatModel.builder()
+                    .baseUrl("https://test.com")
+                    .modelName("modelId")
+                    .projectId("projectId")
+                    .apiKey("api-key")
+                    .build();
+
+            var streamingHandler = new StreamingChatResponseHandler() {
+                @Override
+                public void onPartialResponse(PartialResponse partialResponse, PartialResponseContext context) {
+                    context.streamingHandle().cancel();
+                }
+
+                @Override
+                public void onCompleteResponse(dev.langchain4j.model.chat.response.ChatResponse completeResponse) {
+                    fail("Unexpected complete response");
+                }
+
+                @Override
+                public void onError(Throwable error) {
+                    fail("Unexpected error: " + error);
+                }
+            };
+
+            var chatRequest =
+                    ChatRequest.builder().messages(UserMessage.from("Hello")).build();
+
+            streamingChatModel.chat(chatRequest, streamingHandler);
+            assertTrue(streamingFuture.isCancelled());
+        });
     }
 
     private void withChatServiceMock(Runnable action) {

@@ -13,10 +13,10 @@ import com.ibm.watsonx.ai.chat.model.ChatUsage;
 import com.ibm.watsonx.ai.chat.model.ResultMessage;
 import com.ibm.watsonx.ai.chat.model.ToolCall;
 import com.ibm.watsonx.ai.chat.model.ToolMessage;
-import com.ibm.watsonx.ai.gateway.chat.ModelGatewayParameters.Cache;
-import com.ibm.watsonx.ai.gateway.chat.ModelGatewayParameters.ReasoningEffort;
-import com.ibm.watsonx.ai.gateway.chat.ModelGatewayParameters.Router;
-import com.ibm.watsonx.ai.gateway.chat.ModelGatewayParameters.ServiceTier;
+import com.ibm.watsonx.ai.gateway.chat.ModelGatewayChatParameters.Cache;
+import com.ibm.watsonx.ai.gateway.chat.ModelGatewayChatParameters.ReasoningEffort;
+import com.ibm.watsonx.ai.gateway.chat.ModelGatewayChatParameters.Router;
+import com.ibm.watsonx.ai.gateway.chat.ModelGatewayChatParameters.ServiceTier;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
@@ -545,7 +545,7 @@ public class ConverterTest {
     }
 
     @Test
-    void testToModelGatewayParameters_withAllFieldsSet() {
+    void testToModelGatewayChatParameters_withAllFieldsSet() {
         var parameters = WatsonxGatewayChatRequestParameters.builder()
                 .frequencyPenalty(0.1)
                 .maxOutputTokens(0)
@@ -573,7 +573,7 @@ public class ConverterTest {
                 .metadata(Map.of("k", "v"))
                 .build();
 
-        var p = Converter.toModelGatewayParameters(parameters, false);
+        var p = Converter.toModelGatewayChatParameters(parameters, false);
         assertEquals(0.1, p.frequencyPenalty());
         assertEquals(0, p.maxCompletionTokens());
         assertEquals("modelName", p.modelId());
@@ -600,14 +600,14 @@ public class ConverterTest {
 
     @Test
     @SuppressWarnings("rawtypes")
-    void testToModelGatewayParameters_withToolChoiceRequiredAndMatchingTool() {
+    void testToModelGatewayChatParameters_withToolChoiceRequiredAndMatchingTool() {
         var parameters = WatsonxGatewayChatRequestParameters.builder()
                 .toolChoice(ToolChoice.REQUIRED)
                 .toolSpecifications(
                         ToolSpecification.builder().name("toolChoiceName").build())
                 .build();
 
-        var p = Converter.toModelGatewayParameters(parameters, false);
+        var p = Converter.toModelGatewayChatParameters(parameters, false);
         assertEquals("required", p.toolChoiceOption());
 
         parameters = WatsonxGatewayChatRequestParameters.builder()
@@ -617,30 +617,30 @@ public class ConverterTest {
                         ToolSpecification.builder().name("toolChoiceName").build())
                 .build();
 
-        p = Converter.toModelGatewayParameters(parameters, false);
+        p = Converter.toModelGatewayChatParameters(parameters, false);
         assertNull(p.toolChoiceOption());
         assertEquals("function", p.toolChoice().get("type"));
         assertEquals("toolChoiceName", ((Map) p.toolChoice().get("function")).get("name"));
     }
 
     @Test
-    void testToModelGatewayParameters_withToolChoiceNone() {
+    void testToModelGatewayChatParameters_withToolChoiceNone() {
         var parameters = WatsonxGatewayChatRequestParameters.builder()
                 .toolChoice(ToolChoice.NONE)
                 .build();
 
-        var p = Converter.toModelGatewayParameters(parameters, false);
+        var p = Converter.toModelGatewayChatParameters(parameters, false);
         assertEquals("none", p.toolChoiceOption());
     }
 
     @Test
-    void testToModelGatewayParameters_withoutStopSequences() {
+    void testToModelGatewayChatParameters_withoutStopSequences() {
         // The Model Gateway rejects an empty "stop" array with "Field validation for 'Sequences' failed on the
         // 'min' tag", so it must not be sent.
-        assertNull(Converter.toModelGatewayParameters(
+        assertNull(Converter.toModelGatewayChatParameters(
                         WatsonxGatewayChatRequestParameters.builder().build(), false)
                 .stop());
-        assertNull(Converter.toModelGatewayParameters(
+        assertNull(Converter.toModelGatewayChatParameters(
                         WatsonxGatewayChatRequestParameters.builder()
                                 .stopSequences(List.of())
                                 .build(),
@@ -649,10 +649,10 @@ public class ConverterTest {
     }
 
     @Test
-    void testToModelGatewayParameters_withInvalidToolChoice() {
+    void testToModelGatewayChatParameters_withInvalidToolChoice() {
         assertThrows(
                 IllegalArgumentException.class,
-                () -> Converter.toModelGatewayParameters(
+                () -> Converter.toModelGatewayChatParameters(
                         WatsonxGatewayChatRequestParameters.builder()
                                 .toolChoice(ToolChoice.REQUIRED)
                                 .build(),
@@ -660,7 +660,7 @@ public class ConverterTest {
 
         assertThrows(
                 IllegalArgumentException.class,
-                () -> Converter.toModelGatewayParameters(
+                () -> Converter.toModelGatewayChatParameters(
                         WatsonxGatewayChatRequestParameters.builder()
                                 .toolChoice(ToolChoice.REQUIRED)
                                 .toolChoiceName("toolChoiceName")
@@ -669,7 +669,7 @@ public class ConverterTest {
 
         assertThrows(
                 IllegalArgumentException.class,
-                () -> Converter.toModelGatewayParameters(
+                () -> Converter.toModelGatewayChatParameters(
                         WatsonxGatewayChatRequestParameters.builder()
                                 .toolChoice(ToolChoice.REQUIRED)
                                 .toolChoiceName("toolChoiceName")
@@ -679,7 +679,7 @@ public class ConverterTest {
 
         assertThrows(
                 IllegalArgumentException.class,
-                () -> Converter.toModelGatewayParameters(
+                () -> Converter.toModelGatewayChatParameters(
                         WatsonxGatewayChatRequestParameters.builder()
                                 .toolChoice(ToolChoice.REQUIRED)
                                 .toolChoiceName("toolChoiceName")
@@ -691,12 +691,12 @@ public class ConverterTest {
     }
 
     @Test
-    void testToModelGatewayParameters_withResponseFormat() throws Exception {
+    void testToModelGatewayChatParameters_withResponseFormat() throws Exception {
         var parameters = WatsonxGatewayChatRequestParameters.builder()
                 .responseFormat(ResponseFormat.JSON)
                 .build();
 
-        var p = Converter.toModelGatewayParameters(parameters, false);
+        var p = Converter.toModelGatewayChatParameters(parameters, false);
         assertEquals("json_object", p.responseFormat());
 
         parameters = WatsonxGatewayChatRequestParameters.builder()
@@ -708,7 +708,7 @@ public class ConverterTest {
                         .build())
                 .build();
 
-        p = Converter.toModelGatewayParameters(parameters, false);
+        p = Converter.toModelGatewayChatParameters(parameters, false);
         assertEquals("json_schema", p.responseFormat());
         assertEquals("test", p.jsonSchema().name());
         assertEquals(false, p.jsonSchema().strict());
@@ -725,7 +725,7 @@ public class ConverterTest {
     }
 
     @Test
-    void testToModelGatewayParameters_withStrictJsonSchema() throws Exception {
+    void testToModelGatewayChatParameters_withStrictJsonSchema() throws Exception {
         var parameters = WatsonxGatewayChatRequestParameters.builder()
                 .responseFormat(JsonSchema.builder()
                         .name("test")
@@ -737,7 +737,7 @@ public class ConverterTest {
                         .build())
                 .build();
 
-        var p = Converter.toModelGatewayParameters(parameters, true);
+        var p = Converter.toModelGatewayChatParameters(parameters, true);
         assertEquals("json_schema", p.responseFormat());
         assertEquals("test", p.jsonSchema().name());
         assertEquals(true, p.jsonSchema().strict());
@@ -758,7 +758,7 @@ public class ConverterTest {
     }
 
     @Test
-    void testToModelGatewayParameters_withInvalidJsonSchemaRootElement() {
+    void testToModelGatewayChatParameters_withInvalidJsonSchemaRootElement() {
         var parameters = WatsonxGatewayChatRequestParameters.builder()
                 .responseFormat(JsonSchema.builder()
                         .name("test")
@@ -767,7 +767,7 @@ public class ConverterTest {
                 .build();
 
         var exception = assertThrows(
-                IllegalArgumentException.class, () -> Converter.toModelGatewayParameters(parameters, false));
+                IllegalArgumentException.class, () -> Converter.toModelGatewayChatParameters(parameters, false));
 
         assertEquals(
                 "The root element of the JSON Schema must be either a JsonObjectSchema or a JsonRawSchema, but it was: "

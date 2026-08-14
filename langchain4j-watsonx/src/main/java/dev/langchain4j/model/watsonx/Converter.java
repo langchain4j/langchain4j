@@ -18,8 +18,8 @@ import com.ibm.watsonx.ai.chat.model.Tool;
 import com.ibm.watsonx.ai.chat.model.ToolCall;
 import com.ibm.watsonx.ai.chat.model.ToolMessage;
 import com.ibm.watsonx.ai.chat.model.UserContent;
+import com.ibm.watsonx.ai.gateway.chat.ModelGatewayChatParameters;
 import com.ibm.watsonx.ai.gateway.chat.ModelGatewayChatResponse;
-import com.ibm.watsonx.ai.gateway.chat.ModelGatewayParameters;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -165,9 +165,10 @@ class Converter {
         return builder.build();
     }
 
-    static ModelGatewayParameters toModelGatewayParameters(ChatRequestParameters parameters, boolean strictJsonSchema) {
+    static ModelGatewayChatParameters toModelGatewayChatParameters(
+            ChatRequestParameters parameters, boolean strictJsonSchema) {
 
-        ModelGatewayParameters.Builder builder = ModelGatewayParameters.builder();
+        ModelGatewayChatParameters.Builder builder = ModelGatewayChatParameters.builder();
         applyBaseParameters(builder, parameters, strictJsonSchema);
 
         if (parameters instanceof WatsonxGatewayChatRequestParameters gatewayParameters) {
