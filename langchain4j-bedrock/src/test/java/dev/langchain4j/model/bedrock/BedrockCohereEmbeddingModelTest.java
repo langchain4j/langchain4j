@@ -3,6 +3,8 @@ package dev.langchain4j.model.bedrock;
 import static dev.langchain4j.model.bedrock.BedrockCohereEmbeddingModel.InputType.SEARCH_QUERY;
 import static dev.langchain4j.model.bedrock.BedrockCohereEmbeddingModel.Model.COHERE_EMBED_MULTILINGUAL_V3;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatNoException;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
@@ -114,6 +116,38 @@ class BedrockCohereEmbeddingModelTest {
                 model.embed(EmbeddingRequest.builder().input("hello").build());
 
         assertThat(response.metadata().modelName()).isEqualTo("cohere.embed-multilingual-v3");
+    }
+
+    @Test
+    void should_reject_max_segments_per_batch_below_one() {
+        assertThatThrownBy(() -> modelWithMaxSegmentsPerBatch(0))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("maxSegmentsPerBatch must be between 1 and 96, but is: 0");
+
+        assertThatThrownBy(() -> modelWithMaxSegmentsPerBatch(-1))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("maxSegmentsPerBatch must be between 1 and 96, but is: -1");
+    }
+
+    @Test
+    void should_reject_max_segments_per_batch_above_the_bedrock_limit() {
+        assertThatThrownBy(() -> modelWithMaxSegmentsPerBatch(97))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("maxSegmentsPerBatch must be between 1 and 96, but is: 97");
+    }
+
+    @Test
+    void should_accept_max_segments_per_batch_at_the_bedrock_limit() {
+        assertThatNoException().isThrownBy(() -> modelWithMaxSegmentsPerBatch(96));
+    }
+
+    private static BedrockCohereEmbeddingModel modelWithMaxSegmentsPerBatch(int maxSegmentsPerBatch) {
+        return BedrockCohereEmbeddingModel.builder()
+                .client(clientReturning(new ArrayDeque<>()))
+                .model(COHERE_EMBED_MULTILINGUAL_V3)
+                .inputType(SEARCH_QUERY)
+                .maxSegmentsPerBatch(maxSegmentsPerBatch)
+                .build();
     }
 
     private static BedrockRuntimeClient clientReturning(Queue<InvokeModelResponse> responses) {
