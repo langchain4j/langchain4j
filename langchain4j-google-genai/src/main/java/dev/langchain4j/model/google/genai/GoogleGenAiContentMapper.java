@@ -103,6 +103,9 @@ class GoogleGenAiContentMapper {
     private static final String MODEL_ROLE = "model";
     private static final String FUNCTION_ROLE = "function";
 
+    private static final String THOUGHT_SIGNATURE_KEY_PREFIX =
+            "thought_signature_"; // do not change, will break backward compatibility!
+
     static Content toSystemInstruction(List<ChatMessage> messages) {
         String systemInstructions = messages.stream()
                 .filter(m -> m instanceof SystemMessage)
@@ -210,7 +213,7 @@ class GoogleGenAiContentMapper {
                     Part.Builder partBuilder = Part.builder().functionCall(fcBuilder.build());
 
                     if (req.id() != null) {
-                        String sigBase64 = aiMsg.attribute("thought_signature_" + req.id(), String.class);
+                        String sigBase64 = aiMsg.attribute(THOUGHT_SIGNATURE_KEY_PREFIX + req.id(), String.class);
                         if (sigBase64 != null) {
                             partBuilder.thoughtSignature(Base64.getDecoder().decode(sigBase64));
                         }
@@ -278,7 +281,8 @@ class GoogleGenAiContentMapper {
                     if (part.thoughtSignature().isPresent()) {
                         byte[] sig = part.thoughtSignature().get();
                         attributes.put(
-                                "thought_signature_" + id, Base64.getEncoder().encodeToString(sig));
+                                THOUGHT_SIGNATURE_KEY_PREFIX + id,
+                                Base64.getEncoder().encodeToString(sig));
                     }
 
                     toolRequests.add(ToolExecutionRequest.builder()
