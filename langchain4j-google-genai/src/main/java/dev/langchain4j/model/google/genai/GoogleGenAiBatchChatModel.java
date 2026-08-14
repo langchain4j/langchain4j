@@ -61,7 +61,7 @@ public final class GoogleGenAiBatchChatModel implements BatchChatModel {
     private final Integer thinkingBudget;
     private final String thinkingLevel;
     private final Boolean includeThoughts;
-    private final Boolean returnThinking;
+    private final boolean returnThinking;
     private final boolean sendThinking;
     private final Integer seed;
     private final boolean googleSearchEnabled;
@@ -81,7 +81,7 @@ public final class GoogleGenAiBatchChatModel implements BatchChatModel {
         this.thinkingBudget = builder.thinkingBudget;
         this.thinkingLevel = builder.thinkingLevel;
         this.includeThoughts = builder.includeThoughts;
-        this.returnThinking = builder.returnThinking;
+        this.returnThinking = getOrDefault(builder.returnThinking, false);
         this.sendThinking = getOrDefault(builder.sendThinking, false);
         this.seed = builder.seed;
         this.googleSearchEnabled = getOrDefault(builder.googleSearch, false);
@@ -379,10 +379,6 @@ public final class GoogleGenAiBatchChatModel implements BatchChatModel {
          * <p>
          * Disabled by default.
          * If enabled, the thinking text will be stored within the {@link AiMessage} and may be persisted.
-         * <p>
-         * Please note that when {@code returnThinking} is not set (is {@code null}), thinking text is included
-         * in the {@link AiMessage#text()} field, preserving the behaviour of this module
-         * before this option was introduced.
          *
          * @see #includeThoughts(Boolean)
          * @see #sendThinking(Boolean)

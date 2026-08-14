@@ -628,12 +628,11 @@ class GoogleGenAiContentMapperTest {
     }
 
     @Test
-    void should_keep_thought_summary_in_text_when_return_thinking_is_not_set() {
-        ChatResponse result =
-                GoogleGenAiContentMapper.toChatResponse(responseWithThoughtAndAnswer(), "test-model", null);
+    void should_drop_thought_summary_when_return_thinking_is_not_set() {
+        ChatResponse result = GoogleGenAiContentMapper.toChatResponse(responseWithThoughtAndAnswer(), "test-model");
 
         assertThat(result.aiMessage().thinking()).isNull();
-        assertThat(result.aiMessage().text()).isEqualTo("Let me work through this.42");
+        assertThat(result.aiMessage().text()).isEqualTo("42");
     }
 
     @Test

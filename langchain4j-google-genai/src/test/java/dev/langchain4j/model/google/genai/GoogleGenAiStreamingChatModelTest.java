@@ -471,7 +471,7 @@ class GoogleGenAiStreamingChatModelTest {
     }
 
     @Test
-    void should_stream_thought_summary_as_partial_response_when_return_thinking_is_not_set() throws Exception {
+    void should_drop_thought_summary_when_return_thinking_is_not_set() throws Exception {
         GoogleGenAiStreamingChatModel model = GoogleGenAiStreamingChatModel.builder()
                 .client(clientStreamingThoughtAndAnswer())
                 .modelName("gemini-3.5-flash")
@@ -482,9 +482,9 @@ class GoogleGenAiStreamingChatModelTest {
         ChatResponse response = stream(model, partialResponses, partialThinking);
 
         assertThat(partialThinking).isEmpty();
-        assertThat(partialResponses).containsExactly("Thinking it over.42");
+        assertThat(partialResponses).containsExactly("42");
         assertThat(response.aiMessage().thinking()).isNull();
-        assertThat(response.aiMessage().text()).isEqualTo("Thinking it over.42");
+        assertThat(response.aiMessage().text()).isEqualTo("42");
     }
 
     @Test

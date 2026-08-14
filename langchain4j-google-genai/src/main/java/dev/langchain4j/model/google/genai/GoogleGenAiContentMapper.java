@@ -225,10 +225,10 @@ class GoogleGenAiContentMapper {
     }
 
     static ChatResponse toChatResponse(GenerateContentResponse response, String modelName) {
-        return toChatResponse(response, modelName, null);
+        return toChatResponse(response, modelName, false);
     }
 
-    static ChatResponse toChatResponse(GenerateContentResponse response, String modelName, Boolean returnThinking) {
+    static ChatResponse toChatResponse(GenerateContentResponse response, String modelName, boolean returnThinking) {
         List<Candidate> candidates = response.candidates().orElse(List.of());
 
         if (candidates.isEmpty()) {
@@ -255,10 +255,8 @@ class GoogleGenAiContentMapper {
             for (Part part : parts) {
                 if (part.text().isPresent()) {
                     if (part.thought().orElse(false)) {
-                        if (Boolean.TRUE.equals(returnThinking)) {
+                        if (returnThinking) {
                             thinkingBuilder.append(part.text().get());
-                        } else if (returnThinking == null) {
-                            textBuilder.append(part.text().get());
                         }
                     } else {
                         textBuilder.append(part.text().get());

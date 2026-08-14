@@ -447,7 +447,7 @@ ChatModel gemini = GoogleGenAiChatModel.builder()
 
 Set `includeThoughts(true)` to ask the model to return
 [thought summaries](https://ai.google.dev/gemini-api/docs/generate-content/thinking) along with the answer,
-and `returnThinking(true)` to have them mapped to `AiMessage.thinking()` instead of `AiMessage.text()`:
+and `returnThinking(true)` to have them mapped to `AiMessage.thinking()`:
 
 ```java
 ChatModel gemini = GoogleGenAiChatModel.builder()
@@ -472,8 +472,8 @@ To send thought summaries back to the model in follow-up requests, set `sendThin
 preserved, regardless of this setting.
 
 > [!NOTE]
-> `returnThinking` is not enabled by default. When it is left unset, thought summaries are included in
-> `AiMessage.text()`, which is how this integration behaved before these options were introduced.
+> `returnThinking` is disabled by default. Thought summaries returned by the model are then discarded and
+> never appear in `AiMessage.text()`.
 
 ## GoogleGenAiEmbeddingModel
 

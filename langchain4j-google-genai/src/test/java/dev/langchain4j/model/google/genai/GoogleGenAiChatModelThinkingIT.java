@@ -15,7 +15,6 @@ class GoogleGenAiChatModelThinkingIT {
     private static final String MODEL_NAME = "gemini-2.5-flash";
 
     private static final UserMessage QUESTION = UserMessage.from("What are the best tourist spots in San Francisco?");
-    private static final UserMessage QUESTION_WITH_A_SHORT_ANSWER = UserMessage.from("What is the capital of Germany?");
 
     private static GoogleGenAiChatModel.Builder modelBuilder() {
         return GoogleGenAiChatModel.builder()
@@ -45,18 +44,12 @@ class GoogleGenAiChatModelThinkingIT {
     }
 
     @Test
-    void should_return_thinking_inside_text_when_return_thinking_is_not_set() {
-        AiMessage notSet =
-                modelBuilder().build().chat(QUESTION_WITH_A_SHORT_ANSWER).aiMessage();
-        AiMessage answerOnly = modelBuilder()
-                .returnThinking(true)
-                .build()
-                .chat(QUESTION_WITH_A_SHORT_ANSWER)
-                .aiMessage();
+    void should_not_return_thinking_when_return_thinking_is_not_set() {
+        ChatResponse chatResponse = modelBuilder().build().chat(QUESTION);
 
-        assertThat(notSet.thinking()).isNull();
-        assertThat(notSet.text()).containsIgnoringCase("Berlin");
-        assertThat(notSet.text().length()).isGreaterThan(answerOnly.text().length());
+        AiMessage aiMessage = chatResponse.aiMessage();
+        assertThat(aiMessage.text()).containsIgnoringCase("Golden Gate");
+        assertThat(aiMessage.thinking()).isNull();
     }
 
     @Test
