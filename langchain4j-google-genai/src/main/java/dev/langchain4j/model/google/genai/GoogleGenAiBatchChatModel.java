@@ -21,6 +21,7 @@ import com.google.genai.types.JobState;
 import com.google.genai.types.JobState.Known;
 import com.google.genai.types.SafetySetting;
 import dev.langchain4j.Experimental;
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.batch.BatchItemResult;
 import dev.langchain4j.model.batch.BatchPage;
 import dev.langchain4j.model.batch.BatchPagination;
@@ -59,6 +60,9 @@ public final class GoogleGenAiBatchChatModel implements BatchChatModel {
     private final List<SafetySetting> safetySettings;
     private final Integer thinkingBudget;
     private final String thinkingLevel;
+    private final Boolean includeThoughts;
+    private final boolean returnThinking;
+    private final boolean sendThinking;
     private final Integer seed;
     private final boolean googleSearchEnabled;
     private final boolean googleMapsEnabled;
@@ -76,6 +80,9 @@ public final class GoogleGenAiBatchChatModel implements BatchChatModel {
         this.safetySettings = copy(builder.safetySettings);
         this.thinkingBudget = builder.thinkingBudget;
         this.thinkingLevel = builder.thinkingLevel;
+        this.includeThoughts = builder.includeThoughts;
+        this.returnThinking = getOrDefault(builder.returnThinking, false);
+        this.sendThinking = getOrDefault(builder.sendThinking, false);
         this.seed = builder.seed;
         this.googleSearchEnabled = getOrDefault(builder.googleSearch, false);
         this.googleMapsEnabled = getOrDefault(builder.googleMaps, false);
@@ -188,7 +195,7 @@ public final class GoogleGenAiBatchChatModel implements BatchChatModel {
 
     private InlinedRequest createInlinedRequest(ChatRequest request) {
         Content systemInstruction = GoogleGenAiContentMapper.toSystemInstruction(request.messages());
-        List<Content> contents = GoogleGenAiContentMapper.toContents(request.messages());
+        List<Content> contents = GoogleGenAiContentMapper.toContents(request.messages(), sendThinking);
 
         ChatRequestParameters params = defaultRequestParameters != null
                 ? defaultRequestParameters.overrideWith(request.parameters())
@@ -200,6 +207,7 @@ public final class GoogleGenAiBatchChatModel implements BatchChatModel {
                 safetySettings,
                 thinkingBudget,
                 thinkingLevel,
+                includeThoughts,
                 seed,
                 googleSearchEnabled,
                 googleMapsEnabled,
@@ -230,7 +238,7 @@ public final class GoogleGenAiBatchChatModel implements BatchChatModel {
                 for (var inlined : inlinedResponses) {
                     if (inlined.response().isPresent()) {
                         results.add(BatchItemResult.success(GoogleGenAiContentMapper.toChatResponse(
-                                inlined.response().get(), batchJob.model().orElse(modelName))));
+                                inlined.response().get(), batchJob.model().orElse(modelName), returnThinking)));
                     } else if (inlined.error().isPresent()) {
                         results.add(BatchItemResult.failure(GoogleGenAiBatchUtils.toBatchError(
                                 inlined.error().get())));
@@ -269,6 +277,9 @@ public final class GoogleGenAiBatchChatModel implements BatchChatModel {
         private Duration timeout;
         private Integer thinkingBudget;
         private String thinkingLevel;
+        private Boolean includeThoughts;
+        private Boolean returnThinking;
+        private Boolean sendThinking;
         private Integer seed;
         private Boolean googleSearch;
         private Boolean googleMaps;
@@ -341,6 +352,55 @@ public final class GoogleGenAiBatchChatModel implements BatchChatModel {
          */
         public Builder thinkingLevel(String thinkingLevel) {
             this.thinkingLevel = thinkingLevel;
+            return this;
+        }
+
+        /**
+         * Controls whether the model is asked to include
+         * <a href="https://ai.google.dev/gemini-api/docs/generate-content/thinking">thought summaries</a>
+         * in the response.
+         * <p>
+         * Not set by default. This does not control how much the model thinks;
+         * see {@link #thinkingBudget(Integer)} and {@link #thinkingLevel(String)} for that.
+         *
+         * @see #returnThinking(Boolean)
+         * @see #sendThinking(Boolean)
+         */
+        public Builder includeThoughts(Boolean includeThoughts) {
+            this.includeThoughts = includeThoughts;
+            return this;
+        }
+
+        /**
+         * Controls whether to return thinking/reasoning text (if available) inside {@link AiMessage#thinking()}.
+         * Please note that this does not enable thinking/reasoning for the LLM;
+         * it only controls whether to parse the {@code thought} parts of the API response
+         * and return them inside the {@link AiMessage}.
+         * <p>
+         * Disabled by default.
+         * If enabled, the thinking text will be stored within the {@link AiMessage} and may be persisted.
+         *
+         * @see #includeThoughts(Boolean)
+         * @see #sendThinking(Boolean)
+         */
+        public Builder returnThinking(Boolean returnThinking) {
+            this.returnThinking = returnThinking;
+            return this;
+        }
+
+        /**
+         * Controls whether to send thinking/reasoning text to the LLM in follow-up requests.
+         * <p>
+         * Disabled by default.
+         * If enabled, the contents of {@link AiMessage#thinking()} will be sent in the API request.
+         * <p>
+         * Thought signatures required for function calling are handled independently of this setting.
+         *
+         * @see #includeThoughts(Boolean)
+         * @see #returnThinking(Boolean)
+         */
+        public Builder sendThinking(Boolean sendThinking) {
+            this.sendThinking = sendThinking;
             return this;
         }
 
