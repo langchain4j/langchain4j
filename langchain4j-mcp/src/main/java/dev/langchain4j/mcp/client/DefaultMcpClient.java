@@ -503,8 +503,8 @@ public class DefaultMcpClient implements McpClient {
         JsonNode serverInfoNode = result.path("_meta").path("io.modelcontextprotocol/serverInfo");
         if (!serverInfoNode.isMissingNode() && !serverInfoNode.isNull()) {
             McpImplementation implementation = OBJECT_MAPPER.convertValue(serverInfoNode, McpImplementation.class);
-            serverInfo = new McpServerInfo(
-                    implementation.getName(), implementation.getVersion(), implementation.getTitle());
+            serverInfo =
+                    new McpServerInfo(implementation.getName(), implementation.getVersion(), implementation.getTitle());
         }
 
         Map<String, Object> capabilities = Map.of();
@@ -1285,6 +1285,8 @@ public class DefaultMcpClient implements McpClient {
             } finally {
                 pendingOperations.remove(operation.getId());
             }
+            // An error response carries no "result", so it has to be raised before anything reads that field.
+            McpErrorHelper.checkForErrors(result);
             if (modernProtocol) {
                 String resultType = getResultType(result);
                 // servers may only send an InputRequiredResult in response to prompts/get, resources/read and
