@@ -9,11 +9,11 @@ import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 
 import dev.langchain4j.data.embedding.Embedding;
-import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
-import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.embedding.request.EmbeddingInput;
+import dev.langchain4j.model.embedding.response.EmbeddingResponseMetadata;
 import dev.langchain4j.model.output.TokenUsage;
 import java.time.Duration;
 import java.util.Comparator;
@@ -60,10 +60,12 @@ public class VoyageAiContextualizedEmbeddingModel extends DimensionAwareEmbeddin
     }
 
     @Override
-    public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
-        List<String> texts = textSegments.stream().map(TextSegment::text).collect(toList());
+    public dev.langchain4j.model.embedding.response.EmbeddingResponse doEmbed(
+            dev.langchain4j.model.embedding.request.EmbeddingRequest request) {
 
-        ContextualizedEmbeddingRequest request = ContextualizedEmbeddingRequest.builder()
+        List<String> texts = request.inputs().stream().map(EmbeddingInput::text).collect(toList());
+
+        ContextualizedEmbeddingRequest wireRequest = ContextualizedEmbeddingRequest.builder()
                 .inputs(singletonList(texts))
                 .inputType(inputType)
                 .model(modelName)
@@ -72,9 +74,15 @@ public class VoyageAiContextualizedEmbeddingModel extends DimensionAwareEmbeddin
                 .build();
 
         ContextualizedEmbeddingResponse response =
-                withRetryMappingExceptions(() -> this.client.contextualizedEmbed(request), maxRetries);
+                withRetryMappingExceptions(() -> this.client.contextualizedEmbed(wireRequest), maxRetries);
 
-        return Response.from(getEmbeddings(response), new TokenUsage(getTokenUsage(response)));
+        return dev.langchain4j.model.embedding.response.EmbeddingResponse.builder()
+                .embeddings(getEmbeddings(response))
+                .metadata(EmbeddingResponseMetadata.builder()
+                        .modelName(modelName)
+                        .tokenUsage(new TokenUsage(getTokenUsage(response)))
+                        .build())
+                .build();
     }
 
     @Override
