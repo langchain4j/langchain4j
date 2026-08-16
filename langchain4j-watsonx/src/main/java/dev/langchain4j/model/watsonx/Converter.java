@@ -1,6 +1,7 @@
 package dev.langchain4j.model.watsonx;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static java.lang.Math.toIntExact;
 import static java.util.Comparator.comparingInt;
 import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
@@ -24,10 +25,14 @@ import com.ibm.watsonx.ai.embedding.EmbeddingResponse.Result;
 import com.ibm.watsonx.ai.gateway.chat.ModelGatewayChatParameters;
 import com.ibm.watsonx.ai.gateway.chat.ModelGatewayChatResponse;
 import com.ibm.watsonx.ai.gateway.embedding.ModelGatewayEmbeddingResponse;
+import com.ibm.watsonx.ai.gateway.image.ModelGatewayImageResponse;
+import com.ibm.watsonx.ai.gateway.image.ModelGatewayImageResponse.ImageData;
+import com.ibm.watsonx.ai.gateway.image.ModelGatewayImageResponse.Usage;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.embedding.Embedding;
+import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.Content;
@@ -47,6 +52,7 @@ import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.embedding.response.EmbeddingResponse;
 import dev.langchain4j.model.embedding.response.EmbeddingResponseMetadata;
 import dev.langchain4j.model.output.FinishReason;
+import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import java.util.List;
 
@@ -186,6 +192,24 @@ class Converter {
                 .build();
     }
 
+    static Response<List<Image>> toImageResponse(ModelGatewayImageResponse response) {
+
+        List<Image> images = response.data().stream()
+                .map(imageData -> toImage(imageData, response.outputFormat()))
+                .toList();
+
+        Usage usage = response.usage();
+
+        TokenUsage tokenUsage = nonNull(usage)
+                ? new TokenUsage(
+                        toIntExact(usage.inputTokens()),
+                        toIntExact(usage.outputTokens()),
+                        toIntExact(usage.totalTokens()))
+                : null;
+
+        return Response.from(images, tokenUsage);
+    }
+
     static ChatParameters toChatParameters(ChatRequestParameters parameters, boolean strictJsonSchema) {
 
         ChatParameters.Builder builder = ChatParameters.builder();
@@ -315,6 +339,19 @@ class Converter {
                 case NONE -> builder.toolChoiceOption(ToolChoiceOption.NONE);
             }
         }
+    }
+
+    private static Image toImage(ImageData imageData, String outputFormat) {
+
+        Image.Builder builder =
+                Image.builder().base64Data(imageData.b64Json()).revisedPrompt(imageData.revisedPrompt());
+
+        if (nonNull(imageData.url())) builder.url(imageData.url());
+
+        // Only some models report the format of the images they generated, so the mime type can stay unset.
+        if (nonNull(outputFormat)) builder.mimeType("image/" + outputFormat);
+
+        return builder.build();
     }
 
     private static ToolCall toToolCall(ToolExecutionRequest toolExecutionRequest) {
