@@ -88,7 +88,23 @@ public class ToolSearchService {
 
         Map<String, ToolSpecification> toolsByName = new HashMap<>(availableTools.size());
         availableTools.forEach(tool -> toolsByName.put(tool.name(), tool));
-        toolNamesFoundEarlier.forEach(toolName -> effectiveTools.add(toolsByName.get(toolName)));
+
+        Set<String> effectiveToolNames = effectiveTools.stream()
+                .map(ToolSpecification::name)
+                .collect(toSet());
+
+        toolNamesFoundEarlier.forEach(toolName -> {
+            if (effectiveToolNames.contains(toolName)) {
+                // already effective (e.g. ALWAYS_VISIBLE), adding it again would duplicate the tool
+                return;
+            }
+            ToolSpecification toolFoundEarlier = toolsByName.get(toolName);
+            // the tool names come from the chat memory, so they can refer to tools
+            // that are no longer available in the current invocation
+            if (toolFoundEarlier != null) {
+                effectiveTools.add(toolFoundEarlier);
+            }
+        });
 
         return effectiveTools;
     }
