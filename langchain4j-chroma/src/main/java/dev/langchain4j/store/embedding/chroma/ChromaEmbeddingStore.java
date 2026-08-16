@@ -34,6 +34,8 @@ import java.util.function.Supplier;
  */
 public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
 
+    private static final String COSINE_DISTANCE = "cosine";
+
     private final ChromaClient chromaClient;
     private String collectionId;
     private final String collectionName;
@@ -76,6 +78,7 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
         if (collection == null) {
             createCollection();
         } else {
+            ensureCosineDistance(collection);
             collectionId = collection.getId();
         }
     }
@@ -361,6 +364,16 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
         String text = queryResponse.getDocuments().get(0).get(i);
         Map<String, Object> metadata = queryResponse.getMetadatas().get(0).get(i);
         return text == null ? null : TextSegment.from(text, metadata == null ? new Metadata() : new Metadata(metadata));
+    }
+
+    private void ensureCosineDistance(Collection collection) {
+        String distanceFunction = collection.distanceFunction();
+        if (!COSINE_DISTANCE.equalsIgnoreCase(distanceFunction)) {
+            throw new IllegalStateException("Chroma collection '" + collectionName + "' uses distance metric '"
+                    + distanceFunction + "', but ChromaEmbeddingStore requires '" + COSINE_DISTANCE
+                    + "' to produce valid relevance scores. Use or recreate a collection configured with "
+                    + COSINE_DISTANCE + " distance.");
+        }
     }
 
     private void createCollection() {

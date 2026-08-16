@@ -16,7 +16,19 @@ import java.util.List;
  */
 class CapturingHttpClient implements HttpClient {
 
+    private static final String DEFAULT_COLLECTION =
+            "{\"id\":\"collection-id\",\"name\":\"test\",\"metadata\":{\"hnsw:space\":\"cosine\"}}";
+
     private final List<HttpRequest> requests = new ArrayList<>();
+    private final String collectionBody;
+
+    CapturingHttpClient() {
+        this(DEFAULT_COLLECTION);
+    }
+
+    CapturingHttpClient(String collectionBody) {
+        this.collectionBody = collectionBody;
+    }
 
     List<HttpRequest> requests() {
         return requests;
@@ -37,7 +49,7 @@ class CapturingHttpClient implements HttpClient {
         throw new UnsupportedOperationException("SSE is not used by ChromaEmbeddingStore");
     }
 
-    private static String bodyFor(String url) {
+    private String bodyFor(String url) {
         if (url.endsWith("/api/v2/tenants/default")) {
             return "{\"name\":\"default\"}";
         }
@@ -48,10 +60,10 @@ class CapturingHttpClient implements HttpClient {
             return "true";
         }
         if (url.endsWith("/api/v1/collections")) {
-            return "{\"id\":\"collection-id\",\"name\":\"test\",\"metadata\":{}}";
+            return DEFAULT_COLLECTION;
         }
         if (url.contains("/collections/test")) {
-            return "{\"id\":\"collection-id\",\"name\":\"test\",\"metadata\":{}}";
+            return collectionBody;
         }
         throw new IllegalArgumentException("Unexpected URL: " + url);
     }

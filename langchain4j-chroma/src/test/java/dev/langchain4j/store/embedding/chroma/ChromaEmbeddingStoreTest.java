@@ -2,6 +2,7 @@ package dev.langchain4j.store.embedding.chroma;
 
 import static dev.langchain4j.http.client.HttpMethod.POST;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -97,6 +98,71 @@ class ChromaEmbeddingStoreTest {
 
         // then
         assertThat(httpClient.requests()).hasSize(requestsAfterInit);
+    }
+
+    @Test
+    void should_throw_when_existing_collection_does_not_use_cosine_distance() {
+        // given
+        CapturingHttpClient httpClient =
+                new CapturingHttpClient(collection("\"configuration_json\":{\"hnsw\":{\"space\":\"l2\"}}"));
+
+        // when + then
+        assertThatThrownBy(() -> store(httpClient))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Chroma collection 'test' uses distance metric 'l2', but ChromaEmbeddingStore requires "
+                        + "'cosine' to produce valid relevance scores. Use or recreate a collection configured with "
+                        + "cosine distance.");
+    }
+
+    @Test
+    void should_throw_when_existing_collection_declares_a_non_cosine_distance_metric_in_metadata() {
+        // given
+        CapturingHttpClient httpClient = new CapturingHttpClient(collection("\"metadata\":{\"hnsw:space\":\"ip\"}"));
+
+        // when + then
+        assertThatThrownBy(() -> store(httpClient))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Chroma collection 'test' uses distance metric 'ip', but ChromaEmbeddingStore requires "
+                        + "'cosine' to produce valid relevance scores. Use or recreate a collection configured with "
+                        + "cosine distance.");
+    }
+
+    @Test
+    void should_accept_existing_collection_that_uses_cosine_distance() {
+        // given
+        CapturingHttpClient httpClient =
+                new CapturingHttpClient(collection("\"configuration_json\":{\"hnsw\":{\"space\":\"cosine\"}}"));
+
+        // when + then
+        assertThatCode(() -> store(httpClient)).doesNotThrowAnyException();
+    }
+
+    @Test
+    void should_throw_when_existing_collection_does_not_report_a_distance_metric() {
+        // given
+        CapturingHttpClient httpClient = new CapturingHttpClient(collection("\"metadata\":{}"));
+
+        // when + then
+        assertThatThrownBy(() -> store(httpClient))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Chroma collection 'test' uses distance metric 'l2', but ChromaEmbeddingStore requires "
+                        + "'cosine' to produce valid relevance scores. Use or recreate a collection configured with "
+                        + "cosine distance.");
+    }
+
+    @Test
+    void should_accept_existing_collection_whose_metadata_reports_cosine_while_its_configuration_reports_l2() {
+        // given
+        CapturingHttpClient httpClient = new CapturingHttpClient(
+                collection(
+                        "\"configuration_json\":{\"hnsw_configuration\":{\"space\":\"l2\"}},\"metadata\":{\"hnsw:space\":\"cosine\"}"));
+
+        // when + then
+        assertThatCode(() -> store(httpClient)).doesNotThrowAnyException();
+    }
+
+    private static String collection(String distanceMetricField) {
+        return "{\"id\":\"collection-id\",\"name\":\"test\"," + distanceMetricField + "}";
     }
 
     private static ChromaEmbeddingStore store(CapturingHttpClient httpClient) {
