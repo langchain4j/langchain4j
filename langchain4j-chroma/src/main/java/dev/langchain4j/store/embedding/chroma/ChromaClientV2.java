@@ -3,6 +3,7 @@ package dev.langchain4j.store.embedding.chroma;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 
 import dev.langchain4j.Internal;
+import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.internal.Utils;
 import java.io.IOException;
@@ -100,8 +101,10 @@ class ChromaClientV2 implements ChromaClient {
         try {
             return chromaApi.tenant(tenantName);
         } catch (RuntimeException e) {
-            // if tenant is not present, Chroma returns: Status - 500
-            return null;
+            if (isNotFound(e)) {
+                return null;
+            }
+            throw e;
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -119,8 +122,10 @@ class ChromaClientV2 implements ChromaClient {
         try {
             return chromaApi.database(tenantName, databaseName);
         } catch (RuntimeException e) {
-            // if database is not present, Chroma returns: Status - 500
-            return null;
+            if (isNotFound(e)) {
+                return null;
+            }
+            throw e;
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -140,8 +145,10 @@ class ChromaClientV2 implements ChromaClient {
         try {
             return chromaApi.collection(tenantName, databaseName, collectionName);
         } catch (RuntimeException e) {
-            // if collection is not present, Chroma returns: Status - 500
-            return null;
+            if (isNotFound(e)) {
+                return null;
+            }
+            throw e;
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -182,5 +189,9 @@ class ChromaClientV2 implements ChromaClient {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private static boolean isNotFound(RuntimeException exception) {
+        return exception.getCause() instanceof HttpException httpException && httpException.statusCode() == 404;
     }
 }
