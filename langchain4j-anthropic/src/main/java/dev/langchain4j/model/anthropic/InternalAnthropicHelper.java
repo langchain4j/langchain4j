@@ -14,17 +14,19 @@ import dev.langchain4j.model.anthropic.internal.api.AnthropicCacheType;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicContainer;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicContainer.AnthropicContainerSkill;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRequest;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicDiagnosticsParameters;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicFormat;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicMetadata;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicOutputConfig;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicThinking;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicTool;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicToolChoice;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicToolChoiceType;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -50,34 +52,7 @@ class InternalAnthropicHelper {
 
     private static final String CODE_EXECUTION_TOOL_NAME = "code_execution";
 
-    /**
-     * {@code anthropic-beta} tokens required to use Skills and download the files they produce.
-     */
-    private static final List<String> SKILLS_BETA_FEATURES =
-            List.of("code-execution-2025-08-25", "skills-2025-10-02", "files-api-2025-04-14");
-
     private InternalAnthropicHelper() {}
-
-    /**
-     * Returns the {@code anthropic-beta} header value augmented with the tokens required by {@link AnthropicSkill},
-     * preserving any user-supplied beta features and avoiding duplicates. Returns {@code beta} unchanged when no
-     * skills are configured.
-     */
-    static String addSkillsBeta(String beta, List<AnthropicSkill> skills) {
-        if (isNullOrEmpty(skills)) {
-            return beta;
-        }
-        Set<String> features = new LinkedHashSet<>();
-        if (beta != null && !beta.isBlank()) {
-            for (String feature : beta.split(",")) {
-                if (!feature.isBlank()) {
-                    features.add(feature.trim());
-                }
-            }
-        }
-        features.addAll(SKILLS_BETA_FEATURES);
-        return String.join(",", features);
-    }
 
     private static AnthropicContainer toAnthropicContainer(List<AnthropicSkill> skills) {
         // Drop nulls and duplicates: the API rejects duplicate skill entries, and a null would NPE below.
@@ -148,7 +123,9 @@ class InternalAnthropicHelper {
             String userId,
             List<AnthropicSkill> skills,
             Map<String, Object> customParameters,
-            Boolean strictTools) {
+            Boolean strictTools,
+            boolean returnCacheDiagnostics,
+            String previousMessageId) {
 
         AnthropicCreateMessageRequest.Builder requestBuilder = AnthropicCreateMessageRequest.builder().stream(stream)
                 .model(chatRequest.modelName())
@@ -184,16 +161,42 @@ class InternalAnthropicHelper {
             requestBuilder.tools(tools);
         }
 
-        if (chatRequest.toolChoice() != null) {
-            requestBuilder.toolChoice(
-                    toAnthropicToolChoice(chatRequest.toolChoice(), toolChoiceName, disableParallelToolUse));
-        }
+        requestBuilder.toolChoice(
+                resolveToolChoice(chatRequest, toolChoiceName, disableParallelToolUse, !tools.isEmpty()));
 
         if (!isNullOrEmpty(userId)) {
             requestBuilder.metadata(AnthropicMetadata.builder().userId(userId).build());
         }
 
+        if (returnCacheDiagnostics) {
+            requestBuilder.diagnostics(new AnthropicDiagnosticsParameters(previousMessageId));
+        }
+
         return requestBuilder.build();
+    }
+
+    private static AnthropicToolChoice resolveToolChoice(
+            ChatRequest chatRequest, String toolChoiceName, Boolean disableParallelToolUse, boolean hasTools) {
+
+        if (chatRequest.toolChoice() != null) {
+            return toAnthropicToolChoice(chatRequest.toolChoice(), toolChoiceName, disableParallelToolUse);
+        }
+
+        if (!hasTools) {
+            return null; // without tools Anthropic defaults to "none", and forcing a tool would be rejected
+        }
+
+        if (toolChoiceName != null) {
+            return AnthropicToolChoice.from(toolChoiceName, disableParallelToolUse);
+        }
+
+        if (Boolean.TRUE.equals(disableParallelToolUse)) {
+            // "disable_parallel_tool_use" can only be sent inside "tool_choice", and "auto" is what Anthropic
+            // already applies when tools are present, so the tool selection strategy stays the same
+            return AnthropicToolChoice.from(AnthropicToolChoiceType.AUTO, disableParallelToolUse);
+        }
+
+        return null;
     }
 
     public static AnthropicOutputConfig toAnthropicOutputConfig(ResponseFormat responseFormat) {

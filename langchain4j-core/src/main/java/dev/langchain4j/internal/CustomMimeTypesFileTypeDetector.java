@@ -1,7 +1,6 @@
 package dev.langchain4j.internal;
 
 import dev.langchain4j.Internal;
-
 import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -36,61 +35,62 @@ import java.util.Map;
 public class CustomMimeTypesFileTypeDetector extends FileTypeDetector {
 
     private static final Map<String, String> defaultMappings = new HashMap<>();
+
     static {
-        defaultMappings.put("pdf",   "application/pdf");
-        defaultMappings.put("yml",   "text/yaml");
-        defaultMappings.put("yaml",  "text/yaml");
-        defaultMappings.put("json",  "application/json");
-        defaultMappings.put("js",    "text/javascript");
-        defaultMappings.put("mjs",   "text/javascript");
-        defaultMappings.put("ts",    "text/x.typescript");
-        defaultMappings.put("txt",   "text/plain");
-        defaultMappings.put("xml",   "application/xml");
-        defaultMappings.put("svg",   "image/svg+xml");
+        defaultMappings.put("pdf", "application/pdf");
+        defaultMappings.put("yml", "text/yaml");
+        defaultMappings.put("yaml", "text/yaml");
+        defaultMappings.put("json", "application/json");
+        defaultMappings.put("js", "text/javascript");
+        defaultMappings.put("mjs", "text/javascript");
+        defaultMappings.put("ts", "text/x.typescript");
+        defaultMappings.put("txt", "text/plain");
+        defaultMappings.put("xml", "application/xml");
+        defaultMappings.put("svg", "image/svg+xml");
         defaultMappings.put("xhtml", "application/xhtml+xml");
-        defaultMappings.put("html",  "text/html");
-        defaultMappings.put("htm",   "text/html");
-        defaultMappings.put("css",   "text/css");
-        defaultMappings.put("csv",   "text/csv");
-        defaultMappings.put("tsv",   "text/tsv");
-        defaultMappings.put("md",    "text/x-markdown");
+        defaultMappings.put("html", "text/html");
+        defaultMappings.put("htm", "text/html");
+        defaultMappings.put("css", "text/css");
+        defaultMappings.put("csv", "text/csv");
+        defaultMappings.put("tsv", "text/tsv");
+        defaultMappings.put("md", "text/x-markdown");
 
         // Mime types from image requirements for Vertex AI Gemini
         // https://cloud.google.com/vertex-ai/generative-ai/docs/multimodal/image-understanding#image-requirements
         defaultMappings.put("avif", "image/avif");
-        defaultMappings.put("bmp",  "image/bmp");
-        defaultMappings.put("gif",  "image/gif");
-        defaultMappings.put("jpe",  "image/jpeg");
+        defaultMappings.put("bmp", "image/bmp");
+        defaultMappings.put("gif", "image/gif");
+        defaultMappings.put("jpe", "image/jpeg");
         defaultMappings.put("jpeg", "image/jpeg");
-        defaultMappings.put("jpg",  "image/jpeg");
-        defaultMappings.put("png",  "image/png");
-        defaultMappings.put("tif",  "image/tiff");
+        defaultMappings.put("jpg", "image/jpeg");
+        defaultMappings.put("png", "image/png");
+        defaultMappings.put("tif", "image/tiff");
         defaultMappings.put("tiff", "image/tiff");
         defaultMappings.put("webp", "image/webp");
 
         // Mime types from audio requirements for Vertex AI Gemini
         // https://cloud.google.com/vertex-ai/generative-ai/docs/multimodal/audio-understanding
-        defaultMappings.put("mp3",  "audio/mp3");
-        defaultMappings.put("wav",  "audio/wav");
-        defaultMappings.put("aac",  "audio/aac");
+        defaultMappings.put("mp3", "audio/mp3");
+        defaultMappings.put("wav", "audio/wav");
+        defaultMappings.put("aac", "audio/aac");
         defaultMappings.put("flac", "audio/flac");
-        defaultMappings.put("mpa",  "audio/m4a");
+        defaultMappings.put("mpa", "audio/m4a");
         defaultMappings.put("mpga", "audio/mpga");
         defaultMappings.put("opus", "audio/opus");
-        defaultMappings.put("pcm",  "audio/pcm");
+        defaultMappings.put("pcm", "audio/pcm");
 
         // Mime types from video requirements for Vertex AI Gemini
         // https://cloud.google.com/vertex-ai/generative-ai/docs/multimodal/video-understanding
-        defaultMappings.put("mp4",    "video/mp4");
-        defaultMappings.put("mpeg",   "video/mpeg");
-        defaultMappings.put("mpg",    "video/mpg");
+        defaultMappings.put("mp4", "video/mp4");
+        defaultMappings.put("mpeg", "video/mpeg");
+        defaultMappings.put("mpg", "video/mpg");
         defaultMappings.put("mpegps", "video/mpegps");
-        defaultMappings.put("mov",    "video/mov");
-        defaultMappings.put("avi",    "video/avi");
-        defaultMappings.put("flv",    "video/x-flv");
-        defaultMappings.put("webm",   "video/webm");
+        defaultMappings.put("mov", "video/mov");
+        defaultMappings.put("avi", "video/avi");
+        defaultMappings.put("flv", "video/x-flv");
+        defaultMappings.put("webm", "video/webm");
         defaultMappings.put("wmv", "video/wmv");
-        defaultMappings.put("3gpp",   "video/3gpp");
+        defaultMappings.put("3gpp", "video/3gpp");
     }
 
     private final Map<String, String> mappings;
@@ -150,15 +150,29 @@ public class CustomMimeTypesFileTypeDetector extends FileTypeDetector {
      *     returns null if no mapping was found.
      */
     public String probeContentType(URI uri) {
+        // Opaque URIs (e.g. "data:image/png;base64,...", "mailto:...") have no path component,
+        // and URIs such as "https://example.com" have an empty one. Neither carries a file name.
+        String uriPath = uri.getPath();
+        if (uriPath == null || uriPath.isEmpty()) {
+            return null;
+        }
+
         // First let's try to guess via the Path
-        Path path = Path.of(uri.getPath());
+        Path path = Path.of(uriPath);
+
+        // Paths that denote a root (e.g. "https://example.com/") have no file name either
+        Path fileName = path.getFileName();
+        if (fileName == null) {
+            return null;
+        }
+
         String mimeTypeFromPath = probeContentType(path);
         if (mimeTypeFromPath != null) {
             return mimeTypeFromPath;
         }
 
         // Second, let's see if URLConnection can guess from the file name
-        String mimeTypeGuessedFromUrlCon = URLConnection.guessContentTypeFromName(path.getFileName().toString());
+        String mimeTypeGuessedFromUrlCon = URLConnection.guessContentTypeFromName(fileName.toString());
         if (mimeTypeGuessedFromUrlCon != null) {
             return mimeTypeGuessedFromUrlCon;
         }
@@ -166,8 +180,7 @@ public class CustomMimeTypesFileTypeDetector extends FileTypeDetector {
         // Third, the most costly network-hop approach to check
         // the content-type returned when opening a stream
         // Inspired from langchain4j-dashscope module: in EnhancedFileTypeDetector
-        try (InputStream in = new BufferedInputStream(
-            Files.newInputStream(path, StandardOpenOption.READ))) {
+        try (InputStream in = new BufferedInputStream(Files.newInputStream(path, StandardOpenOption.READ))) {
             return URLConnection.guessContentTypeFromStream(in);
         } catch (IOException e) {
             return null;
@@ -175,7 +188,12 @@ public class CustomMimeTypesFileTypeDetector extends FileTypeDetector {
     }
 
     static String extension(Path path) {
-        String fileName = path.getFileName().toFile().toString();
+        Path fileNamePath = path.getFileName();
+        if (fileNamePath == null) {
+            // e.g. a root path such as "/"
+            return "";
+        }
+        String fileName = fileNamePath.toString();
         int lastDotPosition = fileName.lastIndexOf('.');
         return lastDotPosition > 0 ? fileName.substring(lastDotPosition + 1) : "";
     }

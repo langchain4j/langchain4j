@@ -145,6 +145,9 @@ public class McpOperationHandler {
             case NOTIFICATION_CANCELLED:
                 handleCancelledNotification(message);
                 break;
+            case NOTIFICATION_SUBSCRIPTIONS_ACKNOWLEDGED:
+                log.debug("Subscriptions acknowledged: {}", message);
+                break;
             default:
                 log.warn("Received unknown message: {}", message);
         }

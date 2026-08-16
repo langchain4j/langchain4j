@@ -186,6 +186,11 @@ public class WebSocketMcpTransport implements McpTransport {
     }
 
     @Override
+    public boolean requiresCancellationNotification() {
+        return true;
+    }
+
+    @Override
     public void onFailure(Runnable actionOnFailure) {
         this.actionOnFailure = actionOnFailure;
     }

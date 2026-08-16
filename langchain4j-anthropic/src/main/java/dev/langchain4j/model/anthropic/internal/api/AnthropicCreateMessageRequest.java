@@ -31,6 +31,7 @@ public class AnthropicCreateMessageRequest {
     public AnthropicThinking thinking;
     public AnthropicMetadata metadata;
     public AnthropicContainer container;
+    public AnthropicDiagnosticsParameters diagnostics;
 
     @JsonIgnore
     public Map<String, Object> customParameters;
@@ -53,6 +54,7 @@ public class AnthropicCreateMessageRequest {
         this.thinking = builder.thinking;
         this.metadata = builder.metadata;
         this.container = builder.container;
+        this.diagnostics = builder.diagnostics;
         this.customParameters = builder.customParameters;
     }
 
@@ -206,6 +208,14 @@ public class AnthropicCreateMessageRequest {
         this.container = container;
     }
 
+    public AnthropicDiagnosticsParameters getDiagnostics() {
+        return diagnostics;
+    }
+
+    public void setDiagnostics(AnthropicDiagnosticsParameters diagnostics) {
+        this.diagnostics = diagnostics;
+    }
+
     @JsonAnyGetter
     public Map<String, Object> getCustomParameters() {
         return customParameters;
@@ -236,6 +246,7 @@ public class AnthropicCreateMessageRequest {
                         .thinking(this.thinking)
                         .metadata(this.metadata)
                         .container(this.container)
+                        .diagnostics(this.diagnostics)
                         .customParameters(this.customParameters);
     }
 
@@ -256,6 +267,7 @@ public class AnthropicCreateMessageRequest {
         private AnthropicThinking thinking;
         private AnthropicMetadata metadata;
         private AnthropicContainer container;
+        private AnthropicDiagnosticsParameters diagnostics;
         private Map<String, Object> customParameters;
 
         public Builder model(String model) {
@@ -330,6 +342,11 @@ public class AnthropicCreateMessageRequest {
 
         public Builder container(AnthropicContainer container) {
             this.container = container;
+            return this;
+        }
+
+        public Builder diagnostics(AnthropicDiagnosticsParameters diagnostics) {
+            this.diagnostics = diagnostics;
             return this;
         }
 

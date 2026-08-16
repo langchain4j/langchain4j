@@ -7,6 +7,7 @@ import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import software.amazon.awssdk.services.bedrockruntime.model.CacheTTL;
 
 public class BedrockChatRequestParameters extends DefaultChatRequestParameters {
@@ -67,6 +68,51 @@ public class BedrockChatRequestParameters extends DefaultChatRequestParameters {
 
     public BedrockServiceTier serviceTier() {
         return serviceTier;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        if (!super.equals(o)) return false;
+        BedrockChatRequestParameters that = (BedrockChatRequestParameters) o;
+        return Objects.equals(additionalModelRequestFields, that.additionalModelRequestFields)
+                && Objects.equals(cachePointPlacement, that.cachePointPlacement)
+                && Objects.equals(cacheTtl, that.cacheTtl)
+                && Objects.equals(bedrockGuardrailConfiguration, that.bedrockGuardrailConfiguration)
+                && Objects.equals(serviceTier, that.serviceTier);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(
+                super.hashCode(),
+                additionalModelRequestFields,
+                cachePointPlacement,
+                cacheTtl,
+                bedrockGuardrailConfiguration,
+                serviceTier);
+    }
+
+    @Override
+    public String toString() {
+        return "BedrockChatRequestParameters{" + "modelName="
+                + modelName() + ", temperature="
+                + temperature() + ", topP="
+                + topP() + ", topK="
+                + topK() + ", frequencyPenalty="
+                + frequencyPenalty() + ", presencePenalty="
+                + presencePenalty() + ", maxOutputTokens="
+                + maxOutputTokens() + ", stopSequences="
+                + stopSequences() + ", toolSpecifications="
+                + toolSpecifications() + ", toolChoice="
+                + toolChoice() + ", responseFormat="
+                + responseFormat() + ", additionalModelRequestFields="
+                + additionalModelRequestFields + ", cachePointPlacement="
+                + cachePointPlacement + ", cacheTtl="
+                + cacheTtl + ", bedrockGuardrailConfiguration="
+                + bedrockGuardrailConfiguration + ", serviceTier="
+                + serviceTier + '}';
     }
 
     public static class Builder extends DefaultChatRequestParameters.Builder<Builder> {

@@ -20,6 +20,11 @@ public class AnthropicImageContent extends AnthropicMessageContent {
         this.source = source;
     }
 
+    public AnthropicImageContent(AnthropicImageContentSource source, AnthropicCacheControl cacheControl) {
+        super("image", cacheControl);
+        this.source = source;
+    }
+
     public AnthropicImageContent(String mediaType, String data) {
         super("image");
         this.source = new AnthropicImageContentSource("base64", mediaType, data);
@@ -31,6 +36,14 @@ public class AnthropicImageContent extends AnthropicMessageContent {
 
     public static AnthropicImageContent fromUrl(String url) {
         return new AnthropicImageContent(AnthropicImageContentSource.fromUrl(url));
+    }
+
+    public static AnthropicImageContent fromBase64(String mediaType, String data, AnthropicCacheControl cacheControl) {
+        return new AnthropicImageContent(AnthropicImageContentSource.fromBase64(mediaType, data), cacheControl);
+    }
+
+    public static AnthropicImageContent fromUrl(String url, AnthropicCacheControl cacheControl) {
+        return new AnthropicImageContent(AnthropicImageContentSource.fromUrl(url), cacheControl);
     }
 
     @Override

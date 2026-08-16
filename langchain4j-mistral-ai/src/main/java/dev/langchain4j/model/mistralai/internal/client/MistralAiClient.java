@@ -8,6 +8,7 @@ import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.mistralai.internal.api.*;
 import dev.langchain4j.spi.ServiceHelper;
 import java.time.Duration;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
 import org.slf4j.Logger;
@@ -58,6 +59,50 @@ public abstract class MistralAiClient {
 
     public abstract void streamingFimCompletion(
             MistralAiFimCompletionRequest request, StreamingResponseHandler<String> handler);
+
+    /**
+     * Creates a batch job on the Mistral Batch API ({@code POST /v1/batch/jobs}).
+     *
+     * <p>Implemented as a non-abstract method that throws by default so that adding batch support does
+     * not break existing {@link MistralAiClient} implementations.</p>
+     */
+    public MistralAiBatchJob createBatchJob(MistralAiBatchJobRequest request) {
+        throw batchNotSupported();
+    }
+
+    /**
+     * Retrieves the current state of a batch job ({@code GET /v1/batch/jobs/{jobId}}).
+     */
+    public MistralAiBatchJob retrieveBatchJob(String jobId) {
+        throw batchNotSupported();
+    }
+
+    /**
+     * Requests cancellation of a batch job ({@code POST /v1/batch/jobs/{jobId}/cancel}).
+     */
+    public MistralAiBatchJob cancelBatchJob(String jobId) {
+        throw batchNotSupported();
+    }
+
+    /**
+     * Lists batch jobs with page-based pagination ({@code GET /v1/batch/jobs}).
+     */
+    public MistralAiBatchJobsResponse listBatchJobs(Integer page, Integer pageSize) {
+        throw batchNotSupported();
+    }
+
+    /**
+     * Downloads and parses the JSONL results of a completed batch job from the file referenced by its
+     * {@code output_file} or {@code error_file} id ({@code GET /v1/files/{fileId}/content}).
+     */
+    public List<MistralAiBatchResultEntry> downloadBatchResults(String fileId) {
+        throw batchNotSupported();
+    }
+
+    private UnsupportedFeatureException batchNotSupported() {
+        return new UnsupportedFeatureException("Batch operations are not supported by this client implementation: "
+                + getClass().getName());
+    }
 
     @SuppressWarnings({"rawtypes"})
     public static MistralAiClient.Builder builder() {
