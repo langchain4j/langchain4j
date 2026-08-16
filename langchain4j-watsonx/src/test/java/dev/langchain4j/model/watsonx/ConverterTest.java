@@ -808,8 +808,10 @@ public class ConverterTest {
                 WatsonxChatResponseMetadata.class,
                 Converter.toChatResponse(plainResponse).metadata());
 
-        assertNull(metadata.getServiceTier());
-        assertNull(metadata.getSystemFingerprint());
-        assertNull(metadata.getCached());
+        assertNull(metadata.serviceTier());
+        assertNull(metadata.systemFingerprint());
+        assertNull(metadata.cached());
+        assertNull(metadata.moderations());
+        assertNull(metadata.detections());
     }
 }

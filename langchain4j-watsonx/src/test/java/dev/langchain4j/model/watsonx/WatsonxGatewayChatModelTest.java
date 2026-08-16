@@ -229,11 +229,11 @@ public class WatsonxGatewayChatModelTest {
             var metadata = (WatsonxChatResponseMetadata) response.metadata();
             assertEquals("id", response.id());
             assertEquals("model", response.modelName());
-            assertEquals("modelVersion", metadata.getModelVersion());
-            assertEquals(1L, metadata.getCreated());
-            assertEquals("auto", metadata.getServiceTier());
-            assertEquals("fp", metadata.getSystemFingerprint());
-            assertEquals(true, metadata.getCached());
+            assertEquals("modelVersion", metadata.modelVersion());
+            assertEquals(1L, metadata.created());
+            assertEquals("auto", metadata.serviceTier());
+            assertEquals("fp", metadata.systemFingerprint());
+            assertEquals(true, metadata.cached());
             assertEquals(FinishReason.STOP, response.finishReason());
             assertEquals(10, response.tokenUsage().inputTokenCount());
             assertEquals(10, response.tokenUsage().outputTokenCount());

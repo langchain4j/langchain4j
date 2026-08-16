@@ -132,7 +132,9 @@ class Converter {
                 .finishReason(toFinishReason(choice.finishReason()))
                 .id(textChatResponse.id())
                 .modelName(textChatResponse.modelId())
-                .tokenUsage(tokenUsage);
+                .tokenUsage(tokenUsage)
+                .moderations(textChatResponse.moderations())
+                .detections(textChatResponse.detections());
 
         if (textChatResponse instanceof ModelGatewayChatResponse gatewayResponse) {
 

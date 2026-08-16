@@ -176,11 +176,11 @@ public class WatsonxGatewayStreamingChatModelTest {
                 public void onCompleteResponse(dev.langchain4j.model.chat.response.ChatResponse completeResponse) {
                     var metadata = (WatsonxChatResponseMetadata) completeResponse.metadata();
                     assertEquals("Hello World", completeResponse.aiMessage().text());
-                    assertEquals("auto", metadata.getServiceTier());
-                    assertEquals("fp", metadata.getSystemFingerprint());
-                    assertEquals(true, metadata.getCached());
-                    assertEquals("modelVersion", metadata.getModelVersion());
-                    assertEquals(1L, metadata.getCreated());
+                    assertEquals("auto", metadata.serviceTier());
+                    assertEquals("fp", metadata.systemFingerprint());
+                    assertEquals(true, metadata.cached());
+                    assertEquals("modelVersion", metadata.modelVersion());
+                    assertEquals(1L, metadata.created());
                     latch.countDown();
                 }
 
@@ -317,11 +317,11 @@ public class WatsonxGatewayStreamingChatModelTest {
                     assertTrue(completeResponse.aiMessage().hasToolExecutionRequests());
                     assertEquals("id", completeResponse.id());
                     assertEquals("model", completeResponse.modelName());
-                    assertEquals("modelVersion", metadata.getModelVersion());
-                    assertEquals(1L, metadata.getCreated());
-                    assertEquals("auto", metadata.getServiceTier());
-                    assertEquals("fp", metadata.getSystemFingerprint());
-                    assertEquals(true, metadata.getCached());
+                    assertEquals("modelVersion", metadata.modelVersion());
+                    assertEquals(1L, metadata.created());
+                    assertEquals("auto", metadata.serviceTier());
+                    assertEquals("fp", metadata.systemFingerprint());
+                    assertEquals(true, metadata.cached());
                     assertEquals(FinishReason.TOOL_EXECUTION, completeResponse.finishReason());
                     assertEquals(
                             1,

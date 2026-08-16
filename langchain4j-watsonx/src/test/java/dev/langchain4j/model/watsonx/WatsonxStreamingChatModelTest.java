@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
@@ -17,10 +18,17 @@ import static org.mockito.Mockito.when;
 
 import com.ibm.watsonx.ai.CloudRegion;
 import com.ibm.watsonx.ai.chat.ChatHandler;
+import com.ibm.watsonx.ai.chat.ChatModeration;
+import com.ibm.watsonx.ai.chat.ChatModeration.InputRanges;
 import com.ibm.watsonx.ai.chat.ChatResponse;
 import com.ibm.watsonx.ai.chat.ChatService;
-import com.ibm.watsonx.ai.chat.EmptyChatResponseException;
 import com.ibm.watsonx.ai.chat.TextChatResponse;
+import com.ibm.watsonx.ai.chat.TextChatResponse.DetectionEntry;
+import com.ibm.watsonx.ai.chat.TextChatResponse.DetectionResult;
+import com.ibm.watsonx.ai.chat.TextChatResponse.ModerationResult;
+import com.ibm.watsonx.ai.chat.TextChatResponse.ModerationResult.Position;
+import com.ibm.watsonx.ai.chat.exception.EmptyChatResponseException;
+import com.ibm.watsonx.ai.chat.exception.ModerationException;
 import com.ibm.watsonx.ai.chat.model.AssistantMessage;
 import com.ibm.watsonx.ai.chat.model.ChatMessage;
 import com.ibm.watsonx.ai.chat.model.ChatUsage;
@@ -53,6 +61,7 @@ import dev.langchain4j.model.output.FinishReason;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
@@ -693,8 +702,8 @@ public class WatsonxStreamingChatModelTest {
                     assertTrue(completeResponse.aiMessage().hasToolExecutionRequests());
                     assertEquals("id", completeResponse.id());
                     assertEquals("modelId", completeResponse.modelName());
-                    assertEquals("modelVersion", metadata.getModelVersion());
-                    assertEquals(1L, metadata.getCreated());
+                    assertEquals("modelVersion", metadata.modelVersion());
+                    assertEquals(1L, metadata.created());
                     assertEquals(FinishReason.TOOL_EXECUTION, completeResponse.finishReason());
                     assertEquals(10, completeResponse.tokenUsage().inputTokenCount());
                     assertEquals(10, completeResponse.tokenUsage().outputTokenCount());
@@ -1003,6 +1012,154 @@ public class WatsonxStreamingChatModelTest {
 
             streamingChatModel.chat(chatRequest, streamingHandler);
             assertTrue(streamingFuture.isCancelled());
+        });
+    }
+
+    @Test
+    void should_do_chat_with_inline_moderation() {
+
+        var moderation = ChatModeration.builder()
+                .pii(p -> p.output(true))
+                .inputRanges(List.of(InputRanges.of(0, 10)))
+                .build();
+
+        var moderationResult = new ModerationResult(0.98f, false, new Position(11, 23), "PhoneNumber", "555-123-4567");
+        var detectionEntry = new DetectionEntry(
+                0,
+                List.of(new DetectionResult("en_syntax_rbr_pii", "pii", "PhoneNumber", 0.98, "555-123-4567", 11, 23)));
+
+        doAnswer(invocation -> {
+                    ChatHandler handler = invocation.getArgument(1);
+                    handler.onPartialResponse("Call me at 555-123-4567", null);
+
+                    var resultMessage =
+                            new ResultMessage(AssistantMessage.ROLE, "Call me at 555-123-4567", null, null, null);
+                    var resultChoice = new ChatResponse.ResultChoice(0, resultMessage, "stop");
+                    chatResponse
+                            .choices(List.of(resultChoice))
+                            .moderations(Map.of("pii", List.of(moderationResult)))
+                            .detections(Map.of("output", List.of(detectionEntry)));
+                    handler.onCompleteResponse(chatResponse.build());
+
+                    return CompletableFuture.completedFuture(null);
+                })
+                .when(mockChatService)
+                .chatStreaming(chatRequestCaptor.capture(), any());
+
+        withChatServiceMock(() -> {
+            var streamingChatModel = WatsonxStreamingChatModel.builder()
+                    .baseUrl("https://test.com")
+                    .modelName("modelId")
+                    .projectId("projectId")
+                    .apiKey("api-key")
+                    .moderations(moderation)
+                    .build();
+
+            var latch = new CountDownLatch(1);
+            var metadata = new AtomicReference<WatsonxChatResponseMetadata>();
+
+            var streamingHandler = new StreamingChatResponseHandler() {
+                @Override
+                public void onPartialResponse(String partialResponse) {}
+
+                @Override
+                public void onCompleteResponse(dev.langchain4j.model.chat.response.ChatResponse completeResponse) {
+                    metadata.set(assertInstanceOf(WatsonxChatResponseMetadata.class, completeResponse.metadata()));
+                    latch.countDown();
+                }
+
+                @Override
+                public void onError(Throwable error) {
+                    fail("Unexpected error: " + error);
+                }
+            };
+
+            streamingChatModel.chat(
+                    ChatRequest.builder()
+                            .messages(UserMessage.from("Give me a phone number"))
+                            .build(),
+                    streamingHandler);
+
+            assertSame(moderation, chatRequestCaptor.getValue().moderations());
+
+            try {
+                assertTrue(latch.await(2, TimeUnit.SECONDS), "Handler did not complete in time");
+            } catch (InterruptedException e) {
+                fail(e);
+            }
+
+            assertEquals(
+                    Map.of("pii", List.of(moderationResult)), metadata.get().moderations());
+            assertEquals(
+                    Map.of("output", List.of(detectionEntry)), metadata.get().detections());
+        });
+    }
+
+    @Test
+    void should_map_a_moderation_block_to_a_content_filtered_exception() {
+
+        var moderationResult = new ModerationResult(0.8f, true, new Position(46, 56), "PhoneNumber", "3572865321");
+
+        doAnswer(invocation -> {
+                    ChatHandler handler = invocation.getArgument(1);
+
+                    // the moderation blocks the generation, the sdk reports it on onError and fails the future
+                    var moderationException = new ModerationException(Map.of("pii", List.of(moderationResult)));
+                    handler.onError(moderationException);
+
+                    return CompletableFuture.failedFuture(moderationException);
+                })
+                .when(mockChatService)
+                .chatStreaming(chatRequestCaptor.capture(), any());
+
+        withChatServiceMock(() -> {
+            var streamingChatModel = WatsonxStreamingChatModel.builder()
+                    .baseUrl("https://test.com")
+                    .modelName("modelId")
+                    .projectId("projectId")
+                    .apiKey("api-key")
+                    .moderations(
+                            ChatModeration.builder().pii(p -> p.input(true)).build())
+                    .build();
+
+            var latch = new CountDownLatch(1);
+            var error = new AtomicReference<Throwable>();
+
+            var streamingHandler = new StreamingChatResponseHandler() {
+                @Override
+                public void onPartialResponse(String partialResponse) {}
+
+                @Override
+                public void onCompleteResponse(dev.langchain4j.model.chat.response.ChatResponse completeResponse) {
+                    fail("Unexpected response: " + completeResponse);
+                }
+
+                @Override
+                public void onError(Throwable throwable) {
+                    error.set(throwable);
+                    latch.countDown();
+                }
+            };
+
+            streamingChatModel.chat(
+                    ChatRequest.builder()
+                            .messages(UserMessage.from("Can you repeat my phone number?"))
+                            .build(),
+                    streamingHandler);
+
+            try {
+                assertTrue(latch.await(2, TimeUnit.SECONDS), "Handler did not complete in time");
+            } catch (InterruptedException e) {
+                fail(e);
+            }
+
+            var ex = assertInstanceOf(ContentFilteredException.class, error.get());
+            assertEquals(
+                    "The chat response was blocked by the moderation system (policies triggered: pii)",
+                    ex.getMessage());
+
+            var cause = assertInstanceOf(ModerationException.class, ex.getCause());
+            assertEquals(Map.of("pii", List.of(moderationResult)), cause.moderations());
         });
     }
 
