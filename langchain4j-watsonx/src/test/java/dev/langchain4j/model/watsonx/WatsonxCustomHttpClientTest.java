@@ -460,6 +460,58 @@ public class WatsonxCustomHttpClientTest {
     }
 
     @Test
+    void should_use_custom_http_client_for_gateway_embedding_model() throws Exception {
+
+        HttpClient customClient = HttpClient.newHttpClient();
+        EmbeddingModel embeddingModel = WatsonxGatewayEmbeddingModel.builder()
+                .baseUrl("https://localhost")
+                .modelName("text-embedding-3-small")
+                .apiKey("apiKey")
+                .httpClient(customClient)
+                .build();
+
+        Object modelGatewayEmbeddingService = getFieldValue(embeddingModel, "modelGatewayEmbeddingService");
+        Object restclient = getFieldValue(modelGatewayEmbeddingService, "client");
+        assertEquals(customClient, getFieldValue(restclient, "httpClient"));
+        assertNotEquals(HttpClientProvider.httpClient(true), getFieldValue(restclient, "httpClient"));
+        assertNotEquals(HttpClientProvider.httpClient(false), getFieldValue(restclient, "httpClient"));
+
+        Object syncHttpClient = getFieldValue(restclient, "syncHttpClient");
+        assertEquals(customClient, getFieldValue(syncHttpClient, "delegate"));
+        assertNotEquals(HttpClientProvider.httpClient(true), getFieldValue(syncHttpClient, "delegate"));
+        assertNotEquals(HttpClientProvider.httpClient(false), getFieldValue(syncHttpClient, "delegate"));
+    }
+
+    @Test
+    void should_use_default_http_client_for_gateway_embedding_model() {
+
+        Stream.of(true, false).forEach(verifySsl -> {
+            try {
+
+                HttpClient customClient = HttpClient.newHttpClient();
+                EmbeddingModel embeddingModel = WatsonxGatewayEmbeddingModel.builder()
+                        .baseUrl("https://localhost")
+                        .modelName("text-embedding-3-small")
+                        .apiKey("apiKey")
+                        .verifySsl(verifySsl)
+                        .build();
+
+                Object modelGatewayEmbeddingService = getFieldValue(embeddingModel, "modelGatewayEmbeddingService");
+                Object restclient = getFieldValue(modelGatewayEmbeddingService, "client");
+                assertNotEquals(customClient, getFieldValue(restclient, "httpClient"));
+                assertEquals(HttpClientProvider.httpClient(verifySsl), getFieldValue(restclient, "httpClient"));
+
+                Object syncHttpClient = getFieldValue(restclient, "syncHttpClient");
+                assertNotEquals(customClient, getFieldValue(syncHttpClient, "delegate"));
+                assertEquals(HttpClientProvider.httpClient(verifySsl), getFieldValue(syncHttpClient, "delegate"));
+
+            } catch (Exception e) {
+                fail(e);
+            }
+        });
+    }
+
+    @Test
     void should_use_custom_http_client_for_moderation_model() throws Exception {
 
         HttpClient customClient = HttpClient.newHttpClient();

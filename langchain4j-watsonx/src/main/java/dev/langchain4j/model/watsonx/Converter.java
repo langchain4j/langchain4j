@@ -1,5 +1,7 @@
 package dev.langchain4j.model.watsonx;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static java.util.Comparator.comparingInt;
 import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
 import static java.util.Objects.requireNonNull;
@@ -18,11 +20,14 @@ import com.ibm.watsonx.ai.chat.model.Tool;
 import com.ibm.watsonx.ai.chat.model.ToolCall;
 import com.ibm.watsonx.ai.chat.model.ToolMessage;
 import com.ibm.watsonx.ai.chat.model.UserContent;
+import com.ibm.watsonx.ai.embedding.EmbeddingResponse.Result;
 import com.ibm.watsonx.ai.gateway.chat.ModelGatewayChatParameters;
 import com.ibm.watsonx.ai.gateway.chat.ModelGatewayChatResponse;
+import com.ibm.watsonx.ai.gateway.embedding.ModelGatewayEmbeddingResponse;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.Content;
@@ -39,6 +44,8 @@ import dev.langchain4j.model.chat.request.json.JsonRawSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.model.chat.response.PartialToolCall;
+import dev.langchain4j.model.embedding.response.EmbeddingResponse;
+import dev.langchain4j.model.embedding.response.EmbeddingResponseMetadata;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 import java.util.List;
@@ -138,6 +145,42 @@ class Converter {
         return ChatResponse.builder()
                 .aiMessage(aiMessage.build())
                 .metadata(metadata.build())
+                .build();
+    }
+
+    static EmbeddingResponse toEmbeddingResponse(
+            com.ibm.watsonx.ai.embedding.EmbeddingResponse response, String defaultModelName) {
+
+        List<Embedding> embeddings = response.results().stream()
+                .map(Result::embedding)
+                .map(Embedding::from)
+                .toList();
+
+        return toEmbeddingResponse(
+                embeddings, getOrDefault(response.modelId(), defaultModelName), response.inputTokenCount());
+    }
+
+    static EmbeddingResponse toEmbeddingResponse(ModelGatewayEmbeddingResponse response, String defaultModelName) {
+
+        List<Embedding> embeddings = response.data().stream()
+                .sorted(comparingInt(ModelGatewayEmbeddingResponse.Embedding::index))
+                .map(ModelGatewayEmbeddingResponse.Embedding::embedding)
+                .map(Embedding::from)
+                .toList();
+
+        Integer inputTokenCount = nonNull(response.usage()) ? response.usage().promptTokens() : null;
+        return toEmbeddingResponse(embeddings, getOrDefault(response.model(), defaultModelName), inputTokenCount);
+    }
+
+    private static EmbeddingResponse toEmbeddingResponse(
+            List<Embedding> embeddings, String modelName, Integer inputTokenCount) {
+
+        return EmbeddingResponse.builder()
+                .embeddings(embeddings)
+                .metadata(EmbeddingResponseMetadata.builder()
+                        .modelName(modelName)
+                        .tokenUsage(nonNull(inputTokenCount) ? new TokenUsage(inputTokenCount) : null)
+                        .build())
                 .build();
     }
 
