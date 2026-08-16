@@ -25,7 +25,9 @@ private val logger = LoggerFactory.getLogger(FileSystemDocumentLoader::class.jav
  * @param directoryPaths A list of directories from which documents should be loaded.
  * @param documentParser The parser to convert files into [Document] objects.
  * @param recursive Determines whether subdirectories should also be searched for documents. Defaults to `false`.
- * @param pathMatcher An optional filter to match file paths against specific patterns.
+ * @param pathMatcher An optional filter to match file paths against specific patterns. Each file path is converted
+ * from absolute to relative (relative to the traversed directory) before being matched, so pathMatcher should use
+ * relative patterns.
  * @param context The CoroutineContext to be used for asynchronous operations. Defaults to [Dispatchers.IO].
  * @return A list of Document objects representing the loaded documents.
  */
@@ -55,7 +57,8 @@ public suspend fun loadDocuments(
                 fileStream.use { stream ->
                     stream
                         .filter { file ->
-                            Files.isRegularFile(file) && matcher.matches(file)
+                            // patterns defined in pathMatcher are relative to the traversed directory
+                            Files.isRegularFile(file) && matcher.matches(path.relativize(file))
                         }.forEach { file ->
                             files.add(file)
                         }
