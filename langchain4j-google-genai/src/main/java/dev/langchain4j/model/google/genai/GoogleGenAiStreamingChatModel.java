@@ -27,6 +27,7 @@ import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
+import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
@@ -55,6 +56,9 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
     private final List<SafetySetting> safetySettings;
     private final Integer thinkingBudget;
     private final String thinkingLevel;
+    private final Boolean includeThoughts;
+    private final boolean returnThinking;
+    private final boolean sendThinking;
     private final Integer seed;
     private final boolean googleSearchEnabled;
     private final boolean googleMapsEnabled;
@@ -76,6 +80,9 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
         this.allowedFunctionNames = copy(builder.allowedFunctionNames);
         this.thinkingBudget = builder.thinkingBudget;
         this.thinkingLevel = builder.thinkingLevel;
+        this.includeThoughts = builder.includeThoughts;
+        this.returnThinking = getOrDefault(builder.returnThinking, false);
+        this.sendThinking = getOrDefault(builder.sendThinking, false);
         this.seed = builder.seed;
         this.safetySettings = copy(builder.safetySettings);
         this.vertexSearchDatastore = builder.vertexSearchDatastore;
@@ -124,7 +131,7 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
         String modelName = chatRequest.modelName();
 
         Content systemInstruction = GoogleGenAiContentMapper.toSystemInstruction(chatRequest.messages());
-        List<Content> contents = GoogleGenAiContentMapper.toContents(chatRequest.messages());
+        List<Content> contents = GoogleGenAiContentMapper.toContents(chatRequest.messages(), sendThinking);
 
         GoogleGenAiChatRequestParameters parameters = (GoogleGenAiChatRequestParameters) chatRequest.parameters();
 
@@ -134,6 +141,7 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
                 safetySettings,
                 thinkingBudget,
                 thinkingLevel,
+                includeThoughts,
                 seed,
                 googleSearchEnabled,
                 googleMapsEnabled,
@@ -161,6 +169,7 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
                         client.models.generateContentStream(modelName, contents, config);
 
                 StringBuilder textBuilder = new StringBuilder();
+                StringBuilder thinkingBuilder = new StringBuilder();
                 List<ToolExecutionRequest> toolRequests = new ArrayList<>();
                 Map<String, Object> attributes = new java.util.HashMap<>();
                 TokenUsage tokenUsage = new TokenUsage();
@@ -172,12 +181,22 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
                 for (GenerateContentResponse chunk : stream) {
                     trackingHandler.resetMappingTracking();
                     lastChunk = chunk;
-                    ChatResponse partialResponse = GoogleGenAiContentMapper.toChatResponse(chunk, modelName);
+                    ChatResponse partialResponse =
+                            GoogleGenAiContentMapper.toChatResponse(chunk, modelName, returnThinking);
                     AiMessage aiMessage = partialResponse.aiMessage();
 
                     if (aiMessage.attributes() != null
                             && !aiMessage.attributes().isEmpty()) {
                         attributes.putAll(aiMessage.attributes());
+                    }
+
+                    if (aiMessage.thinking() != null && !aiMessage.thinking().isEmpty()) {
+                        thinkingBuilder.append(aiMessage.thinking());
+                        try {
+                            trackingHandler.onPartialThinking(new PartialThinking(aiMessage.thinking()));
+                        } catch (Exception userException) {
+                            trackingHandler.onError(userException);
+                        }
                     }
 
                     if (aiMessage.text() != null && !aiMessage.text().isEmpty()) {
@@ -222,6 +241,12 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
                     finalAiMessage = AiMessage.from(toolRequests);
                 } else {
                     finalAiMessage = AiMessage.from(textBuilder.toString());
+                }
+
+                if (thinkingBuilder.length() > 0) {
+                    finalAiMessage = finalAiMessage.toBuilder()
+                            .thinking(thinkingBuilder.toString())
+                            .build();
                 }
 
                 if (!attributes.isEmpty()) {
@@ -287,6 +312,9 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
         private Double temperature, topP, frequencyPenalty, presencePenalty;
         private Integer topK, maxOutputTokens, thinkingBudget, seed;
         private String thinkingLevel;
+        private Boolean includeThoughts;
+        private Boolean returnThinking;
+        private Boolean sendThinking;
         private List<String> stopSequences;
         private Duration timeout;
         private Boolean googleSearch;
@@ -486,6 +514,56 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
          */
         public Builder thinkingLevel(String thinkingLevel) {
             this.thinkingLevel = thinkingLevel;
+            return this;
+        }
+
+        /**
+         * Controls whether the model is asked to include
+         * <a href="https://ai.google.dev/gemini-api/docs/generate-content/thinking">thought summaries</a>
+         * in the response.
+         * <p>
+         * Not set by default. This does not control how much the model thinks;
+         * see {@link #thinkingBudget(Integer)} and {@link #thinkingLevel(String)} for that.
+         *
+         * @see #returnThinking(Boolean)
+         * @see #sendThinking(Boolean)
+         */
+        public Builder includeThoughts(Boolean includeThoughts) {
+            this.includeThoughts = includeThoughts;
+            return this;
+        }
+
+        /**
+         * Controls whether to return thinking/reasoning text (if available) inside {@link AiMessage#thinking()}
+         * and to invoke {@link StreamingChatResponseHandler#onPartialThinking(PartialThinking)}.
+         * Please note that this does not enable thinking/reasoning for the LLM;
+         * it only controls whether to parse the {@code thought} parts of the API response
+         * and return them inside the {@link AiMessage}.
+         * <p>
+         * Disabled by default.
+         * If enabled, the thinking text will be stored within the {@link AiMessage} and may be persisted.
+         *
+         * @see #includeThoughts(Boolean)
+         * @see #sendThinking(Boolean)
+         */
+        public Builder returnThinking(Boolean returnThinking) {
+            this.returnThinking = returnThinking;
+            return this;
+        }
+
+        /**
+         * Controls whether to send thinking/reasoning text to the LLM in follow-up requests.
+         * <p>
+         * Disabled by default.
+         * If enabled, the contents of {@link AiMessage#thinking()} will be sent in the API request.
+         * <p>
+         * Thought signatures required for function calling are handled independently of this setting.
+         *
+         * @see #includeThoughts(Boolean)
+         * @see #returnThinking(Boolean)
+         */
+        public Builder sendThinking(Boolean sendThinking) {
+            this.sendThinking = sendThinking;
             return this;
         }
 

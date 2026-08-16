@@ -47,7 +47,26 @@ class GoogleAiGeminiEnhancedCivicAnswersTest {
     }
 
     @Test
-    void shouldDefaultEnableEnhancedCivicAnswersToFalse() {
+    void shouldForwardEnableEnhancedCivicAnswersWhenExplicitlyDisabled() {
+        var model = GoogleAiGeminiChatModel.builder()
+                .apiKey("test-key")
+                .modelName(TEST_MODEL_NAME)
+                .enableEnhancedCivicAnswers(false)
+                .build(mockGeminiService);
+
+        var chatRequest =
+                ChatRequest.builder().messages(UserMessage.from("Hello")).build();
+        when(mockGeminiService.generateContent(any(), any())).thenReturn(createSimpleResponse("Hi"));
+
+        model.chat(chatRequest);
+
+        verify(mockGeminiService).generateContent(eq(TEST_MODEL_NAME), requestCaptor.capture());
+        assertThat(requestCaptor.getValue().generationConfig().enableEnhancedCivicAnswers())
+                .isFalse();
+    }
+
+    @Test
+    void shouldDefaultEnableEnhancedCivicAnswersToNull() {
         var model = GoogleAiGeminiChatModel.builder()
                 .apiKey("test-key")
                 .modelName(TEST_MODEL_NAME)
@@ -61,7 +80,7 @@ class GoogleAiGeminiEnhancedCivicAnswersTest {
 
         verify(mockGeminiService).generateContent(eq(TEST_MODEL_NAME), requestCaptor.capture());
         assertThat(requestCaptor.getValue().generationConfig().enableEnhancedCivicAnswers())
-                .isFalse();
+                .isNull();
     }
 
     private GeminiGenerateContentResponse createSimpleResponse(String text) {

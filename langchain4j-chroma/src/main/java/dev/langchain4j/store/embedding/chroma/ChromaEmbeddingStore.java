@@ -1,7 +1,9 @@
 package dev.langchain4j.store.embedding.chroma;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.randomUUID;
+import static dev.langchain4j.internal.ValidationUtils.ensureConsistentSizes;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.store.embedding.chroma.ChromaApiVersion.*;
@@ -257,6 +259,11 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     @Override
     public void addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> textSegments) {
+        ensureConsistentSizes(ids, embeddings, textSegments);
+        if (isNullOrEmpty(embeddings)) {
+            return;
+        }
+
         int size = embeddings.size();
 
         List<Map<String, Object>> metadatas;

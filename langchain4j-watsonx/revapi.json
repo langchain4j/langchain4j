@@ -5,19 +5,69 @@
       "ignore": true,
       "differences": [
         {
-          "code": "java.field.removed",
-          "old": "field dev.langchain4j.model.watsonx.WatsonxChat.chatService @ dev.langchain4j.model.watsonx.WatsonxChatModel",
-          "justification": "Internal field renamed from chatService to chatProvider to support deployment models; WatsonxChat is @Internal"
+          "regex": true,
+          "code": "java\\.class\\.externalClassExposedInAPI",
+          "new": "missing-class com\\.ibm\\.watsonx\\..*",
+          "justification": "watsonx.ai SDK types are intentionally exposed on the public API of this module."
         },
         {
-          "code": "java.field.removed",
-          "old": "field dev.langchain4j.model.watsonx.WatsonxChat.chatService @ dev.langchain4j.model.watsonx.WatsonxStreamingChatModel",
-          "justification": "Internal field renamed from chatService to chatProvider to support deployment models; WatsonxChat is @Internal"
+          "regex": true,
+          "code": "java\\.class\\.externalClassExposedInAPI",
+          "new": "missing-class dev\\.langchain4j\\..*",
+          "justification": "LangChain4j core types are intentionally exposed on the public API of this module."
         },
         {
-          "code": "java.class.externalClassExposedInAPI",
-          "new": "missing-class com.ibm.watsonx.ai.chat.ChatProvider",
-          "justification": "ChatProvider is an interface from watsonx-ai SDK used internally; WatsonxChat is @Internal and the field is protected"
+          "regex": true,
+          "code": "java\\.method\\.removed",
+          "old": ".*::deploymentId\\(java\\.lang\\.String\\).*",
+          "justification": "Deployments are now served by their own models (WatsonxDeploymentChatModel / WatsonxDeploymentStreamingChatModel), so deploymentId no longer belongs to the foundation-model builders or to WatsonxChatRequestParameters. The module is still in beta."
+        },
+        {
+          "code": "java.method.removed",
+          "old": "method java.lang.String dev.langchain4j.model.watsonx.WatsonxChatRequestParameters::deploymentId()",
+          "justification": "Deployments now have their own parameters type, because the deployment service does not accept the same parameters as the text-chat service. The module is still in beta."
+        },
+        {
+          "regex": true,
+          "code": "java\\.(method|field)\\.removed",
+          "old": ".*[.:](projectId|spaceId).*@ dev\\.langchain4j\\.model\\.watsonx\\.WatsonxModelCatalog\\.Builder",
+          "justification": "The foundation-model specs endpoint is global: projectId and spaceId were accepted and then silently ignored. WatsonxModelCatalog.Builder now extends the connection-only builder base, so they can no longer be set. The module is still in beta."
+        },
+        {
+          "regex": true,
+          "code": "java\\.field\\.removed",
+          "old": "field dev\\.langchain4j\\.model\\.watsonx\\.WatsonxChat\\.chatProvider @ .*",
+          "justification": "The protected chatProvider field was replaced by an abstract chatProvider() accessor, so each chat backend can hold its own service type. WatsonxChat is @Internal."
+        },
+        {
+          "regex": true,
+          "code": "java\\.method\\.returnTypeErasureChanged",
+          "old": "method T dev\\.langchain4j\\.model\\.watsonx\\.Watsonx(Builder|ConnectionBuilder|Chat\\.Builder|ChatBase\\.Builder)<.*",
+          "justification": "The chat support was refactored into three backends (foundation models, deployments and Model Gateway), each exposing only the parameters its watsonx.ai service actually accepts. The @Internal builder base classes were reorganised accordingly, so the self-typed setters are declared on different @Internal classes than in 1.18.1-beta28 and their erased return type changed. Source-compatible: callers only need to recompile. The module is still in beta."
+        },
+        {
+          "regex": true,
+          "code": "java\\.method\\.returnTypeErasureChanged",
+          "new": "method T dev\\.langchain4j\\.model\\.watsonx\\.Watsonx(Builder|ConnectionBuilder|Chat\\.Builder|ChatBase\\.Builder)<.*",
+          "justification": "Same refactor, for setters that used to be overridden in the public builder and are now only inherited from an @Internal base class. See the previous justification."
+        },
+        {
+          "regex": true,
+          "code": "java\\.class\\.(nonFinalClassInheritsFromNewClass|noLongerInheritsFromClass|nonPublicPartOfAPI)",
+          "old": "class dev\\.langchain4j\\.model\\.watsonx\\..*",
+          "justification": "Same refactor: the @Internal base classes sitting between the public models/builders and their common code were reorganised. See the java.method.returnTypeErasureChanged justification."
+        },
+        {
+          "regex": true,
+          "code": "java\\.class\\.(nonFinalClassInheritsFromNewClass|noLongerInheritsFromClass|nonPublicPartOfAPI)",
+          "new": "class dev\\.langchain4j\\.model\\.watsonx\\..*",
+          "justification": "Same refactor: the @Internal base classes sitting between the public models/builders and their common code were reorganised. See the java.method.returnTypeErasureChanged justification."
+        },
+        {
+          "regex": true,
+          "code": "java\\.method\\.finalMethodAddedToNonFinalClass",
+          "new": "method .* dev\\.langchain4j\\.model\\.watsonx\\.WatsonxChatBase<R extends com\\.ibm\\.watsonx\\.ai\\.chat\\.BaseChatRequest>::.*",
+          "justification": "executeChat, executeChatStreaming and applyCommonParameters are inherited from the @Internal WatsonxChatBase and are not part of the public API."
         }
       ]
     }
