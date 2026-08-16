@@ -18,7 +18,7 @@ With dedicated AI clusters, you can host foundational models on dedicated GPUs t
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-community-oci-genai</artifactId>
-    <version>1.18.1-beta28</version>
+    <version>1.19.0-beta29</version>
 </dependency>
 ```
 

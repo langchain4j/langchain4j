@@ -1501,6 +1501,92 @@ class SqlFilterParserTest {
     }
 
     @Test
+    void should_support_NOT_BETWEEN() {
+
+        // given
+        String sql = "SELECT name FROM movies WHERE year NOT BETWEEN 1990 AND 1999;";
+
+        // when
+        Filter filter = parser.parse(sql);
+
+        // then
+        assertThat(filter)
+                .isEqualTo(not(metadataKey("year")
+                        .isGreaterThanOrEqualTo(1990L)
+                        .and(metadataKey("year").isLessThanOrEqualTo(1999L))));
+    }
+
+    /**
+     * Every bound form is exercised against both {@code BETWEEN} and {@code NOT BETWEEN},
+     * so that a bound form supported by one and dropped by the other cannot go unnoticed.
+     */
+    @ParameterizedTest
+    @MethodSource
+    void should_parse_BETWEEN_with_and_without_negation(String sqlWhereExpression, Filter expectedFilter) {
+
+        // when
+        Filter filter = parser.parse(sqlWhereExpression);
+
+        // then
+        assertThat(filter).isEqualTo(expectedFilter);
+    }
+
+    static Stream<Arguments> should_parse_BETWEEN_with_and_without_negation() {
+        return Stream.of(
+                        bothBetweenForms(
+                                "18 AND 42",
+                                metadataKey("key")
+                                        .isGreaterThanOrEqualTo(18L)
+                                        .and(metadataKey("key").isLessThanOrEqualTo(42L))),
+                        bothBetweenForms(
+                                "-42 AND -18",
+                                metadataKey("key")
+                                        .isGreaterThanOrEqualTo(-42L)
+                                        .and(metadataKey("key").isLessThanOrEqualTo(-18L))),
+                        bothBetweenForms(
+                                "-18 AND 42",
+                                metadataKey("key")
+                                        .isGreaterThanOrEqualTo(-18L)
+                                        .and(metadataKey("key").isLessThanOrEqualTo(42L))),
+                        bothBetweenForms(
+                                "67.8 AND 78.9",
+                                metadataKey("key")
+                                        .isGreaterThanOrEqualTo(67.8d)
+                                        .and(metadataKey("key").isLessThanOrEqualTo(78.9d))),
+                        bothBetweenForms(
+                                "-78.9 AND -67.8",
+                                metadataKey("key")
+                                        .isGreaterThanOrEqualTo(-78.9d)
+                                        .and(metadataKey("key").isLessThanOrEqualTo(-67.8d))),
+                        bothBetweenForms(
+                                "'a' AND 'z'",
+                                metadataKey("key")
+                                        .isGreaterThanOrEqualTo("a")
+                                        .and(metadataKey("key").isLessThanOrEqualTo("z"))),
+                        bothBetweenForms(
+                                "1 + 1 AND 2 + 3",
+                                metadataKey("key")
+                                        .isGreaterThanOrEqualTo(2L)
+                                        .and(metadataKey("key").isLessThanOrEqualTo(5L))))
+                .flatMap(stream -> stream);
+    }
+
+    private static Stream<Arguments> bothBetweenForms(String bounds, Filter range) {
+        return Stream.of(of("key BETWEEN " + bounds, range), of("key NOT BETWEEN " + bounds, not(range)));
+    }
+
+    @Test
+    void NOT_BETWEEN_should_equal_the_explicit_NOT_form() {
+
+        assertThat(parser.parse("year NOT BETWEEN 1990 AND 1999"))
+                .isEqualTo(parser.parse("NOT (year BETWEEN 1990 AND 1999)"));
+        assertThat(parser.parse("age NOT BETWEEN -20 AND -10"))
+                .isEqualTo(parser.parse("NOT (age BETWEEN -20 AND -10)"));
+        assertThat(parser.parse("name NOT BETWEEN 'a' AND 'z'"))
+                .isEqualTo(parser.parse("NOT (name BETWEEN 'a' AND 'z')"));
+    }
+
+    @Test
     void should_support_YEAR_function_in_WHERE_clause() {
         // given
         String sql = "SELECT * FROM movies WHERE YEAR(year) = 2024 AND genre IN ('comedy', 'drama')";

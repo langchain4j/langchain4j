@@ -2,6 +2,7 @@ package dev.langchain4j.model.bedrock;
 
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.bedrock.Json.fromJson;
 import static dev.langchain4j.model.bedrock.Json.toJson;
@@ -54,7 +55,8 @@ public class BedrockCohereEmbeddingModel extends DimensionAwareEmbeddingModel {
         this.inputType = ensureNotBlank(builder.inputType, "inputType");
         this.truncate = builder.truncate;
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
-        this.maxSegmentsPerBatch = getOrDefault(builder.maxSegmentsPerBatch, DEFAULT_MAX_SEGMENTS_PER_BATCH);
+        this.maxSegmentsPerBatch = ensureGreaterThanZero(
+                getOrDefault(builder.maxSegmentsPerBatch, DEFAULT_MAX_SEGMENTS_PER_BATCH), "maxSegmentsPerBatch");
     }
 
     private BedrockRuntimeClient initClient(Builder builder) {
