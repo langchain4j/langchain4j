@@ -227,7 +227,8 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
                 if (summarizerModel == null && chatModelProvider != null) {
                     summarizerModel = chatModelProvider.apply(agenticScope);
                 }
-                aiServices.chatRequestTransformer(new Context.Summarizer(agenticScope, summarizerModel, contextProvidingAgents));
+                aiServices.chatRequestTransformer(
+                        new Context.Summarizer(agenticScope, summarizerModel, contextProvidingAgents));
             }
         }
 
