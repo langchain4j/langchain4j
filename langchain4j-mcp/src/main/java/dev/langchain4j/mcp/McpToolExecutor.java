@@ -7,6 +7,7 @@ import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.mcp.client.McpClient;
 import dev.langchain4j.service.tool.ToolExecutionResult;
 import dev.langchain4j.service.tool.ToolExecutor;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
@@ -21,13 +22,20 @@ public class McpToolExecutor implements ToolExecutor {
     // this executor will always execute the tool with this name
     private final Optional<String> fixedToolName;
 
+    private final boolean returnToolResultAttributes;
+
     public McpToolExecutor(McpClient mcpClient) {
         this(mcpClient, null);
     }
 
     public McpToolExecutor(McpClient mcpClient, String fixedToolName) {
+        this(mcpClient, fixedToolName, false);
+    }
+
+    McpToolExecutor(McpClient mcpClient, String fixedToolName, boolean returnToolResultAttributes) {
         this.mcpClient = ensureNotNull(mcpClient, "mcpClient");
         this.fixedToolName = Optional.ofNullable(fixedToolName);
+        this.returnToolResultAttributes = returnToolResultAttributes;
     }
 
     @Override
@@ -42,7 +50,11 @@ public class McpToolExecutor implements ToolExecutor {
     @Override
     public ToolExecutionResult executeWithContext(
             ToolExecutionRequest executionRequest, InvocationContext invocationContext) {
-        return mcpClient.executeTool(sanitizeToolName(executionRequest), invocationContext);
+        ToolExecutionResult result = mcpClient.executeTool(sanitizeToolName(executionRequest), invocationContext);
+        if (returnToolResultAttributes || result.attributes().isEmpty()) {
+            return result;
+        }
+        return result.toBuilder().attributes(Map.of()).build();
     }
 
     /**

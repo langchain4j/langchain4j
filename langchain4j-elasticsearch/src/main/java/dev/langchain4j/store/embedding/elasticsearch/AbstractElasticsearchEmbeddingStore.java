@@ -204,7 +204,11 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
      *
      * @param textQuery the text to search for
      * @return the matching documents, each carrying its Elasticsearch document ID and relevance score
+     * @deprecated Use {@link #fullTextSearchMatches(FullTextSearchRequest)} instead.
+     * It also applies the {@code maxResults}, {@code minScore} and {@code filter} of the request.
      */
+    @Deprecated(forRemoval = true)
+    @SuppressWarnings("removal")
     public List<EmbeddingMatch<TextSegment>> fullTextSearchMatches(String textQuery) {
         log.debug("full text search([...{}...])", textQuery.length());
         try {
@@ -218,7 +222,29 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
     }
 
     /**
-     * @deprecated Use {@link #fullTextSearchMatches(String)} instead. It returns the same text segments,
+     * Searches the index with a full text (non-vector) query.
+     *
+     * @param request the full text search request
+     * @return the matching documents, each carrying its Elasticsearch document ID and relevance score
+     */
+    public List<EmbeddingMatch<TextSegment>> fullTextSearchMatches(FullTextSearchRequest request) {
+        log.debug(
+                "full text search([...{}...], {}, {})",
+                request.textQuery().length(),
+                request.maxResults(),
+                request.minScore());
+        try {
+            SearchResponse<Document> response = this.configuration.fullTextSearch(client, indexName, request);
+            log.trace("found [{}] results", response);
+
+            return toMatches(response);
+        } catch (ElasticsearchException | IOException e) {
+            throw new ElasticsearchRequestFailedException(e);
+        }
+    }
+
+    /**
+     * @deprecated Use {@link #fullTextSearchMatches(FullTextSearchRequest)} instead. It returns the same text segments,
      * but also the Elasticsearch document ID and the relevance score of each match.
      */
     @Deprecated(forRemoval = true)

@@ -127,6 +127,11 @@ public class StdioMcpTransport implements McpTransport {
     }
 
     @Override
+    public boolean requiresCancellationNotification() {
+        return true;
+    }
+
+    @Override
     public void onFailure(Runnable actionOnFailure) {
         // ignore, for stdio transport, we currently don't do reconnection attempts
     }

@@ -28,10 +28,6 @@ built using other frameworks, compatibility is not guaranteed.
 Additionally, LangChain4J supports a Docker stdio transport that can use a stdio MCP server distributed as a 
 container image.
 
-LangChain4j also supports the legacy 
-[HTTP/SSE transport](https://modelcontextprotocol.io/specification/2024-11-05/basic/transports#http-with-sse),
-but this is deprecated and will be removed in the future.
-
 To let your chat model or AI service run tools provided by an MCP server,
 you need to create an instance of an MCP tool provider.
 
@@ -60,9 +56,10 @@ McpTransport transport = StreamableHttpMcpTransport.builder()
         .build();
 ```
 
-**_NOTE:_** The Streamable HTTP transport can optionally open a subsidiary
+**_NOTE:_** (Legacy protocol only) The Streamable HTTP transport can optionally open a subsidiary
 [GET-based SSE stream](https://modelcontextprotocol.io/specification/2025-11-25/basic/transports#listening-for-messages-from-the-server)
 for receiving server-initiated notifications and requests. Enable it with `.subsidiaryChannel(true)` on the builder.
+With the modern protocol (2026-07-28), notifications are received via `subscriptions/listen` instead.
 It is disabled by default. If the server does not support it, the transport logs a warning and continues without it.
 If the stream breaks after being established, the transport reconnects automatically (respecting the server's `retry` value, defaulting to 5 seconds).
 
@@ -73,17 +70,6 @@ McpTransport transport = WebSocketMcpTransport.builder()
         .logResponses(true)
         .logRequests(true)
         .build();
-```
-
-For the legacy HTTP transport, there are two URLs, one for starting the SSE channel and one for submitting commands via `POST`.
-The latter is provided by the server dynamically, the former needs to be specified using the `sseUrl` method:
-
-```java
-McpTransport transport = HttpMcpTransport.builder()
-    .sseUrl("http://localhost:3001/sse")
-    .logRequests(true) // if you want to see the traffic in the log
-    .logResponses(true)
-    .build();
 ```
 
 For the Docker stdio transport, you first need to add a module to your pom.xml:
@@ -118,6 +104,51 @@ McpClient mcpClient = DefaultMcpClient.builder()
 
 Note that the client key is optional, but it is recommended to set it, especially
 if there are multiple MCP clients, and it is necessary to disambiguate among them.
+
+### Protocol Version
+
+The MCP client supports both the legacy protocol (2025-11-25) and the modern
+stateless protocol (2026-07-28). By default, the client auto-detects the server's
+protocol version, preferring 2026-07-28 when the server supports it:
+
+```java
+// Auto-detect (default behavior)
+McpClient mcpClient = DefaultMcpClient.builder()
+    .transport(transport)
+    .build();
+
+// Force modern protocol
+McpClient mcpClient = DefaultMcpClient.builder()
+    .transport(transport)
+    .protocolVersion("2026-07-28")
+    .build();
+
+// Force legacy protocol
+McpClient mcpClient = DefaultMcpClient.builder()
+    .transport(transport)
+    .protocolVersion("2025-11-25")
+    .build();
+```
+
+Detection costs one extra round trip when the client starts: it sends a `server/discover`
+request, and treats the server as a legacy server if the answer is an error or does not
+arrive within `protocolDetectionTimeout`. That timeout defaults to `initializationTimeout`
+(30 seconds), because a server started as a subprocess needs time to boot before it can
+answer anything, and giving up too early would make a modern server look like a legacy one.
+A fallback caused by silence rather than by an error is logged as a warning, since it is the
+case where the server may have been misjudged.
+
+```java
+McpClient mcpClient = DefaultMcpClient.builder()
+    .transport(transport)
+    .protocolDetectionTimeout(Duration.ofSeconds(5)) // servers you know answer quickly
+    .build();
+```
+
+Setting `protocolVersion` explicitly skips detection altogether. That is worth doing when
+you already know which protocol version your server speaks, and it is also the way out if a
+server reacts badly to receiving a method it does not recognize: some older MCP server
+implementations terminate on an unknown request instead of answering with an error.
 
 ### MCP Tool Provider
 
@@ -256,6 +287,93 @@ that is retrieved from annotations - that one is exposed under the `McpToolMetad
 
 If the tool has icons, they are exposed under the `McpToolMetadataKeys.ICONS` key in the metadata map.
 
+### MCP tool result metadata
+
+Besides the actual result, an MCP server can attach a `_meta` object to the response of a tool call.
+This is useful for data that your application needs, but the LLM does not, for example an identifier
+of the record the tool has created, or a widget that your UI should render.
+
+The entries of the `_meta` object are exposed through `ToolExecutionResult.attributes()`, using their
+original keys, with the JSON values converted into nested maps. They are never sent to the LLM.
+Keys that are reserved by the MCP specification, such as `io.modelcontextprotocol/serverInfo`,
+are skipped, because they describe the protocol interaction and not the tool result.
+
+When calling a tool directly on the client, the attributes are always available:
+
+```java
+ToolExecutionResult result = mcpClient.executeTool(toolExecutionRequest);
+Object widget = result.attributes().get("example.org/widget");
+```
+
+When tools are called by an AI service, the attributes are dropped by default,
+because their size and contents are controlled by the MCP server.
+To keep them, enable `returnToolResultAttributes` on the tool provider:
+
+```java
+McpToolProvider toolProvider = McpToolProvider.builder()
+    .mcpClients(mcpClient)
+    .returnToolResultAttributes(true)
+    .build();
+```
+
+They can then be read from the tool executions of the result:
+
+```java
+interface Assistant {
+
+    Result<String> chat(String userMessage);
+}
+
+Result<String> result = assistant.chat("What is the weather in Munich?");
+for (ToolExecution toolExecution : result.toolExecutions()) {
+    Object widget = toolExecution.attributes().get("example.org/widget");
+}
+```
+
+The attributes are also propagated into the `ToolExecutionResultMessage`,
+so they are stored in the chat memory together with the message.
+Keep this in mind when the chat memory is persisted, and see
+[Tool Result Attributes](/tutorials/tools#tool-result-attributes) for more details.
+
+If the tool returns an application-level error, the call ends with a `ToolExecutionException`
+and the `_meta` of the failed response is not available.
+It is still delivered to `McpClientListener.afterExecuteTool()`, which receives the complete raw response.
+
+### Tool parameters carried as HTTP headers
+
+With the 2026-07-28 protocol over Streamable HTTP, a server can ask for selected tool
+arguments to be sent as HTTP headers in addition to the request body, so that proxies and
+gateways can route or authorize a call without parsing it. The server marks such a parameter
+with `x-mcp-header` in the tool's input schema:
+
+```json
+{
+  "name": "query_database",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "tenant": { "type": "string", "x-mcp-header": "X-Tenant-Id" },
+      "sql": { "type": "string" }
+    }
+  }
+}
+```
+
+When the tool is called, the client sends the value of `tenant` both in the request body and
+in an `Mcp-Param-X-Tenant-Id` HTTP header. This happens automatically; there is nothing to
+configure. Values that are not safe to put in a header, for example ones containing non-ASCII
+characters, are Base64-encoded as the protocol requires.
+
+Only `string`, `integer` and `boolean` parameters may be marked this way, header names must be
+valid HTTP tokens, and the same header name may not be claimed twice. A tool whose definition
+breaks these rules is excluded from `listTools()` and a warning is logged, because the client
+cannot tell how such a call was meant to reach the server.
+
+The header names are read from the tool definitions, so the client needs to know the tool list
+before it can send them. If you call `executeTool()` on a client that has never listed tools,
+the headers are omitted and a warning is logged; call `listTools()` first. Tool providers do
+this on their own.
+
 ## Providing `_meta` fields
 
 The MCP protocol allows clients to attach a `_meta` object to the `params` of every
@@ -390,6 +508,8 @@ to customize the descriptions of these tools and their arguments, you override t
 The MCP protocol supports [resource subscriptions](https://modelcontextprotocol.io/specification/2025-11-25/server/resources#subscriptions),
 allowing the client to be notified when a resource changes on the server.
 
+#### Legacy protocol (2025-11-25)
+
 To subscribe to updates for a specific resource, use `client.subscribeToResource(uri)`.
 When the server updates the resource, it sends a `notifications/resources/updated` notification.
 To handle these notifications, register a callback via the `onResourceUpdated` builder method:
@@ -409,6 +529,30 @@ mcpClient.subscribeToResource("file:///status");
 
 // later, unsubscribe
 mcpClient.unsubscribeFromResource("file:///status");
+```
+
+#### Modern protocol (2026-07-28)
+
+With the modern protocol, use `subscribeToResources` which accepts
+multiple URIs and returns a subscription ID:
+
+```java
+long subId = mcpClient.subscribeToResources(List.of("file:///status", "file:///config"));
+// later, unsubscribe using the subscription ID
+mcpClient.unsubscribeFromResources(subId);
+```
+
+For list-change notifications (tool list, prompt list, resource list changes),
+the client subscribes automatically by default. You can control this via
+builder flags:
+
+```java
+McpClient mcpClient = DefaultMcpClient.builder()
+    .transport(transport)
+    .subscribeToToolListChanges(true)      // default: true
+    .subscribeToPromptListChanges(true)    // default: true
+    .subscribeToResourceListChanges(true)  // default: true
+    .build();
 ```
 
 ## Prompts

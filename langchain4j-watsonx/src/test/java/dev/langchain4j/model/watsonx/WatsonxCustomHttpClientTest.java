@@ -31,8 +31,8 @@ public class WatsonxCustomHttpClientTest {
                 .httpClient(customClient)
                 .build();
 
-        Object chatProvider = getFieldValue(chatModel, "chatProvider");
-        Object restclient = getFieldValue(chatProvider, "client");
+        Object chatService = getFieldValue(chatModel, "chatService");
+        Object restclient = getFieldValue(chatService, "client");
         assertEquals(customClient, getFieldValue(restclient, "httpClient"));
         assertNotEquals(HttpClientProvider.httpClient(true), getFieldValue(restclient, "httpClient"));
         assertNotEquals(HttpClientProvider.httpClient(false), getFieldValue(restclient, "httpClient"));
@@ -63,8 +63,8 @@ public class WatsonxCustomHttpClientTest {
                         .verifySsl(verifySsl)
                         .build();
 
-                Object chatProvider = getFieldValue(chatModel, "chatProvider");
-                Object restclient = getFieldValue(chatProvider, "client");
+                Object chatService = getFieldValue(chatModel, "chatService");
+                Object restclient = getFieldValue(chatService, "client");
                 assertNotEquals(customClient, getFieldValue(restclient, "httpClient"));
                 assertEquals(HttpClientProvider.httpClient(verifySsl), getFieldValue(restclient, "httpClient"));
 
@@ -94,8 +94,8 @@ public class WatsonxCustomHttpClientTest {
                 .httpClient(customClient)
                 .build();
 
-        Object chatProvider = getFieldValue(streamingChatModel, "chatProvider");
-        Object restclient = getFieldValue(chatProvider, "client");
+        Object chatService = getFieldValue(streamingChatModel, "chatService");
+        Object restclient = getFieldValue(chatService, "client");
         assertEquals(customClient, getFieldValue(restclient, "httpClient"));
         assertNotEquals(HttpClientProvider.httpClient(true), getFieldValue(restclient, "httpClient"));
         assertNotEquals(HttpClientProvider.httpClient(false), getFieldValue(restclient, "httpClient"));
@@ -126,8 +126,8 @@ public class WatsonxCustomHttpClientTest {
                         .verifySsl(verifySsl)
                         .build();
 
-                Object chatProvider = getFieldValue(streamingChatModel, "chatProvider");
-                Object restclient = getFieldValue(chatProvider, "client");
+                Object chatService = getFieldValue(streamingChatModel, "chatService");
+                Object restclient = getFieldValue(chatService, "client");
                 assertNotEquals(customClient, getFieldValue(restclient, "httpClient"));
                 assertEquals(HttpClientProvider.httpClient(verifySsl), getFieldValue(restclient, "httpClient"));
 
@@ -143,6 +143,266 @@ public class WatsonxCustomHttpClientTest {
                 fail(e);
             }
         });
+    }
+
+    @Test
+    void should_use_custom_http_client_for_gateway_chat_model() throws Exception {
+
+        HttpClient customClient = HttpClient.newHttpClient();
+        ChatModel chatModel = WatsonxGatewayChatModel.builder()
+                .baseUrl("https://localhost")
+                .modelName("gpt-4o")
+                .apiKey("apiKey")
+                .httpClient(customClient)
+                .build();
+
+        Object modelGatewayService = getFieldValue(chatModel, "modelGatewayService");
+        Object restclient = getFieldValue(modelGatewayService, "client");
+        assertEquals(customClient, getFieldValue(restclient, "httpClient"));
+        assertNotEquals(HttpClientProvider.httpClient(true), getFieldValue(restclient, "httpClient"));
+        assertNotEquals(HttpClientProvider.httpClient(false), getFieldValue(restclient, "httpClient"));
+
+        Object syncHttpClient = getFieldValue(restclient, "syncHttpClient");
+        assertEquals(customClient, getFieldValue(syncHttpClient, "delegate"));
+        assertNotEquals(HttpClientProvider.httpClient(true), getFieldValue(syncHttpClient, "delegate"));
+        assertNotEquals(HttpClientProvider.httpClient(false), getFieldValue(syncHttpClient, "delegate"));
+
+        Object asyncHttpClient = getFieldValue(restclient, "asyncHttpClient");
+        assertEquals(customClient, getFieldValue(asyncHttpClient, "delegate"));
+        assertNotEquals(HttpClientProvider.httpClient(true), getFieldValue(asyncHttpClient, "delegate"));
+        assertNotEquals(HttpClientProvider.httpClient(false), getFieldValue(asyncHttpClient, "delegate"));
+    }
+
+    @Test
+    void should_use_default_http_client_for_gateway_chat_model() {
+
+        Stream.of(true, false).forEach(verifySsl -> {
+            try {
+
+                HttpClient customClient = HttpClient.newHttpClient();
+                ChatModel chatModel = WatsonxGatewayChatModel.builder()
+                        .baseUrl("https://localhost")
+                        .modelName("gpt-4o")
+                        .apiKey("apiKey")
+                        .verifySsl(verifySsl)
+                        .build();
+
+                Object modelGatewayService = getFieldValue(chatModel, "modelGatewayService");
+                Object restclient = getFieldValue(modelGatewayService, "client");
+                assertNotEquals(customClient, getFieldValue(restclient, "httpClient"));
+                assertEquals(HttpClientProvider.httpClient(verifySsl), getFieldValue(restclient, "httpClient"));
+
+                Object syncHttpClient = getFieldValue(restclient, "syncHttpClient");
+                assertNotEquals(customClient, getFieldValue(syncHttpClient, "delegate"));
+                assertEquals(HttpClientProvider.httpClient(verifySsl), getFieldValue(syncHttpClient, "delegate"));
+
+                Object asyncHttpClient = getFieldValue(restclient, "asyncHttpClient");
+                assertNotEquals(customClient, getFieldValue(asyncHttpClient, "delegate"));
+                assertEquals(HttpClientProvider.httpClient(verifySsl), getFieldValue(asyncHttpClient, "delegate"));
+
+            } catch (Exception e) {
+                fail(e);
+            }
+        });
+    }
+
+    @Test
+    void should_use_custom_http_client_for_gateway_streaming_chat_model() throws Exception {
+
+        HttpClient customClient = HttpClient.newHttpClient();
+        StreamingChatModel streamingChatModel = WatsonxGatewayStreamingChatModel.builder()
+                .baseUrl("https://localhost")
+                .modelName("gpt-4o")
+                .apiKey("apiKey")
+                .httpClient(customClient)
+                .build();
+
+        Object modelGatewayService = getFieldValue(streamingChatModel, "modelGatewayService");
+        Object restclient = getFieldValue(modelGatewayService, "client");
+        assertEquals(customClient, getFieldValue(restclient, "httpClient"));
+        assertNotEquals(HttpClientProvider.httpClient(true), getFieldValue(restclient, "httpClient"));
+        assertNotEquals(HttpClientProvider.httpClient(false), getFieldValue(restclient, "httpClient"));
+
+        Object syncHttpClient = getFieldValue(restclient, "syncHttpClient");
+        assertEquals(customClient, getFieldValue(syncHttpClient, "delegate"));
+        assertNotEquals(HttpClientProvider.httpClient(true), getFieldValue(syncHttpClient, "delegate"));
+        assertNotEquals(HttpClientProvider.httpClient(false), getFieldValue(syncHttpClient, "delegate"));
+
+        Object asyncHttpClient = getFieldValue(restclient, "asyncHttpClient");
+        assertEquals(customClient, getFieldValue(asyncHttpClient, "delegate"));
+        assertNotEquals(HttpClientProvider.httpClient(true), getFieldValue(asyncHttpClient, "delegate"));
+        assertNotEquals(HttpClientProvider.httpClient(false), getFieldValue(asyncHttpClient, "delegate"));
+    }
+
+    @Test
+    void should_use_default_http_client_for_gateway_streaming_chat_model() {
+
+        Stream.of(true, false).forEach(verifySsl -> {
+            try {
+
+                HttpClient customClient = HttpClient.newHttpClient();
+                StreamingChatModel streamingChatModel = WatsonxGatewayStreamingChatModel.builder()
+                        .baseUrl("https://localhost")
+                        .modelName("gpt-4o")
+                        .apiKey("apiKey")
+                        .verifySsl(verifySsl)
+                        .build();
+
+                Object modelGatewayService = getFieldValue(streamingChatModel, "modelGatewayService");
+                Object restclient = getFieldValue(modelGatewayService, "client");
+                assertNotEquals(customClient, getFieldValue(restclient, "httpClient"));
+                assertEquals(HttpClientProvider.httpClient(verifySsl), getFieldValue(restclient, "httpClient"));
+
+                Object syncHttpClient = getFieldValue(restclient, "syncHttpClient");
+                assertNotEquals(customClient, getFieldValue(syncHttpClient, "delegate"));
+                assertEquals(HttpClientProvider.httpClient(verifySsl), getFieldValue(syncHttpClient, "delegate"));
+
+                Object asyncHttpClient = getFieldValue(restclient, "asyncHttpClient");
+                assertNotEquals(customClient, getFieldValue(asyncHttpClient, "delegate"));
+                assertEquals(HttpClientProvider.httpClient(verifySsl), getFieldValue(asyncHttpClient, "delegate"));
+
+            } catch (Exception e) {
+                fail(e);
+            }
+        });
+    }
+
+    @Test
+    void should_use_custom_http_client_for_deployment_chat_model() throws Exception {
+
+        HttpClient customClient = HttpClient.newHttpClient();
+        ChatModel chatModel = WatsonxDeploymentChatModel.builder()
+                .baseUrl("https://localhost")
+                .deploymentId("deploymentId")
+                .apiKey("apiKey")
+                .httpClient(customClient)
+                .build();
+
+        Object deploymentService = getFieldValue(chatModel, "deploymentService");
+        Object restclient = getFieldValue(deploymentService, "client");
+        assertEquals(customClient, getFieldValue(restclient, "httpClient"));
+        assertNotEquals(HttpClientProvider.httpClient(true), getFieldValue(restclient, "httpClient"));
+        assertNotEquals(HttpClientProvider.httpClient(false), getFieldValue(restclient, "httpClient"));
+
+        Object syncHttpClient = getFieldValue(restclient, "syncHttpClient");
+        assertEquals(customClient, getFieldValue(syncHttpClient, "delegate"));
+        assertNotEquals(HttpClientProvider.httpClient(true), getFieldValue(syncHttpClient, "delegate"));
+        assertNotEquals(HttpClientProvider.httpClient(false), getFieldValue(syncHttpClient, "delegate"));
+
+        Object asyncHttpClient = getFieldValue(restclient, "asyncHttpClient");
+        assertEquals(customClient, getFieldValue(asyncHttpClient, "delegate"));
+        assertNotEquals(HttpClientProvider.httpClient(true), getFieldValue(asyncHttpClient, "delegate"));
+        assertNotEquals(HttpClientProvider.httpClient(false), getFieldValue(asyncHttpClient, "delegate"));
+    }
+
+    @Test
+    void should_use_default_http_client_for_deployment_chat_model() {
+
+        Stream.of(true, false).forEach(verifySsl -> {
+            try {
+
+                HttpClient customClient = HttpClient.newHttpClient();
+                ChatModel chatModel = WatsonxDeploymentChatModel.builder()
+                        .baseUrl("https://localhost")
+                        .deploymentId("deploymentId")
+                        .apiKey("apiKey")
+                        .verifySsl(verifySsl)
+                        .build();
+
+                Object deploymentService = getFieldValue(chatModel, "deploymentService");
+                Object restclient = getFieldValue(deploymentService, "client");
+                assertNotEquals(customClient, getFieldValue(restclient, "httpClient"));
+                assertEquals(HttpClientProvider.httpClient(verifySsl), getFieldValue(restclient, "httpClient"));
+
+                Object syncHttpClient = getFieldValue(restclient, "syncHttpClient");
+                assertNotEquals(customClient, getFieldValue(syncHttpClient, "delegate"));
+                assertEquals(HttpClientProvider.httpClient(verifySsl), getFieldValue(syncHttpClient, "delegate"));
+
+                Object asyncHttpClient = getFieldValue(restclient, "asyncHttpClient");
+                assertNotEquals(customClient, getFieldValue(asyncHttpClient, "delegate"));
+                assertEquals(HttpClientProvider.httpClient(verifySsl), getFieldValue(asyncHttpClient, "delegate"));
+
+            } catch (Exception e) {
+                fail(e);
+            }
+        });
+    }
+
+    @Test
+    void should_use_custom_http_client_for_deployment_streaming_chat_model() throws Exception {
+
+        HttpClient customClient = HttpClient.newHttpClient();
+        StreamingChatModel streamingChatModel = WatsonxDeploymentStreamingChatModel.builder()
+                .baseUrl("https://localhost")
+                .deploymentId("deploymentId")
+                .apiKey("apiKey")
+                .httpClient(customClient)
+                .build();
+
+        Object deploymentService = getFieldValue(streamingChatModel, "deploymentService");
+        Object restclient = getFieldValue(deploymentService, "client");
+        assertEquals(customClient, getFieldValue(restclient, "httpClient"));
+        assertNotEquals(HttpClientProvider.httpClient(true), getFieldValue(restclient, "httpClient"));
+        assertNotEquals(HttpClientProvider.httpClient(false), getFieldValue(restclient, "httpClient"));
+
+        Object syncHttpClient = getFieldValue(restclient, "syncHttpClient");
+        assertEquals(customClient, getFieldValue(syncHttpClient, "delegate"));
+        assertNotEquals(HttpClientProvider.httpClient(true), getFieldValue(syncHttpClient, "delegate"));
+        assertNotEquals(HttpClientProvider.httpClient(false), getFieldValue(syncHttpClient, "delegate"));
+
+        Object asyncHttpClient = getFieldValue(restclient, "asyncHttpClient");
+        assertEquals(customClient, getFieldValue(asyncHttpClient, "delegate"));
+        assertNotEquals(HttpClientProvider.httpClient(true), getFieldValue(asyncHttpClient, "delegate"));
+        assertNotEquals(HttpClientProvider.httpClient(false), getFieldValue(asyncHttpClient, "delegate"));
+    }
+
+    @Test
+    void should_use_default_http_client_for_deployment_streaming_chat_model() {
+
+        Stream.of(true, false).forEach(verifySsl -> {
+            try {
+
+                HttpClient customClient = HttpClient.newHttpClient();
+                StreamingChatModel streamingChatModel = WatsonxDeploymentStreamingChatModel.builder()
+                        .baseUrl("https://localhost")
+                        .deploymentId("deploymentId")
+                        .apiKey("apiKey")
+                        .verifySsl(verifySsl)
+                        .build();
+
+                Object deploymentService = getFieldValue(streamingChatModel, "deploymentService");
+                Object restclient = getFieldValue(deploymentService, "client");
+                assertNotEquals(customClient, getFieldValue(restclient, "httpClient"));
+                assertEquals(HttpClientProvider.httpClient(verifySsl), getFieldValue(restclient, "httpClient"));
+
+                Object syncHttpClient = getFieldValue(restclient, "syncHttpClient");
+                assertNotEquals(customClient, getFieldValue(syncHttpClient, "delegate"));
+                assertEquals(HttpClientProvider.httpClient(verifySsl), getFieldValue(syncHttpClient, "delegate"));
+
+                Object asyncHttpClient = getFieldValue(restclient, "asyncHttpClient");
+                assertNotEquals(customClient, getFieldValue(asyncHttpClient, "delegate"));
+                assertEquals(HttpClientProvider.httpClient(verifySsl), getFieldValue(asyncHttpClient, "delegate"));
+
+            } catch (Exception e) {
+                fail(e);
+            }
+        });
+    }
+
+    @Test
+    void should_use_default_http_client_when_verify_ssl_is_not_set() throws Exception {
+
+        ChatModel chatModel = WatsonxChatModel.builder()
+                .baseUrl("https://localhost")
+                .modelName("modelName")
+                .apiKey("apiKey")
+                .projectId("projectId")
+                .build();
+
+        Object chatService = getFieldValue(chatModel, "chatService");
+        Object restclient = getFieldValue(chatService, "client");
+        assertEquals(HttpClientProvider.httpClient(true), getFieldValue(restclient, "httpClient"));
+        assertNotEquals(HttpClientProvider.httpClient(false), getFieldValue(restclient, "httpClient"));
     }
 
     @Test
@@ -405,6 +665,56 @@ public class WatsonxCustomHttpClientTest {
 
                 Object foundationModelService = getFieldValue(modelCatalog, "foundationModelService");
                 Object restclient = getFieldValue(foundationModelService, "client");
+                assertNotEquals(customClient, getFieldValue(restclient, "httpClient"));
+                assertEquals(HttpClientProvider.httpClient(verifySsl), getFieldValue(restclient, "httpClient"));
+
+                Object syncHttpClient = getFieldValue(restclient, "syncHttpClient");
+                assertNotEquals(customClient, getFieldValue(syncHttpClient, "delegate"));
+                assertEquals(HttpClientProvider.httpClient(verifySsl), getFieldValue(syncHttpClient, "delegate"));
+
+            } catch (Exception e) {
+                fail(e);
+            }
+        });
+    }
+
+    @Test
+    void should_use_custom_http_client_for_gateway_model_catalog() throws Exception {
+
+        HttpClient customClient = HttpClient.newHttpClient();
+        ModelCatalog modelCatalog = WatsonxGatewayModelCatalog.builder()
+                .baseUrl("https://localhost")
+                .apiKey("apiKey")
+                .httpClient(customClient)
+                .build();
+
+        Object modelGatewayCatalogService = getFieldValue(modelCatalog, "modelGatewayCatalogService");
+        Object restclient = getFieldValue(modelGatewayCatalogService, "client");
+        assertEquals(customClient, getFieldValue(restclient, "httpClient"));
+        assertNotEquals(HttpClientProvider.httpClient(true), getFieldValue(restclient, "httpClient"));
+        assertNotEquals(HttpClientProvider.httpClient(false), getFieldValue(restclient, "httpClient"));
+
+        Object syncHttpClient = getFieldValue(restclient, "syncHttpClient");
+        assertEquals(customClient, getFieldValue(syncHttpClient, "delegate"));
+        assertNotEquals(HttpClientProvider.httpClient(true), getFieldValue(syncHttpClient, "delegate"));
+        assertNotEquals(HttpClientProvider.httpClient(false), getFieldValue(syncHttpClient, "delegate"));
+    }
+
+    @Test
+    void should_use_default_http_client_for_gateway_model_catalog() throws Exception {
+
+        Stream.of(true, false).forEach(verifySsl -> {
+            try {
+
+                HttpClient customClient = HttpClient.newHttpClient();
+                ModelCatalog modelCatalog = WatsonxGatewayModelCatalog.builder()
+                        .baseUrl("https://localhost")
+                        .apiKey("apiKey")
+                        .verifySsl(verifySsl)
+                        .build();
+
+                Object modelGatewayCatalogService = getFieldValue(modelCatalog, "modelGatewayCatalogService");
+                Object restclient = getFieldValue(modelGatewayCatalogService, "client");
                 assertNotEquals(customClient, getFieldValue(restclient, "httpClient"));
                 assertEquals(HttpClientProvider.httpClient(verifySsl), getFieldValue(restclient, "httpClient"));
 
