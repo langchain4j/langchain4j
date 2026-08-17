@@ -1,53 +1,50 @@
 package dev.langchain4j.model.jina.internal.client;
 
-import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
+import static dev.langchain4j.http.client.HttpMethod.POST;
+import static dev.langchain4j.internal.Utils.ensureTrailingForwardSlash;
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.model.jina.internal.client.JinaJsonUtils.fromJson;
+import static dev.langchain4j.model.jina.internal.client.JinaJsonUtils.toJson;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import dev.langchain4j.internal.Utils;
-import dev.langchain4j.model.jina.internal.api.JinaApi;
+import dev.langchain4j.http.client.HttpClient;
+import dev.langchain4j.http.client.HttpClientBuilder;
+import dev.langchain4j.http.client.HttpClientBuilderLoader;
+import dev.langchain4j.http.client.HttpRequest;
+import dev.langchain4j.http.client.SuccessfulHttpResponse;
+import dev.langchain4j.http.client.log.LoggingHttpClient;
 import dev.langchain4j.model.jina.internal.api.JinaEmbeddingRequest;
 import dev.langchain4j.model.jina.internal.api.JinaEmbeddingResponse;
+import dev.langchain4j.model.jina.internal.api.JinaMultimodalEmbeddingRequest;
 import dev.langchain4j.model.jina.internal.api.JinaRerankingRequest;
 import dev.langchain4j.model.jina.internal.api.JinaRerankingResponse;
-import java.io.IOException;
 import java.time.Duration;
-import okhttp3.OkHttpClient;
 import org.slf4j.Logger;
-import retrofit2.Retrofit;
-import retrofit2.converter.jackson.JacksonConverterFactory;
 
 public class JinaClient {
 
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper().enable(INDENT_OUTPUT);
-
-    private final JinaApi jinaApi;
+    private final HttpClient httpClient;
+    private final String baseUrl;
     private final String authorizationHeader;
 
-    JinaClient(
-            String baseUrl, String apiKey, Duration timeout, boolean logRequests, boolean logResponses, Logger logger) {
+    JinaClient(JinaClientBuilder builder) {
+        HttpClientBuilder httpClientBuilder =
+                getOrDefault(builder.httpClientBuilder, HttpClientBuilderLoader::loadHttpClientBuilder);
 
-        OkHttpClient.Builder okHttpClientBuilder = new OkHttpClient.Builder()
-                .callTimeout(timeout)
-                .connectTimeout(timeout)
-                .readTimeout(timeout)
-                .writeTimeout(timeout);
-
-        if (logRequests) {
-            okHttpClientBuilder.addInterceptor(new RequestLoggingInterceptor(logger));
-        }
-        if (logResponses) {
-            okHttpClientBuilder.addInterceptor(new ResponseLoggingInterceptor(logger));
-        }
-
-        Retrofit retrofit = new Retrofit.Builder()
-                .baseUrl(Utils.ensureTrailingForwardSlash(baseUrl))
-                .client(okHttpClientBuilder.build())
-                .addConverterFactory(JacksonConverterFactory.create(OBJECT_MAPPER))
+        HttpClient httpClient = httpClientBuilder
+                .connectTimeout(builder.timeout)
+                .readTimeout(builder.timeout)
                 .build();
 
-        this.jinaApi = retrofit.create(JinaApi.class);
-        this.authorizationHeader = "Bearer " + ensureNotBlank(apiKey, "apiKey");
+        if (builder.logRequests || builder.logResponses) {
+            this.httpClient =
+                    new LoggingHttpClient(httpClient, builder.logRequests, builder.logResponses, builder.logger);
+        } else {
+            this.httpClient = httpClient;
+        }
+
+        this.baseUrl = ensureTrailingForwardSlash(builder.baseUrl);
+        this.authorizationHeader = "Bearer " + ensureNotBlank(builder.apiKey, "apiKey");
     }
 
     public static JinaClientBuilder builder() {
@@ -55,54 +52,29 @@ public class JinaClient {
     }
 
     public JinaEmbeddingResponse embed(JinaEmbeddingRequest request) {
-        try {
-            retrofit2.Response<JinaEmbeddingResponse> retrofitResponse =
-                    jinaApi.embed(request, authorizationHeader).execute();
-            if (retrofitResponse.isSuccessful()) {
-                return retrofitResponse.body();
-            } else {
-                throw toException(retrofitResponse);
-            }
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        return post("v1/embeddings", request, JinaEmbeddingResponse.class);
     }
 
-    public JinaEmbeddingResponse embedMultimodal(
-            dev.langchain4j.model.jina.internal.api.JinaMultimodalEmbeddingRequest request) {
-        try {
-            retrofit2.Response<JinaEmbeddingResponse> retrofitResponse =
-                    jinaApi.embedMultimodal(request, authorizationHeader).execute();
-            if (retrofitResponse.isSuccessful()) {
-                return retrofitResponse.body();
-            } else {
-                throw toException(retrofitResponse);
-            }
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+    public JinaEmbeddingResponse embedMultimodal(JinaMultimodalEmbeddingRequest request) {
+        return post("v1/embeddings", request, JinaEmbeddingResponse.class);
     }
 
     public JinaRerankingResponse rerank(JinaRerankingRequest request) {
-        try {
-            retrofit2.Response<JinaRerankingResponse> retrofitResponse =
-                    jinaApi.rerank(request, authorizationHeader).execute();
-
-            if (retrofitResponse.isSuccessful()) {
-                return retrofitResponse.body();
-            } else {
-                throw toException(retrofitResponse);
-            }
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        return post("rerank", request, JinaRerankingResponse.class);
     }
 
-    private static RuntimeException toException(retrofit2.Response<?> response) throws IOException {
-        int code = response.code();
-        String body = response.errorBody().string();
-        String errorMessage = String.format("status code: %s; body: %s", code, body);
-        return new RuntimeException(errorMessage);
+    private <T> T post(String path, Object request, Class<T> responseType) {
+        HttpRequest httpRequest = HttpRequest.builder()
+                .method(POST)
+                .url(baseUrl + path)
+                .addHeader("Content-Type", "application/json")
+                .addHeader("Authorization", authorizationHeader)
+                .body(toJson(request))
+                .build();
+
+        SuccessfulHttpResponse response = httpClient.execute(httpRequest);
+
+        return fromJson(response.body(), responseType);
     }
 
     public static class JinaClientBuilder {
@@ -112,6 +84,7 @@ public class JinaClient {
         private boolean logRequests;
         private boolean logResponses;
         private Logger logger;
+        private HttpClientBuilder httpClientBuilder;
 
         JinaClientBuilder() {}
 
@@ -145,9 +118,13 @@ public class JinaClient {
             return this;
         }
 
+        public JinaClientBuilder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
+            this.httpClientBuilder = httpClientBuilder;
+            return this;
+        }
+
         public JinaClient build() {
-            return new JinaClient(
-                    this.baseUrl, this.apiKey, this.timeout, this.logRequests, this.logResponses, this.logger);
+            return new JinaClient(this);
         }
 
         public String toString() {

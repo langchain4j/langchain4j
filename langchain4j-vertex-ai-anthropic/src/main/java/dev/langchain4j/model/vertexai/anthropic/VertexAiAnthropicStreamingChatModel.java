@@ -1,6 +1,5 @@
 package dev.langchain4j.model.vertexai.anthropic;
 
-import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.ModelProvider.*;
@@ -14,6 +13,7 @@ import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.TokenUsage;
@@ -41,33 +41,46 @@ public class VertexAiAnthropicStreamingChatModel implements StreamingChatModel, 
     private static final Logger logger = LoggerFactory.getLogger(VertexAiAnthropicStreamingChatModel.class);
 
     private final VertexAiAnthropicClient client;
-    private final String modelName;
-    private final Integer maxTokens;
-    private final Double temperature;
-    private final Double topP;
-    private final Integer topK;
-    private final List<String> stopSequences;
+    private final ChatRequestParameters defaultRequestParameters;
     private final Boolean logRequests;
     private final Boolean logResponses;
     private final Boolean enablePromptCaching;
     private final List<ChatModelListener> listeners;
 
     public VertexAiAnthropicStreamingChatModel(VertexAiAnthropicStreamingChatModelBuilder builder) {
+        ChatRequestParameters commonParameters = builder.defaultRequestParameters != null
+                ? builder.defaultRequestParameters
+                : DefaultChatRequestParameters.EMPTY;
+
+        String modelName = ensureNotBlank(getOrDefault(builder.modelName, commonParameters.modelName()), "modelName");
+
         this.client = new VertexAiAnthropicClient(
                 ensureNotBlank(builder.project, "project"),
                 ensureNotBlank(builder.location, "location"),
-                ensureNotBlank(builder.modelName, "modelName"),
+                modelName,
                 builder.credentials);
-        this.modelName = builder.modelName;
-        this.maxTokens = ValidationUtils.validateMaxTokens(builder.maxTokens);
-        this.temperature = ValidationUtils.validateTemperature(builder.temperature);
-        this.topP = ValidationUtils.validateTopP(builder.topP);
-        this.topK = ValidationUtils.validateTopK(builder.topK);
-        this.stopSequences = copy(builder.stopSequences);
+        this.defaultRequestParameters = DefaultChatRequestParameters.builder()
+                .modelName(modelName)
+                .maxOutputTokens(
+                        ValidationUtils.validateMaxTokens(getOrDefault(builder.maxTokens, commonParameters.maxOutputTokens())))
+                .temperature(
+                        ValidationUtils.validateTemperature(getOrDefault(builder.temperature, commonParameters.temperature())))
+                .topP(ValidationUtils.validateTopP(getOrDefault(builder.topP, commonParameters.topP())))
+                .topK(ValidationUtils.validateTopK(getOrDefault(builder.topK, commonParameters.topK())))
+                .stopSequences(getOrDefault(builder.stopSequences, commonParameters.stopSequences()))
+                .toolSpecifications(commonParameters.toolSpecifications())
+                .toolChoice(commonParameters.toolChoice())
+                .responseFormat(commonParameters.responseFormat())
+                .build();
         this.logRequests = getOrDefault(builder.logRequests, false);
         this.logResponses = getOrDefault(builder.logResponses, false);
         this.enablePromptCaching = getOrDefault(builder.enablePromptCaching, false);
         this.listeners = builder.listeners != null ? List.copyOf(builder.listeners) : List.of();
+    }
+
+    @Override
+    public ChatRequestParameters defaultRequestParameters() {
+        return defaultRequestParameters;
     }
 
     @Override
@@ -93,15 +106,9 @@ public class VertexAiAnthropicStreamingChatModel implements StreamingChatModel, 
             client.generateContentStreaming(anthropicRequest, requestModelName,
                     createStreamingResponseHandler(handler));
 
-        } catch (IOException e) {
-            try {
-                handler.onError(new RuntimeException("Failed to generate response", e));
-            } catch (Exception userException) {
-                logger.warn("User's onError handler threw an exception, ignoring", userException);
-            }
         } catch (Exception e) {
             try {
-                handler.onError(e);
+                handler.onError(VertexAiAnthropicExceptionMapper.INSTANCE.mapException(e));
             } catch (Exception userException) {
                 logger.warn("User's onError handler threw an exception, ignoring", userException);
             }
@@ -109,7 +116,7 @@ public class VertexAiAnthropicStreamingChatModel implements StreamingChatModel, 
     }
 
     private String determineRequestModelName(ChatRequestParameters parameters) {
-        return getOrDefault(parameters.modelName(), modelName);
+        return parameters.modelName();
     }
 
     private AnthropicRequest buildAnthropicRequest(ChatRequest chatRequest, String requestModelName) {
@@ -122,23 +129,17 @@ public class VertexAiAnthropicStreamingChatModel implements StreamingChatModel, 
                 messages,
                 toolSpecifications,
                 parameters.toolChoice(),
-                parameters.maxOutputTokens() != null ? parameters.maxOutputTokens() : maxTokens,
-                temperature,
-                topP,
-                topK,
-                parameters.stopSequences() != null && !parameters.stopSequences().isEmpty()
-                        ? parameters.stopSequences()
-                        : stopSequences,
+                parameters.maxOutputTokens(),
+                parameters.temperature(),
+                parameters.topP(),
+                parameters.topK(),
+                parameters.stopSequences(),
                 enablePromptCaching);
     }
 
     private void logRequestIfEnabled(String requestModelName, String parameterModelName, AnthropicRequest anthropicRequest) {
         if (logRequests) {
-            logger.debug(
-                    "Using model name: {} (from parameters: {}, default: {})",
-                    requestModelName,
-                    parameterModelName,
-                    modelName);
+            logger.debug("Using model name: {}", requestModelName);
             logger.debug("Anthropic streaming request: {}", anthropicRequest);
         }
     }
@@ -190,7 +191,7 @@ public class VertexAiAnthropicStreamingChatModel implements StreamingChatModel, 
             @Override
             public void onError(Throwable error) {
                 try {
-                    handler.onError(error);
+                    handler.onError(VertexAiAnthropicExceptionMapper.INSTANCE.mapException(error));
                 } catch (Exception userException) {
                     logger.warn("User's onError handler threw an exception, ignoring", userException);
                 }
@@ -363,6 +364,7 @@ public class VertexAiAnthropicStreamingChatModel implements StreamingChatModel, 
     public static class VertexAiAnthropicStreamingChatModelBuilder {
         private String project;
         private String location;
+        private ChatRequestParameters defaultRequestParameters;
         private String modelName;
         private Integer maxTokens;
         private Double temperature;
@@ -382,6 +384,20 @@ public class VertexAiAnthropicStreamingChatModel implements StreamingChatModel, 
 
         public VertexAiAnthropicStreamingChatModelBuilder location(String location) {
             this.location = location;
+            return this;
+        }
+
+        /**
+         * Sets default common {@link ChatRequestParameters}.
+         * <br>
+         * When a parameter is set via both an individual builder method (e.g., {@link #modelName(String)})
+         * and {@link ChatRequestParameters}, the individual builder method takes precedence.
+         *
+         * @param parameters default common {@link ChatRequestParameters}
+         * @return this builder
+         */
+        public VertexAiAnthropicStreamingChatModelBuilder defaultRequestParameters(ChatRequestParameters parameters) {
+            this.defaultRequestParameters = parameters;
             return this;
         }
 

@@ -40,7 +40,7 @@ https://github.com/googleapis/java-genai
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-google-genai</artifactId>
-    <version>1.17.2-beta27</version>
+    <version>1.19.0-beta29</version>
 </dependency>
 ```
 
@@ -136,6 +136,24 @@ ChatModel gemini = GoogleGenAiChatModel.builder()
     .listeners(...)
     .build();
 ```
+
+### Advanced: customizing the `GenerateContentConfig`
+
+The builder methods cover the most common options. To set an option of the underlying Google Gen AI Java SDK
+that is not (yet) exposed by a builder method, register a `generateContentConfigCustomizer`. It receives the
+`GenerateContentConfig.Builder` after this integration has populated it (generation parameters, tools, system
+instruction, etc.) and just before the config is built, so it can set additional options or override existing
+ones while the per-request tools and system instruction are preserved.
+
+```java
+ChatModel gemini = GoogleGenAiChatModel.builder()
+    .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
+    .modelName("gemini-2.5-flash")
+    .generateContentConfigCustomizer(config -> config.responseLogprobs(true).logprobs(5))
+    .build();
+```
+
+This works the same way on `GoogleGenAiStreamingChatModel`.
 
 ## Request & Response Logging
 
@@ -424,6 +442,38 @@ ChatModel gemini = GoogleGenAiChatModel.builder()
 
 > [!TIP]
 > The LangChain4j `google-genai` integration seamlessly manages the complex state required for multi-turn tool execution with thinking models. It automatically persists and injects the necessary hidden `thought_signature` tokens across conversation turns, ensuring robust and uninterrupted agentic workflows!
+
+### Thought summaries
+
+Set `includeThoughts(true)` to ask the model to return
+[thought summaries](https://ai.google.dev/gemini-api/docs/generate-content/thinking) along with the answer,
+and `returnThinking(true)` to have them mapped to `AiMessage.thinking()`:
+
+```java
+ChatModel gemini = GoogleGenAiChatModel.builder()
+    .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
+    .modelName("gemini-3.1-pro-preview")
+    .thinkingLevel("MEDIUM")
+    .includeThoughts(true)
+    .returnThinking(true)
+    .build();
+
+ChatResponse response = gemini.chat(UserMessage.from("What is 6 times 7?"));
+
+String thinking = response.aiMessage().thinking();
+String answer = response.aiMessage().text();
+```
+
+When streaming, thought summaries are delivered through `StreamingChatResponseHandler.onPartialThinking()`
+while the answer continues to arrive through `onPartialResponse()`.
+
+To send thought summaries back to the model in follow-up requests, set `sendThinking(true)`. The
+`thought_signature` tokens required for multi-turn tool execution are handled independently and are always
+preserved, regardless of this setting.
+
+> [!NOTE]
+> `returnThinking` is disabled by default. Thought summaries returned by the model are then discarded and
+> never appear in `AiMessage.text()`.
 
 ## GoogleGenAiEmbeddingModel
 

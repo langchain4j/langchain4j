@@ -19,6 +19,8 @@ class ToolExecutionHelper {
      * Extracts a response from a CallToolResult message. This may be an error response.
      * If the response contains both 'content' and 'structuredContent' elements, the
      * structured content is given precedence.
+     * The entries of the '_meta' element, if present, are stored in
+     * {@link ToolExecutionResult#attributes()} and are not sent to the LLM.
      */
     static ToolExecutionResult extractResult(
             JsonNode result, boolean ignoreApplicationLevelErrors, McpToolResultExtractor toolResultExtractor) {
@@ -34,6 +36,7 @@ class ToolExecutionHelper {
                         .result(toObject(content))
                         .resultText(content.toString())
                         .isError(isError(resultNode))
+                        .attributes(extractMeta(resultNode))
                         .build();
             } else if (resultNode.has("content")) {
                 boolean applicationError = isError(resultNode);
@@ -42,7 +45,7 @@ class ToolExecutionHelper {
                 if (applicationError && !ignoreApplicationLevelErrors) {
                     throw new ToolExecutionException(errorMessage(toolExecutionResult, resultNode.get("content")));
                 }
-                return toolExecutionResult;
+                return withAttributes(toolExecutionResult, extractMeta(resultNode));
             } else {
                 throw new RuntimeException("Result does not contain 'content' element: " + result);
             }
@@ -58,6 +61,52 @@ class ToolExecutionHelper {
             }
             throw new RuntimeException("Result contains neither 'result' nor 'error' element: " + result);
         }
+    }
+
+    /**
+     * Converts the entries of the '_meta' element of a CallToolResult into tool execution attributes.
+     * Keys reserved by the MCP specification, such as 'io.modelcontextprotocol/serverInfo',
+     * are skipped, as they describe the protocol interaction and not the tool result.
+     */
+    private static Map<String, Object> extractMeta(JsonNode resultNode) {
+        JsonNode meta = resultNode.get("_meta");
+        if (meta == null || !meta.isObject()) {
+            return Map.of();
+        }
+        Map<String, Object> attributes = new HashMap<>();
+        for (Map.Entry<String, JsonNode> property : meta.properties()) {
+            if (!isReservedByMcp(property.getKey())) {
+                attributes.put(property.getKey(), toObject(property.getValue()));
+            }
+        }
+        return attributes;
+    }
+
+    /**
+     * A '_meta' key can start with a prefix: a series of labels separated by dots, followed by a slash.
+     * Prefixes whose second label is 'modelcontextprotocol' or 'mcp' are reserved by the MCP specification,
+     * for example 'io.modelcontextprotocol/serverInfo' or 'com.mcp.tools/something'.
+     */
+    private static boolean isReservedByMcp(String key) {
+        int slashIndex = key.indexOf('/');
+        if (slashIndex < 0) {
+            return false;
+        }
+        String[] labels = key.substring(0, slashIndex).split("\\.");
+        return labels.length > 1 && (labels[1].equals("modelcontextprotocol") || labels[1].equals("mcp"));
+    }
+
+    /**
+     * Adds the given attributes to a {@link ToolExecutionResult} produced by a {@link McpToolResultExtractor}.
+     * Attributes set by the extractor take precedence.
+     */
+    private static ToolExecutionResult withAttributes(ToolExecutionResult result, Map<String, Object> attributes) {
+        if (attributes.isEmpty()) {
+            return result;
+        }
+        Map<String, Object> mergedAttributes = new HashMap<>(attributes);
+        mergedAttributes.putAll(result.attributes());
+        return result.toBuilder().attributes(mergedAttributes).build();
     }
 
     private static String errorMessage(ToolExecutionResult toolExecutionResult, JsonNode content) {

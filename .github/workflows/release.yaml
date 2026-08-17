@@ -9,10 +9,6 @@ on:
       betaVersion:
         description: "Beta release version (e.g., 1.8.0-beta15)"
         required: true
-      branch:
-        description: "Branch to release from (e.g., 'main' for minor releases, 'release/x.y.z' for patch releases)"
-        required: false
-        default: "main"
       startFrom:
         description: "Phase to start from (use to resume after a failed release)"
         required: false
@@ -25,10 +21,12 @@ on:
           - commit-and-tag
 
 env:
-  STABLE_VERSION: ${{ github.event.inputs.stableVersion || github.event.client_payload.stableVersion }}
-  BETA_VERSION: ${{ github.event.inputs.betaVersion || github.event.client_payload.betaVersion }}
-  BRANCH: ${{ github.event.inputs.branch || github.event.client_payload.branch || 'main' }}
-  START_FROM: ${{ github.event.inputs.startFrom || github.event.client_payload.startFrom || 'core-and-parent' }}
+  STABLE_VERSION: ${{ inputs.stableVersion }}
+  BETA_VERSION: ${{ inputs.betaVersion }}
+  # The branch to release from is the one selected in "Use workflow from",
+  # so that the workflow file and the released code always come from the same branch
+  BRANCH: ${{ github.ref_name }}
+  START_FROM: ${{ inputs.startFrom }}
 
 permissions:
   contents: write
@@ -42,7 +40,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
 
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           ref: ${{ env.BRANCH }}
           fetch-depth: 0
@@ -50,7 +48,7 @@ jobs:
           token: ${{ secrets.GH_RELEASE_AUTOMATION }}
 
       - name: Set up JDK 25
-        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5
+        uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5
         with:
           java-version: '25'
           distribution: 'temurin'
@@ -188,3 +186,28 @@ jobs:
             -f "client_payload[stableVersion]=$STABLE_VERSION" \
             -f "client_payload[betaVersion]=$BETA_VERSION" \
             -f "client_payload[branch]=$BRANCH"
+
+      # Docs live on main only, so a patch release from an older branch (e.g. 1.11.x) must not update them
+      - name: Check whether the docs should be updated
+        id: docs-check
+        run: |
+          git fetch --no-tags --depth=1 origin main
+          DOCS_VERSION=$(git show FETCH_HEAD:docs/docs/get-started.md | grep -E "^stableVersion:" | sed 's/stableVersion: *//')
+          OLDEST=$(printf '%s\n%s\n' "$DOCS_VERSION" "$STABLE_VERSION" | sort -V | head -1)
+          if [ "$STABLE_VERSION" = "$DOCS_VERSION" ] || [ "$OLDEST" != "$DOCS_VERSION" ]; then
+            echo "Docs are at $DOCS_VERSION, releasing $STABLE_VERSION (not newer), docs will not be updated"
+            echo "proceed=false" >> $GITHUB_OUTPUT
+          else
+            echo "Docs are at $DOCS_VERSION, they will be updated to $STABLE_VERSION"
+            echo "proceed=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Trigger documentation version update
+        if: steps.docs-check.outputs.proceed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GH_RELEASE_AUTOMATION }}
+        run: |
+          gh api repos/langchain4j/langchain4j/dispatches \
+            -f event_type=trigger-docs-update-version \
+            -f "client_payload[stableVersion]=$STABLE_VERSION" \
+            -f "client_payload[betaVersion]=$BETA_VERSION"

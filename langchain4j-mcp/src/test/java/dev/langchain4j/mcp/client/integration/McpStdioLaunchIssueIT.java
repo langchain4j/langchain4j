@@ -27,7 +27,10 @@ class McpStdioLaunchIssueIT {
             StdioMcpTransport transport = new StdioMcpTransport.Builder()
                     .command(Collections.singletonList("WRONG-COMMAND"))
                     .build();
-            client = new DefaultMcpClient.Builder().transport(transport).build();
+            client = new DefaultMcpClient.Builder()
+                    .transport(transport)
+                    .protocolVersion("2025-11-25")
+                    .build();
             fail("The MCP client should have failed by now");
         } catch (RuntimeException ex) {
             ex.printStackTrace();
@@ -57,6 +60,7 @@ class McpStdioLaunchIssueIT {
                             client = new DefaultMcpClient.Builder()
                                     .initializationTimeout(Duration.ofSeconds(30))
                                     .transport(transport)
+                                    .protocolVersion("2025-11-25")
                                     .build();
                         } finally {
                             if (client != null) {

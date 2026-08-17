@@ -620,10 +620,23 @@ class DefaultAiServices<T> extends AiServices<T> {
         dev.langchain4j.service.SystemMessage annotation =
                 method.getAnnotation(dev.langchain4j.service.SystemMessage.class);
         if (annotation != null) {
-            String template = getTemplate(
-                    method, "System", annotation.fromResource(), annotation.value(), annotation.delimiter());
-            return Optional.of(new TemplateAndLenient(template, annotation.lenient()));
+            return Optional.of(new TemplateAndLenient(
+                    getTemplate(
+                            method.getDeclaringClass(),
+                            "System",
+                            annotation.fromResource(),
+                            annotation.value(),
+                            annotation.delimiter()),
+                    annotation.lenient()
+            ));
         }
+
+        Optional<TemplateAndLenient> templateFromClassAnnotation =
+                findSystemMessageTemplateFromClassAnnotation(context.aiServiceClass);
+        if (templateFromClassAnnotation.isPresent()) {
+            return templateFromClassAnnotation;
+        }
+
         if (context.systemMessageProviderWithContext != null) {
             return Optional.of(context.systemMessageProviderWithContext.apply(invocationContext))
                     .map(template -> new TemplateAndLenient(template, context.systemMessageLenient));
@@ -632,6 +645,19 @@ class DefaultAiServices<T> extends AiServices<T> {
                     .apply(invocationContext.chatMemoryId())
                     .map(template -> new TemplateAndLenient(template, context.systemMessageLenient));
         }
+    }
+
+    private static Optional<TemplateAndLenient> findSystemMessageTemplateFromClassAnnotation(Class<?> annotatedClass) {
+        dev.langchain4j.service.SystemMessage annotation =
+                annotatedClass.getAnnotation(dev.langchain4j.service.SystemMessage.class);
+        if (annotation == null) {
+            return Optional.empty();
+        }
+        return Optional.of(new TemplateAndLenient(
+                getTemplate(
+                        annotatedClass, "System", annotation.fromResource(), annotation.value(), annotation.delimiter()),
+                annotation.lenient()
+        ));
     }
 
     private static UserMessage prepareUserMessage(
@@ -721,8 +747,8 @@ class DefaultAiServices<T> extends AiServices<T> {
 
     private static Optional<TemplateAndLenient> findUserMessageTemplateFromMethodAnnotation(Method method) {
         return Optional.ofNullable(method.getAnnotation(dev.langchain4j.service.UserMessage.class))
-                .map(a -> new TemplateAndLenient(
-                        getTemplate(method, "User", a.fromResource(), a.value(), a.delimiter()), a.lenient()));
+                .map(a -> new TemplateAndLenient(getTemplate(method.getDeclaringClass(), "User", a.fromResource(), a.value(), a.delimiter()),
+                        a.lenient()));
     }
 
     private static Optional<TemplateAndLenient> findUserMessageTemplateAndLenientFromAnnotatedParameter(
@@ -846,10 +872,11 @@ class DefaultAiServices<T> extends AiServices<T> {
         return o instanceof List<?> list && list.stream().allMatch(Content.class::isInstance);
     }
 
-    private static String getTemplate(Method method, String type, String resource, String[] value, String delimiter) {
+    private static String getTemplate(
+            Class<?> annotatedClass, String type, String resource, String[] value, String delimiter) {
         String messageTemplate;
         if (!resource.trim().isEmpty()) {
-            messageTemplate = getResourceText(method.getDeclaringClass(), resource);
+            messageTemplate = getResourceText(annotatedClass, resource);
             if (messageTemplate == null) {
                 throw illegalConfiguration("@%sMessage's resource '%s' not found", type, resource);
             }

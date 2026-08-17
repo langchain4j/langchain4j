@@ -561,7 +561,7 @@ By default, all agents invocations are performed in the same thread that invoked
 
 For this reason it is possible to flag an agent as asynchronous using the `async` method of the agent builder. When doing so, the invocation of that agent is performed in a separate thread, and the execution of the agentic system will proceed without waiting for the completion of that agent. The result of the asynchronous agent will be available in the `AgenticScope` as soon as it is completed, and the `AgenticScope` will be blocked waiting for that result only when it is required as an input for a subsequent invocation of a different agent.
 
-For instance, since they are independent of each other, flagging the `FoodExpert` and `MovieExpert` agents, discussed in the parallel workflow section, as asynchronous, will make them to be executed at the same time even when used in a sequential workflow.
+For instance, since they are independent of each other, flagging the `FoodExpert` and `MovieExpert` agents, discussed in the parallel workflow section, as asynchronous with `.async(true)` on each sub-agent, will make them to be executed at the same time even when used in a sequential workflow. Unlike `parallelBuilder()`, `sequenceBuilder()` has no `executor()` method; the optional `executor()` belongs on parallel workflows only.
 
 ```java
 FoodExpert foodExpert = AgenticServices
@@ -581,7 +581,6 @@ MovieExpert movieExpert = AgenticServices
 EveningPlannerAgent eveningPlannerAgent = AgenticServices
         .sequenceBuilder(EveningPlannerAgent.class)
         .subAgents(foodExpert, movieExpert)
-        .executor(Executors.newFixedThreadPool(2))
         .outputKey("plans")
         .output(agenticScope -> {
             List<String> movies = agenticScope.readState("movies", List.of());
@@ -751,6 +750,46 @@ UntypedAgent novelCreator = AgenticServices.sequenceBuilder()
         .build();
 ```
 
+## Cross-agent compensation
+
+When an agentic system performs side effects through tools (e.g., database writes, API calls, financial transactions), a failure partway through the workflow can leave the system in an inconsistent state. Cross-agent compensation tries to solve, or at least mitigate, this problem: if any agent in the hierarchy fails, all previously successful tool invocations with `@CompensateFor` actions are compensated in reverse order.
+
+This builds on the per-agent `@CompensateFor` mechanism (see [Tools](/tutorials/tools#compensating-tool-actions)). While per-agent compensation handles tool errors within a single agent, cross-agent compensation handles agent-level failures across an entire hierarchy.
+
+In order to enable this feature set `compensateOnError(true)` on the composed agent builder:
+
+```java
+UntypedAgent transferWorkflow = AgenticServices.sequenceBuilder()
+        .subAgents(creditAgent, debitAgent, notificationAgent)
+        .compensateOnError(true)
+        .outputKey("result")
+        .build();
+```
+
+If `notificationAgent` throws an exception, the tools invoked by `creditAgent` and `debitAgent` that have `@CompensateFor` methods will be compensated in reverse chronological order (last executed first).
+
+Tools without a `@CompensateFor` annotation are simply skipped during compensation.
+
+Compensating actions are defined on tool classes using `@CompensateFor`, the same annotation used for per-agent tool compensation:
+
+```java
+public class AccountService {
+
+    @Tool("Credits the given amount to the account")
+    String credit(@P(name = "amount") int amount) {
+        // perform the credit
+        return "credited " + amount;
+    }
+
+    @CompensateFor("credit")
+    void reverseCredit(int amount) {
+        // reverse the credit
+    }
+}
+```
+
+Note that the compensating actions are executed with a best-effort policy: if one of them fails, the error is logged and the remaining compensations continue.
+
 ## Observability
 
 Tracking and logging the agents' invocations can be crucial for debugging and understanding the aggregate behavior of the whole agentic system in which those agents participate. For this reason, the `langchain4j-agentic` module allows you to register an `AgentListener` through the `listener` method of the agent builders, that is notified of all agents invocations and their results, and it is defined as follows:
@@ -878,7 +917,7 @@ so it will reveal the nested sequence of agents invocations necessary to generat
 
 ```
 AgentInvocation{agent=Sequential, startTime=2026-03-18T17:27:28.099439515, finishTime=2026-03-18T17:27:38.683498783, duration=10584 ms, tokens=0, inputs={topic=dragons and wiz..., style=comedy}, output=In a realm wher...}
-|=> AgentInvocation{agent=generateStory, startTime=2026-03-18T17:27:28.1.17.2287, finishTime=2026-03-18T17:27:31.033561726, duration=2932 ms, tokens=127, inputs={topic=dragons and wiz...}, output=In a realm wher...}
+|=> AgentInvocation{agent=generateStory, startTime=2026-03-18T17:27:28.1.19.0287, finishTime=2026-03-18T17:27:31.033561726, duration=2932 ms, tokens=127, inputs={topic=dragons and wiz...}, output=In a realm wher...}
 |=> AgentInvocation{agent=reviewLoop, startTime=2026-03-18T17:27:31.035952285, finishTime=2026-03-18T17:27:38.683438433, duration=7647 ms, tokens=0, inputs={score=0.8, topic=dragons and wiz..., style=comedy, story=In a realm wher...}, output=null}
     |=> AgentInvocation{agent=scoreStyle, iteration=0, startTime=2026-03-18T17:27:31.036155107, finishTime=2026-03-18T17:27:31.671478699, duration=635 ms, tokens=152, inputs={style=comedy, story=In a realm wher...}, output=0.2}
     |=> AgentInvocation{agent=editStory, iteration=0, startTime=2026-03-18T17:27:31.671711250, finishTime=2026-03-18T17:27:38.182881941, duration=6511 ms, tokens=491, inputs={style=comedy, story=In a realm wher...}, output=In a realm wher...}
@@ -1379,7 +1418,7 @@ AgentInvocation{agentName='withdraw', arguments={user=Mario, amount=115.0}}
 
 AgentInvocation{agentName='credit', arguments={user=Georgios, amount=115.0}}
 
-AgentInvocation{agentName='done', arguments={response=The transfer of 100 EUR from Mario's account to Georgios' account has been completed. Mario's balance is 885.0 USD, and Georgios' balance is 1.17.2 USD. The conversion rate was 1.15 EUR to USD.}}
+AgentInvocation{agentName='done', arguments={response=The transfer of 100 EUR from Mario's account to Georgios' account has been completed. Mario's balance is 885.0 USD, and Georgios' balance is 1.19.0 USD. The conversion rate was 1.15 EUR to USD.}}
 ```
 
 The last invocation is a special one that signals the supervisor believes the task has been completed, and returns as a response a summary of all the operations performed.
@@ -2730,9 +2769,27 @@ AgenticScopePersister.setStore(new MyAgenticScopeStore());
 
 or using the standard Java Service Provider interface creating a file named `META-INF/services/dev.langchain4j.agentic.scope.AgenticScopeStore` containing the fully qualified name of the class implementing the `AgenticScopeStore` interface.
 
+### AgenticScope JSON serialization
+
+LangChain4j provides built-in JSON serialization for the `AgenticScope` via the `AgenticScopeSerializer` class. For security reasons, deserialization uses an allowlist policy that restricts which classes can be deserialized from JSON. By default, standard JDK types (`java.util.*`, `java.math.*`, primitive wrappers, enums) and internal LangChain4j types (`AgentMessage`, `AgentInvocation`) are allowed.
+
+If your agents store custom domain objects in the `AgenticScope` state, you must register them before deserialization occurs. You can register a single class:
+
+```java
+AgenticScopeSerializer.allowDeserializationType(LoanApplication.class);
+```
+
+or an entire package prefix:
+
+```java
+AgenticScopeSerializer.allowDeserializationPackagePrefix("com.acme.myapp.");
+```
+
+Attempting to deserialize an unregistered type throws an `UnserializableAgenticScopeException` whose message names the rejected class and suggests how to register it.
+
 ### AgenticScope and agentic systems recoverability
 
-When an `AgenticScopeStore` is configured, the `langchain4j-agentic` module provides built-in recoverability support that allows agentic systems to resume execution from where they left off after a crash or process restart. This is especially valuable for long-running workflows that include human-in-the-loop steps, where the process may be intentionally stopped and restarted later.
+When an `AgenticScopeStore` is configured, the `langchain4j-agentic` module provides built-in recoverability support that allows agentic systems to resume execution from where they left off after a crash or process restart. This is especially valuable for long-running agentic systems that include human-in-the-loop steps, where the process may be intentionally stopped and restarted later.
 
 Recoverability is based on two mechanisms working together: **per-step checkpointing** and **planner execution state persistence**.
 
@@ -2748,7 +2805,7 @@ default Map<String, Object> executionState() { return Map.of(); }
 default void restoreExecutionState(Map<String, Object> state) { }
 ```
 
-For instance, stateful planners like the sequential and the loop ones implement these methods to save and restore their cursor position and iteration counters. Stateless planners (like `ParallelPlanner` or `ConditionalPlanner`) use the default no-op implementations. Custom `Planner` implementations can override these methods to participate in recoverability as well.
+For instance, stateful planners like the sequential and the loop ones implement these methods to save and restore their cursor position and iteration counters. Stateless planners (like `ParallelPlanner` or `ConditionalPlanner`) use the default no-op implementations. Custom `Planner` implementations can override these methods to participate in recoverability as well. The execution loop also tracks its own internal state (such as which agents have completed in a parallel block) alongside the planner state, so that on resume only the agents that haven't finished are re-dispatched.
 
 To give a practical example of how this works, consider an order processing workflow where a large order must be reviewed by a human before it is fulfilled. The workflow has three steps: validate the order, wait for human approval, and ship the order.
 
@@ -2768,11 +2825,11 @@ AgenticScopeAction validateOrder = AgenticServices.agentAction(scope -> {
     scope.writeState("validated_order", "VALIDATED: " + order);
 });
 
-// Step 2: Pause for human approval using PendingResponse
+// Step 2: Pause for human approval using SuspendedResponse
 HumanInTheLoop approvalGate = AgenticServices.humanInTheLoopBuilder()
         .description("Wait for manager approval on large orders")
         .outputKey("approval")
-        .responseProvider(scope -> new PendingResponse<>("manager-approval"))
+        .responseProvider(scope -> new SuspendedResponse<>("manager-approval"))
         .build();
 
 // Step 3: Finalize based on the approval decision
@@ -2788,35 +2845,77 @@ OrderWorkflow workflow = AgenticServices.sequenceBuilder(OrderWorkflow.class)
         .build();
 ```
 
-When this workflow runs, it validates the order, then blocks at the `HumanInTheLoop` step waiting for external input. At this point the full scope — including the validated order data, the planner's cursor position (step 2 completed), and the `PendingResponse` — is checkpointed to the store.
-
-The `PendingResponse` class is an implementation of the `DelayedResponse` that can be completed externally without spawning a background thread. Unlike `AsyncResponse`, which immediately starts executing on a thread pool, `PendingResponse` creates an initially incomplete future that must be explicitly completed via its `complete()` method. After serialization and deserialization, a new incomplete future is created, allowing an external system to reconnect and complete the response.
-
-If the process crashes or restarts, the scope can be recovered and the workflow resumed:
+When this workflow runs, it validates the order, then reaches the `HumanInTheLoop` step. Because the response provider returns a `SuspendedResponse`, the agentic system suspends its execution by throwing an `AgenticSystemSuspendedException`, instead of blocking the calling thread. The full scope — including the validated order data, the planner's cursor position (step 2 completed), and the `SuspendedResponse` — is checkpointed to the store (if one is configured), and an `AgenticSystemSuspendedException` is thrown to release the thread:
 
 ```java
-// After restart: load the persisted scope and provide the human response
-AgenticScope recovered = workflow.getAgenticScope("order-12345");
-
-// Replace the PendingResponse with the actual human decision
-recovered.writeState("approval", "APPROVED by manager");
-
-// Re-invoke with the same order ID — the planner resumes from step 3
-String result = workflow.processOrder("order-12345", "1000 widgets");
-// → "Order VALIDATED: 1000 widgets — APPROVED by manager"
+try {
+    String result = workflow.processOrder("order-12345", "1000 widgets");
+    // Workflow completed normally
+} catch (AgenticSystemSuspendedException e) {
+    // Workflow suspended — waiting for human input
+    AgenticScope scope = e.scope();
+    Set<String> pendingIds = scope.pendingResponseIds(); // → ["manager-approval"]
+    // Store the scope/pendingIds for your UI / REST API to present to the human
+}
 ```
 
-The `SequentialPlanner` restores its cursor from the checkpointed state and skips the already-completed steps (validate and approval gate), executing only the final shipping step.
+In alternative to `SuspendedResponse`, the human-in-the-loop can return an instance of the `PendingResponse` class to block the calling thread until the human response is provided. In essence:
 
-Alternatively, if the process is still running and the workflow is simply waiting for human input, the `PendingResponse` can be completed directly without restarting:
+| Response type | Behavior |
+|---|---|
+| `SuspendedResponse` | **Suspends** the agentic system: checkpoints the scope, throws `AgenticSystemSuspendedException`, and releases the calling thread. The system is resumed by completing the response and re-invoking the agent method. |
+| `PendingResponse` | **Blocks** the calling thread on the underlying `CompletableFuture` until `complete()` is called from another thread. No exception is thrown — the agentic system waits in place. |
+
+The user can make this choice at the point where the response is created — in the `responseProvider` lambda or the `@HumanInTheLoop` static method:
 
 ```java
-// Complete the pending response in-flight (e.g., from a REST endpoint)
+// Suspension: the agentic system checkpoints and throws AgenticSystemSuspendedException
+.responseProvider(scope -> new SuspendedResponse<>("approval-id"))
+
+// Blocking: the calling thread waits until complete() is called from another thread
+.responseProvider(scope -> new PendingResponse<>("approval-id"))
+```
+
+It is advised to use `SuspendedResponse` for long-running interactions (hours/days) where crash resilience matters, and `PendingResponse` for short-lived in-process waits where a background thread will provide the answer shortly.
+
+If the method's return type is `ResultWithAgenticScope`, no exception is thrown on suspension; instead, the result has `suspended() == true` and `result() == null`. You can then complete the pending response and resume execution in a single call:
+
+```java
+ResultWithAgenticScope<String> result = workflow.processOrder("order-12345", "1000 widgets");
+if (result.suspended()) {
+    result = result.completePendingResponse("APPROVED by manager");
+    // result.result() → "Order VALIDATED: 1000 widgets — APPROVED by manager"
+}
+```
+
+This works naturally with multi-step workflows that have multiple sequential HITL gates — each `completePendingResponse` call returns a new `ResultWithAgenticScope` that may itself be suspended:
+
+```java
+ResultWithAgenticScope<String> result = workflow.processOrder("order-12345", "1000 widgets");
+
+result = result.completePendingResponse("Manager OK");   // resumes, suspends at legal gate
+result = result.completePendingResponse("Legal OK");      // resumes, completes
+// result.result() → final output
+```
+
+`ResultWithAgenticScope` is the recommended approach for handling suspension, as it avoids using exceptions for control flow.
+
+Conversely, If the method returns a plain type (e.g. `String`) instead of `ResultWithAgenticScope`, the system throws `AgenticSystemSuspendedException` on suspension. In that case, or when you need to resume through the scope directly (e.g. after a crash/restart), you can complete the response on the `AgenticScope` and re-invoke the agent method:
+
+```java
 AgenticScope scope = workflow.getAgenticScope("order-12345");
+
+// Complete the single deferred response (when there is exactly one)
+scope.completePendingResponse("APPROVED by manager");
+
+// Or complete by explicit ID (useful when multiple responses are pending)
 scope.completePendingResponse("manager-approval", "APPROVED by manager");
+
+// Then re-invoke — the planner resumes from the checkpoint
+String result = workflow.processOrder("order-12345", "1000 widgets");
 ```
 
-This unblocks the waiting thread and the workflow continues to the shipping step without any restart.
+Note that `completePendingResponse` both completes the in-memory future (unblocking any waiting threads) and replaces the state map entry with the resolved value (so it survives serialization). The single-argument overload throws `IllegalStateException` if there is not exactly one deferred response.
 
 ## Agents Registry
 
@@ -3095,6 +3194,27 @@ public interface DeclarativeA2AWithCustomizer {
     }
 }
 ```
+
+### Configuring the A2A server URL dynamically
+
+By default, the `@A2AClientAgent` annotation requires the A2A server URL as a compile-time string literal via the `a2aServerUrl` attribute. For environments where the URL varies (e.g., dev, staging, production), a static method annotated with `@A2AServerUrlSupplier` can provide the URL dynamically at build time instead:
+
+```java
+public interface DeclarativeA2AWithUrlSupplier {
+
+    @A2AClientAgent(outputKey = "story")
+    String generateStory(@V("topic") String topic);
+
+    @A2AServerUrlSupplier
+    static String serverUrl() {
+        return System.getenv("A2A_SERVER_URL");
+    }
+}
+```
+
+The supplier method must be `static`, take no parameters, and return a `String`. It is invoked once when the agent is constructed — the URL does not change between invocations. Exactly one of `a2aServerUrl` in the annotation or an `@A2AServerUrlSupplier` method must be provided; specifying both (or neither) is an error.
+
+This pattern is consistent with how `@McpClientSupplier` provides the MCP client for `@McpClientAgent` declarative agents.
 
 ## MCP-based Tool Agents
 

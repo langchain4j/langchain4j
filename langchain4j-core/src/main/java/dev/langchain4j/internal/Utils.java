@@ -10,6 +10,7 @@ import static java.util.Collections.unmodifiableSet;
 
 import dev.langchain4j.Internal;
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
@@ -25,10 +26,13 @@ import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.HexFormat;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -36,6 +40,8 @@ import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Supplier;
+import java.util.zip.GZIPInputStream;
+import java.util.zip.InflaterInputStream;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
@@ -345,7 +351,8 @@ public class Utils {
                 int responseCode = connection.getResponseCode();
 
                 if (responseCode == HTTP_OK) {
-                    try (InputStream inputStream = connection.getInputStream();
+                    try (InputStream inputStream =
+                                    decompress(connection.getInputStream(), connection.getContentEncoding());
                             ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
                         byte[] buffer = new byte[1024];
                         int bytesRead;
@@ -369,6 +376,17 @@ public class Utils {
         }
     }
 
+    private static InputStream decompress(InputStream inputStream, String contentEncoding) throws IOException {
+        if (contentEncoding == null) {
+            return inputStream;
+        }
+        return switch (contentEncoding.trim().toLowerCase(Locale.ROOT)) {
+            case "gzip", "x-gzip" -> new GZIPInputStream(inputStream);
+            case "deflate" -> new InflaterInputStream(inputStream);
+            default -> inputStream;
+        };
+    }
+
     /**
      * Returns an (unmodifiable) copy of the provided set.
      * Returns <code>null</code> if the provided set is <code>null</code>.
@@ -382,7 +400,7 @@ public class Utils {
             return null;
         }
 
-        return unmodifiableSet(set);
+        return unmodifiableSet(new LinkedHashSet<>(set));
     }
 
     /**
@@ -398,7 +416,7 @@ public class Utils {
             return Set.of();
         }
 
-        return unmodifiableSet(set);
+        return unmodifiableSet(new LinkedHashSet<>(set));
     }
 
     /**
@@ -414,7 +432,7 @@ public class Utils {
             return null;
         }
 
-        return unmodifiableList(list);
+        return unmodifiableList(new ArrayList<>(list));
     }
 
     /**
@@ -430,7 +448,7 @@ public class Utils {
             return List.of();
         }
 
-        return unmodifiableList(list);
+        return unmodifiableList(new ArrayList<>(list));
     }
 
     /**
@@ -477,7 +495,7 @@ public class Utils {
             return null;
         }
 
-        return unmodifiableMap(map);
+        return unmodifiableMap(new LinkedHashMap<>(map));
     }
 
     /**
@@ -492,7 +510,7 @@ public class Utils {
             return Map.of();
         }
 
-        return unmodifiableMap(map);
+        return unmodifiableMap(new LinkedHashMap<>(map));
     }
 
     /**
@@ -600,9 +618,12 @@ public class Utils {
         }
     }
 
-    private static void collectInterfaceMethods(Class<?> clazz, Set<MethodSignature> seen,
-                                                List<Method> result, Set<Class<?>> visited,
-                                                boolean concreteOnly) {
+    private static void collectInterfaceMethods(
+            Class<?> clazz,
+            Set<MethodSignature> seen,
+            List<Method> result,
+            Set<Class<?>> visited,
+            boolean concreteOnly) {
         if (clazz == null) {
             return;
         }
@@ -611,8 +632,9 @@ public class Utils {
                 continue;
             }
             for (Method method : iface.getDeclaredMethods()) {
-                if (method.isBridge() || method.isSynthetic() ||
-                        (concreteOnly && Modifier.isAbstract(method.getModifiers()))) {
+                if (method.isBridge()
+                        || method.isSynthetic()
+                        || (concreteOnly && Modifier.isAbstract(method.getModifiers()))) {
                     continue;
                 }
                 MethodSignature sig = new MethodSignature(method.getName(), List.of(method.getParameterTypes()));
@@ -667,17 +689,11 @@ public class Utils {
             throw new IllegalArgumentException("lists must have at least 2 elements");
         }
 
-        if (lists.length == 2) {
-            if (lists[0] == null || lists[0].isEmpty()) {
-                return lists[1];
-            } else if (lists[1] == null || lists[1].isEmpty()) {
-                return lists[0];
-            }
-        }
-
         List<T> result = new ArrayList<>();
         for (List<T> list : lists) {
-            result.addAll(list);
+            if (list != null) {
+                result.addAll(list);
+            }
         }
         return result;
     }
@@ -687,16 +703,11 @@ public class Utils {
             throw new IllegalArgumentException("maps must have at least 2 elements");
         }
 
-        if (maps.length == 2) {
-            if (maps[0] == null || maps[0].isEmpty()) {
-                return maps[1];
-            } else if (maps[1] == null || maps[1].isEmpty()) {
-                return maps[0];
-            }
-        }
-
         Map<K, V> result = new HashMap<>();
         for (Map<K, V> map : maps) {
+            if (map == null) {
+                continue;
+            }
             for (Map.Entry<K, V> e : map.entrySet()) {
                 if (result.putIfAbsent(e.getKey(), e.getValue()) != null) {
                     throw new IllegalArgumentException("Duplicate key: " + e.getKey());
