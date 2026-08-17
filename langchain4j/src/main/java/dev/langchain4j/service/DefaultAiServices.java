@@ -627,8 +627,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                             annotation.fromResource(),
                             annotation.value(),
                             annotation.delimiter()),
-                    annotation.lenient()
-            ));
+                    annotation.lenient()));
         }
 
         Optional<TemplateAndLenient> templateFromClassAnnotation =
@@ -655,9 +654,12 @@ class DefaultAiServices<T> extends AiServices<T> {
         }
         return Optional.of(new TemplateAndLenient(
                 getTemplate(
-                        annotatedClass, "System", annotation.fromResource(), annotation.value(), annotation.delimiter()),
-                annotation.lenient()
-        ));
+                        annotatedClass,
+                        "System",
+                        annotation.fromResource(),
+                        annotation.value(),
+                        annotation.delimiter()),
+                annotation.lenient()));
     }
 
     private static UserMessage prepareUserMessage(
@@ -747,7 +749,8 @@ class DefaultAiServices<T> extends AiServices<T> {
 
     private static Optional<TemplateAndLenient> findUserMessageTemplateFromMethodAnnotation(Method method) {
         return Optional.ofNullable(method.getAnnotation(dev.langchain4j.service.UserMessage.class))
-                .map(a -> new TemplateAndLenient(getTemplate(method.getDeclaringClass(), "User", a.fromResource(), a.value(), a.delimiter()),
+                .map(a -> new TemplateAndLenient(
+                        getTemplate(method.getDeclaringClass(), "User", a.fromResource(), a.value(), a.delimiter()),
                         a.lenient()));
     }
 
