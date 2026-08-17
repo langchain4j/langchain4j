@@ -3,6 +3,7 @@ package dev.langchain4j.store.embedding.qdrant;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.randomUUID;
+import static dev.langchain4j.internal.ValidationUtils.ensureConsistentSizes;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static io.qdrant.client.PointIdFactory.id;
@@ -133,7 +134,8 @@ public class QdrantEmbeddingStore implements EmbeddingStore<TextSegment> {
     @Override
     public void addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> textSegments)
             throws RuntimeException {
-        if (isNullOrEmpty(ids) || isNullOrEmpty(embeddings)) {
+        ensureConsistentSizes(ids, embeddings, textSegments);
+        if (isNullOrEmpty(embeddings)) {
             log.info("Empty embeddings - no ops");
             return;
         }

@@ -373,14 +373,11 @@ public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingSt
 
     @Override
     public void addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
-        if (isNullOrEmpty(ids) || isNullOrEmpty(embeddings)) {
+        ensureConsistentSizes(ids, embeddings, embedded);
+        if (isNullOrEmpty(embeddings)) {
             log.info("Empty embeddings - no ops");
             return;
         }
-        ensureTrue(ids.size() == embeddings.size(), "ids size is not equal to embeddings size");
-        ensureTrue(
-                embedded == null || embeddings.size() == embedded.size(),
-                "embeddings size is not equal to embedded size");
 
         List<Document> documents = new ArrayList<>();
         for (int i = 0; i < ids.size(); ++i) {

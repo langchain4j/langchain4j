@@ -1,6 +1,7 @@
 package dev.langchain4j.store.embedding.couchbase;
 
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.internal.ValidationUtils.ensureConsistentSizes;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 
 import com.couchbase.client.java.Bucket;
@@ -233,14 +234,12 @@ public class CouchbaseEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     @Override
     public void addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
-        if (isNullOrEmpty(ids) || isNullOrEmpty(embeddings)) {
+        ensureConsistentSizes(ids, embeddings, embedded);
+        if (isNullOrEmpty(embeddings)) {
             return;
         }
 
         int size = ids.size();
-        if (embedded != null && embedded.size() != size) {
-            throw new IllegalArgumentException("embedded and ids have different sizes");
-        }
 
         for (int i = 0; i < size; i++) {
             Document document = new Document();

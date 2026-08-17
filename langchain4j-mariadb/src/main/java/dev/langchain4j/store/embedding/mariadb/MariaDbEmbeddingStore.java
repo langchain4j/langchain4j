@@ -83,9 +83,7 @@ public class MariaDbEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     private String validateAndEnquoteIdentifier(String value, String defaultValue) {
-        return isNullOrEmpty(value)
-                ? defaultValue
-                : MariaDbValidator.validateAndEnquoteIdentifier(value, false);
+        return isNullOrEmpty(value) ? defaultValue : MariaDbValidator.validateAndEnquoteIdentifier(value, false);
     }
 
     /**
@@ -315,14 +313,11 @@ public class MariaDbEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     private void addAllInternal(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
-        if (isNullOrEmpty(ids) || isNullOrEmpty(embeddings)) {
+        ensureConsistentSizes(ids, embeddings, embedded);
+        if (isNullOrEmpty(embeddings)) {
             log.info("Empty embeddings - no ops");
             return;
         }
-        ensureTrue(ids.size() == embeddings.size(), "ids size is not equal to embeddings size");
-        ensureTrue(
-                embedded == null || embeddings.size() == embedded.size(),
-                "embeddings size is not equal to embedded size");
 
         try (Connection connection = datasource.getConnection()) {
             String query = String.format(

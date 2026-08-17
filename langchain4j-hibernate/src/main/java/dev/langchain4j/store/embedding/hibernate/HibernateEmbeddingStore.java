@@ -6,6 +6,7 @@ import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.randomUUID;
 import static dev.langchain4j.internal.Utils.toStringValueMap;
+import static dev.langchain4j.internal.ValidationUtils.ensureConsistentSizes;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
@@ -1205,6 +1206,11 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
 
     @Override
     public void addAll(List<String> idStrings, List<Embedding> embeddings, List<TextSegment> embedded) {
+        ensureConsistentSizes(idStrings, embeddings, embedded);
+        if (isNullOrEmpty(embeddings)) {
+            log.info("Empty embeddings - no ops");
+            return;
+        }
         final ArrayList<Object> ids = new ArrayList<>(idStrings.size());
         for (String id : idStrings) {
             ids.add(idType.fromString(id));
@@ -1276,14 +1282,11 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
 
     private void addAll(
             List<Object> ids, List<Embedding> embeddings, List<TextSegment> embedded, StatelessSession session) {
-        if (isNullOrEmpty(ids) || isNullOrEmpty(embeddings)) {
+        ensureConsistentSizes(ids, embeddings, embedded);
+        if (isNullOrEmpty(embeddings)) {
             log.info("Empty embeddings - no ops");
             return;
         }
-        ensureTrue(ids.size() == embeddings.size(), "ids size is not equal to embeddings size");
-        ensureTrue(
-                embedded == null || embeddings.size() == embedded.size(),
-                "embeddings size is not equal to embedded size");
         if (!idGenerator.allowAssignedIdentifiers()) {
             throw new IllegalStateException("Entity does not allow assigning identifiers");
         }
