@@ -193,6 +193,8 @@ public class OpenAiOfficialSetup {
             String microsoftFoundryDeploymentName,
             AzureOpenAIServiceVersion azureOpenAIServiceVersion) {
 
+        baseUrl = detectBaseUrlFromEnv(baseUrl);
+
         if (isMicrosoftFoundry) {
             return ModelProvider.MICROSOFT_FOUNDRY; // Forced by the user
         }
