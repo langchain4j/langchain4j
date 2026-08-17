@@ -1,0 +1,30 @@
+[
+  {
+    "extension": "revapi.differences",
+    "configuration": {
+      "ignore": true,
+      "differences": [
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.http.client.HttpClientBuilder",
+          "justification": "HttpClientBuilder is intentionally exposed by the Brave integration for custom HTTP client configuration"
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.web.search.WebSearchEngine",
+          "justification": "WebSearchEngine is the core interface implemented by the Brave integration"
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.web.search.WebSearchRequest",
+          "justification": "WebSearchRequest is the core request type consumed by the Brave integration"
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.web.search.WebSearchResults",
+          "justification": "WebSearchResults is the core response type produced by the Brave integration"
+        }
+      ]
+    }
+  }
+]
