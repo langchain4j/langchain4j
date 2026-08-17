@@ -3,12 +3,16 @@ package dev.langchain4j.model.openaiofficial;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.openai.core.ObjectMappers;
+import com.openai.models.chat.completions.ChatCompletion;
 import com.openai.models.chat.completions.ChatCompletionContentPartImage;
 import com.openai.models.chat.completions.ChatCompletionContentPartInputAudio;
 import com.openai.models.chat.completions.ChatCompletionMessageParam;
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.AudioContent;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.ContentFilteredException;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import org.junit.jupiter.api.Test;
 
@@ -90,5 +94,49 @@ class InternalOpenAiOfficialHelperTest {
                 .isInstanceOf(UnsupportedFeatureException.class)
                 .hasMessageContaining("ULTRA_HIGH")
                 .hasMessageContaining("LOW, HIGH, AUTO");
+    }
+
+    @Test
+    void should_throw_content_filtered_exception_when_chat_completion_contains_refusal() throws Exception {
+        ChatCompletion chatCompletion = chatCompletionFrom("""
+                {"role":"assistant","content":null,"refusal":"I cannot help with that request."}""");
+
+        assertThatThrownBy(() -> InternalOpenAiOfficialHelper.aiMessageFrom(chatCompletion))
+                .isInstanceOf(ContentFilteredException.class)
+                .hasMessage("I cannot help with that request.");
+    }
+
+    @Test
+    void should_not_throw_when_chat_completion_has_no_refusal() throws Exception {
+        ChatCompletion chatCompletion = chatCompletionFrom("""
+                {"role":"assistant","content":"Paris"}""");
+
+        AiMessage aiMessage = InternalOpenAiOfficialHelper.aiMessageFrom(chatCompletion);
+
+        assertThat(aiMessage.text()).isEqualTo("Paris");
+    }
+
+    @Test
+    void should_not_throw_when_chat_completion_refusal_is_blank() throws Exception {
+        ChatCompletion chatCompletion = chatCompletionFrom("""
+                {"role":"assistant","content":"Paris","refusal":"  "}""");
+
+        AiMessage aiMessage = InternalOpenAiOfficialHelper.aiMessageFrom(chatCompletion);
+
+        assertThat(aiMessage.text()).isEqualTo("Paris");
+    }
+
+    private static ChatCompletion chatCompletionFrom(String assistantMessageJson) throws Exception {
+        String json = """
+                {
+                  "id": "chatcmpl-test",
+                  "object": "chat.completion",
+                  "created": 1730000000,
+                  "model": "gpt-4o-mini",
+                  "choices": [
+                    {"index": 0, "finish_reason": "stop", "logprobs": null, "message": %s}
+                  ]
+                }""".formatted(assistantMessageJson);
+        return ObjectMappers.jsonMapper().readValue(json, ChatCompletion.class);
     }
 }
