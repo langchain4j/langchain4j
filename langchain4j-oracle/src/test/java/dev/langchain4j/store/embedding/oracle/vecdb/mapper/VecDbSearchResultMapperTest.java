@@ -1,4 +1,4 @@
-package dev.langchain4j.store.embedding.oracle.vecdb;
+package dev.langchain4j.store.embedding.oracle.vecdb.mapper;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -8,12 +8,13 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.oracle.vecdb.enums.VecDbDistanceMetric;
-import dev.langchain4j.store.embedding.oracle.vecdb.mapper.VecDbSearchResultMapper;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
+/** Verifies result reconstruction, metric-specific score conversion, validation, and filtering. */
 class VecDbSearchResultMapperTest {
 
+    /** Verifies cosine-distance conversion to the LangChain4j zero-to-one relevance range. */
     @Test
     void testMapsCosineDistanceToScore() {
         EmbeddingMatch<TextSegment> match = mapSingleResult(0.5, VecDbDistanceMetric.COSINE);
@@ -21,6 +22,7 @@ class VecDbSearchResultMapperTest {
         assertThat(match.score()).isCloseTo(0.75, within(1e-12));
     }
 
+    /** Verifies Euclidean-distance conversion to a monotonically decreasing relevance score. */
     @Test
     void testMapsEuclideanDistanceToScore() {
         EmbeddingMatch<TextSegment> match = mapSingleResult(3.0, VecDbDistanceMetric.EUCLIDEAN);
@@ -28,6 +30,7 @@ class VecDbSearchResultMapperTest {
         assertThat(match.score()).isCloseTo(0.25, within(1e-12));
     }
 
+    /** Verifies squared-Euclidean conversion after restoring the original distance scale. */
     @Test
     void testMapsSquaredEuclideanDistanceToScore() {
         EmbeddingMatch<TextSegment> euclideanSquared = mapSingleResult(9.0, VecDbDistanceMetric.EUCLIDEAN_SQUARED);
@@ -37,6 +40,7 @@ class VecDbSearchResultMapperTest {
         assertThat(l2Squared.score()).isCloseTo(0.25, within(1e-12));
     }
 
+    /** Verifies Manhattan-distance conversion to a monotonically decreasing relevance score. */
     @Test
     void testMapsManhattanDistanceToScore() {
         EmbeddingMatch<TextSegment> match = mapSingleResult(3.0, VecDbDistanceMetric.MANHATTAN);
@@ -44,6 +48,7 @@ class VecDbSearchResultMapperTest {
         assertThat(match.score()).isCloseTo(0.25, within(1e-12));
     }
 
+    /** Verifies conversion of Oracle's negated DOT distance to a higher-is-better score. */
     @Test
     void testMapsDotDistanceToScore() {
         EmbeddingMatch<TextSegment> match = mapSingleResult(-0.75, VecDbDistanceMetric.DOT);
@@ -51,6 +56,7 @@ class VecDbSearchResultMapperTest {
         assertThat(match.score()).isCloseTo(0.75, within(1e-12));
     }
 
+    /** Verifies that unbounded DOT values are clamped to LangChain4j's accepted score range. */
     @Test
     void testClampsDotScoreToLangChainRange() {
         String responseJson = """
@@ -69,6 +75,7 @@ class VecDbSearchResultMapperTest {
         assertThat(matches).extracting(EmbeddingMatch::score).containsExactly(1.0, 0.0);
     }
 
+    /** Verifies local removal of matches whose converted score is below {@code minScore}. */
     @Test
     void testFiltersMatchesBelowMinimumScore() {
         String responseJson = """
@@ -86,6 +93,7 @@ class VecDbSearchResultMapperTest {
         assertThat(result.matches()).extracting(EmbeddingMatch::embeddingId).containsExactly("included");
     }
 
+    /** Verifies that result mapping preserves the relevance order returned by VecDB. */
     @Test
     void testPreservesVecDbResultOrder() {
         String responseJson = """
@@ -106,6 +114,7 @@ class VecDbSearchResultMapperTest {
                 .containsExactly("second-id", "first-id", "third-id");
     }
 
+    /** Verifies reconstruction of the embedding, text, and user metadata in a complete match. */
     @Test
     void testReconstructsEmbeddingAndTextSegment() {
         String responseJson = """
@@ -138,6 +147,7 @@ class VecDbSearchResultMapperTest {
                 .doesNotContainKey("text");
     }
 
+    /** Verifies that vector-only records produce a match with no fabricated {@code TextSegment}. */
     @Test
     void testReturnsNullTextSegmentForVectorOnlyRecord() {
         String responseJson = """
@@ -160,6 +170,7 @@ class VecDbSearchResultMapperTest {
         assertThat(match.embedded()).isNull();
     }
 
+    /** Verifies rejection of results missing the ID or distance required by LangChain4j matches. */
     @Test
     void testRejectsMissingIdOrDistance() {
         String missingId = """
@@ -177,6 +188,7 @@ class VecDbSearchResultMapperTest {
                 .hasMessageContaining("missing required property \"distance\"");
     }
 
+    /** Verifies rejection of malformed or non-numeric vector values in a search response. */
     @Test
     void testRejectsInvalidVectorValues() {
         String nonNumericVector = """
@@ -202,6 +214,7 @@ class VecDbSearchResultMapperTest {
                 .hasMessageContaining("\"vector\" entry is outside the FLOAT32 range");
     }
 
+    /** Verifies that distance values outside a metric's valid domain are rejected. */
     @Test
     void testRejectsDistanceOutsideMetricRange() {
         assertThatThrownBy(() -> mapSingleResult(-0.1, VecDbDistanceMetric.COSINE))

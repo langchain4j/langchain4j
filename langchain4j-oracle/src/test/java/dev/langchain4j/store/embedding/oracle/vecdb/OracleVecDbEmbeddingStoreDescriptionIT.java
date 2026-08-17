@@ -38,6 +38,7 @@ class OracleVecDbEmbeddingStoreDescriptionIT {
                 .build();
     }
 
+    /** Verifies that the public description API exposes the useful VecDB table fields. */
     @Test
     void testDescribeVectorTable() {
         OracleVecDbEmbeddingStore.VectorTableDescription description = embeddingStore.describeVectorTable();

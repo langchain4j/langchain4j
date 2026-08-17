@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
+import dev.langchain4j.store.embedding.oracle.vecdb.enums.VecDbApiVersion;
 import dev.langchain4j.store.embedding.oracle.vecdb.enums.VecDbDistanceMetric;
 
 public final class VecDbSearchRequestMapper {
@@ -15,12 +16,14 @@ public final class VecDbSearchRequestMapper {
 
     private VecDbSearchRequestMapper() {}
 
-    public static VecDbSearchParameters map(EmbeddingSearchRequest request, VecDbDistanceMetric distanceMetric) {
+    public static VecDbSearchParameters map(
+            EmbeddingSearchRequest request, VecDbDistanceMetric distanceMetric, VecDbApiVersion apiVersion) {
         ensureNotNull(request, "request");
+        ensureNotNull(apiVersion, "apiVersion");
 
         return new VecDbSearchParameters(
                 toSearchQueryJson(request.queryEmbedding()),
-                VecDbFilters.toJson(request.filter()),
+                VecDbFilters.toJson(request.filter(), apiVersion),
                 request.maxResults(),
                 true,
                 toAdvancedOptionsJson(distanceMetric));

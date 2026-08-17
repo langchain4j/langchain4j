@@ -15,17 +15,22 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @Testcontainers(disabledWithoutDocker = true)
 class OracleVecDbEmbeddingStoreWithRemovalIT extends EmbeddingStoreWithRemovalIT {
 
-    private static final String TABLE_NAME = "LC4J_VECDB_REMOVE_IT";
+    protected static final String TABLE_NAME = "LC4J_VECDB_REMOVE_IT";
 
     private OracleVecDbEmbeddingStore embeddingStore;
 
     @BeforeEach
     void prepareEmptyStore() {
         if (embeddingStore == null) {
-            embeddingStore = VecDbTestOperations.createStore(TABLE_NAME);
+            embeddingStore = createEmbeddingStore();
         } else {
             embeddingStore.removeAll();
         }
+    }
+
+    /** Creates the store configuration exercised by the inherited removal contract. */
+    protected OracleVecDbEmbeddingStore createEmbeddingStore() {
+        return VecDbTestOperations.createStore(TABLE_NAME);
     }
 
     @Override

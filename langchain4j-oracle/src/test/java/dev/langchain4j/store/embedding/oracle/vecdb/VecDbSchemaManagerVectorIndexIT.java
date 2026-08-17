@@ -35,6 +35,7 @@ class VecDbSchemaManagerVectorIndexIT {
         VecDbTestOperations.dropVectorTable(TABLE_NAME);
     }
 
+    /** Verifies that vector-index {@code CREATE_NONE} leaves a missing index absent. */
     @Test
     void testCreateNoneDoesNotCreateMissingIndex() throws SQLException {
         createStore(CreateOption.CREATE_NONE, vectorIndex(CreateOption.CREATE_NONE, UPDATED_ACCURACY));
@@ -42,6 +43,7 @@ class VecDbSchemaManagerVectorIndexIT {
         assertThat(vectorIndexExists()).isFalse();
     }
 
+    /** Verifies that vector-index {@code CREATE_NONE} leaves an existing index unchanged. */
     @Test
     void testCreateNoneKeepsExistingIndex() throws Exception {
         createStore(CreateOption.CREATE_NONE, vectorIndex(CreateOption.CREATE_IF_NOT_EXISTS, INITIAL_ACCURACY));
@@ -52,6 +54,7 @@ class VecDbSchemaManagerVectorIndexIT {
         assertThat(vectorIndexAccuracy()).isEqualTo(INITIAL_ACCURACY);
     }
 
+    /** Verifies that {@code CREATE_IF_NOT_EXISTS} creates a missing vector index. */
     @Test
     void testCreateIfNotExistsCreatesMissingIndex() throws SQLException {
         createStore(CreateOption.CREATE_NONE, vectorIndex(CreateOption.CREATE_IF_NOT_EXISTS, INITIAL_ACCURACY));
@@ -59,6 +62,7 @@ class VecDbSchemaManagerVectorIndexIT {
         assertThat(vectorIndexExists()).isTrue();
     }
 
+    /** Verifies that {@code CREATE_IF_NOT_EXISTS} preserves an existing vector index definition. */
     @Test
     void testCreateIfNotExistsKeepsExistingIndex() throws Exception {
         createStore(CreateOption.CREATE_NONE, vectorIndex(CreateOption.CREATE_IF_NOT_EXISTS, INITIAL_ACCURACY));
@@ -69,6 +73,7 @@ class VecDbSchemaManagerVectorIndexIT {
         assertThat(vectorIndexAccuracy()).isEqualTo(INITIAL_ACCURACY);
     }
 
+    /** Verifies that {@code CREATE_OR_REPLACE} creates a vector index when none exists. */
     @Test
     void testCreateOrReplaceCreatesMissingIndex() throws SQLException {
         createStore(CreateOption.CREATE_NONE, vectorIndex(CreateOption.CREATE_OR_REPLACE, INITIAL_ACCURACY));
@@ -76,6 +81,7 @@ class VecDbSchemaManagerVectorIndexIT {
         assertThat(vectorIndexExists()).isTrue();
     }
 
+    /** Verifies that {@code CREATE_OR_REPLACE} rebuilds an existing vector index with new options. */
     @Test
     void testCreateOrReplaceRebuildsExistingIndex() throws Exception {
         createStore(CreateOption.CREATE_NONE, vectorIndex(CreateOption.CREATE_IF_NOT_EXISTS, INITIAL_ACCURACY));

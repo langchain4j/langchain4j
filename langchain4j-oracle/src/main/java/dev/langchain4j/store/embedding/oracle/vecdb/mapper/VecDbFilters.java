@@ -1,7 +1,7 @@
 package dev.langchain4j.store.embedding.oracle.vecdb.mapper;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.store.embedding.oracle.vecdb.mapper.VecDbVectorJsonMapper.TEXT_METADATA_KEY;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.store.embedding.filter.Filter;
+import dev.langchain4j.store.embedding.filter.comparison.ContainsString;
 import dev.langchain4j.store.embedding.filter.comparison.IsEqualTo;
 import dev.langchain4j.store.embedding.filter.comparison.IsGreaterThan;
 import dev.langchain4j.store.embedding.filter.comparison.IsGreaterThanOrEqualTo;
@@ -20,6 +21,7 @@ import dev.langchain4j.store.embedding.filter.comparison.IsNotIn;
 import dev.langchain4j.store.embedding.filter.logical.And;
 import dev.langchain4j.store.embedding.filter.logical.Not;
 import dev.langchain4j.store.embedding.filter.logical.Or;
+import dev.langchain4j.store.embedding.oracle.vecdb.enums.VecDbApiVersion;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -80,6 +82,7 @@ public final class VecDbFilters {
                 translators,
                 IsNotIn.class,
                 (filter, context) -> comparison(filter.key(), filter.comparisonValues(), NOT_IN, context));
+        register(translators, ContainsString.class, VecDbFilters::containsString);
         register(translators, And.class, VecDbFilters::and);
         register(translators, Or.class, VecDbFilters::or);
         register(translators, Not.class, (filter, context) -> context.negate().translate(filter.expression()));
@@ -90,16 +93,18 @@ public final class VecDbFilters {
     private VecDbFilters() {}
 
     /** Returns a VecDB metadata filter, or {@code null} when no filter is configured. */
-    public static String toJson(Filter filter) {
+    public static String toJson(Filter filter, VecDbApiVersion apiVersion) {
+        ensureNotNull(apiVersion, "apiVersion");
         return filter == null
                 ? null
-                : TranslationContext.root().translate(filter).toString();
+                : TranslationContext.root(apiVersion).translate(filter).toString();
     }
 
     /** Validates that a filter can be translated using the supported VecDB metadata-filter contract. */
-    public static void validate(Filter filter) {
+    public static void validate(Filter filter, VecDbApiVersion apiVersion) {
+        ensureNotNull(apiVersion, "apiVersion");
         if (filter != null) {
-            TranslationContext.root().translate(filter);
+            TranslationContext.root(apiVersion).translate(filter);
         }
     }
 
@@ -141,6 +146,22 @@ public final class VecDbFilters {
         return logical("$or", condition, condition(key, "$exists", OBJECT_MAPPER.valueToTree(false)));
     }
 
+    private static JsonNode containsString(ContainsString filter, TranslationContext context) {
+        if (context.apiVersion() == VecDbApiVersion.V23_26_1) {
+            throw unsupported(
+                    "filter type " + ContainsString.class.getName() + " requires Oracle Database 23.26.3 or later");
+        }
+
+        JsonNode operand = OBJECT_MAPPER.valueToTree(filter.comparisonValue());
+        if (!context.negated()) {
+            return condition(filter.key(), "$hasSubstring", operand);
+        }
+
+        ObjectNode hasSubstring = OBJECT_MAPPER.createObjectNode();
+        hasSubstring.set("$hasSubstring", operand);
+        return condition(filter.key(), "$not", hasSubstring);
+    }
+
     private static JsonNode and(And filter, TranslationContext context) {
         return logical(
                 context.negated() ? "$or" : "$and",
@@ -176,9 +197,6 @@ public final class VecDbFilters {
 
     private static String key(String key) {
         key = ensureNotBlank(key, "filter key");
-        if (TEXT_METADATA_KEY.equals(key)) {
-            throw unsupported("reserved metadata key \"" + TEXT_METADATA_KEY + "\"");
-        }
         if (key.startsWith("$")
                 || key.indexOf('.') >= 0
                 || key.indexOf('[') >= 0
@@ -244,17 +262,20 @@ public final class VecDbFilters {
 
     private static final class TranslationContext {
 
-        private static final TranslationContext ROOT = new TranslationContext(false);
-        private static final TranslationContext NEGATED = new TranslationContext(true);
-
+        private final VecDbApiVersion apiVersion;
         private final boolean negated;
 
-        private TranslationContext(boolean negated) {
+        private TranslationContext(VecDbApiVersion apiVersion, boolean negated) {
+            this.apiVersion = apiVersion;
             this.negated = negated;
         }
 
-        private static TranslationContext root() {
-            return ROOT;
+        private static TranslationContext root(VecDbApiVersion apiVersion) {
+            return new TranslationContext(apiVersion, false);
+        }
+
+        private VecDbApiVersion apiVersion() {
+            return apiVersion;
         }
 
         private boolean negated() {
@@ -262,7 +283,7 @@ public final class VecDbFilters {
         }
 
         private TranslationContext negate() {
-            return negated ? ROOT : NEGATED;
+            return new TranslationContext(apiVersion, !negated);
         }
 
         private JsonNode translate(Filter filter) {

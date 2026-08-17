@@ -31,6 +31,7 @@ class VecDbSchemaManagerTableIT {
         VecDbTestOperations.dropVectorTable(TABLE_NAME);
     }
 
+    /** Verifies that {@code CREATE_NONE} fails when the configured table does not exist. */
     @Test
     void testCreateNoneFailsWhenTableIsMissing() {
         assertThatThrownBy(() -> createStore(CreateOption.CREATE_NONE))
@@ -38,6 +39,7 @@ class VecDbSchemaManagerTableIT {
                 .hasMessage("VecDB table does not exist: " + TABLE_NAME);
     }
 
+    /** Verifies that {@code CREATE_NONE} reuses an existing table without replacing its data. */
     @Test
     void testCreateNoneReusesExistingTable() throws SQLException {
         OracleVecDbEmbeddingStore initialStore = createStore(CreateOption.CREATE_IF_NOT_EXISTS);
@@ -48,6 +50,7 @@ class VecDbSchemaManagerTableIT {
         assertThat(VecDbTestOperations.listVectorIds(TABLE_NAME)).containsExactly(id);
     }
 
+    /** Verifies that {@code CREATE_IF_NOT_EXISTS} creates a missing VecDB table. */
     @Test
     void testCreateIfNotExistsCreatesMissingTable() throws SQLException {
         createStore(CreateOption.CREATE_IF_NOT_EXISTS);
@@ -55,6 +58,7 @@ class VecDbSchemaManagerTableIT {
         assertThat(VecDbTestOperations.vectorTableExists(TABLE_NAME)).isTrue();
     }
 
+    /** Verifies that {@code CREATE_IF_NOT_EXISTS} preserves an existing table and its data. */
     @Test
     void testCreateIfNotExistsReusesExistingTable() throws SQLException {
         OracleVecDbEmbeddingStore initialStore = createStore(CreateOption.CREATE_IF_NOT_EXISTS);
@@ -65,6 +69,7 @@ class VecDbSchemaManagerTableIT {
         assertThat(VecDbTestOperations.listVectorIds(TABLE_NAME)).containsExactly(id);
     }
 
+    /** Verifies that {@code CREATE_OR_REPLACE} creates the table when it is initially absent. */
     @Test
     void testCreateOrReplaceCreatesMissingTable() throws SQLException {
         createStore(CreateOption.CREATE_OR_REPLACE);
@@ -72,6 +77,7 @@ class VecDbSchemaManagerTableIT {
         assertThat(VecDbTestOperations.vectorTableExists(TABLE_NAME)).isTrue();
     }
 
+    /** Verifies that {@code CREATE_OR_REPLACE} replaces an existing table and removes its data. */
     @Test
     void testCreateOrReplaceReplacesExistingTable() throws SQLException {
         OracleVecDbEmbeddingStore initialStore = createStore(CreateOption.CREATE_IF_NOT_EXISTS);

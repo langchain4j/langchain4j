@@ -46,6 +46,7 @@ class VecDbSchemaManagerMetadataIndexIT {
         VecDbTestOperations.dropVectorTable(TABLE_NAME);
     }
 
+    /** Verifies that metadata-index {@code CREATE_NONE} leaves a missing index absent. */
     @Test
     void testCreateNoneDoesNotCreateMissingIndex() throws SQLException {
         createStore(CreateOption.CREATE_NONE, metadataIndex(CreateOption.CREATE_NONE, UPDATED_PATH));
@@ -53,6 +54,7 @@ class VecDbSchemaManagerMetadataIndexIT {
         assertThat(metadataIndexExists()).isFalse();
     }
 
+    /** Verifies that metadata-index {@code CREATE_NONE} preserves an existing index. */
     @Test
     void testCreateNoneKeepsExistingIndex() throws Exception {
         createStore(CreateOption.CREATE_NONE, metadataIndex(CreateOption.CREATE_IF_NOT_EXISTS, INITIAL_PATH));
@@ -63,6 +65,7 @@ class VecDbSchemaManagerMetadataIndexIT {
         assertThat(metadataIncludePaths()).containsExactly(INITIAL_PATH);
     }
 
+    /** Verifies that {@code CREATE_IF_NOT_EXISTS} creates a missing metadata index. */
     @Test
     void testCreateIfNotExistsCreatesMissingIndex() throws Exception {
         createStore(CreateOption.CREATE_NONE, metadataIndex(CreateOption.CREATE_IF_NOT_EXISTS, INITIAL_PATH));
@@ -71,6 +74,7 @@ class VecDbSchemaManagerMetadataIndexIT {
         assertThat(metadataIncludePaths()).containsExactly(INITIAL_PATH);
     }
 
+    /** Verifies that {@code CREATE_IF_NOT_EXISTS} keeps existing metadata paths unchanged. */
     @Test
     void testCreateIfNotExistsKeepsExistingIndex() throws Exception {
         createStore(CreateOption.CREATE_NONE, metadataIndex(CreateOption.CREATE_IF_NOT_EXISTS, INITIAL_PATH));
@@ -81,6 +85,7 @@ class VecDbSchemaManagerMetadataIndexIT {
         assertThat(metadataIncludePaths()).containsExactly(INITIAL_PATH);
     }
 
+    /** Verifies that {@code CREATE_OR_REPLACE} creates a metadata index when none exists. */
     @Test
     void testCreateOrReplaceCreatesMissingIndex() throws Exception {
         createStore(CreateOption.CREATE_NONE, metadataIndex(CreateOption.CREATE_OR_REPLACE, INITIAL_PATH));
@@ -89,6 +94,7 @@ class VecDbSchemaManagerMetadataIndexIT {
         assertThat(metadataIncludePaths()).containsExactly(INITIAL_PATH);
     }
 
+    /** Verifies that {@code CREATE_OR_REPLACE} replaces an existing metadata index configuration. */
     @Test
     void testCreateOrReplaceReplacesExistingIndex() throws Exception {
         createStore(CreateOption.CREATE_NONE, metadataIndex(CreateOption.CREATE_IF_NOT_EXISTS, INITIAL_PATH));

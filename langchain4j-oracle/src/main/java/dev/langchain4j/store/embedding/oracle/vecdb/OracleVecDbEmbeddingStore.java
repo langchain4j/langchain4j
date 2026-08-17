@@ -47,6 +47,7 @@ public final class OracleVecDbEmbeddingStore implements EmbeddingStore<TextSegme
     private final VecDbQueryExecutor queryExecutor;
     private final VecDbDistanceMetric distanceMetric;
     private final VecDbDistanceMetric effectiveDistanceMetric;
+    private final VecDbApiVersion apiVersion;
 
     private OracleVecDbEmbeddingStore(Builder builder) {
         this.dataSource = builder.dataSource;
@@ -58,6 +59,7 @@ public final class OracleVecDbEmbeddingStore implements EmbeddingStore<TextSegme
         try (Connection connection = dataSource.getConnection()) {
             VecDbApiVersion apiVersion = schemaManager.prepareSchema(
                     connection, embeddingTable, builder.index, builder.metadataIndex, builder.parallelCreation);
+            this.apiVersion = apiVersion;
             this.effectiveDistanceMetric = distanceMetric != null
                     ? distanceMetric
                     : VecDbEmbeddingTableJsonMapper.effectiveDistanceMetricFromJson(
@@ -154,7 +156,7 @@ public final class OracleVecDbEmbeddingStore implements EmbeddingStore<TextSegme
     @Override
     public void removeAll(Filter filter) {
         ensureNotNull(filter, "filter");
-        VecDbFilters.validate(filter);
+        VecDbFilters.validate(filter, apiVersion);
         SQLFilter sqlFilter = SQLFilters.create(filter, embeddingTable::mapMetadataKey);
 
         try (Connection connection = dataSource.getConnection()) {
@@ -182,7 +184,7 @@ public final class OracleVecDbEmbeddingStore implements EmbeddingStore<TextSegme
     @Override
     public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest request) {
         VecDbSearchRequestMapper.VecDbSearchParameters parameters =
-                VecDbSearchRequestMapper.map(request, distanceMetric);
+                VecDbSearchRequestMapper.map(request, distanceMetric, apiVersion);
 
         try (Connection connection = dataSource.getConnection()) {
             String responseJson = queryExecutor.search(
