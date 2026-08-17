@@ -191,6 +191,24 @@ public class DefaultMcpClientTest {
     }
 
     @Test
+    public void should_throw_mcp_exception_when_tool_list_is_refused() throws Exception {
+        // given
+        final McpTransport transport = getMinimalMcpTransportMock();
+        final DefaultMcpClient client =
+                new DefaultMcpClient.Builder().transport(transport).build();
+        final ObjectNode errorResponse = JsonNodeFactory.instance.objectNode();
+        errorResponse.put("jsonrpc", "2.0").put("id", 1);
+        errorResponse.putObject("error").put("code", -32600).put("message", "You are not allowed to use these tools");
+        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
+                .thenReturn(CompletableFuture.completedFuture(errorResponse));
+
+        // when + then: the server's reason reaches the caller instead of a NullPointerException
+        assertThatThrownBy(client::listTools)
+                .isInstanceOf(McpException.class)
+                .hasMessageContaining("You are not allowed to use these tools");
+    }
+
+    @Test
     public void should_cache_tool_list() throws Exception {
         // given
         final McpTransport transport = getMinimalMcpTransportMock();
