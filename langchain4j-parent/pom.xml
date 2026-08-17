@@ -72,6 +72,7 @@
         <tinylog.version>2.7.0</tinylog.version>
         <wiremock.version>3.13.2</wiremock.version>
         <hibernate.version>7.4.2.Final</hibernate.version>
+        <jsoup.version>1.23.1</jsoup.version>
     </properties>
 
     <dependencyManagement>
@@ -279,6 +280,12 @@
                 <groupId>com.azure</groupId>
                 <artifactId>azure-cosmos</artifactId>
                 <version>4.71.0-beta.1</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.jsoup</groupId>
+                <artifactId>jsoup</artifactId>
+                <version>${jsoup.version}</version>
             </dependency>
 
         </dependencies>
