@@ -168,12 +168,27 @@ public abstract class HierarchicalDocumentSplitter implements DocumentSplitter {
 
             // Delegate the splitting of the part to the sub-splitter.
             segmentBuilder.append(part);
-            for (TextSegment segment : subSplitter.split(Document.from(segmentBuilder.toString()))) {
+            String textToSubSplit = segmentBuilder.toString();
+            List<TextSegment> subSegments = subSplitter.split(Document.from(textToSubSplit));
+
+            if (subSegments.isEmpty()) {
+                // The sub-splitter found no unit it recognizes. A run of non-breaking spaces, which
+                // real PDF extraction produces, is not blank, so it reaches this point, but
+                // DocumentBySentenceSplitter finds no sentence in it and returns nothing. The
+                // hierarchy is meant to bottom out at DocumentByCharacterSplitter, which always
+                // yields at least one segment for non-empty text, so the text is kept here instead
+                // of being lost when the recursion stops early. Previously this dropped the text
+                // silently, or threw IndexOutOfBoundsException when no segment had been flushed yet.
+                subSegments = List.of(TextSegment.from(textToSubSplit));
+            }
+
+            for (TextSegment segment : subSegments) {
                 segments.add(createSegment(segment.text(), document, index.getAndIncrement()));
             }
 
-            TextSegment lastSegment = segments.get(segments.size() - 1);
-            overlap = overlapFrom(lastSegment.text());
+            // The overlap comes from what this sub-split produced, not from whatever happened to be
+            // last in the accumulated list.
+            overlap = overlapFrom(subSegments.get(subSegments.size() - 1).text());
 
             segmentBuilder.reset();
             segmentBuilder.append(overlap);
