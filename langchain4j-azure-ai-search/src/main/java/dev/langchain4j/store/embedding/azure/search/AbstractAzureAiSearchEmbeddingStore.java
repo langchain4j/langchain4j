@@ -1,6 +1,7 @@
 package dev.langchain4j.store.embedding.azure.search;
 
 import static dev.langchain4j.internal.Utils.*;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.*;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
@@ -260,7 +261,9 @@ public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingSt
 
     @Override
     public void removeAll(Collection<String> ids) {
-        ensureNotEmpty(ids, "ids");
+        if (isNullOrEmpty(ids)) {
+            return;
+        }
         List<IndexAction> actions = new ArrayList<>();
         for (String id : ids) {
             ensureNotBlank(id, "id");
@@ -375,7 +378,6 @@ public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingSt
     public void addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
         ensureConsistentSizes(ids, embeddings, embedded);
         if (isNullOrEmpty(embeddings)) {
-            log.info("Empty embeddings - no ops");
             return;
         }
 

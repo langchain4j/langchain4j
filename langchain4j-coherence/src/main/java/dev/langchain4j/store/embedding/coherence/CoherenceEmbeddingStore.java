@@ -2,7 +2,6 @@ package dev.langchain4j.store.embedding.coherence;
 
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureConsistentSizes;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.util.stream.Collectors.toSet;
 
@@ -12,7 +11,6 @@ import com.oracle.coherence.ai.QueryResult;
 import com.oracle.coherence.ai.Vector;
 import com.oracle.coherence.ai.VectorIndexExtractor;
 import com.oracle.coherence.ai.search.SimilaritySearch;
-import com.oracle.coherence.common.base.Logger;
 import com.tangosol.internal.util.processor.CacheProcessors;
 import com.tangosol.net.Coherence;
 import com.tangosol.net.NamedMap;
@@ -108,7 +106,9 @@ public class CoherenceEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     @Override
     public void removeAll(Collection<String> ids) {
-        ensureNotEmpty(ids, "ids");
+        if (isNullOrEmpty(ids)) {
+            return;
+        }
 
         Set<DocumentChunk.Id> chunkIds =
                 ids.stream().map(DocumentChunk.Id::parse).collect(toSet());
@@ -176,7 +176,6 @@ public class CoherenceEmbeddingStore implements EmbeddingStore<TextSegment> {
     public void addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> segments) {
         ensureConsistentSizes(ids, embeddings, segments);
         if (isNullOrEmpty(embeddings)) {
-            Logger.info("Skipped adding empty embeddings");
             return;
         }
 

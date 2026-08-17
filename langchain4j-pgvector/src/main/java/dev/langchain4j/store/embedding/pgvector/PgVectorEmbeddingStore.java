@@ -8,7 +8,6 @@ import static dev.langchain4j.internal.Utils.randomUUID;
 import static dev.langchain4j.internal.ValidationUtils.ensureConsistentSizes;
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.lang.String.join;
 import static java.util.Collections.nCopies;
@@ -39,8 +38,6 @@ import java.util.UUID;
 import java.util.stream.IntStream;
 import javax.sql.DataSource;
 import org.postgresql.ds.PGSimpleDataSource;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * PGVector EmbeddingStore Implementation
@@ -57,8 +54,6 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         VECTOR,
         HYBRID
     }
-
-    private static final Logger log = LoggerFactory.getLogger(PgVectorEmbeddingStore.class);
 
     private static final String DEFAULT_TEXT_SEARCH_CONFIG = "simple";
     /**
@@ -413,7 +408,9 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     @Override
     public void removeAll(Collection<String> ids) {
-        ensureNotEmpty(ids, "ids");
+        if (isNullOrEmpty(ids)) {
+            return;
+        }
         String sql = String.format("DELETE FROM %s WHERE embedding_id = ANY (?)", table);
         try (Connection connection = getConnection();
                 PreparedStatement statement = connection.prepareStatement(sql)) {
@@ -634,7 +631,6 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
     public void addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
         ensureConsistentSizes(ids, embeddings, embedded);
         if (isNullOrEmpty(embeddings)) {
-            log.info("Empty embeddings - no ops");
             return;
         }
 

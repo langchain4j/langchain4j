@@ -103,15 +103,12 @@ import org.hibernate.relational.SchemaManager;
 import org.hibernate.tool.schema.Action;
 import org.hibernate.tool.schema.SourceType;
 import org.hibernate.type.descriptor.java.JavaType;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Hibernate ORM EmbeddingStore Implementation
  */
 // Needed for inherited bean injection validation
 public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
-    private static final Logger log = LoggerFactory.getLogger(HibernateEmbeddingStore.class);
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final boolean IS_HIBERNATE_ORM_7_1;
 
@@ -401,7 +398,9 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
 
     @Override
     public void removeAll(Collection<String> ids) {
-        ensureNotEmpty(ids, "ids");
+        if (isNullOrEmpty(ids)) {
+            return;
+        }
         sessionFactory.inTransaction(session -> {
             session.createMutationQuery(deleteByIds)
                     .setParameter(
@@ -1057,7 +1056,6 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
 
     public void addAllEntities(List<?> entities) {
         if (isNullOrEmpty(entities)) {
-            log.info("Empty entities - no ops");
             return;
         }
         sessionFactory.inStatelessTransaction(session -> session.insertMultiple(entities));
@@ -1164,7 +1162,6 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
         // todo: make this configurable or always work with entities directly?
         if (!idGenerator.allowAssignedIdentifiers() || idGenerator.generatedOnExecution()) {
             if (isNullOrEmpty(embeddings)) {
-                log.info("Empty embeddings - no ops");
                 return Collections.emptyList();
             }
             ensureTrue(
@@ -1208,7 +1205,6 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
     public void addAll(List<String> idStrings, List<Embedding> embeddings, List<TextSegment> embedded) {
         ensureConsistentSizes(idStrings, embeddings, embedded);
         if (isNullOrEmpty(embeddings)) {
-            log.info("Empty embeddings - no ops");
             return;
         }
         final ArrayList<Object> ids = new ArrayList<>(idStrings.size());
@@ -1284,7 +1280,6 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
             List<Object> ids, List<Embedding> embeddings, List<TextSegment> embedded, StatelessSession session) {
         ensureConsistentSizes(ids, embeddings, embedded);
         if (isNullOrEmpty(embeddings)) {
-            log.info("Empty embeddings - no ops");
             return;
         }
         if (!idGenerator.allowAssignedIdentifiers()) {

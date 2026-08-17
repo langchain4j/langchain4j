@@ -3,7 +3,6 @@ package dev.langchain4j.store.embedding.elasticsearch;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.randomUUID;
 import static dev.langchain4j.internal.ValidationUtils.ensureConsistentSizes;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
@@ -230,7 +229,9 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
 
     @Override
     public void removeAll(Collection<String> ids) {
-        ensureNotEmpty(ids, "ids");
+        if (isNullOrEmpty(ids)) {
+            return;
+        }
         removeByIds(ids);
     }
 
@@ -268,7 +269,6 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
     public void addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
         ensureConsistentSizes(ids, embeddings, embedded);
         if (isNullOrEmpty(embeddings)) {
-            log.info("[do not add empty embeddings to elasticsearch]");
             return;
         }
 

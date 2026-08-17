@@ -6,12 +6,13 @@ import static org.mockito.Mockito.withSettings;
 
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingStore;
-import dev.langchain4j.store.embedding.EmbeddingStoreAddAllValidationTest;
+import dev.langchain4j.store.embedding.EmbeddingStoreAddAllContract;
+import dev.langchain4j.store.embedding.EmbeddingStoreRemoveAllContract;
 
-class PineconeEmbeddingStoreAddAllValidationTest extends EmbeddingStoreAddAllValidationTest {
+class PineconeEmbeddingStoreContractTest implements EmbeddingStoreAddAllContract, EmbeddingStoreRemoveAllContract {
 
     @Override
-    protected EmbeddingStore<TextSegment> embeddingStore() {
+    public EmbeddingStore<TextSegment> embeddingStore() {
         return mock(PineconeEmbeddingStore.class, withSettings().defaultAnswer(CALLS_REAL_METHODS));
     }
 }

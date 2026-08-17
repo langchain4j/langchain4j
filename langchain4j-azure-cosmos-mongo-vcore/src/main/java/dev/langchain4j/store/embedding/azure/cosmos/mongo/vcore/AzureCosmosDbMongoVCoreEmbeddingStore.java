@@ -44,8 +44,6 @@ import org.bson.Document;
 import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.codecs.pojo.PojoCodecProvider;
 import org.bson.conversions.Bson;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Represents an Azure CosmosDB Mongo vCore as an embedding store.
@@ -55,7 +53,6 @@ import org.slf4j.LoggerFactory;
  */
 public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<TextSegment> {
 
-    private static final Logger log = LoggerFactory.getLogger(AzureCosmosDbMongoVCoreEmbeddingStore.class);
     private final MongoCollection<AzureCosmosDbMongoVCoreDocument> collection;
     private final String indexName;
     private final VectorIndexType kind;
@@ -320,7 +317,6 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
     public void addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
         ensureConsistentSizes(ids, embeddings, embedded);
         if (isNullOrEmpty(embeddings)) {
-            log.info("do not add empty embeddings to Azure CosmosDB  Mongo vCore");
             return;
         }
 

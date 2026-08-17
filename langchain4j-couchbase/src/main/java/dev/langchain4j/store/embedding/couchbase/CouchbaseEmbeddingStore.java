@@ -2,7 +2,6 @@ package dev.langchain4j.store.embedding.couchbase;
 
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureConsistentSizes;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 
 import com.couchbase.client.java.Bucket;
 import com.couchbase.client.java.Cluster;
@@ -257,7 +256,9 @@ public class CouchbaseEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     @Override
     public void removeAll(Collection<String> ids) {
-        ensureNotEmpty(ids, "ids");
+        if (isNullOrEmpty(ids)) {
+            return;
+        }
         ids.forEach(collection::remove);
     }
 

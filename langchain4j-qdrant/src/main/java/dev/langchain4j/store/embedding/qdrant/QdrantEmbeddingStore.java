@@ -4,7 +4,6 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.randomUUID;
 import static dev.langchain4j.internal.ValidationUtils.ensureConsistentSizes;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static io.qdrant.client.PointIdFactory.id;
 import static io.qdrant.client.ValueFactory.value;
@@ -43,8 +42,6 @@ import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import javax.annotation.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Represents a <a href="https://qdrant.tech/">Qdrant</a> collection as an
@@ -52,7 +49,6 @@ import org.slf4j.LoggerFactory;
  * support for storing {@link dev.langchain4j.data.document.Metadata}.
  */
 public class QdrantEmbeddingStore implements EmbeddingStore<TextSegment> {
-    private static final Logger log = LoggerFactory.getLogger(QdrantEmbeddingStore.class);
 
     private final QdrantClient client;
     private final String payloadTextKey;
@@ -136,7 +132,6 @@ public class QdrantEmbeddingStore implements EmbeddingStore<TextSegment> {
             throws RuntimeException {
         ensureConsistentSizes(ids, embeddings, textSegments);
         if (isNullOrEmpty(embeddings)) {
-            log.info("Empty embeddings - no ops");
             return;
         }
         try {
@@ -181,7 +176,9 @@ public class QdrantEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     @Override
     public void removeAll(Collection<String> ids) {
-        ensureNotEmpty(ids, "ids");
+        if (isNullOrEmpty(ids)) {
+            return;
+        }
         try {
 
             Points.PointsIdsList pointsIdsList = Points.PointsIdsList.newBuilder()

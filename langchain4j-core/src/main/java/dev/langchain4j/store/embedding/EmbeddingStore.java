@@ -117,6 +117,9 @@ public interface EmbeddingStore<Embedded> {
     /**
      * Removes all embeddings that match the specified IDs from the store.
      *
+     * <p>Having nothing to remove is a no-op: an empty or {@code null} collection of IDs leaves the store
+     * unchanged and throws nothing, in the same way that adding no embeddings stores nothing.
+     *
      * @param ids A collection of unique IDs of the embeddings to be removed.
      */
     default void removeAll(Collection<String> ids) {

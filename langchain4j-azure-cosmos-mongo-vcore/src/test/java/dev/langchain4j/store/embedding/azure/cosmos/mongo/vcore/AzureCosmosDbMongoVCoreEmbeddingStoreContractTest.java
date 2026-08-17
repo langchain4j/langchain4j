@@ -6,12 +6,12 @@ import static org.mockito.Mockito.withSettings;
 
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingStore;
-import dev.langchain4j.store.embedding.EmbeddingStoreAddAllValidationTest;
+import dev.langchain4j.store.embedding.EmbeddingStoreAddAllContract;
 
-class AzureCosmosDbMongoVCoreEmbeddingStoreAddAllValidationTest extends EmbeddingStoreAddAllValidationTest {
+class AzureCosmosDbMongoVCoreEmbeddingStoreContractTest implements EmbeddingStoreAddAllContract {
 
     @Override
-    protected EmbeddingStore<TextSegment> embeddingStore() {
+    public EmbeddingStore<TextSegment> embeddingStore() {
         return mock(AzureCosmosDbMongoVCoreEmbeddingStore.class, withSettings().defaultAnswer(CALLS_REAL_METHODS));
     }
 }

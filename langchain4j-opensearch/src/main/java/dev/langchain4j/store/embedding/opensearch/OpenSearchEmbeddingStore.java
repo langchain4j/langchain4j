@@ -1,8 +1,8 @@
 package dev.langchain4j.store.embedding.opensearch;
 
 import static dev.langchain4j.internal.Utils.*;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureConsistentSizes;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
@@ -307,7 +307,6 @@ public class OpenSearchEmbeddingStore implements EmbeddingStore<TextSegment> {
 
         ensureConsistentSizes(ids, embeddings, embedded);
         if (isNullOrEmpty(embeddings)) {
-            log.info("[do not add empty embeddings to opensearch]");
             return;
         }
 
@@ -321,7 +320,9 @@ public class OpenSearchEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     @Override
     public void removeAll(Collection<String> ids) {
-        ensureNotEmpty(ids, "ids");
+        if (isNullOrEmpty(ids)) {
+            return;
+        }
         try {
             bulkRemove(ids);
         } catch (IOException ex) {

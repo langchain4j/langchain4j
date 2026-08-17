@@ -34,15 +34,11 @@ import org.infinispan.commons.marshall.ProtoStreamMarshaller;
 import org.infinispan.protostream.FileDescriptorSource;
 import org.infinispan.protostream.SerializationContext;
 import org.infinispan.protostream.schema.Schema;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Infinispan Embedding Store
  */
 public class InfinispanEmbeddingStore implements EmbeddingStore<TextSegment> {
-
-    private static final Logger log = LoggerFactory.getLogger(InfinispanEmbeddingStore.class);
 
     private final RemoteCache<String, LangChainInfinispanItem> remoteCache;
     private final InfinispanStoreConfiguration storeConfiguration;
@@ -181,8 +177,8 @@ public class InfinispanEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     @Override
     public void removeAll(Collection<String> ids) {
-        if (ids == null || ids.isEmpty()) {
-            throw new IllegalArgumentException("ids cannot be null or empty");
+        if (isNullOrEmpty(ids)) {
+            return;
         }
 
         for (String id : ids) {
@@ -246,7 +242,6 @@ public class InfinispanEmbeddingStore implements EmbeddingStore<TextSegment> {
     public void addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
         ensureConsistentSizes(ids, embeddings, embedded);
         if (isNullOrEmpty(embeddings)) {
-            log.info("do not add empty embeddings to infinispan");
             return;
         }
 

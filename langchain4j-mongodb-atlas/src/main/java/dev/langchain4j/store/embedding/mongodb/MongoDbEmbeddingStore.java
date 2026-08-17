@@ -5,6 +5,7 @@ import static com.mongodb.client.model.Projections.*;
 import static com.mongodb.client.model.search.SearchPath.fieldPath;
 import static com.mongodb.client.model.search.VectorSearchOptions.approximateVectorSearchOptions;
 import static dev.langchain4j.internal.Utils.*;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.*;
 import static dev.langchain4j.store.embedding.mongodb.IndexMapping.defaultIndexMapping;
 import static dev.langchain4j.store.embedding.mongodb.MappingUtils.*;
@@ -299,7 +300,9 @@ public class MongoDbEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     @Override
     public void removeAll(Collection<String> ids) {
-        ensureNotEmpty(ids, "ids");
+        if (isNullOrEmpty(ids)) {
+            return;
+        }
         collection.deleteMany(Filters.in("_id", ids));
     }
 
@@ -359,7 +362,6 @@ public class MongoDbEmbeddingStore implements EmbeddingStore<TextSegment> {
     public void addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
         ensureConsistentSizes(ids, embeddings, embedded);
         if (isNullOrEmpty(embeddings)) {
-            log.info("do not add empty embeddings to MongoDB Atlas");
             return;
         }
 
