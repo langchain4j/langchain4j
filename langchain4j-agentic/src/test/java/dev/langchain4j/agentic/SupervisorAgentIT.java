@@ -14,6 +14,7 @@ import static org.mockito.Mockito.verify;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.langchain4j.agent.tool.CompensateFor;
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -34,6 +35,7 @@ import dev.langchain4j.agentic.observability.AgentResponse;
 import dev.langchain4j.agentic.observability.BeforeAgentToolExecution;
 import dev.langchain4j.agentic.observability.MonitoredAgent;
 import dev.langchain4j.agentic.observability.MonitoredExecution;
+import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
@@ -236,15 +238,34 @@ public class SupervisorAgentIT {
             return newBalance;
         }
 
+        @CompensateFor("credit")
+        void reverseCredit(String user, Double amount) {
+            Double balance = accounts.get(user);
+            if (balance != null) {
+                accounts.put(user, balance - amount);
+            }
+        }
+
         @Tool("Withdraw the given amount with the given user and return the new balance")
         Double withdraw(@P("user name") String user, @P("amount") Double amount) {
             Double balance = accounts.get(user);
             if (balance == null) {
                 throw new RuntimeException("No balance found for user " + user);
             }
+            if (balance < amount) {
+                throw new RuntimeException("Insufficient balance for user " + user);
+            }
             Double newBalance = balance - amount;
             accounts.put(user, newBalance);
             return newBalance;
+        }
+
+        @CompensateFor("withdraw")
+        void reverseWithdraw(String user, Double amount) {
+            Double balance = accounts.get(user);
+            if (balance != null) {
+                accounts.put(user, balance + amount);
+            }
         }
     }
 
@@ -291,6 +312,57 @@ public class SupervisorAgentIT {
 
         assertThat(bankTool.getBalance("Mario")).isEqualTo(900.0);
         assertThat(bankTool.getBalance("Georgios")).isEqualTo(1100.0);
+    }
+
+    @Test
+    void compensating_agentic_banker_test() {
+        agentic_banker_test_with_compensation(true);
+    }
+
+    @Test
+    void non_compensating_agentic_banker_test() {
+        agentic_banker_test_with_compensation(false);
+    }
+
+    public interface BankerAgentWithMemory {
+
+        String execute(@MemoryId String memoryId, @V("request") String request);
+    }
+
+    void agentic_banker_test_with_compensation(boolean compensating) {
+        BankTool bankTool = new BankTool();
+        bankTool.createAccount("Mario", 150.0);
+        bankTool.createAccount("Georgios", 1000.0);
+
+        WithdrawAgent withdrawAgent = AgenticServices.agentBuilder(WithdrawAgent.class)
+                .chatModel(baseModel())
+                .tools(bankTool)
+                .build();
+        CreditAgent creditAgent = AgenticServices.agentBuilder(CreditAgent.class)
+                .chatModel(baseModel())
+                .tools(bankTool)
+                .build();
+
+        BankerAgentWithMemory bankSupervisor = AgenticServices.supervisorBuilder(BankerAgentWithMemory.class)
+                .chatModel(plannerModel())
+                .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(20))
+                .contextGenerationStrategy(SupervisorContextStrategy.CHAT_MEMORY) // default
+                .responseStrategy(SupervisorResponseStrategy.SUMMARY)
+                .subAgents(withdrawAgent, creditAgent)
+                .compensateOnError(compensating)
+                .build();
+
+        String result = bankSupervisor.execute("1", "Credit 100 USD to Georgios' account and after withdraw them from Mario's one");
+        System.out.println(result);
+
+        assertThat(bankTool.getBalance("Mario")).isEqualTo(50.0);
+        assertThat(bankTool.getBalance("Georgios")).isEqualTo(1100.0);
+
+        result = bankSupervisor.execute("1", "Credit 100 USD to Georgios' account and after withdraw them from Mario's one");
+        System.out.println(result);
+
+        assertThat(bankTool.getBalance("Mario")).isEqualTo(50.0);
+        assertThat(bankTool.getBalance("Georgios")).isEqualTo(compensating ? 1100.0 : 1200.0);
     }
 
     public interface ExchangeAgent {
@@ -349,7 +421,7 @@ public class SupervisorAgentIT {
                 description =
                         "A money exchanger that converts a given amount of money from the original to the target currency",
                 outputKey = "exchange")
-        public Double exchange(
+        Double exchange(
                 @V("originalCurrency") String originalCurrency,
                 @V("amount") Double amount,
                 @V("targetCurrency") String targetCurrency) {
@@ -970,6 +1042,45 @@ public class SupervisorAgentIT {
                 .build();
 
         assertDoesNotThrow(() -> supervisor.invoke("Withdraw 100 USD from Mario's account"));
+    }
+
+    static class PlannerModelReturningDoneWithDirectResponse implements ChatModel {
+
+        @Override
+        public ChatResponse chat(ChatRequest request) {
+            String json = """
+                    {
+                      "agentName": "done",
+                      "arguments": {
+                        "response": "Paris"
+                      }
+                    }
+                    """;
+
+            return ChatResponse.builder()
+                    .aiMessage(AiMessage.from(json))
+                    .build();
+        }
+    }
+
+    @Test
+    void output_function_should_access_planner_direct_response() {
+        WithdrawAgent withdrawAgent = AgenticServices.agentBuilder(WithdrawAgent.class)
+                .chatModel(baseModel())
+                .tools(new BankTool())
+                .build();
+
+        SupervisorAgent supervisor = AgenticServices.supervisorBuilder()
+                .chatModel(new PlannerModelReturningDoneWithDirectResponse())
+                .outputKey("capital")
+                .responseStrategy(SupervisorResponseStrategy.SUMMARY)
+                .subAgents(withdrawAgent)
+                .output(agenticScope -> "The capital of France is " + agenticScope.readState("capital", ""))
+                .build();
+
+        String result = supervisor.invoke("What is the capital of France?");
+
+        assertThat(result).isEqualTo("The capital of France is Paris");
     }
 
 }

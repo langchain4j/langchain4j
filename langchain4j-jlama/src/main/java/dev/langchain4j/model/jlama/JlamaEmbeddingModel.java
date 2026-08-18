@@ -142,7 +142,7 @@ public class JlamaEmbeddingModel extends DimensionAwareEmbeddingModel {
 
         public String toString() {
             return "JlamaEmbeddingModel.JlamaEmbeddingModelBuilder(modelCachePath=" + this.modelCachePath
-                    + ", modelName=" + this.modelName + ", authToken=" + this.authToken + ", threadCount="
+                    + ", modelName=" + this.modelName + ", authToken=" + (this.authToken == null ? null : "********") + ", threadCount="
                     + this.threadCount + ", quantizeModelAtRuntime=" + this.quantizeModelAtRuntime + ", poolingType="
                     + this.poolingType + ", workingDirectory=" + this.workingDirectory + ")";
         }

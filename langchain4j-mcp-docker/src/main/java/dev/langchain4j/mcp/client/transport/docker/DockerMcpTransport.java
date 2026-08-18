@@ -16,12 +16,14 @@ import com.github.dockerjava.core.DockerClientImpl;
 import com.github.dockerjava.core.NameParser;
 import com.github.dockerjava.httpclient5.ApacheDockerHttpClient;
 import com.github.dockerjava.transport.DockerHttpClient;
+import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.mcp.client.McpCallContext;
 import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import dev.langchain4j.mcp.client.transport.McpTransport;
 import dev.langchain4j.mcp.protocol.McpClientMessage;
 import dev.langchain4j.mcp.protocol.McpInitializationNotification;
 import dev.langchain4j.mcp.protocol.McpInitializeRequest;
+import java.io.Closeable;
 import java.io.IOException;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
@@ -29,6 +31,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,6 +58,8 @@ public class DockerMcpTransport implements McpTransport {
     private final Logger logger;
     private final List<String> binds;
     private final Duration attachTimeout;
+    private final Duration responseTimeout;
+    private final ExecutorService executorService;
 
     private volatile McpOperationHandler messageHandler;
     private volatile String containerId;
@@ -79,6 +84,8 @@ public class DockerMcpTransport implements McpTransport {
         this.logger = builder.logger;
         this.binds = builder.binds;
         this.attachTimeout = builder.attachTimeout;
+        this.responseTimeout = builder.responseTimeout;
+        this.executorService = DefaultExecutorProvider.getDefaultExecutorService();
     }
 
     static DockerHttpClient buildHttpClient(DockerClientConfig config) {
@@ -217,6 +224,11 @@ public class DockerMcpTransport implements McpTransport {
     }
 
     @Override
+    public boolean requiresCancellationNotification() {
+        return true;
+    }
+
+    @Override
     public void onFailure(Runnable actionOnFailure) {
         // ignore, for docker transport, we currently don't do reconnection attempts
     }
@@ -235,8 +247,11 @@ public class DockerMcpTransport implements McpTransport {
             messageHandler.startOperation(id, future);
         }
 
-        try (PipedOutputStream out = new PipedOutputStream();
-                PipedInputStream in = new PipedInputStream(out)) {
+        PipedOutputStream out = null;
+        PipedInputStream in = null;
+        try {
+            out = new PipedOutputStream();
+            in = new PipedInputStream(out);
             DockerResultCallback callback = dockerClient
                     .attachContainerCmd(containerId)
                     .withStdOut(true)
@@ -250,23 +265,66 @@ public class DockerMcpTransport implements McpTransport {
             out.flush();
 
             if (id != null) {
-                // if there is an ID, wait for a frame to be sent back from the container
-                callback.awaitCompletion();
+                // The response itself is delivered asynchronously: the callback hands each received
+                // frame to the message handler, which completes the future. Waiting for it here would
+                // block the caller inside executeOperationWithResponse and make the client's own
+                // timeouts unreachable, so the wait only happens in the background and only to know
+                // when the attachment can be torn down.
+                final PipedOutputStream outToClose = out;
+                final PipedInputStream inToClose = in;
+                out = null;
+                in = null;
+                executorService.submit(() -> awaitResponseAndDetach(callback, future, outToClose, inToClose));
             } else {
                 // if we didn't wait for a frame, we still wait a little to be sure the container receive and process
                 // the request
                 Thread.sleep(100);
-            }
-            callback.close();
-            // For messages with null ID, we don't wait for a corresponding response
-            if (id == null) {
+                callback.close();
+                // For messages with null ID, we don't wait for a corresponding response
                 future.complete(null);
             }
         } catch (Exception e) {
             future.completeExceptionally(e);
+        } finally {
+            closeQuietly(out);
+            closeQuietly(in);
         }
 
         return future;
+    }
+
+    private void awaitResponseAndDetach(
+            DockerResultCallback callback, CompletableFuture<JsonNode> future, Closeable... toClose) {
+        try {
+            if (!callback.awaitCompletion(responseTimeout.toMillis(), TimeUnit.MILLISECONDS)) {
+                String message = "The MCP server in container %s did not respond within %s"
+                        .formatted(containerId, responseTimeout);
+                future.completeExceptionally(new IllegalStateException(message));
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            future.completeExceptionally(e);
+        } finally {
+            try {
+                callback.close();
+            } catch (IOException e) {
+                log.debug("Failed to close the container attachment", e);
+            }
+            for (Closeable closeable : toClose) {
+                closeQuietly(closeable);
+            }
+        }
+    }
+
+    private static void closeQuietly(Closeable closeable) {
+        if (closeable == null) {
+            return;
+        }
+        try {
+            closeable.close();
+        } catch (IOException e) {
+            log.debug("Failed to close a stream", e);
+        }
     }
 
     public static Builder builder() {
@@ -292,6 +350,7 @@ public class DockerMcpTransport implements McpTransport {
         private Logger logger;
         private List<String> binds;
         private Duration attachTimeout;
+        private Duration responseTimeout;
 
         public DockerMcpTransport.Builder dockerHost(String dockerHost) {
             this.dockerHost = dockerHost;
@@ -390,6 +449,16 @@ public class DockerMcpTransport implements McpTransport {
             return this;
         }
 
+        /**
+         * Sets how long the transport keeps the container attachment open while waiting for the
+         * server to answer a request. When it expires, the pending operation fails instead of
+         * waiting forever. The default is 60 seconds.
+         */
+        public DockerMcpTransport.Builder responseTimeout(Duration responseTimeout) {
+            this.responseTimeout = responseTimeout;
+            return this;
+        }
+
         public DockerMcpTransport build() {
             if (dockerHost == null || dockerHost.isEmpty()) {
                 throw new IllegalArgumentException("Missing host");
@@ -408,6 +477,9 @@ public class DockerMcpTransport implements McpTransport {
             }
             if (attachTimeout == null) {
                 attachTimeout = Duration.ofSeconds(30);
+            }
+            if (responseTimeout == null) {
+                responseTimeout = Duration.ofSeconds(60);
             }
             return new DockerMcpTransport(this);
         }

@@ -2,6 +2,7 @@ package dev.langchain4j.model.huggingface;
 
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
 import dev.langchain4j.model.huggingface.client.EmbeddingRequest;
 import dev.langchain4j.model.huggingface.client.HuggingFaceClient;
@@ -30,18 +31,32 @@ public class HuggingFaceEmbeddingModel extends DimensionAwareEmbeddingModel {
      */
     public HuggingFaceEmbeddingModel(
             String baseUrl, String accessToken, String modelId, Boolean waitForModel, Duration timeout) {
-        ensureNotBlank(accessToken, "%s", "HuggingFace access token must be defined. It can be generated here: https://huggingface.co/settings/tokens");
-        this.waitForModel = waitForModel == null || waitForModel;
-        this.baseUrl = baseUrl;
-        this.modelId = modelId;
-        this.client = createClient(accessToken, modelId, timeout);
+        this(new HuggingFaceEmbeddingModelBuilder()
+                .baseUrl(baseUrl)
+                .accessToken(accessToken)
+                .modelId(modelId)
+                .waitForModel(waitForModel)
+                .timeout(timeout));
     }
 
     public HuggingFaceEmbeddingModel(String accessToken, String modelId, Boolean waitForModel, Duration timeout) {
-        this(null, accessToken, modelId, waitForModel, timeout);
+        this(new HuggingFaceEmbeddingModelBuilder()
+                .accessToken(accessToken)
+                .modelId(modelId)
+                .waitForModel(waitForModel)
+                .timeout(timeout));
     }
 
-    private HuggingFaceClient createClient(String accessToken, String modelId, Duration timeout) {
+    public HuggingFaceEmbeddingModel(HuggingFaceEmbeddingModelBuilder builder) {
+        ensureNotBlank(builder.accessToken, "%s", "HuggingFace access token must be defined. It can be generated here: https://huggingface.co/settings/tokens");
+        this.waitForModel = builder.waitForModel == null || builder.waitForModel;
+        this.baseUrl = builder.baseUrl;
+        this.modelId = builder.modelId;
+        this.client = createClient(builder.httpClientBuilder, builder.accessToken, builder.modelId, builder.timeout);
+    }
+
+    private HuggingFaceClient createClient(
+            HttpClientBuilder httpClientBuilder, String accessToken, String modelId, Duration timeout) {
         return FactoryCreator.FACTORY.create(new HuggingFaceClientFactory.Input() {
             @Override
             public String baseUrl() {
@@ -61,6 +76,11 @@ public class HuggingFaceEmbeddingModel extends DimensionAwareEmbeddingModel {
             @Override
             public Duration timeout() {
                 return timeout == null ? DEFAULT_TIMEOUT : timeout;
+            }
+
+            @Override
+            public HttpClientBuilder httpClientBuilder() {
+                return httpClientBuilder;
             }
         });
     }
@@ -97,6 +117,7 @@ public class HuggingFaceEmbeddingModel extends DimensionAwareEmbeddingModel {
     }
 
     public static class HuggingFaceEmbeddingModelBuilder {
+        private HttpClientBuilder httpClientBuilder;
         private String baseUrl;
         private String accessToken;
         private String modelId;
@@ -105,6 +126,17 @@ public class HuggingFaceEmbeddingModel extends DimensionAwareEmbeddingModel {
 
         public HuggingFaceEmbeddingModelBuilder() {
             // This is public so it can be extended
+        }
+
+        /**
+         * Sets the HTTP client builder that will be used to create the HTTP client to communicate with HuggingFace.
+         *
+         * @param httpClientBuilder the HTTP client builder to use
+         * @return {@code this}
+         */
+        public HuggingFaceEmbeddingModelBuilder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
+            this.httpClientBuilder = httpClientBuilder;
+            return this;
         }
 
         public HuggingFaceEmbeddingModelBuilder baseUrl(String baseUrl) {
@@ -133,11 +165,11 @@ public class HuggingFaceEmbeddingModel extends DimensionAwareEmbeddingModel {
         }
 
         public HuggingFaceEmbeddingModel build() {
-            return new HuggingFaceEmbeddingModel(this.baseUrl, this.accessToken, this.modelId, this.waitForModel, this.timeout);
+            return new HuggingFaceEmbeddingModel(this);
         }
 
         public String toString() {
-            return "HuggingFaceEmbeddingModel.HuggingFaceEmbeddingModelBuilder(baseUrl=" + this.baseUrl + ", accessToken=" + this.accessToken + ", modelId=" + this.modelId + ", waitForModel=" + this.waitForModel + ", timeout=" + this.timeout + ")";
+            return "HuggingFaceEmbeddingModel.HuggingFaceEmbeddingModelBuilder(baseUrl=" + this.baseUrl + ", accessToken=" + (this.accessToken == null ? null : "********") + ", modelId=" + this.modelId + ", waitForModel=" + this.waitForModel + ", timeout=" + this.timeout + ")";
         }
     }
 }

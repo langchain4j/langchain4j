@@ -1,5 +1,5 @@
 ---
-sidebar_position: 14
+sidebar_position: 15
 ---
 
 # OpenAI
@@ -31,7 +31,7 @@ LangChain4j provides 3 different integrations with OpenAI for using chat models,
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai</artifactId>
-    <version>1.17.1</version>
+    <version>1.19.0</version>
 </dependency>
 ```
 
@@ -40,7 +40,7 @@ LangChain4j provides 3 different integrations with OpenAI for using chat models,
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai-spring-boot-starter</artifactId>
-    <version>1.17.1-beta27</version>
+    <version>1.19.0-beta29</version>
 </dependency>
 ```
 
@@ -48,25 +48,6 @@ LangChain4j provides 3 different integrations with OpenAI for using chat models,
 
 To use OpenAI models, you will need an API key.
 You can create one [here](https://platform.openai.com/api-keys).
-
-<details>
-<summary>What if I don't have an API key?</summary>
-
-If you don't have your own OpenAI API key, don't worry.
-You can temporarily use `demo` key, which we provide for free for demonstration purposes.
-Be aware that when using the `demo` key, all requests to the OpenAI API need to go through our proxy,
-which injects the real key before forwarding your request to the OpenAI API.
-We do not collect or use your data in any way.
-The `demo` key has a quota, is restricted to the `gpt-4o-mini` model, and should only be used for demonstration purposes.
-
-```java
-OpenAiChatModel model = OpenAiChatModel.builder()
-    .baseUrl("http://langchain4j.dev/demo/openai/v1")
-    .apiKey("demo")
-    .modelName("gpt-4o-mini")
-    .build();
-```
-</details>
 
 ## Creating `OpenAiChatModel`
 
@@ -497,6 +478,33 @@ StreamingChatModel model = OpenAiResponsesStreamingChatModel.builder()
         .modelName("gpt-4o-mini")
         .build();
 ```
+
+### Custom HTTP headers
+
+If the OpenAI API is reached through an authenticated proxy or a gateway that expects additional HTTP headers,
+these headers can be set on the builder. They are sent with every request:
+```java
+ChatModel model = OpenAiResponsesChatModel.builder()
+        .apiKey(System.getenv("OPENAI_API_KEY"))
+        .modelName("gpt-4o-mini")
+        .customHeaders(Map.of("Proxy-Authorization", "Basic dXNlcjpwYXNz"))
+        .build();
+```
+
+If the header value is not constant (for example, an OAuth2 token that expires and has to be refreshed),
+a `Supplier` can be provided instead. It is called before each request:
+```java
+ChatModel model = OpenAiResponsesChatModel.builder()
+        .apiKey(System.getenv("OPENAI_API_KEY"))
+        .modelName("gpt-4o-mini")
+        .customHeaders(() -> Map.of("Authorization", "Bearer " + tokenProvider.currentToken()))
+        .build();
+```
+
+Custom headers are applied last, so they can also be used to override the headers
+LangChain4j sets by default (for example, `Authorization`).
+
+The same applies to `OpenAiResponsesStreamingChatModel`.
 
 ### `OpenAiResponsesChatRequestParameters`
 

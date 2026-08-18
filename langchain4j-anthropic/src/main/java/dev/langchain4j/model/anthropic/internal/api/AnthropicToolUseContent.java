@@ -26,6 +26,13 @@ public class AnthropicToolUseContent extends AnthropicMessageContent {
         this.input = input;
     }
 
+    public AnthropicToolUseContent(String id, String name, String input, AnthropicCacheControl cacheControl) {
+        super("tool_use", cacheControl);
+        this.id = id;
+        this.name = name;
+        this.input = input;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (o == null || getClass() != o.getClass()) return false;
@@ -56,6 +63,7 @@ public class AnthropicToolUseContent extends AnthropicMessageContent {
         private String id;
         private String name;
         private String input;
+        private AnthropicCacheControl cacheControl;
 
         public Builder id(String id) {
             this.id = id;
@@ -72,8 +80,13 @@ public class AnthropicToolUseContent extends AnthropicMessageContent {
             return this;
         }
 
+        public Builder cacheControl(AnthropicCacheControl cacheControl) {
+            this.cacheControl = cacheControl;
+            return this;
+        }
+
         public AnthropicToolUseContent build() {
-            return new AnthropicToolUseContent(id, name, input);
+            return new AnthropicToolUseContent(id, name, input, cacheControl);
         }
     }
 }

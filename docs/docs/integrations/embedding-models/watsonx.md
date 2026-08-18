@@ -1,11 +1,12 @@
 ---
-sidebar_position: 22
+sidebar_position: 23
 ---
 
 # watsonx.ai
 
 - [watsonx.ai API Reference](https://cloud.ibm.com/apidocs/watsonx-ai#text-embeddings)
 - [watsonx.ai Java SDK](https://github.com/IBM/watsonx-ai-java-sdk)
+- [watsonx.ai Java SDK documentation](https://ibm.github.io/watsonx-ai-java-sdk/services/embedding-service)
 
 ## Maven Dependency
 
@@ -13,7 +14,7 @@ sidebar_position: 22
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-watsonx</artifactId>
-    <version>1.17.1-beta27</version>
+    <version>1.19.0-beta29</version>
 </dependency>
 ```
 

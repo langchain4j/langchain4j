@@ -1,8 +1,10 @@
 package dev.langchain4j.mcp.protocol;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import dev.langchain4j.Internal;
+import java.util.Map;
 
 /**
  * Corresponds to the {@code params} of the {@code CallToolRequest} type from the MCP schema.
@@ -14,6 +16,12 @@ public class McpCallToolParams extends McpClientParams {
 
     @JsonInclude(JsonInclude.Include.ALWAYS)
     private ObjectNode arguments;
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private Map<String, Object> inputResponses;
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private JsonNode requestState;
 
     public McpCallToolParams() {}
 
@@ -36,5 +44,21 @@ public class McpCallToolParams extends McpClientParams {
 
     public void setArguments(ObjectNode arguments) {
         this.arguments = arguments;
+    }
+
+    public Map<String, Object> getInputResponses() {
+        return inputResponses;
+    }
+
+    public void setInputResponses(Map<String, Object> inputResponses) {
+        this.inputResponses = inputResponses;
+    }
+
+    public JsonNode getRequestState() {
+        return requestState;
+    }
+
+    public void setRequestState(JsonNode requestState) {
+        this.requestState = requestState;
     }
 }

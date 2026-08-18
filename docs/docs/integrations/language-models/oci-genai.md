@@ -1,5 +1,5 @@
 ---
-sidebar_position: 20
+sidebar_position: 21
 ---
 
 # Oracle Cloud Infrastructure GenAI
@@ -18,7 +18,7 @@ With dedicated AI clusters, you can host foundational models on dedicated GPUs t
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-community-oci-genai</artifactId>
-    <version>1.17.1-beta27</version>
+    <version>1.19.0-beta29</version>
 </dependency>
 ```
 

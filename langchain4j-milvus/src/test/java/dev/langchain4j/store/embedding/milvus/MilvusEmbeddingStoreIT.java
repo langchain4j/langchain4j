@@ -109,6 +109,31 @@ class MilvusEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
     }
 
     @Test
+    void should_retrieve_embeddings_for_ids_containing_special_characters() {
+
+        Map<String, Embedding> embeddingsById = Map.of(
+                "normal-id", embeddingModel.embed("hello").content(),
+                "id'with'apostrophe", embeddingModel.embed("hi").content(),
+                "id\"with-quote", embeddingModel.embed("hey").content(),
+                "id\\with-backslash", embeddingModel.embed("howdy").content());
+
+        embeddingsById.forEach(embeddingStore::add);
+
+        // retrieveEmbeddingsOnSearch(true) queries Milvus a second time by these ids to fetch the vectors,
+        // which only works when the ids are quoted and escaped in the query expression
+        List<EmbeddingMatch<TextSegment>> matches = embeddingStore
+                .search(EmbeddingSearchRequest.builder()
+                        .queryEmbedding(embeddingModel.embed("hello").content())
+                        .maxResults(10)
+                        .build())
+                .matches();
+
+        assertThat(matches).hasSize(embeddingsById.size());
+        assertThat(matches)
+                .allSatisfy(match -> assertThat(match.embedding()).isEqualTo(embeddingsById.get(match.embeddingId())));
+    }
+
+    @Test
     void milvus_with_existing_client() {
 
         ConnectParam.Builder connectBuilder = ConnectParam.newBuilder()

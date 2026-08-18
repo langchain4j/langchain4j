@@ -1,5 +1,5 @@
 ---
-sidebar_position: 9
+sidebar_position: 10
 ---
 
 # Hugging Face
@@ -14,7 +14,7 @@ you need to import the `langchain4j-open-ai` module, as Hugging Face Inference P
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai</artifactId>
-    <version>1.17.1</version>
+    <version>1.19.0</version>
 </dependency>
 ```
 

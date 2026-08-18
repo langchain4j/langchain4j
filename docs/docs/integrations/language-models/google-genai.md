@@ -1,5 +1,5 @@
 ---
-sidebar_position: 7
+sidebar_position: 8
 ---
 
 # Google Gen AI (Experimental)
@@ -40,7 +40,7 @@ https://github.com/googleapis/java-genai
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-google-genai</artifactId>
-    <version>1.17.1-beta27</version>
+    <version>1.19.0-beta29</version>
 </dependency>
 ```
 
@@ -136,6 +136,24 @@ ChatModel gemini = GoogleGenAiChatModel.builder()
     .listeners(...)
     .build();
 ```
+
+### Advanced: customizing the `GenerateContentConfig`
+
+The builder methods cover the most common options. To set an option of the underlying Google Gen AI Java SDK
+that is not (yet) exposed by a builder method, register a `generateContentConfigCustomizer`. It receives the
+`GenerateContentConfig.Builder` after this integration has populated it (generation parameters, tools, system
+instruction, etc.) and just before the config is built, so it can set additional options or override existing
+ones while the per-request tools and system instruction are preserved.
+
+```java
+ChatModel gemini = GoogleGenAiChatModel.builder()
+    .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
+    .modelName("gemini-2.5-flash")
+    .generateContentConfigCustomizer(config -> config.responseLogprobs(true).logprobs(5))
+    .build();
+```
+
+This works the same way on `GoogleGenAiStreamingChatModel`.
 
 ## Request & Response Logging
 
@@ -372,6 +390,40 @@ String response = gemini.chat("Summarize the cached document in 3 bullet points.
 
 This feature is available on `GoogleGenAiChatModel`, `GoogleGenAiStreamingChatModel`, and `GoogleGenAiBatchChatModel`.
 
+### Creating and managing caches
+
+Instead of creating the cache out-of-band, you can create and manage it directly from LangChain4j with `GoogleGenAiCaches`, which wraps the SDK's cache lifecycle (create / get / list / update TTL / delete). The messages are cached using the same `GoogleGenAiContentMapper` the chat models use, so you stay in the LangChain4j `ChatMessage` domain.
+
+```java
+GoogleGenAiCaches caches = GoogleGenAiCaches.builder()
+    .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
+    .build();
+
+// Cache a large, reusable context (a system instruction plus a long document)
+CachedContent cache = caches.createCache(
+    "gemini-2.5-flash",
+    List.of(
+        SystemMessage.from("You are a precise assistant answering questions about the attached document."),
+        UserMessage.from(longDocumentText)),
+    Duration.ofHours(1));
+
+// Reuse it across many requests via cachedContent
+ChatModel gemini = GoogleGenAiChatModel.builder()
+    .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
+    .modelName("gemini-2.5-flash")
+    .cachedContent(cache.name().orElseThrow())
+    .build();
+
+String answer = gemini.chat("Summarize the cached document in 3 bullet points.");
+
+// Manage the cache lifecycle
+caches.updateCacheTtl(cache.name().orElseThrow(), Duration.ofHours(2));
+caches.listCaches();
+caches.deleteCache(cache.name().orElseThrow());
+```
+
+> Note: explicit context caching requires a paid tier; it is not available on the free tier.
+
 ## Thinking Models (Gemini 3.0+)
 
 Gemini 3.0 models (like `gemini-3.0-pro` and `gemini-3.0-flash`) support advanced reasoning (thinking) capabilities. 
@@ -390,6 +442,38 @@ ChatModel gemini = GoogleGenAiChatModel.builder()
 
 > [!TIP]
 > The LangChain4j `google-genai` integration seamlessly manages the complex state required for multi-turn tool execution with thinking models. It automatically persists and injects the necessary hidden `thought_signature` tokens across conversation turns, ensuring robust and uninterrupted agentic workflows!
+
+### Thought summaries
+
+Set `includeThoughts(true)` to ask the model to return
+[thought summaries](https://ai.google.dev/gemini-api/docs/generate-content/thinking) along with the answer,
+and `returnThinking(true)` to have them mapped to `AiMessage.thinking()`:
+
+```java
+ChatModel gemini = GoogleGenAiChatModel.builder()
+    .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
+    .modelName("gemini-3.1-pro-preview")
+    .thinkingLevel("MEDIUM")
+    .includeThoughts(true)
+    .returnThinking(true)
+    .build();
+
+ChatResponse response = gemini.chat(UserMessage.from("What is 6 times 7?"));
+
+String thinking = response.aiMessage().thinking();
+String answer = response.aiMessage().text();
+```
+
+When streaming, thought summaries are delivered through `StreamingChatResponseHandler.onPartialThinking()`
+while the answer continues to arrive through `onPartialResponse()`.
+
+To send thought summaries back to the model in follow-up requests, set `sendThinking(true)`. The
+`thought_signature` tokens required for multi-turn tool execution are handled independently and are always
+preserved, regardless of this setting.
+
+> [!NOTE]
+> `returnThinking` is disabled by default. Thought summaries returned by the model are then discarded and
+> never appear in `AiMessage.text()`.
 
 ## GoogleGenAiEmbeddingModel
 

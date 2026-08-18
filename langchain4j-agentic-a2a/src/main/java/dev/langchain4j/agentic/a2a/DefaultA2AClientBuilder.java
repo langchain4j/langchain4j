@@ -32,6 +32,7 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import org.a2aproject.sdk.A2A;
 import org.a2aproject.sdk.client.Client;
+import org.a2aproject.sdk.client.ClientBuilder;
 import org.a2aproject.sdk.client.ClientEvent;
 import org.a2aproject.sdk.client.MessageEvent;
 import org.a2aproject.sdk.client.TaskEvent;
@@ -60,7 +61,8 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
     private static final Logger LOG = LoggerFactory.getLogger(DefaultA2AClientBuilder.class);
 
     private final AgentCard agentCard;
-    private final Client a2aClient;
+    private Client a2aClient;
+    private Consumer<ClientBuilder> clientCustomizer;
 
     private final String name;
     private String agentId;
@@ -76,14 +78,21 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
         this.agentCard = agentCard(a2aServerUrl);
         this.name = agentCard.name();
         this.agentId = this.name;
+        this.agentServiceClass = agentServiceClass;
+    }
+
+    private Client buildClient() {
         try {
-            this.a2aClient = Client.builder(agentCard)
-                    .withTransport(JSONRPCTransport.class, new JSONRPCTransportConfigBuilder())
-                    .build();
+            ClientBuilder cb = Client.builder(agentCard);
+            if (clientCustomizer != null) {
+                clientCustomizer.accept(cb);
+            } else {
+                cb.withTransport(JSONRPCTransport.class, new JSONRPCTransportConfigBuilder());
+            }
+            return cb.build();
         } catch (A2AClientException e) {
             throw new RuntimeException(e);
         }
-        this.agentServiceClass = agentServiceClass;
     }
 
     private static AgentCard agentCard(String a2aServerUrl) {
@@ -99,6 +108,8 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
         if (agentServiceClass == UntypedAgent.class && inputKeys == null) {
             throw new IllegalArgumentException("Input names must be provided for UntypedAgent.");
         }
+
+        this.a2aClient = buildClient();
 
         Object agent = Proxy.newProxyInstance(
                 agentServiceClass.getClassLoader(), new Class<?>[] {agentServiceClass, A2AClientInstance.class}, this);
@@ -221,14 +232,7 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
                         new IllegalArgumentException("The event expected should be of type " + event.getClass()));
             }
         });
-        Consumer<Throwable> streamingErrorHandler = error -> {
-            if (messageResponse.isDone()) {
-                LOG.debug("SSE stream closed after response received: {}", error.getMessage());
-            } else {
-                LOG.error("Streaming error occurred: {}", error.getMessage(), error);
-                messageResponse.completeExceptionally(error);
-            }
-        };
+        Consumer<Throwable> streamingErrorHandler = error -> handleStreamEnd(error, messageResponse);
         a2aClient.sendMessage(message, consumers, streamingErrorHandler, null);
 
         String finalContextIdKey = contextIdKey;
@@ -254,8 +258,34 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
         taskId.set(task.id());
     }
 
+    static void handleStreamEnd(Throwable error, CompletableFuture<String> messageResponse) {
+        if (error == null) {
+            // The A2A SDK reports a normal end of the stream by passing a null error.
+            LOG.debug("SSE stream closed normally");
+            if (!messageResponse.isDone()) {
+                messageResponse.completeExceptionally(
+                        new RuntimeException("A2A stream closed before a result was received"));
+            }
+            return;
+        }
+        if (messageResponse.isDone()) {
+            LOG.debug("SSE stream closed after response received: {}", error.getMessage());
+        } else {
+            LOG.error("Streaming error occurred: {}", error.getMessage(), error);
+            messageResponse.completeExceptionally(error);
+        }
+    }
+
     static void completeFromTask(Task task, CompletableFuture<String> messageResponse) {
         TaskState state = task.status().state();
+        if (state.isInterrupted()) {
+            // The remote agent paused the task (input-required/auth-required) and will not advance it
+            // on its own, so this must complete exceptionally rather than being left pending forever.
+            Message statusMessage = task.status().message();
+            String reason = statusMessage != null ? extractTextFromParts(statusMessage.parts()) : "";
+            messageResponse.completeExceptionally(new A2ATaskInterruptedException(task.id(), state, reason));
+            return;
+        }
         if (!isTerminalState(state) && task.artifacts().isEmpty()) {
             return;
         }
@@ -312,6 +342,15 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
     @Override
     public DefaultA2AClientBuilder<T> listener(AgentListener agentListener) {
         this.agentListener = agentListener;
+        return this;
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public DefaultA2AClientBuilder<T> clientCustomizer(Consumer<?> clientCustomizer) {
+        if (clientCustomizer != null) {
+            this.clientCustomizer = (Consumer<ClientBuilder>) clientCustomizer;
+        }
         return this;
     }
 

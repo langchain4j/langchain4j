@@ -1,6 +1,7 @@
 package dev.langchain4j.internal;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 
 import java.net.MalformedURLException;
@@ -337,5 +338,68 @@ class CustomMimeTypesFileTypeDetectorTest {
 
         // then
         assertThat(mimeType).isEqualTo("text/css");
+    }
+
+    @ParameterizedTest
+    @ValueSource(
+            strings = {
+                "https://example.com/", // path is "/", which has no file name
+                "https://example.com", // no path at all
+                "gs://my-bucket" // no path at all
+            })
+    void should_return_null_for_uri_without_file_name(String url) {
+        // given
+        CustomMimeTypesFileTypeDetector detector = new CustomMimeTypesFileTypeDetector();
+
+        // when
+        String mimeType = detector.probeContentType(URI.create(url));
+
+        // then
+        assertThat(mimeType).isNull();
+    }
+
+    @ParameterizedTest
+    @ValueSource(
+            strings = {
+                "data:image/png;base64,iVBORw0KGgo=", // opaque URI: getPath() is null
+                "mailto:someone@example.com",
+                "urn:isbn:0451450523"
+            })
+    void should_return_null_for_opaque_uri(String url) {
+        // given
+        CustomMimeTypesFileTypeDetector detector = new CustomMimeTypesFileTypeDetector();
+
+        // when
+        String mimeType = detector.probeContentType(URI.create(url));
+
+        // then
+        assertThat(mimeType).isNull();
+    }
+
+    @Test
+    void should_still_detect_mime_type_for_uri_with_file_name() {
+        // given
+        CustomMimeTypesFileTypeDetector detector = new CustomMimeTypesFileTypeDetector();
+
+        // when
+        String mimeType = detector.probeContentType(URI.create("gs://my-bucket/audio.mp3"));
+
+        // then
+        assertThat(mimeType).isEqualTo("audio/mp3");
+    }
+
+    @Test
+    void should_return_empty_extension_for_path_without_file_name() {
+        // when/then
+        assertThat(CustomMimeTypesFileTypeDetector.extension(Path.of("/"))).isEmpty();
+    }
+
+    @Test
+    void should_not_throw_for_path_without_file_name() {
+        // given
+        CustomMimeTypesFileTypeDetector detector = new CustomMimeTypesFileTypeDetector();
+
+        // when/then
+        assertThatCode(() -> detector.probeContentType(Path.of("/"))).doesNotThrowAnyException();
     }
 }

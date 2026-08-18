@@ -19,6 +19,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.entry;
 
 import com.sun.net.httpserver.HttpServer;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
@@ -31,11 +32,15 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Stream;
+import java.util.zip.DeflaterOutputStream;
+import java.util.zip.GZIPOutputStream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -281,9 +286,37 @@ class UtilsTest {
                 exchange.getResponseBody().write(response);
                 exchange.close();
             });
+            httpServer.createContext("/gzip_endpoint", exchange -> {
+                ByteArrayOutputStream compressed = new ByteArrayOutputStream();
+                try (GZIPOutputStream gzip = new GZIPOutputStream(compressed)) {
+                    gzip.write("hello".getBytes());
+                }
+                byte[] response = compressed.toByteArray();
+                exchange.getResponseHeaders().set("Content-Encoding", "gzip");
+                exchange.sendResponseHeaders(HttpURLConnection.HTTP_OK, response.length);
+                exchange.getResponseBody().write(response);
+                exchange.close();
+            });
+            httpServer.createContext("/deflate_endpoint", exchange -> {
+                ByteArrayOutputStream compressed = new ByteArrayOutputStream();
+                try (DeflaterOutputStream deflate = new DeflaterOutputStream(compressed)) {
+                    deflate.write("hello".getBytes());
+                }
+                byte[] response = compressed.toByteArray();
+                exchange.getResponseHeaders().set("Content-Encoding", "deflate");
+                exchange.sendResponseHeaders(HttpURLConnection.HTTP_OK, response.length);
+                exchange.getResponseBody().write(response);
+                exchange.close();
+            });
             httpServer.start();
 
             assertThat(Utils.readBytes("http://localhost:" + port + "/ok_endpoint"))
+                    .isEqualTo("hello".getBytes());
+
+            // A compressed response must be transparently decoded, not returned as raw bytes.
+            assertThat(Utils.readBytes("http://localhost:" + port + "/gzip_endpoint"))
+                    .isEqualTo("hello".getBytes());
+            assertThat(Utils.readBytes("http://localhost:" + port + "/deflate_endpoint"))
                     .isEqualTo("hello".getBytes());
 
             assertThatExceptionOfType(RuntimeException.class)
@@ -364,6 +397,113 @@ class UtilsTest {
         assertThat(Utils.copy((Map<?, ?>) null)).isEmpty();
         assertThat(Utils.copy(emptyMap())).isEmpty();
         assertThat(Utils.copy(singletonMap("key", "value"))).containsExactly(entry("key", "value"));
+    }
+
+    @Test
+    void copy_list_is_not_a_view_of_the_source() {
+        List<String> source = new ArrayList<>(List.of("one"));
+
+        List<String> copy = Utils.copy(source);
+        source.add("two");
+        source.remove("one");
+
+        assertThat(copy).containsExactly("one");
+    }
+
+    @Test
+    void copy_if_not_null_list_is_not_a_view_of_the_source() {
+        List<String> source = new ArrayList<>(List.of("one"));
+
+        List<String> copy = Utils.copyIfNotNull(source);
+        source.add("two");
+        source.remove("one");
+
+        assertThat(copy).containsExactly("one");
+    }
+
+    @Test
+    void copy_set_is_not_a_view_of_the_source() {
+        Set<String> source = new LinkedHashSet<>(List.of("one"));
+
+        Set<String> copy = Utils.copy(source);
+        source.add("two");
+        source.remove("one");
+
+        assertThat(copy).containsExactly("one");
+    }
+
+    @Test
+    void copy_if_not_null_set_is_not_a_view_of_the_source() {
+        Set<String> source = new LinkedHashSet<>(List.of("one"));
+
+        Set<String> copy = Utils.copyIfNotNull(source);
+        source.add("two");
+        source.remove("one");
+
+        assertThat(copy).containsExactly("one");
+    }
+
+    @Test
+    void copy_map_is_not_a_view_of_the_source() {
+        Map<String, String> source = new LinkedHashMap<>(Map.of("key", "value"));
+
+        Map<String, String> copy = Utils.copy(source);
+        source.put("key2", "value2");
+        source.remove("key");
+
+        assertThat(copy).containsExactly(entry("key", "value"));
+    }
+
+    @Test
+    void copy_if_not_null_map_is_not_a_view_of_the_source() {
+        Map<String, String> source = new LinkedHashMap<>(Map.of("key", "value"));
+
+        Map<String, String> copy = Utils.copyIfNotNull(source);
+        source.put("key2", "value2");
+        source.remove("key");
+
+        assertThat(copy).containsExactly(entry("key", "value"));
+    }
+
+    @Test
+    void copy_returns_unmodifiable_collections() {
+        List<String> list = Utils.copy(new ArrayList<>(List.of("one")));
+        assertThatExceptionOfType(UnsupportedOperationException.class).isThrownBy(() -> list.add("two"));
+
+        Set<String> set = Utils.copy(new LinkedHashSet<>(List.of("one")));
+        assertThatExceptionOfType(UnsupportedOperationException.class).isThrownBy(() -> set.add("two"));
+
+        Map<String, String> map = Utils.copy(new LinkedHashMap<>(Map.of("key", "value")));
+        assertThatExceptionOfType(UnsupportedOperationException.class).isThrownBy(() -> map.put("k", "v"));
+
+        List<String> listIfNotNull = Utils.copyIfNotNull(new ArrayList<>(List.of("one")));
+        assertThatExceptionOfType(UnsupportedOperationException.class).isThrownBy(() -> listIfNotNull.add("two"));
+
+        Set<String> setIfNotNull = Utils.copyIfNotNull(new LinkedHashSet<>(List.of("one")));
+        assertThatExceptionOfType(UnsupportedOperationException.class).isThrownBy(() -> setIfNotNull.add("two"));
+
+        Map<String, String> mapIfNotNull = Utils.copyIfNotNull(new LinkedHashMap<>(Map.of("key", "value")));
+        assertThatExceptionOfType(UnsupportedOperationException.class).isThrownBy(() -> mapIfNotNull.put("k", "v"));
+    }
+
+    @Test
+    void copy_preserves_iteration_order_and_null_elements() {
+        List<String> list = new ArrayList<>();
+        list.add("one");
+        list.add(null);
+        list.add("two");
+        assertThat(Utils.copy(list)).containsExactly("one", null, "two");
+
+        Set<String> set = new LinkedHashSet<>();
+        set.add("one");
+        set.add(null);
+        set.add("two");
+        assertThat(Utils.copy(set)).containsExactly("one", null, "two");
+
+        Map<String, String> map = new LinkedHashMap<>();
+        map.put("one", "1");
+        map.put("two", null);
+        assertThat(Utils.copy(map)).containsExactly(entry("one", "1"), entry("two", null));
     }
 
     @Test
@@ -488,9 +628,24 @@ class UtilsTest {
         assertThat(merge(List.of(), List.of(2))).isEqualTo(List.of(2));
         assertThat(merge(List.of(), List.of())).isEqualTo(List.of());
 
+        // more than two lists
+        assertThat(merge(List.of(1), List.of(2), List.of(3))).isEqualTo(List.of(1, 2, 3));
+
         assertThatThrownBy(() -> merge(List.of()))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("at least 2 elements");
+    }
+
+    @Test
+    void test_merge_lists_is_null_safe() {
+        // null lists are treated as empty, for any number of arguments
+        assertThat(merge(null, List.of(2))).isEqualTo(List.of(2));
+        assertThat(merge(List.of(1), null)).isEqualTo(List.of(1));
+        assertThat(merge(List.of(1), null, List.of(3))).isEqualTo(List.of(1, 3));
+
+        // never returns null, even when every list is null or empty
+        assertThat(merge((List<Integer>) null, null)).isNotNull().isEmpty();
+        assertThat(merge(List.of(), (List<Integer>) null)).isNotNull().isEmpty();
     }
 
     @Test
@@ -500,11 +655,27 @@ class UtilsTest {
         assertThat(merge(Map.of(), Map.of("two", 2))).isEqualTo(Map.of("two", 2));
         assertThat(merge(Map.of(), Map.of())).isEqualTo(Map.of());
 
+        // more than two maps
+        assertThat(merge(Map.of("one", 1), Map.of("two", 2), Map.of("three", 3)))
+                .isEqualTo(Map.of("one", 1, "two", 2, "three", 3));
+
         assertThatThrownBy(() -> merge(Map.of()))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("at least 2 elements");
         assertThatThrownBy(() -> merge(Map.of("one", 1), Map.of("one", 1)))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Duplicate key: one");
+    }
+
+    @Test
+    void test_merge_maps_is_null_safe() {
+        // null maps are treated as empty, for any number of arguments
+        assertThat(merge(null, Map.of("two", 2))).isEqualTo(Map.of("two", 2));
+        assertThat(merge(Map.of("one", 1), null)).isEqualTo(Map.of("one", 1));
+        assertThat(merge(Map.of("one", 1), null, Map.of("three", 3))).isEqualTo(Map.of("one", 1, "three", 3));
+
+        // never returns null, even when every map is null or empty
+        assertThat(merge((Map<String, Integer>) null, null)).isNotNull().isEmpty();
+        assertThat(merge(Map.of(), (Map<String, Integer>) null)).isNotNull().isEmpty();
     }
 }
