@@ -145,7 +145,7 @@ class ChromaClientV2 implements ChromaClient {
         try {
             return chromaApi.collection(tenantName, databaseName, collectionName);
         } catch (RuntimeException e) {
-            if (isNotFound(e)) {
+            if (isMissingCollection(e)) {
                 return null;
             }
             throw e;
@@ -192,6 +192,16 @@ class ChromaClientV2 implements ChromaClient {
     }
 
     private static boolean isNotFound(RuntimeException exception) {
-        return exception.getCause() instanceof HttpException httpException && httpException.statusCode() == 404;
+        return hasStatusCode(exception, 404);
+    }
+
+    private static boolean isMissingCollection(RuntimeException exception) {
+        // Chroma 1.0.0 and later report a missing collection as 404,
+        // Chroma 0.5.16 to 0.6.3 report it as 400 InvalidCollection
+        return hasStatusCode(exception, 404) || hasStatusCode(exception, 400);
+    }
+
+    private static boolean hasStatusCode(RuntimeException exception, int statusCode) {
+        return exception.getCause() instanceof HttpException httpException && httpException.statusCode() == statusCode;
     }
 }
