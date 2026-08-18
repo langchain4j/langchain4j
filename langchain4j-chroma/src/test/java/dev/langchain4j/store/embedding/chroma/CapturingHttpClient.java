@@ -1,6 +1,7 @@
 package dev.langchain4j.store.embedding.chroma;
 
 import static java.util.Collections.emptyMap;
+import static java.util.stream.Collectors.joining;
 
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpRequest;
@@ -9,6 +10,8 @@ import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.http.client.sse.ServerSentEventParser;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.IntFunction;
+import java.util.stream.IntStream;
 
 /**
  * An {@link HttpClient} that records every request it receives and answers with a canned Chroma response,
@@ -20,14 +23,23 @@ class CapturingHttpClient implements HttpClient {
             "{\"id\":\"collection-id\",\"name\":\"test\",\"metadata\":{\"hnsw:space\":\"cosine\"}}";
 
     private final List<HttpRequest> requests = new ArrayList<>();
-    private final String collectionBody;
+    private String collectionBody = DEFAULT_COLLECTION;
+    private List<Double> distances = List.of(0.0);
 
-    CapturingHttpClient() {
-        this(DEFAULT_COLLECTION);
+    /**
+     * Answers the "get collection" call with the given JSON, to simulate a collection that already exists.
+     */
+    CapturingHttpClient withCollection(String collectionBody) {
+        this.collectionBody = collectionBody;
+        return this;
     }
 
-    CapturingHttpClient(String collectionBody) {
-        this.collectionBody = collectionBody;
+    /**
+     * Answers the "query collection" call with one match per given distance.
+     */
+    CapturingHttpClient withDistances(Double... distances) {
+        this.distances = List.of(distances);
+        return this;
     }
 
     List<HttpRequest> requests() {
@@ -59,6 +71,9 @@ class CapturingHttpClient implements HttpClient {
         if (url.endsWith("/add")) {
             return "true";
         }
+        if (url.endsWith("/query")) {
+            return queryResponse();
+        }
         if (url.endsWith("/api/v1/collections")) {
             return DEFAULT_COLLECTION;
         }
@@ -66,5 +81,19 @@ class CapturingHttpClient implements HttpClient {
             return collectionBody;
         }
         throw new IllegalArgumentException("Unexpected URL: " + url);
+    }
+
+    private String queryResponse() {
+        String ids = join(i -> "\"id" + i + "\"");
+        String embeddings = join(i -> "[1.0,2.0,3.0]");
+        String documents = join(i -> "\"document" + i + "\"");
+        String metadatas = join(i -> "{}");
+        String distanceValues = join(i -> String.valueOf(distances.get(i)));
+        return "{\"ids\":[[" + ids + "]],\"embeddings\":[[" + embeddings + "]],\"documents\":[[" + documents
+                + "]],\"metadatas\":[[" + metadatas + "]],\"distances\":[[" + distanceValues + "]]}";
+    }
+
+    private String join(IntFunction<String> element) {
+        return IntStream.range(0, distances.size()).mapToObj(element).collect(joining(","));
     }
 }

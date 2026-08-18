@@ -54,7 +54,21 @@ class CollectionTest {
     }
 
     @Test
-    void should_read_the_distance_function_from_a_full_collection_response() throws Exception {
+    void should_read_the_distance_function_from_a_full_collection_response_of_chroma_0_5_x() throws Exception {
+        // chroma 0.5.x reports the default "l2" in "configuration_json" even though the collection uses cosine
+        String json = "{\"id\":\"8f335b05-d821-4a7b-a002-40355abbe1b8\",\"name\":\"probe_cosine\","
+                + "\"configuration_json\":{\"hnsw_configuration\":{\"space\":\"l2\",\"ef_construction\":100,\"M\":16,"
+                + "\"_type\":\"HNSWConfigurationInternal\"},\"_type\":\"CollectionConfigurationInternal\"},"
+                + "\"metadata\":{\"hnsw:space\":\"cosine\"},\"dimension\":null,\"tenant\":\"default_tenant\","
+                + "\"database\":\"default_database\",\"version\":0}";
+
+        Collection collection = OBJECT_MAPPER.readValue(json, Collection.class);
+
+        assertThat(collection.distanceFunction()).isEqualTo("cosine");
+    }
+
+    @Test
+    void should_read_the_distance_function_from_a_full_collection_response_of_chroma_1_x() throws Exception {
         String json = "{\"id\":\"cad5dce9-b301-43de-bca4-97dbbd8cff97\",\"name\":\"probe_l2\","
                 + "\"configuration_json\":{\"hnsw\":{\"space\":\"l2\",\"ef_construction\":100,\"max_neighbors\":16},"
                 + "\"spann\":null,\"embedding_function\":null},"

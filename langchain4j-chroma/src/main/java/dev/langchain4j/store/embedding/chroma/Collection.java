@@ -35,6 +35,8 @@ class Collection {
     }
 
     String distanceFunction() {
+        // "metadata" is checked first on purpose: Chroma 0.5.x reports the default "l2" in "configuration_json"
+        // even for a collection that was created with a different metric through "metadata"
         String space = metadataSpace();
         if (space != null) {
             return space;

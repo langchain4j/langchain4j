@@ -20,6 +20,7 @@ import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
+import dev.langchain4j.store.embedding.RelevanceScore;
 import dev.langchain4j.store.embedding.filter.Filter;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -30,14 +31,18 @@ import java.util.function.Supplier;
 
 /**
  * Represents a store for embeddings using the Chroma backend.
- * Always uses cosine distance as the distance metric.
+ * <p>
+ * Collections created by this store use cosine distance. When an already existing collection is used, the
+ * distance metric it was created with is detected and {@link EmbeddingMatch#score()} is derived from it.
  */
 public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     private static final String COSINE_DISTANCE = "cosine";
+    private static final String L2_DISTANCE = "l2";
 
     private final ChromaClient chromaClient;
     private String collectionId;
+    private String distanceFunction;
     private final String collectionName;
 
     /**
@@ -78,8 +83,8 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
         if (collection == null) {
             createCollection();
         } else {
-            ensureCosineDistance(collection);
             collectionId = collection.getId();
+            distanceFunction = collection.distanceFunction();
         }
     }
 
@@ -334,7 +339,7 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
         return matches.stream().filter(match -> match.score() >= minScore).collect(toList());
     }
 
-    private static List<EmbeddingMatch<TextSegment>> toEmbeddingMatches(QueryResponse queryResponse) {
+    private List<EmbeddingMatch<TextSegment>> toEmbeddingMatches(QueryResponse queryResponse) {
         List<EmbeddingMatch<TextSegment>> embeddingMatches = new ArrayList<>();
 
         for (int i = 0; i < queryResponse.getIds().get(0).size(); i++) {
@@ -350,14 +355,20 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     /**
-     * By default, cosine distance will be used. For details: <a href="https://docs.trychroma.com/usage-guide"></a>
-     * Converts a cosine distance in the range [0, 2] to a score in the range [0, 1].
+     * Converts a distance reported by Chroma into a relevance score in the range [0, 1],
+     * according to the distance metric of the collection.
+     * For details see <a href="https://docs.trychroma.com/docs/collections/configure">Chroma documentation</a>.
      *
      * @param distance The distance value.
      * @return The converted score.
      */
-    private static double distanceToScore(double distance) {
-        return 1 - (distance / 2);
+    private double distanceToScore(double distance) {
+        if (L2_DISTANCE.equalsIgnoreCase(distanceFunction)) {
+            // "l2" is the squared euclidean distance, which is unbounded
+            return 1 / (1 + distance);
+        }
+        // "cosine" distance is in the range [0, 2], "ip" distance is 1 minus the inner product
+        return RelevanceScore.fromCosineSimilarity(1 - distance);
     }
 
     private static TextSegment toTextSegment(QueryResponse queryResponse, int i) {
@@ -366,20 +377,11 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
         return text == null ? null : TextSegment.from(text, metadata == null ? new Metadata() : new Metadata(metadata));
     }
 
-    private void ensureCosineDistance(Collection collection) {
-        String distanceFunction = collection.distanceFunction();
-        if (!COSINE_DISTANCE.equalsIgnoreCase(distanceFunction)) {
-            throw new IllegalStateException("Chroma collection '" + collectionName + "' uses distance metric '"
-                    + distanceFunction + "', but ChromaEmbeddingStore requires '" + COSINE_DISTANCE
-                    + "' to produce valid relevance scores. Use or recreate a collection configured with "
-                    + COSINE_DISTANCE + " distance.");
-        }
-    }
-
     private void createCollection() {
         collectionId = chromaClient
                 .createCollection(new CreateCollectionRequest(this.collectionName))
                 .getId();
+        distanceFunction = COSINE_DISTANCE;
     }
 
     private void createTenantAndDbIfNotExists(ChromaClientV2 chromaClient) {
