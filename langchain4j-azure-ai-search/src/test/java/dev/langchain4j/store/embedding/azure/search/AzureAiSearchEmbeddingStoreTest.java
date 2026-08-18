@@ -31,6 +31,22 @@ class AzureAiSearchEmbeddingStoreTest {
     }
 
     @Test
+    void provided_index_name_should_be_used_when_the_index_is_not_created() {
+        AzureAiSearchEmbeddingStore store =
+                new AzureAiSearchEmbeddingStore(endpoint, keyCredential, false, index, null, null);
+
+        assertThat(store.searchClient.getIndexName()).isEqualTo(index.getName());
+    }
+
+    @Test
+    void default_index_name_should_be_used_when_no_index_is_provided() {
+        AzureAiSearchEmbeddingStore store =
+                new AzureAiSearchEmbeddingStore(endpoint, keyCredential, false, dimensions, null, null);
+
+        assertThat(store.searchClient.getIndexName()).isEqualTo("vectorsearch");
+    }
+
+    @Test
     void index_and_index_name_should_not_both_be_defined() {
         try {
             new AzureAiSearchEmbeddingStore(endpoint, keyCredential, false, index, indexName, null);
