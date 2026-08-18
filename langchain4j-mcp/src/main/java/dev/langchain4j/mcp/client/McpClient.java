@@ -102,12 +102,17 @@ public interface McpClient extends AutoCloseable {
 
     /**
      * Subscribes to resource content update notifications for the given URIs.
-     * Returns a subscription ID that can be used to unsubscribe later.
+     * Blocks until the server acknowledges the subscription (or rejects or fails to
+     * acknowledge it within the configured timeout), then returns a subscription ID that
+     * can be used to unsubscribe later.
      * Only available with MCP protocol version 2026-07-28 and later.
      *
      * @param uris the list of resource URIs to subscribe to
      * @return a subscription ID
      * @throws UnsupportedOperationException when using legacy protocol (2025-11-25)
+     * @throws McpException if the server rejects the subscription
+     * @throws RuntimeException if the underlying transport fails, or the server does not
+     *     acknowledge the subscription within the configured timeout
      */
     default long subscribeToResources(List<String> uris) {
         throw new UnsupportedOperationException("subscribeToResources requires MCP protocol 2026-07-28 or later");

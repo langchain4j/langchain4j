@@ -39,6 +39,7 @@ public class McpOperationHandler {
     private final Runnable onServerPing;
     private final Runnable onServerRootsList;
     private final BiConsumer<Long, String> onServerCancelled;
+    private final BiConsumer<Long, JsonNode> onSubscriptionAcknowledged;
 
     public McpOperationHandler(
             Map<Long, CompletableFuture<JsonNode>> pendingOperations,
@@ -52,7 +53,8 @@ public class McpOperationHandler {
             McpProgressHandler progressHandler,
             Runnable onServerPing,
             Runnable onServerRootsList,
-            BiConsumer<Long, String> onServerCancelled) {
+            BiConsumer<Long, String> onServerCancelled,
+            BiConsumer<Long, JsonNode> onSubscriptionAcknowledged) {
         this.pendingOperations = pendingOperations;
         this.transport = transport;
         this.logMessageConsumer = logMessageConsumer;
@@ -65,6 +67,7 @@ public class McpOperationHandler {
         this.onServerPing = onServerPing;
         this.onServerRootsList = onServerRootsList;
         this.onServerCancelled = onServerCancelled;
+        this.onSubscriptionAcknowledged = onSubscriptionAcknowledged;
     }
 
     public void handle(JsonNode message) {
@@ -146,7 +149,7 @@ public class McpOperationHandler {
                 handleCancelledNotification(message);
                 break;
             case NOTIFICATION_SUBSCRIPTIONS_ACKNOWLEDGED:
-                log.debug("Subscriptions acknowledged: {}", message);
+                handleSubscriptionAcknowledgedNotification(message);
                 break;
             default:
                 log.warn("Received unknown message: {}", message);
@@ -196,6 +199,19 @@ public class McpOperationHandler {
             onResourceUpdate.accept(uri);
         } else if (message.has("params") && !message.get("params").has("uri")) {
             log.warn("Received resource updated notification without uri: {}", message);
+        }
+    }
+
+    private void handleSubscriptionAcknowledgedNotification(JsonNode message) {
+        JsonNode params = message.get("params");
+        JsonNode meta = params != null ? params.get("_meta") : null;
+        JsonNode subscriptionIdNode = meta != null ? meta.get("io.modelcontextprotocol/subscriptionId") : null;
+        if (subscriptionIdNode == null) {
+            log.warn("Received subscriptions acknowledged notification without a subscription ID: {}", message);
+            return;
+        }
+        if (onSubscriptionAcknowledged != null) {
+            onSubscriptionAcknowledged.accept(subscriptionIdNode.asLong(), message);
         }
     }
 
