@@ -103,6 +103,9 @@ class GoogleGenAiContentMapper {
     private static final String MODEL_ROLE = "model";
     private static final String FUNCTION_ROLE = "function";
 
+    private static final String THOUGHT_SIGNATURE_KEY_PREFIX =
+            "thought_signature_"; // do not change, will break backward compatibility!
+
     static Content toSystemInstruction(List<ChatMessage> messages) {
         String systemInstructions = messages.stream()
                 .filter(m -> m instanceof SystemMessage)
@@ -120,6 +123,10 @@ class GoogleGenAiContentMapper {
     }
 
     static List<Content> toContents(List<ChatMessage> messages) {
+        return toContents(messages, false);
+    }
+
+    static List<Content> toContents(List<ChatMessage> messages, boolean sendThinking) {
         List<Content> contents = new ArrayList<>();
         List<Part> currentFunctionParts = new ArrayList<>();
 
@@ -156,7 +163,7 @@ class GoogleGenAiContentMapper {
                             .build());
                     currentFunctionParts = new ArrayList<>();
                 }
-                contents.add(toContent(message));
+                contents.add(toContent(message, sendThinking));
             }
         }
 
@@ -171,11 +178,18 @@ class GoogleGenAiContentMapper {
     }
 
     static Content toContent(ChatMessage message) {
+        return toContent(message, false);
+    }
+
+    static Content toContent(ChatMessage message, boolean sendThinking) {
         if (message instanceof UserMessage userMessage) {
             return Content.builder().role(USER_ROLE).parts(toParts(userMessage)).build();
 
         } else if (message instanceof AiMessage aiMsg) {
             List<Part> parts = new ArrayList<>();
+            if (sendThinking && !isNullOrEmpty(aiMsg.thinking())) {
+                parts.add(Part.builder().text(aiMsg.thinking()).thought(true).build());
+            }
             if (aiMsg.text() != null) {
                 parts.add(Part.builder().text(aiMsg.text()).build());
             }
@@ -199,7 +213,7 @@ class GoogleGenAiContentMapper {
                     Part.Builder partBuilder = Part.builder().functionCall(fcBuilder.build());
 
                     if (req.id() != null) {
-                        String sigBase64 = aiMsg.attribute("thought_signature_" + req.id(), String.class);
+                        String sigBase64 = aiMsg.attribute(THOUGHT_SIGNATURE_KEY_PREFIX + req.id(), String.class);
                         if (sigBase64 != null) {
                             partBuilder.thoughtSignature(Base64.getDecoder().decode(sigBase64));
                         }
@@ -214,6 +228,10 @@ class GoogleGenAiContentMapper {
     }
 
     static ChatResponse toChatResponse(GenerateContentResponse response, String modelName) {
+        return toChatResponse(response, modelName, false);
+    }
+
+    static ChatResponse toChatResponse(GenerateContentResponse response, String modelName, boolean returnThinking) {
         List<Candidate> candidates = response.candidates().orElse(List.of());
 
         if (candidates.isEmpty()) {
@@ -231,13 +249,22 @@ class GoogleGenAiContentMapper {
         Content content = candidate.content().orElse(null);
 
         StringBuilder textBuilder = new StringBuilder();
+        StringBuilder thinkingBuilder = new StringBuilder();
         List<ToolExecutionRequest> toolRequests = new ArrayList<>();
         Map<String, Object> attributes = new HashMap<>();
 
         if (content != null) {
             List<Part> parts = content.parts().orElse(List.of());
             for (Part part : parts) {
-                if (part.text().isPresent()) textBuilder.append(part.text().get());
+                if (part.text().isPresent()) {
+                    if (part.thought().orElse(false)) {
+                        if (returnThinking) {
+                            thinkingBuilder.append(part.text().get());
+                        }
+                    } else {
+                        textBuilder.append(part.text().get());
+                    }
+                }
 
                 if (part.functionCall().isPresent()) {
                     FunctionCall fc = part.functionCall().get();
@@ -254,7 +281,8 @@ class GoogleGenAiContentMapper {
                     if (part.thoughtSignature().isPresent()) {
                         byte[] sig = part.thoughtSignature().get();
                         attributes.put(
-                                "thought_signature_" + id, Base64.getEncoder().encodeToString(sig));
+                                THOUGHT_SIGNATURE_KEY_PREFIX + id,
+                                Base64.getEncoder().encodeToString(sig));
                     }
 
                     toolRequests.add(ToolExecutionRequest.builder()
@@ -278,6 +306,10 @@ class GoogleGenAiContentMapper {
             aiMessageBuilder.text(text);
         }
 
+        if (thinkingBuilder.length() > 0) {
+            aiMessageBuilder.thinking(thinkingBuilder.toString());
+        }
+
         if (!attributes.isEmpty()) {
             aiMessageBuilder.attributes(attributes);
         }
@@ -298,10 +330,12 @@ class GoogleGenAiContentMapper {
                 })
                 .orElse(new TokenUsage(0, 0));
 
-        FinishReason finishReason = candidate
-                .finishReason()
-                .map(GoogleGenAiContentMapper::mapFinishReason)
-                .orElseGet(() -> !toolRequests.isEmpty() ? FinishReason.TOOL_EXECUTION : FinishReason.STOP);
+        FinishReason finishReason = !toolRequests.isEmpty()
+                ? FinishReason.TOOL_EXECUTION
+                : candidate
+                        .finishReason()
+                        .map(GoogleGenAiContentMapper::mapFinishReason)
+                        .orElse(FinishReason.STOP);
 
         GoogleGenAiChatResponseMetadata metadata = GoogleGenAiChatResponseMetadata.builder()
                 .modelName(modelName)

@@ -52,6 +52,8 @@ public abstract class AbstractServiceBuilder<T, S> {
 
     protected Function<InternalAgent, Object> agentInstanceFactory;
 
+    protected Supplier<Object> defaultMemoryIdSupplier;
+
     protected Executor executor;
 
     protected AbstractServiceBuilder(Class<T> agentServiceClass, Method agenticMethod) {
@@ -148,6 +150,11 @@ public abstract class AbstractServiceBuilder<T, S> {
 
     public S agentInstanceFactory(Function<InternalAgent, Object> factory) {
         this.agentInstanceFactory = factory;
+        return (S) this;
+    }
+
+    public S defaultMemoryIdSupplier(Supplier<Object> supplier) {
+        this.defaultMemoryIdSupplier = supplier;
         return (S) this;
     }
 

@@ -11,7 +11,7 @@ sidebar_position: 5
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-document-loader-playwright</artifactId>
-    <version>1.11.9-beta19</version>
+    <version>1.19.0-beta29</version>
 
 </dependency>
 ```

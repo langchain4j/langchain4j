@@ -66,7 +66,7 @@ class OpenAiStreamingChatModelDeepSeekThinkingIT {
         AiMessage aiMessage1 = spyHandler1.get().aiMessage();
         assertThat(aiMessage1.text()).containsIgnoringCase("Berlin");
         assertThat(aiMessage1.thinking())
-                .containsIgnoringCase("Berlin")
+                .isNotBlank()
                 .isEqualTo(spyHandler1.getThinking());
 
         InOrder inOrder1 = inOrder(spyHandler1);

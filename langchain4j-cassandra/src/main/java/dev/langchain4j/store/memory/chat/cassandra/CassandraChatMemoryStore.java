@@ -1,5 +1,7 @@
 package dev.langchain4j.store.memory.chat.cassandra;
 
+import static java.util.stream.Collectors.toList;
+
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.CqlSessionBuilder;
 import com.datastax.oss.driver.api.core.uuid.Uuids;
@@ -11,15 +13,12 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ChatMessageDeserializer;
 import dev.langchain4j.data.message.ChatMessageSerializer;
 import dev.langchain4j.store.memory.chat.ChatMemoryStore;
-import org.jspecify.annotations.NonNull;
-
 import java.net.InetSocketAddress;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
-
-import static java.util.stream.Collectors.toList;
+import org.jspecify.annotations.NonNull;
 
 /**
  * Implementation of {@link ChatMemoryStore} using Astra DB Vector Search.
@@ -103,9 +102,7 @@ public class CassandraChatMemoryStore implements ChatMemoryStore {
          * for the full history. Instead of changing the multipurpose table
          * we reverse the list.
          */
-        List<ChatMessage> latestFirstList = messageTable
-                .findPartition(getMemoryId(memoryId))
-                .stream()
+        List<ChatMessage> latestFirstList = messageTable.findPartition(getMemoryId(memoryId)).stream()
                 .map(this::toChatMessage)
                 .collect(toList());
         Collections.reverse(latestFirstList);
@@ -171,10 +168,7 @@ public class CassandraChatMemoryStore implements ChatMemoryStore {
     }
 
     private String getMemoryId(Object memoryId) {
-        if (!(memoryId instanceof String)) {
-            throw new IllegalArgumentException("memoryId must be a String");
-        }
-        return (String) memoryId;
+        return memoryId.toString();
     }
 
     public static class Builder {
@@ -222,13 +216,11 @@ public class CassandraChatMemoryStore implements ChatMemoryStore {
             return this;
         }
 
-        public Builder() {
-        }
+        public Builder() {}
 
         public CassandraChatMemoryStore build() {
-            CqlSessionBuilder builder = CqlSession.builder()
-                    .withKeyspace(keyspace)
-                    .withLocalDatacenter(localDataCenter);
+            CqlSessionBuilder builder =
+                    CqlSession.builder().withKeyspace(keyspace).withLocalDatacenter(localDataCenter);
             if (userName != null && password != null) {
                 builder.withAuthCredentials(userName, password);
             }
@@ -288,5 +280,4 @@ public class CassandraChatMemoryStore implements ChatMemoryStore {
             return new CassandraChatMemoryStore(cqlSession, tableName);
         }
     }
-
 }
