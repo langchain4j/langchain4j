@@ -20,6 +20,8 @@ import dev.langchain4j.guardrail.InputGuardrail;
 import dev.langchain4j.guardrail.OutputGuardrail;
 import dev.langchain4j.guardrail.config.InputGuardrailsConfig;
 import dev.langchain4j.guardrail.config.OutputGuardrailsConfig;
+import dev.langchain4j.service.guardrail.ToolInputGuardrail;
+import dev.langchain4j.service.guardrail.ToolOutputGuardrail;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
@@ -939,6 +941,84 @@ public abstract class AiServices<T> {
      */
     public AiServices<T> unregisterListeners(Collection<? extends AiServiceListener<?>> listeners) {
         context.eventListenerRegistrar.unregister(listeners);
+        return this;
+    }
+
+    /**
+     * Configures {@link ToolInputGuardrail}s that apply to <b>every</b> tool of this AI Service, including
+     * tools that have no declaring class to annotate, such as MCP tools and tools registered
+     * programmatically.
+     * <p>
+     * An input guardrail sees a tool call together with its arguments before the tool runs, and can let it
+     * through, rewrite it, refuse it (the LLM is told why and may try something else), or fail fatally,
+     * aborting the invocation with a {@link dev.langchain4j.service.guardrail.ToolGuardrailException}.
+     * <p>
+     * To guard a single tool instead, annotate the {@code @Tool} method or its declaring class with
+     * {@link dev.langchain4j.service.guardrail.ToolInputGuardrails}. Guardrails configured here run first.
+     *
+     * @param toolInputGuardrails the guardrails, applied in order
+     * @return the current instance of {@link AiServices} to allow method chaining
+     * @since 1.19.0
+     */
+    public AiServices<T> toolInputGuardrails(ToolInputGuardrail... toolInputGuardrails) {
+        return toolInputGuardrails(asList(toolInputGuardrails));
+    }
+
+    /**
+     * @see #toolInputGuardrails(ToolInputGuardrail...)
+     * @since 1.19.0
+     */
+    public AiServices<T> toolInputGuardrails(Collection<? extends ToolInputGuardrail> toolInputGuardrails) {
+        context.toolService.toolGuardrailService().addGlobalInputGuardrails(toolInputGuardrails);
+        return this;
+    }
+
+    /**
+     * Same as {@link #toolInputGuardrails(ToolInputGuardrail...)}, but the guardrails are instantiated
+     * through {@link dev.langchain4j.classinstance.ClassInstanceLoader}, so framework-managed beans are
+     * used where a framework provides them.
+     *
+     * @since 1.19.0
+     */
+    public AiServices<T> toolInputGuardrailClasses(
+            Collection<Class<? extends ToolInputGuardrail>> toolInputGuardrailClasses) {
+        context.toolService.toolGuardrailService().addGlobalInputGuardrailClasses(toolInputGuardrailClasses);
+        return this;
+    }
+
+    /**
+     * Configures {@link ToolOutputGuardrail}s that apply to <b>every</b> tool of this AI Service.
+     * <p>
+     * An output guardrail sees what a tool returned before the LLM does, and can let it through, rewrite
+     * it, reject it, or fail fatally. Tool results are the main route by which untrusted content reaches
+     * the model, so this is the place to redact, truncate or sanitise it.
+     *
+     * @param toolOutputGuardrails the guardrails, applied in order
+     * @return the current instance of {@link AiServices} to allow method chaining
+     * @since 1.19.0
+     */
+    public AiServices<T> toolOutputGuardrails(ToolOutputGuardrail... toolOutputGuardrails) {
+        return toolOutputGuardrails(asList(toolOutputGuardrails));
+    }
+
+    /**
+     * @see #toolOutputGuardrails(ToolOutputGuardrail...)
+     * @since 1.19.0
+     */
+    public AiServices<T> toolOutputGuardrails(Collection<? extends ToolOutputGuardrail> toolOutputGuardrails) {
+        context.toolService.toolGuardrailService().addGlobalOutputGuardrails(toolOutputGuardrails);
+        return this;
+    }
+
+    /**
+     * Same as {@link #toolOutputGuardrails(ToolOutputGuardrail...)}, but the guardrails are instantiated
+     * through {@link dev.langchain4j.classinstance.ClassInstanceLoader}.
+     *
+     * @since 1.19.0
+     */
+    public AiServices<T> toolOutputGuardrailClasses(
+            Collection<Class<? extends ToolOutputGuardrail>> toolOutputGuardrailClasses) {
+        context.toolService.toolGuardrailService().addGlobalOutputGuardrailClasses(toolOutputGuardrailClasses);
         return this;
     }
 

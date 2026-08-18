@@ -16,7 +16,7 @@ import dev.langchain4j.internal.Json;
  * Utility class for {@link ToolExecutionRequest}.
  */
 @Internal
-class ToolExecutionRequestUtil {
+public class ToolExecutionRequestUtil {
 
     private static final Pattern TRAILING_COMMA_PATTERN = Pattern.compile(",(\\s*[}\\]])");
     private static final Pattern LEADING_TRAILING_QUOTE_PATTERN = Pattern.compile("^\"|\"$");
@@ -48,7 +48,7 @@ class ToolExecutionRequestUtil {
      * @param arguments json string
      * @return map
      */
-    static Map<String, Object> argumentsAsMap(String arguments) {
+    public static Map<String, Object> argumentsAsMap(String arguments) {
         if (isNullOrBlank(arguments)) {
             return Map.of();
         }

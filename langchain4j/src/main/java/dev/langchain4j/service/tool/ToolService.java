@@ -40,6 +40,9 @@ import dev.langchain4j.observability.api.event.AiServiceResponseReceivedEvent;
 import dev.langchain4j.observability.api.event.ToolExecutedEvent;
 import dev.langchain4j.service.AiServiceContext;
 import dev.langchain4j.service.IllegalConfigurationException;
+import dev.langchain4j.service.guardrail.ToolGuardrailException;
+import dev.langchain4j.service.guardrail.ToolGuardrailService;
+import dev.langchain4j.service.guardrail.ToolMetadata;
 import dev.langchain4j.service.tool.search.ToolSearchService;
 import dev.langchain4j.service.tool.search.ToolSearchStrategy;
 import java.lang.reflect.Method;
@@ -92,6 +95,7 @@ public class ToolService {
     private final Map<String, ToolExecutor> toolExecutors = new HashMap<>();
     private final Map<String, ReturnBehavior> returnBehaviors = new HashMap<>();
     private final Map<String, Consumer<ToolExecution>> compensatingExecutors = new HashMap<>();
+    private final Map<String, Object> toolInstances = new HashMap<>();
     private IllegalConfigurationException compensatingToolMisconfiguration;
     private final Set<ToolProvider> toolProviders = new LinkedHashSet<>();
     private boolean compensateOnToolErrors;
@@ -102,6 +106,8 @@ public class ToolService {
     private Function<ToolExecutionRequest, ToolExecutionResultMessage> toolHallucinationStrategy =
             HallucinatedToolNameStrategy.THROW_EXCEPTION;
     private ToolSearchService toolSearchService;
+
+    private final ToolGuardrailService toolGuardrailService = new ToolGuardrailService();
 
     private Consumer<BeforeToolExecution> beforeToolExecution = null;
     private Consumer<ToolExecution> afterToolExecution = null;
@@ -145,6 +151,25 @@ public class ToolService {
             List<AiServiceTool> tools = findTools(objectWithTools);
             addTools(tools, this.toolExecutors, this.toolSpecifications, this.returnBehaviors);
             this.compensatingExecutors.putAll(findCompensatingActions(objectWithTools));
+            registerToolGuardrails(objectWithTools);
+        }
+    }
+
+    /**
+     * @since 1.19.0
+     */
+    public ToolGuardrailService toolGuardrailService() {
+        return toolGuardrailService;
+    }
+
+    private void registerToolGuardrails(Object objectWithTools) {
+        for (Method method : allConcreteMethods(objectWithTools.getClass())) {
+            getAnnotatedMethod(method, Tool.class).ifPresent(toolMethod -> {
+                Tool tool = toolMethod.getAnnotation(Tool.class);
+                String toolName = isNullOrBlank(tool.name()) ? toolMethod.getName() : tool.name();
+                toolGuardrailService.registerAnnotatedGuardrails(toolName, toolMethod);
+                toolInstances.put(toolName, objectWithTools);
+            });
         }
     }
 
@@ -967,8 +992,7 @@ public class ToolService {
         ToolExecutor executor = toolExecutors.get(toolRequest.name());
         ToolExecutionResult toolResult = executor == null
                 ? applyToolHallucinationStrategy(toolRequest)
-                : executeWithErrorHandling(
-                        toolRequest, executor, invocationContext, argumentsErrorHandler(), executionErrorHandler());
+                : executeGuarded(toolRequest, executor, invocationContext);
 
         if (afterToolExecution != null) {
             afterToolExecution.accept(ToolExecution.builder()
@@ -980,6 +1004,73 @@ public class ToolService {
                     .build());
         }
         return toolResult;
+    }
+
+    /**
+     * Runs a tool through its guardrails: input guardrails may rewrite or refuse the call, and output
+     * guardrails may rewrite or reject the result. A non-fatal refusal becomes an error result that the
+     * LLM sees and can react to; a fatal one propagates and aborts the invocation.
+     *
+     * @since 1.19.0
+     */
+    private ToolExecutionResult executeGuarded(
+            ToolExecutionRequest toolRequest, ToolExecutor executor, InvocationContext invocationContext) {
+
+        String toolName = toolRequest.name();
+        boolean hasInputGuardrails = toolGuardrailService.hasInputGuardrails(toolName);
+        boolean hasOutputGuardrails = toolGuardrailService.hasOutputGuardrails(toolName);
+
+        if (!hasInputGuardrails && !hasOutputGuardrails) {
+            return executeWithErrorHandling(
+                    toolRequest, executor, invocationContext, argumentsErrorHandler(), executionErrorHandler());
+        }
+
+        ToolMetadata toolMetadata = toolMetadata(toolName);
+
+        ToolExecutionRequest guardedRequest = toolRequest;
+        if (hasInputGuardrails) {
+            try {
+                guardedRequest =
+                        toolGuardrailService.executeInputGuardrails(toolRequest, toolMetadata, invocationContext);
+            } catch (ToolGuardrailException e) {
+                if (e.isFatal()) {
+                    throw e;
+                }
+                return guardrailFailureResult(e);
+            }
+        }
+
+        ToolExecutionResult toolResult = executeWithErrorHandling(
+                guardedRequest, executor, invocationContext, argumentsErrorHandler(), executionErrorHandler());
+
+        if (hasOutputGuardrails) {
+            try {
+                toolResult = toolGuardrailService.executeOutputGuardrails(
+                        toolResult, guardedRequest, toolMetadata, invocationContext);
+            } catch (ToolGuardrailException e) {
+                if (e.isFatal()) {
+                    throw e;
+                }
+                return guardrailFailureResult(e);
+            }
+        }
+
+        return toolResult;
+    }
+
+    private ToolMetadata toolMetadata(String toolName) {
+        ToolSpecification specification = toolSpecifications.stream()
+                .filter(toolSpecification -> toolSpecification.name().equals(toolName))
+                .findFirst()
+                .orElseGet(() -> ToolSpecification.builder().name(toolName).build());
+        return new ToolMetadata(specification, toolInstances.get(toolName));
+    }
+
+    private static ToolExecutionResult guardrailFailureResult(ToolGuardrailException e) {
+        return ToolExecutionResult.builder()
+                .isError(true)
+                .resultText(e.getMessage())
+                .build();
     }
 
     public static ToolExecutionResult executeWithErrorHandling(
