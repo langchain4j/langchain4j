@@ -3,6 +3,7 @@ package dev.langchain4j.store.embedding.oracle.vecdb;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.store.embedding.oracle.CreateOption;
+import dev.langchain4j.store.embedding.oracle.vecdb.enums.VecDbApiVersion;
 import dev.langchain4j.store.embedding.oracle.vecdb.enums.VecDbDistanceMetric;
 import dev.langchain4j.store.embedding.oracle.vecdb.mapper.VecDbVectorJsonMapper;
 import java.sql.Connection;
@@ -26,6 +27,14 @@ final class VecDbTestOperations {
 
     static EmbeddingModel embeddingModel() {
         return EMBEDDING_MODEL;
+    }
+
+    static VecDbApiVersion apiVersion() {
+        try (Connection connection = dataSource().getConnection()) {
+            return VecDbSupport.resolveApiVersion(connection);
+        } catch (SQLException exception) {
+            throw new IllegalStateException("Unable to resolve the VecDB API version", exception);
+        }
     }
 
     static OracleVecDbEmbeddingStore createStore(String tableName) {

@@ -52,7 +52,7 @@ final class VecDbTestContainer {
                 .withCreateContainerCmdModifier(command -> command.getHostConfig()
                         .withCapAdd(Capability.SYS_ADMIN)
                         .withDevices(Device.parse("/dev/fuse:/dev/fuse:rwm")))
-                .waitingFor(Wait.forHealthcheck().withStartupTimeout(Duration.ofMinutes(30)));
+                .waitingFor(Wait.forListeningPort().withStartupTimeout(Duration.ofMinutes(30)));
     }
 
     private static PoolDataSource startDatabase() {

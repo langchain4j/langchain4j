@@ -10,9 +10,11 @@ import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreWithFilteringIT;
+import dev.langchain4j.store.embedding.oracle.vecdb.enums.VecDbApiVersion;
 import java.sql.SQLException;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIf;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
@@ -54,13 +56,14 @@ class OracleVecDbEmbeddingStoreWithFilteringIT extends EmbeddingStoreWithFilteri
 
     @Override
     protected boolean supportsContains() {
-        return true;
+        return VecDbTestOperations.apiVersion() == VecDbApiVersion.V23_26_3;
     }
 
     /**
      * Verifies that the compatibility {@code text} metadata property can be filtered while it is
      * removed from the user-visible metadata reconstructed by search.
      */
+    @EnabledIf("supportsContains")
     @Test
     void testFiltersByStoredTextMetadata() {
         TextSegment matchingSegment =
@@ -94,6 +97,7 @@ class OracleVecDbEmbeddingStoreWithFilteringIT extends EmbeddingStoreWithFilteri
      * {@link String#contains(CharSequence)} semantics: it matches every stored string value,
      * including an empty string, but does not match a record where the metadata field is absent.
      */
+    @EnabledIf("supportsContains")
     @Test
     void testEmptyContainsStringMatchesAllStoredStringValues() {
         TextSegment firstMatchingSegment = TextSegment.from("First document", new Metadata().put("category", "guide"));
