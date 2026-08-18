@@ -1,5 +1,8 @@
 package dev.langchain4j.store.embedding.azure.search;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
+
 import com.azure.core.credential.AzureKeyCredential;
 import com.azure.core.credential.TokenCredential;
 import com.azure.search.documents.indexes.models.SearchIndex;
@@ -7,27 +10,50 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.rag.content.retriever.azure.search.AzureAiSearchFilterMapper;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
-
 /**
  * Azure AI Search EmbeddingStore Implementation
  */
-public class AzureAiSearchEmbeddingStore extends AbstractAzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> {
+public class AzureAiSearchEmbeddingStore extends AbstractAzureAiSearchEmbeddingStore
+        implements EmbeddingStore<TextSegment> {
 
-    public AzureAiSearchEmbeddingStore(String endpoint, AzureKeyCredential keyCredential, boolean createOrUpdateIndex, int dimensions, String indexName, AzureAiSearchFilterMapper filterMapper) {
+    public AzureAiSearchEmbeddingStore(
+            String endpoint,
+            AzureKeyCredential keyCredential,
+            boolean createOrUpdateIndex,
+            int dimensions,
+            String indexName,
+            AzureAiSearchFilterMapper filterMapper) {
         this.initialize(endpoint, keyCredential, null, createOrUpdateIndex, dimensions, null, indexName, filterMapper);
     }
 
-    public AzureAiSearchEmbeddingStore(String endpoint, AzureKeyCredential keyCredential, boolean createOrUpdateIndex, SearchIndex index, String indexName, AzureAiSearchFilterMapper filterMapper) {
+    public AzureAiSearchEmbeddingStore(
+            String endpoint,
+            AzureKeyCredential keyCredential,
+            boolean createOrUpdateIndex,
+            SearchIndex index,
+            String indexName,
+            AzureAiSearchFilterMapper filterMapper) {
         this.initialize(endpoint, keyCredential, null, createOrUpdateIndex, 0, index, indexName, filterMapper);
     }
 
-    public AzureAiSearchEmbeddingStore(String endpoint, TokenCredential tokenCredential, boolean createOrUpdateIndex, int dimensions, String indexName, AzureAiSearchFilterMapper filterMapper) {
-        this.initialize(endpoint, null, tokenCredential, createOrUpdateIndex, dimensions, null, indexName, filterMapper);
+    public AzureAiSearchEmbeddingStore(
+            String endpoint,
+            TokenCredential tokenCredential,
+            boolean createOrUpdateIndex,
+            int dimensions,
+            String indexName,
+            AzureAiSearchFilterMapper filterMapper) {
+        this.initialize(
+                endpoint, null, tokenCredential, createOrUpdateIndex, dimensions, null, indexName, filterMapper);
     }
 
-    public AzureAiSearchEmbeddingStore(String endpoint, TokenCredential tokenCredential, boolean createOrUpdateIndex, SearchIndex index, String indexName, AzureAiSearchFilterMapper filterMapper) {
+    public AzureAiSearchEmbeddingStore(
+            String endpoint,
+            TokenCredential tokenCredential,
+            boolean createOrUpdateIndex,
+            SearchIndex index,
+            String indexName,
+            AzureAiSearchFilterMapper filterMapper) {
         this.initialize(endpoint, null, tokenCredential, createOrUpdateIndex, 0, index, indexName, filterMapper);
     }
 
@@ -144,19 +170,26 @@ public class AzureAiSearchEmbeddingStore extends AbstractAzureAiSearchEmbeddingS
 
         public AzureAiSearchEmbeddingStore build() {
             ensureNotNull(endpoint, "endpoint");
-            ensureTrue(keyCredential != null || tokenCredential != null, "either apiKey or tokenCredential must be set");
-            ensureTrue(dimensions > 0 || index != null, "either dimensions or index must be set");
+            ensureTrue(
+                    keyCredential != null || tokenCredential != null, "either apiKey or tokenCredential must be set");
+            ensureTrue(
+                    !createOrUpdateIndex || dimensions > 0 || index != null,
+                    "either dimensions or index must be set when createOrUpdateIndex is true");
             if (keyCredential == null) {
                 if (index == null) {
-                    return new AzureAiSearchEmbeddingStore(endpoint, tokenCredential, createOrUpdateIndex, dimensions, indexName, filterMapper);
+                    return new AzureAiSearchEmbeddingStore(
+                            endpoint, tokenCredential, createOrUpdateIndex, dimensions, indexName, filterMapper);
                 } else {
-                    return new AzureAiSearchEmbeddingStore(endpoint, tokenCredential, createOrUpdateIndex, index, indexName, filterMapper);
+                    return new AzureAiSearchEmbeddingStore(
+                            endpoint, tokenCredential, createOrUpdateIndex, index, indexName, filterMapper);
                 }
             } else {
                 if (index == null) {
-                    return new AzureAiSearchEmbeddingStore(endpoint, keyCredential, createOrUpdateIndex, dimensions, indexName, filterMapper);
+                    return new AzureAiSearchEmbeddingStore(
+                            endpoint, keyCredential, createOrUpdateIndex, dimensions, indexName, filterMapper);
                 } else {
-                    return new AzureAiSearchEmbeddingStore(endpoint, keyCredential, createOrUpdateIndex, index, indexName, filterMapper);
+                    return new AzureAiSearchEmbeddingStore(
+                            endpoint, keyCredential, createOrUpdateIndex, index, indexName, filterMapper);
                 }
             }
         }
