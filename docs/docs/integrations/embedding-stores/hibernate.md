@@ -19,9 +19,24 @@ RAG, and more.
 </dependency>
 ```
 
+In addition, LangChain4j offers integration modules for various [Hibernate NoSQL](https://github.com/hibernate/hibernate-nosql) dialects:
+
+```xml
+
+<dependency>
+    <groupId>dev.langchain4j</groupId>
+    <artifactId>langchain4j-hibernate-milvus</artifactId>
+    <version>1.19.0-beta29</version>
+</dependency>
+```
+
 ## Gradle Dependency
 
 ```implementation 'dev.langchain4j:langchain4j-hibernate:1.19.0-beta29'```
+
+and for NoSQL databases
+
+```implementation 'dev.langchain4j:langchain4j-hibernate-milvus:1.19.0-beta29'```
 
 ## APIs
 
@@ -538,3 +553,17 @@ for details.
 create hnsw vector index my_entity_vector_index 
     on my_entity(embedding) with similarity function cosine_similarity;
 ```
+
+## Setup for Hibernate NoSQL
+
+Since Hibernate NoSQL comes with an artifact per NoSQL database, LangChain4j matches this to provide the necessary
+dependencies through a single artifact.
+
+Setting up the `HibernateEmbeddingStore` might require some extra steps for NoSQL databases. For details about the
+features and limitations of the Hibernate NoSQL dialects, as well as the JDBC URL configuration,
+please consult the [Hibernate NoSQL documentation](https://docs.hibernate.org/nosql/1.0/userguide/html_single/).
+
+When building a `HibernateEmbeddingStore`, it is necessary to provide the correct `DatabaseKind` via the
+`databaseKind()` builder method:
+
+* Milvus - `dev.langchain4j.store.embedding.hibernate.milvus.MilvusDatabaseKind.INSTANCE` from the `langchain4j-hibernate-milvus` artifact
