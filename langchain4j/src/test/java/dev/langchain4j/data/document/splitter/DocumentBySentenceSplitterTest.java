@@ -13,6 +13,7 @@ import static dev.langchain4j.data.document.Metadata.metadata;
 import static dev.langchain4j.data.segment.TextSegment.textSegment;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_3_5_TURBO;
 import static java.lang.String.format;
+import static java.util.stream.Collectors.joining;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class DocumentBySentenceSplitterTest {
@@ -173,5 +174,32 @@ class DocumentBySentenceSplitterTest {
                 textSegment(s15 + " " + s16 + " " + s17, metadata("index", "9").put("document", "0")),
                 textSegment(s18, metadata("index", "10").put("document", "0"))
         );
+    }
+
+    @Test
+    void should_treat_text_without_any_sentence_as_a_single_sentence() {
+
+        // A run of non-breaking spaces, as produced by PDF extraction, is not blank but contains no
+        // sentence OpenNLP can detect. See issue #6085.
+        String nbspRun = "\u00A0".repeat(200);
+
+        DocumentBySentenceSplitter splitter = new DocumentBySentenceSplitter(50, 0);
+
+        assertThat(splitter.split(nbspRun)).containsExactly(nbspRun);
+    }
+
+    @Test
+    void should_split_text_without_any_sentence_into_segments_within_the_limit() {
+
+        int maxSegmentSize = 50;
+        String nbspRun = "\u00A0".repeat(200);
+
+        DocumentSplitter splitter = new DocumentBySentenceSplitter(maxSegmentSize, 0);
+
+        List<TextSegment> segments = splitter.split(Document.from(nbspRun));
+
+        assertThat(segments).hasSize(4);
+        segments.forEach(segment -> assertThat(segment.text()).hasSizeLessThanOrEqualTo(maxSegmentSize));
+        assertThat(segments.stream().map(TextSegment::text).collect(joining())).isEqualTo(nbspRun);
     }
 }

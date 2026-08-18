@@ -4,7 +4,6 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.randomUUID;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.store.embedding.azure.cosmos.nosql.MappingUtils.toNoSqlDbDocument;
 import static java.util.Collections.singletonList;
@@ -225,12 +224,10 @@ public class AbstractAzureCosmosDBNoSqlEmbeddingStore implements EmbeddingStore<
         if (this.searchQueryType.equals(AzureCosmosDBSearchQueryType.FULL_TEXT_SEARCH)
                 || this.searchQueryType.equals(AzureCosmosDBSearchQueryType.FULL_TEXT_RANKING)) {
             if (isNullOrEmpty(embedded)) {
-                logger.debug("do not add empty embeddings or content to Azure CosmosDB NoSQL");
                 return;
             }
         } else {
             if (isNullOrEmpty(embeddings)) {
-                logger.debug("do not add empty embeddings to Azure CosmosDB NoSQL");
                 return;
             }
         }
@@ -322,7 +319,9 @@ public class AbstractAzureCosmosDBNoSqlEmbeddingStore implements EmbeddingStore<
 
     @Override
     public void removeAll(final Collection<String> ids) {
-        ensureNotEmpty(ids, "ids");
+        if (isNullOrEmpty(ids)) {
+            return;
+        }
         try {
             List<CosmosItemOperation> itemOperations = ids.stream()
                     .map(id -> {
@@ -417,7 +416,7 @@ public class AbstractAzureCosmosDBNoSqlEmbeddingStore implements EmbeddingStore<
                         + "VectorDistance(c.%s, @embedding) as score FROM c",
                 embeddingField));
         if (request.filter() != null) {
-            queryBuilder.append(" AND").append(filterMapper.map(request.filter()));
+            queryBuilder.append(" WHERE ").append(filterMapper.map(request.filter()));
         }
         queryBuilder.append(String.format(" ORDER BY VectorDistance(c.%s, @embedding)", embeddingField));
 
