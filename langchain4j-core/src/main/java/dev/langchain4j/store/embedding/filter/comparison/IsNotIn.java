@@ -1,21 +1,17 @@
 package dev.langchain4j.store.embedding.filter.comparison;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.store.embedding.filter.comparison.ComparisonUtils.isIn;
+import static java.util.Collections.unmodifiableSet;
+
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.store.embedding.filter.Filter;
-
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
-import java.util.UUID;
-
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static dev.langchain4j.store.embedding.filter.comparison.NumberComparator.containsAsBigDecimals;
-import static dev.langchain4j.store.embedding.filter.comparison.TypeChecker.ensureTypesAreCompatible;
-import static dev.langchain4j.store.embedding.filter.comparison.UUIDComparator.containsAsUUID;
-import static java.util.Collections.unmodifiableSet;
 
 public class IsNotIn implements Filter {
 
@@ -48,24 +44,18 @@ public class IsNotIn implements Filter {
         }
 
         Object actualValue = metadata.toMap().get(key);
-        ensureTypesAreCompatible(actualValue, comparisonValues.iterator().next(), key);
-
-        if (comparisonValues.iterator().next() instanceof Number) {
-            return !containsAsBigDecimals(actualValue, comparisonValues);
-        }
-        if (comparisonValues.iterator().next() instanceof UUID) {
-            return !containsAsUUID(actualValue, comparisonValues);
+        if (actualValue instanceof Collection<?> actualValues) {
+            return actualValues.stream().noneMatch(it -> isIn(it, comparisonValues, key));
         }
 
-        return !comparisonValues.contains(actualValue);
+        return !isIn(actualValue, comparisonValues, key);
     }
 
     public boolean equals(final Object o) {
         if (o == this) return true;
         if (!(o instanceof IsNotIn other)) return false;
 
-        return Objects.equals(this.key, other.key)
-                && Objects.equals(this.comparisonValues, other.comparisonValues);
+        return Objects.equals(this.key, other.key) && Objects.equals(this.comparisonValues, other.comparisonValues);
     }
 
     public int hashCode() {

@@ -2,8 +2,12 @@ package dev.langchain4j.data.document;
 
 import static java.util.Collections.singletonMap;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
@@ -121,6 +125,19 @@ class MetadataTest implements WithAssertions {
         Metadata metadata = Metadata.from(map);
 
         assertThat(metadata.getString("key")).isEqualTo("value");
+    }
+
+    @Test
+    void should_create_from_map_with_collection_values() {
+        UUID uuid1 = UUID.randomUUID();
+        UUID uuid2 = UUID.randomUUID();
+
+        Metadata metadata = Metadata.from(Map.of(
+                "tags", List.of("public", "internal"),
+                "roles", List.of(uuid1, uuid2)));
+
+        assertThat(metadata.getStrings("tags")).containsExactly("public", "internal");
+        assertThat(metadata.getUUIDs("roles")).containsExactly(uuid1, uuid2);
     }
 
     @Test
@@ -252,16 +269,37 @@ class MetadataTest implements WithAssertions {
         assertThatThrownBy(() -> new Metadata(map))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessageStartingWith("The metadata key 'key' has the value")
-                .hasMessageEndingWith("which is of the unsupported type 'java.lang.Object'. "
-                        + "Currently, the supported types are: [class java.lang.String, class java.util.UUID, int, class java.lang.Integer, "
-                        + "long, class java.lang.Long, float, class java.lang.Float, double, class java.lang.Double]");
+                .hasMessageEndingWith(
+                        "which is of the unsupported type 'java.lang.Object'. "
+                                + "Currently, the supported types are: [class java.lang.String, class java.util.UUID, int, class java.lang.Integer, "
+                                + "long, class java.lang.Long, float, class java.lang.Float, double, class java.lang.Double] "
+                                + "and collections containing values of these types: [class java.lang.String, class java.util.UUID]");
 
         assertThatThrownBy(() -> Metadata.from(map))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessageStartingWith("The metadata key 'key' has the value")
-                .hasMessageEndingWith("which is of the unsupported type 'java.lang.Object'. "
-                        + "Currently, the supported types are: [class java.lang.String, class java.util.UUID, int, class java.lang.Integer, "
-                        + "long, class java.lang.Long, float, class java.lang.Float, double, class java.lang.Double]");
+                .hasMessageEndingWith(
+                        "which is of the unsupported type 'java.lang.Object'. "
+                                + "Currently, the supported types are: [class java.lang.String, class java.util.UUID, int, class java.lang.Integer, "
+                                + "long, class java.lang.Long, float, class java.lang.Float, double, class java.lang.Double] "
+                                + "and collections containing values of these types: [class java.lang.String, class java.util.UUID]");
+    }
+
+    @Test
+    void should_fail_to_create_from_map_when_collection_value_is_not_supported() {
+        assertThatThrownBy(() -> Metadata.from(Map.of("key", List.of(1))))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("unsupported collection value type");
+
+        assertThatThrownBy(() -> Metadata.from(Map.of("key", List.of("value", UUID.randomUUID()))))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("mixed value types");
+
+        List<Object> values = new ArrayList<>();
+        values.add(null);
+        assertThatThrownBy(() -> Metadata.from(Map.of("key", values)))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessage("The metadata collection value for the key 'key' cannot be null");
     }
 
     @Test
@@ -291,6 +329,49 @@ class MetadataTest implements WithAssertions {
 
         assertThat(metadata.getDouble("double")).isEqualTo(1d);
         assertThat(metadata.getDouble("banana")).isNull();
+    }
+
+    @Test
+    void should_get_collection_values() {
+        UUID uuid1 = UUID.randomUUID();
+        UUID uuid2 = UUID.randomUUID();
+        Metadata metadata = new Metadata()
+                .put("tags", List.of("public", "internal"))
+                .put("roles", List.of(uuid1, uuid2))
+                .put("serialized_roles", List.of(uuid1.toString(), uuid2.toString()));
+
+        assertThat(metadata.getStrings("tags")).containsExactly("public", "internal");
+        assertThat(metadata.getUUIDs("roles")).containsExactly(uuid1, uuid2);
+        assertThat(metadata.getUUIDs("serialized_roles")).containsExactly(uuid1, uuid2);
+        assertThat(metadata.getStrings("banana")).isEmpty();
+        assertThat(metadata.getUUIDs("banana")).isEmpty();
+    }
+
+    @Test
+    void should_accept_collection_values() {
+        Metadata metadata = new Metadata().put("tags", Set.of("public", "internal"));
+
+        assertThat(metadata.getStrings("tags")).containsExactlyInAnyOrder("public", "internal");
+    }
+
+    @Test
+    void should_copy_collection_values() {
+        List<String> tags = new ArrayList<>();
+        tags.add("public");
+
+        Metadata metadataFromPut = new Metadata().put("tags", tags);
+        Metadata metadataFromMap = Metadata.from(Map.of("tags", tags));
+        Map<String, Object> map = new HashMap<>();
+        map.put("tags", tags);
+        Metadata metadataFromPutAll = new Metadata().putAll(map);
+
+        tags.add("internal");
+
+        assertThat(metadataFromPut.getStrings("tags")).containsExactly("public");
+        assertThat(metadataFromMap.getStrings("tags")).containsExactly("public");
+        assertThat(metadataFromPutAll.getStrings("tags")).containsExactly("public");
+        assertThatThrownBy(() -> metadataFromPut.getStrings("tags").add("internal"))
+                .isExactlyInstanceOf(UnsupportedOperationException.class);
     }
 
     @Test
@@ -340,6 +421,10 @@ class MetadataTest implements WithAssertions {
         assertThatThrownBy(() -> metadata.put("key", (UUID) null))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessage("The metadata value for the key 'key' cannot be null");
+
+        assertThatThrownBy(() -> metadata.put("key", (Collection<?>) null))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessage("The metadata value for the key 'key' cannot be null");
     }
 
     @Test
@@ -373,10 +458,18 @@ class MetadataTest implements WithAssertions {
         assertThat(new Metadata().putAll(Map.of("k1", "v1", "k2", "v2")).toMap())
                 .isEqualTo(Map.of("k1", "v1", "k2", "v2"));
 
+        Map<String, Object> map = new HashMap<>();
+        map.put("tags", List.of("public", "internal"));
+        assertThat(new Metadata().putAll(map).getStrings("tags")).containsExactly("public", "internal");
+
         assertThat(new Metadata().put("k1", "v1").putAll(Map.of("k1", "v2")).toMap())
                 .isEqualTo(Map.of("k1", "v2"));
 
-        assertThatThrownBy(() -> new Metadata().putAll(new HashMap<>() {{ put("k", null); }}))
+        assertThatThrownBy(() -> new Metadata().putAll(new HashMap<>() {
+                    {
+                        put("k", null);
+                    }
+                }))
                 .isExactlyInstanceOf(IllegalArgumentException.class);
 
         assertThatThrownBy(() -> new Metadata().putAll(Map.of("k", new Object())))

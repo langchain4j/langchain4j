@@ -8,6 +8,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.langchain4j.data.document.Metadata;
+import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 class FilterTest {
@@ -288,5 +290,86 @@ class FilterTest {
         assertThatThrownBy(() -> metadataKey("id").isNotIn(asList(1, null)).test(metadata))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessage("comparisonValue with key 'id' cannot be null");
+    }
+
+    @Test
+    void collection_metadata_string() {
+
+        // given
+        Metadata metadata = new Metadata().put("roles", List.of("admin", "editor"));
+
+        // when-then
+        assertThat(metadataKey("roles").isEqualTo("admin").test(metadata)).isTrue();
+        assertThat(metadataKey("roles").isEqualTo("viewer").test(metadata)).isFalse();
+
+        assertThat(metadataKey("roles").isIn("viewer", "editor").test(metadata)).isTrue();
+        assertThat(metadataKey("roles").isIn("viewer").test(metadata)).isFalse();
+
+        assertThat(metadataKey("roles").isNotEqualTo("viewer").test(metadata)).isTrue();
+        assertThat(metadataKey("roles").isNotEqualTo("admin").test(metadata)).isFalse();
+
+        assertThat(metadataKey("roles").isNotIn("viewer").test(metadata)).isTrue();
+        assertThat(metadataKey("roles").isNotIn("viewer", "admin").test(metadata))
+                .isFalse();
+    }
+
+    @Test
+    void collection_metadata_uuid() {
+
+        // given
+        UUID role = UUID.randomUUID();
+        UUID anotherRole = UUID.randomUUID();
+        Metadata metadata = new Metadata().put("roles", List.of(role));
+        Metadata serializedMetadata = new Metadata().put("roles", List.of(role.toString()));
+
+        // when-then
+        assertThat(metadataKey("roles").isEqualTo(role).test(metadata)).isTrue();
+        assertThat(metadataKey("roles").isEqualTo(role).test(serializedMetadata))
+                .isTrue();
+        assertThat(metadataKey("roles").isEqualTo(anotherRole).test(metadata)).isFalse();
+
+        assertThat(metadataKey("roles").isIn(anotherRole, role).test(metadata)).isTrue();
+        assertThat(metadataKey("roles").isIn(anotherRole, role).test(serializedMetadata))
+                .isTrue();
+        assertThat(metadataKey("roles").isIn(anotherRole).test(metadata)).isFalse();
+
+        assertThat(metadataKey("roles").isNotEqualTo(anotherRole).test(metadata))
+                .isTrue();
+        assertThat(metadataKey("roles").isNotEqualTo(role).test(metadata)).isFalse();
+
+        assertThat(metadataKey("roles").isNotIn(anotherRole).test(metadata)).isTrue();
+        assertThat(metadataKey("roles").isNotIn(anotherRole, role).test(metadata))
+                .isFalse();
+    }
+
+    @Test
+    void collection_metadata_type_mismatch() {
+
+        // given
+        Metadata metadata = new Metadata().put("roles", List.of("admin"));
+
+        // when-then
+        assertThatThrownBy(() -> metadataKey("roles").isEqualTo(1).test(metadata))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Type mismatch: actual value of metadata key \"roles\" (admin) "
+                        + "has type java.lang.String, while comparison value (1) has type java.lang.Integer");
+
+        assertThatThrownBy(() -> metadataKey("roles").isIn(1).test(metadata))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Type mismatch: actual value of metadata key \"roles\" (admin) "
+                        + "has type java.lang.String, while comparison value (1) has type java.lang.Integer");
+    }
+
+    @Test
+    void collection_metadata_empty() {
+
+        // given
+        Metadata metadata = new Metadata().put("roles", List.of());
+
+        // when-then
+        assertThat(metadataKey("roles").isEqualTo("admin").test(metadata)).isFalse();
+        assertThat(metadataKey("roles").isIn("admin").test(metadata)).isFalse();
+        assertThat(metadataKey("roles").isNotEqualTo("admin").test(metadata)).isTrue();
+        assertThat(metadataKey("roles").isNotIn("admin").test(metadata)).isTrue();
     }
 }

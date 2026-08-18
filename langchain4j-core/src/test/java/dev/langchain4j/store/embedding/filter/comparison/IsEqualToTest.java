@@ -5,6 +5,7 @@ import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 
 import dev.langchain4j.data.document.Metadata;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -52,6 +53,22 @@ class IsEqualToTest {
             }
         });
         assertThat(isEqualTo.test(metadata)).isTrue();
+    }
+
+    @Test
+    void shouldReturnTrueWhenActualCollectionContainsComparisonValue() {
+        Metadata metadata = new Metadata().put("key", List.of("a", "b"));
+
+        assertThat(new IsEqualTo("key", "a").test(metadata)).isTrue();
+        assertThat(new IsEqualTo("key", "c").test(metadata)).isFalse();
+    }
+
+    @Test
+    void shouldReturnTrueWhenActualCollectionContainsUUIDAsString() {
+        UUID uuid = UUID.randomUUID();
+        Metadata metadata = new Metadata().put("key", List.of(uuid.toString()));
+
+        assertThat(new IsEqualTo("key", uuid).test(metadata)).isTrue();
     }
 
     @Test
