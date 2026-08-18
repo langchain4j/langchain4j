@@ -171,23 +171,21 @@ public abstract class HierarchicalDocumentSplitter implements DocumentSplitter {
             String textToSubSplit = segmentBuilder.toString();
             List<TextSegment> subSegments = subSplitter.split(Document.from(textToSubSplit));
 
+            // Enforce that the sub-splitter produced something to work with.
             if (subSegments.isEmpty()) {
-                // The sub-splitter found no unit it recognizes. A run of non-breaking spaces, which
-                // real PDF extraction produces, is not blank, so it reaches this point, but
-                // DocumentBySentenceSplitter finds no sentence in it and returns nothing. The
-                // hierarchy is meant to bottom out at DocumentByCharacterSplitter, which always
-                // yields at least one segment for non-empty text, so the text is kept here instead
-                // of being lost when the recursion stops early. Previously this dropped the text
-                // silently, or threw IndexOutOfBoundsException when no segment had been flushed yet.
-                subSegments = List.of(TextSegment.from(textToSubSplit));
+                throw new RuntimeException(String.format(
+                        "The subSplitter %s returned no segments for the text \"%s...\" (%s %s long), "
+                                + "so it cannot be split further.",
+                        subSplitter.getClass().getSimpleName(),
+                        firstChars(textToSubSplit, 30),
+                        estimateSize(textToSubSplit),
+                        tokenCountEstimator == null ? "characters" : "tokens"));
             }
 
             for (TextSegment segment : subSegments) {
                 segments.add(createSegment(segment.text(), document, index.getAndIncrement()));
             }
 
-            // The overlap comes from what this sub-split produced, not from whatever happened to be
-            // last in the accumulated list.
             overlap = overlapFrom(subSegments.get(subSegments.size() - 1).text());
 
             segmentBuilder.reset();
