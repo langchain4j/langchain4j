@@ -95,6 +95,7 @@ public class ToolService {
     private IllegalConfigurationException compensatingToolMisconfiguration;
     private final Set<ToolProvider> toolProviders = new LinkedHashSet<>();
     private boolean compensateOnToolErrors;
+    private boolean strictToolParameters;
     private Executor executor;
     private int maxToolCallingRoundTrips = 100;
     private ToolArgumentsErrorHandler argumentsErrorHandler;
@@ -142,7 +143,7 @@ public class ToolService {
 
     public void tools(Collection<Object> objectsWithTools) {
         for (Object objectWithTools : objectsWithTools) {
-            List<AiServiceTool> tools = findTools(objectWithTools);
+            List<AiServiceTool> tools = findTools(objectWithTools, this.strictToolParameters);
             addTools(tools, this.toolExecutors, this.toolSpecifications, this.returnBehaviors);
             this.compensatingExecutors.putAll(findCompensatingActions(objectWithTools));
         }
@@ -231,6 +232,10 @@ public class ToolService {
      * @since 1.13.0
      */
     public static List<AiServiceTool> findTools(Object objectWithTools) {
+        return findTools(objectWithTools, false);
+    }
+
+    public static List<AiServiceTool> findTools(Object objectWithTools, boolean strictToolParameters) {
         if (objectWithTools instanceof Class) {
             throw illegalConfiguration("Tool '%s' must be an object, not a class", objectWithTools);
         }
@@ -248,7 +253,7 @@ public class ToolService {
                 Method toolMethod = annotatedMethod.get();
                 validateToolParameters(toolMethod);
                 result.add(AiServiceTool.builder()
-                        .toolSpecification(toolSpecificationFrom(toolMethod))
+                        .toolSpecification(toolSpecificationFrom(toolMethod, strictToolParameters))
                         .toolExecutor(createToolExecutor(objectWithTools, toolMethod))
                         .returnBehavior(toolMethod.getAnnotation(Tool.class).returnBehavior())
                         .build());
@@ -267,6 +272,10 @@ public class ToolService {
         if (compensateOnToolErrors && compensatingToolMisconfiguration != null) {
             throw compensatingToolMisconfiguration;
         }
+    }
+
+    public void strictToolParameters(boolean strictToolParameters) {
+        this.strictToolParameters = strictToolParameters;
     }
 
     private Map<String, Consumer<ToolExecution>> findCompensatingActions(Object objectWithTools) {
