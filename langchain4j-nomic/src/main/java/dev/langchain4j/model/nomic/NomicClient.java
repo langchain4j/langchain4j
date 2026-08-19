@@ -53,6 +53,7 @@ class NomicClient {
                 .url(baseUrl + "embedding/text")
                 .addHeader("Content-Type", "application/json")
                 .addHeader("Authorization", authorizationHeader)
+                .addHeader("User-Agent", "LangChain4j")
                 .body(toJson(request))
                 .build();
 

@@ -54,6 +54,7 @@ class DefaultHuggingFaceClient implements HuggingFaceClient {
                 .url(baseUrl + "models/" + modelId)
                 .addHeader("Content-Type", "application/json")
                 .addHeader("Authorization", "Bearer " + apiKey)
+                .addHeader("User-Agent", "LangChain4j")
                 .body(toJson(request))
                 .build();
 
@@ -81,6 +82,7 @@ class DefaultHuggingFaceClient implements HuggingFaceClient {
                 .url(baseUrl + "models/" + modelId + "/pipeline/feature-extraction")
                 .addHeader("Content-Type", "application/json")
                 .addHeader("Authorization", "Bearer " + apiKey)
+                .addHeader("User-Agent", "LangChain4j")
                 .body(toJson(request))
                 .build();
 

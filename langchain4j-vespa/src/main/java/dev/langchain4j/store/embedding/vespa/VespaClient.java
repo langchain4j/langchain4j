@@ -47,6 +47,12 @@ class VespaClient {
             String baseUrl, Path certificate, Path privateKey, boolean logRequests, boolean logResponses) {
         try {
             OkHttpClient.Builder builder = new OkHttpClient.Builder().addInterceptor(chain -> {
+                Request request = chain.request()
+                        .newBuilder()
+                        .addHeader("User-Agent", "LangChain4j")
+                        .build();
+                return chain.proceed(request);
+            }).addInterceptor(chain -> {
                 // trick to format the query URL exactly how Vespa expects it (search/?query),
                 // see https://docs.vespa.ai/en/reference/query-language-reference.html
                 Request request = chain.request();

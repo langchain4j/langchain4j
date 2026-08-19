@@ -117,6 +117,7 @@ public class WorkersAiClient {
                 .url(BASE_URL + "client/v4/accounts/" + accountIdentifier + "/ai/run/" + modelName)
                 .addHeader("Content-Type", "application/json")
                 .addHeader("Authorization", authorizationHeader)
+                .addHeader("User-Agent", "LangChain4j")
                 .body(toJson(apiRequest))
                 .build();
         return mappingException(() -> httpClient.execute(httpRequest));
