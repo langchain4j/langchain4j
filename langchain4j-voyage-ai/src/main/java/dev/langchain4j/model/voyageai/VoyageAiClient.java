@@ -52,6 +52,7 @@ class VoyageAiClient {
         this.baseUrl = ensureTrailingForwardSlash(ensureNotBlank(builder.baseUrl, "baseUrl"));
 
         Map<String, String> defaultHeaders = new HashMap<>();
+        defaultHeaders.put("User-Agent", "LangChain4j");
         if (builder.apiKey != null) {
             defaultHeaders.put("Authorization", "Bearer " + builder.apiKey);
         }

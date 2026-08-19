@@ -680,6 +680,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
                 .url(baseUrl, "models")
                 .addHeader("x-api-key", apiKey)
                 .addHeader("anthropic-version", version)
+                .addHeader("User-Agent", "LangChain4j")
                 .addHeaders(customHeadersSupplier.get())
                 .build();
         SuccessfulHttpResponse successfulHttpResponse = httpClient.execute(httpRequest);
@@ -721,6 +722,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
                 .url(baseUrl, "messages/batches/" + batchId + "/cancel")
                 .addHeader("x-api-key", apiKey)
                 .addHeader("anthropic-version", version)
+                .addHeader("User-Agent", "LangChain4j")
                 .addHeaders(customHeadersSupplier.get())
                 .build();
         SuccessfulHttpResponse rawResponse = httpClient.execute(httpRequest);
@@ -750,6 +752,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
                 .url(baseUrl, path)
                 .addHeader("x-api-key", apiKey)
                 .addHeader("anthropic-version", version)
+                .addHeader("User-Agent", "LangChain4j")
                 .addHeaders(customHeadersSupplier.get())
                 .build();
     }
@@ -790,6 +793,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
                 .addHeader("Content-Type", "application/json")
                 .addHeader("x-api-key", apiKey)
                 .addHeader("anthropic-version", version)
+                .addHeader("User-Agent", "LangChain4j")
                 .addHeaders(customHeadersSupplier.get())
                 .body(jsonRequest);
 

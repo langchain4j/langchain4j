@@ -74,6 +74,7 @@ class CohereClient {
                 .addHeader("Content-Type", "application/json")
                 .addHeader("Accept", "application/json")
                 .addHeader("Authorization", authorizationHeader)
+                .addHeader("User-Agent", "LangChain4j")
                 .body(toJson(request))
                 .build();
 
@@ -89,6 +90,7 @@ class CohereClient {
                 .addHeader("Content-Type", "application/json")
                 .addHeader("Accept", "application/json")
                 .addHeader("Authorization", authorizationHeader)
+                .addHeader("User-Agent", "LangChain4j")
                 .body(toJson(request))
                 .build();
 

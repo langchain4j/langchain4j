@@ -46,6 +46,7 @@ class TavilyClient {
                 .method(POST)
                 .url(baseUrl, "search")
                 .addHeader("Content-Type", "application/json")
+                .addHeader("User-Agent", "LangChain4j")
                 .body(toJson(searchRequest))
                 .build();
 
