@@ -51,12 +51,20 @@ public class MessageWindowChatMemory implements ChatMemory {
     private final ChatMemoryStore store;
     private final boolean alwaysKeepSystemMessageFirst;
 
+    // Request-level cache to avoid multiple getMessages() calls
+    private List<ChatMessage> cachedMessages;
+    private boolean cacheDirty;
+
     private MessageWindowChatMemory(Builder builder) {
         this.id = ensureNotNull(builder.id, "id");
         this.maxMessagesProvider = ensureNotNull(builder.maxMessagesProvider, "maxMessagesProvider");
         ensureGreaterThanZero(this.maxMessagesProvider.apply(this.id), "maxMessages");
         this.store = ensureNotNull(builder.store(), "store");
         this.alwaysKeepSystemMessageFirst = getOrDefault(builder.alwaysKeepSystemMessageFirst, false);
+        this.cachedMessages = null;
+        this.cacheDirty = false;
+        this.cachedMessages = null;
+        this.cacheDirty = false;
     }
 
     @Override
@@ -89,6 +97,9 @@ public class MessageWindowChatMemory implements ChatMemory {
         ensureGreaterThanZero(maxMessages, "maxMessages");
         ensureCapacity(messages, maxMessages);
 
+        // Update cache with the modified list
+        cachedMessages = messages;
+        cacheDirty = false;
         store.updateMessages(id, messages);
     }
 
@@ -108,16 +119,37 @@ public class MessageWindowChatMemory implements ChatMemory {
         ensureGreaterThanZero(maxMessages, "maxMessages");
         messages = new ArrayList<>(messages);
         ensureCapacity(messages, maxMessages);
+        cachedMessages = new ArrayList<>(messages);
+        cacheDirty = false;
         store.updateMessages(id, messages);
     }
 
     @Override
     public List<ChatMessage> messages() {
+        // Return cached messages if available and not dirty
+        if (!cacheDirty && cachedMessages != null) {
+            return new ArrayList<>(cachedMessages);
+        }
+
         Integer maxMessages = this.maxMessagesProvider.apply(this.id);
         ensureGreaterThanZero(maxMessages, "maxMessages");
         List<ChatMessage> messages = new LinkedList<>(store.getMessages(id));
         ensureCapacity(messages, maxMessages);
+
+        // Cache the messages for this request
+        cachedMessages = new ArrayList<>(messages);
+        cacheDirty = false;
+
         return messages;
+    }
+
+    /**
+     * Clears the request-level cache. This should be called at the end of a request
+     * to ensure fresh data is fetched on the next request.
+     */
+    public void clearCache() {
+        cachedMessages = null;
+        cacheDirty = false;
     }
 
     private static void ensureCapacity(List<ChatMessage> messages, int maxMessages) {
@@ -142,6 +174,7 @@ public class MessageWindowChatMemory implements ChatMemory {
 
     @Override
     public void clear() {
+        clearCache();
         store.deleteMessages(id);
     }
 
@@ -190,7 +223,7 @@ public class MessageWindowChatMemory implements ChatMemory {
 
         /**
          * @param store The chat memory store responsible for storing the chat memory state.
-         *              If not provided, an {@link SingleSlotChatMemoryStore} will be used.
+         *              If not provided, a {@link SingleSlotChatMemoryStore} will be used.
          * @return builder
          */
         public Builder chatMemoryStore(ChatMemoryStore store) {
