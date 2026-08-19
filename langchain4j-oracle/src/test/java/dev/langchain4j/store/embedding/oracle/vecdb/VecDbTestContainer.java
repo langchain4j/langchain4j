@@ -25,7 +25,7 @@ import org.testcontainers.utility.DockerImageName;
  */
 final class VecDbTestContainer {
 
-    private static final String IMAGE = "ghcr.io/oracle/adb-free:26.2.4.2-26ai";
+    private static final String IMAGE = "ghcr.io/oracle/adb-free:26.7.4.1-26ai";
     private static final String CONNECTION_FACTORY_CLASS = "oracle.jdbc.datasource.impl.OracleDataSource";
     private static final String DATABASE_NAME = "LANGCHAIN4J";
     private static final String ADMIN_PASSWORD = "Welcome_Vecdb_123";

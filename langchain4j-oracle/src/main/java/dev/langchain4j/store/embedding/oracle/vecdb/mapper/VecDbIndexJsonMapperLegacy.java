@@ -12,6 +12,7 @@ import dev.langchain4j.store.embedding.oracle.vecdb.enums.VecDbIndexOrganization
 public final class VecDbIndexJsonMapperLegacy {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final int DEFAULT_IVF_PARTITIONS = 5;
 
     private VecDbIndexJsonMapperLegacy() {}
 
@@ -36,6 +37,9 @@ public final class VecDbIndexJsonMapperLegacy {
         ObjectNode advancedParameters = OBJECT_MAPPER.createObjectNode();
         if (vectorIndex.partitions() != null) {
             advancedParameters.put("partitions", vectorIndex.partitions());
+        } else if (vectorIndex.organization() == VecDbIndexOrganization.PARTITIONS) {
+            // Supplying custom legacy index_params replaces the package's complete default JSON.
+            advancedParameters.put("partitions", DEFAULT_IVF_PARTITIONS);
         }
         if (vectorIndex.neighbors() != null) {
             advancedParameters.put("neighbors", vectorIndex.neighbors());

@@ -5,7 +5,6 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -15,6 +14,7 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -27,7 +27,6 @@ public final class VecDbVectorJsonMapper {
     static final String TEXT_METADATA_KEY = "text";
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-    private static final TypeReference<Map<String, Object>> METADATA_TYPE = new TypeReference<>() {};
 
     private VecDbVectorJsonMapper() {}
 
@@ -145,7 +144,7 @@ public final class VecDbVectorJsonMapper {
                 .toList();
     }
 
-    private static Metadata toMetadata(JsonNode metadataNode) {
+    static Metadata toMetadata(JsonNode metadataNode) {
         if (metadataNode == null || metadataNode.isNull()) {
             return new Metadata();
         }
@@ -153,9 +152,39 @@ public final class VecDbVectorJsonMapper {
             throw new IllegalArgumentException("each \"items\" entry must contain an object or null \"metadata\"");
         }
 
-        Map<String, Object> metadata = OBJECT_MAPPER.convertValue(metadataNode, METADATA_TYPE);
-        metadata.remove(TEXT_METADATA_KEY);
+        Map<String, Object> metadata = new LinkedHashMap<>();
+        for (Map.Entry<String, JsonNode> property : metadataNode.properties()) {
+            if (!TEXT_METADATA_KEY.equals(property.getKey())) {
+                metadata.put(property.getKey(), toMetadataValue(property.getKey(), property.getValue()));
+            }
+        }
         return new Metadata(metadata);
+    }
+
+    private static Object toMetadataValue(String key, JsonNode value) {
+        if (value.isTextual()) {
+            return value.textValue();
+        }
+        if (value.isIntegralNumber()) {
+            if (value.canConvertToInt()) {
+                return value.intValue();
+            }
+            if (value.canConvertToLong()) {
+                return value.longValue();
+            }
+            double doubleValue = value.doubleValue();
+            if (Double.isFinite(doubleValue)) {
+                return doubleValue;
+            }
+        }
+        if (value.isFloatingPointNumber()) {
+            double doubleValue = value.doubleValue();
+            if (Double.isFinite(doubleValue)) {
+                return doubleValue;
+            }
+        }
+        throw new IllegalArgumentException(
+                "metadata property \"" + key + "\" cannot be converted to a LangChain4j metadata value");
     }
 
     private static IllegalStateException invalidListResponse(String message) {

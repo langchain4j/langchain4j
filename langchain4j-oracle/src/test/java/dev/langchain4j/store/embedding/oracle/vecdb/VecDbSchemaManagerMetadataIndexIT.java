@@ -9,6 +9,7 @@ import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.oracle.CreateOption;
+import dev.langchain4j.store.embedding.oracle.vecdb.enums.VecDbApiVersion;
 import dev.langchain4j.store.embedding.oracle.vecdb.enums.VecDbDistanceMetric;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -16,12 +17,14 @@ import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIf;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
  * Verifies the VecDB metadata-index lifecycle selected for an existing vector table.
  */
 @Testcontainers(disabledWithoutDocker = true)
+@EnabledIf("supportMetadataIndex")
 class VecDbSchemaManagerMetadataIndexIT {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
@@ -135,5 +138,9 @@ class VecDbSchemaManagerMetadataIndexIT {
         List<String> paths = new ArrayList<>(includePaths.size());
         includePaths.forEach(path -> paths.add(path.asText()));
         return paths;
+    }
+
+    private static boolean supportMetadataIndex() {
+        return VecDbTestOperations.apiVersion() == VecDbApiVersion.V23_26_3;
     }
 }

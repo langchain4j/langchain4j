@@ -147,6 +147,42 @@ class VecDbSearchResultMapperTest {
                 .doesNotContainKey("text");
     }
 
+    /** Verifies normalization of database JSON numbers to types accepted by LangChain4j metadata. */
+    @Test
+    void testReconstructsMetadataNumericBoundaryValues() {
+        String responseJson = """
+                {
+                  "results": [
+                    {
+                      "id": "vector-id",
+                      "distance": 0.0,
+                      "metadata": {
+                        "text": "Numeric boundaries",
+                        "integer_min": -2147483648,
+                        "integer_max": 2147483647,
+                        "long_min": -9223372036854775808,
+                        "long_max": 9223372036854775807,
+                        "float_max": 340282350000000000000000000000000000000,
+                        "double_min": 4.9E-324
+                      }
+                    }
+                  ]
+                }
+                """;
+
+        TextSegment segment = VecDbSearchResultMapper.map(responseJson, 0.0, VecDbDistanceMetric.COSINE)
+                .matches()
+                .get(0)
+                .embedded();
+
+        assertThat(segment.metadata().getInteger("integer_min")).isEqualTo(Integer.MIN_VALUE);
+        assertThat(segment.metadata().getInteger("integer_max")).isEqualTo(Integer.MAX_VALUE);
+        assertThat(segment.metadata().getLong("long_min")).isEqualTo(Long.MIN_VALUE);
+        assertThat(segment.metadata().getLong("long_max")).isEqualTo(Long.MAX_VALUE);
+        assertThat(segment.metadata().getFloat("float_max")).isEqualTo(Float.MAX_VALUE);
+        assertThat(segment.metadata().getDouble("double_min")).isEqualTo(Double.MIN_VALUE);
+    }
+
     /** Verifies that vector-only records produce a match with no fabricated {@code TextSegment}. */
     @Test
     void testReturnsNullTextSegmentForVectorOnlyRecord() {

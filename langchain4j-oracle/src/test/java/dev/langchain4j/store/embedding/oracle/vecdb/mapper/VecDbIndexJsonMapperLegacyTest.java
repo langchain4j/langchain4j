@@ -102,6 +102,20 @@ class VecDbIndexJsonMapperLegacyTest {
         assertThat(indexParameters.has("distance_metric")).isFalse();
     }
 
+    /** Verifies that custom earlier IVF JSON retains the package's default partition count. */
+    @Test
+    void testUsesDefaultIvfPartitionsWhenTheyAreNotConfigured() throws JsonProcessingException {
+        VecDbVectorIndex vectorIndex = VecDbVectorIndex.ivfIndexBuilder()
+                .createOption(CREATE_IF_NOT_EXISTS)
+                .distanceMetric(VecDbDistanceMetric.EUCLIDEAN)
+                .build();
+
+        JsonNode indexParameters = readJson(VecDbIndexJsonMapperLegacy.toJson(vectorIndex, null, null));
+
+        assertThat(indexParameters.path("advanced_params").path("partitions").intValue())
+                .isEqualTo(5);
+    }
+
     /** Verifies that metadata indexes are rejected because the earlier API cannot create them. */
     @Test
     void testRejectsManagedMetadataIndex() {

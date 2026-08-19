@@ -173,7 +173,10 @@ class VecDbIndexJsonMapperTest {
                 {
                   "vector_index_params": {
                     "auto_index": true,
-                    "organization": "PARTITIONS"
+                    "organization": "PARTITIONS",
+                    "advanced_params": {
+                      "partitions": 5
+                    }
                   },
                   "metadata_index_params": {
                     "auto_index": true
@@ -194,6 +197,21 @@ class VecDbIndexJsonMapperTest {
 
         assertThat(indexParameters.path("vector_index_params").has("distance_metric"))
                 .isFalse();
+    }
+
+    /** Verifies that an IVF index remains executable when custom JSON omits its partition count. */
+    @Test
+    void testUsesDefaultIvfPartitionsWhenTheyAreNotConfigured() throws JsonProcessingException {
+        VecDbVectorIndex vectorIndex = VecDbVectorIndex.ivfIndexBuilder()
+                .createOption(CREATE_IF_NOT_EXISTS)
+                .distanceMetric(VecDbDistanceMetric.EUCLIDEAN)
+                .build();
+
+        JsonNode vectorParameters = readJson(VecDbIndexJsonMapper.toJson(vectorIndex, null, null))
+                .path("vector_index_params");
+
+        assertThat(vectorParameters.path("advanced_params").path("partitions").intValue())
+                .isEqualTo(5);
     }
 
     /** Verifies the selector document used when dropping only metadata indexes. */

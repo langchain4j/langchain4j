@@ -6,6 +6,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import dev.langchain4j.store.embedding.oracle.CreateOption;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.regex.Pattern;
 import oracle.jdbc.OracleType;
 
 /**
@@ -17,6 +18,7 @@ import oracle.jdbc.OracleType;
 public final class VecDbEmbeddingTable {
 
     private static final String METADATA_COLUMN = "CONTENT_METADATA";
+    private static final Pattern ORACLE_IDENTIFIER = Pattern.compile("^[A-Za-z][A-Za-z0-9_$#]{0,127}$");
 
     private final String name;
     private final String comment;
@@ -98,10 +100,10 @@ public final class VecDbEmbeddingTable {
         private Builder() {}
 
         /**
-         * Configures the vector table name.
+         * Configures the vector table name as an unquoted Oracle identifier.
          */
         public Builder name(String name) {
-            this.name = ensureNotBlank(name, "name");
+            this.name = validateName(name);
             return this;
         }
 
@@ -143,8 +145,17 @@ public final class VecDbEmbeddingTable {
          * Builds the vector table configuration.
          */
         public VecDbEmbeddingTable build() {
-            ensureNotBlank(name, "name");
+            validateName(name);
             return new VecDbEmbeddingTable(this);
+        }
+
+        private static String validateName(String name) {
+            name = ensureNotBlank(name, "name");
+            if (!ORACLE_IDENTIFIER.matcher(name).matches()) {
+                throw new IllegalArgumentException(
+                        "name must be an unquoted Oracle identifier containing at most 128 ASCII characters: " + name);
+            }
+            return name;
         }
     }
 }

@@ -1,12 +1,15 @@
 package dev.langchain4j.store.embedding.oracle.vecdb;
 
 import dev.langchain4j.store.embedding.oracle.CreateOption;
+import dev.langchain4j.store.embedding.oracle.vecdb.enums.VecDbApiVersion;
 import dev.langchain4j.store.embedding.oracle.vecdb.enums.VecDbDistanceMetric;
+import org.junit.jupiter.api.condition.EnabledIf;
 
 /**
  * Runs the LangChain4j removal contract against a VecDB store configured with both a vector index
  * and automatic metadata indexing.
  */
+@EnabledIf("supportMetadataIndex")
 class VecDbMetadataAndVectorIndexStoreWithRemovalIT extends OracleVecDbEmbeddingStoreWithRemovalIT {
 
     @Override
@@ -27,5 +30,9 @@ class VecDbMetadataAndVectorIndexStoreWithRemovalIT extends OracleVecDbEmbedding
                 .metadataIndex(metadataIndex)
                 .distanceMetric(VecDbDistanceMetric.COSINE)
                 .build();
+    }
+
+    private static boolean supportMetadataIndex() {
+        return VecDbTestOperations.apiVersion() == VecDbApiVersion.V23_26_3;
     }
 }

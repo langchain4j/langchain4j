@@ -16,6 +16,7 @@ import dev.langchain4j.store.embedding.oracle.vecdb.enums.VecDbIndexOrganization
 public final class VecDbIndexJsonMapper {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final int DEFAULT_IVF_PARTITIONS = 5;
 
     private VecDbIndexJsonMapper() {}
 
@@ -88,6 +89,11 @@ public final class VecDbIndexJsonMapper {
         ObjectNode advancedParameters = OBJECT_MAPPER.createObjectNode();
         if (vectorIndex.partitions() != null) {
             advancedParameters.put("partitions", vectorIndex.partitions());
+        } else if (vectorIndex.createOption() != CreateOption.CREATE_NONE
+                && vectorIndex.organization() == VecDbIndexOrganization.PARTITIONS) {
+            // Some package versions do not restore the documented IVF default after custom
+            // index_params are supplied.
+            advancedParameters.put("partitions", DEFAULT_IVF_PARTITIONS);
         }
         if (vectorIndex.neighbors() != null) {
             advancedParameters.put("neighbors", vectorIndex.neighbors());

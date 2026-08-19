@@ -8,7 +8,6 @@ import dev.langchain4j.store.embedding.oracle.vecdb.enums.VecDbApiVersion;
 import dev.langchain4j.store.embedding.oracle.vecdb.mapper.VecDbEmbeddingTableJsonMapper;
 import java.io.IOException;
 import java.io.Reader;
-import java.io.StringReader;
 import java.sql.CallableStatement;
 import java.sql.Clob;
 import java.sql.Connection;
@@ -23,7 +22,10 @@ import java.util.Map;
 import java.util.Set;
 import oracle.jdbc.OracleType;
 import oracle.jdbc.OracleTypes;
+import oracle.sql.json.OracleJsonArray;
 import oracle.sql.json.OracleJsonFactory;
+import oracle.sql.json.OracleJsonObject;
+import oracle.sql.json.OracleJsonValue;
 
 /**
  * JDBC implementation of {@link VecDbQueryExecutor} backed by {@code DBMS_VECTOR_DATABASE}.
@@ -251,9 +253,64 @@ final class VecDbJdbcQueryExecutor implements VecDbQueryExecutor {
         if (json == null) {
             statement.setObject(parameterIndex, null, OracleType.JSON);
         } else {
-            statement.setObject(
-                    parameterIndex, JSON_FACTORY.createJsonTextValue(new StringReader(json)), OracleType.JSON);
+            statement.setObject(parameterIndex, toOracleJsonValue(json), OracleType.JSON);
         }
+    }
+
+    static OracleJsonValue toOracleJsonValue(String json) throws SQLException {
+        JsonNode jsonNode;
+        try {
+            jsonNode = OBJECT_MAPPER.readTree(json);
+        } catch (JsonProcessingException exception) {
+            throw new SQLException("Invalid JSON parameter", exception);
+        }
+        if (jsonNode == null || jsonNode.isMissingNode()) {
+            throw new SQLException("Invalid JSON parameter: a JSON value is required");
+        }
+        return toOracleJsonValue(jsonNode);
+    }
+
+    private static OracleJsonValue toOracleJsonValue(JsonNode jsonNode) throws SQLException {
+        if (jsonNode.isObject()) {
+            OracleJsonObject object = JSON_FACTORY.createObject();
+            for (Map.Entry<String, JsonNode> property : jsonNode.properties()) {
+                object.put(property.getKey(), toOracleJsonValue(property.getValue()));
+            }
+            return object;
+        }
+        if (jsonNode.isArray()) {
+            OracleJsonArray array = JSON_FACTORY.createArray();
+            for (JsonNode element : jsonNode) {
+                array.add(toOracleJsonValue(element));
+            }
+            return array;
+        }
+        if (jsonNode.isTextual()) {
+            return JSON_FACTORY.createString(jsonNode.textValue());
+        }
+        if (jsonNode.isIntegralNumber()) {
+            if (jsonNode.canConvertToInt()) {
+                return JSON_FACTORY.createDecimal(jsonNode.intValue());
+            }
+            if (jsonNode.canConvertToLong()) {
+                return JSON_FACTORY.createDecimal(jsonNode.longValue());
+            }
+            return JSON_FACTORY.createDecimal(jsonNode.decimalValue());
+        }
+        if (jsonNode.isFloatingPointNumber()) {
+            double value = jsonNode.doubleValue();
+            if (!Double.isFinite(value)) {
+                throw new SQLException("Invalid JSON parameter: floating-point values must be finite");
+            }
+            return JSON_FACTORY.createDouble(value);
+        }
+        if (jsonNode.isBoolean()) {
+            return JSON_FACTORY.createBoolean(jsonNode.booleanValue());
+        }
+        if (jsonNode.isNull()) {
+            return JSON_FACTORY.createNull();
+        }
+        throw new SQLException("Invalid JSON parameter: unsupported JSON node type " + jsonNode.getNodeType());
     }
 
     private static String readClob(Clob clob) throws SQLException {

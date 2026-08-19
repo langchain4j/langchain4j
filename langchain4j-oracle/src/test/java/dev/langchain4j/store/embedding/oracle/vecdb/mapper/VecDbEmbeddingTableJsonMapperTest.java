@@ -92,7 +92,8 @@ class VecDbEmbeddingTableJsonMapperTest {
 
         assertThat(description.tableName()).isEqualTo("NEWER_VECTORS");
         assertThat(description.comment()).isEqualTo("Newer table");
-        assertThat(description.annotations()).containsExactly(entry("application", "search"), entry("revision", 3));
+        assertThat(description.annotations())
+                .containsExactlyInAnyOrderEntriesOf(Map.of("application", "search", "revision", 3));
     }
 
     /** Verifies that missing annotations become an empty immutable public map. */

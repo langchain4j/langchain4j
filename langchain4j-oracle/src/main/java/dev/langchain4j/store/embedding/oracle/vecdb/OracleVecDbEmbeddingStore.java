@@ -1,5 +1,6 @@
 package dev.langchain4j.store.embedding.oracle.vecdb;
 
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.randomUUID;
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
@@ -144,6 +145,10 @@ public final class OracleVecDbEmbeddingStore implements EmbeddingStore<TextSegme
 
     @Override
     public void removeAll(Collection<String> ids) {
+        if (isNullOrEmpty(ids)) {
+            return;
+        }
+
         String idsJson = VecDbVectorJsonMapper.idsToJson(ids);
 
         try (Connection connection = dataSource.getConnection()) {

@@ -6,11 +6,9 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.store.embedding.oracle.vecdb.mapper.VecDbVectorJsonMapper.TEXT_METADATA_KEY;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
@@ -18,13 +16,11 @@ import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.oracle.vecdb.enums.VecDbDistanceMetric;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 /** Maps a {@code DBMS_VECTOR_DATABASE.SEARCH} response to LangChain4j search results. */
 public final class VecDbSearchResultMapper {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-    private static final TypeReference<Map<String, Object>> METADATA_TYPE = new TypeReference<>() {};
 
     private VecDbSearchResultMapper() {}
 
@@ -126,8 +122,7 @@ public final class VecDbSearchResultMapper {
         }
 
         try {
-            Map<String, Object> values = OBJECT_MAPPER.convertValue(metadataObject, METADATA_TYPE);
-            return TextSegment.from(text.asText(), new Metadata(values));
+            return TextSegment.from(text.asText(), VecDbVectorJsonMapper.toMetadata(metadataObject));
         } catch (IllegalArgumentException exception) {
             throw invalidResponse("metadata contains an invalid LangChain4j TextSegment value", exception);
         }
