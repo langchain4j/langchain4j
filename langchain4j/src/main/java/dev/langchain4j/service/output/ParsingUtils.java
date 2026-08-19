@@ -23,7 +23,7 @@ class ParsingUtils {
         }
 
         if (isJsonObject(text)) {
-            Map<?, ?> map = Json.fromJson(text, Map.class);
+            Map<?, ?> map = parseJsonObjectOrThrow(text, type.getTypeName());
             if (isNullOrEmpty(map)) {
                 throw outputParsingException(text, type);
             }
@@ -51,7 +51,7 @@ class ParsingUtils {
                 return parseCollectionValues(values, parser, emptyCollectionSupplier, type);
             }
         } else if (isJsonObject(text)) {
-            Map<?, ?> map = Json.fromJson(text, Map.class);
+            Map<?, ?> map = parseJsonObjectOrThrow(text, type);
             if (isNullOrEmpty(map)) {
                 throw outputParsingException(text, type, null);
             }
@@ -65,6 +65,22 @@ class ParsingUtils {
         }
 
         return parseLines(text, parser, emptyCollectionSupplier, type);
+    }
+
+    /**
+     * Deserializes text that starts with '{' into a map.
+     *
+     * <p>Unlike {@link #parseJsonArrayOrNull(String)}, malformed input is not treated as a
+     * false positive to fall back from: text that opens a JSON object but does not parse is a
+     * genuinely unusable model response. It is reported as an {@link OutputParsingException},
+     * the documented failure type, rather than leaking the underlying deserializer's exception.
+     */
+    private static Map<?, ?> parseJsonObjectOrThrow(String text, String type) {
+        try {
+            return Json.fromJson(text, Map.class);
+        } catch (RuntimeException e) {
+            throw outputParsingException(text, type, e);
+        }
     }
 
     private static Collection<?> parseJsonArrayOrNull(String text) {
