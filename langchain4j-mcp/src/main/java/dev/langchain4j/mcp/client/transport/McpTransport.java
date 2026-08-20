@@ -7,6 +7,15 @@ import dev.langchain4j.mcp.protocol.McpInitializeRequest;
 import java.io.Closeable;
 import java.util.concurrent.CompletableFuture;
 
+/**
+ * The transport contract between the MCP client and a server connection.
+ *
+ * <p>Each request/response method exists in two forms: one returning the response as raw JSON text,
+ * and a deprecated one returning Jackson's {@code JsonNode}. Both are {@code default} methods that
+ * delegate to each other, so an implementation must override <b>one of each pair</b>; overriding
+ * neither compiles but fails at runtime. New implementations should override the raw-JSON forms,
+ * which are the ones the client calls.
+ */
 public interface McpTransport extends Closeable {
 
     /**

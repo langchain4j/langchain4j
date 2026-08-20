@@ -1,10 +1,11 @@
 package dev.langchain4j.mcp.client.transport;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.Internal;
-import java.lang.reflect.Type;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
@@ -16,7 +17,13 @@ import java.util.function.Function;
 @Internal
 public final class McpRawJson {
 
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    /**
+     * A server may send fields this client does not model yet — MCP adds them in a backwards-compatible
+     * way, such as the {@code title} that 2025-06-18 put on every named object — so unknown properties
+     * are ignored rather than treated as errors.
+     */
+    private static final ObjectMapper OBJECT_MAPPER =
+            new ObjectMapper().disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
 
     private McpRawJson() {}
 
@@ -42,8 +49,16 @@ public final class McpRawJson {
     /**
      * Re-reads an already-decoded JSON value as the given type.
      */
-    public static <T> T convert(Object value, Type type) {
-        return OBJECT_MAPPER.convertValue(value, OBJECT_MAPPER.constructType(type));
+    public static <T> T convert(Object value, Class<T> type) {
+        return OBJECT_MAPPER.convertValue(value, type);
+    }
+
+    /**
+     * Re-reads an already-decoded JSON array as a list of the given element type.
+     */
+    public static <T> List<T> convertList(Object value, Class<T> elementType) {
+        return OBJECT_MAPPER.convertValue(
+                value, OBJECT_MAPPER.getTypeFactory().constructCollectionType(List.class, elementType));
     }
 
     /**

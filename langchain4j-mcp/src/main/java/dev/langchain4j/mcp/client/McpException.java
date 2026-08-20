@@ -20,9 +20,16 @@ public class McpException extends LangChain4jException {
     }
 
     /**
-     * @param errorDataAsJson the JSON-RPC {@code error.data} member as raw JSON text.
+     * Creates an exception carrying the JSON-RPC {@code error.data} member as raw JSON text.
+     *
+     * <p>This is a factory rather than a constructor so that {@code new McpException(code, message, null)}
+     * keeps resolving to a single constructor and continues to compile.
      */
-    public McpException(int errorCode, String errorMessage, @Nullable String errorDataAsJson) {
+    public static McpException withErrorData(int errorCode, String errorMessage, @Nullable String errorDataAsJson) {
+        return new McpException(errorCode, errorMessage, errorDataAsJson);
+    }
+
+    private McpException(int errorCode, String errorMessage, @Nullable String errorDataAsJson) {
         super("Code: %d, message: %s".formatted(errorCode, errorMessage));
         this.errorCode = errorCode;
         this.errorMessage = errorMessage;
@@ -30,7 +37,7 @@ public class McpException extends LangChain4jException {
     }
 
     /**
-     * @deprecated use {@link #McpException(int, String, String)}, which does not expose Jackson types.
+     * @deprecated use {@link #withErrorData(int, String, String)}, which does not expose Jackson types.
      */
     @Deprecated(since = "1.20.0", forRemoval = true)
     public McpException(int errorCode, String errorMessage, @Nullable JsonNode errorData) {

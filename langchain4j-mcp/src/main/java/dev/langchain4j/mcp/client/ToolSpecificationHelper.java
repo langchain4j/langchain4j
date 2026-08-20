@@ -270,18 +270,18 @@ class ToolSpecificationHelper {
     private static void processMcpToolAnnotations(Map<String, Object> annotations, ToolSpecification.Builder builder) {
         if (annotations.containsKey(DESTRUCTIVE_HINT)) {
             builder.addMetadata(
-                    DESTRUCTIVE_HINT, Boolean.TRUE.equals(annotations.get(DESTRUCTIVE_HINT)));
+                    DESTRUCTIVE_HINT, bool(annotations.get(DESTRUCTIVE_HINT)));
         }
         if (annotations.containsKey(IDEMPOTENT_HINT)) {
             builder.addMetadata(
-                    IDEMPOTENT_HINT, Boolean.TRUE.equals(annotations.get(IDEMPOTENT_HINT)));
+                    IDEMPOTENT_HINT, bool(annotations.get(IDEMPOTENT_HINT)));
         }
         if (annotations.containsKey(OPEN_WORLD_HINT)) {
             builder.addMetadata(
-                    OPEN_WORLD_HINT, Boolean.TRUE.equals(annotations.get(OPEN_WORLD_HINT)));
+                    OPEN_WORLD_HINT, bool(annotations.get(OPEN_WORLD_HINT)));
         }
         if (annotations.containsKey(READ_ONLY_HINT)) {
-            builder.addMetadata(READ_ONLY_HINT, Boolean.TRUE.equals(annotations.get(READ_ONLY_HINT)));
+            builder.addMetadata(READ_ONLY_HINT, bool(annotations.get(READ_ONLY_HINT)));
         }
         // note that the TITLE_ANNOTATION constant doesn't contain 'title' to disambiguate it with the other title that
         // is
@@ -448,25 +448,15 @@ class ToolSpecificationHelper {
 
     // --- JSON value accessors, over plain JDK types rather than a JSON library ---
 
-    @SuppressWarnings("unused")
-    private static List<McpIcon> iconListType;
-
-    private static final java.lang.reflect.Type ICON_LIST_TYPE = iconListType();
-
-    private static java.lang.reflect.Type iconListType() {
-        try {
-            return ToolSpecificationHelper.class.getDeclaredField("iconListType").getGenericType();
-        } catch (NoSuchFieldException e) {
-            throw new IllegalStateException(e);
-        }
-    }
-
     /**
      * Mirrors JsonNode.asBoolean(false), which also accepts the strings "true" and "false".
      */
     private static boolean bool(Object value) {
         if (value instanceof Boolean) {
             return (Boolean) value;
+        }
+        if (value instanceof Number) {
+            return ((Number) value).doubleValue() != 0;
         }
         return value instanceof String && Boolean.parseBoolean((String) value);
     }
@@ -477,7 +467,9 @@ class ToolSpecificationHelper {
 
     @SuppressWarnings("unchecked")
     private static Map<String, Object> object(Object value) {
-        return value instanceof Map ? (Map<String, Object>) value : null;
+        // mirrors JsonNode.path(): anything that is not an object is treated as an empty one,
+        // so a boolean schema or a tuple-form 'items' degrades instead of failing
+        return value instanceof Map ? (Map<String, Object>) value : Map.of();
     }
 
     @SuppressWarnings("unchecked")
@@ -486,7 +478,7 @@ class ToolSpecificationHelper {
     }
 
     private static List<McpIcon> toIcons(Object value) {
-        return McpRawJson.convert(value, ICON_LIST_TYPE);
+        return McpRawJson.convertList(value, McpIcon.class);
     }
 
     /**

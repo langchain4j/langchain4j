@@ -27,8 +27,7 @@ import org.slf4j.LoggerFactory;
  */
 public class McpOperationHandler {
 
-    private final Map<Long, CompletableFuture<JsonNode>> pendingOperations;
-    private final Map<Long, CompletableFuture<String>> pendingRawOperations = new ConcurrentHashMap<>();
+    private final Map<Long, CompletableFuture<String>> pendingOperations;
     private static final Logger log = LoggerFactory.getLogger(McpOperationHandler.class);
     private final McpTransport transport;
     private final Consumer<McpLogMessage> logMessageConsumer;
@@ -43,7 +42,7 @@ public class McpOperationHandler {
     private final BiConsumer<Long, String> onServerCancelled;
 
     public McpOperationHandler(
-            Map<Long, CompletableFuture<JsonNode>> pendingOperations,
+            Map<Long, CompletableFuture<String>> pendingOperations,
             Supplier<List<McpRoot>> roots,
             McpTransport transport,
             Consumer<McpLogMessage> logMessageConsumer,
@@ -102,12 +101,9 @@ public class McpOperationHandler {
         }
         if (message.containsKey("result") || message.containsKey("error")) {
             // response to a client-initiated operation
-            CompletableFuture<JsonNode> op = pendingOperations.remove(messageId);
-            CompletableFuture<String> rawOp = pendingRawOperations.remove(messageId);
+            CompletableFuture<String> op = pendingOperations.remove(messageId);
             if (op != null) {
-                op.complete(McpRawJson.parse(rawMessage));
-            } else if (rawOp != null) {
-                rawOp.complete(rawMessage);
+                op.complete(rawMessage);
             } else {
                 log.warn("Received response for unknown message id: {}", messageId);
             }
@@ -188,7 +184,7 @@ public class McpOperationHandler {
         }
         Object reasonValue = params.get("reason");
         String reason = reasonValue == null ? null : String.valueOf(reasonValue);
-        CompletableFuture<JsonNode> pending = pendingOperations.remove(requestId);
+        CompletableFuture<String> pending = pendingOperations.remove(requestId);
         if (pending != null) {
             String message1 = reason != null
                     ? "Request " + requestId + " was cancelled by the server: " + reason
@@ -262,26 +258,33 @@ public class McpOperationHandler {
 
     @Deprecated(since = "1.20.0", forRemoval = true)
     public void startOperation(Long id, CompletableFuture<JsonNode> future) {
-        pendingOperations.put(id, future);
+        CompletableFuture<String> rawFuture = new CompletableFuture<>();
+        rawFuture.whenComplete((rawMessage, error) -> {
+            if (error != null) {
+                future.completeExceptionally(error);
+                return;
+            }
+            try {
+                future.complete(McpRawJson.parse(rawMessage));
+            } catch (RuntimeException e) {
+                future.completeExceptionally(e);
+            }
+        });
+        startRawOperation(id, rawFuture);
     }
 
     /**
      * Raw-JSON counterpart of {@link #startOperation(Long, CompletableFuture)}.
      */
     public void startRawOperation(Long id, CompletableFuture<String> future) {
-        pendingRawOperations.put(id, future);
+        pendingOperations.put(id, future);
     }
 
     public synchronized void cancelAllPendingOperations(String reason) {
-        IllegalStateException cause =
-                new IllegalStateException("Operation cancelled due to transport failure: " + reason);
-        for (CompletableFuture<JsonNode> future : pendingOperations.values()) {
-            future.completeExceptionally(cause);
+        for (CompletableFuture<String> future : pendingOperations.values()) {
+            future.completeExceptionally(
+                    new IllegalStateException("Operation cancelled due to transport failure: " + reason));
         }
         pendingOperations.clear();
-        for (CompletableFuture<String> future : pendingRawOperations.values()) {
-            future.completeExceptionally(cause);
-        }
-        pendingRawOperations.clear();
     }
 }

@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.exception.ToolExecutionException;
-import dev.langchain4j.internal.Json;
 import dev.langchain4j.mcp.client.transport.McpRawJson;
 import dev.langchain4j.mcp.protocol.McpCallToolResult;
 import dev.langchain4j.mcp.protocol.McpErrorResponse;
@@ -40,7 +39,7 @@ class ToolExecutionHelper {
             Map<String, Object> attributes = toolAttributes(result.getMeta());
 
             if (result.getStructuredContent() != null) {
-                String resultText = Json.toJson(result.getStructuredContent());
+                String resultText = McpRawJson.serialize(result.getStructuredContent());
                 if (applicationError && !ignoreApplicationLevelErrors) {
                     throw new ToolExecutionException(resultText);
                 }
@@ -55,7 +54,7 @@ class ToolExecutionHelper {
             if (result.getContent() != null) {
                 ToolExecutionResult toolExecutionResult = legacyToolResultExtractor != null
                         ? legacyToolResultExtractor.extract(
-                                McpRawJson.parse(Json.toJson(result.getContent())), applicationError)
+                                McpRawJson.parse(McpRawJson.serialize(result.getContent())), applicationError)
                         : contentExtractor.extract(result.getContent(), applicationError);
                 if (applicationError && !ignoreApplicationLevelErrors) {
                     throw new ToolExecutionException(errorMessage(toolExecutionResult, result.getContent()));

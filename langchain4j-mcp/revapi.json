@@ -148,6 +148,12 @@
           "classQualifiedName": "dev.langchain4j.mcp.protocol.McpCallToolRequest",
           "methodName": "<init>",
           "justification": "Tool-call arguments are carried as a plain Map rather than a Jackson ObjectNode. A Jackson 3 mapper cannot serialize a Jackson 2 ObjectNode: it does not fail, it bean-serializes the node, so the arguments silently become {\"array\":false,\"bigDecimal\":false,...}. Transports outside LangChain4j serialize the outgoing message with their own mapper, so this type had to stop exposing a Jackson type for them to be able to move to Jackson 3. Both types are @Internal, whose javadoc states they may change at any time; quarkus-langchain4j uses them but only for getName()."
+        },
+        {
+          "code": "java.method.parameterTypeParameterChanged",
+          "classQualifiedName": "dev.langchain4j.mcp.client.transport.McpOperationHandler",
+          "methodName": "<init>",
+          "justification": "The handler kept two maps of pending operations, one per transport API, and only the JsonNode one was drained on a server 'notifications/cancelled' and by the client's cleanup, so raw operations were never cancelled and leaked on timeout or error. Collapsing them into a single map of CompletableFuture<String> changes only the type argument; the erased signature is unchanged, so this is binary compatible. The constructor is called only by DefaultMcpClient - transports receive an already-built handler through McpTransport.start."
         }
       ]
     }

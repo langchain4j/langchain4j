@@ -3,7 +3,6 @@ package dev.langchain4j.mcp.client.logging;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.JsonNode;
-import dev.langchain4j.internal.Json;
 import dev.langchain4j.mcp.client.McpJsonConversions;
 import dev.langchain4j.mcp.client.transport.McpRawJson;
 import java.util.Map;
@@ -69,7 +68,7 @@ public class McpLogMessage {
      * Returns the log payload as raw JSON text.
      */
     public String dataAsJson() {
-        return data == null ? null : Json.toJson(data);
+        return data == null ? null : McpRawJson.serialize(data);
     }
 
     /**
@@ -85,7 +84,7 @@ public class McpLogMessage {
      */
     @Deprecated(since = "1.20.0", forRemoval = true)
     public JsonNode data() {
-        return data == null ? null : McpRawJson.parse(Json.toJson(data));
+        return data == null ? null : McpRawJson.parse(McpRawJson.serialize(data));
     }
 
     @Override

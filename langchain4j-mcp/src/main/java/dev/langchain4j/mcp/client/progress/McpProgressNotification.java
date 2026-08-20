@@ -25,10 +25,7 @@ public class McpProgressNotification {
 
     /**
      * Parses a McpProgressNotification from the contents of the 'params' object
-     * inside a 'notifications/progress' message.
-     */
-    /**
-     * Builds a progress notification from the notification params, presented as plain values.
+     * inside a 'notifications/progress' message, presented as plain values.
      */
     public static McpProgressNotification fromMap(Map<String, Object> params) {
         Object progressToken = params.get("progressToken");
