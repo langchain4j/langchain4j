@@ -32,4 +32,4 @@ Full documentation is available at **[langchain4j.github.io/langchain4j-cdi](htt
 | GlassFish | Portable |
 | Liberty | Portable |
 
-For detailed explanation and usage of LangChain4j CDI features, see the [LangChain4J CDI docuemntation](https://langchain4j.github.io/langchain4j-cdi/).
+For detailed explanation and usage of LangChain4j CDI features, see the [LangChain4J CDI documentation](https://langchain4j.github.io/langchain4j-cdi/).
