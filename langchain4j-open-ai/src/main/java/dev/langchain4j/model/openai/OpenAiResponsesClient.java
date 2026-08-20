@@ -35,8 +35,8 @@ import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventContext;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.internal.ExceptionMapper;
-import dev.langchain4j.internal.MappingTrackingStreamingChatResponseHandler;
 import dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils;
+import dev.langchain4j.internal.MappingTrackingStreamingChatResponseHandler;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
@@ -56,6 +56,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Supplier;
 
 class OpenAiResponsesClient {
 
@@ -170,6 +171,7 @@ class OpenAiResponsesClient {
     private final String baseUrl;
     private final String apiKey;
     private final String organizationId;
+    private final Supplier<Map<String, String>> customHeadersSupplier;
 
     OpenAiResponsesClient(Builder builder) {
         HttpClientBuilder httpClientBuilder =
@@ -183,6 +185,7 @@ class OpenAiResponsesClient {
         this.baseUrl = getOrDefault(builder.baseUrl, DEFAULT_BASE_URL);
         this.apiKey = builder.apiKey;
         this.organizationId = builder.organizationId;
+        this.customHeadersSupplier = getOrDefault(builder.customHeadersSupplier, () -> Map::of);
     }
 
     static Builder builder() {
@@ -374,6 +377,8 @@ class OpenAiResponsesClient {
         if (organizationId != null) {
             requestBuilder.addHeader(OPENAI_ORGANIZATION_HEADER, organizationId);
         }
+
+        requestBuilder.addHeaders(customHeadersSupplier.get());
 
         return requestBuilder.body(requestBody).build();
     }
@@ -778,6 +783,7 @@ class OpenAiResponsesClient {
         private String organizationId;
         private boolean logRequests;
         private boolean logResponses;
+        private Supplier<Map<String, String>> customHeadersSupplier;
 
         Builder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
             this.httpClientBuilder = httpClientBuilder;
@@ -810,6 +816,11 @@ class OpenAiResponsesClient {
             if (logResponses != null) {
                 this.logResponses = logResponses;
             }
+            return this;
+        }
+
+        Builder customHeaders(Supplier<Map<String, String>> customHeadersSupplier) {
+            this.customHeadersSupplier = customHeadersSupplier;
             return this;
         }
 
