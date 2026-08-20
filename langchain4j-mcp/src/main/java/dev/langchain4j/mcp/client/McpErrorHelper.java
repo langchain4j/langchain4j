@@ -7,6 +7,10 @@ import dev.langchain4j.mcp.protocol.McpErrorResponse;
 class McpErrorHelper {
 
     static void checkForErrors(JsonNode mcpMessage) {
+        if (!mcpMessage.has("error")) {
+            // the common case: skip building the whole response just to find no error
+            return;
+        }
         McpErrorResponse.Error error =
                 McpRawJson.deserialize(mcpMessage, McpErrorResponse.class).getError();
         if (error != null) {

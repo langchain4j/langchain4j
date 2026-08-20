@@ -33,9 +33,10 @@ public class McpProgressNotification {
         Object total = params.get("total");
         Object message = params.get("message");
         Double totalValue = toDouble(total);
+        Double progressValue = toDouble(progress);
         return new McpProgressNotification(
                 progressToken == null ? null : String.valueOf(progressToken),
-                toDouble(progress) == null ? 0d : toDouble(progress),
+                progressValue == null ? 0d : progressValue,
                 totalValue,
                 message == null ? null : String.valueOf(message));
     }

@@ -21,7 +21,7 @@ public final class McpJsonConversions {
             return null;
         }
         Map<String, Object> map = new LinkedHashMap<>();
-        node.fields().forEachRemaining(e -> map.put(e.getKey(), toValue(e.getValue())));
+        node.properties().forEach(e -> map.put(e.getKey(), toValue(e.getValue())));
         return map;
     }
 
@@ -53,7 +53,11 @@ public final class McpJsonConversions {
             return node.asBoolean();
         }
         if (node.isIntegralNumber()) {
-            return node.canConvertToInt() ? node.asInt() : node.asLong();
+            if (node.canConvertToInt()) {
+                return node.asInt();
+            }
+            // asLong() silently truncates anything wider than a long
+            return node.canConvertToLong() ? node.asLong() : node.bigIntegerValue();
         }
         if (node.isFloatingPointNumber()) {
             return node.asDouble();

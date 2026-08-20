@@ -24,12 +24,8 @@ class ToolExecutionHelper {
      * The entries of the '_meta' element, if present, are stored in
      * {@link ToolExecutionResult#attributes()} and are not sent to the LLM.
      */
-    @SuppressWarnings("removal")
     static ToolExecutionResult extractResult(
-            JsonNode response,
-            boolean ignoreApplicationLevelErrors,
-            McpContentExtractor contentExtractor,
-            McpToolResultExtractor legacyToolResultExtractor) {
+            JsonNode response, boolean ignoreApplicationLevelErrors, McpContentExtractor contentExtractor) {
 
         McpCallToolResult.Result result =
                 McpRawJson.deserialize(response, McpCallToolResult.class).getResult();
@@ -52,10 +48,8 @@ class ToolExecutionHelper {
             }
 
             if (result.getContent() != null) {
-                ToolExecutionResult toolExecutionResult = legacyToolResultExtractor != null
-                        ? legacyToolResultExtractor.extract(
-                                McpRawJson.parse(McpRawJson.serialize(result.getContent())), applicationError)
-                        : contentExtractor.extract(result.getContent(), applicationError);
+                ToolExecutionResult toolExecutionResult =
+                        contentExtractor.extract(result.getContent(), applicationError);
                 if (applicationError && !ignoreApplicationLevelErrors) {
                     throw new ToolExecutionException(errorMessage(toolExecutionResult, result.getContent()));
                 }

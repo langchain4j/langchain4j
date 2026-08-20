@@ -31,6 +31,7 @@ public class DefaultMcpContentExtractor implements McpContentExtractor {
             // where the JSON string value is rendered with quotes.
             throw new RuntimeException("Unsupported content type: \"" + type + "\"");
         }
-        return String.valueOf(contentItem.get("text"));
+        Object text = contentItem.get("text");
+        return text == null ? "" : String.valueOf(text);
     }
 }

@@ -12,7 +12,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -83,6 +82,11 @@ public class McpOperationHandler {
             message = McpRawJson.toMap(rawMessage);
         } catch (RuntimeException e) {
             // not a JSON-RPC object: a batch array, or something malformed
+            log.warn("Received unknown message: {}", rawMessage);
+            return;
+        }
+        if (message == null) {
+            // a bare JSON null parses without error but is not a message
             log.warn("Received unknown message: {}", rawMessage);
             return;
         }

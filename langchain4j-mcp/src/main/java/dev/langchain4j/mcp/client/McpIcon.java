@@ -8,6 +8,7 @@ import java.util.List;
 /**
  * The 'Icon' object from the MCP protocol schema.
  */
+@JsonIgnoreProperties(ignoreUnknown = true)
 public record McpIcon(
         @JsonProperty("mimeType") String mimeType,
         @JsonProperty("sizes") List<String> sizes,

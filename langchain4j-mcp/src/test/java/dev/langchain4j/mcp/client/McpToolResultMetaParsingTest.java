@@ -11,7 +11,9 @@ import org.junit.jupiter.api.Test;
 
 class McpToolResultMetaParsingTest {
 
-    private final McpToolResultExtractor extractor = new DefaultMcpToolResultExtractor();
+    private final McpContentExtractor extractor = new DefaultMcpContentExtractor();
+    private final McpContentExtractor legacyExtractor =
+            new LegacyToolResultExtractorAdapter(new DefaultMcpToolResultExtractor());
 
     @Test
     void should_map_meta_of_text_result_into_attributes() throws Exception {
@@ -39,7 +41,7 @@ class McpToolResultMetaParsingTest {
                         }
                         """);
 
-        ToolExecutionResult result = ToolExecutionHelper.extractResult(response, false, null, extractor);
+        ToolExecutionResult result = ToolExecutionHelper.extractResult(response, false, extractor);
 
         assertThat(result.resultText()).isEqualTo("Sunny, 22 degrees");
         assertThat(result.attributes())
@@ -67,7 +69,7 @@ class McpToolResultMetaParsingTest {
                         }
                         """);
 
-        ToolExecutionResult result = ToolExecutionHelper.extractResult(response, false, null, extractor);
+        ToolExecutionResult result = ToolExecutionHelper.extractResult(response, false, extractor);
 
         assertThat(result.result()).isEqualTo(Map.of("temperature", 22));
         assertThat(result.attributes()).containsExactly(Map.entry("example.org/traceId", "abc-123"));
@@ -92,7 +94,7 @@ class McpToolResultMetaParsingTest {
                         }
                         """);
 
-        ToolExecutionResult result = ToolExecutionHelper.extractResult(response, false, null, extractor);
+        ToolExecutionResult result = ToolExecutionHelper.extractResult(response, false, extractor);
 
         assertThat(result.attributes()).isEmpty();
     }
@@ -120,7 +122,7 @@ class McpToolResultMetaParsingTest {
                         }
                         """);
 
-        ToolExecutionResult result = ToolExecutionHelper.extractResult(response, true, null, extractor);
+        ToolExecutionResult result = ToolExecutionHelper.extractResult(response, true, extractor);
 
         assertThat(result.isError()).isTrue();
         assertThat(result.resultText()).isEqualTo("City not found");
@@ -156,7 +158,7 @@ class McpToolResultMetaParsingTest {
                 .attributes(Map.of("source", "extractor"))
                 .build();
 
-        ToolExecutionResult result = ToolExecutionHelper.extractResult(response, false, null, customExtractor);
+        ToolExecutionResult result = ToolExecutionHelper.extractResult(response, false, new LegacyToolResultExtractorAdapter(customExtractor));
 
         assertThat(result.resultText()).isEqualTo("custom");
         assertThat(result.attributes())
@@ -194,8 +196,29 @@ class McpToolResultMetaParsingTest {
                         }
                         """);
 
-        ToolExecutionResult result = ToolExecutionHelper.extractResult(response, false, null, extractor);
+        ToolExecutionResult result = ToolExecutionHelper.extractResult(response, false, extractor);
 
         assertThat(result.attributes()).containsOnlyKeys("com.example.mcp/traceId", "traceId");
+    }
+
+    @Test
+    void the_default_and_the_legacy_extractor_should_agree_on_a_text_content_result() {
+        JsonNode response = McpRawJson.parse(
+                """
+                {"jsonrpc":"2.0","id":1,"result":{"content":[{"type":"text","text":"hello"}]}}""");
+
+        assertThat(ToolExecutionHelper.extractResult(response, false, extractor).resultText())
+                .isEqualTo(ToolExecutionHelper.extractResult(response, false, legacyExtractor)
+                        .resultText())
+                .isEqualTo("hello");
+    }
+
+    @Test
+    void a_text_item_without_text_should_not_yield_the_literal_string_null() {
+        JsonNode response = McpRawJson.parse("""
+                {"jsonrpc":"2.0","id":1,"result":{"content":[{"type":"text"}]}}""");
+
+        assertThat(ToolExecutionHelper.extractResult(response, false, extractor).resultText())
+                .isEmpty();
     }
 }

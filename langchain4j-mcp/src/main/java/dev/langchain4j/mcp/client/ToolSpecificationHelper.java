@@ -320,14 +320,9 @@ class ToolSpecificationHelper {
             List<String> errors) {
         checkForbiddenSubtrees(schema, errors);
         Map<String, Object> properties = object(schema.get("properties"));
-        if (properties == null) {
-            return;
-        }
         for (Map.Entry<String, Object> entry : properties.entrySet()) {
+            // a non-object property schema yields an empty map, which simply declares no header
             Map<String, Object> propSchema = object(entry.getValue());
-            if (propSchema == null) {
-                continue;
-            }
             String propertyPath = pathPrefix.isEmpty() ? entry.getKey() : pathPrefix + "." + entry.getKey();
             Object headerAnnotation = propSchema.get("x-mcp-header");
             if (headerAnnotation != null) {
@@ -458,11 +453,22 @@ class ToolSpecificationHelper {
         if (value instanceof Number) {
             return ((Number) value).doubleValue() != 0;
         }
-        return value instanceof String && Boolean.parseBoolean((String) value);
+        // TextNode.asBoolean() accepts only the exact, trimmed token
+        return value instanceof String && "true".equals(((String) value).trim());
     }
 
+    /**
+     * Mirrors JsonNode.asText(), which renders scalars but yields "" for objects and arrays
+     * rather than their Java toString form.
+     */
     private static String string(Object value) {
-        return value == null ? null : String.valueOf(value);
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof Map || value instanceof List) {
+            return "";
+        }
+        return String.valueOf(value);
     }
 
     @SuppressWarnings("unchecked")

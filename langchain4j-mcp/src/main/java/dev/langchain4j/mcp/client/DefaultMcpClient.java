@@ -5,14 +5,12 @@ import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.exception.ToolExecutionException;
-import dev.langchain4j.internal.Json;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.mcp.client.logging.DefaultMcpLogMessageHandler;
 import dev.langchain4j.mcp.client.logging.McpLogMessageHandler;
@@ -40,6 +38,7 @@ import dev.langchain4j.mcp.protocol.McpListResourceTemplatesRequest;
 import dev.langchain4j.mcp.protocol.McpListResourcesRequest;
 import dev.langchain4j.mcp.protocol.McpListToolsRequest;
 import dev.langchain4j.mcp.protocol.McpListToolsResult;
+import dev.langchain4j.mcp.protocol.McpPaginatedResult;
 import dev.langchain4j.mcp.protocol.McpPingRequest;
 import dev.langchain4j.mcp.protocol.McpReadResourceParams;
 import dev.langchain4j.mcp.protocol.McpReadResourceRequest;
@@ -140,7 +139,6 @@ public class DefaultMcpClient implements McpClient {
     private final McpContentExtractor contentExtractor;
 
     @Deprecated(since = "1.20.0", forRemoval = true)
-    private final McpToolResultExtractor legacyToolResultExtractor;
     private volatile @Nullable McpInitializeResult initializeResult;
     private final int multiRoundTripMaxRetries;
     private final boolean subscribeToToolListChanges;
@@ -186,9 +184,12 @@ public class DefaultMcpClient implements McpClient {
             cacheResourceList = getOrDefault(builder.cacheResourceList, Boolean.TRUE);
             cachePromptList = getOrDefault(builder.cachePromptList, Boolean.TRUE);
             onResourceUpdated = builder.onResourceUpdated;
-            legacyToolResultExtractor = builder.contentExtractor == null ? builder.toolResultExtractor : null;
-            contentExtractor = legacyToolResultExtractor != null
-                    ? null
+            if (builder.contentExtractor != null && builder.toolResultExtractor != null) {
+                throw new IllegalArgumentException("Set either contentExtractor or the deprecated "
+                        + "toolResultExtractor, not both");
+            }
+            contentExtractor = builder.toolResultExtractor != null
+                    ? new LegacyToolResultExtractorAdapter(builder.toolResultExtractor)
                     : getOrDefault(builder.contentExtractor, new DefaultMcpContentExtractor());
             multiRoundTripMaxRetries =
                     getOrDefault(builder.multiRoundTripMaxRetries, DEFAULT_MULTI_ROUND_TRIP_MAX_RETRIES);
@@ -738,7 +739,7 @@ public class DefaultMcpClient implements McpClient {
                 transport.executeOperationWithoutResponse(cancellation);
             }
             return ToolExecutionHelper.extractResult(
-                    RESULT_TIMEOUT, false, contentExtractor, legacyToolResultExtractor);
+                    RESULT_TIMEOUT, false, contentExtractor);
         } catch (ExecutionException e) {
             notifyListeners(l -> l.onExecuteToolError(context, e));
             throw new ToolExecutionException(e.getCause());
@@ -751,7 +752,7 @@ public class DefaultMcpClient implements McpClient {
         final JsonNode finalResult = result;
         try {
             ToolExecutionResult toolResult = ToolExecutionHelper.extractResult(
-                    finalResult, false, contentExtractor, legacyToolResultExtractor);
+                    finalResult, false, contentExtractor);
             notifyListeners(l -> l.afterExecuteTool(
                     context, toolResult, McpJsonConversions.toMap(finalResult)));
             return toolResult;
@@ -765,7 +766,7 @@ public class DefaultMcpClient implements McpClient {
                 notifyListeners(l -> l.afterExecuteTool(
                         context,
                         ToolExecutionHelper.extractResult(
-                                finalResult, true, contentExtractor, legacyToolResultExtractor),
+                                finalResult, true, contentExtractor),
                         McpJsonConversions.toMap(finalResult)));
             }
             throw e;
@@ -1317,8 +1318,8 @@ public class DefaultMcpClient implements McpClient {
     }
 
     private static String getNextCursor(JsonNode response) {
-        McpListToolsResult.Result result =
-                McpRawJson.deserialize(response, McpListToolsResult.class).getResult();
+        McpPaginatedResult.Result result =
+                McpRawJson.deserialize(response, McpPaginatedResult.class).getResult();
         if (result == null || result.getNextCursor() == null || result.getNextCursor().isEmpty()) {
             return null;
         }

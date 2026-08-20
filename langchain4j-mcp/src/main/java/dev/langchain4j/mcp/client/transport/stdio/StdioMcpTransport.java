@@ -73,7 +73,7 @@ public class StdioMcpTransport implements McpTransport {
             throw new RuntimeException(e);
         }
         jsonRpcIoHandler = new JsonRpcIoHandler(
-                process.getInputStream(), process.getOutputStream(), messageHandler::handle, logEvents, logger);
+                process.getInputStream(), process.getOutputStream(), messageHandler::handleRaw, logEvents, logger);
         stderrHandler = new ProcessStderrHandler(process);
         executorService.submit(jsonRpcIoHandler);
         executorService.submit(stderrHandler);

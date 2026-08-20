@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Test;
  * so a server may legitimately send fields this client does not model. Reading a response must
  * ignore them rather than fail, at every level of the document.
  */
+@SuppressWarnings("unchecked")
 class McpUnknownFieldToleranceTest {
 
     @Test
@@ -51,6 +52,19 @@ class McpUnknownFieldToleranceTest {
 
         assertThat(result.getResult().getPrompts()).singleElement().satisfies(p -> assertThat(p.name())
                 .isEqualTo("p"));
+    }
+
+    @Test
+    void listTools_should_tolerate_an_unknown_field_on_an_icon() {
+        String toolsArray =
+                """
+                [{"name":"t","description":"d","inputSchema":{"type":"object"},
+                 "icons":[{"src":"https://example.com/i.png","mimeType":"image/png","futureIconField":1}]}]""";
+
+        assertThatCode(() -> ToolSpecificationHelper.toolSpecificationListFromMcpResponse(
+                        (java.util.List<java.util.Map<String, Object>>)
+                                McpRawJson.toMap("{\"tools\":" + toolsArray + "}").get("tools")))
+                .doesNotThrowAnyException();
     }
 
     @Test

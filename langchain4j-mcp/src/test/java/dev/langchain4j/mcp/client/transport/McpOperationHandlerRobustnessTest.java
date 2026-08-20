@@ -70,4 +70,11 @@ class McpOperationHandlerRobustnessTest {
         assertThatCode(() -> handler().handleRaw("{\"id\":{},\"result\":{}}"))
                 .doesNotThrowAnyException();
     }
+
+    @Test
+    void a_bare_json_null_should_be_ignored_rather_than_throw() {
+        // it parses without error but is not a message; throwing here kills the stdio reader thread
+        assertThatCode(() -> handler().handleRaw("null")).doesNotThrowAnyException();
+        assertThatCode(() -> handler().handleRaw("")).doesNotThrowAnyException();
+    }
 }

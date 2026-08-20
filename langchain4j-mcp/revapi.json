@@ -28,7 +28,7 @@
         {
           "ignore": true,
           "code": "java.method.numberOfParametersChanged",
-          "justification": "API is only intended for internal consumption",
+          "justification": "The handler now keeps a single map of pending operations, keyed by request id and holding the response as raw JSON text, so that cancellation and the client's cleanup act on every in-flight operation regardless of which transport API registered it. Only the type argument changes; the erased signature is unchanged, so this is binary compatible. The constructor is called only by DefaultMcpClient - transports receive an already-built handler through McpTransport.start, which was checked against quarkus-langchain4j rather than assumed.",
           "package": "dev.langchain4j.mcp.client.transport",
           "classQualifiedName": "dev.langchain4j.mcp.client.transport.McpOperationHandler",
           "classSimpleName": "McpOperationHandler",
@@ -65,17 +65,20 @@
         {
           "code": "java.annotation.added",
           "annotationType": "com.fasterxml.jackson.annotation.JsonCreator",
-          "justification": "Added so the protocol types can be deserialized, which is what allows the read path to use them instead of tree navigation."
+          "justification": "Added so the protocol types can be deserialized, which is what allows the read path to use them instead of tree navigation. Scoped to the protocol package so it does not blanket-ignore annotation changes elsewhere in the module.",
+          "package": "dev.langchain4j.mcp.protocol"
         },
         {
           "code": "java.annotation.added",
           "annotationType": "com.fasterxml.jackson.annotation.JsonProperty",
-          "justification": "Names the creator parameters for the same reason."
+          "justification": "Names the creator parameters for the same reason. Scoped to the protocol package so it does not blanket-ignore annotation changes elsewhere in the module.",
+          "package": "dev.langchain4j.mcp.protocol"
         },
         {
           "code": "java.annotation.added",
           "annotationType": "com.fasterxml.jackson.annotation.JsonIgnoreProperties",
-          "justification": "Protocol types must tolerate fields added by future MCP revisions."
+          "justification": "Protocol types must tolerate fields added by future MCP revisions. Scoped to the protocol package so it does not blanket-ignore annotation changes elsewhere in the module.",
+          "package": "dev.langchain4j.mcp.protocol"
         },
         {
           "code": "java.annotation.removed",
@@ -153,7 +156,67 @@
           "code": "java.method.parameterTypeParameterChanged",
           "classQualifiedName": "dev.langchain4j.mcp.client.transport.McpOperationHandler",
           "methodName": "<init>",
-          "justification": "The handler kept two maps of pending operations, one per transport API, and only the JsonNode one was drained on a server 'notifications/cancelled' and by the client's cleanup, so raw operations were never cancelled and leaked on timeout or error. Collapsing them into a single map of CompletableFuture<String> changes only the type argument; the erased signature is unchanged, so this is binary compatible. The constructor is called only by DefaultMcpClient - transports receive an already-built handler through McpTransport.start."
+          "justification": "The handler now keeps a single map of pending operations, keyed by request id and holding the response as raw JSON text, so that cancellation and the client's cleanup act on every in-flight operation regardless of which transport API registered it. Only the type argument changes; the erased signature is unchanged, so this is binary compatible. The constructor is called only by DefaultMcpClient - transports receive an already-built handler through McpTransport.start, which was checked against quarkus-langchain4j rather than assumed."
+        },
+        {
+          "code": "java.annotation.added",
+          "classQualifiedName": "dev.langchain4j.mcp.client.McpImplementation",
+          "annotationType": "com.fasterxml.jackson.annotation.JsonIgnoreProperties",
+          "justification": "Unknown-property tolerance is declared on the type so that it does not depend on the configuration of whichever ObjectMapper deserializes it. MCP adds fields in a backwards-compatible way, so a server may send fields this client does not model yet. Adding an annotation changes no signature and is binary and source compatible."
+        },
+        {
+          "code": "java.annotation.added",
+          "classQualifiedName": "dev.langchain4j.mcp.client.McpResource",
+          "annotationType": "com.fasterxml.jackson.annotation.JsonIgnoreProperties",
+          "justification": "Unknown-property tolerance is declared on the type so that it does not depend on the configuration of whichever ObjectMapper deserializes it. MCP adds fields in a backwards-compatible way, so a server may send fields this client does not model yet. Adding an annotation changes no signature and is binary and source compatible."
+        },
+        {
+          "code": "java.annotation.added",
+          "classQualifiedName": "dev.langchain4j.mcp.client.McpResourceTemplate",
+          "annotationType": "com.fasterxml.jackson.annotation.JsonIgnoreProperties",
+          "justification": "Unknown-property tolerance is declared on the type so that it does not depend on the configuration of whichever ObjectMapper deserializes it. MCP adds fields in a backwards-compatible way, so a server may send fields this client does not model yet. Adding an annotation changes no signature and is binary and source compatible."
+        },
+        {
+          "code": "java.annotation.added",
+          "classQualifiedName": "dev.langchain4j.mcp.client.McpPrompt",
+          "annotationType": "com.fasterxml.jackson.annotation.JsonIgnoreProperties",
+          "justification": "Unknown-property tolerance is declared on the type so that it does not depend on the configuration of whichever ObjectMapper deserializes it. MCP adds fields in a backwards-compatible way, so a server may send fields this client does not model yet. Adding an annotation changes no signature and is binary and source compatible."
+        },
+        {
+          "code": "java.annotation.added",
+          "classQualifiedName": "dev.langchain4j.mcp.client.McpPromptArgument",
+          "annotationType": "com.fasterxml.jackson.annotation.JsonIgnoreProperties",
+          "justification": "Unknown-property tolerance is declared on the type so that it does not depend on the configuration of whichever ObjectMapper deserializes it. MCP adds fields in a backwards-compatible way, so a server may send fields this client does not model yet. Adding an annotation changes no signature and is binary and source compatible."
+        },
+        {
+          "code": "java.annotation.added",
+          "classQualifiedName": "dev.langchain4j.mcp.client.McpIcon",
+          "annotationType": "com.fasterxml.jackson.annotation.JsonIgnoreProperties",
+          "justification": "Unknown-property tolerance is declared on the type so that it does not depend on the configuration of whichever ObjectMapper deserializes it. MCP adds fields in a backwards-compatible way, so a server may send fields this client does not model yet. Adding an annotation changes no signature and is binary and source compatible."
+        },
+        {
+          "code": "java.annotation.added",
+          "classQualifiedName": "dev.langchain4j.mcp.client.McpPromptMessage",
+          "annotationType": "com.fasterxml.jackson.annotation.JsonIgnoreProperties",
+          "justification": "Unknown-property tolerance is declared on the type so that it does not depend on the configuration of whichever ObjectMapper deserializes it. MCP adds fields in a backwards-compatible way, so a server may send fields this client does not model yet. Adding an annotation changes no signature and is binary and source compatible."
+        },
+        {
+          "code": "java.annotation.added",
+          "classQualifiedName": "dev.langchain4j.mcp.client.McpGetPromptResult",
+          "annotationType": "com.fasterxml.jackson.annotation.JsonIgnoreProperties",
+          "justification": "Unknown-property tolerance is declared on the type so that it does not depend on the configuration of whichever ObjectMapper deserializes it. MCP adds fields in a backwards-compatible way, so a server may send fields this client does not model yet. Adding an annotation changes no signature and is binary and source compatible."
+        },
+        {
+          "code": "java.annotation.added",
+          "classQualifiedName": "dev.langchain4j.mcp.client.McpReadResourceResult",
+          "annotationType": "com.fasterxml.jackson.annotation.JsonIgnoreProperties",
+          "justification": "Unknown-property tolerance is declared on the type so that it does not depend on the configuration of whichever ObjectMapper deserializes it. MCP adds fields in a backwards-compatible way, so a server may send fields this client does not model yet. Adding an annotation changes no signature and is binary and source compatible."
+        },
+        {
+          "code": "java.method.parameterTypeParameterChanged",
+          "classQualifiedName": "dev.langchain4j.mcp.transport.stdio.JsonRpcIoHandler",
+          "methodName": "<init>",
+          "justification": "The stdio reader now hands whole lines to the operation handler instead of parsing them into a Jackson tree first, so that the stdio transport uses the raw-JSON API like the other transports and JsonRpcIoHandler no longer carries Jackson in its signature or its own ObjectMapper. Only the type argument changes; the erased signature is unchanged, so this is binary compatible. The only caller is StdioMcpTransport; quarkus-langchain4j does not reference this class."
         }
       ]
     }
