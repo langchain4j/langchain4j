@@ -1,6 +1,8 @@
 package dev.langchain4j.mcp.client.logging;
 
+import dev.langchain4j.internal.Json;
 import dev.langchain4j.mcp.client.McpJsonConversions;
+import dev.langchain4j.mcp.client.transport.McpRawJson;
 import java.util.Map;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -12,13 +14,13 @@ public class McpLogMessage {
 
     private final McpLogLevel level;
     private final String logger;
-    private final JsonNode data;
+    private final Object data;
 
     @JsonCreator
     public McpLogMessage(
             @JsonProperty("level") McpLogLevel level,
             @JsonProperty("logger") String logger,
-            @JsonProperty("data") JsonNode data
+            @JsonProperty("data") Object data
     ) {
         this.level = level;
         this.logger = logger;
@@ -26,14 +28,33 @@ public class McpLogMessage {
     }
 
     /**
+     * @deprecated use {@link #McpLogMessage(McpLogLevel, String, Object)}, which does not expose
+     * Jackson types.
+     */
+    @Deprecated(since = "1.20.0", forRemoval = true)
+    public McpLogMessage(McpLogLevel level, String logger, JsonNode data) {
+        this(level, logger, (Object) (data == null ? null : McpJsonConversions.toValue(data)));
+    }
+
+    /**
      * Parses a McpLogMessage from the contents of the 'params' object inside a 'notifications/message' message.
      */
+    /**
+     * Builds a log message from the notification params, presented as plain values.
+     */
+    public static McpLogMessage fromMap(Map<String, Object> params) {
+        Object levelValue = params.get("level");
+        McpLogLevel level = McpLogLevel.from(levelValue == null ? null : String.valueOf(levelValue));
+        Object logger = params.get("logger");
+        return new McpLogMessage(level, logger == null ? null : String.valueOf(logger), params.get("data"));
+    }
+
+    /**
+     * @deprecated use {@link #fromMap(Map)}, which does not expose Jackson types.
+     */
+    @Deprecated(since = "1.20.0", forRemoval = true)
     public static McpLogMessage fromJson(JsonNode json) {
-        McpLogLevel level = McpLogLevel.from(json.get("level").asText());
-        JsonNode loggerNode = json.get("logger");
-        String logger = loggerNode != null ? loggerNode.asText() : null;
-        JsonNode data = json.get("data");
-        return new McpLogMessage(level, logger, data);
+        return fromMap(McpJsonConversions.toMap(json));
     }
 
     public McpLogLevel level() {
@@ -48,19 +69,23 @@ public class McpLogMessage {
      * Returns the log payload as raw JSON text.
      */
     public String dataAsJson() {
-        return data == null ? null : data.toString();
+        return data == null ? null : Json.toJson(data);
     }
 
     /**
      * Returns the log payload as a plain map, so consumers do not need a JSON library.
      */
+    @SuppressWarnings("unchecked")
     public Map<String, Object> dataAsMap() {
-        return data == null ? null : McpJsonConversions.toMap(data);
+        return data instanceof Map ? (Map<String, Object>) data : null;
     }
 
+    /**
+     * @deprecated use {@link #dataAsMap()} or {@link #dataAsJson()}.
+     */
     @Deprecated(since = "1.20.0", forRemoval = true)
     public JsonNode data() {
-        return data;
+        return data == null ? null : McpRawJson.parse(Json.toJson(data));
     }
 
     @Override

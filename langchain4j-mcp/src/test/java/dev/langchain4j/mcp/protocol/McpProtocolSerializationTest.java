@@ -34,7 +34,7 @@ class McpProtocolSerializationTest {
     void should_serialize_call_tool_result_omitting_null_fields() throws Exception {
         // given
         McpCallToolResult response = new McpCallToolResult(
-                7L, new McpCallToolResult.Result(List.of(new McpCallToolResult.Content("text", "ok")), null, null));
+                7L, new McpCallToolResult.Result(List.of(Map.of("type", "text", "text", "ok")), null, null));
 
         // when
         JsonNode json = OBJECT_MAPPER.readTree(OBJECT_MAPPER.writeValueAsString(response));

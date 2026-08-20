@@ -1,7 +1,5 @@
 package dev.langchain4j.mcp.client.transport.http;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
 import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Flow;

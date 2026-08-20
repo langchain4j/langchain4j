@@ -3,9 +3,8 @@ package dev.langchain4j.mcp.client.transport.http;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
+import dev.langchain4j.mcp.client.transport.McpRawJson;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.mcp.client.McpCallContext;
 import dev.langchain4j.mcp.client.McpHeadersSupplier;
@@ -48,7 +47,6 @@ public class StreamableHttpMcpTransport implements McpTransport {
     private final boolean logResponses;
     private final boolean logRequests;
     private final Logger trafficLog;
-    static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private final AtomicReference<CompletableFuture<String>> initializeInProgress = new AtomicReference<>(null);
     private volatile McpOperationHandler operationHandler;
     private final HttpClient httpClient;
@@ -122,9 +120,8 @@ public class StreamableHttpMcpTransport implements McpTransport {
                 });
     }
 
-    private HttpRequest createRequest(McpJsonRpcMessage message, McpCallContext callContext)
-            throws JsonProcessingException {
-        String body = OBJECT_MAPPER.writeValueAsString(message);
+    private HttpRequest createRequest(McpJsonRpcMessage message, McpCallContext callContext) {
+        String body = McpRawJson.serialize(message);
         HttpRequest.BodyPublisher bodyPublisher = HttpRequest.BodyPublishers.ofString(body);
         if (logRequests) {
             trafficLog.info("Request: {}", body);
@@ -137,7 +134,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
                 builder.header("MCP-Protocol-Version", protocolVersionHeader);
             }
             // Extract method from JSON-RPC message
-            JsonNode bodyNode = OBJECT_MAPPER.readTree(body);
+            JsonNode bodyNode = McpRawJson.parse(body);
             String method = bodyNode.path("method").asText(null);
             if (method != null) {
                 builder.header("Mcp-Method", method);
@@ -263,7 +260,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
         HttpRequest request = null;
         try {
             request = createRequest(context.message(), context);
-        } catch (JsonProcessingException e) {
+        } catch (RuntimeException e) {
             return CompletableFuture.failedFuture(e);
         }
         CompletableFuture<String> future = new CompletableFuture<>();
@@ -628,4 +625,27 @@ public class StreamableHttpMcpTransport implements McpTransport {
             return new StreamableHttpMcpTransport(this);
         }
     }
+
+    /**
+     * @deprecated implemented for source and behavioural compatibility; delegates to
+     * {@link #initializeRaw(McpInitializeRequest)}. Prefer the raw-JSON methods.
+     */
+    @Deprecated(since = "1.20.0", forRemoval = true)
+    @Override
+    public CompletableFuture<JsonNode> initialize(McpInitializeRequest request) {
+        return McpRawJson.map(initializeRaw(request), McpRawJson::parse);
+    }
+
+    @Deprecated(since = "1.20.0", forRemoval = true)
+    @Override
+    public CompletableFuture<JsonNode> executeOperationWithResponse(McpClientMessage request) {
+        return McpRawJson.map(executeOperationWithRawResponse(request), McpRawJson::parse);
+    }
+
+    @Deprecated(since = "1.20.0", forRemoval = true)
+    @Override
+    public CompletableFuture<JsonNode> executeOperationWithResponse(McpCallContext context) {
+        return McpRawJson.map(executeOperationWithRawResponse(context), McpRawJson::parse);
+    }
+
 }

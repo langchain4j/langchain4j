@@ -1,8 +1,7 @@
 package dev.langchain4j.mcp.client.transport.docker;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
+import dev.langchain4j.mcp.client.transport.McpRawJson;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.api.command.CreateContainerCmd;
 import com.github.dockerjava.api.command.CreateContainerResponse;
@@ -37,7 +36,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class DockerMcpTransport implements McpTransport {
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final Logger log = LoggerFactory.getLogger(DockerMcpTransport.class);
 
     private final String dockerHost;
@@ -171,14 +169,14 @@ public class DockerMcpTransport implements McpTransport {
     @Override
     public CompletableFuture<String> initializeRaw(McpInitializeRequest operation) {
         try {
-            String requestString = OBJECT_MAPPER.writeValueAsString(operation);
-            String initializationNotification = OBJECT_MAPPER.writeValueAsString(new McpInitializationNotification());
+            String requestString = McpRawJson.serialize(operation);
+            String initializationNotification = McpRawJson.serialize(new McpInitializationNotification());
             final CompletableFuture<String> execute = execute(requestString, operation.getId());
             return execute.thenCompose(originalResponse -> {
                 final CompletableFuture<String> execute1 = execute(initializationNotification, null);
                 return execute1.thenCompose(nullNode -> CompletableFuture.completedFuture(originalResponse));
             });
-        } catch (JsonProcessingException e) {
+        } catch (RuntimeException e) {
             return CompletableFuture.failedFuture(e);
         }
     }
@@ -191,9 +189,9 @@ public class DockerMcpTransport implements McpTransport {
     @Override
     public CompletableFuture<String> executeOperationWithRawResponse(McpCallContext context) {
         try {
-            String requestString = OBJECT_MAPPER.writeValueAsString(context.message());
+            String requestString = McpRawJson.serialize(context.message());
             return execute(requestString, context.message().getId());
-        } catch (JsonProcessingException e) {
+        } catch (RuntimeException e) {
             return CompletableFuture.failedFuture(e);
         }
     }
@@ -206,9 +204,9 @@ public class DockerMcpTransport implements McpTransport {
     @Override
     public void executeOperationWithoutResponse(McpCallContext context) {
         try {
-            String requestString = OBJECT_MAPPER.writeValueAsString(context.message());
+            String requestString = McpRawJson.serialize(context.message());
             execute(requestString, null);
-        } catch (JsonProcessingException e) {
+        } catch (RuntimeException e) {
             throw new RuntimeException(e);
         }
     }
@@ -484,4 +482,27 @@ public class DockerMcpTransport implements McpTransport {
             return new DockerMcpTransport(this);
         }
     }
+
+    /**
+     * @deprecated implemented for source and behavioural compatibility; delegates to
+     * {@link #initializeRaw(McpInitializeRequest)}. Prefer the raw-JSON methods.
+     */
+    @Deprecated(since = "1.20.0", forRemoval = true)
+    @Override
+    public CompletableFuture<JsonNode> initialize(McpInitializeRequest request) {
+        return McpRawJson.map(initializeRaw(request), McpRawJson::parse);
+    }
+
+    @Deprecated(since = "1.20.0", forRemoval = true)
+    @Override
+    public CompletableFuture<JsonNode> executeOperationWithResponse(McpClientMessage request) {
+        return McpRawJson.map(executeOperationWithRawResponse(request), McpRawJson::parse);
+    }
+
+    @Deprecated(since = "1.20.0", forRemoval = true)
+    @Override
+    public CompletableFuture<JsonNode> executeOperationWithResponse(McpCallContext context) {
+        return McpRawJson.map(executeOperationWithRawResponse(context), McpRawJson::parse);
+    }
+
 }

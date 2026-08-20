@@ -1,7 +1,6 @@
 package dev.langchain4j.mcp.protocol;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import dev.langchain4j.Internal;
 import java.util.Map;
@@ -21,7 +20,7 @@ public class McpCallToolParams extends McpClientParams {
     private Map<String, Object> inputResponses;
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
-    private JsonNode requestState;
+    private Object requestState;
 
     public McpCallToolParams() {}
 
@@ -54,11 +53,11 @@ public class McpCallToolParams extends McpClientParams {
         this.inputResponses = inputResponses;
     }
 
-    public JsonNode getRequestState() {
+    public Object getRequestState() {
         return requestState;
     }
 
-    public void setRequestState(JsonNode requestState) {
+    public void setRequestState(Object requestState) {
         this.requestState = requestState;
     }
 }

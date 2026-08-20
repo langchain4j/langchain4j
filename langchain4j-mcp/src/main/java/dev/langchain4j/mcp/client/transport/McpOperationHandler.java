@@ -70,7 +70,7 @@ public class McpOperationHandler {
 
     @Deprecated(since = "1.20.0", forRemoval = true)
     public void handle(JsonNode message) {
-        handle(message, McpRawJson.toRawJson(message));
+        handleRaw(McpRawJson.toRawJson(message));
     }
 
     /**
@@ -78,33 +78,41 @@ public class McpOperationHandler {
      * the message exactly as it arrived on the wire without parsing it first.
      */
     public void handleRaw(String rawMessage) {
-        handle(McpRawJson.parse(rawMessage), rawMessage);
-    }
-
-    private void handle(JsonNode message, String rawMessage) {
-        if (message.has("id")) {
+        Map<String, Object> message;
+        try {
+            message = McpRawJson.toMap(rawMessage);
+        } catch (RuntimeException e) {
+            // not a JSON-RPC object: a batch array, or something malformed
+            log.warn("Received unknown message: {}", rawMessage);
+            return;
+        }
+        if (message.containsKey("id")) {
             handleMessageWithId(message, rawMessage);
-        } else if (message.has("method")) {
+        } else if (message.containsKey("method")) {
             handleNotification(message);
         }
     }
 
-    private void handleMessageWithId(JsonNode message, String rawMessage) {
-        long messageId = message.get("id").asLong();
-        if (message.has("result") || message.has("error")) {
+    private void handleMessageWithId(Map<String, Object> message, String rawMessage) {
+        Long messageId = toLong(message.get("id"));
+        if (messageId == null) {
+            log.warn("Received message with an unusable id: {}", message);
+            return;
+        }
+        if (message.containsKey("result") || message.containsKey("error")) {
             // response to a client-initiated operation
             CompletableFuture<JsonNode> op = pendingOperations.remove(messageId);
             CompletableFuture<String> rawOp = pendingRawOperations.remove(messageId);
             if (op != null) {
-                op.complete(message);
+                op.complete(McpRawJson.parse(rawMessage));
             } else if (rawOp != null) {
                 rawOp.complete(rawMessage);
             } else {
                 log.warn("Received response for unknown message id: {}", messageId);
             }
-        } else if (message.has("method")) {
+        } else if (message.containsKey("method")) {
             // server-initiated request requiring a response
-            McpServerMethod method = McpServerMethod.from(message.get("method").asText());
+            McpServerMethod method = McpServerMethod.from(String.valueOf(message.get("method")));
             if (method == null) {
                 log.warn("Received response for unknown message id: {}", messageId);
                 return;
@@ -130,8 +138,8 @@ public class McpOperationHandler {
         }
     }
 
-    private void handleNotification(JsonNode message) {
-        McpServerMethod method = McpServerMethod.from(message.get("method").asText());
+    private void handleNotification(Map<String, Object> message) {
+        McpServerMethod method = McpServerMethod.from(String.valueOf(message.get("method")));
         if (method == null) {
             log.warn("Received unknown message: {}", message);
             return;
@@ -170,14 +178,15 @@ public class McpOperationHandler {
         }
     }
 
-    private void handleCancelledNotification(JsonNode message) {
-        JsonNode params = message.get("params");
-        if (params == null || !params.has("requestId")) {
+    private void handleCancelledNotification(Map<String, Object> message) {
+        Map<String, Object> params = params(message);
+        Long requestId = params == null ? null : toLong(params.get("requestId"));
+        if (requestId == null) {
             log.warn("Received cancelled notification without requestId: {}", message);
             return;
         }
-        long requestId = params.get("requestId").asLong();
-        String reason = params.has("reason") ? params.get("reason").asText() : null;
+        Object reasonValue = params.get("reason");
+        String reason = reasonValue == null ? null : String.valueOf(reasonValue);
         CompletableFuture<JsonNode> pending = pendingOperations.remove(requestId);
         if (pending != null) {
             String message1 = reason != null
@@ -195,31 +204,59 @@ public class McpOperationHandler {
         }
     }
 
-    private void handleLogMessage(JsonNode message) {
-        if (message.has("params")) {
+    private void handleLogMessage(Map<String, Object> message) {
+        Map<String, Object> params = params(message);
+        if (params != null) {
             if (logMessageConsumer != null) {
-                logMessageConsumer.accept(McpLogMessage.fromJson(message.get("params")));
+                logMessageConsumer.accept(McpLogMessage.fromMap(params));
             }
         } else {
             log.warn("Received log message without params: {}", message);
         }
     }
 
-    private void handleResourceUpdatedNotification(JsonNode message) {
-        if (onResourceUpdate != null
-                && message.has("params")
-                && message.get("params").has("uri")) {
-            String uri = message.get("params").get("uri").asText();
-            onResourceUpdate.accept(uri);
-        } else if (message.has("params") && !message.get("params").has("uri")) {
+    private void handleResourceUpdatedNotification(Map<String, Object> message) {
+        Map<String, Object> params = params(message);
+        if (params == null) {
+            return;
+        }
+        Object uri = params.get("uri");
+        if (uri == null) {
             log.warn("Received resource updated notification without uri: {}", message);
+        } else if (onResourceUpdate != null) {
+            onResourceUpdate.accept(String.valueOf(uri));
         }
     }
 
-    private void handleProgressNotification(JsonNode message) {
-        if (progressHandler != null && message.has("params")) {
-            progressHandler.onProgress(McpProgressNotification.fromJson(message.get("params")));
+    private void handleProgressNotification(Map<String, Object> message) {
+        Map<String, Object> params = params(message);
+        if (progressHandler != null && params != null) {
+            progressHandler.onProgress(McpProgressNotification.fromMap(params));
         }
+    }
+
+    /**
+     * JSON-RPC allows an id to be a number or a string, and Jackson coerced both, so both are
+     * accepted here too.
+     */
+    private static Long toLong(Object value) {
+        if (value instanceof Number) {
+            return ((Number) value).longValue();
+        }
+        if (value instanceof String) {
+            try {
+                return Long.parseLong(((String) value).trim());
+            } catch (NumberFormatException e) {
+                return null;
+            }
+        }
+        return null;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<String, Object> params(Map<String, Object> message) {
+        Object params = message.get("params");
+        return params instanceof Map ? (Map<String, Object>) params : null;
     }
 
     @Deprecated(since = "1.20.0", forRemoval = true)

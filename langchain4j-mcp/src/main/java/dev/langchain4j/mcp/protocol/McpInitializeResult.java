@@ -1,6 +1,9 @@
 package dev.langchain4j.mcp.protocol;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import dev.langchain4j.Internal;
 import org.jspecify.annotations.Nullable;
 
@@ -8,11 +11,13 @@ import org.jspecify.annotations.Nullable;
  * Corresponds to the {@code InitializeResult} type from the MCP schema.
  */
 @Internal
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class McpInitializeResult extends McpJsonRpcMessage {
 
     private final Result result;
 
-    public McpInitializeResult(Long id, Result result) {
+    @JsonCreator
+    public McpInitializeResult(@JsonProperty("id") Long id, @JsonProperty("result") Result result) {
         super(id);
         this.result = result;
     }
@@ -22,6 +27,7 @@ public class McpInitializeResult extends McpJsonRpcMessage {
     }
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Result {
 
         private final String protocolVersion;
@@ -29,7 +35,8 @@ public class McpInitializeResult extends McpJsonRpcMessage {
         private final McpImplementation serverInfo;
         private final @Nullable String instructions;
 
-        public Result(String protocolVersion, Capabilities capabilities, McpImplementation serverInfo) {
+        @JsonCreator
+        public Result(@JsonProperty("protocolVersion") String protocolVersion, @JsonProperty("capabilities") Capabilities capabilities, @JsonProperty("serverInfo") McpImplementation serverInfo) {
             this(protocolVersion, capabilities, serverInfo, null);
         }
 
@@ -61,11 +68,14 @@ public class McpInitializeResult extends McpJsonRpcMessage {
         }
     }
 
+    @JsonIgnoreProperties(ignoreUnknown = true)
+
     public static class Capabilities {
 
         private final Tools tools;
 
-        public Capabilities(Tools tools) {
+        @JsonCreator
+            public Capabilities(@JsonProperty("tools") Tools tools) {
             this.tools = tools;
         }
 
@@ -74,11 +84,13 @@ public class McpInitializeResult extends McpJsonRpcMessage {
         }
 
         @JsonInclude(JsonInclude.Include.NON_NULL)
+        @JsonIgnoreProperties(ignoreUnknown = true)
         public static class Tools {
 
             private final Boolean listChanged;
 
-            public Tools(Boolean listChanged) {
+            @JsonCreator
+            public Tools(@JsonProperty("listChanged") Boolean listChanged) {
                 this.listChanged = listChanged;
             }
 

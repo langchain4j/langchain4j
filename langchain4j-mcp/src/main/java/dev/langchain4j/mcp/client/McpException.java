@@ -1,7 +1,9 @@
 package dev.langchain4j.mcp.client;
 
+import java.util.Map;
 import com.fasterxml.jackson.databind.JsonNode;
 import dev.langchain4j.exception.LangChain4jException;
+import dev.langchain4j.mcp.client.transport.McpRawJson;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -11,17 +13,28 @@ public class McpException extends LangChain4jException {
 
     private final int errorCode;
     private final String errorMessage;
-    private final @Nullable JsonNode errorData;
+    private final @Nullable String errorDataAsJson;
 
     public McpException(int errorCode, String errorMessage) {
-        this(errorCode, errorMessage, null);
+        this(errorCode, errorMessage, (String) null);
     }
 
-    public McpException(int errorCode, String errorMessage, @Nullable JsonNode errorData) {
+    /**
+     * @param errorDataAsJson the JSON-RPC {@code error.data} member as raw JSON text.
+     */
+    public McpException(int errorCode, String errorMessage, @Nullable String errorDataAsJson) {
         super("Code: %d, message: %s".formatted(errorCode, errorMessage));
         this.errorCode = errorCode;
         this.errorMessage = errorMessage;
-        this.errorData = errorData;
+        this.errorDataAsJson = errorDataAsJson;
+    }
+
+    /**
+     * @deprecated use {@link #McpException(int, String, String)}, which does not expose Jackson types.
+     */
+    @Deprecated(since = "1.20.0", forRemoval = true)
+    public McpException(int errorCode, String errorMessage, @Nullable JsonNode errorData) {
+        this(errorCode, errorMessage, errorData == null ? null : errorData.toString());
     }
 
     public int errorCode() {
@@ -36,11 +49,22 @@ public class McpException extends LangChain4jException {
      * Returns the JSON-RPC {@code error.data} member as raw JSON text.
      */
     public @Nullable String errorDataAsJson() {
-        return errorData == null ? null : errorData.toString();
+        return errorDataAsJson;
     }
 
+    /**
+     * Returns the JSON-RPC {@code error.data} member as plain values, so callers do not need a
+     * JSON library.
+     */
+    public @Nullable Map<String, Object> errorDataAsMap() {
+        return errorDataAsJson == null ? null : McpRawJson.toMap(errorDataAsJson);
+    }
+
+    /**
+     * @deprecated use {@link #errorDataAsMap()} or {@link #errorDataAsJson()}.
+     */
     @Deprecated(since = "1.20.0", forRemoval = true)
     public @Nullable JsonNode errorData() {
-        return errorData;
+        return errorDataAsJson == null ? null : McpRawJson.parse(errorDataAsJson);
     }
 }

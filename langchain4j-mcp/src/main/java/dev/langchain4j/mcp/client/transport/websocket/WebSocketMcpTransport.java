@@ -3,8 +3,8 @@ package dev.langchain4j.mcp.client.transport.websocket;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
+import dev.langchain4j.mcp.client.transport.McpRawJson;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.mcp.client.McpCallContext;
 import dev.langchain4j.mcp.client.McpHeadersSupplier;
 import dev.langchain4j.mcp.client.logging.McpLoggers;
@@ -38,7 +38,6 @@ public class WebSocketMcpTransport implements McpTransport {
     private final boolean logResponses;
     private final boolean logRequests;
     private final Logger trafficLog;
-    static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private volatile McpOperationHandler operationHandler;
     private volatile McpInitializeRequest initializeRequest;
     private final Duration connectTimeout;
@@ -236,7 +235,7 @@ public class WebSocketMcpTransport implements McpTransport {
             operationHandler.startRawOperation(id, future);
         }
         try {
-            String messageJson = OBJECT_MAPPER.writeValueAsString(context.message());
+            String messageJson = McpRawJson.serialize(context.message());
             WebSocket wsToUse = webSocket.orElseGet(() -> getWebSocket());
             if (logRequests) {
                 trafficLog.info("> " + messageJson);
@@ -346,4 +345,27 @@ public class WebSocketMcpTransport implements McpTransport {
             return new WebSocketMcpTransport(this);
         }
     }
+
+    /**
+     * @deprecated implemented for source and behavioural compatibility; delegates to
+     * {@link #initializeRaw(McpInitializeRequest)}. Prefer the raw-JSON methods.
+     */
+    @Deprecated(since = "1.20.0", forRemoval = true)
+    @Override
+    public CompletableFuture<JsonNode> initialize(McpInitializeRequest request) {
+        return McpRawJson.map(initializeRaw(request), McpRawJson::parse);
+    }
+
+    @Deprecated(since = "1.20.0", forRemoval = true)
+    @Override
+    public CompletableFuture<JsonNode> executeOperationWithResponse(McpClientMessage request) {
+        return McpRawJson.map(executeOperationWithRawResponse(request), McpRawJson::parse);
+    }
+
+    @Deprecated(since = "1.20.0", forRemoval = true)
+    @Override
+    public CompletableFuture<JsonNode> executeOperationWithResponse(McpCallContext context) {
+        return McpRawJson.map(executeOperationWithRawResponse(context), McpRawJson::parse);
+    }
+
 }
