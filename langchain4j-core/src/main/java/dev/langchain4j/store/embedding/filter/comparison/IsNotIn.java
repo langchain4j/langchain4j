@@ -1,5 +1,14 @@
 package dev.langchain4j.store.embedding.filter.comparison;
 
+import dev.langchain4j.data.document.Metadata;
+import dev.langchain4j.store.embedding.filter.Filter;
+
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.Objects;
+import java.util.Set;
+import java.util.UUID;
+
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
@@ -7,14 +16,6 @@ import static dev.langchain4j.store.embedding.filter.comparison.NumberComparator
 import static dev.langchain4j.store.embedding.filter.comparison.TypeChecker.ensureTypesAreCompatible;
 import static dev.langchain4j.store.embedding.filter.comparison.UUIDComparator.containsAsUUID;
 import static java.util.Collections.unmodifiableSet;
-
-import dev.langchain4j.data.document.Metadata;
-import dev.langchain4j.store.embedding.filter.Filter;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Objects;
-import java.util.Set;
-import java.util.UUID;
 
 public class IsNotIn implements Filter {
 
@@ -63,7 +64,8 @@ public class IsNotIn implements Filter {
         if (o == this) return true;
         if (!(o instanceof IsNotIn other)) return false;
 
-        return Objects.equals(this.key, other.key) && Objects.equals(this.comparisonValues, other.comparisonValues);
+        return Objects.equals(this.key, other.key)
+                && Objects.equals(this.comparisonValues, other.comparisonValues);
     }
 
     public int hashCode() {
