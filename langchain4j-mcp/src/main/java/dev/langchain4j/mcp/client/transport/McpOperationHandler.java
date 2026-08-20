@@ -27,6 +27,7 @@ import org.slf4j.LoggerFactory;
 public class McpOperationHandler {
 
     private final Map<Long, CompletableFuture<JsonNode>> pendingOperations;
+    private final Map<Long, CompletableFuture<String>> pendingRawOperations = new java.util.concurrent.ConcurrentHashMap<>();
     private static final Logger log = LoggerFactory.getLogger(McpOperationHandler.class);
     private final McpTransport transport;
     private final Consumer<McpLogMessage> logMessageConsumer;
@@ -67,21 +68,37 @@ public class McpOperationHandler {
         this.onServerCancelled = onServerCancelled;
     }
 
+    @Deprecated(since = "1.20.0", forRemoval = true)
     public void handle(JsonNode message) {
+        handle(message, McpRawJson.toRawJson(message));
+    }
+
+    /**
+     * Raw-JSON counterpart of {@link #handle(JsonNode)}, so that transports can hand over
+     * the message exactly as it arrived on the wire without parsing it first.
+     */
+    public void handleRaw(String rawMessage) {
+        handle(McpRawJson.parse(rawMessage), rawMessage);
+    }
+
+    private void handle(JsonNode message, String rawMessage) {
         if (message.has("id")) {
-            handleMessageWithId(message);
+            handleMessageWithId(message, rawMessage);
         } else if (message.has("method")) {
             handleNotification(message);
         }
     }
 
-    private void handleMessageWithId(JsonNode message) {
+    private void handleMessageWithId(JsonNode message, String rawMessage) {
         long messageId = message.get("id").asLong();
         if (message.has("result") || message.has("error")) {
             // response to a client-initiated operation
             CompletableFuture<JsonNode> op = pendingOperations.remove(messageId);
+            CompletableFuture<String> rawOp = pendingRawOperations.remove(messageId);
             if (op != null) {
                 op.complete(message);
+            } else if (rawOp != null) {
+                rawOp.complete(rawMessage);
             } else {
                 log.warn("Received response for unknown message id: {}", messageId);
             }
@@ -205,15 +222,28 @@ public class McpOperationHandler {
         }
     }
 
+    @Deprecated(since = "1.20.0", forRemoval = true)
     public void startOperation(Long id, CompletableFuture<JsonNode> future) {
         pendingOperations.put(id, future);
     }
 
+    /**
+     * Raw-JSON counterpart of {@link #startOperation(Long, CompletableFuture)}.
+     */
+    public void startRawOperation(Long id, CompletableFuture<String> future) {
+        pendingRawOperations.put(id, future);
+    }
+
     public synchronized void cancelAllPendingOperations(String reason) {
+        IllegalStateException cause =
+                new IllegalStateException("Operation cancelled due to transport failure: " + reason);
         for (CompletableFuture<JsonNode> future : pendingOperations.values()) {
-            future.completeExceptionally(
-                    new IllegalStateException("Operation cancelled due to transport failure: " + reason));
+            future.completeExceptionally(cause);
         }
         pendingOperations.clear();
+        for (CompletableFuture<String> future : pendingRawOperations.values()) {
+            future.completeExceptionally(cause);
+        }
+        pendingRawOperations.clear();
     }
 }

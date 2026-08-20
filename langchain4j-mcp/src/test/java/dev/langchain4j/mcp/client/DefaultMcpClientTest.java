@@ -880,6 +880,11 @@ public class DefaultMcpClientTest {
 
     private static McpTransport getMinimalMcpTransportMock() {
         McpTransport transport = mock(McpTransport.class);
+        // exercise the default bridge: a legacy transport that implements only the
+        // deprecated JsonNode methods must still satisfy the raw-JSON contract
+        when(transport.initializeRaw(any())).thenCallRealMethod();
+        when(transport.executeOperationWithRawResponse(any(McpCallContext.class))).thenCallRealMethod();
+        when(transport.executeOperationWithRawResponse(any(McpClientMessage.class))).thenCallRealMethod();
         when(transport.requiresCancellationNotification()).thenReturn(true);
         ObjectNode emptyJsonNode = JsonNodeFactory.instance.objectNode();
         when(transport.initialize(any())).thenReturn(CompletableFuture.completedFuture(emptyJsonNode));
@@ -897,6 +902,11 @@ public class DefaultMcpClientTest {
 
     private static McpTransport getModernStdioTransportMock() {
         McpTransport transport = mock(McpTransport.class);
+        // exercise the default bridge: a legacy transport that implements only the
+        // deprecated JsonNode methods must still satisfy the raw-JSON contract
+        when(transport.initializeRaw(any())).thenCallRealMethod();
+        when(transport.executeOperationWithRawResponse(any(McpCallContext.class))).thenCallRealMethod();
+        when(transport.executeOperationWithRawResponse(any(McpClientMessage.class))).thenCallRealMethod();
         when(transport.requiresCancellationNotification()).thenReturn(true);
         ObjectNode discoverResult = getDiscoverResult();
         when(transport.executeOperationWithResponse(any(McpCallContext.class)))
@@ -906,6 +916,11 @@ public class DefaultMcpClientTest {
 
     private static McpTransport getModernHttpTransportMock() {
         McpTransport transport = mock(McpTransport.class);
+        // exercise the default bridge: a legacy transport that implements only the
+        // deprecated JsonNode methods must still satisfy the raw-JSON contract
+        when(transport.initializeRaw(any())).thenCallRealMethod();
+        when(transport.executeOperationWithRawResponse(any(McpCallContext.class))).thenCallRealMethod();
+        when(transport.executeOperationWithRawResponse(any(McpClientMessage.class))).thenCallRealMethod();
         when(transport.requiresCancellationNotification()).thenReturn(false);
         ObjectNode discoverResult = getDiscoverResult();
         when(transport.executeOperationWithResponse(any(McpCallContext.class)))
@@ -915,6 +930,11 @@ public class DefaultMcpClientTest {
 
     private static McpTransport getLegacyHttpTransportMock() {
         McpTransport transport = mock(McpTransport.class);
+        // exercise the default bridge: a legacy transport that implements only the
+        // deprecated JsonNode methods must still satisfy the raw-JSON contract
+        when(transport.initializeRaw(any())).thenCallRealMethod();
+        when(transport.executeOperationWithRawResponse(any(McpCallContext.class))).thenCallRealMethod();
+        when(transport.executeOperationWithRawResponse(any(McpClientMessage.class))).thenCallRealMethod();
         when(transport.requiresCancellationNotification()).thenReturn(false);
         ObjectNode emptyJsonNode = JsonNodeFactory.instance.objectNode();
         when(transport.initialize(any())).thenReturn(CompletableFuture.completedFuture(emptyJsonNode));

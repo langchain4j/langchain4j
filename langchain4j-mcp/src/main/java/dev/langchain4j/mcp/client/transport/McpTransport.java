@@ -23,17 +23,51 @@ public interface McpTransport extends Closeable {
      * Only used with the legacy MCP protocol (versions up to 2025-11-25).
      * Modern protocol uses {@code server/discover} instead.
      */
-    CompletableFuture<JsonNode> initialize(McpInitializeRequest request);
+    @Deprecated(since = "1.20.0", forRemoval = true)
+    default CompletableFuture<JsonNode> initialize(McpInitializeRequest request) {
+        throw new UnsupportedOperationException(
+                "Implement initializeRaw(McpInitializeRequest) instead of initialize(McpInitializeRequest)");
+    }
+
+    /**
+     * Raw-JSON counterpart of {@link #initialize(McpInitializeRequest)}, returning the
+     * server's response as unparsed JSON text so that transports do not need a JSON library.
+     */
+    default CompletableFuture<String> initializeRaw(McpInitializeRequest request) {
+        return McpRawJson.map(initialize(request), McpRawJson::toRawJson);
+    }
 
     /**
      * Executes an operation that expects a response from the server.
      */
-    CompletableFuture<JsonNode> executeOperationWithResponse(McpClientMessage request);
+    @Deprecated(since = "1.20.0", forRemoval = true)
+    default CompletableFuture<JsonNode> executeOperationWithResponse(McpClientMessage request) {
+        throw new UnsupportedOperationException("Implement executeOperationWithRawResponse(McpClientMessage) instead"
+                + " of executeOperationWithResponse(McpClientMessage)");
+    }
+
+    /**
+     * Raw-JSON counterpart of {@link #executeOperationWithResponse(McpClientMessage)}.
+     */
+    default CompletableFuture<String> executeOperationWithRawResponse(McpClientMessage request) {
+        return McpRawJson.map(executeOperationWithResponse(request), McpRawJson::toRawJson);
+    }
 
     /**
      * Executes an operation that expects a response from the server.
      */
-    CompletableFuture<JsonNode> executeOperationWithResponse(McpCallContext context);
+    @Deprecated(since = "1.20.0", forRemoval = true)
+    default CompletableFuture<JsonNode> executeOperationWithResponse(McpCallContext context) {
+        throw new UnsupportedOperationException("Implement executeOperationWithRawResponse(McpCallContext) instead"
+                + " of executeOperationWithResponse(McpCallContext)");
+    }
+
+    /**
+     * Raw-JSON counterpart of {@link #executeOperationWithResponse(McpCallContext)}.
+     */
+    default CompletableFuture<String> executeOperationWithRawResponse(McpCallContext context) {
+        return McpRawJson.map(executeOperationWithResponse(context), McpRawJson::toRawJson);
+    }
 
     /**
      * Sends a message that does not expect a response from the server - either a

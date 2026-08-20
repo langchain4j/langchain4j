@@ -21,6 +21,7 @@ import dev.langchain4j.mcp.client.logging.McpLogMessageHandler;
 import dev.langchain4j.mcp.client.progress.McpProgressHandler;
 import dev.langchain4j.mcp.client.transport.McpHeaderEncoding;
 import dev.langchain4j.mcp.client.transport.McpOperationHandler;
+import dev.langchain4j.mcp.client.transport.McpRawJson;
 import dev.langchain4j.mcp.client.transport.McpTransport;
 import dev.langchain4j.mcp.protocol.McpCallToolParams;
 import dev.langchain4j.mcp.protocol.McpCallToolRequest;
@@ -365,7 +366,7 @@ public class DefaultMcpClient implements McpClient {
         applyMeta(request, context);
         try {
             JsonNode capabilities =
-                    transport.initialize(request).get(initializationTimeout.toMillis(), TimeUnit.MILLISECONDS);
+                    initializeViaTransport(request).get(initializationTimeout.toMillis(), TimeUnit.MILLISECONDS);
             if (capabilities.get("result") != null) {
                 log.debug("MCP server capabilities: {}", capabilities.get("result"));
             }
@@ -460,7 +461,7 @@ public class DefaultMcpClient implements McpClient {
         applyMeta(request, context);
         CompletableFuture<JsonNode> resultFuture = null;
         try {
-            resultFuture = transport.executeOperationWithResponse(context);
+            resultFuture = executeViaTransport(context);
             Duration timeout = isProbe ? protocolDetectionTimeout : initializationTimeout;
             JsonNode response = resultFuture.get(timeout.toMillis(), TimeUnit.MILLISECONDS);
             if (response.has("error")) {
@@ -576,7 +577,7 @@ public class DefaultMcpClient implements McpClient {
         request.setParams(params);
         McpCallContext context = new McpCallContext(null, request);
         applyMeta(request, context);
-        CompletableFuture<JsonNode> future = transport.executeOperationWithResponse(context);
+        CompletableFuture<JsonNode> future = executeViaTransport(context);
         listChangeSubscriptionFuture = future;
         future.whenComplete((result, error) -> {
             pendingOperations.remove(operationId);
@@ -631,7 +632,7 @@ public class DefaultMcpClient implements McpClient {
             McpClientRequest retryOperation = retryRequestFactory.apply(retryOperationId, requestState);
             McpCallContext retryContext = new McpCallContext(invocationContext, retryOperation);
             applyMeta(retryOperation, retryContext);
-            CompletableFuture<JsonNode> resultFuture = transport.executeOperationWithResponse(retryContext);
+            CompletableFuture<JsonNode> resultFuture = executeViaTransport(retryContext);
             result = resultFuture.get(timeoutMillis, TimeUnit.MILLISECONDS);
             pendingOperations.remove(retryOperationId);
             retryCount++;
@@ -713,7 +714,7 @@ public class DefaultMcpClient implements McpClient {
         try {
             notifyListeners(l -> l.beforeExecuteTool(context));
             applyMeta(operation, context);
-            resultFuture = transport.executeOperationWithResponse(context);
+            resultFuture = executeViaTransport(context);
             result = resultFuture.get(timeoutMillis, TimeUnit.MILLISECONDS);
 
             final ObjectNode finalArguments = arguments;
@@ -803,7 +804,7 @@ public class DefaultMcpClient implements McpClient {
         notifyListeners(l -> l.beforeResourceGet(context));
         applyMeta(operation, context);
         try {
-            resultFuture = transport.executeOperationWithResponse(context);
+            resultFuture = executeViaTransport(context);
             result = resultFuture.get(timeoutMillis, TimeUnit.MILLISECONDS);
 
             result = handleMultiRoundTrip(
@@ -855,7 +856,7 @@ public class DefaultMcpClient implements McpClient {
         notifyListeners(l -> l.beforePromptGet(context));
         applyMeta(operation, context);
         try {
-            resultFuture = transport.executeOperationWithResponse(context);
+            resultFuture = executeViaTransport(context);
             result = resultFuture.get(timeoutMillis, TimeUnit.MILLISECONDS);
 
             final Map<String, Object> finalArguments = arguments == null ? Map.of() : arguments;
@@ -908,7 +909,7 @@ public class DefaultMcpClient implements McpClient {
         notifyListeners(l -> l.beforePing(context));
         applyMeta(request, context);
         try {
-            CompletableFuture<JsonNode> resultFuture = transport.executeOperationWithResponse(context);
+            CompletableFuture<JsonNode> resultFuture = executeViaTransport(context);
             resultFuture.get(pingTimeout.toMillis(), TimeUnit.MILLISECONDS);
             notifyListeners(l -> l.afterPing(context));
         } catch (ExecutionException | InterruptedException | TimeoutException e) {
@@ -927,7 +928,7 @@ public class DefaultMcpClient implements McpClient {
         notifyListeners(l -> l.beforePing(context));
         applyMeta(ping, context);
         try {
-            CompletableFuture<JsonNode> resultFuture = transport.executeOperationWithResponse(context);
+            CompletableFuture<JsonNode> resultFuture = executeViaTransport(context);
             resultFuture.get(pingTimeout.toMillis(), TimeUnit.MILLISECONDS);
             notifyListeners(l -> l.afterPing(context));
         } catch (ExecutionException | InterruptedException | TimeoutException e) {
@@ -973,7 +974,7 @@ public class DefaultMcpClient implements McpClient {
         applyMeta(operation, context);
         long timeoutMillis = resourcesTimeout.toMillis() == 0 ? Integer.MAX_VALUE : resourcesTimeout.toMillis();
         try {
-            CompletableFuture<JsonNode> resultFuture = transport.executeOperationWithResponse(context);
+            CompletableFuture<JsonNode> resultFuture = executeViaTransport(context);
             JsonNode result = resultFuture.get(timeoutMillis, TimeUnit.MILLISECONDS);
             McpErrorHelper.checkForErrors(result);
             notifyListeners(l -> l.afterResourceSubscribe(context));
@@ -1006,7 +1007,7 @@ public class DefaultMcpClient implements McpClient {
         applyMeta(operation, context);
         long timeoutMillis = resourcesTimeout.toMillis() == 0 ? Integer.MAX_VALUE : resourcesTimeout.toMillis();
         try {
-            CompletableFuture<JsonNode> resultFuture = transport.executeOperationWithResponse(context);
+            CompletableFuture<JsonNode> resultFuture = executeViaTransport(context);
             JsonNode result = resultFuture.get(timeoutMillis, TimeUnit.MILLISECONDS);
             McpErrorHelper.checkForErrors(result);
             notifyListeners(l -> l.afterResourceUnsubscribe(context));
@@ -1043,7 +1044,7 @@ public class DefaultMcpClient implements McpClient {
         McpCallContext context = new McpCallContext(null, request);
         notifyListeners(l -> l.beforeResourcesSubscribe(context, uris));
         applyMeta(request, context);
-        CompletableFuture<JsonNode> streamFuture = transport.executeOperationWithResponse(context);
+        CompletableFuture<JsonNode> streamFuture = executeViaTransport(context);
         activeSubscriptions.put(subscriptionId, streamFuture);
         streamFuture.whenComplete((result, error) -> {
             pendingOperations.remove(subscriptionId);
@@ -1278,7 +1279,7 @@ public class DefaultMcpClient implements McpClient {
             applyMeta(operation, context);
             JsonNode result;
             try {
-                CompletableFuture<JsonNode> resultFuture = transport.executeOperationWithResponse(context);
+                CompletableFuture<JsonNode> resultFuture = executeViaTransport(context);
                 result = resultFuture.get(timeoutMillis, TimeUnit.MILLISECONDS);
             } catch (ExecutionException | InterruptedException | TimeoutException e) {
                 throw new RuntimeException(e);
@@ -1847,4 +1848,17 @@ public class DefaultMcpClient implements McpClient {
             return new DefaultMcpClient(this);
         }
     }
+
+    private CompletableFuture<JsonNode> executeViaTransport(McpCallContext context) {
+        return McpRawJson.map(transport.executeOperationWithRawResponse(context), McpRawJson::parse);
+    }
+
+    private CompletableFuture<JsonNode> executeViaTransport(McpClientMessage message) {
+        return McpRawJson.map(transport.executeOperationWithRawResponse(message), McpRawJson::parse);
+    }
+
+    private CompletableFuture<JsonNode> initializeViaTransport(McpInitializeRequest request) {
+        return McpRawJson.map(transport.initializeRaw(request), McpRawJson::parse);
+    }
+
 }

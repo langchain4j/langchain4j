@@ -32,6 +32,14 @@ public class McpException extends LangChain4jException {
         return errorMessage;
     }
 
+    /**
+     * Returns the JSON-RPC {@code error.data} member as raw JSON text.
+     */
+    public @Nullable String errorDataAsJson() {
+        return errorData == null ? null : errorData.toString();
+    }
+
+    @Deprecated(since = "1.20.0", forRemoval = true)
     public @Nullable JsonNode errorData() {
         return errorData;
     }

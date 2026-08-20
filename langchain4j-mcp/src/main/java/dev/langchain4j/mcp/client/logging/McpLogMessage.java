@@ -1,5 +1,7 @@
 package dev.langchain4j.mcp.client.logging;
 
+import dev.langchain4j.mcp.client.McpJsonConversions;
+import java.util.Map;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -42,6 +44,21 @@ public class McpLogMessage {
         return logger;
     }
 
+    /**
+     * Returns the log payload as raw JSON text.
+     */
+    public String dataAsJson() {
+        return data == null ? null : data.toString();
+    }
+
+    /**
+     * Returns the log payload as a plain map, so consumers do not need a JSON library.
+     */
+    public Map<String, Object> dataAsMap() {
+        return data == null ? null : McpJsonConversions.toMap(data);
+    }
+
+    @Deprecated(since = "1.20.0", forRemoval = true)
     public JsonNode data() {
         return data;
     }
