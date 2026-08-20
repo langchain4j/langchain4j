@@ -2,9 +2,12 @@ package dev.langchain4j.internal;
 
 import static com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility.ANY;
 import static com.fasterxml.jackson.annotation.PropertyAccessor.FIELD;
+import static com.fasterxml.jackson.databind.DeserializationFeature.ADJUST_DATES_TO_CONTEXT_TIME_ZONE;
 import static com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES;
 import static com.fasterxml.jackson.databind.MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS;
 import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
+import static com.fasterxml.jackson.databind.SerializationFeature.WRITE_DATES_AS_TIMESTAMPS;
+import static com.fasterxml.jackson.databind.SerializationFeature.WRITE_DURATIONS_AS_TIMESTAMPS;
 import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE;
 import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 import static java.time.format.DateTimeFormatter.ISO_LOCAL_TIME;
@@ -13,7 +16,6 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.AnnotationIntrospector;
 import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.JsonDeserializer;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -23,10 +25,10 @@ import com.fasterxml.jackson.databind.cfg.MapperConfig;
 import com.fasterxml.jackson.databind.introspect.AnnotatedClass;
 import com.fasterxml.jackson.databind.introspect.AnnotationIntrospectorPair;
 import com.fasterxml.jackson.databind.introspect.NopAnnotationIntrospector;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.databind.jsontype.NamedType;
 import com.fasterxml.jackson.databind.jsontype.TypeResolverBuilder;
 import com.fasterxml.jackson.databind.jsontype.impl.StdTypeResolverBuilder;
-import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.ser.std.StdSerializer;
 import dev.langchain4j.Internal;
@@ -35,6 +37,8 @@ import java.lang.reflect.Type;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
 import java.util.List;
 import java.util.Optional;
 
@@ -46,6 +50,27 @@ import java.util.Optional;
  */
 @Internal
 class JacksonJsonCodec implements Json.JsonCodec {
+
+    // The schema advertises RFC 3339 "date-time"/"time" for LocalDateTime/LocalTime, which LLMs may honor
+    // with offset-bearing strings. Accept and drop the offset (Local* cannot represent one); the stock
+    // ISO_LOCAL_* formatters reject such strings.
+    private static final DateTimeFormatter ISO_LOCAL_DATE_TIME_WITH_OPTIONAL_OFFSET = new DateTimeFormatterBuilder()
+            .parseCaseInsensitive()
+            .append(DateTimeFormatter.ISO_LOCAL_DATE)
+            .appendLiteral('T')
+            .append(DateTimeFormatter.ISO_LOCAL_TIME)
+            .optionalStart()
+            .appendOffsetId()
+            .optionalEnd()
+            .toFormatter();
+
+    private static final DateTimeFormatter ISO_LOCAL_TIME_WITH_OPTIONAL_OFFSET = new DateTimeFormatterBuilder()
+            .parseCaseInsensitive()
+            .append(DateTimeFormatter.ISO_LOCAL_TIME)
+            .optionalStart()
+            .appendOffsetId()
+            .optionalEnd()
+            .toFormatter();
 
     private final ObjectMapper objectMapper;
 
@@ -97,7 +122,7 @@ class JacksonJsonCodec implements Json.JsonCodec {
                             .orElse(0);
                     return LocalTime.of(hour, minute, second, nano);
                 } else {
-                    return LocalTime.parse(node.asText(), ISO_LOCAL_TIME);
+                    return LocalTime.parse(node.asText(), ISO_LOCAL_TIME_WITH_OPTIONAL_OFFSET);
                 }
             }
         });
@@ -130,7 +155,7 @@ class JacksonJsonCodec implements Json.JsonCodec {
                             .orElse(0);
                     return LocalDateTime.of(year, month, day, hour, minute, second, nano);
                 } else {
-                    return LocalDateTime.parse(node.asText(), ISO_LOCAL_DATE_TIME);
+                    return LocalDateTime.parse(node.asText(), ISO_LOCAL_DATE_TIME_WITH_OPTIONAL_OFFSET);
                 }
             }
         });
@@ -140,6 +165,10 @@ class JacksonJsonCodec implements Json.JsonCodec {
                 .disable(INDENT_OUTPUT) // disabled on purpose to save tokens when sending tool results to LLM
                 .enable(FAIL_ON_UNKNOWN_PROPERTIES) // enabled on purpose to prevent issues caused by LLM hallucinations
                 .enable(ACCEPT_CASE_INSENSITIVE_ENUMS)
+                // Preserve the offset/zone parsed from ISO-8601 "date-time" strings instead of
+                // normalizing it to UTC (ADJUST_DATES_TO_CONTEXT_TIME_ZONE defaults to true).
+                .disable(ADJUST_DATES_TO_CONTEXT_TIME_ZONE)
+                .disable(WRITE_DATES_AS_TIMESTAMPS, WRITE_DURATIONS_AS_TIMESTAMPS)
                 .build()
                 .findAndRegisterModules()
                 .registerModule(module);
@@ -148,7 +177,8 @@ class JacksonJsonCodec implements Json.JsonCodec {
         // having to add @JsonTypeInfo+@JsonSubTypes. We synthesize equivalent metadata via a
         // custom AnnotationIntrospector consulted ahead of Jackson's default one.
         mapper.setAnnotationIntrospector(AnnotationIntrospectorPair.pair(
-                new SealedTypePolymorphicIntrospector(), mapper.getDeserializationConfig().getAnnotationIntrospector()));
+                new SealedTypePolymorphicIntrospector(),
+                mapper.getDeserializationConfig().getAnnotationIntrospector()));
         return mapper;
     }
 
