@@ -36,7 +36,10 @@ public class McpInitializeResult extends McpJsonRpcMessage {
         private final @Nullable String instructions;
 
         @JsonCreator
-        public Result(@JsonProperty("protocolVersion") String protocolVersion, @JsonProperty("capabilities") Capabilities capabilities, @JsonProperty("serverInfo") McpImplementation serverInfo) {
+        public Result(
+                @JsonProperty("protocolVersion") String protocolVersion,
+                @JsonProperty("capabilities") Capabilities capabilities,
+                @JsonProperty("serverInfo") McpImplementation serverInfo) {
             this(protocolVersion, capabilities, serverInfo, null);
         }
 
@@ -69,13 +72,12 @@ public class McpInitializeResult extends McpJsonRpcMessage {
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-
     public static class Capabilities {
 
         private final Tools tools;
 
         @JsonCreator
-            public Capabilities(@JsonProperty("tools") Tools tools) {
+        public Capabilities(@JsonProperty("tools") Tools tools) {
             this.tools = tools;
         }
 

@@ -4,10 +4,6 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
-import dev.langchain4j.mcp.protocol.McpListToolsResult;
-import dev.langchain4j.mcp.protocol.McpServerDiscoverResponse;
-import dev.langchain4j.internal.Json;
-import dev.langchain4j.mcp.protocol.McpErrorResponse;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
@@ -19,6 +15,7 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.exception.ToolExecutionException;
+import dev.langchain4j.internal.Json;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.mcp.client.logging.DefaultMcpLogMessageHandler;
 import dev.langchain4j.mcp.client.logging.McpLogMessageHandler;
@@ -34,6 +31,7 @@ import dev.langchain4j.mcp.protocol.McpClientMessage;
 import dev.langchain4j.mcp.protocol.McpClientNotification;
 import dev.langchain4j.mcp.protocol.McpClientParams;
 import dev.langchain4j.mcp.protocol.McpClientRequest;
+import dev.langchain4j.mcp.protocol.McpErrorResponse;
 import dev.langchain4j.mcp.protocol.McpGetPromptParams;
 import dev.langchain4j.mcp.protocol.McpGetPromptRequest;
 import dev.langchain4j.mcp.protocol.McpImplementation;
@@ -44,12 +42,14 @@ import dev.langchain4j.mcp.protocol.McpListPromptsRequest;
 import dev.langchain4j.mcp.protocol.McpListResourceTemplatesRequest;
 import dev.langchain4j.mcp.protocol.McpListResourcesRequest;
 import dev.langchain4j.mcp.protocol.McpListToolsRequest;
+import dev.langchain4j.mcp.protocol.McpListToolsResult;
 import dev.langchain4j.mcp.protocol.McpPingRequest;
 import dev.langchain4j.mcp.protocol.McpReadResourceParams;
 import dev.langchain4j.mcp.protocol.McpReadResourceRequest;
 import dev.langchain4j.mcp.protocol.McpRootsListChangedNotification;
 import dev.langchain4j.mcp.protocol.McpServerDiscoverParams;
 import dev.langchain4j.mcp.protocol.McpServerDiscoverRequest;
+import dev.langchain4j.mcp.protocol.McpServerDiscoverResponse;
 import dev.langchain4j.mcp.protocol.McpSubscribeResourceRequest;
 import dev.langchain4j.mcp.protocol.McpSubscriptionsListenParams;
 import dev.langchain4j.mcp.protocol.McpSubscriptionsListenRequest;
@@ -750,7 +750,8 @@ public class DefaultMcpClient implements McpClient {
                 applyMeta(cancellation, null);
                 transport.executeOperationWithoutResponse(cancellation);
             }
-            return ToolExecutionHelper.extractResult(RESULT_TIMEOUT, false, contentExtractor, legacyToolResultExtractor);
+            return ToolExecutionHelper.extractResult(
+                    RESULT_TIMEOUT, false, contentExtractor, legacyToolResultExtractor);
         } catch (ExecutionException e) {
             notifyListeners(l -> l.onExecuteToolError(context, e));
             throw new ToolExecutionException(e.getCause());
@@ -762,7 +763,8 @@ public class DefaultMcpClient implements McpClient {
         }
         final JsonNode finalResult = result;
         try {
-            ToolExecutionResult toolResult = ToolExecutionHelper.extractResult(finalResult, false, contentExtractor, legacyToolResultExtractor);
+            ToolExecutionResult toolResult = ToolExecutionHelper.extractResult(
+                    finalResult, false, contentExtractor, legacyToolResultExtractor);
             notifyListeners(l -> l.afterExecuteTool(
                     context, toolResult, McpJsonConversions.toMap(finalResult)));
             return toolResult;
@@ -775,7 +777,8 @@ public class DefaultMcpClient implements McpClient {
                 // -> we notify the listener with afterExecuteTool
                 notifyListeners(l -> l.afterExecuteTool(
                         context,
-                        ToolExecutionHelper.extractResult(finalResult, true, contentExtractor, legacyToolResultExtractor),
+                        ToolExecutionHelper.extractResult(
+                                finalResult, true, contentExtractor, legacyToolResultExtractor),
                         McpJsonConversions.toMap(finalResult)));
             }
             throw e;

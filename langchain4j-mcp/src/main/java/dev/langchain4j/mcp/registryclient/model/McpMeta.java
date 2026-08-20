@@ -1,8 +1,8 @@
 package dev.langchain4j.mcp.registryclient.model;
 
-import dev.langchain4j.mcp.client.McpJsonConversions;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.JsonNode;
+import dev.langchain4j.mcp.client.McpJsonConversions;
 import java.util.Map;
 
 public class McpMeta {

@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -27,7 +28,7 @@ import org.slf4j.LoggerFactory;
 public class McpOperationHandler {
 
     private final Map<Long, CompletableFuture<JsonNode>> pendingOperations;
-    private final Map<Long, CompletableFuture<String>> pendingRawOperations = new java.util.concurrent.ConcurrentHashMap<>();
+    private final Map<Long, CompletableFuture<String>> pendingRawOperations = new ConcurrentHashMap<>();
     private static final Logger log = LoggerFactory.getLogger(McpOperationHandler.class);
     private final McpTransport transport;
     private final Consumer<McpLogMessage> logMessageConsumer;
