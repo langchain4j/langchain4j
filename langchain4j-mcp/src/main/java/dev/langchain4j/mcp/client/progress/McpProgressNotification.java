@@ -1,8 +1,8 @@
 package dev.langchain4j.mcp.client.progress;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import dev.langchain4j.mcp.client.McpJsonConversions;
 import java.util.Map;
-import com.fasterxml.jackson.databind.JsonNode;
 import java.util.Objects;
 
 /**

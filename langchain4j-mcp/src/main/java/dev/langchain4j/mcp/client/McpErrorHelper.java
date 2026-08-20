@@ -1,8 +1,8 @@
 package dev.langchain4j.mcp.client;
 
-import dev.langchain4j.mcp.protocol.McpErrorResponse;
-import dev.langchain4j.mcp.client.transport.McpRawJson;
 import com.fasterxml.jackson.databind.JsonNode;
+import dev.langchain4j.mcp.client.transport.McpRawJson;
+import dev.langchain4j.mcp.protocol.McpErrorResponse;
 
 class McpErrorHelper {
 

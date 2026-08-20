@@ -1,13 +1,12 @@
 package dev.langchain4j.mcp.client.logging;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.JsonNode;
 import dev.langchain4j.internal.Json;
 import dev.langchain4j.mcp.client.McpJsonConversions;
 import dev.langchain4j.mcp.client.transport.McpRawJson;
 import java.util.Map;
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.JsonNode;
-
 import java.util.Objects;
 
 public class McpLogMessage {
@@ -37,10 +36,8 @@ public class McpLogMessage {
     }
 
     /**
-     * Parses a McpLogMessage from the contents of the 'params' object inside a 'notifications/message' message.
-     */
-    /**
-     * Builds a log message from the notification params, presented as plain values.
+     * Parses a McpLogMessage from the contents of the 'params' object inside a 'notifications/message'
+     * message, presented as plain values.
      */
     public static McpLogMessage fromMap(Map<String, Object> params) {
         Object levelValue = params.get("level");
@@ -50,6 +47,9 @@ public class McpLogMessage {
     }
 
     /**
+     * Parses a McpLogMessage from the contents of the 'params' object inside a 'notifications/message'
+     * message.
+     *
      * @deprecated use {@link #fromMap(Map)}, which does not expose Jackson types.
      */
     @Deprecated(since = "1.20.0", forRemoval = true)
