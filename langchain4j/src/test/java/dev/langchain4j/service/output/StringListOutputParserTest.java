@@ -78,6 +78,11 @@ class StringListOutputParserTest {
                 "{\"values\":\"banana\"}",
                 "{\"values\":{\"name\":\"Klaus\"}}",
                 "{\"banana\":[{\"name\":\"Klaus\"}]}",
+
+                // Malformed JSON object
+                "{\"values\": [oops",
+                "{oops}",
+                "{",
             })
     void should_fail_to_parse_invalid_input(String input) {
 

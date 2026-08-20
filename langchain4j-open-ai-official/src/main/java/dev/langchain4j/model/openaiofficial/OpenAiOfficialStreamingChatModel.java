@@ -6,6 +6,7 @@ import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialToolCall;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onUnmappedRawEvent;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
+import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
 import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.finishReasonFrom;
 import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.toOpenAiChatCompletionCreateParams;
@@ -20,6 +21,7 @@ import com.openai.models.chat.completions.ChatCompletionChunk;
 import com.openai.models.chat.completions.ChatCompletionCreateParams;
 import com.openai.models.chat.completions.ChatCompletionStreamOptions;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.exception.ContentFilteredException;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.internal.MappingTrackingStreamingChatResponseHandler;
 import dev.langchain4j.internal.ToolCallBuilder;
@@ -110,6 +112,7 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
                     OpenAiOfficialChatResponseMetadata.builder();
 
             StringBuffer textBuilder = new StringBuffer();
+            StringBuffer refusalBuilder = new StringBuffer();
             ToolCallBuilder toolCallBuilder = new ToolCallBuilder();
             AtomicReference<StreamingHandle> streamingHandle = new AtomicReference<>();
 
@@ -131,6 +134,7 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
                                     streamingHandle.get(),
                                     responseMetadataBuilder,
                                     textBuilder,
+                                    refusalBuilder,
                                     toolCallBuilder);
 
                             if (!trackingHandler.wasMapped()) {
@@ -147,6 +151,13 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
                             if (error.isPresent()) {
                                 withLoggingExceptions(() -> trackingHandler.onError(error.get()));
                             } else {
+                                String refusal = refusalBuilder.toString();
+                                if (isNotNullOrBlank(refusal)) {
+                                    withLoggingExceptions(
+                                            () -> trackingHandler.onError(new ContentFilteredException(refusal)));
+                                    return;
+                                }
+
                                 if (toolCallBuilder.hasRequests()) {
                                     onCompleteToolCall(trackingHandler, toolCallBuilder.buildAndReset());
                                 }
@@ -180,6 +191,7 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
             StreamingHandle streamingHandle,
             OpenAiOfficialChatResponseMetadata.Builder responseMetadataBuilder,
             StringBuffer text,
+            StringBuffer refusal,
             ToolCallBuilder toolCallBuilder) {
 
         responseMetadataBuilder.id(chatCompletionChunk.id());
@@ -203,6 +215,9 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
                 String partialResponse = choice.delta().content().get();
                 text.append(partialResponse);
                 onPartialResponse(handler, partialResponse, streamingHandle);
+            }
+            if (choice.delta().refusal().isPresent()) {
+                refusal.append(choice.delta().refusal().get());
             }
             if (choice.delta().toolCalls().isPresent()) {
                 for (ChatCompletionChunk.Choice.Delta.ToolCall toolCall :

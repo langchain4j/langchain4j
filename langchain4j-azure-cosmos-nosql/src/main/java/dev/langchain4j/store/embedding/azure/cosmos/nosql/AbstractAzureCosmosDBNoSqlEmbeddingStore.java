@@ -416,7 +416,7 @@ public class AbstractAzureCosmosDBNoSqlEmbeddingStore implements EmbeddingStore<
                         + "VectorDistance(c.%s, @embedding) as score FROM c",
                 embeddingField));
         if (request.filter() != null) {
-            queryBuilder.append(" AND").append(filterMapper.map(request.filter()));
+            queryBuilder.append(" WHERE ").append(filterMapper.map(request.filter()));
         }
         queryBuilder.append(String.format(" ORDER BY VectorDistance(c.%s, @embedding)", embeddingField));
 
