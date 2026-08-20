@@ -3,12 +3,15 @@ package dev.langchain4j.service.output;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Function;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class ParsingUtilsTest {
 
@@ -89,6 +92,30 @@ class ParsingUtilsTest {
                 .hasMessageContaining("Failed to parse");
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {"{\"value\": tru", "{oops}", "{", "{\"value\": }", "   {\"value\"  "})
+    void should_throw_when_json_object_is_malformed(String text) {
+        // given
+        Function<String, String> parser = Function.identity();
+
+        // when/then
+        assertThatThrownBy(() -> ParsingUtils.parseAsStringOrJson(text, parser, String.class))
+                .isInstanceOf(OutputParsingException.class)
+                .hasMessageContaining("Failed to parse");
+    }
+
+    @Test
+    void should_keep_original_failure_as_cause_when_json_object_is_malformed() {
+        // given
+        String text = "{\"value\": tru";
+        Function<String, String> parser = Function.identity();
+
+        // when/then
+        assertThatThrownBy(() -> ParsingUtils.parseAsStringOrJson(text, parser, String.class))
+                .isInstanceOf(OutputParsingException.class)
+                .hasRootCauseInstanceOf(JsonProcessingException.class);
+    }
+
     @Test
     void should_handle_parser_exception() {
         // given
@@ -161,6 +188,18 @@ class ParsingUtilsTest {
         // when/then
         assertThatThrownBy(() -> ParsingUtils.parseAsStringOrJson(text, parser, ArrayList::new, "String"))
                 .isInstanceOf(OutputParsingException.class);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"{\"values\": [oops", "{oops}", "{", "{\"values\": }"})
+    void should_throw_when_json_object_is_malformed_for_collection(String text) {
+        // given
+        Function<String, String> parser = Function.identity();
+
+        // when/then
+        assertThatThrownBy(() -> ParsingUtils.parseAsStringOrJson(text, parser, ArrayList::new, "String"))
+                .isInstanceOf(OutputParsingException.class)
+                .hasMessageContaining("Failed to parse");
     }
 
     @Test

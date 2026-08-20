@@ -348,9 +348,17 @@ public abstract class HttpClientIT {
                 assertThat(e).isExactlyInstanceOf(HttpException.class);
                 HttpException httpException = (HttpException) e;
                 assertThat(httpException.statusCode()).isEqualTo(401);
-                assertThat(httpException.getMessage()).contains("Incorrect API key provided");
+                if (supportsErrorBodyOnUnauthorized()) {
+                    assertThat(httpException.getMessage()).contains("Incorrect API key provided");
+                } else {
+                    assertThat(httpException.getMessage()).isNotBlank();
+                }
             }
         }
+    }
+
+    protected boolean supportsErrorBodyOnUnauthorized() {
+        return true;
     }
 
     @ParameterizedTest
@@ -860,9 +868,12 @@ public abstract class HttpClientIT {
             assertThat(response.get()).isNull();
             assertThat(events).isEmpty();
             assertThat(errors).hasSize(1);
-            assertThat(errors.get(0))
-                    .isExactlyInstanceOf(HttpException.class)
-                    .hasMessageContaining("Incorrect API key provided");
+            assertThat(errors.get(0)).isExactlyInstanceOf(HttpException.class);
+            if (supportsErrorBodyOnUnauthorized()) {
+                assertThat(errors.get(0)).hasMessageContaining("Incorrect API key provided");
+            } else {
+                assertThat(errors.get(0).getMessage()).isNotBlank();
+            }
 
             assertThat(threads).hasSize(1);
             assertThat(threads.iterator().next()).isNotEqualTo(Thread.currentThread());

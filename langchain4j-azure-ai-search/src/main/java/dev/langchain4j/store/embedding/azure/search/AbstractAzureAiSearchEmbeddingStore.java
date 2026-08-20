@@ -1,6 +1,7 @@
 package dev.langchain4j.store.embedding.azure.search;
 
 import static dev.langchain4j.internal.Utils.*;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.*;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
@@ -81,7 +82,7 @@ public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingSt
             // if the indexName is provided, it will be used when creating the default index
             throw new IllegalArgumentException("index and indexName cannot be both defined");
         }
-        if (createOrUpdateIndex && index != null) {
+        if (index != null) {
             this.indexName = index.getName();
         } else {
             this.indexName = getOrDefault(indexName, DEFAULT_INDEX_NAME);
@@ -260,7 +261,9 @@ public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingSt
 
     @Override
     public void removeAll(Collection<String> ids) {
-        ensureNotEmpty(ids, "ids");
+        if (isNullOrEmpty(ids)) {
+            return;
+        }
         List<IndexAction> actions = new ArrayList<>();
         for (String id : ids) {
             ensureNotBlank(id, "id");
@@ -373,14 +376,10 @@ public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingSt
 
     @Override
     public void addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
-        if (isNullOrEmpty(ids) || isNullOrEmpty(embeddings)) {
-            log.info("Empty embeddings - no ops");
+        ensureConsistentSizes(ids, embeddings, embedded);
+        if (isNullOrEmpty(embeddings)) {
             return;
         }
-        ensureTrue(ids.size() == embeddings.size(), "ids size is not equal to embeddings size");
-        ensureTrue(
-                embedded == null || embeddings.size() == embedded.size(),
-                "embeddings size is not equal to embedded size");
 
         List<Document> documents = new ArrayList<>();
         for (int i = 0; i < ids.size(); ++i) {

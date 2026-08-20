@@ -87,9 +87,21 @@ public interface EmbeddingStore<Embedded> {
     /**
      * Adds multiple embeddings and their corresponding contents that have been embedded to the store.
      *
+     * <p>The lists are positional: the i-th ID, the i-th embedding and the i-th embedded content belong together.
+     * {@code ids} and {@code embeddings} must therefore have the same size, and {@code embedded}, when provided,
+     * must have that size as well. A {@code null} list of IDs or embeddings counts as an empty list, so passing
+     * embeddings without IDs (or the other way around) is a size mismatch, not an empty input.
+     * {@link dev.langchain4j.internal.ValidationUtils#ensureConsistentSizes(List, List, List)} implements
+     * these rules and should be used by implementations.
+     *
+     * <p>Passing no embeddings at all (an empty or {@code null} {@code embeddings} together with an empty or
+     * {@code null} {@code ids}, and no {@code embedded} contents) is a no-op: nothing is stored and no exception
+     * is thrown.
+     *
      * @param ids        A list of IDs associated with the added embeddings.
      * @param embeddings A list of embeddings to be added to the store.
-     * @param embedded   A list of original contents that were embedded.
+     * @param embedded   A list of original contents that were embedded, or {@code null} if they were not provided.
+     * @throws IllegalArgumentException if the sizes of the given lists do not match.
      */
     default void addAll(List<String> ids, List<Embedding> embeddings, List<Embedded> embedded) {
         throw new UnsupportedFeatureException("Not supported yet.");
@@ -107,6 +119,9 @@ public interface EmbeddingStore<Embedded> {
 
     /**
      * Removes all embeddings that match the specified IDs from the store.
+     *
+     * <p>Having nothing to remove is a no-op: an empty or {@code null} collection of IDs leaves the store
+     * unchanged and throws nothing, in the same way that adding no embeddings stores nothing.
      *
      * @param ids A collection of unique IDs of the embeddings to be removed.
      */

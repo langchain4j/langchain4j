@@ -64,6 +64,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Flow.Publisher;
+import java.util.function.Supplier;
 import mutiny.zero.Tube;
 
 class OpenAiResponsesClient {
@@ -180,6 +181,7 @@ class OpenAiResponsesClient {
     private final String apiKey;
     private final String organizationId;
     private final int streamingBufferSize;
+    private final Supplier<Map<String, String>> customHeadersSupplier;
 
     OpenAiResponsesClient(Builder builder) {
         HttpClientBuilder httpClientBuilder =
@@ -195,6 +197,7 @@ class OpenAiResponsesClient {
         this.organizationId = builder.organizationId;
         this.streamingBufferSize = ensureGreaterThanZero(
                 getOrDefault(builder.streamingBufferSize, OpenAiClient.DEFAULT_STREAMING_BUFFER_SIZE), "streamingBufferSize");
+        this.customHeadersSupplier = getOrDefault(builder.customHeadersSupplier, () -> Map::of);
     }
 
     static Builder builder() {
@@ -445,6 +448,8 @@ class OpenAiResponsesClient {
         if (organizationId != null) {
             requestBuilder.addHeader(OPENAI_ORGANIZATION_HEADER, organizationId);
         }
+
+        requestBuilder.addHeaders(customHeadersSupplier.get());
 
         return requestBuilder.body(requestBody).build();
     }
@@ -850,6 +855,7 @@ class OpenAiResponsesClient {
         private boolean logRequests;
         private boolean logResponses;
         private Integer streamingBufferSize;
+        private Supplier<Map<String, String>> customHeadersSupplier;
 
         Builder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
             this.httpClientBuilder = httpClientBuilder;
@@ -887,6 +893,11 @@ class OpenAiResponsesClient {
 
         Builder streamingBufferSize(Integer streamingBufferSize) {
             this.streamingBufferSize = streamingBufferSize;
+            return this;
+        }
+
+        Builder customHeaders(Supplier<Map<String, String>> customHeadersSupplier) {
+            this.customHeadersSupplier = customHeadersSupplier;
             return this;
         }
 
