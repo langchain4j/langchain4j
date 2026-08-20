@@ -39,7 +39,7 @@ class McpToolResultMetaParsingTest {
                         }
                         """);
 
-        ToolExecutionResult result = ToolExecutionHelper.extractResult(response, false, extractor);
+        ToolExecutionResult result = ToolExecutionHelper.extractResult(response, false, null, extractor);
 
         assertThat(result.resultText()).isEqualTo("Sunny, 22 degrees");
         assertThat(result.attributes())
@@ -67,7 +67,7 @@ class McpToolResultMetaParsingTest {
                         }
                         """);
 
-        ToolExecutionResult result = ToolExecutionHelper.extractResult(response, false, extractor);
+        ToolExecutionResult result = ToolExecutionHelper.extractResult(response, false, null, extractor);
 
         assertThat(result.result()).isEqualTo(Map.of("temperature", 22));
         assertThat(result.attributes()).containsExactly(Map.entry("example.org/traceId", "abc-123"));
@@ -92,7 +92,7 @@ class McpToolResultMetaParsingTest {
                         }
                         """);
 
-        ToolExecutionResult result = ToolExecutionHelper.extractResult(response, false, extractor);
+        ToolExecutionResult result = ToolExecutionHelper.extractResult(response, false, null, extractor);
 
         assertThat(result.attributes()).isEmpty();
     }
@@ -120,7 +120,7 @@ class McpToolResultMetaParsingTest {
                         }
                         """);
 
-        ToolExecutionResult result = ToolExecutionHelper.extractResult(response, true, extractor);
+        ToolExecutionResult result = ToolExecutionHelper.extractResult(response, true, null, extractor);
 
         assertThat(result.isError()).isTrue();
         assertThat(result.resultText()).isEqualTo("City not found");
@@ -156,7 +156,7 @@ class McpToolResultMetaParsingTest {
                 .attributes(Map.of("source", "extractor"))
                 .build();
 
-        ToolExecutionResult result = ToolExecutionHelper.extractResult(response, false, customExtractor);
+        ToolExecutionResult result = ToolExecutionHelper.extractResult(response, false, null, customExtractor);
 
         assertThat(result.resultText()).isEqualTo("custom");
         assertThat(result.attributes())
@@ -194,7 +194,7 @@ class McpToolResultMetaParsingTest {
                         }
                         """);
 
-        ToolExecutionResult result = ToolExecutionHelper.extractResult(response, false, extractor);
+        ToolExecutionResult result = ToolExecutionHelper.extractResult(response, false, null, extractor);
 
         assertThat(result.attributes()).containsOnlyKeys("com.example.mcp/traceId", "traceId");
     }

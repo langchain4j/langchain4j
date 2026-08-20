@@ -39,7 +39,7 @@ public class StructuredContentParsingTest {
                 """;
         JsonNode responseNode = objectMapper.readTree(response);
         McpToolResultExtractor extractor = mock(McpToolResultExtractor.class);
-        ToolExecutionResult toolExecutionResult = ToolExecutionHelper.extractResult(responseNode, false, extractor);
+        ToolExecutionResult toolExecutionResult = ToolExecutionHelper.extractResult(responseNode, false, null, extractor);
         assertThat(toolExecutionResult.result()).isInstanceOf(Map.class);
         Map<String, Object> map = (Map<String, Object>) toolExecutionResult.result();
         assertThat(map).hasSize(4);
@@ -75,7 +75,7 @@ public class StructuredContentParsingTest {
         JsonNode responseNode = objectMapper.readTree(response);
         McpToolResultExtractor extractor = mock(McpToolResultExtractor.class);
 
-        ToolExecutionResult toolExecutionResult = ToolExecutionHelper.extractResult(responseNode, false, extractor);
+        ToolExecutionResult toolExecutionResult = ToolExecutionHelper.extractResult(responseNode, false, null, extractor);
 
         assertThat(toolExecutionResult.result()).isInstanceOf(Map.class);
         Map<String, Object> map = (Map<String, Object>) toolExecutionResult.result();
@@ -104,7 +104,7 @@ public class StructuredContentParsingTest {
         JsonNode responseNode = objectMapper.readTree(response);
         McpToolResultExtractor extractor = mock(McpToolResultExtractor.class);
 
-        ToolExecutionResult toolExecutionResult = ToolExecutionHelper.extractResult(responseNode, false, extractor);
+        ToolExecutionResult toolExecutionResult = ToolExecutionHelper.extractResult(responseNode, false, null, extractor);
 
         assertThat(toolExecutionResult.result()).isInstanceOf(Map.class);
         Map<String, Object> map = (Map<String, Object>) toolExecutionResult.result();
@@ -130,7 +130,7 @@ public class StructuredContentParsingTest {
         JsonNode responseNode = objectMapper.readTree(response);
         McpToolResultExtractor extractor = mock(McpToolResultExtractor.class);
 
-        ToolExecutionResult toolExecutionResult = ToolExecutionHelper.extractResult(responseNode, false, extractor);
+        ToolExecutionResult toolExecutionResult = ToolExecutionHelper.extractResult(responseNode, false, null, extractor);
 
         assertThat(toolExecutionResult.result()).isInstanceOf(Map.class);
         Map<String, Object> map = (Map<String, Object>) toolExecutionResult.result();
@@ -161,7 +161,7 @@ public class StructuredContentParsingTest {
         JsonNode responseNode = objectMapper.readTree(response);
         McpToolResultExtractor extractor = mock(McpToolResultExtractor.class);
 
-        ToolExecutionResult toolExecutionResult = ToolExecutionHelper.extractResult(responseNode, false, extractor);
+        ToolExecutionResult toolExecutionResult = ToolExecutionHelper.extractResult(responseNode, false, null, extractor);
 
         assertThat(toolExecutionResult.result()).isEqualTo(Map.of("source", "structured"));
         assertThat(toolExecutionResult.resultText()).isEqualTo("{\"source\":\"structured\"}");

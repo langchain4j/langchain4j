@@ -22,8 +22,12 @@ class ToolExecutionHelper {
      * The entries of the '_meta' element, if present, are stored in
      * {@link ToolExecutionResult#attributes()} and are not sent to the LLM.
      */
+    @SuppressWarnings("removal")
     static ToolExecutionResult extractResult(
-            JsonNode result, boolean ignoreApplicationLevelErrors, McpToolResultExtractor toolResultExtractor) {
+            JsonNode result,
+            boolean ignoreApplicationLevelErrors,
+            McpContentExtractor contentExtractor,
+            McpToolResultExtractor legacyToolResultExtractor) {
         if (result.has("result")) {
             JsonNode resultNode = result.get("result");
             if (resultNode.has("structuredContent")
@@ -40,8 +44,10 @@ class ToolExecutionHelper {
                         .build();
             } else if (resultNode.has("content")) {
                 boolean applicationError = isError(resultNode);
-                ToolExecutionResult toolExecutionResult =
-                        toolResultExtractor.extract(resultNode.get("content"), applicationError);
+                JsonNode contentNode = resultNode.get("content");
+                ToolExecutionResult toolExecutionResult = legacyToolResultExtractor != null
+                        ? legacyToolResultExtractor.extract(contentNode, applicationError)
+                        : contentExtractor.extract(McpJsonConversions.toMaps(contentNode), applicationError);
                 if (applicationError && !ignoreApplicationLevelErrors) {
                     throw new ToolExecutionException(errorMessage(toolExecutionResult, resultNode.get("content")));
                 }

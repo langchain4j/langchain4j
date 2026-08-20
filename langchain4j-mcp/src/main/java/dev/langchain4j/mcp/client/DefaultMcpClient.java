@@ -137,7 +137,10 @@ public class DefaultMcpClient implements McpClient {
     private final Boolean cachePromptList;
     private final List<McpClientListener> listeners;
     private final McpMetaSupplier metaSupplier;
-    private final McpToolResultExtractor toolResultExtractor;
+    private final McpContentExtractor contentExtractor;
+
+    @Deprecated(since = "1.20.0", forRemoval = true)
+    private final McpToolResultExtractor legacyToolResultExtractor;
     private volatile @Nullable McpInitializeResult initializeResult;
     private final int multiRoundTripMaxRetries;
     private final boolean subscribeToToolListChanges;
@@ -183,7 +186,10 @@ public class DefaultMcpClient implements McpClient {
             cacheResourceList = getOrDefault(builder.cacheResourceList, Boolean.TRUE);
             cachePromptList = getOrDefault(builder.cachePromptList, Boolean.TRUE);
             onResourceUpdated = builder.onResourceUpdated;
-            toolResultExtractor = getOrDefault(builder.toolResultExtractor, new DefaultMcpToolResultExtractor());
+            legacyToolResultExtractor = builder.contentExtractor == null ? builder.toolResultExtractor : null;
+            contentExtractor = legacyToolResultExtractor != null
+                    ? null
+                    : getOrDefault(builder.contentExtractor, new DefaultMcpContentExtractor());
             multiRoundTripMaxRetries =
                     getOrDefault(builder.multiRoundTripMaxRetries, DEFAULT_MULTI_ROUND_TRIP_MAX_RETRIES);
             subscribeToToolListChanges = getOrDefault(builder.subscribeToToolListChanges, Boolean.TRUE);
@@ -739,7 +745,7 @@ public class DefaultMcpClient implements McpClient {
                 applyMeta(cancellation, null);
                 transport.executeOperationWithoutResponse(cancellation);
             }
-            return ToolExecutionHelper.extractResult(RESULT_TIMEOUT, false, toolResultExtractor);
+            return ToolExecutionHelper.extractResult(RESULT_TIMEOUT, false, contentExtractor, legacyToolResultExtractor);
         } catch (ExecutionException e) {
             notifyListeners(l -> l.onExecuteToolError(context, e));
             throw new ToolExecutionException(e.getCause());
@@ -751,7 +757,7 @@ public class DefaultMcpClient implements McpClient {
         }
         final JsonNode finalResult = result;
         try {
-            ToolExecutionResult toolResult = ToolExecutionHelper.extractResult(finalResult, false, toolResultExtractor);
+            ToolExecutionResult toolResult = ToolExecutionHelper.extractResult(finalResult, false, contentExtractor, legacyToolResultExtractor);
             notifyListeners(l -> l.afterExecuteTool(
                     context, toolResult, (Map<String, Object>) ToolExecutionHelper.toObject(finalResult)));
             return toolResult;
@@ -764,7 +770,7 @@ public class DefaultMcpClient implements McpClient {
                 // -> we notify the listener with afterExecuteTool
                 notifyListeners(l -> l.afterExecuteTool(
                         context,
-                        ToolExecutionHelper.extractResult(finalResult, true, toolResultExtractor),
+                        ToolExecutionHelper.extractResult(finalResult, true, contentExtractor, legacyToolResultExtractor),
                         (Map<String, Object>) ToolExecutionHelper.toObject(finalResult)));
             }
             throw e;
@@ -1498,6 +1504,9 @@ public class DefaultMcpClient implements McpClient {
         private McpProgressHandler progressHandler;
         private McpMetaSupplier metaSupplier;
         private BiConsumer<McpClient, String> onResourceUpdated;
+        private McpContentExtractor contentExtractor;
+
+        @Deprecated(since = "1.20.0", forRemoval = true)
         private McpToolResultExtractor toolResultExtractor;
         private Integer multiRoundTripMaxRetries;
         private Boolean subscribeToToolListChanges;
@@ -1790,6 +1799,16 @@ public class DefaultMcpClient implements McpClient {
          * parsing text items and returning the first JSON object, can be implemented
          * with a custom extractor.
          */
+        /**
+         * Sets the extractor used for MCP tool responses backed by {@code content[]}.
+         * Takes precedence over {@link #toolResultExtractor(McpToolResultExtractor)}.
+         */
+        public Builder contentExtractor(McpContentExtractor contentExtractor) {
+            this.contentExtractor = ensureNotNull(contentExtractor, "contentExtractor");
+            return this;
+        }
+
+        @Deprecated(since = "1.20.0", forRemoval = true)
         public Builder toolResultExtractor(McpToolResultExtractor toolResultExtractor) {
             this.toolResultExtractor = ensureNotNull(toolResultExtractor, "toolResultExtractor");
             return this;

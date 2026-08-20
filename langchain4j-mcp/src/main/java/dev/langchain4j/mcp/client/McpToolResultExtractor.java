@@ -12,9 +12,12 @@ import dev.langchain4j.service.tool.ToolExecutionResult;
  * <p>
  * This interface is not a general-purpose MCP content parsing framework. The default
  * client only supports {@code structuredContent} and text content out of the box.
+ * @deprecated use {@link McpContentExtractor}, which does not expose Jackson types.
+ *
  * More specialized extraction strategies can be provided through
  * {@link DefaultMcpClient.Builder#toolResultExtractor(McpToolResultExtractor)}.
  */
+@Deprecated(since = "1.20.0", forRemoval = true)
 public interface McpToolResultExtractor {
 
     /**

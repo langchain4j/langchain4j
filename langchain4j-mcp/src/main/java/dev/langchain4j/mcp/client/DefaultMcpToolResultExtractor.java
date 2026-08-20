@@ -13,6 +13,8 @@ import java.util.stream.StreamSupport;
  * newline characters, and stores the result in {@link ToolExecutionResult#resultText()}.
  * It does not apply to responses that contain {@code structuredContent}.
  */
+@Deprecated(since = "1.20.0", forRemoval = true)
+@SuppressWarnings("removal")
 public class DefaultMcpToolResultExtractor implements McpToolResultExtractor {
 
     @Override
