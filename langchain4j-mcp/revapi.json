@@ -124,6 +124,30 @@
           "classQualifiedName": "dev.langchain4j.mcp.protocol.McpReadResourceParams",
           "methodName": "setRequestState",
           "justification": "requestState is opaque state the server sends and the client echoes back unchanged, so it is carried as a plain value rather than a JsonNode. These params types are @Internal, whose javadoc states they may change at any time; quarkus-langchain4j uses them but only for getName()/getUri()."
+        },
+        {
+          "code": "java.method.parameterTypeChanged",
+          "classQualifiedName": "dev.langchain4j.mcp.protocol.McpCallToolParams",
+          "methodName": "<init>",
+          "justification": "Tool-call arguments are carried as a plain Map rather than a Jackson ObjectNode. A Jackson 3 mapper cannot serialize a Jackson 2 ObjectNode: it does not fail, it bean-serializes the node, so the arguments silently become {\"array\":false,\"bigDecimal\":false,...}. Transports outside LangChain4j serialize the outgoing message with their own mapper, so this type had to stop exposing a Jackson type for them to be able to move to Jackson 3. Both types are @Internal, whose javadoc states they may change at any time; quarkus-langchain4j uses them but only for getName()."
+        },
+        {
+          "code": "java.method.returnTypeChanged",
+          "classQualifiedName": "dev.langchain4j.mcp.protocol.McpCallToolParams",
+          "methodName": "getArguments",
+          "justification": "Tool-call arguments are carried as a plain Map rather than a Jackson ObjectNode. A Jackson 3 mapper cannot serialize a Jackson 2 ObjectNode: it does not fail, it bean-serializes the node, so the arguments silently become {\"array\":false,\"bigDecimal\":false,...}. Transports outside LangChain4j serialize the outgoing message with their own mapper, so this type had to stop exposing a Jackson type for them to be able to move to Jackson 3. Both types are @Internal, whose javadoc states they may change at any time; quarkus-langchain4j uses them but only for getName()."
+        },
+        {
+          "code": "java.method.parameterTypeChanged",
+          "classQualifiedName": "dev.langchain4j.mcp.protocol.McpCallToolParams",
+          "methodName": "setArguments",
+          "justification": "Tool-call arguments are carried as a plain Map rather than a Jackson ObjectNode. A Jackson 3 mapper cannot serialize a Jackson 2 ObjectNode: it does not fail, it bean-serializes the node, so the arguments silently become {\"array\":false,\"bigDecimal\":false,...}. Transports outside LangChain4j serialize the outgoing message with their own mapper, so this type had to stop exposing a Jackson type for them to be able to move to Jackson 3. Both types are @Internal, whose javadoc states they may change at any time; quarkus-langchain4j uses them but only for getName()."
+        },
+        {
+          "code": "java.method.parameterTypeChanged",
+          "classQualifiedName": "dev.langchain4j.mcp.protocol.McpCallToolRequest",
+          "methodName": "<init>",
+          "justification": "Tool-call arguments are carried as a plain Map rather than a Jackson ObjectNode. A Jackson 3 mapper cannot serialize a Jackson 2 ObjectNode: it does not fail, it bean-serializes the node, so the arguments silently become {\"array\":false,\"bigDecimal\":false,...}. Transports outside LangChain4j serialize the outgoing message with their own mapper, so this type had to stop exposing a Jackson type for them to be able to move to Jackson 3. Both types are @Internal, whose javadoc states they may change at any time; quarkus-langchain4j uses them but only for getName()."
         }
       ]
     }

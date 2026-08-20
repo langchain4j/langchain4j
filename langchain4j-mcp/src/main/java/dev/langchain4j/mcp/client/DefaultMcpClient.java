@@ -9,6 +9,7 @@ import dev.langchain4j.mcp.protocol.McpServerDiscoverResponse;
 import dev.langchain4j.internal.Json;
 import dev.langchain4j.mcp.protocol.McpErrorResponse;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -701,13 +702,13 @@ public class DefaultMcpClient implements McpClient {
     @Override
     public ToolExecutionResult executeTool(ToolExecutionRequest executionRequest, InvocationContext invocationContext) {
         assertNotClosed();
-        ObjectNode arguments = null;
+        Map<String, Object> arguments;
         try {
             String args = executionRequest.arguments();
             if (isNullOrBlank(args)) {
                 args = "{}";
             }
-            arguments = OBJECT_MAPPER.readValue(args, ObjectNode.class);
+            arguments = OBJECT_MAPPER.readValue(args, new TypeReference<Map<String, Object>>() {});
         } catch (JsonProcessingException e) {
             throw new ToolArgumentsException(e);
         }
@@ -727,7 +728,7 @@ public class DefaultMcpClient implements McpClient {
             resultFuture = executeViaTransport(context);
             result = resultFuture.get(timeoutMillis, TimeUnit.MILLISECONDS);
 
-            final ObjectNode finalArguments = arguments;
+            final Map<String, Object> finalArguments = arguments;
             result = handleMultiRoundTrip(
                     result,
                     timeoutMillis,
@@ -1409,7 +1410,7 @@ public class DefaultMcpClient implements McpClient {
     }
 
     @SuppressWarnings("unchecked")
-    private Map<String, String> buildMcpParamHeaders(String toolName, ObjectNode arguments) {
+    private Map<String, String> buildMcpParamHeaders(String toolName, Map<String, Object> arguments) {
         List<ToolSpecification> tools = toolListRefs.get();
         if (tools == null) {
             log.warn(
@@ -1437,18 +1438,16 @@ public class DefaultMcpClient implements McpClient {
         for (Map.Entry<String, String> entry : headerMappings.entrySet()) {
             String propertyPath = entry.getKey();
             String headerName = entry.getValue();
-            JsonNode value = resolvePropertyPath(arguments, propertyPath);
-            if (value == null || value.isNull() || value.isMissingNode()) {
-                continue;
-            }
+            Object value = resolvePropertyPath(arguments, propertyPath);
             String stringValue;
-            if (value.isTextual()) {
-                stringValue = value.asText();
-            } else if (value.isInt() || value.isLong()) {
-                stringValue = String.valueOf(value.asLong());
-            } else if (value.isBoolean()) {
-                stringValue = value.asBoolean() ? "true" : "false";
+            if (value instanceof String text) {
+                stringValue = text;
+            } else if (value instanceof Integer || value instanceof Long) {
+                stringValue = String.valueOf(((Number) value).longValue());
+            } else if (value instanceof Boolean bool) {
+                stringValue = bool ? "true" : "false";
             } else {
+                // nulls, floating-point and oversized numbers, objects and arrays are not sent as headers
                 continue;
             }
             result.put(headerName, McpHeaderEncoding.encode(stringValue));
@@ -1456,14 +1455,14 @@ public class DefaultMcpClient implements McpClient {
         return result.isEmpty() ? null : result;
     }
 
-    private static JsonNode resolvePropertyPath(ObjectNode root, String path) {
+    private static @Nullable Object resolvePropertyPath(Map<String, Object> root, String path) {
         String[] segments = path.split("\\.");
-        JsonNode current = root;
+        Object current = root;
         for (String segment : segments) {
-            if (current == null || current.isMissingNode() || !current.isObject()) {
+            if (!(current instanceof Map<?, ?> map)) {
                 return null;
             }
-            current = current.get(segment);
+            current = map.get(segment);
         }
         return current;
     }
