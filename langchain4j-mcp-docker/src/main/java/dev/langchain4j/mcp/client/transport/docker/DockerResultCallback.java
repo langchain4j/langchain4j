@@ -81,10 +81,10 @@ class DockerResultCallback extends ResultCallback.Adapter<Frame> {
         }
 
         try {
-            messageHandler.handle(OBJECT_MAPPER.readTree(message));
+            messageHandler.handleRaw(message);
             logAggregator.setLength(0);
             countDownLatch.countDown();
-        } catch (JsonProcessingException e) {
+        } catch (RuntimeException e) {
             throw new RuntimeException(e);
         }
     }

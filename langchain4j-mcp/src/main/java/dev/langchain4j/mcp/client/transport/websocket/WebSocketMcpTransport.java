@@ -147,9 +147,9 @@ public class WebSocketMcpTransport implements McpTransport {
     }
 
     @Override
-    public CompletableFuture<JsonNode> initialize(McpInitializeRequest operation) {
+    public CompletableFuture<String> initializeRaw(McpInitializeRequest operation) {
         this.initializeRequest = operation;
-        CompletableFuture<JsonNode> completableFuture =
+        CompletableFuture<String> completableFuture =
                 execute(new McpCallContext(null, operation), Optional.empty(), operation.getId());
         return completableFuture
                 .thenCompose(originalResponse -> {
@@ -161,12 +161,12 @@ public class WebSocketMcpTransport implements McpTransport {
     }
 
     @Override
-    public CompletableFuture<JsonNode> executeOperationWithResponse(McpClientMessage request) {
-        return executeOperationWithResponse(new McpCallContext(null, request));
+    public CompletableFuture<String> executeOperationWithRawResponse(McpClientMessage request) {
+        return executeOperationWithRawResponse(new McpCallContext(null, request));
     }
 
     @Override
-    public CompletableFuture<JsonNode> executeOperationWithResponse(McpCallContext context) {
+    public CompletableFuture<String> executeOperationWithRawResponse(McpCallContext context) {
         return execute(context, Optional.empty(), context.message().getId());
     }
 
@@ -226,14 +226,14 @@ public class WebSocketMcpTransport implements McpTransport {
         }
     }
 
-    private CompletableFuture<JsonNode> execute(McpCallContext context, Optional<WebSocket> webSocket, Long id) {
-        CompletableFuture<JsonNode> future = new CompletableFuture<>();
+    private CompletableFuture<String> execute(McpCallContext context, Optional<WebSocket> webSocket, Long id) {
+        CompletableFuture<String> future = new CompletableFuture<>();
         if (closed) {
             future.completeExceptionally(new IllegalStateException("Transport is closed"));
             return future;
         }
         if (id != null) {
-            operationHandler.startOperation(id, future);
+            operationHandler.startRawOperation(id, future);
         }
         try {
             String messageJson = OBJECT_MAPPER.writeValueAsString(context.message());

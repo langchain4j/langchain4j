@@ -16,7 +16,7 @@ class SseSubscriber implements Flow.Subscriber<String> {
      * Future for the result of the operation that this SSE subscriber was created for.
      * If this is a subsidiary SSE subscriber for the long-lived GET channel (therefore, no operation), this will be null.
      */
-    private final CompletableFuture<JsonNode> future;
+    private final CompletableFuture<String> future;
 
     private final Logger logger;
     private final boolean logResponses;
@@ -32,7 +32,7 @@ class SseSubscriber implements Flow.Subscriber<String> {
      * Constructor for a regular (non-subsidiary) SSE subscriber, used for POST response streams.
      */
     SseSubscriber(
-            CompletableFuture<JsonNode> future,
+            CompletableFuture<String> future,
             boolean logResponses,
             McpOperationHandler operationHandler,
             Logger logger,
@@ -99,8 +99,8 @@ class SseSubscriber implements Flow.Subscriber<String> {
         subscription.request(1);
         if (item.startsWith("data:")) {
             try {
-                operationHandler.handle(StreamableHttpMcpTransport.OBJECT_MAPPER.readTree(item.substring(5)));
-            } catch (JsonProcessingException e) {
+                operationHandler.handleRaw(item.substring(5));
+            } catch (RuntimeException e) {
                 logger.warn("Failed to parse SSE event: " + item, e);
             }
         } else if (item.startsWith("id:") && lastEventId != null) {

@@ -169,13 +169,13 @@ public class DockerMcpTransport implements McpTransport {
     }
 
     @Override
-    public CompletableFuture<JsonNode> initialize(McpInitializeRequest operation) {
+    public CompletableFuture<String> initializeRaw(McpInitializeRequest operation) {
         try {
             String requestString = OBJECT_MAPPER.writeValueAsString(operation);
             String initializationNotification = OBJECT_MAPPER.writeValueAsString(new McpInitializationNotification());
-            final CompletableFuture<JsonNode> execute = execute(requestString, operation.getId());
+            final CompletableFuture<String> execute = execute(requestString, operation.getId());
             return execute.thenCompose(originalResponse -> {
-                final CompletableFuture<JsonNode> execute1 = execute(initializationNotification, null);
+                final CompletableFuture<String> execute1 = execute(initializationNotification, null);
                 return execute1.thenCompose(nullNode -> CompletableFuture.completedFuture(originalResponse));
             });
         } catch (JsonProcessingException e) {
@@ -184,12 +184,12 @@ public class DockerMcpTransport implements McpTransport {
     }
 
     @Override
-    public CompletableFuture<JsonNode> executeOperationWithResponse(McpClientMessage operation) {
-        return executeOperationWithResponse(new McpCallContext(null, operation));
+    public CompletableFuture<String> executeOperationWithRawResponse(McpClientMessage operation) {
+        return executeOperationWithRawResponse(new McpCallContext(null, operation));
     }
 
     @Override
-    public CompletableFuture<JsonNode> executeOperationWithResponse(McpCallContext context) {
+    public CompletableFuture<String> executeOperationWithRawResponse(McpCallContext context) {
         try {
             String requestString = OBJECT_MAPPER.writeValueAsString(context.message());
             return execute(requestString, context.message().getId());
@@ -241,10 +241,10 @@ public class DockerMcpTransport implements McpTransport {
         dockerClient.removeContainerCmd(containerId).exec();
     }
 
-    private CompletableFuture<JsonNode> execute(String request, Long id) {
-        CompletableFuture<JsonNode> future = new CompletableFuture<>();
+    private CompletableFuture<String> execute(String request, Long id) {
+        CompletableFuture<String> future = new CompletableFuture<>();
         if (id != null) {
-            messageHandler.startOperation(id, future);
+            messageHandler.startRawOperation(id, future);
         }
 
         PipedOutputStream out = null;
@@ -294,7 +294,7 @@ public class DockerMcpTransport implements McpTransport {
     }
 
     private void awaitResponseAndDetach(
-            DockerResultCallback callback, CompletableFuture<JsonNode> future, Closeable... toClose) {
+            DockerResultCallback callback, CompletableFuture<String> future, Closeable... toClose) {
         try {
             if (!callback.awaitCompletion(responseTimeout.toMillis(), TimeUnit.MILLISECONDS)) {
                 String message = "The MCP server in container %s did not respond within %s"

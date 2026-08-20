@@ -49,7 +49,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
     private final boolean logRequests;
     private final Logger trafficLog;
     static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-    private final AtomicReference<CompletableFuture<JsonNode>> initializeInProgress = new AtomicReference<>(null);
+    private final AtomicReference<CompletableFuture<String>> initializeInProgress = new AtomicReference<>(null);
     private volatile McpOperationHandler operationHandler;
     private final HttpClient httpClient;
     private final SSLContext sslContext;
@@ -101,9 +101,9 @@ public class StreamableHttpMcpTransport implements McpTransport {
     }
 
     @Override
-    public CompletableFuture<JsonNode> initialize(McpInitializeRequest operation) {
+    public CompletableFuture<String> initializeRaw(McpInitializeRequest operation) {
         this.initializeRequest = operation;
-        CompletableFuture<JsonNode> completableFuture = execute(new McpCallContext(null, operation), false);
+        CompletableFuture<String> completableFuture = execute(new McpCallContext(null, operation), false);
         initializeInProgress.set(completableFuture);
         return completableFuture
                 .thenCompose(originalResponse -> {
@@ -179,12 +179,12 @@ public class StreamableHttpMcpTransport implements McpTransport {
     }
 
     @Override
-    public CompletableFuture<JsonNode> executeOperationWithResponse(McpClientMessage operation) {
-        return executeOperationWithResponse(new McpCallContext(null, operation));
+    public CompletableFuture<String> executeOperationWithRawResponse(McpClientMessage operation) {
+        return executeOperationWithRawResponse(new McpCallContext(null, operation));
     }
 
     @Override
-    public CompletableFuture<JsonNode> executeOperationWithResponse(McpCallContext context) {
+    public CompletableFuture<String> executeOperationWithRawResponse(McpCallContext context) {
         return execute(context, false);
     }
 
@@ -252,10 +252,10 @@ public class StreamableHttpMcpTransport implements McpTransport {
         this.protocolVersionHeader = protocolVersion;
     }
 
-    private CompletableFuture<JsonNode> execute(McpCallContext context, boolean isRetry) {
+    private CompletableFuture<String> execute(McpCallContext context, boolean isRetry) {
         Long id = context.message().getId();
         if (!(context.message() instanceof McpInitializeRequest)) {
-            CompletableFuture<JsonNode> reinitializeInProgress = this.initializeInProgress.get();
+            CompletableFuture<String> reinitializeInProgress = this.initializeInProgress.get();
             if (reinitializeInProgress != null) {
                 reinitializeInProgress.join();
             }
@@ -266,9 +266,9 @@ public class StreamableHttpMcpTransport implements McpTransport {
         } catch (JsonProcessingException e) {
             return CompletableFuture.failedFuture(e);
         }
-        CompletableFuture<JsonNode> future = new CompletableFuture<>();
+        CompletableFuture<String> future = new CompletableFuture<>();
         if (id != null) {
-            operationHandler.startOperation(id, future);
+            operationHandler.startRawOperation(id, future);
         }
 
         httpClient
@@ -333,10 +333,9 @@ public class StreamableHttpMcpTransport implements McpTransport {
                                             future.complete(null);
                                         }
                                         try {
-                                            JsonNode node = OBJECT_MAPPER.readTree(responseBody);
-                                            operationHandler.handle(node);
+                                            operationHandler.handleRaw(responseBody);
                                             return null;
-                                        } catch (IOException e) {
+                                        } catch (RuntimeException e) {
                                             future.completeExceptionally(e);
                                             return null;
                                         }

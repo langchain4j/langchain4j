@@ -82,7 +82,7 @@ public class StdioMcpTransport implements McpTransport {
     }
 
     @Override
-    public CompletableFuture<JsonNode> initialize(McpInitializeRequest operation) {
+    public CompletableFuture<String> initializeRaw(McpInitializeRequest operation) {
         try {
             String requestString = OBJECT_MAPPER.writeValueAsString(operation);
             String initializationNotification = OBJECT_MAPPER.writeValueAsString(new McpInitializationNotification());
@@ -95,12 +95,12 @@ public class StdioMcpTransport implements McpTransport {
     }
 
     @Override
-    public CompletableFuture<JsonNode> executeOperationWithResponse(McpClientMessage operation) {
-        return executeOperationWithResponse(new McpCallContext(null, operation));
+    public CompletableFuture<String> executeOperationWithRawResponse(McpClientMessage operation) {
+        return executeOperationWithRawResponse(new McpCallContext(null, operation));
     }
 
     @Override
-    public CompletableFuture<JsonNode> executeOperationWithResponse(McpCallContext context) {
+    public CompletableFuture<String> executeOperationWithRawResponse(McpCallContext context) {
         try {
             String requestString = OBJECT_MAPPER.writeValueAsString(context.message());
             return execute(requestString, context.message().getId());
@@ -187,10 +187,10 @@ public class StdioMcpTransport implements McpTransport {
         return new Builder();
     }
 
-    private CompletableFuture<JsonNode> execute(String request, Long id) {
-        CompletableFuture<JsonNode> future = new CompletableFuture<>();
+    private CompletableFuture<String> execute(String request, Long id) {
+        CompletableFuture<String> future = new CompletableFuture<>();
         if (id != null) {
-            messageHandler.startOperation(id, future);
+            messageHandler.startRawOperation(id, future);
         }
         try {
             jsonRpcIoHandler.submit(request);
