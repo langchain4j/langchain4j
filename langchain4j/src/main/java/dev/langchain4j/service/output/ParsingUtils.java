@@ -67,18 +67,11 @@ class ParsingUtils {
         return parseLines(text, parser, emptyCollectionSupplier, type);
     }
 
-    /**
-     * Deserializes text that starts with '{' into a map.
-     *
-     * <p>Unlike {@link #parseJsonArrayOrNull(String)}, malformed input is not treated as a
-     * false positive to fall back from: text that opens a JSON object but does not parse is a
-     * genuinely unusable model response. It is reported as an {@link OutputParsingException},
-     * the documented failure type, rather than leaking the underlying deserializer's exception.
-     */
     private static Map<?, ?> parseJsonObjectOrThrow(String text, String type) {
         try {
             return Json.fromJson(text, Map.class);
         } catch (RuntimeException e) {
+            // unlike a JSON array, text that opens with "{" and does not parse is unusable, so there is no fallback
             throw outputParsingException(text, type, e);
         }
     }
