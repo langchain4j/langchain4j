@@ -664,7 +664,7 @@ See more details [here](/tutorials/spring-boot-integration#observability).
 
 See more details on how to collect Micrometer Metrics in Spring Boot application [here](/tutorials/spring-boot-integration#micrometer-metrics). 
 
-Details on how to integrate the Micrometer Observation API library with SpringBoot can be found [here](spring-boot-integration.md#micrometer-observation).
+Details on how to integrate the Micrometer Observation API library with SpringBoot can be found [here](spring-boot-integration.md#micrometer-observation-api).
 
 ## Third-party Integrations
 
