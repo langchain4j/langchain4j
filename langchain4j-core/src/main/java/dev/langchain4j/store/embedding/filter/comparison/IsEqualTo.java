@@ -1,15 +1,14 @@
 package dev.langchain4j.store.embedding.filter.comparison;
 
-import dev.langchain4j.data.document.Metadata;
-import dev.langchain4j.store.embedding.filter.Filter;
-
-import java.util.Objects;
-import java.util.UUID;
-
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static dev.langchain4j.store.embedding.filter.comparison.NumberComparator.compareAsBigDecimals;
+import static dev.langchain4j.store.embedding.filter.comparison.NumberComparator.isEqualTo;
 import static dev.langchain4j.store.embedding.filter.comparison.TypeChecker.ensureTypesAreCompatible;
+
+import dev.langchain4j.data.document.Metadata;
+import dev.langchain4j.store.embedding.filter.Filter;
+import java.util.Objects;
+import java.util.UUID;
 
 public class IsEqualTo implements Filter {
 
@@ -43,7 +42,7 @@ public class IsEqualTo implements Filter {
         ensureTypesAreCompatible(actualValue, comparisonValue, key);
 
         if (actualValue instanceof Number) {
-            return compareAsBigDecimals(actualValue, comparisonValue) == 0;
+            return isEqualTo(actualValue, comparisonValue);
         }
 
         if (comparisonValue instanceof UUID && actualValue instanceof String) {
@@ -57,8 +56,7 @@ public class IsEqualTo implements Filter {
         if (o == this) return true;
         if (!(o instanceof IsEqualTo other)) return false;
 
-        return Objects.equals(this.key, other.key)
-                && Objects.equals(this.comparisonValue, other.comparisonValue);
+        return Objects.equals(this.key, other.key) && Objects.equals(this.comparisonValue, other.comparisonValue);
     }
 
     public int hashCode() {

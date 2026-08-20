@@ -1,14 +1,13 @@
 package dev.langchain4j.store.embedding.filter.comparison;
 
-import dev.langchain4j.data.document.Metadata;
-import dev.langchain4j.store.embedding.filter.Filter;
-
-import java.util.Objects;
-
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static dev.langchain4j.store.embedding.filter.comparison.NumberComparator.compareAsBigDecimals;
+import static dev.langchain4j.store.embedding.filter.comparison.NumberComparator.isLessThan;
 import static dev.langchain4j.store.embedding.filter.comparison.TypeChecker.ensureTypesAreCompatible;
+
+import dev.langchain4j.data.document.Metadata;
+import dev.langchain4j.store.embedding.filter.Filter;
+import java.util.Objects;
 
 public class IsLessThan implements Filter {
 
@@ -42,7 +41,7 @@ public class IsLessThan implements Filter {
         ensureTypesAreCompatible(actualValue, comparisonValue, key);
 
         if (actualValue instanceof Number) {
-            return compareAsBigDecimals(actualValue, comparisonValue) < 0;
+            return isLessThan(actualValue, comparisonValue);
         }
 
         return ((Comparable) actualValue).compareTo(comparisonValue) < 0;
@@ -52,8 +51,7 @@ public class IsLessThan implements Filter {
         if (o == this) return true;
         if (!(o instanceof IsLessThan other)) return false;
 
-        return Objects.equals(this.key, other.key)
-                && Objects.equals(this.comparisonValue, other.comparisonValue);
+        return Objects.equals(this.key, other.key) && Objects.equals(this.comparisonValue, other.comparisonValue);
     }
 
     public int hashCode() {
