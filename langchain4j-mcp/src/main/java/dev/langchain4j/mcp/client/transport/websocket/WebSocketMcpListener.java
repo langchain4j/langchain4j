@@ -48,7 +48,7 @@ public class WebSocketMcpListener implements WebSocket.Listener {
                 trafficLogger.info("< " + completeMessage);
             }
             try {
-                operationHandler.handleRaw(completeMessage);
+                operationHandler.handleJson(completeMessage);
             } catch (RuntimeException e) {
                 logger.warn("Failed to parse JSON message: {}", completeMessage, e);
             }

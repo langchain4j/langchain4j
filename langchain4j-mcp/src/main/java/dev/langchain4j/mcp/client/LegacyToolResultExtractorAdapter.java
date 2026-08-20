@@ -1,7 +1,7 @@
 package dev.langchain4j.mcp.client;
 
 import dev.langchain4j.Internal;
-import dev.langchain4j.mcp.client.transport.McpRawJson;
+import dev.langchain4j.mcp.client.transport.McpJson;
 import dev.langchain4j.service.tool.ToolExecutionResult;
 import java.util.List;
 import java.util.Map;
@@ -23,6 +23,6 @@ class LegacyToolResultExtractorAdapter implements McpContentExtractor {
 
     @Override
     public ToolExecutionResult extract(List<Map<String, Object>> content, boolean isError) {
-        return delegate.extract(McpRawJson.parse(McpRawJson.serialize(content)), isError);
+        return delegate.extract(McpJson.parse(McpJson.serialize(content)), isError);
     }
 }

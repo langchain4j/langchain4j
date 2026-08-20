@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.mcp.client.transport.McpRawJson;
+import dev.langchain4j.mcp.client.transport.McpJson;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -18,7 +18,7 @@ class McpSchemaCoercionTest {
     @SuppressWarnings("unchecked")
     private static ToolSpecification firstTool(String toolsArrayJson) {
         List<Map<String, Object>> tools = (List<Map<String, Object>>)
-                McpRawJson.toMap("{\"tools\":" + toolsArrayJson + "}").get("tools");
+                McpJson.toMap("{\"tools\":" + toolsArrayJson + "}").get("tools");
         return ToolSpecificationHelper.toolSpecificationListFromMcpResponse(tools).get(0);
     }
 

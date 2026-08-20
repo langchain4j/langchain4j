@@ -1,7 +1,7 @@
 package dev.langchain4j.mcp.client;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import dev.langchain4j.mcp.client.transport.McpRawJson;
+import dev.langchain4j.mcp.client.transport.McpJson;
 import dev.langchain4j.mcp.protocol.McpListResourceTemplatesResult;
 import dev.langchain4j.mcp.protocol.McpListResourcesResult;
 import dev.langchain4j.mcp.protocol.McpReadResourceResponse;
@@ -17,7 +17,7 @@ class ResourcesHelper {
     static List<McpResource> parseResourceRefs(JsonNode mcpMessage) {
         McpErrorHelper.checkForErrors(mcpMessage);
         McpListResourcesResult.Result result =
-                McpRawJson.deserialize(mcpMessage, McpListResourcesResult.class).getResult();
+                McpJson.deserialize(mcpMessage, McpListResourcesResult.class).getResult();
         requireResult(result, mcpMessage);
         return require(result.getResources(), "resources", mcpMessage);
     }
@@ -25,7 +25,7 @@ class ResourcesHelper {
     static List<McpResourceTemplate> parseResourceTemplateRefs(JsonNode mcpMessage) {
         McpErrorHelper.checkForErrors(mcpMessage);
         McpListResourceTemplatesResult.Result result =
-                McpRawJson.deserialize(mcpMessage, McpListResourceTemplatesResult.class).getResult();
+                McpJson.deserialize(mcpMessage, McpListResourceTemplatesResult.class).getResult();
         requireResult(result, mcpMessage);
         return require(result.getResourceTemplates(), "resourceTemplates", mcpMessage);
     }
@@ -33,7 +33,7 @@ class ResourcesHelper {
     static McpReadResourceResult parseResourceContents(JsonNode mcpMessage) {
         McpErrorHelper.checkForErrors(mcpMessage);
         McpReadResourceResponse.Result result =
-                McpRawJson.deserialize(mcpMessage, McpReadResourceResponse.class).getResult();
+                McpJson.deserialize(mcpMessage, McpReadResourceResponse.class).getResult();
 
         requireResult(result, mcpMessage);
         List<McpReadResourceResponse.Contents> contents = require(result.getContents(), "contents", mcpMessage);

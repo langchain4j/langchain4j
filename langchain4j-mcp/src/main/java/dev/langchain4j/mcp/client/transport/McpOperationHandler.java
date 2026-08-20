@@ -69,35 +69,35 @@ public class McpOperationHandler {
 
     @Deprecated(since = "1.20.0", forRemoval = true)
     public void handle(JsonNode message) {
-        handleRaw(McpRawJson.toRawJson(message));
+        handleJson(McpJson.serialize(message));
     }
 
     /**
-     * Raw-JSON counterpart of {@link #handle(JsonNode)}, so that transports can hand over
+     * JSON-text counterpart of {@link #handle(JsonNode)}, so that transports can hand over
      * the message exactly as it arrived on the wire without parsing it first.
      */
-    public void handleRaw(String rawMessage) {
+    public void handleJson(String json) {
         Map<String, Object> message;
         try {
-            message = McpRawJson.toMap(rawMessage);
+            message = McpJson.toMap(json);
         } catch (RuntimeException e) {
             // not a JSON-RPC object: a batch array, or something malformed
-            log.warn("Received unknown message: {}", rawMessage);
+            log.warn("Received unknown message: {}", json);
             return;
         }
         if (message == null) {
             // a bare JSON null parses without error but is not a message
-            log.warn("Received unknown message: {}", rawMessage);
+            log.warn("Received unknown message: {}", json);
             return;
         }
         if (message.containsKey("id")) {
-            handleMessageWithId(message, rawMessage);
+            handleMessageWithId(message, json);
         } else if (message.containsKey("method")) {
             handleNotification(message);
         }
     }
 
-    private void handleMessageWithId(Map<String, Object> message, String rawMessage) {
+    private void handleMessageWithId(Map<String, Object> message, String json) {
         Long messageId = toLong(message.get("id"));
         if (messageId == null) {
             log.warn("Received message with an unusable id: {}", message);
@@ -107,7 +107,7 @@ public class McpOperationHandler {
             // response to a client-initiated operation
             CompletableFuture<String> op = pendingOperations.remove(messageId);
             if (op != null) {
-                op.complete(rawMessage);
+                op.complete(json);
             } else {
                 log.warn("Received response for unknown message id: {}", messageId);
             }
@@ -262,25 +262,25 @@ public class McpOperationHandler {
 
     @Deprecated(since = "1.20.0", forRemoval = true)
     public void startOperation(Long id, CompletableFuture<JsonNode> future) {
-        CompletableFuture<String> rawFuture = new CompletableFuture<>();
-        rawFuture.whenComplete((rawMessage, error) -> {
+        CompletableFuture<String> jsonFuture = new CompletableFuture<>();
+        jsonFuture.whenComplete((json, error) -> {
             if (error != null) {
                 future.completeExceptionally(error);
                 return;
             }
             try {
-                future.complete(McpRawJson.parse(rawMessage));
+                future.complete(McpJson.parse(json));
             } catch (RuntimeException e) {
                 future.completeExceptionally(e);
             }
         });
-        startRawOperation(id, rawFuture);
+        startJsonOperation(id, jsonFuture);
     }
 
     /**
-     * Raw-JSON counterpart of {@link #startOperation(Long, CompletableFuture)}.
+     * JSON-text counterpart of {@link #startOperation(Long, CompletableFuture)}.
      */
-    public void startRawOperation(Long id, CompletableFuture<String> future) {
+    public void startJsonOperation(Long id, CompletableFuture<String> future) {
         pendingOperations.put(id, future);
     }
 

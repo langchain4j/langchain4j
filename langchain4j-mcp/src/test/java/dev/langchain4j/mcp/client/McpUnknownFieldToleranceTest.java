@@ -3,7 +3,7 @@ package dev.langchain4j.mcp.client;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 
-import dev.langchain4j.mcp.client.transport.McpRawJson;
+import dev.langchain4j.mcp.client.transport.McpJson;
 import dev.langchain4j.mcp.protocol.McpInitializeResult;
 import dev.langchain4j.mcp.protocol.McpListPromptsResult;
 import dev.langchain4j.mcp.protocol.McpListResourcesResult;
@@ -24,7 +24,7 @@ class McpUnknownFieldToleranceTest {
                 {"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2025-06-18","capabilities":{},
                  "serverInfo":{"name":"s","version":"1","websiteUrl":"https://example.com"}}}""";
 
-        McpInitializeResult result = McpRawJson.deserialize(McpRawJson.parse(response), McpInitializeResult.class);
+        McpInitializeResult result = McpJson.deserialize(McpJson.parse(response), McpInitializeResult.class);
 
         assertThat(result.getResult().getServerInfo().getName()).isEqualTo("s");
     }
@@ -36,7 +36,7 @@ class McpUnknownFieldToleranceTest {
                 {"jsonrpc":"2.0","id":1,"result":{"resources":[
                  {"uri":"file:///a","name":"n","title":"T","size":12,"annotations":{"audience":["user"]}}]}}""";
 
-        McpListResourcesResult result = McpRawJson.deserialize(McpRawJson.parse(response), McpListResourcesResult.class);
+        McpListResourcesResult result = McpJson.deserialize(McpJson.parse(response), McpListResourcesResult.class);
 
         assertThat(result.getResult().getResources()).singleElement().satisfies(r -> assertThat(r.name())
                 .isEqualTo("n"));
@@ -48,7 +48,7 @@ class McpUnknownFieldToleranceTest {
                 """
                 {"jsonrpc":"2.0","id":1,"result":{"prompts":[{"name":"p","title":"T","description":"d"}]}}""";
 
-        McpListPromptsResult result = McpRawJson.deserialize(McpRawJson.parse(response), McpListPromptsResult.class);
+        McpListPromptsResult result = McpJson.deserialize(McpJson.parse(response), McpListPromptsResult.class);
 
         assertThat(result.getResult().getPrompts()).singleElement().satisfies(p -> assertThat(p.name())
                 .isEqualTo("p"));
@@ -63,7 +63,7 @@ class McpUnknownFieldToleranceTest {
 
         assertThatCode(() -> ToolSpecificationHelper.toolSpecificationListFromMcpResponse(
                         (java.util.List<java.util.Map<String, Object>>)
-                                McpRawJson.toMap("{\"tools\":" + toolsArray + "}").get("tools")))
+                                McpJson.toMap("{\"tools\":" + toolsArray + "}").get("tools")))
                 .doesNotThrowAnyException();
     }
 
@@ -74,7 +74,7 @@ class McpUnknownFieldToleranceTest {
                 {"jsonrpc":"2.0","id":1,"someFutureTopLevel":true,
                  "result":{"nextCursor":"c","someFutureResultField":1,"resources":[{"uri":"file:///a","name":"n"}]}}""";
 
-        assertThatCode(() -> McpRawJson.deserialize(McpRawJson.parse(response), McpListResourcesResult.class))
+        assertThatCode(() -> McpJson.deserialize(McpJson.parse(response), McpListResourcesResult.class))
                 .doesNotThrowAnyException();
     }
 }

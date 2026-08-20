@@ -3,7 +3,7 @@ package dev.langchain4j.mcp.client;
 import static dev.langchain4j.mcp.client.McpToolMetadataKeys.*;
 
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.mcp.client.transport.McpRawJson;
+import dev.langchain4j.mcp.client.transport.McpJson;
 import dev.langchain4j.model.chat.request.json.JsonAnyOfSchema;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonBooleanSchema;
@@ -484,7 +484,7 @@ class ToolSpecificationHelper {
     }
 
     private static List<McpIcon> toIcons(Object value) {
-        return McpRawJson.convertList(value, McpIcon.class);
+        return McpJson.convertList(value, McpIcon.class);
     }
 
     /**

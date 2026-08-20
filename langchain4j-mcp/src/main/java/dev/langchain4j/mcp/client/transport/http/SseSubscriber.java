@@ -97,7 +97,7 @@ class SseSubscriber implements Flow.Subscriber<String> {
         subscription.request(1);
         if (item.startsWith("data:")) {
             try {
-                operationHandler.handleRaw(item.substring(5));
+                operationHandler.handleJson(item.substring(5));
             } catch (RuntimeException e) {
                 logger.warn("Failed to parse SSE event: " + item, e);
             }

@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
-import dev.langchain4j.mcp.client.transport.McpRawJson;
+import dev.langchain4j.mcp.client.transport.McpJson;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.Content;
@@ -25,7 +25,7 @@ class PromptContentConversionTest {
                 """
                 {"jsonrpc":"2.0","id":111,"result":{"messages":[{"role":"user","content":{"text":"Hello","type":"text"}}]}}
                 """;
-        JsonNode responseJsonNode = McpRawJson.parse(response);
+        JsonNode responseJsonNode = McpJson.parse(response);
         McpGetPromptResult promptResponse = PromptsHelper.parsePromptContents(responseJsonNode);
 
         ChatMessage chatMessage = promptResponse.messages().get(0).toChatMessage();
@@ -40,7 +40,7 @@ class PromptContentConversionTest {
                 """
                 {"jsonrpc":"2.0","id":123,"result":{"messages":[{"role":"assistant","content":{"text":"Hello","type":"text"}}]}}
                 """;
-        JsonNode responseJsonNode = McpRawJson.parse(response);
+        JsonNode responseJsonNode = McpJson.parse(response);
         McpGetPromptResult promptResponse = PromptsHelper.parsePromptContents(responseJsonNode);
 
         ChatMessage chatMessage = promptResponse.messages().get(0).toChatMessage();
@@ -55,7 +55,7 @@ class PromptContentConversionTest {
                 """
                 {"jsonrpc":"2.0","id":1,"result":{"messages":[{"role":"user","content":{"data":"aaa","mimeType":"image/png","type":"image"}}]}}
                 """;
-        JsonNode responseJsonNode = McpRawJson.parse(response);
+        JsonNode responseJsonNode = McpJson.parse(response);
         McpGetPromptResult promptResponse = PromptsHelper.parsePromptContents(responseJsonNode);
 
         ChatMessage chatMessage = promptResponse.messages().get(0).toChatMessage();

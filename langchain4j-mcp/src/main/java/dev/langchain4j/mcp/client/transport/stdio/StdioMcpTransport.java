@@ -7,7 +7,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.mcp.client.McpCallContext;
 import dev.langchain4j.mcp.client.transport.McpOperationHandler;
-import dev.langchain4j.mcp.client.transport.McpRawJson;
+import dev.langchain4j.mcp.client.transport.McpJson;
 import dev.langchain4j.mcp.client.transport.McpTransport;
 import dev.langchain4j.mcp.protocol.McpClientMessage;
 import dev.langchain4j.mcp.protocol.McpInitializationNotification;
@@ -73,17 +73,17 @@ public class StdioMcpTransport implements McpTransport {
             throw new RuntimeException(e);
         }
         jsonRpcIoHandler = new JsonRpcIoHandler(
-                process.getInputStream(), process.getOutputStream(), messageHandler::handleRaw, logEvents, logger);
+                process.getInputStream(), process.getOutputStream(), messageHandler::handleJson, logEvents, logger);
         stderrHandler = new ProcessStderrHandler(process);
         executorService.submit(jsonRpcIoHandler);
         executorService.submit(stderrHandler);
     }
 
     @Override
-    public CompletableFuture<String> initializeRaw(McpInitializeRequest operation) {
+    public CompletableFuture<String> initializeJson(McpInitializeRequest operation) {
         try {
-            String requestString = McpRawJson.serialize(operation);
-            String initializationNotification = McpRawJson.serialize(new McpInitializationNotification());
+            String requestString = McpJson.serialize(operation);
+            String initializationNotification = McpJson.serialize(new McpInitializationNotification());
             return execute(requestString, operation.getId())
                     .thenCompose(originalResponse -> execute(initializationNotification, null)
                             .thenCompose(nullNode -> CompletableFuture.completedFuture(originalResponse)));
@@ -93,14 +93,14 @@ public class StdioMcpTransport implements McpTransport {
     }
 
     @Override
-    public CompletableFuture<String> executeOperationWithRawResponse(McpClientMessage operation) {
-        return executeOperationWithRawResponse(new McpCallContext(null, operation));
+    public CompletableFuture<String> executeOperationWithJsonResponse(McpClientMessage operation) {
+        return executeOperationWithJsonResponse(new McpCallContext(null, operation));
     }
 
     @Override
-    public CompletableFuture<String> executeOperationWithRawResponse(McpCallContext context) {
+    public CompletableFuture<String> executeOperationWithJsonResponse(McpCallContext context) {
         try {
-            String requestString = McpRawJson.serialize(context.message());
+            String requestString = McpJson.serialize(context.message());
             return execute(requestString, context.message().getId());
         } catch (RuntimeException e) {
             return CompletableFuture.failedFuture(e);
@@ -115,7 +115,7 @@ public class StdioMcpTransport implements McpTransport {
     @Override
     public void executeOperationWithoutResponse(McpCallContext context) {
         try {
-            String requestString = McpRawJson.serialize(context.message());
+            String requestString = McpJson.serialize(context.message());
             execute(requestString, null);
         } catch (RuntimeException e) {
             throw new RuntimeException(e);
@@ -188,7 +188,7 @@ public class StdioMcpTransport implements McpTransport {
     private CompletableFuture<String> execute(String request, Long id) {
         CompletableFuture<String> future = new CompletableFuture<>();
         if (id != null) {
-            messageHandler.startRawOperation(id, future);
+            messageHandler.startJsonOperation(id, future);
         }
         try {
             jsonRpcIoHandler.submit(request);
@@ -264,24 +264,24 @@ public class StdioMcpTransport implements McpTransport {
 
     /**
      * @deprecated implemented for source and behavioural compatibility; delegates to
-     * {@link #initializeRaw(McpInitializeRequest)}. Prefer the raw-JSON methods.
+     * {@link #initializeJson(McpInitializeRequest)}. Prefer the JSON-text methods.
      */
     @Deprecated(since = "1.20.0", forRemoval = true)
     @Override
     public CompletableFuture<JsonNode> initialize(McpInitializeRequest request) {
-        return McpRawJson.map(initializeRaw(request), McpRawJson::parse);
+        return McpJson.map(initializeJson(request), McpJson::parse);
     }
 
     @Deprecated(since = "1.20.0", forRemoval = true)
     @Override
     public CompletableFuture<JsonNode> executeOperationWithResponse(McpClientMessage request) {
-        return McpRawJson.map(executeOperationWithRawResponse(request), McpRawJson::parse);
+        return McpJson.map(executeOperationWithJsonResponse(request), McpJson::parse);
     }
 
     @Deprecated(since = "1.20.0", forRemoval = true)
     @Override
     public CompletableFuture<JsonNode> executeOperationWithResponse(McpCallContext context) {
-        return McpRawJson.map(executeOperationWithRawResponse(context), McpRawJson::parse);
+        return McpJson.map(executeOperationWithJsonResponse(context), McpJson::parse);
     }
 
 }

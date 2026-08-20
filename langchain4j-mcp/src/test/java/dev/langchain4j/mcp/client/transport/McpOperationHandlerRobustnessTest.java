@@ -36,9 +36,9 @@ class McpOperationHandlerRobustnessTest {
         // JSON-RPC allows an id to be a string as well as a number
         McpOperationHandler handler = handler();
         CompletableFuture<String> pending = new CompletableFuture<>();
-        handler.startRawOperation(42L, pending);
+        handler.startJsonOperation(42L, pending);
 
-        handler.handleRaw("{\"id\":\"42\",\"result\":{}}");
+        handler.handleJson("{\"id\":\"42\",\"result\":{}}");
 
         assertThat(pending).isCompleted();
     }
@@ -47,34 +47,34 @@ class McpOperationHandlerRobustnessTest {
     void completes_an_operation_whose_id_arrives_as_a_number() {
         McpOperationHandler handler = handler();
         CompletableFuture<String> pending = new CompletableFuture<>();
-        handler.startRawOperation(7L, pending);
+        handler.startJsonOperation(7L, pending);
 
-        handler.handleRaw("{\"id\":7,\"result\":{}}");
+        handler.handleJson("{\"id\":7,\"result\":{}}");
 
         assertThat(pending).isCompleted();
     }
 
     @Test
     void ignores_a_batch_array_rather_than_failing() {
-        assertThatCode(() -> handler().handleRaw("[{\"id\":1,\"result\":{}}]"))
+        assertThatCode(() -> handler().handleJson("[{\"id\":1,\"result\":{}}]"))
                 .doesNotThrowAnyException();
     }
 
     @Test
     void ignores_a_malformed_payload_rather_than_failing() {
-        assertThatCode(() -> handler().handleRaw("not json")).doesNotThrowAnyException();
+        assertThatCode(() -> handler().handleJson("not json")).doesNotThrowAnyException();
     }
 
     @Test
     void ignores_an_unusable_id_rather_than_failing() {
-        assertThatCode(() -> handler().handleRaw("{\"id\":{},\"result\":{}}"))
+        assertThatCode(() -> handler().handleJson("{\"id\":{},\"result\":{}}"))
                 .doesNotThrowAnyException();
     }
 
     @Test
     void a_bare_json_null_should_be_ignored_rather_than_throw() {
         // it parses without error but is not a message; throwing here kills the stdio reader thread
-        assertThatCode(() -> handler().handleRaw("null")).doesNotThrowAnyException();
-        assertThatCode(() -> handler().handleRaw("")).doesNotThrowAnyException();
+        assertThatCode(() -> handler().handleJson("null")).doesNotThrowAnyException();
+        assertThatCode(() -> handler().handleJson("")).doesNotThrowAnyException();
     }
 }

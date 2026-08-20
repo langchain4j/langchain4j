@@ -37,9 +37,9 @@ class McpPendingOperationTest {
         Map<Long, CompletableFuture<String>> pending = new ConcurrentHashMap<>();
         McpOperationHandler handler = handler(pending);
         CompletableFuture<String> future = new CompletableFuture<>();
-        handler.startRawOperation(5L, future);
+        handler.startJsonOperation(5L, future);
 
-        handler.handleRaw(
+        handler.handleJson(
                 """
                 {"jsonrpc":"2.0","method":"notifications/cancelled","params":{"requestId":5,"reason":"stop"}}""");
 
@@ -51,7 +51,7 @@ class McpPendingOperationTest {
     void a_raw_operation_should_be_removable_through_the_shared_map() {
         Map<Long, CompletableFuture<String>> pending = new ConcurrentHashMap<>();
         McpOperationHandler handler = handler(pending);
-        handler.startRawOperation(7L, new CompletableFuture<>());
+        handler.startJsonOperation(7L, new CompletableFuture<>());
 
         assertThat(pending).containsKey(7L);
         pending.remove(7L);
@@ -63,7 +63,7 @@ class McpPendingOperationTest {
         Map<Long, CompletableFuture<String>> pending = new ConcurrentHashMap<>();
         McpOperationHandler handler = handler(pending);
         CompletableFuture<String> future = new CompletableFuture<>();
-        handler.startRawOperation(9L, future);
+        handler.startJsonOperation(9L, future);
 
         handler.cancelAllPendingOperations("connection lost");
 
@@ -78,7 +78,7 @@ class McpPendingOperationTest {
         CompletableFuture<com.fasterxml.jackson.databind.JsonNode> future = new CompletableFuture<>();
         handler.startOperation(11L, future);
 
-        handler.handleRaw("""
+        handler.handleJson("""
                 {"jsonrpc":"2.0","id":11,"result":{"ok":true}}""");
 
         assertThat(future.join().get("result").get("ok").asBoolean()).isTrue();

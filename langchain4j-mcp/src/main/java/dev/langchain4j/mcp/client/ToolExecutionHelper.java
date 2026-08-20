@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.exception.ToolExecutionException;
-import dev.langchain4j.mcp.client.transport.McpRawJson;
+import dev.langchain4j.mcp.client.transport.McpJson;
 import dev.langchain4j.mcp.protocol.McpCallToolResult;
 import dev.langchain4j.mcp.protocol.McpErrorResponse;
 import dev.langchain4j.service.tool.ToolExecutionResult;
@@ -28,14 +28,14 @@ class ToolExecutionHelper {
             JsonNode response, boolean ignoreApplicationLevelErrors, McpContentExtractor contentExtractor) {
 
         McpCallToolResult.Result result =
-                McpRawJson.deserialize(response, McpCallToolResult.class).getResult();
+                McpJson.deserialize(response, McpCallToolResult.class).getResult();
 
         if (result != null) {
             boolean applicationError = Boolean.TRUE.equals(result.getIsError());
             Map<String, Object> attributes = toolAttributes(result.getMeta());
 
             if (result.getStructuredContent() != null) {
-                String resultText = McpRawJson.serialize(result.getStructuredContent());
+                String resultText = McpJson.serialize(result.getStructuredContent());
                 if (applicationError && !ignoreApplicationLevelErrors) {
                     throw new ToolExecutionException(resultText);
                 }
@@ -60,7 +60,7 @@ class ToolExecutionHelper {
         }
 
         McpErrorResponse.Error error =
-                McpRawJson.deserialize(response, McpErrorResponse.class).getError();
+                McpJson.deserialize(response, McpErrorResponse.class).getError();
         if (error != null) {
             if (error.getCode() == ERROR_CODE_INVALID_PARAMETERS) {
                 throw new ToolArgumentsException(error.getMessage(), error.getCode());

@@ -2,7 +2,7 @@ package dev.langchain4j.mcp.client;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import dev.langchain4j.exception.LangChain4jException;
-import dev.langchain4j.mcp.client.transport.McpRawJson;
+import dev.langchain4j.mcp.client.transport.McpJson;
 import java.util.Map;
 import org.jspecify.annotations.Nullable;
 
@@ -20,7 +20,7 @@ public class McpException extends LangChain4jException {
     }
 
     /**
-     * Creates an exception carrying the JSON-RPC {@code error.data} member as raw JSON text.
+     * Creates an exception carrying the JSON-RPC {@code error.data} member as JSON text.
      *
      * <p>This is a factory rather than a constructor so that {@code new McpException(code, message, null)}
      * keeps resolving to a single constructor and continues to compile.
@@ -53,7 +53,7 @@ public class McpException extends LangChain4jException {
     }
 
     /**
-     * Returns the JSON-RPC {@code error.data} member as raw JSON text.
+     * Returns the JSON-RPC {@code error.data} member as JSON text.
      */
     public @Nullable String errorDataAsJson() {
         return errorDataAsJson;
@@ -64,7 +64,7 @@ public class McpException extends LangChain4jException {
      * JSON library.
      */
     public @Nullable Map<String, Object> errorDataAsMap() {
-        return errorDataAsJson == null ? null : McpRawJson.toMap(errorDataAsJson);
+        return errorDataAsJson == null ? null : McpJson.toMap(errorDataAsJson);
     }
 
     /**
@@ -72,6 +72,6 @@ public class McpException extends LangChain4jException {
      */
     @Deprecated(since = "1.20.0", forRemoval = true)
     public @Nullable JsonNode errorData() {
-        return errorDataAsJson == null ? null : McpRawJson.parse(errorDataAsJson);
+        return errorDataAsJson == null ? null : McpJson.parse(errorDataAsJson);
     }
 }

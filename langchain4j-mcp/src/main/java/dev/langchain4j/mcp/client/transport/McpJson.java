@@ -11,11 +11,11 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 
 /**
- * Bridges between raw JSON text and Jackson's tree model while both the
- * {@code JsonNode}-based and the raw-JSON transport APIs coexist.
+ * Bridges between JSON text and Jackson's tree model while both the
+ * {@code JsonNode}-based and the JSON-text transport APIs coexist.
  */
 @Internal
-public final class McpRawJson {
+public final class McpJson {
 
     /**
      * A server may send fields this client does not model yet — MCP adds them in a backwards-compatible
@@ -25,7 +25,7 @@ public final class McpRawJson {
     private static final ObjectMapper OBJECT_MAPPER =
             new ObjectMapper().disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
 
-    private McpRawJson() {}
+    private McpJson() {}
 
     /**
      * Deserializes an MCP message into a protocol type.
@@ -38,11 +38,11 @@ public final class McpRawJson {
      * Reads a JSON object as plain values.
      */
     @SuppressWarnings("unchecked")
-    public static Map<String, Object> toMap(String rawJson) {
+    public static Map<String, Object> toMap(String json) {
         try {
-            return OBJECT_MAPPER.readValue(rawJson, Map.class);
+            return OBJECT_MAPPER.readValue(json, Map.class);
         } catch (JsonProcessingException e) {
-            throw new IllegalArgumentException("Failed to parse MCP message: " + rawJson, e);
+            throw new IllegalArgumentException("Failed to parse MCP message: " + json, e);
         }
     }
 
@@ -62,9 +62,13 @@ public final class McpRawJson {
     }
 
     /**
-     * Serializes an outbound MCP message.
+     * Serializes an outbound MCP message. A null message renders as null rather than as the
+     * JSON null literal, so that an absent payload stays absent.
      */
     public static String serialize(Object message) {
+        if (message == null) {
+            return null;
+        }
         try {
             return OBJECT_MAPPER.writeValueAsString(message);
         } catch (JsonProcessingException e) {
@@ -72,19 +76,15 @@ public final class McpRawJson {
         }
     }
 
-    public static JsonNode parse(String rawJson) {
-        if (rawJson == null) {
+    public static JsonNode parse(String json) {
+        if (json == null) {
             return null;
         }
         try {
-            return OBJECT_MAPPER.readTree(rawJson);
+            return OBJECT_MAPPER.readTree(json);
         } catch (Exception e) {
-            throw new IllegalArgumentException("Failed to parse MCP message: " + rawJson, e);
+            throw new IllegalArgumentException("Failed to parse MCP message: " + json, e);
         }
-    }
-
-    public static String toRawJson(JsonNode node) {
-        return node == null ? null : node.toString();
     }
 
     /**

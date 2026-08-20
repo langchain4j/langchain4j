@@ -3,7 +3,7 @@ package dev.langchain4j.mcp.client;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import dev.langchain4j.mcp.client.transport.McpRawJson;
+import dev.langchain4j.mcp.client.transport.McpJson;
 import dev.langchain4j.service.tool.ToolExecutionResult;
 import java.util.List;
 import java.util.Map;
@@ -17,7 +17,7 @@ class McpToolResultMetaParsingTest {
 
     @Test
     void should_map_meta_of_text_result_into_attributes() throws Exception {
-        JsonNode response = McpRawJson.parse(
+        JsonNode response = McpJson.parse(
                 // language=json
                 """
                         {
@@ -52,7 +52,7 @@ class McpToolResultMetaParsingTest {
 
     @Test
     void should_map_meta_of_structured_content_result_into_attributes() throws Exception {
-        JsonNode response = McpRawJson.parse(
+        JsonNode response = McpJson.parse(
                 // language=json
                 """
                         {
@@ -77,7 +77,7 @@ class McpToolResultMetaParsingTest {
 
     @Test
     void should_return_no_attributes_when_there_is_no_meta() throws Exception {
-        JsonNode response = McpRawJson.parse(
+        JsonNode response = McpJson.parse(
                 // language=json
                 """
                         {
@@ -101,7 +101,7 @@ class McpToolResultMetaParsingTest {
 
     @Test
     void should_keep_meta_of_error_result_when_application_level_errors_are_ignored() throws Exception {
-        JsonNode response = McpRawJson.parse(
+        JsonNode response = McpJson.parse(
                 // language=json
                 """
                         {
@@ -131,7 +131,7 @@ class McpToolResultMetaParsingTest {
 
     @Test
     void should_give_precedence_to_attributes_set_by_the_extractor() throws Exception {
-        JsonNode response = McpRawJson.parse(
+        JsonNode response = McpJson.parse(
                 // language=json
                 """
                         {
@@ -168,7 +168,7 @@ class McpToolResultMetaParsingTest {
 
     @Test
     void should_skip_meta_keys_reserved_by_mcp() throws Exception {
-        JsonNode response = McpRawJson.parse(
+        JsonNode response = McpJson.parse(
                 // language=json
                 """
                         {
@@ -203,7 +203,7 @@ class McpToolResultMetaParsingTest {
 
     @Test
     void the_default_and_the_legacy_extractor_should_agree_on_a_text_content_result() {
-        JsonNode response = McpRawJson.parse(
+        JsonNode response = McpJson.parse(
                 """
                 {"jsonrpc":"2.0","id":1,"result":{"content":[{"type":"text","text":"hello"}]}}""");
 
@@ -215,7 +215,7 @@ class McpToolResultMetaParsingTest {
 
     @Test
     void a_text_item_without_text_should_not_yield_the_literal_string_null() {
-        JsonNode response = McpRawJson.parse("""
+        JsonNode response = McpJson.parse("""
                 {"jsonrpc":"2.0","id":1,"result":{"content":[{"type":"text"}]}}""");
 
         assertThat(ToolExecutionHelper.extractResult(response, false, extractor).resultText())

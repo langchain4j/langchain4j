@@ -8,7 +8,7 @@ import dev.langchain4j.mcp.client.McpCallContext;
 import dev.langchain4j.mcp.client.McpHeadersSupplier;
 import dev.langchain4j.mcp.client.logging.McpLoggers;
 import dev.langchain4j.mcp.client.transport.McpOperationHandler;
-import dev.langchain4j.mcp.client.transport.McpRawJson;
+import dev.langchain4j.mcp.client.transport.McpJson;
 import dev.langchain4j.mcp.client.transport.McpTransport;
 import dev.langchain4j.mcp.protocol.McpClientMessage;
 import dev.langchain4j.mcp.protocol.McpInitializationNotification;
@@ -146,7 +146,7 @@ public class WebSocketMcpTransport implements McpTransport {
     }
 
     @Override
-    public CompletableFuture<String> initializeRaw(McpInitializeRequest operation) {
+    public CompletableFuture<String> initializeJson(McpInitializeRequest operation) {
         this.initializeRequest = operation;
         CompletableFuture<String> completableFuture =
                 execute(new McpCallContext(null, operation), Optional.empty(), operation.getId());
@@ -160,12 +160,12 @@ public class WebSocketMcpTransport implements McpTransport {
     }
 
     @Override
-    public CompletableFuture<String> executeOperationWithRawResponse(McpClientMessage request) {
-        return executeOperationWithRawResponse(new McpCallContext(null, request));
+    public CompletableFuture<String> executeOperationWithJsonResponse(McpClientMessage request) {
+        return executeOperationWithJsonResponse(new McpCallContext(null, request));
     }
 
     @Override
-    public CompletableFuture<String> executeOperationWithRawResponse(McpCallContext context) {
+    public CompletableFuture<String> executeOperationWithJsonResponse(McpCallContext context) {
         return execute(context, Optional.empty(), context.message().getId());
     }
 
@@ -232,10 +232,10 @@ public class WebSocketMcpTransport implements McpTransport {
             return future;
         }
         if (id != null) {
-            operationHandler.startRawOperation(id, future);
+            operationHandler.startJsonOperation(id, future);
         }
         try {
-            String messageJson = McpRawJson.serialize(context.message());
+            String messageJson = McpJson.serialize(context.message());
             WebSocket wsToUse = webSocket.orElseGet(() -> getWebSocket());
             if (logRequests) {
                 trafficLog.info("> " + messageJson);
@@ -348,24 +348,24 @@ public class WebSocketMcpTransport implements McpTransport {
 
     /**
      * @deprecated implemented for source and behavioural compatibility; delegates to
-     * {@link #initializeRaw(McpInitializeRequest)}. Prefer the raw-JSON methods.
+     * {@link #initializeJson(McpInitializeRequest)}. Prefer the JSON-text methods.
      */
     @Deprecated(since = "1.20.0", forRemoval = true)
     @Override
     public CompletableFuture<JsonNode> initialize(McpInitializeRequest request) {
-        return McpRawJson.map(initializeRaw(request), McpRawJson::parse);
+        return McpJson.map(initializeJson(request), McpJson::parse);
     }
 
     @Deprecated(since = "1.20.0", forRemoval = true)
     @Override
     public CompletableFuture<JsonNode> executeOperationWithResponse(McpClientMessage request) {
-        return McpRawJson.map(executeOperationWithRawResponse(request), McpRawJson::parse);
+        return McpJson.map(executeOperationWithJsonResponse(request), McpJson::parse);
     }
 
     @Deprecated(since = "1.20.0", forRemoval = true)
     @Override
     public CompletableFuture<JsonNode> executeOperationWithResponse(McpCallContext context) {
-        return McpRawJson.map(executeOperationWithRawResponse(context), McpRawJson::parse);
+        return McpJson.map(executeOperationWithJsonResponse(context), McpJson::parse);
     }
 
 }

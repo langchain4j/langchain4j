@@ -17,7 +17,7 @@ import dev.langchain4j.mcp.client.logging.McpLogMessageHandler;
 import dev.langchain4j.mcp.client.progress.McpProgressHandler;
 import dev.langchain4j.mcp.client.transport.McpHeaderEncoding;
 import dev.langchain4j.mcp.client.transport.McpOperationHandler;
-import dev.langchain4j.mcp.client.transport.McpRawJson;
+import dev.langchain4j.mcp.client.transport.McpJson;
 import dev.langchain4j.mcp.client.transport.McpTransport;
 import dev.langchain4j.mcp.protocol.McpCallToolParams;
 import dev.langchain4j.mcp.protocol.McpCallToolRequest;
@@ -405,7 +405,7 @@ public class DefaultMcpClient implements McpClient {
     }
 
     private static McpInitializeResult toInitializeResult(JsonNode response) {
-        return McpRawJson.deserialize(response, McpInitializeResult.class);
+        return McpJson.deserialize(response, McpInitializeResult.class);
     }
 
     /**
@@ -413,18 +413,18 @@ public class DefaultMcpClient implements McpClient {
      * info sits under a reserved '_meta' key and no protocol version is reported.
      */
     private static McpInitializeResult toInitializeResultFromDiscover(JsonNode response) {
-        McpInitializeResult discovered = McpRawJson.deserialize(response, McpInitializeResult.class);
+        McpInitializeResult discovered = McpJson.deserialize(response, McpInitializeResult.class);
         McpInitializeResult.Result result = discovered.getResult();
         if (result == null) {
             return discovered;
         }
 
-        Map<String, Object> meta = McpRawJson.deserialize(response, McpServerDiscoverResponse.class)
+        Map<String, Object> meta = McpJson.deserialize(response, McpServerDiscoverResponse.class)
                 .getResult()
                 .getMeta();
         Object serverInfoValue = meta == null ? null : meta.get(MCP_SERVER_INFO_META_KEY);
         McpImplementation serverInfo =
-                serverInfoValue == null ? null : McpRawJson.convert(serverInfoValue, McpImplementation.class);
+                serverInfoValue == null ? null : McpJson.convert(serverInfoValue, McpImplementation.class);
 
         return new McpInitializeResult(
                 discovered.getId(),
@@ -453,12 +453,12 @@ public class DefaultMcpClient implements McpClient {
             Duration timeout = isProbe ? protocolDetectionTimeout : initializationTimeout;
             JsonNode response = resultFuture.get(timeout.toMillis(), TimeUnit.MILLISECONDS);
             McpErrorResponse.Error error =
-                    McpRawJson.deserialize(response, McpErrorResponse.class).getError();
+                    McpJson.deserialize(response, McpErrorResponse.class).getError();
             if (error != null) {
                 throw McpException.withErrorData(
                         error.getCode(),
                         error.getMessage(),
-                        error.getData() == null ? null : McpRawJson.serialize(error.getData()));
+                        error.getData() == null ? null : McpJson.serialize(error.getData()));
             }
             log.debug("MCP server discover result: {}", response.get("result"));
             initializeResult = toInitializeResultFromDiscover(response);
@@ -489,7 +489,7 @@ public class DefaultMcpClient implements McpClient {
 
     private static McpDiscoverResult toDiscoverResult(JsonNode response) {
         McpServerDiscoverResponse.Result result =
-                McpRawJson.deserialize(response, McpServerDiscoverResponse.class).getResult();
+                McpJson.deserialize(response, McpServerDiscoverResponse.class).getResult();
         if (result == null) {
             return new McpDiscoverResult(List.of(), Map.of(), null, null, null);
         }
@@ -497,7 +497,7 @@ public class DefaultMcpClient implements McpClient {
         McpServerInfo serverInfo = null;
         Object serverInfoValue = result.getMeta() == null ? null : result.getMeta().get(MCP_SERVER_INFO_META_KEY);
         if (serverInfoValue != null) {
-            McpImplementation implementation = McpRawJson.convert(serverInfoValue, McpImplementation.class);
+            McpImplementation implementation = McpJson.convert(serverInfoValue, McpImplementation.class);
             serverInfo =
                     new McpServerInfo(implementation.getName(), implementation.getVersion(), implementation.getTitle());
         }
@@ -571,7 +571,7 @@ public class DefaultMcpClient implements McpClient {
     }
 
     private static McpServerDiscoverResponse.Result multiRoundTripResult(JsonNode response) {
-        return McpRawJson.deserialize(response, McpServerDiscoverResponse.class).getResult();
+        return McpJson.deserialize(response, McpServerDiscoverResponse.class).getResult();
     }
 
     private static String resultTypeOf(McpServerDiscoverResponse.Result result) {
@@ -696,7 +696,7 @@ public class DefaultMcpClient implements McpClient {
             if (isNullOrBlank(args)) {
                 args = "{}";
             }
-            arguments = McpRawJson.toMap(args);
+            arguments = McpJson.toMap(args);
         } catch (IllegalArgumentException e) {
             throw new ToolArgumentsException(e.getCause() != null ? e.getCause() : e);
         }
@@ -1169,7 +1169,7 @@ public class DefaultMcpClient implements McpClient {
                     toolExecutionTimeout,
                     invocationContext,
                     result -> ToolSpecificationHelper.toolSpecificationListFromMcpResponse(
-                            McpRawJson.deserialize(result, McpListToolsResult.class)
+                            McpJson.deserialize(result, McpListToolsResult.class)
                                     .getResult()
                                     .getTools()));
             toolListRefs.set(list);
@@ -1313,13 +1313,13 @@ public class DefaultMcpClient implements McpClient {
 
     private static String errorMessageOf(JsonNode response) {
         McpErrorResponse.Error error =
-                McpRawJson.deserialize(response, McpErrorResponse.class).getError();
+                McpJson.deserialize(response, McpErrorResponse.class).getError();
         return error == null ? "" : error.getMessage();
     }
 
     private static String getNextCursor(JsonNode response) {
         McpPaginatedResult.Result result =
-                McpRawJson.deserialize(response, McpPaginatedResult.class).getResult();
+                McpJson.deserialize(response, McpPaginatedResult.class).getResult();
         if (result == null || result.getNextCursor() == null || result.getNextCursor().isEmpty()) {
             return null;
         }
@@ -1867,15 +1867,15 @@ public class DefaultMcpClient implements McpClient {
     }
 
     private CompletableFuture<JsonNode> executeViaTransport(McpCallContext context) {
-        return McpRawJson.map(transport.executeOperationWithRawResponse(context), McpRawJson::parse);
+        return McpJson.map(transport.executeOperationWithJsonResponse(context), McpJson::parse);
     }
 
     private CompletableFuture<JsonNode> executeViaTransport(McpClientMessage message) {
-        return McpRawJson.map(transport.executeOperationWithRawResponse(message), McpRawJson::parse);
+        return McpJson.map(transport.executeOperationWithJsonResponse(message), McpJson::parse);
     }
 
     private CompletableFuture<JsonNode> initializeViaTransport(McpInitializeRequest request) {
-        return McpRawJson.map(transport.initializeRaw(request), McpRawJson::parse);
+        return McpJson.map(transport.initializeJson(request), McpJson::parse);
     }
 
 }

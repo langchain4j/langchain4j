@@ -10,10 +10,10 @@ import java.util.concurrent.CompletableFuture;
 /**
  * The transport contract between the MCP client and a server connection.
  *
- * <p>Each request/response method exists in two forms: one returning the response as raw JSON text,
+ * <p>Each request/response method exists in two forms: one returning the response as JSON text,
  * and a deprecated one returning Jackson's {@code JsonNode}. Both are {@code default} methods that
  * delegate to each other, so an implementation must override <b>one of each pair</b>; overriding
- * neither compiles but fails at runtime. New implementations should override the raw-JSON forms,
+ * neither compiles but fails at runtime. New implementations should override the JSON-text forms,
  * which are the ones the client calls.
  */
 public interface McpTransport extends Closeable {
@@ -35,15 +35,15 @@ public interface McpTransport extends Closeable {
     @Deprecated(since = "1.20.0", forRemoval = true)
     default CompletableFuture<JsonNode> initialize(McpInitializeRequest request) {
         throw new UnsupportedOperationException(
-                "Implement initializeRaw(McpInitializeRequest) instead of initialize(McpInitializeRequest)");
+                "Implement initializeJson(McpInitializeRequest) instead of initialize(McpInitializeRequest)");
     }
 
     /**
-     * Raw-JSON counterpart of {@link #initialize(McpInitializeRequest)}, returning the
+     * JSON-text counterpart of {@link #initialize(McpInitializeRequest)}, returning the
      * server's response as unparsed JSON text so that transports do not need a JSON library.
      */
-    default CompletableFuture<String> initializeRaw(McpInitializeRequest request) {
-        return McpRawJson.map(initialize(request), McpRawJson::toRawJson);
+    default CompletableFuture<String> initializeJson(McpInitializeRequest request) {
+        return McpJson.map(initialize(request), McpJson::serialize);
     }
 
     /**
@@ -51,15 +51,15 @@ public interface McpTransport extends Closeable {
      */
     @Deprecated(since = "1.20.0", forRemoval = true)
     default CompletableFuture<JsonNode> executeOperationWithResponse(McpClientMessage request) {
-        throw new UnsupportedOperationException("Implement executeOperationWithRawResponse(McpClientMessage) instead"
+        throw new UnsupportedOperationException("Implement executeOperationWithJsonResponse(McpClientMessage) instead"
                 + " of executeOperationWithResponse(McpClientMessage)");
     }
 
     /**
-     * Raw-JSON counterpart of {@link #executeOperationWithResponse(McpClientMessage)}.
+     * JSON-text counterpart of {@link #executeOperationWithResponse(McpClientMessage)}.
      */
-    default CompletableFuture<String> executeOperationWithRawResponse(McpClientMessage request) {
-        return McpRawJson.map(executeOperationWithResponse(request), McpRawJson::toRawJson);
+    default CompletableFuture<String> executeOperationWithJsonResponse(McpClientMessage request) {
+        return McpJson.map(executeOperationWithResponse(request), McpJson::serialize);
     }
 
     /**
@@ -67,15 +67,15 @@ public interface McpTransport extends Closeable {
      */
     @Deprecated(since = "1.20.0", forRemoval = true)
     default CompletableFuture<JsonNode> executeOperationWithResponse(McpCallContext context) {
-        throw new UnsupportedOperationException("Implement executeOperationWithRawResponse(McpCallContext) instead"
+        throw new UnsupportedOperationException("Implement executeOperationWithJsonResponse(McpCallContext) instead"
                 + " of executeOperationWithResponse(McpCallContext)");
     }
 
     /**
-     * Raw-JSON counterpart of {@link #executeOperationWithResponse(McpCallContext)}.
+     * JSON-text counterpart of {@link #executeOperationWithResponse(McpCallContext)}.
      */
-    default CompletableFuture<String> executeOperationWithRawResponse(McpCallContext context) {
-        return McpRawJson.map(executeOperationWithResponse(context), McpRawJson::toRawJson);
+    default CompletableFuture<String> executeOperationWithJsonResponse(McpCallContext context) {
+        return McpJson.map(executeOperationWithResponse(context), McpJson::serialize);
     }
 
     /**
