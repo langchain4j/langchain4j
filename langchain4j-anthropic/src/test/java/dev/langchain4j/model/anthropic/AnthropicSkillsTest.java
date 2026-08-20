@@ -48,6 +48,7 @@ class AnthropicSkillsTest {
                 null,
                 null,
                 false,
+                null,
                 null);
     }
 
@@ -96,6 +97,7 @@ class AnthropicSkillsTest {
                 null,
                 null,
                 false,
+                null,
                 null);
 
         assertThat(request.tools).extracting(tool -> tool.name).containsExactly("code_execution");
@@ -132,6 +134,7 @@ class AnthropicSkillsTest {
                 null,
                 null,
                 false,
+                null,
                 null);
 
         // the regular tool name must not suppress the required code_execution server tool

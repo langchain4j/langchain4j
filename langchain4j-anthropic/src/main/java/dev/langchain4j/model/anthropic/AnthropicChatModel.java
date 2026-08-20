@@ -80,6 +80,7 @@ public class AnthropicChatModel implements ChatModel {
     private final Map<String, Object> customParameters;
     private final Boolean strictTools;
     private final Set<Capability> supportedCapabilities;
+    private final Duration cacheTtl;
 
     public AnthropicChatModel(AnthropicChatModelBuilder builder) {
         this.client = AnthropicClient.builder()
@@ -99,6 +100,7 @@ public class AnthropicChatModel implements ChatModel {
         this.listeners = copy(builder.listeners);
         this.returnServerToolResults = getOrDefault(builder.returnServerToolResults, false);
         this.supportedCapabilities = copy(builder.supportedCapabilities);
+        this.cacheTtl = builder.cacheTtl;
 
         ChatRequestParameters commonParameters;
         if (builder.defaultRequestParameters != null) {
@@ -145,6 +147,7 @@ public class AnthropicChatModel implements ChatModel {
                 .userId(getOrDefault(builder.userId, anthropicDefaults.userId()))
                 .returnCacheDiagnostics(
                         getOrDefault(builder.returnCacheDiagnostics, anthropicDefaults.returnCacheDiagnostics()))
+                .cacheTtl(getOrDefault(builder.cacheTtl, anthropicDefaults.cacheTtl()))
                 // previousMessageId is a per-request value (it changes every turn); it is never carried
                 // as a model-level default, only supplied via per-request AnthropicChatRequestParameters.
                 .build();
@@ -197,6 +200,7 @@ public class AnthropicChatModel implements ChatModel {
         private Set<Capability> supportedCapabilities;
         private Supplier<Map<String, String>> customHeadersSupplier;
         private Boolean returnCacheDiagnostics;
+        private Duration cacheTtl;
 
         /**
          * Sets a custom {@link HttpClientBuilder} for the underlying HTTP client.
@@ -220,6 +224,17 @@ public class AnthropicChatModel implements ChatModel {
          */
         public AnthropicChatModelBuilder baseUrl(String baseUrl) {
             this.baseUrl = baseUrl;
+            return this;
+        }
+
+        /**
+         * Sets the cache TTL (Time To Live) for prompt caching (e.g., 5m, 1h).
+         *
+         * @param cacheTtl the cache TTL duration
+         * @return {@code this}
+         */
+        public AnthropicChatModelBuilder cacheTtl(Duration cacheTtl) {
+            this.cacheTtl = cacheTtl;
             return this;
         }
 
@@ -860,7 +875,8 @@ public class AnthropicChatModel implements ChatModel {
                 this.customParameters,
                 this.strictTools,
                 getOrDefault(parameters.returnCacheDiagnostics(), false),
-                parameters.previousMessageId());
+                parameters.previousMessageId(),
+                parameters.cacheTtl());
 
         ParsedAndRawResponse response =
                 withRetryMappingExceptions(() -> client.createMessageWithRawResponse(anthropicRequest), maxRetries);
