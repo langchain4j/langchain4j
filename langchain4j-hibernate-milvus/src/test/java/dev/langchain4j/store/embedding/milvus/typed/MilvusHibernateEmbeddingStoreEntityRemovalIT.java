@@ -1,4 +1,4 @@
-package dev.langchain4j.store.embedding.typed;
+package dev.langchain4j.store.embedding.milvus.typed;
 
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
@@ -7,6 +7,7 @@ import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreWithRemovalIT;
 import dev.langchain4j.store.embedding.hibernate.HibernateEmbeddingStore;
 import dev.langchain4j.store.embedding.hibernate.milvus.MilvusDatabaseKind;
+import dev.langchain4j.store.embedding.typed.GenericEmbeddingEntity;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import org.hibernate.SessionFactory;
@@ -34,7 +35,7 @@ class MilvusHibernateEmbeddingStoreEntityRemovalIT extends EmbeddingStoreWithRem
 
     @Container
     static MilvusContainer databaseContainer =
-            new MilvusContainer("milvusdb/milvus:v2.6.20").withEnv("DEPLOY_MODE", "STANDALONE");
+            new MilvusContainer("milvusdb/milvus:v2.6.22").withEnv("DEPLOY_MODE", "STANDALONE");
 
     static SessionFactory sessionFactory;
     EmbeddingStore<TextSegment> embeddingStore;

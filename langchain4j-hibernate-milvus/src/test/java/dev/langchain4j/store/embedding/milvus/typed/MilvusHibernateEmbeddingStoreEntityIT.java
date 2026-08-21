@@ -1,4 +1,4 @@
-package dev.langchain4j.store.embedding.typed;
+package dev.langchain4j.store.embedding.milvus.typed;
 
 import static dev.langchain4j.store.embedding.TestUtils.awaitUntilAsserted;
 import static dev.langchain4j.store.embedding.filter.MetadataFilterBuilder.metadataKey;
@@ -18,6 +18,7 @@ import dev.langchain4j.store.embedding.EmbeddingStoreWithFilteringIT;
 import dev.langchain4j.store.embedding.filter.Filter;
 import dev.langchain4j.store.embedding.hibernate.HibernateEmbeddingStore;
 import dev.langchain4j.store.embedding.hibernate.milvus.MilvusDatabaseKind;
+import dev.langchain4j.store.embedding.typed.GenericEmbeddingEntity;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -50,7 +51,7 @@ class MilvusHibernateEmbeddingStoreEntityIT extends EmbeddingStoreWithFilteringI
 
     @Container
     static MilvusContainer databaseContainer =
-            new MilvusContainer("milvusdb/milvus:v2.6.20").withEnv("DEPLOY_MODE", "STANDALONE");
+            new MilvusContainer("milvusdb/milvus:v2.6.22").withEnv("DEPLOY_MODE", "STANDALONE");
 
     final EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
 

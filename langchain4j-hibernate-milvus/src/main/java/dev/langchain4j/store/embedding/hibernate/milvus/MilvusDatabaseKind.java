@@ -4,7 +4,9 @@ import dev.langchain4j.store.embedding.hibernate.DatabaseKind;
 import dev.langchain4j.store.embedding.hibernate.DistanceFunction;
 
 /**
+ * The database kind for using Milvus.
  *
+ * @see dev.langchain4j.store.embedding.hibernate.HibernateEmbeddingStore.BaseBuilder#databaseKind(DatabaseKind)
  */
 public final class MilvusDatabaseKind implements DatabaseKind {
 
@@ -12,6 +14,9 @@ public final class MilvusDatabaseKind implements DatabaseKind {
 
     private MilvusDatabaseKind() {}
 
+    /**
+     * Always returns {@code null}, since we can't reasonably add indexes after creating a collection.
+     */
     @Override
     public String createIndexDDL(
             final DistanceFunction distanceFunction,
