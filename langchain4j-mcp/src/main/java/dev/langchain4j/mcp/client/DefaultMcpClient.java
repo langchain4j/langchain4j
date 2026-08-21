@@ -56,6 +56,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
@@ -143,6 +144,7 @@ public class DefaultMcpClient implements McpClient {
     private final boolean subscribeToPromptListChanges;
     private final boolean subscribeToResourceListChanges;
     private final Map<Long, CompletableFuture<JsonNode>> activeSubscriptions = new ConcurrentHashMap<>();
+    private final Map<Long, CompletableFuture<JsonNode>> pendingSubscriptionAcks = new ConcurrentHashMap<>();
     private volatile CompletableFuture<JsonNode> listChangeSubscriptionFuture;
 
     public DefaultMcpClient(Builder builder) {
@@ -224,7 +226,13 @@ public class DefaultMcpClient implements McpClient {
                     },
                     () -> notifyListeners(l -> l.onServerPing()),
                     () -> notifyListeners(l -> l.onServerRootsList()),
-                    (requestId, reason) -> notifyListeners(l -> l.onNotificationCancelled(requestId, reason)));
+                    (requestId, reason) -> notifyListeners(l -> l.onNotificationCancelled(requestId, reason)),
+                    (subscriptionId, message) -> {
+                        CompletableFuture<JsonNode> ackFuture = pendingSubscriptionAcks.remove(subscriptionId);
+                        if (ackFuture != null) {
+                            ackFuture.complete(message);
+                        }
+                    });
             ((ObjectNode) RESULT_TIMEOUT)
                     .putObject("result")
                     .putArray("content")
@@ -1043,25 +1051,83 @@ public class DefaultMcpClient implements McpClient {
         McpCallContext context = new McpCallContext(null, request);
         notifyListeners(l -> l.beforeResourcesSubscribe(context, uris));
         applyMeta(request, context);
+
+        // The server acknowledges the subscription with a separate notification
+        // (notifications/subscriptions/acknowledged), correlated by subscription ID.
+        // Register a future for it before sending the request, so the ack can never
+        // race ahead of us starting to listen for it.
+        CompletableFuture<JsonNode> ackFuture = new CompletableFuture<>();
+        pendingSubscriptionAcks.put(subscriptionId, ackFuture);
+
         CompletableFuture<JsonNode> streamFuture = transport.executeOperationWithResponse(context);
         activeSubscriptions.put(subscriptionId, streamFuture);
         streamFuture.whenComplete((result, error) -> {
             pendingOperations.remove(subscriptionId);
-            if (error != null && !closed) {
-                log.warn("Resource subscription {} failed", subscriptionId, error);
-                activeSubscriptions.remove(subscriptionId);
-            } else if (result != null && result.has("error") && !closed) {
-                log.warn(
-                        "Resource subscription {} rejected by server: {}",
-                        subscriptionId,
-                        result.path("error").path("message").asText());
+            if (error != null) {
+                ackFuture.completeExceptionally(error);
+                if (!closed) {
+                    if (error instanceof CancellationException) {
+                        // Expected when the client itself gave up (timeout, unsubscribe, close)
+                        log.debug("Resource subscription {} was cancelled", subscriptionId);
+                    } else {
+                        log.warn("Resource subscription {} failed", subscriptionId, error);
+                    }
+                    activeSubscriptions.remove(subscriptionId);
+                }
+            } else if (result != null && result.has("error")) {
+                try {
+                    McpErrorHelper.checkForErrors(result);
+                } catch (McpException e) {
+                    ackFuture.completeExceptionally(e);
+                }
+                if (!closed) {
+                    log.warn(
+                            "Resource subscription {} rejected by server: {}",
+                            subscriptionId,
+                            result.path("error").path("message").asText());
+                    activeSubscriptions.remove(subscriptionId);
+                }
+            } else if (!closed) {
+                // A successful, non-error result here means the server ended the subscription
+                // gracefully (see the spec's Graceful Closure), which happens well after it was
+                // acknowledged, so it does not affect ackFuture.
                 activeSubscriptions.remove(subscriptionId);
             }
         });
 
-        notifyListeners(l -> l.afterResourcesSubscribe(context, subscriptionId, uris));
-
-        return subscriptionId;
+        long timeoutMillis = resourcesTimeout.toMillis() == 0 ? Integer.MAX_VALUE : resourcesTimeout.toMillis();
+        try {
+            ackFuture.get(timeoutMillis, TimeUnit.MILLISECONDS);
+            notifyListeners(l -> l.afterResourcesSubscribe(context, subscriptionId, uris));
+            return subscriptionId;
+        } catch (ExecutionException e) {
+            Throwable cause = e.getCause();
+            if (cause instanceof McpException mcpException) {
+                notifyListeners(l -> l.onResourcesSubscribeError(context, mcpException));
+                throw mcpException;
+            }
+            RuntimeException re = new RuntimeException(cause);
+            notifyListeners(l -> l.onResourcesSubscribeError(context, re));
+            throw re;
+        } catch (TimeoutException e) {
+            activeSubscriptions.remove(subscriptionId);
+            streamFuture.cancel(true);
+            if (transport.requiresCancellationNotification()) {
+                McpCancellationNotification cancellation = new McpCancellationNotification(
+                        subscriptionId, "Timed out waiting for the server to acknowledge the subscription");
+                McpCallContext cancellationContext = new McpCallContext(null, cancellation);
+                applyMeta(cancellationContext.message(), cancellationContext);
+                transport.executeOperationWithoutResponse(cancellationContext.message());
+            }
+            RuntimeException re = new RuntimeException(e);
+            notifyListeners(l -> l.onResourcesSubscribeError(context, re));
+            throw re;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException(e);
+        } finally {
+            pendingSubscriptionAcks.remove(subscriptionId);
+        }
     }
 
     @Override
@@ -1328,6 +1394,11 @@ public class DefaultMcpClient implements McpClient {
         // Cancel all active resource subscriptions
         activeSubscriptions.values().forEach(f -> f.cancel(true));
         activeSubscriptions.clear();
+        // Unblock any subscribeToResources() call still waiting for a server acknowledgement
+        pendingSubscriptionAcks
+                .values()
+                .forEach(f -> f.completeExceptionally(new IllegalStateException("MCP client was closed")));
+        pendingSubscriptionAcks.clear();
         if (healthCheckScheduler != null) {
             healthCheckScheduler.shutdownNow();
         }
