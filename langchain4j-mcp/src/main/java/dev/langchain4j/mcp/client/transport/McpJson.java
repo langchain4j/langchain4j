@@ -12,7 +12,7 @@ import java.util.function.Function;
 
 /**
  * Bridges between JSON text and Jackson's tree model while both the
- * {@code JsonNode}-based and the JSON-text transport APIs coexist.
+ * deprecated {@code JsonNode}-based transport API and its replacement coexist.
  */
 @Internal
 public final class McpJson {

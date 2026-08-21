@@ -484,8 +484,8 @@ public class DockerMcpTransport implements McpTransport {
     }
 
     /**
-     * @deprecated implemented for source and behavioural compatibility; delegates to
-     * {@link #sendInitializeRequest(McpInitializeRequest)}. Prefer the raw-JSON methods.
+     * @deprecated use {@link #sendInitializeRequest(McpInitializeRequest)} instead, which does not
+     * expose Jackson types. Kept so that this method is not removed from this class.
      */
     @Deprecated(since = "1.20.0", forRemoval = true)
     @Override

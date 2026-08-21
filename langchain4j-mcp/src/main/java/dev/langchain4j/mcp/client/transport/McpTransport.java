@@ -13,8 +13,9 @@ import java.util.concurrent.CompletableFuture;
  * <p>Each request/response method exists in two forms: one returning the response as JSON text,
  * and a deprecated one returning Jackson's {@code JsonNode}. Both are {@code default} methods that
  * delegate to each other, so an implementation must override <b>one of each pair</b>; overriding
- * neither compiles but fails at runtime. New implementations should override the JSON-text forms,
- * which are the ones the client calls.
+ * neither compiles but fails at runtime. New implementations should override the current forms
+ * ({@code sendInitializeRequest}, {@code sendRequest}, {@code sendMessage}), which are the ones the
+ * client calls.
  */
 public interface McpTransport extends Closeable {
 
@@ -43,8 +44,9 @@ public interface McpTransport extends Closeable {
     }
 
     /**
-     * JSON-text counterpart of {@link #initialize(McpInitializeRequest)}, returning the
-     * server's response as unparsed JSON text so that transports do not need a JSON library.
+     * Sends the MCP {@code InitializeRequest} and returns the server's response as unparsed JSON
+     * text, so that a transport does not need a JSON library. Only used with the legacy MCP
+     * protocol (versions up to 2025-11-25); the modern protocol uses {@code server/discover}.
      */
     default CompletableFuture<String> sendInitializeRequest(McpInitializeRequest request) {
         return McpJson.map(initialize(request), McpJson::serialize);
@@ -64,7 +66,7 @@ public interface McpTransport extends Closeable {
     }
 
     /**
-     * JSON-text counterpart of {@link #executeOperationWithResponse(McpClientMessage)}.
+     * Sends a JSON-RPC request and returns the server's response as unparsed JSON text.
      */
     default CompletableFuture<String> sendRequest(McpClientMessage request) {
         return McpJson.map(executeOperationWithResponse(request), McpJson::serialize);
@@ -84,7 +86,7 @@ public interface McpTransport extends Closeable {
     }
 
     /**
-     * JSON-text counterpart of {@link #executeOperationWithResponse(McpCallContext)}.
+     * Sends a JSON-RPC request and returns the server's response as unparsed JSON text.
      */
     default CompletableFuture<String> sendRequest(McpCallContext context) {
         return McpJson.map(executeOperationWithResponse(context), McpJson::serialize);

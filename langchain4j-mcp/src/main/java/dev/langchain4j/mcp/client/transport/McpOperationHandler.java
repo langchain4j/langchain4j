@@ -78,8 +78,8 @@ public class McpOperationHandler {
     }
 
     /**
-     * JSON-text counterpart of {@link #handle(JsonNode)}, so that transports can hand over
-     * the message exactly as it arrived on the wire without parsing it first.
+     * Handles an inbound message from the server, taken exactly as it arrived on the wire, so that
+     * a transport does not have to parse it first.
      */
     public void onMessage(String json) {
         Map<String, Object> message;
@@ -289,7 +289,8 @@ public class McpOperationHandler {
     }
 
     /**
-     * JSON-text counterpart of {@link #startOperation(Long, CompletableFuture)}.
+     * Registers a client-initiated request whose response is awaited; the future is completed with
+     * the response as unparsed JSON text.
      */
     public void expectResponse(Long id, CompletableFuture<String> future) {
         pendingOperations.put(id, future);
