@@ -703,15 +703,9 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
                     // Prefer a Long for BigInteger
                     metadata.put(key, bigIntegerValue.longValueExact());
                 } catch (ArithmeticException e) {
-                    // Unless the value is too big for a long
-                    final float floatValue = bigIntegerValue.floatValue();
-                    if (Float.toString(floatValue).equals(bigIntegerValue.toString())) {
-                        // Try float, if the value fits exactly
-                        metadata.put(key, floatValue);
-                    } else {
-                        // Otherwise stick to double, even if there is a potential precision loss
-                        metadata.put(key, bigIntegerValue.doubleValue());
-                    }
+                    // Unless the value is too big for a long,
+                    // stick to double, even if there is a potential precision loss
+                    metadata.put(key, bigIntegerValue.doubleValue());
                 }
             } else if (value instanceof Number numberValue) {
                 metadata.put(key, numberValue.doubleValue());
@@ -753,7 +747,11 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
                         : (predicate == null
                                 ? additonalPredicate
                                 : criteriaBuilder.and(predicate, additonalPredicate)));
-        query.orderBy(criteriaBuilder.asc(distance));
+        if (distanceFunction == DistanceFunction.INNER_PRODUCT) {
+            query.orderBy(criteriaBuilder.desc(distance));
+        } else {
+            query.orderBy(criteriaBuilder.asc(distance));
+        }
         return query;
     }
 
@@ -811,6 +809,7 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
     }
 
     private double scoreToDistance(double score, DistanceFunction distanceFunction) {
+        assert score > 0d;
         return switch (distanceFunction) {
             // Cosine distance is in the range [0..2] with 0 being a perfect match
             // and score is in the range [0..1] with 1 being a perfect match,
@@ -818,9 +817,8 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
             case COSINE -> 2d - 2d * score;
             // Inner product is in the range [-infinity..infinity] with higher values being a better match,
             // so use the inverse sigmoid function to turn the score back to a distance
-            case INNER_PRODUCT -> score == 0d ? Double.NEGATIVE_INFINITY : (Math.log(score) - Math.log(1d - score));
-            case NEGATIVE_INNER_PRODUCT ->
-                score == 0d ? Double.POSITIVE_INFINITY : -(Math.log(score) - Math.log(1d - score));
+            case INNER_PRODUCT -> Math.log(score) - Math.log(1d - score);
+            case NEGATIVE_INNER_PRODUCT -> -(Math.log(score) - Math.log(1d - score));
             // Other distance metrics are a better match the lower the value is,
             // so use the inverse of the distance + 1 as score
             case EUCLIDEAN, EUCLIDEAN_SQUARED, HAMMING, JACCARD, MANHATTAN -> 1d / score - 1d;
@@ -835,8 +833,8 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
             case COSINE -> 1d - (distance / 2d);
             // Inner product is in the range [-infinity..infinity] with higher values being a better match,
             // so use the sigmoid function to turn this into a score
-            case INNER_PRODUCT -> distance == 0d ? 0d : 1d / (1d + Math.exp(-distance));
-            case NEGATIVE_INNER_PRODUCT -> distance == 0d ? 0d : 1d / (1d + Math.exp(distance));
+            case INNER_PRODUCT -> 1d / (1d + Math.exp(-distance));
+            case NEGATIVE_INNER_PRODUCT -> 1d / (1d + Math.exp(distance));
             // Other distance metrics are a better match the lower the value is,
             // so use the inverse of the distance + 1 as score
             case EUCLIDEAN, EUCLIDEAN_SQUARED, HAMMING, JACCARD, MANHATTAN -> 1d / (1d + distance);
