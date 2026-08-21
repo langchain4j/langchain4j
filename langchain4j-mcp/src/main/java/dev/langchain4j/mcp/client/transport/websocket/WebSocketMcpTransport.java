@@ -348,7 +348,7 @@ public class WebSocketMcpTransport implements McpTransport {
 
     /**
      * @deprecated use {@link #sendInitializeRequest(McpInitializeRequest)} instead, which does not
-     * expose Jackson types. Kept so that this method is not removed from this class.
+     * expose Jackson types.
      */
     @Deprecated(since = "1.20.0", forRemoval = true)
     @Override
@@ -358,7 +358,7 @@ public class WebSocketMcpTransport implements McpTransport {
 
     /**
      * @deprecated use {@link #sendRequest(McpClientMessage)} instead, which does not expose Jackson
-     * types. Kept so that this method is not removed from this class.
+     * types.
      */
     @Deprecated(since = "1.20.0", forRemoval = true)
     @Override
@@ -368,7 +368,7 @@ public class WebSocketMcpTransport implements McpTransport {
 
     /**
      * @deprecated use {@link #sendRequest(McpCallContext)} instead, which does not expose Jackson
-     * types. Kept so that this method is not removed from this class.
+     * types.
      */
     @Deprecated(since = "1.20.0", forRemoval = true)
     @Override
@@ -378,7 +378,7 @@ public class WebSocketMcpTransport implements McpTransport {
 
     /**
      * @deprecated use {@link #sendMessage(McpClientMessage)} instead, which does not expose Jackson
-     * types. Kept so that this method is not removed from this class.
+     * types.
      */
     @Deprecated(since = "1.20.0", forRemoval = true)
     @Override
@@ -388,7 +388,7 @@ public class WebSocketMcpTransport implements McpTransport {
 
     /**
      * @deprecated use {@link #sendMessage(McpCallContext)} instead, which does not expose Jackson
-     * types. Kept so that this method is not removed from this class.
+     * types.
      */
     @Deprecated(since = "1.20.0", forRemoval = true)
     @Override
