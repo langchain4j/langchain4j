@@ -103,6 +103,60 @@ StreamingChatModel model = BedrockStreamingChatModel.builder()
 - [BedrockStreamingChatModelExample](https://github.com/langchain4j/langchain4j-examples/blob/main/bedrock-examples/src/main/java/converse/BedrockStreamingChatModelExample.java)
 
 
+## BedrockBatchChatModel
+
+`BedrockBatchChatModel` implements the core `BatchChatModel` interface on top of the Bedrock
+[batch inference API](https://docs.aws.amazon.com/bedrock/latest/userguide/batch-inference.html), which processes
+many chat requests asynchronously at a 50% lower price than on-demand for supported models.
+
+Requests are written as a JSONL file to an S3 input location, a model invocation job is submitted, and the results are
+read back from the S3 output location once the job completes. It requires an S3 bucket in the same region as the job and
+a [service role](https://docs.aws.amazon.com/bedrock/latest/userguide/batch-iam-sr.html) that Bedrock assumes to read
+the input and write the output.
+
+:::note
+Bedrock batch inference does not support tool calling or structured output. A request that specifies tools or a
+response format is rejected with an `UnsupportedFeatureException`. Only a subset of models supports batch inference, see
+[supported models](https://docs.aws.amazon.com/bedrock/latest/userguide/batch-inference-supported.html).
+:::
+
+### Configuration
+```java
+BedrockBatchChatModel model = BedrockBatchChatModel.builder()
+        .region(...)
+        .modelId("anthropic.claude-3-haiku-20240307-v1:0")
+        .roleArn("arn:aws:iam::123456789012:role/my-bedrock-batch-role")
+        .outputS3Uri("s3://my-bucket/batch-output")
+        .inputS3Uri(...)             // optional, defaults to outputS3Uri
+        .defaultRequestParameters(...)
+        .timeoutDurationInHours(...)
+        .maxRetries(...)
+        .logRequests(...)
+        .logResponses(...)
+        .build();
+```
+
+### Usage
+```java
+// Submit a batch of chat requests
+BatchResponse<ChatResponse> submitted = model.submit(new BatchRequest<>(List.of(
+        ChatRequest.builder().messages(UserMessage.from("Summarize: ...")).build(),
+        ChatRequest.builder().messages(UserMessage.from("Classify: ...")).build())));
+
+String batchId = submitted.batchId();
+
+// Poll until the job reaches a terminal state, then read the results
+BatchResponse<ChatResponse> result = model.retrieve(batchId);
+if (result.state() == BatchState.SUCCEEDED) {
+    for (BatchItemResult<ChatResponse> item : result.results()) {
+        if (item.isSuccess()) {
+            System.out.println(item.response().aiMessage().text());
+        }
+    }
+}
+```
+
+
 ## Additional Model Request Fields
 
 The field `additionalModelRequestFields` in the `BedrockChatRequestParameters` is a `Map<String, Object>`.
