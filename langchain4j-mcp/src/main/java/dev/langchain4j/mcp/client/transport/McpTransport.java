@@ -31,6 +31,10 @@ public interface McpTransport extends Closeable {
      * be used. This has to be called AFTER the "start" method.
      * Only used with the legacy MCP protocol (versions up to 2025-11-25).
      * Modern protocol uses {@code server/discover} instead.
+     *
+     * @deprecated implement {@link #sendInitializeRequest(McpInitializeRequest)} instead, which does
+     * not expose Jackson types. This default throws; it does not delegate, because two
+     * mutually-delegating defaults would recurse.
      */
     @Deprecated(since = "1.20.0", forRemoval = true)
     default CompletableFuture<JsonNode> initialize(McpInitializeRequest request) {
@@ -48,6 +52,10 @@ public interface McpTransport extends Closeable {
 
     /**
      * Executes an operation that expects a response from the server.
+     *
+     * @deprecated implement {@link #sendRequest(McpClientMessage)} instead, which does not expose
+     * Jackson types. This default throws; it does not delegate, because two mutually-delegating
+     * defaults would recurse.
      */
     @Deprecated(since = "1.20.0", forRemoval = true)
     default CompletableFuture<JsonNode> executeOperationWithResponse(McpClientMessage request) {
@@ -64,6 +72,10 @@ public interface McpTransport extends Closeable {
 
     /**
      * Executes an operation that expects a response from the server.
+     *
+     * @deprecated implement {@link #sendRequest(McpCallContext)} instead, which does not expose
+     * Jackson types. This default throws; it does not delegate, because two mutually-delegating
+     * defaults would recurse.
      */
     @Deprecated(since = "1.20.0", forRemoval = true)
     default CompletableFuture<JsonNode> executeOperationWithResponse(McpCallContext context) {

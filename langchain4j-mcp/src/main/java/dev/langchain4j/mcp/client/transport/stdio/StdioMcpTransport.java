@@ -272,24 +272,40 @@ public class StdioMcpTransport implements McpTransport {
         return McpJson.map(sendInitializeRequest(request), McpJson::parse);
     }
 
+    /**
+     * @deprecated use {@link #sendRequest(McpClientMessage)} instead, which does not expose Jackson
+     * types. Kept so that this method is not removed from this class.
+     */
     @Deprecated(since = "1.20.0", forRemoval = true)
     @Override
     public CompletableFuture<JsonNode> executeOperationWithResponse(McpClientMessage request) {
         return McpJson.map(sendRequest(request), McpJson::parse);
     }
 
+    /**
+     * @deprecated use {@link #sendRequest(McpCallContext)} instead, which does not expose Jackson
+     * types. Kept so that this method is not removed from this class.
+     */
     @Deprecated(since = "1.20.0", forRemoval = true)
     @Override
     public CompletableFuture<JsonNode> executeOperationWithResponse(McpCallContext context) {
         return McpJson.map(sendRequest(context), McpJson::parse);
     }
 
+    /**
+     * @deprecated use {@link #sendMessage(McpClientMessage)} instead, which does not expose Jackson
+     * types. Kept so that this method is not removed from this class.
+     */
     @Deprecated(since = "1.20.0", forRemoval = true)
     @Override
     public void executeOperationWithoutResponse(McpClientMessage request) {
         sendMessage(request);
     }
 
+    /**
+     * @deprecated use {@link #sendMessage(McpCallContext)} instead, which does not expose Jackson
+     * types. Kept so that this method is not removed from this class.
+     */
     @Deprecated(since = "1.20.0", forRemoval = true)
     @Override
     public void executeOperationWithoutResponse(McpCallContext context) {

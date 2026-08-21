@@ -67,6 +67,11 @@ public class McpOperationHandler {
         this.onServerCancelled = onServerCancelled;
     }
 
+    /**
+     * Handles an inbound message from the server.
+     *
+     * @deprecated use {@link #onMessage(String)} instead, which does not expose Jackson types.
+     */
     @Deprecated(since = "1.20.0", forRemoval = true)
     public void handle(JsonNode message) {
         onMessage(McpJson.serialize(message));
@@ -260,6 +265,12 @@ public class McpOperationHandler {
         return params instanceof Map ? (Map<String, Object>) params : null;
     }
 
+    /**
+     * Registers a client-initiated request whose response is awaited.
+     *
+     * @deprecated use {@link #expectResponse(Long, CompletableFuture)} instead, which does not
+     * expose Jackson types.
+     */
     @Deprecated(since = "1.20.0", forRemoval = true)
     public void startOperation(Long id, CompletableFuture<JsonNode> future) {
         CompletableFuture<String> jsonFuture = new CompletableFuture<>();
