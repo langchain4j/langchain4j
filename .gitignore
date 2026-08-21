@@ -47,4 +47,7 @@ CLAUDE.md
 ### Quarkus stuff ###
 .quarkus
 
+### Cloud ###
+.azure-secrets/
+
 jdk/
