@@ -70,6 +70,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.IntStream;
 
 @Internal
 public class AnthropicMapper {
@@ -297,15 +298,15 @@ public class AnthropicMapper {
             }
         }
 
-        SystemMessage lastSystemMessage =
-                systemMessages.isEmpty() ? null : systemMessages.get(systemMessages.size() - 1);
-        return systemMessages.stream()
-                .map(message -> {
-                    boolean isLastItem = message.equals(lastSystemMessage);
+        int lastIndex = systemMessages.size() - 1;
+        return IntStream.range(0, systemMessages.size())
+                .mapToObj(i -> {
+                    String text = systemMessages.get(i).text();
+                    boolean isLastItem = i == lastIndex;
                     if (isLastItem && cacheType != AnthropicCacheType.NO_CACHE) {
-                        return new AnthropicTextContent(message.text(), cacheType.cacheControl());
+                        return new AnthropicTextContent(text, cacheType.cacheControl());
                     }
-                    return new AnthropicTextContent(message.text());
+                    return new AnthropicTextContent(text);
                 })
                 .toList();
     }

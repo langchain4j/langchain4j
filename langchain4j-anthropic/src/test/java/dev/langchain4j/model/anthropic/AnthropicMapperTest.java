@@ -808,6 +808,25 @@ class AnthropicMapperTest {
     }
 
     @Test
+    void only_last_system_message_gets_cache_control_when_duplicate_texts_present() {
+        // given two system messages with identical text
+        List<ChatMessage> messages =
+                asList(SystemMessage.from("same"), SystemMessage.from("same"), UserMessage.from("hi"));
+
+        // when
+        List<AnthropicTextContent> systemPrompt =
+                toAnthropicSystemPrompt(messages, AnthropicCacheType.EPHEMERAL, false);
+
+        // then - only the last system message receives the cache_control block, by position not by value
+        assertThat(systemPrompt).hasSize(2);
+        assertThat(systemPrompt.get(0).text).isEqualTo("same");
+        assertThat(systemPrompt.get(0).cacheControl).isNull();
+        assertThat(systemPrompt.get(1).text).isEqualTo("same");
+        assertThat(systemPrompt.get(1).cacheControl).isNotNull();
+        assertThat(systemPrompt.get(1).cacheControl).extracting("type").isEqualTo("ephemeral");
+    }
+
+    @Test
     void mid_conversation_system_messages_enabled_inlines_system_message_after_pending_tool_result() {
         // given a system message that appears mid-conversation, right after a tool result
         List<ChatMessage> messages = asList(
