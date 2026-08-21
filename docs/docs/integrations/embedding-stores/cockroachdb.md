@@ -43,7 +43,7 @@ available starting from version `1.19.0-beta29` or later.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-community-cockroachdb</artifactId>
-    <version>1.19.0-beta29</version>
+    <version>1.20.0-beta30</version>
 </dependency>
 ```
 
