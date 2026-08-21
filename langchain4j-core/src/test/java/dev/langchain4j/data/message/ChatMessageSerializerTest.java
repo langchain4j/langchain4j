@@ -7,6 +7,7 @@ import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import java.util.LinkedHashMap;
@@ -209,5 +210,26 @@ class ChatMessageSerializerTest {
         assertThat(deserialized.text()).isEqualTo("sunny");
         assertThat(deserialized.contents()).isEqualTo(List.of(TextContent.from("sunny")));
         assertThat(deserialized.attributes()).isEmpty();
+    }
+
+    @Test
+    void should_throw_on_null_json() {
+        assertThatThrownBy(() -> messageFromJson(null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("JSON string is null or blank");
+    }
+
+    @Test
+    void should_throw_on_empty_json() {
+        assertThatThrownBy(() -> messageFromJson("{}"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("JSON string is null or blank");
+    }
+
+    @Test
+    void should_throw_on_blank_json() {
+        assertThatThrownBy(() -> messageFromJson("   "))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("JSON string is null or blank");
     }
 }
