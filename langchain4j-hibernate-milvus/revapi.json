@@ -1,0 +1,22 @@
+[
+  {
+    "extension": "revapi.differences",
+    "configuration": {
+      "ignore": true,
+      "differences": [
+        {
+          "ignore": true,
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.store.embedding.hibernate.DatabaseKind",
+          "justification": "This is the entry point for configuring Milvus for the HibernateEmeddingStore"
+        },
+        {
+          "ignore": true,
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.store.embedding.hibernate.DistanceFunction",
+          "justification": "This is part of the entry point for configuring Milvus for the HibernateEmeddingStore"
+        }
+      ]
+    }
+  }
+]

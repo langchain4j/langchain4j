@@ -18,7 +18,7 @@
         <oracle.version>23.26.2.0.0</oracle.version>
         <mariadb.version>3.5.5</mariadb.version>
         <mssql.version>13.4.0.jre11</mssql.version>
-        <hibernate.version>7.4.2.Final</hibernate.version>
+        <hibernate.version>7.4.5.Final</hibernate.version>
         <!-- TODO: remove enforcer.skipRules -->
         <enforcer.skipRules>dependencyConvergence,requireUpperBoundDeps</enforcer.skipRules>
     </properties>
@@ -165,6 +165,17 @@
 
     <build>
         <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>test-jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
             <plugin>
                 <groupId>org.honton.chas</groupId>
                 <artifactId>license-maven-plugin</artifactId>

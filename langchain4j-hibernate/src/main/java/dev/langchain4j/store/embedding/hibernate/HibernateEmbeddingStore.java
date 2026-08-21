@@ -5,7 +5,6 @@ import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.randomUUID;
-import static dev.langchain4j.internal.Utils.toStringValueMap;
 import static dev.langchain4j.internal.ValidationUtils.ensureConsistentSizes;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
@@ -48,6 +47,7 @@ import jakarta.persistence.metamodel.Type;
 import java.io.StringReader;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Member;
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -495,14 +495,15 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
 
     private List<E> query(Embedding embedding, Double minScore, Restriction<E> restriction, Integer maxResults) {
         ensureNotNull(restriction, "restriction");
+        final boolean minScoreFilter = minScore != null && minScore > 0d;
 
-        final JpaCriteriaQuery<E> query = createBaseQuery(entityClass, minScore != null, restriction::toPredicate);
+        final JpaCriteriaQuery<E> query = createBaseQuery(entityClass, minScoreFilter, restriction::toPredicate);
 
         return sessionFactory.fromStatelessSession(session -> {
             final SelectionQuery<E> selectionQuery = session.createSelectionQuery(query);
             selectionQuery.setParameter(embeddingAttributeMapping.getAttributeName(), embedding.vector());
-            if (minScore != null) {
-                selectionQuery.setParameter("minScore", minScore);
+            if (minScoreFilter) {
+                selectionQuery.setParameter("minDistance", scoreToDistance(minScore, distanceFunction));
             }
             if (maxResults != null) {
                 selectionQuery.setMaxResults(maxResults);
@@ -557,16 +558,17 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
     private EmbeddingSearchResult<TextSegment> search(
             Embedding embedding, Double minScore, Restriction<E> restriction, Integer maxResults) {
         ensureNotNull(restriction, "restriction");
+        final boolean minScoreFilter = minScore != null && minScore > 0d;
 
         final JpaCriteriaQuery<Object[]> query =
-                createBaseQuery(Object[].class, minScore != null, restriction::toPredicate);
+                createBaseQuery(Object[].class, minScoreFilter, restriction::toPredicate);
         applyEmbeddingSearchResultSelections(query);
 
         return sessionFactory.fromStatelessSession(session -> {
             final SelectionQuery<Object[]> selectionQuery = session.createSelectionQuery(query);
             selectionQuery.setParameter(embeddingAttributeMapping.getAttributeName(), embedding.vector());
-            if (minScore != null) {
-                selectionQuery.setParameter("minScore", minScore);
+            if (minScoreFilter) {
+                selectionQuery.setParameter("minDistance", scoreToDistance(minScore, distanceFunction));
             }
             if (maxResults != null) {
                 selectionQuery.setMaxResults(maxResults);
@@ -591,18 +593,21 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
         Embedding referenceEmbedding = request.queryEmbedding();
         int maxResults = request.maxResults();
         double minScore = request.minScore();
+        boolean minScoreFilter = minScore > 0d;
         Filter filter = request.filter();
 
         final JpaCriteriaQuery<Object[]> query = createBaseQuery(
                 Object[].class,
-                true,
+                minScoreFilter,
                 (root, cb) -> filter == null ? null : createPredicateFromFilter(root, filter, cb));
         applyEmbeddingSearchResultSelections(query);
 
         return sessionFactory.fromStatelessSession(session -> {
             final SelectionQuery<Object[]> selectionQuery = session.createSelectionQuery(query);
             selectionQuery.setParameter(embeddingAttributeMapping.getAttributeName(), referenceEmbedding.vector());
-            selectionQuery.setParameter("minScore", minScore);
+            if (minScoreFilter) {
+                selectionQuery.setParameter("minDistance", scoreToDistance(minScore, distanceFunction));
+            }
             selectionQuery.setMaxResults(maxResults);
 
             return transformToSearchResult(selectionQuery.getResultList());
@@ -612,7 +617,8 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
     private EmbeddingSearchResult<TextSegment> transformToSearchResult(List<Object[]> tuples) {
         final List<EmbeddingMatch<TextSegment>> result = new ArrayList<>(tuples.size());
         for (Object[] tuple : tuples) {
-            final Double score = (Double) tuple[0];
+            final Double distance = (Double) tuple[0];
+            final Double score = scoreFromDistance(distance, distanceFunction);
             final Object embeddingId = tuple[1];
             final Embedding embedding = new Embedding((float[]) tuple[2]);
             final String text = embeddedTextAttributeMapping == null ? null : (String) tuple[4];
@@ -622,14 +628,12 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
                 final Metadata metadata;
                 if (textMetadata instanceof String metadataJson) {
                     try {
-                        //noinspection unchecked
-                        metadata = new Metadata(OBJECT_MAPPER.readValue(getOrDefault(metadataJson, "{}"), Map.class));
+                        metadata = createMetadata(OBJECT_MAPPER.readValue(getOrDefault(metadataJson, "{}"), Map.class));
                     } catch (JsonProcessingException e) {
                         throw new RuntimeException(e);
                     }
                 } else if (textMetadata instanceof Map<?, ?> metadataMap) {
-                    //noinspection unchecked
-                    metadata = new Metadata((Map<String, ?>) metadataMap);
+                    metadata = createMetadata(metadataMap);
                 } else if (textMetadata == null) {
                     metadata = new Metadata();
                 } else {
@@ -673,6 +677,45 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
         return new EmbeddingSearchResult<>(result);
     }
 
+    private Metadata createMetadata(Map<?, ?> map) {
+        // Metadata only supports a couple of data types, so try to normalize the data types that we get from
+        // JSON mapping providers like JSON to the supported data types
+        final Metadata metadata = new Metadata();
+        for (Map.Entry<?, ?> entry : map.entrySet()) {
+            final String key = (String) entry.getKey();
+            final Object value = entry.getValue();
+            if (value instanceof Integer integerValue) {
+                metadata.put(key, integerValue);
+            } else if (value instanceof Long longValue) {
+                metadata.put(key, longValue);
+            } else if (value instanceof Float floatValue) {
+                metadata.put(key, floatValue);
+            } else if (value instanceof Double doubleValue) {
+                metadata.put(key, doubleValue);
+            } else if (value instanceof UUID uuidValue) {
+                metadata.put(key, uuidValue);
+            } else if (value instanceof Byte byteValue) {
+                metadata.put(key, byteValue.intValue());
+            } else if (value instanceof Short shortValue) {
+                metadata.put(key, shortValue.intValue());
+            } else if (value instanceof BigInteger bigIntegerValue) {
+                try {
+                    // Prefer a Long for BigInteger
+                    metadata.put(key, bigIntegerValue.longValueExact());
+                } catch (ArithmeticException e) {
+                    // Unless the value is too big for a long,
+                    // stick to double, even if there is a potential precision loss
+                    metadata.put(key, bigIntegerValue.doubleValue());
+                }
+            } else if (value instanceof Number numberValue) {
+                metadata.put(key, numberValue.doubleValue());
+            } else {
+                metadata.put(key, value.toString());
+            }
+        }
+        return metadata;
+    }
+
     private <T> JpaCriteriaQuery<T> createBaseQuery(
             Class<T> resultClass,
             boolean minScoreFilter,
@@ -690,10 +733,10 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
                 distance(distanceFunction, embeddingPath, embeddingParameter, criteriaBuilder);
 
         final Predicate predicate = minScoreFilter
-                ? distanceFilter(
+                ? minDistanceFilter(
                         distanceFunction,
                         distance,
-                        criteriaBuilder.parameter(Double.class, "minScore"),
+                        criteriaBuilder.parameter(Double.class, "minDistance"),
                         criteriaBuilder)
                 : null;
         final Predicate additonalPredicate =
@@ -704,7 +747,11 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
                         : (predicate == null
                                 ? additonalPredicate
                                 : criteriaBuilder.and(predicate, additonalPredicate)));
-        query.orderBy(criteriaBuilder.asc(distance));
+        if (distanceFunction == DistanceFunction.INNER_PRODUCT) {
+            query.orderBy(criteriaBuilder.desc(distance));
+        } else {
+            query.orderBy(criteriaBuilder.asc(distance));
+        }
         return query;
     }
 
@@ -716,7 +763,7 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
                 (Expression<Double>) query.getOrderList().get(0).getExpression();
         final int metadataOffset = embeddedTextAttributeMapping == null ? 4 : 5;
         final Selection<?>[] selections = new Selection<?>[metadataOffset + metadataAttributeMappings.size()];
-        selections[0] = score(distanceFunction, distance, criteriaBuilder);
+        selections[0] = distance;
         selections[1] = root.get(idAttributeMapping.getAttributeName());
         selections[2] = root.get(embeddingAttributeMapping.getAttributeName());
         selections[3] = root.get(unmappedMetadataAttributeMapping.getAttributeName());
@@ -749,27 +796,49 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
         return criteriaBuilder.function(functionName, Double.class, lhs, rhs);
     }
 
-    protected Expression<Double> score(
-            DistanceFunction distanceFunction, Expression<Double> distance, CriteriaBuilder criteriaBuilder) {
-        return criteriaBuilder
-                .quot(criteriaBuilder.diff(criteriaBuilder.literal(2D), distance), criteriaBuilder.literal(2D))
-                .as(Double.class);
-    }
-
-    protected Predicate distanceFilter(
+    private Predicate minDistanceFilter(
             DistanceFunction distanceFunction,
             Expression<Double> distance,
-            Expression<Double> minScore,
+            Expression<Double> minDistance,
             CriteriaBuilder criteriaBuilder) {
-        return criteriaBuilder.le(
-                distance,
-                criteriaBuilder.function(
-                        "round",
-                        Double.class,
-                        criteriaBuilder.diff(
-                                criteriaBuilder.literal(2D),
-                                criteriaBuilder.prod(criteriaBuilder.literal(2D), minScore)),
-                        criteriaBuilder.literal(8)));
+        return distanceFunction == DistanceFunction.INNER_PRODUCT
+                // Inner product matches are better, the higher the value is
+                ? criteriaBuilder.ge(distance, minDistance)
+                // Other distance metrics are a better match the lower the value is
+                : criteriaBuilder.le(distance, minDistance);
+    }
+
+    private double scoreToDistance(double score, DistanceFunction distanceFunction) {
+        assert score > 0d;
+        return switch (distanceFunction) {
+            // Cosine distance is in the range [0..2] with 0 being a perfect match
+            // and score is in the range [0..1] with 1 being a perfect match,
+            // so transform the minScore to cosine distance with `2 - 2 * minScore`
+            case COSINE -> 2d - 2d * score;
+            // Inner product is in the range [-infinity..infinity] with higher values being a better match,
+            // so use the inverse sigmoid function to turn the score back to a distance
+            case INNER_PRODUCT -> Math.log(score) - Math.log(1d - score);
+            case NEGATIVE_INNER_PRODUCT -> -(Math.log(score) - Math.log(1d - score));
+            // Other distance metrics are a better match the lower the value is,
+            // so use the inverse of the distance + 1 as score
+            case EUCLIDEAN, EUCLIDEAN_SQUARED, HAMMING, JACCARD, MANHATTAN -> 1d / score - 1d;
+        };
+    }
+
+    private double scoreFromDistance(double distance, DistanceFunction distanceFunction) {
+        return switch (distanceFunction) {
+            // Cosine distance is in the range [0..2] with 0 being a perfect match
+            // and score is in the range [0..1] with 1 being a perfect match,
+            // so transform the distance to a score with `1 - (distance / 2)`
+            case COSINE -> 1d - (distance / 2d);
+            // Inner product is in the range [-infinity..infinity] with higher values being a better match,
+            // so use the sigmoid function to turn this into a score
+            case INNER_PRODUCT -> 1d / (1d + Math.exp(-distance));
+            case NEGATIVE_INNER_PRODUCT -> 1d / (1d + Math.exp(distance));
+            // Other distance metrics are a better match the lower the value is,
+            // so use the inverse of the distance + 1 as score
+            case EUCLIDEAN, EUCLIDEAN_SQUARED, HAMMING, JACCARD, MANHATTAN -> 1d / (1d + distance);
+        };
     }
 
     private <X> Predicate createPredicateFromFilter(
@@ -893,11 +962,23 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
                     .collect(Collectors.toList());
             return criteriaBuilder.in(get(root, isIn.key()), domainValue);
         } else {
-            return criteriaBuilder.in(
-                    criteriaBuilder.jsonValue(
-                            root.get(unmappedMetadataAttributeMapping.getAttributeName()),
-                            criteriaBuilder.literal("$." + isIn.key())),
-                    isIn.comparisonValues().stream().map(Object::toString).collect(Collectors.toList()));
+            final Class<?> valueClass = determineValueClass(isIn.comparisonValues());
+            final JpaExpression<?> valueExpression;
+            final Collection<?> values;
+            if (valueClass != null) {
+                valueExpression = criteriaBuilder.jsonValue(
+                        root.get(unmappedMetadataAttributeMapping.getAttributeName()),
+                        criteriaBuilder.literal("$." + isIn.key()),
+                        valueClass);
+                values = isIn.comparisonValues();
+            } else {
+                valueExpression = criteriaBuilder.jsonValue(
+                        root.get(unmappedMetadataAttributeMapping.getAttributeName()),
+                        criteriaBuilder.literal("$." + isIn.key()));
+                values = isIn.comparisonValues().stream().map(Object::toString).collect(Collectors.toList());
+            }
+            //noinspection unchecked
+            return criteriaBuilder.in(valueExpression, (Collection<Object>) values);
         }
     }
 
@@ -912,19 +993,44 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
                     valueExpression.isNull(),
                     criteriaBuilder.in(valueExpression, domainValue).not());
         } else {
-            final JpaExpression<String> valueExpression = criteriaBuilder.jsonValue(
-                    root.get(unmappedMetadataAttributeMapping.getAttributeName()),
-                    criteriaBuilder.literal("$." + isNotIn.key()));
+            final Class<?> valueClass = determineValueClass(isNotIn.comparisonValues());
+            final JpaExpression<?> valueExpression;
+            final Collection<?> values;
+            if (valueClass != null) {
+                valueExpression = criteriaBuilder.jsonValue(
+                        root.get(unmappedMetadataAttributeMapping.getAttributeName()),
+                        criteriaBuilder.literal("$." + isNotIn.key()),
+                        valueClass);
+                values = isNotIn.comparisonValues();
+            } else {
+                valueExpression = criteriaBuilder.jsonValue(
+                        root.get(unmappedMetadataAttributeMapping.getAttributeName()),
+                        criteriaBuilder.literal("$." + isNotIn.key()));
+                values = isNotIn.comparisonValues().stream()
+                        .map(Object::toString)
+                        .collect(Collectors.toList());
+            }
+            //noinspection unchecked
             return criteriaBuilder.or(
                     valueExpression.isNull(),
                     criteriaBuilder
-                            .in(
-                                    valueExpression,
-                                    isNotIn.comparisonValues().stream()
-                                            .map(Object::toString)
-                                            .collect(Collectors.toList()))
+                            .in(valueExpression, (Collection<Object>) values)
                             .not());
         }
+    }
+
+    private Class<?> determineValueClass(Collection<?> comparisonValues) {
+        for (Object comparisonValue : comparisonValues) {
+            // Supported types according to MetadataFilterBuilder
+            if (comparisonValue instanceof UUID
+                    || comparisonValue instanceof Integer
+                    || comparisonValue instanceof Long
+                    || comparisonValue instanceof Float
+                    || comparisonValue instanceof Double) {
+                return comparisonValue.getClass();
+            }
+        }
+        return null;
     }
 
     private JpaPredicate mapNot(JpaRoot<?> root, HibernateCriteriaBuilder criteriaBuilder, Not not) {
@@ -1081,9 +1187,7 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
             if (text == null) {
                 textSegments.add(null);
             } else {
-                @SuppressWarnings("unchecked")
-                final Metadata metadata =
-                        new Metadata((Map<String, ?>) unmappedMetadataAttributeMapping.getValue(entity));
+                final Metadata metadata = createMetadata((Map<?, ?>) unmappedMetadataAttributeMapping.getValue(entity));
                 for (Map.Entry<String, AttributeMapping> metadataAttribute : metadataAttributeMappings.entrySet()) {
                     final String metadataAttributePath = metadataAttribute.getKey();
                     final JavaType<?> metadataAttributeJavaType =
@@ -1230,14 +1334,14 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
                     values[embeddedTextAttributeMapping.getStateArrayPosition()] =
                             embedded.get(i).text();
                 }
-                final Map<String, String> metadataMap =
-                        toStringValueMap(embedded.get(i).metadata().toMap());
+                final Map<String, Object> metadataMap =
+                        embedded.get(i).metadata().toMap();
                 for (Map.Entry<String, AttributeMapping> entry : metadataAttributeMappings.entrySet()) {
                     final String attributePath = entry.getKey();
-                    final String stringValue = metadataMap.remove(attributePath);
-                    final Object value = stringValue == null
+                    final Object attributeValue = metadataMap.remove(attributePath);
+                    final Object value = attributeValue == null
                             ? null
-                            : entry.getValue().getJavaType().fromString(stringValue);
+                            : entry.getValue().getJavaType().fromString(attributeValue.toString());
                     if (entry.getValue().getDeclaringType() != entityPersister) {
                         if (value != null) {
                             throw new IllegalArgumentException(
@@ -1300,14 +1404,14 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
                             embeddedTextAttributeMapping.getAttributeName(),
                             embedded.get(i).text());
                 }
-                final Map<String, String> metadataMap =
-                        toStringValueMap(embedded.get(i).metadata().toMap());
+                final Map<String, Object> metadataMap =
+                        embedded.get(i).metadata().toMap();
                 for (Map.Entry<String, AttributeMapping> entry : metadataAttributeMappings.entrySet()) {
                     final String attributePath = entry.getKey();
-                    final String stringValue = metadataMap.remove(attributePath);
-                    final Object value = stringValue == null
+                    final Object attributeValue = metadataMap.remove(attributePath);
+                    final Object value = attributeValue == null
                             ? null
-                            : entry.getValue().getJavaType().fromString(stringValue);
+                            : entry.getValue().getJavaType().fromString(attributeValue.toString());
                     mutationQuery.setParameter(attributePath, value);
                 }
                 if (unmappedMetadataAttributeMapType != null) {
@@ -1761,8 +1865,12 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
                 }
                 cfg.setProperty(JdbcSettings.JAKARTA_JDBC_URL, jdbcUrl);
             }
-            cfg.setProperty(JdbcSettings.JAKARTA_JDBC_USER, ensureNotBlank(user, "user"));
-            cfg.setProperty(JdbcSettings.JAKARTA_JDBC_PASSWORD, ensureNotBlank(password, "password"));
+            if (user != null) {
+                cfg.setProperty(JdbcSettings.JAKARTA_JDBC_USER, user);
+            }
+            if (password != null) {
+                cfg.setProperty(JdbcSettings.JAKARTA_JDBC_PASSWORD, password);
+            }
             return new HibernateEmbeddingStore<>(
                     true,
                     createSessionFactory(cfg, databaseKind),
