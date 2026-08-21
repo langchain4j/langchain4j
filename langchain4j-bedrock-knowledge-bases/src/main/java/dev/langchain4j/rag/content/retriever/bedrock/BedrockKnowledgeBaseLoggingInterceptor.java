@@ -1,0 +1,105 @@
+package dev.langchain4j.rag.content.retriever.bedrock;
+
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static java.util.Objects.isNull;
+import static java.util.Objects.nonNull;
+
+import dev.langchain4j.Internal;
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.Optional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import software.amazon.awssdk.core.interceptor.Context;
+import software.amazon.awssdk.core.interceptor.ExecutionAttributes;
+import software.amazon.awssdk.core.interceptor.ExecutionInterceptor;
+import software.amazon.awssdk.http.ContentStreamProvider;
+import software.amazon.awssdk.http.SdkHttpFullRequest;
+import software.amazon.awssdk.http.SdkHttpMethod;
+import software.amazon.awssdk.http.SdkHttpRequest;
+import software.amazon.awssdk.http.SdkHttpResponse;
+import software.amazon.awssdk.utils.IoUtils;
+
+@Internal
+class BedrockKnowledgeBaseLoggingInterceptor implements ExecutionInterceptor {
+
+    private static final Logger DEFAULT_LOGGER = LoggerFactory.getLogger(BedrockKnowledgeBaseLoggingInterceptor.class);
+
+    private final boolean logRequests;
+    private final boolean logResponses;
+    private final Logger logger;
+
+    BedrockKnowledgeBaseLoggingInterceptor(boolean logRequests, boolean logResponses, Logger logger) {
+        this.logRequests = logRequests;
+        this.logResponses = logResponses;
+        this.logger = getOrDefault(logger, DEFAULT_LOGGER);
+    }
+
+    @Override
+    public void beforeExecution(Context.BeforeExecution context, ExecutionAttributes executionAttributes) {
+        if (logRequests) {
+            logger.debug("AWS SDK Operation: {}", context.request().getClass().getSimpleName());
+        }
+    }
+
+    @Override
+    public void beforeTransmission(Context.BeforeTransmission context, ExecutionAttributes executionAttributes) {
+        SdkHttpRequest request = context.httpRequest();
+        String body = null;
+        if (logRequests) {
+            if (request.method() == SdkHttpMethod.POST && request instanceof SdkHttpFullRequest sdkHttpFullRequest) {
+                try {
+                    ContentStreamProvider csp =
+                            sdkHttpFullRequest.contentStreamProvider().orElse(null);
+                    if (nonNull(csp)) {
+                        body = IoUtils.toUtf8String(csp.newStream());
+                    }
+                } catch (IOException e) {
+                    logger.warn("Unable to obtain request body", e);
+                }
+            }
+            logger.debug(
+                    "Request:\n- method: {}\n- url: {}\n- headers: {}\n- query parameters: {}\n- body: {}",
+                    request.method(),
+                    request.getUri(),
+                    request.headers(),
+                    request.rawQueryParameters(),
+                    body);
+        }
+    }
+
+    @Override
+    public software.amazon.awssdk.core.SdkResponse modifyResponse(
+            Context.ModifyResponse context, ExecutionAttributes executionAttributes) {
+        Optional.ofNullable(context.httpResponse()).ifPresent(response -> logResponse(response, context));
+        return context.response();
+    }
+
+    private void logResponse(SdkHttpResponse response, Context.ModifyResponse context) {
+        if (logResponses) {
+            logger.debug(
+                    "Response Status: {} \nHeaders: {} \nResponse Body Type: {}",
+                    response.statusCode(),
+                    response.headers(),
+                    context.response().getClass().getSimpleName());
+        }
+    }
+
+    @Override
+    public Optional<InputStream> modifyHttpResponseContent(
+            Context.ModifyHttpResponse context, ExecutionAttributes executionAttributes) {
+        byte[] content = null;
+        if (logResponses) {
+            try {
+                InputStream responseContentStream = context.responseBody().orElse(InputStream.nullInputStream());
+                content = IoUtils.toByteArray(responseContentStream);
+                logger.debug("Response Body: {}", new String(content, StandardCharsets.UTF_8));
+            } catch (IOException e) {
+                logger.warn("Unable to obtain response body", e);
+            }
+        }
+        return isNull(content) ? Optional.empty() : Optional.of(new ByteArrayInputStream(content));
+    }
+}
