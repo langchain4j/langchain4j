@@ -1,14 +1,25 @@
 package dev.langchain4j.model.localai;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
+import static dev.langchain4j.model.openai.internal.OpenAiUtils.convertResponse;
+import static dev.langchain4j.model.openai.internal.OpenAiUtils.toFunctions;
+import static dev.langchain4j.model.openai.internal.OpenAiUtils.toOpenAiMessages;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+import static java.time.Duration.ofSeconds;
+import static java.util.Collections.singletonList;
+
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.internal.ChatRequestValidationUtils;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
-import dev.langchain4j.internal.ChatRequestValidationUtils;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
@@ -21,21 +32,9 @@ import dev.langchain4j.model.openai.internal.chat.ChatCompletionRequest;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionResponse;
 import dev.langchain4j.model.openai.internal.chat.Delta;
 import dev.langchain4j.model.output.Response;
-import org.slf4j.Logger;
-
 import java.time.Duration;
 import java.util.List;
-
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
-import static dev.langchain4j.model.openai.internal.OpenAiUtils.convertResponse;
-import static dev.langchain4j.model.openai.internal.OpenAiUtils.toFunctions;
-import static dev.langchain4j.model.openai.internal.OpenAiUtils.toOpenAiMessages;
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
-import static java.time.Duration.ofSeconds;
-import static java.util.Collections.singletonList;
+import org.slf4j.Logger;
 
 /**
  * See <a href="https://localai.io/features/text-generation/">LocalAI documentation</a> for more details.
@@ -49,14 +48,15 @@ public class LocalAiStreamingChatModel implements StreamingChatModel {
     private final Integer maxTokens;
 
     @Deprecated(forRemoval = true, since = "1.5.0")
-    public LocalAiStreamingChatModel(String baseUrl,
-                                     String modelName,
-                                     Double temperature,
-                                     Double topP,
-                                     Integer maxTokens,
-                                     Duration timeout,
-                                     Boolean logRequests,
-                                     Boolean logResponses) {
+    public LocalAiStreamingChatModel(
+            String baseUrl,
+            String modelName,
+            Double temperature,
+            Double topP,
+            Integer maxTokens,
+            Duration timeout,
+            Boolean logRequests,
+            Boolean logResponses) {
 
         temperature = temperature == null ? 0.7 : temperature;
         timeout = timeout == null ? ofSeconds(60) : timeout;
@@ -126,9 +126,9 @@ public class LocalAiStreamingChatModel implements StreamingChatModel {
         } else {
             if (parameters.toolChoice() == REQUIRED) {
                 if (toolSpecifications.size() != 1) {
-                    throw new UnsupportedFeatureException(
-                            String.format("%s.%s is currently supported only when there is a single tool",
-                                    ToolChoice.class.getSimpleName(), REQUIRED.name()));
+                    throw new UnsupportedFeatureException(String.format(
+                            "%s.%s is currently supported only when there is a single tool",
+                            ToolChoice.class.getSimpleName(), REQUIRED.name()));
                 }
                 generate(chatRequest.messages(), toolSpecifications.get(0), legacyHandler);
             } else {
@@ -141,21 +141,26 @@ public class LocalAiStreamingChatModel implements StreamingChatModel {
         generate(messages, null, null, handler);
     }
 
-    private void generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications, StreamingResponseHandler<AiMessage> handler) {
+    private void generate(
+            List<ChatMessage> messages,
+            List<ToolSpecification> toolSpecifications,
+            StreamingResponseHandler<AiMessage> handler) {
         generate(messages, toolSpecifications, null, handler);
     }
 
-    private void generate(List<ChatMessage> messages, ToolSpecification toolSpecification, StreamingResponseHandler<AiMessage> handler) {
+    private void generate(
+            List<ChatMessage> messages,
+            ToolSpecification toolSpecification,
+            StreamingResponseHandler<AiMessage> handler) {
         generate(messages, singletonList(toolSpecification), toolSpecification, handler);
     }
 
-    private void generate(List<ChatMessage> messages,
-                          List<ToolSpecification> toolSpecifications,
-                          ToolSpecification toolThatMustBeExecuted,
-                          StreamingResponseHandler<AiMessage> handler
-    ) {
-        ChatCompletionRequest.Builder requestBuilder = ChatCompletionRequest.builder()
-                .stream(true)
+    private void generate(
+            List<ChatMessage> messages,
+            List<ToolSpecification> toolSpecifications,
+            ToolSpecification toolThatMustBeExecuted,
+            StreamingResponseHandler<AiMessage> handler) {
+        ChatCompletionRequest.Builder requestBuilder = ChatCompletionRequest.builder().stream(true)
                 .model(modelName)
                 .messages(toOpenAiMessages(messages))
                 .temperature(temperature)
@@ -186,8 +191,7 @@ public class LocalAiStreamingChatModel implements StreamingChatModel {
                 .execute();
     }
 
-    private static void handle(ChatCompletionResponse partialResponse,
-                               StreamingResponseHandler<AiMessage> handler) {
+    private static void handle(ChatCompletionResponse partialResponse, StreamingResponseHandler<AiMessage> handler) {
         List<ChatCompletionChoice> choices = partialResponse.choices();
         if (isNullOrEmpty(choices)) {
             return;
@@ -200,7 +204,8 @@ public class LocalAiStreamingChatModel implements StreamingChatModel {
     }
 
     public static LocalAiStreamingChatModelBuilder builder() {
-        for (LocalAiStreamingChatModelBuilderFactory factory : loadFactories(LocalAiStreamingChatModelBuilderFactory.class)) {
+        for (LocalAiStreamingChatModelBuilderFactory factory :
+                loadFactories(LocalAiStreamingChatModelBuilderFactory.class)) {
             return factory.get();
         }
         return new LocalAiStreamingChatModelBuilder();
@@ -221,41 +226,91 @@ public class LocalAiStreamingChatModel implements StreamingChatModel {
             // This is public so it can be extended
         }
 
+        /**
+         * Sets the base URL of the LocalAI server, e.g. {@code "http://localhost:8080"}.
+         *
+         * @param baseUrl the base URL
+         * @return {@code this}
+         */
         public LocalAiStreamingChatModelBuilder baseUrl(String baseUrl) {
             this.baseUrl = baseUrl;
             return this;
         }
 
+        /**
+         * Sets the name of the model loaded in the LocalAI server.
+         *
+         * @param modelName the model name
+         * @return {@code this}
+         */
         public LocalAiStreamingChatModelBuilder modelName(String modelName) {
             this.modelName = modelName;
             return this;
         }
 
+        /**
+         * Sets the sampling temperature. Higher values produce more random output;
+         * lower values are more deterministic.
+         *
+         * @param temperature the sampling temperature
+         * @return {@code this}
+         */
         public LocalAiStreamingChatModelBuilder temperature(Double temperature) {
             this.temperature = temperature;
             return this;
         }
 
+        /**
+         * Sets the nucleus sampling probability in the range {@code (0.0, 1.0]}.
+         * The model considers only the tokens whose cumulative probability reaches this threshold.
+         *
+         * @param topP the nucleus sampling threshold
+         * @return {@code this}
+         */
         public LocalAiStreamingChatModelBuilder topP(Double topP) {
             this.topP = topP;
             return this;
         }
 
+        /**
+         * Sets the maximum number of tokens to generate in the response.
+         *
+         * @param maxTokens the maximum number of tokens
+         * @return {@code this}
+         */
         public LocalAiStreamingChatModelBuilder maxTokens(Integer maxTokens) {
             this.maxTokens = maxTokens;
             return this;
         }
 
+        /**
+         * Sets the HTTP request timeout. Defaults to 60 seconds.
+         *
+         * @param timeout the request timeout
+         * @return {@code this}
+         */
         public LocalAiStreamingChatModelBuilder timeout(Duration timeout) {
             this.timeout = timeout;
             return this;
         }
 
+        /**
+         * Enables debug logging of request bodies sent to the LocalAI server.
+         *
+         * @param logRequests {@code true} to enable request logging
+         * @return {@code this}
+         */
         public LocalAiStreamingChatModelBuilder logRequests(Boolean logRequests) {
             this.logRequests = logRequests;
             return this;
         }
 
+        /**
+         * Enables debug logging of response bodies received from the LocalAI server.
+         *
+         * @param logResponses {@code true} to enable response logging
+         * @return {@code this}
+         */
         public LocalAiStreamingChatModelBuilder logResponses(Boolean logResponses) {
             this.logResponses = logResponses;
             return this;
@@ -266,7 +321,10 @@ public class LocalAiStreamingChatModel implements StreamingChatModel {
         }
 
         public String toString() {
-            return "LocalAiStreamingChatModel.LocalAiStreamingChatModelBuilder(baseUrl=" + this.baseUrl + ", modelName=" + this.modelName + ", temperature=" + this.temperature + ", topP=" + this.topP + ", maxTokens=" + this.maxTokens + ", timeout=" + this.timeout + ", logRequests=" + this.logRequests + ", logResponses=" + this.logResponses + ")";
+            return "LocalAiStreamingChatModel.LocalAiStreamingChatModelBuilder(baseUrl=" + this.baseUrl + ", modelName="
+                    + this.modelName + ", temperature=" + this.temperature + ", topP=" + this.topP + ", maxTokens="
+                    + this.maxTokens + ", timeout=" + this.timeout + ", logRequests=" + this.logRequests
+                    + ", logResponses=" + this.logResponses + ")";
         }
     }
 }
