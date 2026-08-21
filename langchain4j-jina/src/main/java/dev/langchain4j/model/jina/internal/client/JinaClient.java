@@ -69,6 +69,7 @@ public class JinaClient {
                 .url(baseUrl + path)
                 .addHeader("Content-Type", "application/json")
                 .addHeader("Authorization", authorizationHeader)
+                .addHeader("User-Agent", "LangChain4j")
                 .body(toJson(request))
                 .build();
 
