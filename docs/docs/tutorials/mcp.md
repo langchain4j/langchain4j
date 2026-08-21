@@ -413,7 +413,7 @@ callback for received log messages. If you create your own implementation of
 ```java
 McpClient mcpClient = new DefaultMcpClient.Builder()
     .transport(transport)
-    .logMessageHandler(new MyLogMessageHandler())
+    .logHandler(new MyLogMessageHandler())
     .build();
 ```
 
