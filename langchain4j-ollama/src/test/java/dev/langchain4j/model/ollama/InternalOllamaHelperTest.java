@@ -1,5 +1,6 @@
 package dev.langchain4j.model.ollama;
 
+import static dev.langchain4j.model.ollama.OllamaJsonUtils.toJsonWithoutIdent;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -7,6 +8,7 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.TextContent;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import java.util.List;
@@ -50,6 +52,29 @@ class InternalOllamaHelperTest {
         assertThat(messages).hasSize(1);
         assertThat(messages.get(0).getContent()).isEmpty();
         assertThat(messages.get(0).getImages()).containsExactly("aW1hZ2U=");
+    }
+
+    @Test
+    void toOllamaMessages_preservesToolNameInToolExecutionResultMessage() {
+        ToolExecutionResultMessage toolExecutionResultMessage = ToolExecutionResultMessage.builder()
+                .id("call-1")
+                .toolName("makeCoffee")
+                .text("Out of coffee beans.")
+                .isError(true)
+                .attributes(Map.of("local", "metadata"))
+                .build();
+
+        List<Message> messages =
+                InternalOllamaHelper.toOllamaMessages(List.<ChatMessage>of(toolExecutionResultMessage));
+
+        assertThat(messages).hasSize(1);
+        Message message = messages.get(0);
+        assertThat(message.getRole()).isEqualTo(Role.TOOL);
+        assertThat(message.getContent()).isEqualTo("Out of coffee beans.");
+        assertThat(message.getAdditionalFields()).containsExactly(Map.entry("tool_name", "makeCoffee"));
+        assertThat(toJsonWithoutIdent(message))
+                .contains("\"role\":\"tool\"", "\"content\":\"Out of coffee beans.\"", "\"tool_name\":\"makeCoffee\"")
+                .doesNotContain("is_error", "call-1", "local");
     }
 
     @Test
