@@ -16,12 +16,20 @@ public class OllamaChatRequestParameters extends DefaultChatRequestParameters {
     private final Double mirostatEta;
     private final Double mirostatTau;
     private final Integer numCtx;
+    private final Integer numThread;
     private final Integer repeatLastN;
     private final Double repeatPenalty;
     private final Integer seed;
     private final Double minP;
     private final Integer keepAlive;
     private final Boolean think;
+    private final Boolean truncate;
+    private final Integer numKeep;
+    private final Double typicalP;
+    private final Integer numBatch;
+    private final Integer numGPU;
+    private final Integer mainGPU;
+    private final Boolean useMmap;
 
     private OllamaChatRequestParameters(Builder builder) {
         super(builder);
@@ -29,12 +37,20 @@ public class OllamaChatRequestParameters extends DefaultChatRequestParameters {
         this.mirostatEta = builder.mirostatEta;
         this.mirostatTau = builder.mirostatTau;
         this.numCtx = builder.numCtx;
+        this.numThread = builder.numThread;
         this.repeatLastN = builder.repeatLastN;
         this.repeatPenalty = builder.repeatPenalty;
         this.seed = builder.seed;
         this.minP = builder.minP;
         this.keepAlive = builder.keepAlive;
         this.think = builder.think;
+        this.truncate = builder.truncate;
+        this.numKeep = builder.numKeep;
+        this.typicalP = builder.typicalP;
+        this.numBatch = builder.numBatch;
+        this.numGPU = builder.numGPU;
+        this.mainGPU = builder.mainGPU;
+        this.useMmap = builder.useMmap;
     }
 
     public Integer mirostat() {
@@ -51,6 +67,34 @@ public class OllamaChatRequestParameters extends DefaultChatRequestParameters {
 
     public Integer numCtx() {
         return numCtx;
+    }
+
+    public Integer numThread() {
+        return numThread;
+    }
+
+    public Boolean useMmap() {
+        return useMmap;
+    }
+
+    public Integer mainGPU() {
+        return mainGPU;
+    }
+
+    public Integer numGPU() {
+        return numGPU;
+    }
+
+    public Integer numBatch() {
+        return numBatch;
+    }
+
+    public Double typicalP() {
+        return typicalP;
+    }
+
+    public Integer numKeep() {
+        return numKeep;
     }
 
     public Integer repeatLastN() {
@@ -77,6 +121,10 @@ public class OllamaChatRequestParameters extends DefaultChatRequestParameters {
         return think;
     }
 
+    public Boolean truncate() {
+        return truncate;
+    }
+
     @Override
     public boolean equals(final Object o) {
         if (o == null || getClass() != o.getClass()) return false;
@@ -86,12 +134,20 @@ public class OllamaChatRequestParameters extends DefaultChatRequestParameters {
                 && Objects.equals(mirostatEta, that.mirostatEta)
                 && Objects.equals(mirostatTau, that.mirostatTau)
                 && Objects.equals(numCtx, that.numCtx)
+                && Objects.equals(numThread, that.numThread)
+                && Objects.equals(numKeep, that.numKeep)
+                && Objects.equals(typicalP, that.typicalP)
+                && Objects.equals(numBatch, that.numBatch)
+                && Objects.equals(numGPU, that.numGPU)
+                && Objects.equals(mainGPU, that.mainGPU)
+                && Objects.equals(useMmap, that.useMmap)
                 && Objects.equals(repeatLastN, that.repeatLastN)
                 && Objects.equals(repeatPenalty, that.repeatPenalty)
                 && Objects.equals(seed, that.seed)
                 && Objects.equals(minP, that.minP)
                 && Objects.equals(keepAlive, that.keepAlive)
-                && Objects.equals(think, that.think);
+                && Objects.equals(think, that.think)
+                && Objects.equals(truncate, that.truncate);
     }
 
     @Override
@@ -102,12 +158,20 @@ public class OllamaChatRequestParameters extends DefaultChatRequestParameters {
                 mirostatEta,
                 mirostatTau,
                 numCtx,
+                numThread,
+                numKeep,
+                typicalP,
+                numBatch,
+                numGPU,
+                mainGPU,
+                useMmap,
                 repeatLastN,
                 repeatPenalty,
                 seed,
                 minP,
                 keepAlive,
-                think);
+                think,
+                truncate);
     }
 
     @Override
@@ -128,12 +192,20 @@ public class OllamaChatRequestParameters extends DefaultChatRequestParameters {
                 + ", mirostatEta=" + mirostatEta
                 + ", mirostatTau=" + mirostatTau
                 + ", numCtx=" + numCtx
+                + ", numThread=" + numThread
+                + ", numKeep=" + numKeep
+                + ", typicalP=" + typicalP
+                + ", numBatch=" + numBatch
+                + ", numGPU=" + numGPU
+                + ", mainGPU=" + mainGPU
+                + ", useMmap=" + useMmap
                 + ", repeatLastN=" + repeatLastN
                 + ", repeatPenalty=" + repeatPenalty
                 + ", seed=" + seed
                 + ", minP=" + minP
                 + ", keepAlive=" + keepAlive
                 + ", think=" + think
+                + ", truncate=" + truncate
                 + '}';
     }
 
@@ -163,12 +235,20 @@ public class OllamaChatRequestParameters extends DefaultChatRequestParameters {
         private Double mirostatEta;
         private Double mirostatTau;
         private Integer numCtx;
+        private Integer numThread;
         private Integer repeatLastN;
         private Double repeatPenalty;
         private Integer seed;
         private Double minP;
         private Integer keepAlive;
         private Boolean think;
+        private Boolean truncate;
+        private Integer numKeep;
+        private Double typicalP;
+        private Integer numBatch;
+        private Integer numGPU;
+        private Integer mainGPU;
+        private Boolean useMmap;
 
         @Override
         public Builder overrideWith(ChatRequestParameters parameters) {
@@ -178,12 +258,20 @@ public class OllamaChatRequestParameters extends DefaultChatRequestParameters {
                 mirostatEta(getOrDefault(ollamaChatRequestParameters.mirostatEta, mirostatEta));
                 mirostatTau(getOrDefault(ollamaChatRequestParameters.mirostatTau, mirostatTau));
                 numCtx(getOrDefault(ollamaChatRequestParameters.numCtx, numCtx));
+                numThread(getOrDefault(ollamaChatRequestParameters.numThread, numThread));
+                numKeep(getOrDefault(ollamaChatRequestParameters.numKeep, numKeep));
+                typicalP(getOrDefault(ollamaChatRequestParameters.typicalP, typicalP));
+                numBatch(getOrDefault(ollamaChatRequestParameters.numBatch, numBatch));
+                numGPU(getOrDefault(ollamaChatRequestParameters.numGPU, numGPU));
+                mainGPU(getOrDefault(ollamaChatRequestParameters.mainGPU, mainGPU));
+                useMmap(getOrDefault(ollamaChatRequestParameters.useMmap, useMmap));
                 repeatLastN(getOrDefault(ollamaChatRequestParameters.repeatLastN, repeatLastN));
                 repeatPenalty(getOrDefault(ollamaChatRequestParameters.repeatPenalty, repeatPenalty));
                 seed(getOrDefault(ollamaChatRequestParameters.seed, seed));
                 minP(getOrDefault(ollamaChatRequestParameters.minP, minP));
                 keepAlive(getOrDefault(ollamaChatRequestParameters.keepAlive, keepAlive));
                 think(getOrDefault(ollamaChatRequestParameters.think, think));
+                truncate(getOrDefault(ollamaChatRequestParameters.truncate, truncate));
             }
             return this;
         }
@@ -226,6 +314,48 @@ public class OllamaChatRequestParameters extends DefaultChatRequestParameters {
 
         public Builder numCtx(Integer numCtx) {
             this.numCtx = numCtx;
+            return this;
+        }
+
+        /**
+         * Sets the number of threads to use during computation.
+         * <p>Useful for CPU-only machines to control CPU utilization.</p>
+         * <p>Default: detected automatically</p>
+         *
+         * @return builder
+         */
+        public Builder numThread(Integer numThread) {
+            this.numThread = numThread;
+            return this;
+        }
+
+        public Builder numKeep(Integer numKeep) {
+            this.numKeep = numKeep;
+            return this;
+        }
+
+        public Builder typicalP(Double typicalP) {
+            this.typicalP = typicalP;
+            return this;
+        }
+
+        public Builder numBatch(Integer numBatch) {
+            this.numBatch = numBatch;
+            return this;
+        }
+
+        public Builder numGPU(Integer numGPU) {
+            this.numGPU = numGPU;
+            return this;
+        }
+
+        public Builder mainGPU(Integer mainGPU) {
+            this.mainGPU = mainGPU;
+            return this;
+        }
+
+        public Builder useMmap(Boolean useMmap) {
+            this.useMmap = useMmap;
             return this;
         }
 
@@ -282,6 +412,24 @@ public class OllamaChatRequestParameters extends DefaultChatRequestParameters {
          */
         public Builder think(Boolean think) {
             this.think = think;
+            return this;
+        }
+
+        /**
+         * Controls what Ollama does with a prompt that does not fit the context window.
+         * <pre>
+         * <code>true</code>: the server drops the part of the prompt that does not fit and answers from the rest
+         * <code>false</code>: the server rejects the request with HTTP 400, reporting the prompt size and the context size
+         * <code>null</code> (not set): the server default applies, which is <code>true</code>
+         * </pre>
+         * <p>Set this to {@code false} when a silently shortened prompt is worse than a failed
+         * request, as in a multi-turn agent loop where the conversation grows with every tool result.</p>
+         *
+         * @return builder
+         * @see OllamaChatModel.Builder#truncate(Boolean)
+         */
+        public Builder truncate(Boolean truncate) {
+            this.truncate = truncate;
             return this;
         }
 

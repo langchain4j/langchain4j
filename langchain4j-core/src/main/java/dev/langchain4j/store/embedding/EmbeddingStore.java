@@ -1,18 +1,20 @@
 package dev.langchain4j.store.embedding;
 
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.internal.Utils.randomUUID;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static java.util.Collections.singletonList;
+
+import dev.langchain4j.Experimental;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.store.embedding.filter.Filter;
-
+import dev.langchain4j.store.embedding.listener.EmbeddingStoreListener;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-
-import static dev.langchain4j.internal.Utils.randomUUID;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static java.util.Collections.singletonList;
 
 /**
  * Represents a store for embeddings, also known as a vector database.
@@ -20,7 +22,6 @@ import static java.util.Collections.singletonList;
  * @param <Embedded> The class of the object that has been embedded. Typically, this is {@link dev.langchain4j.data.segment.TextSegment}.
  */
 public interface EmbeddingStore<Embedded> {
-
     /**
      * Adds a given embedding to the store.
      *
@@ -83,9 +84,21 @@ public interface EmbeddingStore<Embedded> {
     /**
      * Adds multiple embeddings and their corresponding contents that have been embedded to the store.
      *
+     * <p>The lists are positional: the i-th ID, the i-th embedding and the i-th embedded content belong together.
+     * {@code ids} and {@code embeddings} must therefore have the same size, and {@code embedded}, when provided,
+     * must have that size as well. A {@code null} list of IDs or embeddings counts as an empty list, so passing
+     * embeddings without IDs (or the other way around) is a size mismatch, not an empty input.
+     * {@link dev.langchain4j.internal.ValidationUtils#ensureConsistentSizes(List, List, List)} implements
+     * these rules and should be used by implementations.
+     *
+     * <p>Passing no embeddings at all (an empty or {@code null} {@code embeddings} together with an empty or
+     * {@code null} {@code ids}, and no {@code embedded} contents) is a no-op: nothing is stored and no exception
+     * is thrown.
+     *
      * @param ids        A list of IDs associated with the added embeddings.
      * @param embeddings A list of embeddings to be added to the store.
-     * @param embedded   A list of original contents that were embedded.
+     * @param embedded   A list of original contents that were embedded, or {@code null} if they were not provided.
+     * @throws IllegalArgumentException if the sizes of the given lists do not match.
      */
     default void addAll(List<String> ids, List<Embedding> embeddings, List<Embedded> embedded) {
         throw new UnsupportedFeatureException("Not supported yet.");
@@ -103,6 +116,9 @@ public interface EmbeddingStore<Embedded> {
 
     /**
      * Removes all embeddings that match the specified IDs from the store.
+     *
+     * <p>Having nothing to remove is a no-op: an empty or {@code null} collection of IDs leaves the store
+     * unchanged and throws nothing, in the same way that adding no embeddings stores nothing.
      *
      * @param ids A collection of unique IDs of the embeddings to be removed.
      */
@@ -140,4 +156,38 @@ public interface EmbeddingStore<Embedded> {
      * @return An {@link EmbeddingSearchResult} containing all found {@link Embedding}s.
      */
     EmbeddingSearchResult<Embedded> search(EmbeddingSearchRequest request);
+
+    /**
+     * Wraps this {@link EmbeddingStore} with a listening store that dispatches events to the provided listener.
+     * <p>
+     * This is a non-breaking convenience method to add observability to any {@link EmbeddingStore} implementation.
+     *
+     * @param listener The listener to add.
+     * @return An observing {@link EmbeddingStore} that will dispatch events to the provided listener.
+     * @since 1.11.0
+     */
+    @Experimental
+    default EmbeddingStore<Embedded> addListener(EmbeddingStoreListener listener) {
+        return addListeners(listener == null ? null : List.of(listener));
+    }
+
+    /**
+     * Wraps this {@link EmbeddingStore} with a listening store that dispatches events to the provided listeners.
+     * <p>
+     * Listeners are called in the order of iteration.
+     *
+     * @param listeners The listeners to add.
+     * @return An observing {@link EmbeddingStore} that will dispatch events to the provided listeners.
+     * @since 1.11.0
+     */
+    @Experimental
+    default EmbeddingStore<Embedded> addListeners(List<EmbeddingStoreListener> listeners) {
+        if (isNullOrEmpty(listeners)) {
+            return this;
+        }
+        if (this instanceof ListeningEmbeddingStore<Embedded> listeningEmbeddingStore) {
+            return listeningEmbeddingStore.withAdditionalListeners(listeners);
+        }
+        return new ListeningEmbeddingStore<>(this, listeners);
+    }
 }

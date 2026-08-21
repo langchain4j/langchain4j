@@ -4,11 +4,6 @@ import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static java.util.Arrays.asList;
 
-import java.time.Duration;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpClientBuilder;
@@ -20,6 +15,12 @@ import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import java.time.Duration;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.function.Supplier;
 import org.slf4j.Logger;
 
 abstract class OllamaBaseChatModel {
@@ -35,7 +36,7 @@ abstract class OllamaBaseChatModel {
                 .httpClientBuilder(builder.httpClientBuilder)
                 .baseUrl(builder.baseUrl)
                 .timeout(builder.timeout)
-                .customHeaders(builder.customHeaders)
+                .customHeaders(builder.customHeadersSupplier)
                 .logRequests(builder.logRequests)
                 .logResponses(builder.logResponses)
                 .logger(builder.logger)
@@ -50,9 +51,9 @@ abstract class OllamaBaseChatModel {
         }
 
         OllamaChatRequestParameters ollamaParameters =
-                builder.defaultRequestParameters instanceof OllamaChatRequestParameters ollamaChatRequestParameters ?
-                        ollamaChatRequestParameters :
-                        OllamaChatRequestParameters.EMPTY;
+                builder.defaultRequestParameters instanceof OllamaChatRequestParameters ollamaChatRequestParameters
+                        ? ollamaChatRequestParameters
+                        : OllamaChatRequestParameters.EMPTY;
 
         this.defaultRequestParameters = OllamaChatRequestParameters.builder()
                 // common parameters
@@ -75,6 +76,14 @@ abstract class OllamaBaseChatModel {
                 .minP(getOrDefault(builder.minP, ollamaParameters.minP()))
                 .keepAlive(ollamaParameters.keepAlive())
                 .think(getOrDefault(builder.think, ollamaParameters.think()))
+                .truncate(getOrDefault(builder.truncate, ollamaParameters.truncate()))
+                .numThread(ollamaParameters.numThread())
+                .numKeep(ollamaParameters.numKeep())
+                .typicalP(ollamaParameters.typicalP())
+                .numBatch(ollamaParameters.numBatch())
+                .numGPU(ollamaParameters.numGPU())
+                .mainGPU(ollamaParameters.mainGPU())
+                .useMmap(ollamaParameters.useMmap())
                 .build();
         this.returnThinking = getOrDefault(builder.returnThinking, false);
         this.listeners = copy(builder.listeners);
@@ -108,9 +117,10 @@ abstract class OllamaBaseChatModel {
         protected Double minP;
         protected ResponseFormat responseFormat;
         protected Boolean think;
+        protected Boolean truncate;
         protected Boolean returnThinking;
         protected Duration timeout;
-        protected Map<String, String> customHeaders;
+        protected Supplier<Map<String, String>> customHeadersSupplier;
         protected Boolean logRequests;
         protected Boolean logResponses;
         protected Logger logger;
@@ -233,6 +243,23 @@ abstract class OllamaBaseChatModel {
         }
 
         /**
+         * Controls what Ollama does with a prompt that does not fit the context window.
+         * <pre>
+         * <code>true</code>: the server drops the part of the prompt that does not fit and answers from the rest
+         * <code>false</code>: the server rejects the request with HTTP 400, reporting the prompt size and the context size
+         * <code>null</code> (not set): the server default applies, which is <code>true</code>
+         * </pre>
+         * <p>The default discards input without reporting it, so a shortened prompt is not visible in the
+         * response or in the token usage. Set this to {@code false} to get an error instead.</p>
+         *
+         * @see #numCtx(Integer)
+         */
+        public B truncate(Boolean truncate) {
+            this.truncate = truncate;
+            return self();
+        }
+
+        /**
          * Controls whether to return thinking/reasoning text (if available) inside {@link AiMessage#thinking()}
          * and whether to invoke the {@link StreamingChatResponseHandler#onPartialThinking(PartialThinking)} callback.
          * Please note that this does not enable thinking/reasoning for the LLM;
@@ -254,8 +281,21 @@ abstract class OllamaBaseChatModel {
             return self();
         }
 
+        /**
+         * Sets custom HTTP headers.
+         */
         public B customHeaders(Map<String, String> customHeaders) {
-            this.customHeaders = customHeaders;
+            this.customHeadersSupplier = () -> customHeaders;
+            return self();
+        }
+
+        /**
+         * Sets a supplier for custom HTTP headers.
+         * The supplier is called before each request, allowing dynamic header values.
+         * For example, this is useful for OAuth2 tokens that expire and need refreshing.
+         */
+        public B customHeaders(Supplier<Map<String, String>> customHeadersSupplier) {
+            this.customHeadersSupplier = customHeadersSupplier;
             return self();
         }
 

@@ -14,7 +14,7 @@ import java.util.stream.Stream;
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
 import static java.lang.reflect.Modifier.isStatic;
 
-public class AiServiceValidation {
+class AiServiceValidation {
 
     private static final Set<Method> VALID_METHODS = new HashSet<>();
 

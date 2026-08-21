@@ -1,6 +1,8 @@
 package dev.langchain4j.mcp.client.integration;
 
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.fail;
+import static org.junit.jupiter.api.Assertions.assertTimeout;
 
 import dev.langchain4j.mcp.client.DefaultMcpClient;
 import dev.langchain4j.mcp.client.McpClient;
@@ -25,7 +27,10 @@ class McpStdioLaunchIssueIT {
             StdioMcpTransport transport = new StdioMcpTransport.Builder()
                     .command(Collections.singletonList("WRONG-COMMAND"))
                     .build();
-            client = new DefaultMcpClient.Builder().transport(transport).build();
+            client = new DefaultMcpClient.Builder()
+                    .transport(transport)
+                    .protocolVersion("2025-11-25")
+                    .build();
             fail("The MCP client should have failed by now");
         } catch (RuntimeException ex) {
             ex.printStackTrace();
@@ -38,29 +43,33 @@ class McpStdioLaunchIssueIT {
     }
 
     /**
-     * With a command that does exist but fails after it is executed,
-     * the client will fail after the "initialization timeout".
+     * With a command that does exist but exits soon after it is executed,
+     * verify that the client doesn't wait until the initializationTimeout
+     * and fails immediately.
      */
     @Test
     void failingJBangScript() throws Exception {
         McpServerHelper.skipTestsIfJbangNotAvailable();
-        McpClient client = null;
-        try {
-            StdioMcpTransport transport = new StdioMcpTransport.Builder()
-                    .command(List.of(McpServerHelper.getJBangCommand(), "nonexistent"))
-                    .build();
-            client = new DefaultMcpClient.Builder()
-                    .initializationTimeout(Duration.ofSeconds(1)) // to make the test pass faster
-                    .transport(transport)
-                    .build();
-            fail("The MCP client should have failed by now");
-        } catch (RuntimeException ex) {
-            ex.printStackTrace();
-            // OK
-        } finally {
-            if (client != null) {
-                client.close();
-            }
-        }
+        StdioMcpTransport transport = new StdioMcpTransport.Builder()
+                .command(List.of(McpServerHelper.getJBangCommand(), "nonexistent"))
+                .build();
+        assertThatThrownBy(() -> {
+                    assertTimeout(Duration.ofSeconds(20), () -> {
+                        McpClient client = null;
+                        try {
+                            client = new DefaultMcpClient.Builder()
+                                    .initializationTimeout(Duration.ofSeconds(30))
+                                    .transport(transport)
+                                    .protocolVersion("2025-11-25")
+                                    .build();
+                        } finally {
+                            if (client != null) {
+                                client.close();
+                            }
+                        }
+                    });
+                })
+                .hasRootCauseInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Process has exited");
     }
 }

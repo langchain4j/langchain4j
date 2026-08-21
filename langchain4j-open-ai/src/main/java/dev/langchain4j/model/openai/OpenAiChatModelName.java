@@ -10,9 +10,6 @@ public enum OpenAiChatModelName {
     GPT_4("gpt-4"), // alias
     GPT_4_0613("gpt-4-0613"),
 
-    GPT_4_TURBO_PREVIEW("gpt-4-turbo-preview"), // alias
-    GPT_4_1106_PREVIEW("gpt-4-1106-preview"),
-    GPT_4_0125_PREVIEW("gpt-4-0125-preview"),
     GPT_4_TURBO("gpt-4-turbo"), // alias
     GPT_4_TURBO_2024_04_09("gpt-4-turbo-2024-04-09"),
 
@@ -29,9 +26,6 @@ public enum OpenAiChatModelName {
 
     O1("o1"), // alias
     O1_2024_12_17("o1-2024-12-17"),
-
-    O1_MINI("o1-mini"), // alias
-    O1_MINI_2024_09_12("o1-mini-2024-09-12"),
 
     O3("o3"), // alias
     O3_2025_04_16("o3-2025-04-16"),

@@ -1,19 +1,18 @@
 package dev.langchain4j.store.embedding.elasticsearch;
 
+import static dev.langchain4j.internal.Utils.randomUUID;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreWithFilteringIT;
+import java.io.IOException;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
-
-import java.io.IOException;
-
-import static dev.langchain4j.internal.Utils.randomUUID;
-import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * For this test, because Elasticsearch container might not be super fast to start,
@@ -21,9 +20,9 @@ import static org.assertj.core.api.Assertions.assertThat;
  * We try first to reach the local cluster and if not available, then start
  * a container with Testcontainers.
  */
-abstract class AbstractElasticsearchEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
+public abstract class AbstractElasticsearchEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
 
-    static ElasticsearchClientHelper elasticsearchClientHelper = new ElasticsearchClientHelper();
+    static final ElasticsearchClientHelper elasticsearchClientHelper = new ElasticsearchClientHelper();
 
     private EmbeddingStore<TextSegment> embeddingStore;
     String indexName;
@@ -31,19 +30,18 @@ abstract class AbstractElasticsearchEmbeddingStoreIT extends EmbeddingStoreWithF
     @BeforeAll
     static void startServices() throws IOException {
         elasticsearchClientHelper.startServices();
-        assertThat(elasticsearchClientHelper.restClient).isNotNull();
         assertThat(elasticsearchClientHelper.client).isNotNull();
     }
 
     @AfterAll
     static void stopServices() throws IOException {
+        // Comment this line if you want to use "reuse" feature from TestContainers
         elasticsearchClientHelper.stopServices();
     }
 
     abstract ElasticsearchConfiguration withConfiguration();
 
-    void optionallyCreateIndex(String indexName) throws IOException {
-    }
+    void optionallyCreateIndex(String indexName) throws IOException {}
 
     @BeforeEach
     void createEmbeddingStore() throws IOException {
@@ -52,7 +50,7 @@ abstract class AbstractElasticsearchEmbeddingStoreIT extends EmbeddingStoreWithF
         optionallyCreateIndex(indexName);
         embeddingStore = ElasticsearchEmbeddingStore.builder()
                 .configuration(withConfiguration())
-                .restClient(elasticsearchClientHelper.restClient)
+                .client(elasticsearchClientHelper.client)
                 .indexName(indexName)
                 .build();
     }
@@ -78,6 +76,6 @@ abstract class AbstractElasticsearchEmbeddingStoreIT extends EmbeddingStoreWithF
 
     @Override
     protected void ensureStoreIsEmpty() {
-        // TODO fix
+        // TODO FIX
     }
 }

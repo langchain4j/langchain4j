@@ -1,5 +1,6 @@
 package dev.langchain4j.guardrail.config;
 
+import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
 import dev.langchain4j.spi.guardrail.config.OutputGuardrailsConfigBuilderFactory;
 import java.util.ServiceLoader;
 
@@ -9,6 +10,7 @@ import java.util.ServiceLoader;
  *     Frameworks that extend this library (like Quarkus or Spring) may provide their own implementations of this configuration.
  * </p>
  */
+@JacocoIgnoreCoverageGenerated
 public interface OutputGuardrailsConfig extends GuardrailsConfig {
     /**
      * Default maximum number of retries for the guardrail.

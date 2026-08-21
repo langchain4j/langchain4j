@@ -1,6 +1,8 @@
 package dev.langchain4j.service;
 
 import dev.langchain4j.Internal;
+import dev.langchain4j.data.image.Image;
+import dev.langchain4j.data.message.ImageContent;
 
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
@@ -160,4 +162,7 @@ public class TypeUtils {
         return declarationExample.toString();
     }
 
+    public static boolean isImageType(Class<?> rawReturnType) {
+        return Image.class.isAssignableFrom(rawReturnType) || ImageContent.class.isAssignableFrom(rawReturnType);
+    }
 }

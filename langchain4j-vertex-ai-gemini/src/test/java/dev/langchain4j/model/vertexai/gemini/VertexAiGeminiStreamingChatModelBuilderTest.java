@@ -1,6 +1,6 @@
 package dev.langchain4j.model.vertexai.gemini;
 
-import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -56,5 +56,28 @@ class VertexAiGeminiStreamingChatModelBuilderTest {
                 .build();
 
         assertThat(model.vertexAI().getApiEndpoint()).isEqualTo(customEndpoint);
+    }
+
+    @Test
+    void setLabels() {
+        VertexAiGeminiStreamingChatModel model = VertexAiGeminiStreamingChatModel.builder()
+                .project("does-not-matter")
+                .location("does-not-matter")
+                .modelName("does-not-matter")
+                .labels(Map.of("company_id", "20096", "user_id", "12345"))
+                .build();
+
+        assertThat(model.labels()).containsEntry("company_id", "20096").containsEntry("user_id", "12345");
+    }
+
+    @Test
+    void labelsDefaultToEmpty() {
+        VertexAiGeminiStreamingChatModel model = VertexAiGeminiStreamingChatModel.builder()
+                .project("does-not-matter")
+                .location("does-not-matter")
+                .modelName("does-not-matter")
+                .build();
+
+        assertThat(model.labels()).isEmpty();
     }
 }

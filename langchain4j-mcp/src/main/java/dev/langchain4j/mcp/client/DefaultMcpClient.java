@@ -5,6 +5,7 @@ import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -14,25 +15,44 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.exception.ToolExecutionException;
+import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.mcp.client.logging.DefaultMcpLogMessageHandler;
 import dev.langchain4j.mcp.client.logging.McpLogMessageHandler;
-import dev.langchain4j.mcp.client.protocol.McpCallToolRequest;
-import dev.langchain4j.mcp.client.protocol.McpCancellationNotification;
-import dev.langchain4j.mcp.client.protocol.McpGetPromptRequest;
-import dev.langchain4j.mcp.client.protocol.McpInitializeParams;
-import dev.langchain4j.mcp.client.protocol.McpInitializeRequest;
-import dev.langchain4j.mcp.client.protocol.McpListPromptsRequest;
-import dev.langchain4j.mcp.client.protocol.McpListResourceTemplatesRequest;
-import dev.langchain4j.mcp.client.protocol.McpListResourcesRequest;
-import dev.langchain4j.mcp.client.protocol.McpListToolsRequest;
-import dev.langchain4j.mcp.client.protocol.McpPingRequest;
-import dev.langchain4j.mcp.client.protocol.McpReadResourceRequest;
-import dev.langchain4j.mcp.client.protocol.McpRootsListChangedNotification;
+import dev.langchain4j.mcp.client.progress.McpProgressHandler;
+import dev.langchain4j.mcp.client.transport.McpHeaderEncoding;
 import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import dev.langchain4j.mcp.client.transport.McpTransport;
+import dev.langchain4j.mcp.protocol.McpCallToolParams;
+import dev.langchain4j.mcp.protocol.McpCallToolRequest;
+import dev.langchain4j.mcp.protocol.McpCancellationNotification;
+import dev.langchain4j.mcp.protocol.McpClientMessage;
+import dev.langchain4j.mcp.protocol.McpClientNotification;
+import dev.langchain4j.mcp.protocol.McpClientParams;
+import dev.langchain4j.mcp.protocol.McpClientRequest;
+import dev.langchain4j.mcp.protocol.McpGetPromptParams;
+import dev.langchain4j.mcp.protocol.McpGetPromptRequest;
+import dev.langchain4j.mcp.protocol.McpImplementation;
+import dev.langchain4j.mcp.protocol.McpInitializeParams;
+import dev.langchain4j.mcp.protocol.McpInitializeRequest;
+import dev.langchain4j.mcp.protocol.McpInitializeResult;
+import dev.langchain4j.mcp.protocol.McpListPromptsRequest;
+import dev.langchain4j.mcp.protocol.McpListResourceTemplatesRequest;
+import dev.langchain4j.mcp.protocol.McpListResourcesRequest;
+import dev.langchain4j.mcp.protocol.McpListToolsRequest;
+import dev.langchain4j.mcp.protocol.McpPingRequest;
+import dev.langchain4j.mcp.protocol.McpReadResourceParams;
+import dev.langchain4j.mcp.protocol.McpReadResourceRequest;
+import dev.langchain4j.mcp.protocol.McpRootsListChangedNotification;
+import dev.langchain4j.mcp.protocol.McpServerDiscoverParams;
+import dev.langchain4j.mcp.protocol.McpServerDiscoverRequest;
+import dev.langchain4j.mcp.protocol.McpSubscribeResourceRequest;
+import dev.langchain4j.mcp.protocol.McpSubscriptionsListenParams;
+import dev.langchain4j.mcp.protocol.McpSubscriptionsListenRequest;
+import dev.langchain4j.mcp.protocol.McpUnsubscribeResourceRequest;
 import dev.langchain4j.service.tool.ToolExecutionResult;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -43,24 +63,44 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Supplier;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class DefaultMcpClient implements McpClient {
 
     private static final Logger log = LoggerFactory.getLogger(DefaultMcpClient.class);
+    private static final int DEFAULT_MULTI_ROUND_TRIP_MAX_RETRIES = 3;
+
+    /**
+     * The first MCP protocol version that conveys version, identity and capabilities as
+     * per-request metadata instead of an {@code initialize} handshake.
+     */
+    static final String PROTOCOL_VERSION_MODERN = "2026-07-28";
+
+    static final String PROTOCOL_VERSION_LEGACY = "2025-11-25";
+    static final String PROTOCOL_VERSION_LEGACY_OLD = "2024-11-05";
+
+    static final ObjectMapper OBJECT_MAPPER =
+            new ObjectMapper().disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
+
     private final AtomicLong idGenerator = new AtomicLong(0);
     private final McpTransport transport;
-    static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private final String key;
     private final String clientName;
     private final String clientVersion;
     private final String protocolVersion;
+    private volatile boolean modernProtocol;
     private final Duration initializationTimeout;
+    private final Duration protocolDetectionTimeout;
     private final Duration toolExecutionTimeout;
     private final Duration resourcesTimeout;
     private final Duration promptsTimeout;
@@ -70,12 +110,20 @@ public class DefaultMcpClient implements McpClient {
     private final Map<Long, CompletableFuture<JsonNode>> pendingOperations = new ConcurrentHashMap<>();
     private final McpOperationHandler messageHandler;
     private final McpLogMessageHandler logHandler;
+    private final McpProgressHandler progressHandler;
     private final AtomicReference<List<McpResource>> resourceRefs = new AtomicReference<>();
     private final AtomicReference<List<McpResourceTemplate>> resourceTemplateRefs = new AtomicReference<>();
     private final AtomicReference<List<McpPrompt>> promptRefs = new AtomicReference<>();
     private final AtomicReference<List<ToolSpecification>> toolListRefs = new AtomicReference<>();
-    private final AtomicBoolean toolListOutOfDate = new AtomicBoolean(true);
-    private final AtomicReference<CompletableFuture<Void>> toolListUpdateInProgress = new AtomicReference<>(null);
+    private final AtomicReference<CompletableFuture<List<ToolSpecification>>> toolListUpdateInProgress =
+            new AtomicReference<>(null);
+    private final AtomicReference<CompletableFuture<List<McpResource>>> resourceListUpdateInProgress =
+            new AtomicReference<>(null);
+    private final AtomicReference<CompletableFuture<List<McpResourceTemplate>>> resourceTemplateListUpdateInProgress =
+            new AtomicReference<>(null);
+    private final AtomicReference<CompletableFuture<List<McpPrompt>>> promptListUpdateInProgress =
+            new AtomicReference<>(null);
+    private final BiConsumer<McpClient, String> onResourceUpdated;
     private final Duration reconnectInterval;
     private volatile boolean closed = false;
     private final Boolean autoHealthCheck;
@@ -84,6 +132,18 @@ public class DefaultMcpClient implements McpClient {
     private final ReentrantLock initializationLock = new ReentrantLock();
     private final AtomicReference<List<McpRoot>> mcpRoots;
     private final Boolean cacheToolList;
+    private final Boolean cacheResourceList;
+    private final Boolean cachePromptList;
+    private final List<McpClientListener> listeners;
+    private final McpMetaSupplier metaSupplier;
+    private final McpToolResultExtractor toolResultExtractor;
+    private volatile @Nullable McpInitializeResult initializeResult;
+    private final int multiRoundTripMaxRetries;
+    private final boolean subscribeToToolListChanges;
+    private final boolean subscribeToPromptListChanges;
+    private final boolean subscribeToResourceListChanges;
+    private final Map<Long, CompletableFuture<JsonNode>> activeSubscriptions = new ConcurrentHashMap<>();
+    private volatile CompletableFuture<JsonNode> listChangeSubscriptionFuture;
 
     public DefaultMcpClient(Builder builder) {
         try {
@@ -91,16 +151,23 @@ public class DefaultMcpClient implements McpClient {
             key = getOrDefault(builder.key, () -> UUID.randomUUID().toString());
             clientName = getOrDefault(builder.clientName, "langchain4j");
             clientVersion = getOrDefault(builder.clientVersion, "1.0");
-            protocolVersion = getOrDefault(builder.protocolVersion, "2025-06-18");
+            protocolVersion = builder.protocolVersion;
             initializationTimeout = getOrDefault(builder.initializationTimeout, Duration.ofSeconds(30));
+            // Defaults to the initialization timeout: a stdio server is usually a subprocess that
+            // has to boot before it can answer anything, and cutting the detection request short
+            // would misdetect it as a legacy server.
+            protocolDetectionTimeout = getOrDefault(builder.protocolDetectionTimeout, initializationTimeout);
             toolExecutionTimeout = getOrDefault(builder.toolExecutionTimeout, Duration.ofSeconds(60));
             resourcesTimeout = getOrDefault(builder.resourcesTimeout, Duration.ofSeconds(60));
             promptsTimeout = getOrDefault(builder.promptsTimeout, Duration.ofSeconds(60));
             logHandler = getOrDefault(builder.logHandler, new DefaultMcpLogMessageHandler());
+            progressHandler = builder.progressHandler;
             pingTimeout = getOrDefault(builder.pingTimeout, Duration.ofSeconds(10));
             reconnectInterval = getOrDefault(builder.reconnectInterval, Duration.ofSeconds(5));
             autoHealthCheck = getOrDefault(builder.autoHealthCheck, Boolean.TRUE);
             autoHealthCheckInterval = getOrDefault(builder.autoHealthCheckInterval, Duration.ofSeconds(30));
+            listeners = List.copyOf(builder.listeners);
+            metaSupplier = builder.metaSupplier;
             healthCheckScheduler = autoHealthCheck
                     ? Executors.newSingleThreadScheduledExecutor(r -> {
                         Thread t = new Thread(r, "mcp-server-health-checker");
@@ -112,13 +179,52 @@ public class DefaultMcpClient implements McpClient {
                     getOrDefault(builder.toolExecutionTimeoutErrorMessage, "There was a timeout executing the tool");
             mcpRoots = new AtomicReference<>(getOrDefault(builder.roots, new ArrayList<>()));
             cacheToolList = getOrDefault(builder.cacheToolList, Boolean.TRUE);
+            cacheResourceList = getOrDefault(builder.cacheResourceList, Boolean.TRUE);
+            cachePromptList = getOrDefault(builder.cachePromptList, Boolean.TRUE);
+            onResourceUpdated = builder.onResourceUpdated;
+            toolResultExtractor = getOrDefault(builder.toolResultExtractor, new DefaultMcpToolResultExtractor());
+            multiRoundTripMaxRetries =
+                    getOrDefault(builder.multiRoundTripMaxRetries, DEFAULT_MULTI_ROUND_TRIP_MAX_RETRIES);
+            subscribeToToolListChanges = getOrDefault(builder.subscribeToToolListChanges, Boolean.TRUE);
+            subscribeToPromptListChanges = getOrDefault(builder.subscribeToPromptListChanges, Boolean.TRUE);
+            subscribeToResourceListChanges = getOrDefault(builder.subscribeToResourceListChanges, Boolean.TRUE);
             RESULT_TIMEOUT = JsonNodeFactory.instance.objectNode();
             messageHandler = new McpOperationHandler(
                     pendingOperations,
                     mcpRoots::get,
                     transport,
-                    logHandler::handleLogMessage,
-                    () -> toolListOutOfDate.set(true));
+                    message -> {
+                        logHandler.handleLogMessage(message);
+                        notifyListeners(l -> l.onNotificationMessage(message));
+                    },
+                    () -> {
+                        toolListRefs.set(null);
+                        notifyListeners(l -> l.onNotificationToolsListChanged());
+                    },
+                    () -> {
+                        resourceRefs.set(null);
+                        resourceTemplateRefs.set(null);
+                        notifyListeners(l -> l.onNotificationResourcesListChanged());
+                    },
+                    () -> {
+                        promptRefs.set(null);
+                        notifyListeners(l -> l.onNotificationPromptsListChanged());
+                    },
+                    uri -> {
+                        if (onResourceUpdated != null) {
+                            onResourceUpdated.accept(this, uri);
+                        }
+                        notifyListeners(l -> l.onNotificationResourceUpdated(uri));
+                    },
+                    notification -> {
+                        if (progressHandler != null) {
+                            progressHandler.onProgress(notification);
+                        }
+                        notifyListeners(l -> l.onNotificationProgress(notification));
+                    },
+                    () -> notifyListeners(l -> l.onServerPing()),
+                    () -> notifyListeners(l -> l.onServerRootsList()),
+                    (requestId, reason) -> notifyListeners(l -> l.onNotificationCancelled(requestId, reason)));
             ((ObjectNode) RESULT_TIMEOUT)
                     .putObject("result")
                     .putArray("content")
@@ -149,26 +255,136 @@ public class DefaultMcpClient implements McpClient {
 
     private void initialize() {
         transport.start(messageHandler);
+        String resolvedVersion = protocolVersion;
+
+        if (resolvedVersion == null || resolvedVersion.isEmpty()) {
+            autoDetect(PROTOCOL_VERSION_MODERN, PROTOCOL_VERSION_LEGACY);
+        } else if (isModernVersion(resolvedVersion)) {
+            initializeModern(resolvedVersion, false);
+        } else if (PROTOCOL_VERSION_LEGACY.equals(resolvedVersion)
+                || PROTOCOL_VERSION_LEGACY_OLD.equals(resolvedVersion)) {
+            initializeLegacy(resolvedVersion);
+        } else {
+            autoDetect(resolvedVersion, resolvedVersion);
+        }
+    }
+
+    private void autoDetect(String modernVersion, String legacyFallbackVersion) {
+        try {
+            initializeModern(modernVersion, true);
+        } catch (McpException e) {
+            if (isModernErrorCode(e.errorCode())) {
+                if (e.errorCode() == -32022) {
+                    retryWithSupportedVersion(e);
+                    return;
+                }
+                throw e;
+            }
+            log.debug("Server does not support modern protocol, falling back to legacy initialize");
+            initializeLegacy(legacyFallbackVersion);
+        } catch (Exception e) {
+            if (e.getCause() instanceof TimeoutException) {
+                // Unlike an error answer, silence does not prove the server is a legacy one, so say
+                // so: a server that was merely slow is about to be used with the wrong protocol.
+                log.warn(
+                        "The server did not answer the {} protocol detection request within {}, so it is treated as a {} server. If it does support {}, raise protocolDetectionTimeout or set protocolVersion explicitly.",
+                        modernVersion,
+                        protocolDetectionTimeout,
+                        legacyFallbackVersion,
+                        modernVersion);
+            } else {
+                log.debug("Modern initialization (server/discover) failed, falling back to legacy initialize");
+            }
+            try {
+                initializeLegacy(legacyFallbackVersion);
+            } catch (RuntimeException legacyFailure) {
+                throw new RuntimeException(
+                        ("%s. The server answered neither the %s protocol detection request nor the %s initialization"
+                                        + " that followed it. If the server does not tolerate being sent a method it"
+                                        + " does not know, skip detection by setting the protocol version explicitly,"
+                                        + " for example .protocolVersion(\"%s\").")
+                                .formatted(
+                                        legacyFailure.getMessage(),
+                                        modernVersion,
+                                        legacyFallbackVersion,
+                                        legacyFallbackVersion),
+                        legacyFailure);
+            }
+        }
+    }
+
+    private static boolean isModernErrorCode(int code) {
+        return code == -32022 || code == -32021 || code == -32020;
+    }
+
+    private boolean shouldSendCancellationNotification() {
+        return transport.requiresCancellationNotification() || !modernProtocol;
+    }
+
+    private void retryWithSupportedVersion(McpException e) {
+        JsonNode data = e.errorData();
+        if (data != null && data.has("supported")) {
+            JsonNode supported = data.get("supported");
+            if (supported.isArray()) {
+                // Prefer modern versions, fall back to legacy
+                String bestModern = null;
+                String bestLegacy = null;
+                for (JsonNode v : supported) {
+                    String version = v.asText();
+                    if (isModernVersion(version)) {
+                        if (bestModern == null || version.compareTo(bestModern) > 0) {
+                            bestModern = version;
+                        }
+                    } else {
+                        if (bestLegacy == null || version.compareTo(bestLegacy) > 0) {
+                            bestLegacy = version;
+                        }
+                    }
+                }
+                if (bestModern != null) {
+                    initializeModern(bestModern, false);
+                    return;
+                }
+                if (bestLegacy != null) {
+                    initializeLegacy(bestLegacy);
+                    return;
+                }
+            }
+        }
+        throw new RuntimeException("Server does not support any compatible protocol version", e);
+    }
+
+    private void initializeLegacy(String version) {
+        transport.setModernProtocol(false);
         long operationId = idGenerator.getAndIncrement();
         McpInitializeRequest request = new McpInitializeRequest(operationId);
-        McpInitializeParams params = createInitializeParams();
+        McpInitializeParams params = createInitializeParams(version);
         request.setParams(params);
+        McpCallContext context = new McpCallContext(null, request);
+        notifyListeners(l -> l.beforeInitialize(context));
+        applyMeta(request, context);
         try {
             JsonNode capabilities =
                     transport.initialize(request).get(initializationTimeout.toMillis(), TimeUnit.MILLISECONDS);
-            log.debug("MCP server capabilities: {}", capabilities.get("result"));
+            if (capabilities.get("result") != null) {
+                log.debug("MCP server capabilities: {}", capabilities.get("result"));
+            }
+            initializeResult = toInitializeResult(capabilities);
+            modernProtocol = false;
+            notifyListeners(l -> l.afterInitialize(context));
         } catch (Exception e) {
+            notifyListeners(l -> l.onInitializeError(context, e));
             throw new RuntimeException(e);
         } finally {
             pendingOperations.remove(operationId);
         }
     }
 
-    private McpInitializeParams createInitializeParams() {
+    private McpInitializeParams createInitializeParams(String version) {
         McpInitializeParams params = new McpInitializeParams();
-        params.setProtocolVersion(protocolVersion);
+        params.setProtocolVersion(version);
 
-        McpInitializeParams.ClientInfo clientInfo = new McpInitializeParams.ClientInfo();
+        McpImplementation clientInfo = new McpImplementation();
         clientInfo.setName(clientName);
         clientInfo.setVersion(clientVersion);
         params.setClientInfo(clientInfo);
@@ -182,40 +398,279 @@ public class DefaultMcpClient implements McpClient {
         return params;
     }
 
+    private static McpInitializeResult toInitializeResult(JsonNode response) {
+        JsonNode result = response.path("result");
+        JsonNode serverInfo = result.path("serverInfo");
+        JsonNode tools = result.path("capabilities").path("tools");
+
+        McpImplementation implementation = null;
+        if (!serverInfo.isMissingNode() && !serverInfo.isNull()) {
+            implementation = OBJECT_MAPPER.convertValue(serverInfo, McpImplementation.class);
+        }
+
+        McpInitializeResult.Capabilities capabilities = new McpInitializeResult.Capabilities(
+                new McpInitializeResult.Capabilities.Tools(toNullableBoolean(tools.get("listChanged"))));
+
+        return new McpInitializeResult(
+                toNullableLong(response.get("id")),
+                new McpInitializeResult.Result(
+                        result.path("protocolVersion").asText(null),
+                        capabilities,
+                        implementation,
+                        result.path("instructions").asText(null)));
+    }
+
+    private static McpInitializeResult toInitializeResultFromDiscover(JsonNode response) {
+        JsonNode result = response.path("result");
+        JsonNode serverInfoNode = result.path("_meta").path("io.modelcontextprotocol/serverInfo");
+        JsonNode capabilities = result.path("capabilities");
+        JsonNode tools = capabilities.path("tools");
+
+        McpImplementation serverInfo = null;
+        if (!serverInfoNode.isMissingNode() && !serverInfoNode.isNull()) {
+            serverInfo = OBJECT_MAPPER.convertValue(serverInfoNode, McpImplementation.class);
+        }
+
+        McpInitializeResult.Capabilities caps = new McpInitializeResult.Capabilities(
+                new McpInitializeResult.Capabilities.Tools(toNullableBoolean(tools.get("listChanged"))));
+
+        return new McpInitializeResult(
+                toNullableLong(response.get("id")),
+                new McpInitializeResult.Result(
+                        null, // protocolVersion not in discover result directly
+                        caps,
+                        serverInfo,
+                        result.path("instructions").asText(null)));
+    }
+
+    private void initializeModern(String versionToAdvertise, boolean isProbe) {
+        // Set modern mode on HTTP transport BEFORE sending server/discover,
+        // so the required HTTP headers (MCP-Protocol-Version, Mcp-Method) are included
+        transport.setModernProtocol(true);
+        transport.setProtocolVersion(versionToAdvertise);
+        long operationId = idGenerator.getAndIncrement();
+        McpServerDiscoverRequest request = new McpServerDiscoverRequest(operationId);
+        McpServerDiscoverParams params = new McpServerDiscoverParams();
+        applyModernMeta(params, versionToAdvertise);
+        request.setParams(params);
+        McpCallContext context = new McpCallContext(null, request);
+        if (!isProbe) {
+            notifyListeners(l -> l.beforeServerDiscover(context));
+        }
+        applyMeta(request, context);
+        CompletableFuture<JsonNode> resultFuture = null;
+        try {
+            resultFuture = transport.executeOperationWithResponse(context);
+            Duration timeout = isProbe ? protocolDetectionTimeout : initializationTimeout;
+            JsonNode response = resultFuture.get(timeout.toMillis(), TimeUnit.MILLISECONDS);
+            if (response.has("error")) {
+                JsonNode error = response.get("error");
+                throw new McpException(
+                        error.get("code").asInt(), error.get("message").asText(), error.get("data"));
+            }
+            log.debug("MCP server discover result: {}", response.get("result"));
+            initializeResult = toInitializeResultFromDiscover(response);
+            modernProtocol = true;
+            McpDiscoverResult discoverResult = toDiscoverResult(response);
+            notifyListeners(l -> l.afterServerDiscover(context, discoverResult));
+            // Auto-start list-change subscriptions if enabled
+            if (subscribeToToolListChanges || subscribeToPromptListChanges || subscribeToResourceListChanges) {
+                startListChangeSubscriptions();
+            }
+        } catch (McpException e) {
+            if (!isProbe) {
+                notifyListeners(l -> l.onServerDiscoverError(context, e));
+            }
+            throw e;
+        } catch (Exception e) {
+            if (!isProbe) {
+                notifyListeners(l -> l.onServerDiscoverError(context, e));
+            }
+            if (resultFuture != null) {
+                resultFuture.cancel(true);
+            }
+            throw new RuntimeException(e);
+        } finally {
+            pendingOperations.remove(operationId);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static McpDiscoverResult toDiscoverResult(JsonNode response) {
+        JsonNode result = response.path("result");
+
+        McpServerInfo serverInfo = null;
+        JsonNode serverInfoNode = result.path("_meta").path("io.modelcontextprotocol/serverInfo");
+        if (!serverInfoNode.isMissingNode() && !serverInfoNode.isNull()) {
+            McpImplementation implementation = OBJECT_MAPPER.convertValue(serverInfoNode, McpImplementation.class);
+            serverInfo =
+                    new McpServerInfo(implementation.getName(), implementation.getVersion(), implementation.getTitle());
+        }
+
+        Map<String, Object> capabilities = Map.of();
+        JsonNode capabilitiesNode = result.path("capabilities");
+        if (capabilitiesNode.isObject()) {
+            capabilities = (Map<String, Object>) ToolExecutionHelper.toObject(capabilitiesNode);
+        }
+
+        List<String> versions = new ArrayList<>();
+        for (JsonNode version : result.path("supportedVersions")) {
+            versions.add(version.asText());
+        }
+
+        return new McpDiscoverResult(
+                versions,
+                capabilities,
+                serverInfo,
+                result.path("instructions").asText(null),
+                result.path("resultType").asText(null));
+    }
+
+    private static @Nullable Long toNullableLong(JsonNode node) {
+        return node == null || node.isNull() || !node.canConvertToLong() ? null : node.asLong();
+    }
+
+    private static @Nullable Boolean toNullableBoolean(JsonNode node) {
+        return node == null || node.isNull() ? null : node.asBoolean();
+    }
+
+    private void applyModernMeta(McpClientParams params, String versionToAdvertise) {
+        Map<String, Object> meta = params.getMeta();
+        if (meta == null) {
+            meta = new LinkedHashMap<>();
+        } else {
+            meta = new LinkedHashMap<>(meta);
+        }
+        meta.put("io.modelcontextprotocol/protocolVersion", versionToAdvertise);
+        Map<String, Object> clientInfoMap = new LinkedHashMap<>();
+        clientInfoMap.put("name", clientName);
+        clientInfoMap.put("version", clientVersion);
+        meta.put("io.modelcontextprotocol/clientInfo", clientInfoMap);
+        meta.put("io.modelcontextprotocol/clientCapabilities", Map.of());
+        params.setMeta(meta);
+    }
+
+    private static boolean isModernVersion(String version) {
+        return version != null && version.compareTo(PROTOCOL_VERSION_MODERN) >= 0;
+    }
+
+    public boolean isModernProtocol() {
+        return modernProtocol;
+    }
+
+    private void startListChangeSubscriptions() {
+        McpSubscriptionsListenParams.Notifications notifications = new McpSubscriptionsListenParams.Notifications();
+        if (subscribeToToolListChanges) {
+            notifications.setToolsListChanged(true);
+        }
+        if (subscribeToPromptListChanges) {
+            notifications.setPromptsListChanged(true);
+        }
+        if (subscribeToResourceListChanges) {
+            notifications.setResourcesListChanged(true);
+        }
+        long operationId = idGenerator.getAndIncrement();
+        McpSubscriptionsListenRequest request = new McpSubscriptionsListenRequest(operationId);
+        McpSubscriptionsListenParams params = new McpSubscriptionsListenParams();
+        params.setNotifications(notifications);
+        request.setParams(params);
+        McpCallContext context = new McpCallContext(null, request);
+        applyMeta(request, context);
+        CompletableFuture<JsonNode> future = transport.executeOperationWithResponse(context);
+        listChangeSubscriptionFuture = future;
+        future.whenComplete((result, error) -> {
+            pendingOperations.remove(operationId);
+            if (error != null && !closed) {
+                log.warn("List-change subscription failed", error);
+            }
+        });
+    }
+
+    private static String getResultType(JsonNode response) {
+        JsonNode result = response.path("result");
+        if (result.isMissingNode() || result.isNull()) {
+            return "complete";
+        }
+        String resultType = result.path("resultType").asText(null);
+        return resultType != null ? resultType : "complete";
+    }
+
+    private static JsonNode getRequestState(JsonNode response) {
+        return response.path("result").path("requestState");
+    }
+
+    private static JsonNode getInputRequests(JsonNode response) {
+        return response.path("result").path("inputRequests");
+    }
+
+    private JsonNode handleMultiRoundTrip(
+            JsonNode initialResult,
+            long timeoutMillis,
+            InvocationContext invocationContext,
+            BiFunction<Long, JsonNode, McpClientRequest> retryRequestFactory,
+            String operationName)
+            throws ExecutionException, InterruptedException, TimeoutException {
+        if (!modernProtocol) {
+            return initialResult;
+        }
+        JsonNode result = initialResult;
+        int retryCount = 0;
+        while ("input_required".equals(getResultType(result))) {
+            if (retryCount >= multiRoundTripMaxRetries) {
+                throw new RuntimeException("Multi round-trip retry limit exceeded for " + operationName);
+            }
+            JsonNode inputRequests = getInputRequests(result);
+            if (!inputRequests.isMissingNode() && !inputRequests.isEmpty()) {
+                throw new RuntimeException("Server sent inputRequests that the client cannot handle");
+            }
+            JsonNode requestState = getRequestState(result);
+            if (requestState.isMissingNode() || requestState.isNull()) {
+                throw new RuntimeException("Server sent input_required without requestState or inputRequests");
+            }
+            long retryOperationId = idGenerator.getAndIncrement();
+            McpClientRequest retryOperation = retryRequestFactory.apply(retryOperationId, requestState);
+            McpCallContext retryContext = new McpCallContext(invocationContext, retryOperation);
+            applyMeta(retryOperation, retryContext);
+            CompletableFuture<JsonNode> resultFuture = transport.executeOperationWithResponse(retryContext);
+            result = resultFuture.get(timeoutMillis, TimeUnit.MILLISECONDS);
+            pendingOperations.remove(retryOperationId);
+            retryCount++;
+        }
+        String resultType = getResultType(result);
+        if (!"complete".equals(resultType)) {
+            throw new RuntimeException("Unexpected resultType for " + operationName + ": " + resultType);
+        }
+        return result;
+    }
+
     @Override
     public String key() {
         return key;
     }
 
     @Override
-    public List<ToolSpecification> listTools() {
-        assertNotClosed();
-        if (isToolListRefreshNeeded()) {
-            CompletableFuture<Void> updateInProgress = this.toolListUpdateInProgress.get();
-            if (updateInProgress != null) {
-                // if an update is already in progress, wait for it to finish
-                updateInProgress.join();
-                return toolListRefs.get();
-            } else {
-                // if no update is in progress, start one
-                CompletableFuture<Void> update = new CompletableFuture<>();
-                this.toolListUpdateInProgress.set(update);
-                try {
-                    obtainToolList();
-                } finally {
-                    update.complete(null);
-                    toolListOutOfDate.set(false);
-                    toolListUpdateInProgress.set(null);
-                }
-                return toolListRefs.get();
-            }
-        } else {
-            return toolListRefs.get();
+    public @Nullable String instructions() {
+        McpInitializeResult currentInitializeResult = initializeResult;
+        if (currentInitializeResult == null || currentInitializeResult.getResult() == null) {
+            return null;
         }
+        return currentInitializeResult.getResult().getInstructions();
     }
 
-    private boolean isToolListRefreshNeeded() {
-        return Boolean.FALSE.equals(cacheToolList) || toolListOutOfDate.get();
+    @Override
+    public List<ToolSpecification> listTools() {
+        return listTools(null);
+    }
+
+    @Override
+    public List<ToolSpecification> listTools(InvocationContext invocationContext) {
+        assertNotClosed();
+        return retrieveWithPossibleCaching(
+                cacheToolList,
+                this::obtainToolList,
+                toolListUpdateInProgress,
+                () -> toolListRefs.get(),
+                invocationContext);
     }
 
     /**
@@ -224,11 +679,16 @@ public class DefaultMcpClient implements McpClient {
      * from the MCP server.
      */
     public void evictToolListCache() {
-        toolListOutOfDate.set(true);
+        toolListRefs.set(null);
     }
 
     @Override
     public ToolExecutionResult executeTool(ToolExecutionRequest executionRequest) {
+        return executeTool(executionRequest, null);
+    }
+
+    @Override
+    public ToolExecutionResult executeTool(ToolExecutionRequest executionRequest, InvocationContext invocationContext) {
         assertNotClosed();
         ObjectNode arguments = null;
         try {
@@ -241,17 +701,46 @@ public class DefaultMcpClient implements McpClient {
             throw new ToolArgumentsException(e);
         }
         long operationId = idGenerator.getAndIncrement();
-        McpCallToolRequest operation = new McpCallToolRequest(operationId, executionRequest.name(), arguments);
+        String progressToken = progressHandler != null ? String.valueOf(operationId) : null;
+        McpCallToolRequest operation =
+                new McpCallToolRequest(operationId, executionRequest.name(), arguments, progressToken);
         long timeoutMillis = toolExecutionTimeout.toMillis() == 0 ? Integer.MAX_VALUE : toolExecutionTimeout.toMillis();
         CompletableFuture<JsonNode> resultFuture = null;
         JsonNode result = null;
+        Map<String, String> paramHeaders =
+                modernProtocol ? buildMcpParamHeaders(executionRequest.name(), arguments) : null;
+        McpCallContext context = new McpCallContext(invocationContext, operation, paramHeaders);
         try {
-            resultFuture = transport.executeOperationWithResponse(operation);
+            notifyListeners(l -> l.beforeExecuteTool(context));
+            applyMeta(operation, context);
+            resultFuture = transport.executeOperationWithResponse(context);
             result = resultFuture.get(timeoutMillis, TimeUnit.MILLISECONDS);
+
+            final ObjectNode finalArguments = arguments;
+            result = handleMultiRoundTrip(
+                    result,
+                    timeoutMillis,
+                    invocationContext,
+                    (retryId, requestState) -> {
+                        McpCallToolRequest retryOp =
+                                new McpCallToolRequest(retryId, executionRequest.name(), finalArguments, progressToken);
+                        ((McpCallToolParams) retryOp.getParams()).setRequestState(requestState);
+                        return retryOp;
+                    },
+                    "tools/call");
         } catch (TimeoutException timeout) {
-            transport.executeOperationWithoutResponse(new McpCancellationNotification(operationId, "Timeout"));
-            return ToolExecutionHelper.extractResult(RESULT_TIMEOUT);
+            notifyListeners(l -> l.onExecuteToolError(context, timeout));
+            if (resultFuture != null) {
+                resultFuture.cancel(true);
+            }
+            if (shouldSendCancellationNotification()) {
+                McpCancellationNotification cancellation = new McpCancellationNotification(operationId, "Timeout");
+                applyMeta(cancellation, null);
+                transport.executeOperationWithoutResponse(cancellation);
+            }
+            return ToolExecutionHelper.extractResult(RESULT_TIMEOUT, false, toolResultExtractor);
         } catch (ExecutionException e) {
+            notifyListeners(l -> l.onExecuteToolError(context, e));
             throw new ToolExecutionException(e.getCause());
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
@@ -259,32 +748,88 @@ public class DefaultMcpClient implements McpClient {
         } finally {
             pendingOperations.remove(operationId);
         }
-        return ToolExecutionHelper.extractResult(result);
+        final JsonNode finalResult = result;
+        try {
+            ToolExecutionResult toolResult = ToolExecutionHelper.extractResult(finalResult, false, toolResultExtractor);
+            notifyListeners(l -> l.afterExecuteTool(
+                    context, toolResult, (Map<String, Object>) ToolExecutionHelper.toObject(finalResult)));
+            return toolResult;
+        } catch (ToolExecutionException e) {
+            if (e.errorCode() != null) {
+                // protocol error
+                notifyListeners(l -> l.onExecuteToolError(context, e));
+            } else {
+                // application-level error (called "Tool Execution Error" in MCP spec)
+                // -> we notify the listener with afterExecuteTool
+                notifyListeners(l -> l.afterExecuteTool(
+                        context,
+                        ToolExecutionHelper.extractResult(finalResult, true, toolResultExtractor),
+                        (Map<String, Object>) ToolExecutionHelper.toObject(finalResult)));
+            }
+            throw e;
+        }
     }
 
     @Override
     public List<McpResource> listResources() {
+        return listResources(null);
+    }
+
+    @Override
+    public List<McpResource> listResources(InvocationContext invocationContext) {
         assertNotClosed();
-        if (resourceRefs.get() == null) {
-            obtainResourceList();
-        }
-        return resourceRefs.get();
+        return retrieveWithPossibleCaching(
+                cacheResourceList,
+                this::obtainResourceList,
+                resourceListUpdateInProgress,
+                () -> resourceRefs.get(),
+                invocationContext);
     }
 
     @Override
     public McpReadResourceResult readResource(String uri) {
+        return readResource(uri, null);
+    }
+
+    @Override
+    public McpReadResourceResult readResource(String uri, InvocationContext invocationContext) {
         assertNotClosed();
         final long operationId = idGenerator.getAndIncrement();
         McpReadResourceRequest operation = new McpReadResourceRequest(operationId, uri);
+        McpCallContext context = new McpCallContext(invocationContext, operation);
         long timeoutMillis = resourcesTimeout.toMillis() == 0 ? Integer.MAX_VALUE : resourcesTimeout.toMillis();
         JsonNode result = null;
         CompletableFuture<JsonNode> resultFuture = null;
+        notifyListeners(l -> l.beforeResourceGet(context));
+        applyMeta(operation, context);
         try {
-            resultFuture = transport.executeOperationWithResponse(operation);
+            resultFuture = transport.executeOperationWithResponse(context);
             result = resultFuture.get(timeoutMillis, TimeUnit.MILLISECONDS);
-            return ResourcesHelper.parseResourceContents(result);
-        } catch (ExecutionException | InterruptedException | TimeoutException e) {
+
+            result = handleMultiRoundTrip(
+                    result,
+                    timeoutMillis,
+                    invocationContext,
+                    (retryId, requestState) -> {
+                        McpReadResourceRequest retryOp = new McpReadResourceRequest(retryId, uri);
+                        ((McpReadResourceParams) retryOp.getParams()).setRequestState(requestState);
+                        return retryOp;
+                    },
+                    "resources/read");
+            McpReadResourceResult resourceResult = ResourcesHelper.parseResourceContents(result);
+            final JsonNode finalResult = result;
+            notifyListeners(l -> l.afterResourceGet(
+                    context, resourceResult, (Map<String, Object>) ToolExecutionHelper.toObject(finalResult)));
+            return resourceResult;
+        } catch (ExecutionException | TimeoutException e) {
+            notifyListeners(l -> l.onResourceGetError(context, e));
             throw new RuntimeException(e);
+        } catch (InterruptedException e) {
+            Thread.interrupted();
+            throw new RuntimeException(e);
+        } catch (McpException e) {
+            notifyListeners(l -> l.onResourceGetError(context, e));
+            throw e;
         } finally {
             pendingOperations.remove(operationId);
         }
@@ -293,26 +838,51 @@ public class DefaultMcpClient implements McpClient {
     @Override
     public List<McpPrompt> listPrompts() {
         assertNotClosed();
-        if (promptRefs.get() == null) {
-            obtainPromptList();
-        }
-        return promptRefs.get();
+        return retrieveWithPossibleCaching(
+                cachePromptList, this::obtainPromptList, promptListUpdateInProgress, () -> promptRefs.get(), null);
     }
 
     @Override
     public McpGetPromptResult getPrompt(String name, Map<String, Object> arguments) {
         assertNotClosed();
         long operationId = idGenerator.getAndIncrement();
-        McpGetPromptRequest operation = new McpGetPromptRequest(operationId, name, arguments);
+        McpGetPromptRequest operation =
+                new McpGetPromptRequest(operationId, name, arguments == null ? Map.of() : arguments);
+        McpCallContext context = new McpCallContext(null, operation);
         long timeoutMillis = promptsTimeout.toMillis() == 0 ? Integer.MAX_VALUE : promptsTimeout.toMillis();
         JsonNode result = null;
         CompletableFuture<JsonNode> resultFuture = null;
+        notifyListeners(l -> l.beforePromptGet(context));
+        applyMeta(operation, context);
         try {
-            resultFuture = transport.executeOperationWithResponse(operation);
+            resultFuture = transport.executeOperationWithResponse(context);
             result = resultFuture.get(timeoutMillis, TimeUnit.MILLISECONDS);
-            return PromptsHelper.parsePromptContents(result);
-        } catch (ExecutionException | InterruptedException | TimeoutException e) {
+
+            final Map<String, Object> finalArguments = arguments == null ? Map.of() : arguments;
+            result = handleMultiRoundTrip(
+                    result,
+                    timeoutMillis,
+                    null,
+                    (retryId, requestState) -> {
+                        McpGetPromptRequest retryOp = new McpGetPromptRequest(retryId, name, finalArguments);
+                        ((McpGetPromptParams) retryOp.getParams()).setRequestState(requestState);
+                        return retryOp;
+                    },
+                    "prompts/get");
+            McpGetPromptResult promptResult = PromptsHelper.parsePromptContents(result);
+            final JsonNode finalResult = result;
+            notifyListeners(l -> l.afterPromptGet(
+                    context, promptResult, (Map<String, Object>) ToolExecutionHelper.toObject(finalResult)));
+            return promptResult;
+        } catch (ExecutionException | TimeoutException e) {
+            notifyListeners(l -> l.onPromptGetError(context, e));
             throw new RuntimeException(e);
+        } catch (InterruptedException e) {
+            Thread.interrupted();
+            throw new RuntimeException(e);
+        } catch (McpException e) {
+            notifyListeners(l -> l.onPromptGetError(context, e));
+            throw e;
         } finally {
             pendingOperations.remove(operationId);
         }
@@ -322,12 +892,100 @@ public class DefaultMcpClient implements McpClient {
     public void checkHealth() {
         assertNotClosed();
         transport.checkHealth();
+        if (modernProtocol) {
+            checkHealthModern();
+        } else {
+            checkHealthLegacy();
+        }
+    }
+
+    private void checkHealthModern() {
+        long operationId = idGenerator.getAndIncrement();
+        McpServerDiscoverRequest request = new McpServerDiscoverRequest(operationId);
+        McpServerDiscoverParams params = new McpServerDiscoverParams();
+        request.setParams(params);
+        McpCallContext context = new McpCallContext(null, request);
+        notifyListeners(l -> l.beforePing(context));
+        applyMeta(request, context);
+        try {
+            CompletableFuture<JsonNode> resultFuture = transport.executeOperationWithResponse(context);
+            resultFuture.get(pingTimeout.toMillis(), TimeUnit.MILLISECONDS);
+            notifyListeners(l -> l.afterPing(context));
+        } catch (ExecutionException | InterruptedException | TimeoutException e) {
+            RuntimeException re = new RuntimeException(e);
+            notifyListeners(l -> l.onPingError(context, re));
+            throw re;
+        } finally {
+            pendingOperations.remove(operationId);
+        }
+    }
+
+    private void checkHealthLegacy() {
         long operationId = idGenerator.getAndIncrement();
         McpPingRequest ping = new McpPingRequest(operationId);
+        McpCallContext context = new McpCallContext(null, ping);
+        notifyListeners(l -> l.beforePing(context));
+        applyMeta(ping, context);
         try {
-            CompletableFuture<JsonNode> resultFuture = transport.executeOperationWithResponse(ping);
+            CompletableFuture<JsonNode> resultFuture = transport.executeOperationWithResponse(context);
             resultFuture.get(pingTimeout.toMillis(), TimeUnit.MILLISECONDS);
+            notifyListeners(l -> l.afterPing(context));
         } catch (ExecutionException | InterruptedException | TimeoutException e) {
+            RuntimeException re = new RuntimeException(e);
+            notifyListeners(l -> l.onPingError(context, re));
+            throw re;
+        } finally {
+            pendingOperations.remove(operationId);
+        }
+    }
+
+    @SuppressWarnings("deprecation")
+    @Override
+    public void setRoots(final List<McpRoot> roots) {
+        if (modernProtocol) {
+            throw new UnsupportedOperationException("setRoots is not supported with MCP protocol 2026-07-28 or later");
+        }
+        this.mcpRoots.set(roots);
+        McpRootsListChangedNotification notification = new McpRootsListChangedNotification();
+        McpCallContext context = new McpCallContext(null, notification);
+        applyMeta(notification, context);
+        transport.executeOperationWithoutResponse(context);
+        notifyListeners(l -> l.onRootsListChanged(context));
+    }
+
+    @Override
+    public void subscribeToResource(String uri) {
+        assertNotClosed();
+        if (modernProtocol) {
+            throw new UnsupportedOperationException(
+                    "subscribeToResource is not supported with MCP 2026-07-28. Use subscribeToResources(List) instead.");
+        }
+        if (onResourceUpdated == null) {
+            log.warn(
+                    "Subscribing to MCP resource '{}' but no onResourceUpdated callback was registered. The client will"
+                            + "not react to resource update notifications in any way.",
+                    uri);
+        }
+        long operationId = idGenerator.getAndIncrement();
+        McpSubscribeResourceRequest operation = new McpSubscribeResourceRequest(operationId, uri);
+        McpCallContext context = new McpCallContext(null, operation);
+        notifyListeners(l -> l.beforeResourceSubscribe(context));
+        applyMeta(operation, context);
+        long timeoutMillis = resourcesTimeout.toMillis() == 0 ? Integer.MAX_VALUE : resourcesTimeout.toMillis();
+        try {
+            CompletableFuture<JsonNode> resultFuture = transport.executeOperationWithResponse(context);
+            JsonNode result = resultFuture.get(timeoutMillis, TimeUnit.MILLISECONDS);
+            McpErrorHelper.checkForErrors(result);
+            notifyListeners(l -> l.afterResourceSubscribe(context));
+        } catch (ExecutionException | TimeoutException e) {
+            RuntimeException re = new RuntimeException(e);
+            notifyListeners(l -> l.onResourceSubscribeError(context, re));
+            throw re;
+        } catch (McpException e) {
+            notifyListeners(l -> l.onResourceSubscribeError(context, e));
+            throw e;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
             throw new RuntimeException(e);
         } finally {
             pendingOperations.remove(operationId);
@@ -335,72 +993,243 @@ public class DefaultMcpClient implements McpClient {
     }
 
     @Override
-    public void setRoots(final List<McpRoot> roots) {
-        this.mcpRoots.set(roots);
-        transport.executeOperationWithoutResponse(new McpRootsListChangedNotification());
+    public void unsubscribeFromResource(String uri) {
+        assertNotClosed();
+        if (modernProtocol) {
+            throw new UnsupportedOperationException(
+                    "unsubscribeFromResource is not supported with MCP 2026-07-28. Use unsubscribeFromResources(long) instead.");
+        }
+        long operationId = idGenerator.getAndIncrement();
+        McpUnsubscribeResourceRequest operation = new McpUnsubscribeResourceRequest(operationId, uri);
+        McpCallContext context = new McpCallContext(null, operation);
+        notifyListeners(l -> l.beforeResourceUnsubscribe(context));
+        applyMeta(operation, context);
+        long timeoutMillis = resourcesTimeout.toMillis() == 0 ? Integer.MAX_VALUE : resourcesTimeout.toMillis();
+        try {
+            CompletableFuture<JsonNode> resultFuture = transport.executeOperationWithResponse(context);
+            JsonNode result = resultFuture.get(timeoutMillis, TimeUnit.MILLISECONDS);
+            McpErrorHelper.checkForErrors(result);
+            notifyListeners(l -> l.afterResourceUnsubscribe(context));
+        } catch (ExecutionException | TimeoutException e) {
+            RuntimeException re = new RuntimeException(e);
+            notifyListeners(l -> l.onResourceUnsubscribeError(context, re));
+            throw re;
+        } catch (McpException e) {
+            notifyListeners(l -> l.onResourceUnsubscribeError(context, e));
+            throw e;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException(e);
+        } finally {
+            pendingOperations.remove(operationId);
+        }
+    }
+
+    @Override
+    public long subscribeToResources(List<String> uris) {
+        assertNotClosed();
+        if (!modernProtocol) {
+            throw new UnsupportedOperationException("subscribeToResources requires MCP protocol 2026-07-28 or later");
+        }
+
+        McpSubscriptionsListenParams.Notifications notifications = new McpSubscriptionsListenParams.Notifications();
+        notifications.setResourceSubscriptions(uris);
+
+        long subscriptionId = idGenerator.getAndIncrement();
+        McpSubscriptionsListenRequest request = new McpSubscriptionsListenRequest(subscriptionId);
+        McpSubscriptionsListenParams params = new McpSubscriptionsListenParams();
+        params.setNotifications(notifications);
+        request.setParams(params);
+        McpCallContext context = new McpCallContext(null, request);
+        notifyListeners(l -> l.beforeResourcesSubscribe(context, uris));
+        applyMeta(request, context);
+        CompletableFuture<JsonNode> streamFuture = transport.executeOperationWithResponse(context);
+        activeSubscriptions.put(subscriptionId, streamFuture);
+        streamFuture.whenComplete((result, error) -> {
+            pendingOperations.remove(subscriptionId);
+            if (error != null && !closed) {
+                log.warn("Resource subscription {} failed", subscriptionId, error);
+                activeSubscriptions.remove(subscriptionId);
+            } else if (result != null && result.has("error") && !closed) {
+                log.warn(
+                        "Resource subscription {} rejected by server: {}",
+                        subscriptionId,
+                        result.path("error").path("message").asText());
+                activeSubscriptions.remove(subscriptionId);
+            }
+        });
+
+        notifyListeners(l -> l.afterResourcesSubscribe(context, subscriptionId, uris));
+
+        return subscriptionId;
+    }
+
+    @Override
+    public void unsubscribeFromResources(long subscriptionId) {
+        assertNotClosed();
+        if (!modernProtocol) {
+            throw new UnsupportedOperationException(
+                    "unsubscribeFromResources requires MCP protocol 2026-07-28 or later");
+        }
+        McpCallContext context = null;
+        if (transport.requiresCancellationNotification()) {
+            McpCancellationNotification cancellation =
+                    new McpCancellationNotification(subscriptionId, "Client unsubscribed");
+            context = new McpCallContext(null, cancellation);
+        }
+        final McpCallContext finalContext = context;
+        notifyListeners(l -> l.beforeResourcesUnsubscribe(finalContext, subscriptionId));
+
+        CompletableFuture<JsonNode> streamFuture = activeSubscriptions.remove(subscriptionId);
+        if (streamFuture != null) {
+            // Cancel the future, which for HTTP transport propagates to
+            // Flow.Subscription.cancel() and closes the SSE stream
+            streamFuture.cancel(true);
+            // Send notifications/cancelled for transports that need it (e.g. stdio)
+            if (context != null) {
+                applyMeta(context.message(), context);
+                transport.executeOperationWithoutResponse(context.message());
+            }
+        }
+
+        notifyListeners(l -> l.afterResourcesUnsubscribe(finalContext, subscriptionId));
     }
 
     @Override
     public List<McpResourceTemplate> listResourceTemplates() {
+        return listResourceTemplates(null);
+    }
+
+    @Override
+    public List<McpResourceTemplate> listResourceTemplates(InvocationContext invocationContext) {
         assertNotClosed();
-        if (resourceTemplateRefs.get() == null) {
-            obtainResourceTemplateList();
-        }
-        return resourceTemplateRefs.get();
+        return retrieveWithPossibleCaching(
+                cacheResourceList,
+                this::obtainResourceTemplateList,
+                resourceTemplateListUpdateInProgress,
+                () -> resourceTemplateRefs.get(),
+                invocationContext);
     }
 
-    private synchronized void obtainToolList() {
-        McpListToolsRequest operation = new McpListToolsRequest(idGenerator.getAndIncrement());
-        CompletableFuture<JsonNode> resultFuture = transport.executeOperationWithResponse(operation);
-        JsonNode result = null;
-        try {
-            result = resultFuture.get();
-        } catch (InterruptedException | ExecutionException e) {
-            throw new RuntimeException(e);
-        } finally {
-            pendingOperations.remove(operation.getId());
+    /**
+     * Retrieves a value from the server (in this case, a list of tools/resources/prompts) taking
+     * a cache into account, if configured to use one. If the cache was invalidated and an update is needed,
+     * it launches a CompletableFuture that represents a running update so that we avoid
+     * updating multiple times concurrently. If an update is already running, this method
+     * will, instead of starting a new update, join on the existing update and return its result when available.
+     */
+    private <T> T retrieveWithPossibleCaching(
+            boolean useCache,
+            Function<InvocationContext, T> retriever,
+            AtomicReference<CompletableFuture<T>> updateInProgressReference,
+            Supplier<T> cachedReferenceSupplier,
+            InvocationContext invocationContext) {
+        if (useCache) {
+            T cachedValue = cachedReferenceSupplier.get();
+            if (cachedValue != null) {
+                // if there is a value in the cache, just return it
+                return cachedValue;
+            } else {
+                // we need to fetch a new value from the server
+                CompletableFuture<T> newUpdate = new CompletableFuture<>();
+                CompletableFuture<T> updateInProgress = updateInProgressReference.compareAndExchange(null, newUpdate);
+                if (updateInProgress == null) {
+                    // if no update is in progress, start one and retrieve a fresh value
+                    try {
+                        T result = retriever.apply(invocationContext);
+                        newUpdate.complete(result);
+                        return result;
+                    } catch (RuntimeException e) {
+                        newUpdate.completeExceptionally(e);
+                        throw e;
+                    } finally {
+                        updateInProgressReference.set(null);
+                    }
+                } else {
+                    // if an update is already in progress, wait for it to finish and return its result
+                    return updateInProgress.join();
+                }
+            }
+        } else {
+            // if not using cache, always fetch a fresh value
+            return retriever.apply(invocationContext);
         }
-
-        final List<ToolSpecification> toolList = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(
-                (ArrayNode) result.get("result").get("tools"));
-        toolListRefs.set(toolList);
     }
 
-    private synchronized void obtainResourceList() {
-        if (resourceRefs.get() != null) {
-            return;
-        }
-        McpListResourcesRequest operation = new McpListResourcesRequest(idGenerator.getAndIncrement());
-        long timeoutMillis = resourcesTimeout.toMillis() == 0 ? Integer.MAX_VALUE : resourcesTimeout.toMillis();
-        JsonNode result = null;
-        CompletableFuture<JsonNode> resultFuture = null;
+    private List<ToolSpecification> obtainToolList(InvocationContext invocationContext) {
+        McpCallContext listenerContext =
+                new McpCallContext(invocationContext, new McpListToolsRequest(idGenerator.getAndIncrement(), null));
+        notifyListeners(l -> l.beforeToolsList(listenerContext));
         try {
-            resultFuture = transport.executeOperationWithResponse(operation);
-            result = resultFuture.get(timeoutMillis, TimeUnit.MILLISECONDS);
-            resourceRefs.set(ResourcesHelper.parseResourceRefs(result));
-        } catch (ExecutionException | InterruptedException | TimeoutException e) {
-            throw new RuntimeException(e);
-        } finally {
-            pendingOperations.remove(operation.getId());
+            List<ToolSpecification> list = fetchPaginatedList(
+                    (id, cursor) -> new McpListToolsRequest(id, cursor),
+                    toolExecutionTimeout,
+                    invocationContext,
+                    result -> ToolSpecificationHelper.toolSpecificationListFromMcpResponse(
+                            (ArrayNode) result.get("result").get("tools")));
+            toolListRefs.set(list);
+            notifyListeners(l -> l.afterToolsList(listenerContext, list));
+            return list;
+        } catch (RuntimeException e) {
+            notifyListeners(l -> l.onToolsListError(listenerContext, e));
+            throw e;
         }
     }
 
-    private synchronized void obtainResourceTemplateList() {
-        if (resourceTemplateRefs.get() != null) {
-            return;
-        }
-        McpListResourceTemplatesRequest operation = new McpListResourceTemplatesRequest(idGenerator.getAndIncrement());
-        long timeoutMillis = toolExecutionTimeout.toMillis() == 0 ? Integer.MAX_VALUE : toolExecutionTimeout.toMillis();
-        JsonNode result = null;
-        CompletableFuture<JsonNode> resultFuture = null;
+    private List<McpResource> obtainResourceList(InvocationContext invocationContext) {
+        McpCallContext listenerContext =
+                new McpCallContext(invocationContext, new McpListResourcesRequest(idGenerator.getAndIncrement(), null));
+        notifyListeners(l -> l.beforeResourcesList(listenerContext));
         try {
-            resultFuture = transport.executeOperationWithResponse(operation);
-            result = resultFuture.get(timeoutMillis, TimeUnit.MILLISECONDS);
-            resourceTemplateRefs.set(ResourcesHelper.parseResourceTemplateRefs(result));
-        } catch (ExecutionException | InterruptedException | TimeoutException e) {
-            throw new RuntimeException(e);
-        } finally {
-            pendingOperations.remove(operation.getId());
+            List<McpResource> list = fetchPaginatedList(
+                    (id, cursor) -> new McpListResourcesRequest(id, cursor),
+                    resourcesTimeout,
+                    invocationContext,
+                    ResourcesHelper::parseResourceRefs);
+            resourceRefs.set(list);
+            notifyListeners(l -> l.afterResourcesList(listenerContext, list));
+            return list;
+        } catch (RuntimeException e) {
+            notifyListeners(l -> l.onResourcesListError(listenerContext, e));
+            throw e;
+        }
+    }
+
+    private List<McpResourceTemplate> obtainResourceTemplateList(InvocationContext invocationContext) {
+        McpCallContext listenerContext = new McpCallContext(
+                invocationContext, new McpListResourceTemplatesRequest(idGenerator.getAndIncrement(), null));
+        notifyListeners(l -> l.beforeResourceTemplatesList(listenerContext));
+        try {
+            List<McpResourceTemplate> list = fetchPaginatedList(
+                    (id, cursor) -> new McpListResourceTemplatesRequest(id, cursor),
+                    resourcesTimeout,
+                    invocationContext,
+                    ResourcesHelper::parseResourceTemplateRefs);
+            resourceTemplateRefs.set(list);
+            notifyListeners(l -> l.afterResourceTemplatesList(listenerContext, list));
+            return list;
+        } catch (RuntimeException e) {
+            notifyListeners(l -> l.onResourceTemplatesListError(listenerContext, e));
+            throw e;
+        }
+    }
+
+    private List<McpPrompt> obtainPromptList(InvocationContext invocationContext) {
+        McpCallContext listenerContext =
+                new McpCallContext(invocationContext, new McpListPromptsRequest(idGenerator.getAndIncrement(), null));
+        notifyListeners(l -> l.beforePromptsList(listenerContext));
+        try {
+            List<McpPrompt> list = fetchPaginatedList(
+                    (id, cursor) -> new McpListPromptsRequest(id, cursor),
+                    promptsTimeout,
+                    invocationContext,
+                    PromptsHelper::parsePromptRefs);
+            promptRefs.set(list);
+            notifyListeners(l -> l.afterPromptsList(listenerContext, list));
+            return list;
+        } catch (RuntimeException e) {
+            notifyListeners(l -> l.onPromptsListError(listenerContext, e));
+            throw e;
         }
     }
 
@@ -412,7 +1241,7 @@ public class DefaultMcpClient implements McpClient {
             try {
                 checkHealth();
             } catch (Exception e) {
-                log.warn("mcp server health check failed. Attempting to reconnect...", e);
+                log.warn("MCP server health check (client key: " + key + ") failed. Attempting to reconnect...", e);
                 triggerReconnection();
             }
         };
@@ -435,28 +1264,70 @@ public class DefaultMcpClient implements McpClient {
         }
     }
 
-    private synchronized void obtainPromptList() {
-        if (promptRefs.get() != null) {
-            return;
+    private <T> List<T> fetchPaginatedList(
+            BiFunction<Long, String, McpClientRequest> requestFactory,
+            Duration timeout,
+            InvocationContext invocationContext,
+            Function<JsonNode, List<T>> resultParser) {
+        long timeoutMillis = timeout.toMillis() == 0 ? Integer.MAX_VALUE : timeout.toMillis();
+        List<T> allItems = new ArrayList<>();
+        String cursor = null;
+        do {
+            McpClientRequest operation = requestFactory.apply(idGenerator.getAndIncrement(), cursor);
+            McpCallContext context = new McpCallContext(invocationContext, operation);
+            applyMeta(operation, context);
+            JsonNode result;
+            try {
+                CompletableFuture<JsonNode> resultFuture = transport.executeOperationWithResponse(context);
+                result = resultFuture.get(timeoutMillis, TimeUnit.MILLISECONDS);
+            } catch (ExecutionException | InterruptedException | TimeoutException e) {
+                throw new RuntimeException(e);
+            } finally {
+                pendingOperations.remove(operation.getId());
+            }
+            // An error response carries no "result", so it has to be raised before anything reads that field.
+            McpErrorHelper.checkForErrors(result);
+            if (modernProtocol) {
+                String resultType = getResultType(result);
+                // servers may only send an InputRequiredResult in response to prompts/get, resources/read and
+                // tools/call,
+                // not in response to a list operation
+                if ("input_required".equals(resultType)) {
+                    throw new RuntimeException(
+                            "Server returned input_required for a list operation, which the client cannot handle");
+                }
+                if (!"complete".equals(resultType)) {
+                    throw new RuntimeException("Unexpected resultType: " + resultType);
+                }
+            }
+            allItems.addAll(resultParser.apply(result));
+            cursor = getNextCursor(result);
+        } while (cursor != null);
+        return allItems;
+    }
+
+    private static String getNextCursor(JsonNode response) {
+        JsonNode resultNode = response.get("result");
+        if (resultNode != null && resultNode.has("nextCursor")) {
+            String nextCursor = resultNode.get("nextCursor").asText();
+            if (!nextCursor.isEmpty()) {
+                return nextCursor;
+            }
         }
-        McpListPromptsRequest operation = new McpListPromptsRequest(idGenerator.getAndIncrement());
-        long timeoutMillis = promptsTimeout.toMillis() == 0 ? Integer.MAX_VALUE : promptsTimeout.toMillis();
-        JsonNode result = null;
-        CompletableFuture<JsonNode> resultFuture = null;
-        try {
-            resultFuture = transport.executeOperationWithResponse(operation);
-            result = resultFuture.get(timeoutMillis, TimeUnit.MILLISECONDS);
-            promptRefs.set(PromptsHelper.parsePromptRefs(result));
-        } catch (ExecutionException | InterruptedException | TimeoutException e) {
-            throw new RuntimeException(e);
-        } finally {
-            pendingOperations.remove(operation.getId());
-        }
+        return null;
     }
 
     @Override
     public void close() {
         closed = true;
+        // Cancel list-change subscription
+        CompletableFuture<JsonNode> listChangeFuture = listChangeSubscriptionFuture;
+        if (listChangeFuture != null) {
+            listChangeFuture.cancel(true);
+        }
+        // Cancel all active resource subscriptions
+        activeSubscriptions.values().forEach(f -> f.cancel(true));
+        activeSubscriptions.clear();
         if (healthCheckScheduler != null) {
             healthCheckScheduler.shutdownNow();
         }
@@ -464,6 +1335,129 @@ public class DefaultMcpClient implements McpClient {
             transport.close();
         } catch (Exception e) {
             log.warn("Cannot close MCP transport", e);
+        }
+    }
+
+    private void applyMeta(McpClientMessage message, McpCallContext context) {
+        // For modern protocol, inject required _meta fields on every request and notification
+        if (modernProtocol) {
+            String versionToAdvertise = protocolVersion != null ? protocolVersion : PROTOCOL_VERSION_MODERN;
+            if (message instanceof McpClientRequest request) {
+                if (request.getParams() == null) {
+                    request.setParams(new McpClientParams());
+                }
+                applyModernMeta(request.getParams(), versionToAdvertise);
+            } else if (message instanceof McpClientNotification notification) {
+                if (notification.getParams() == null) {
+                    notification.setParams(new McpClientParams());
+                }
+                applyModernMeta(notification.getParams(), versionToAdvertise);
+            }
+        }
+
+        // Then merge user-supplied meta (existing logic)
+        if (metaSupplier == null) {
+            return;
+        }
+        Map<String, Object> meta = metaSupplier.apply(context);
+        if (meta == null || meta.isEmpty()) {
+            return;
+        }
+        if (message instanceof McpClientRequest request) {
+            if (request.getParams() == null) {
+                request.setParams(new McpClientParams());
+            }
+            request.getParams().setMeta(mergeMeta(request.getParams().getMeta(), meta));
+        } else if (message instanceof McpClientNotification notification) {
+            if (notification.getParams() == null) {
+                notification.setParams(new McpClientParams());
+            }
+            notification.getParams().setMeta(mergeMeta(notification.getParams().getMeta(), meta));
+        }
+    }
+
+    /**
+     * Merges the user-supplied {@code _meta} entries into the {@code _meta} already present on the
+     * message. Entries already set by the client (such as the framework-managed
+     * {@code progressToken}) take precedence, so that protocol metadata is never overwritten by the
+     * user-supplied values.
+     */
+    private static Map<String, Object> mergeMeta(Map<String, Object> existing, Map<String, Object> supplied) {
+        if (existing == null || existing.isEmpty()) {
+            return supplied;
+        }
+        Map<String, Object> merged = new LinkedHashMap<>(supplied);
+        merged.putAll(existing);
+        return merged;
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, String> buildMcpParamHeaders(String toolName, ObjectNode arguments) {
+        List<ToolSpecification> tools = toolListRefs.get();
+        if (tools == null) {
+            log.warn(
+                    "Executing tool '{}' before the tool list is known, so no Mcp-Param headers can be sent."
+                            + " Call listTools() first if the server declares x-mcp-header parameters.",
+                    toolName);
+            return null;
+        }
+        ToolSpecification spec = null;
+        for (ToolSpecification t : tools) {
+            if (t.name().equals(toolName)) {
+                spec = t;
+                break;
+            }
+        }
+        if (spec == null || spec.metadata() == null) {
+            return null;
+        }
+        Map<String, String> headerMappings =
+                (Map<String, String>) spec.metadata().get(McpToolMetadataKeys.MCP_PARAM_HEADERS);
+        if (headerMappings == null || headerMappings.isEmpty()) {
+            return null;
+        }
+        Map<String, String> result = new LinkedHashMap<>();
+        for (Map.Entry<String, String> entry : headerMappings.entrySet()) {
+            String propertyPath = entry.getKey();
+            String headerName = entry.getValue();
+            JsonNode value = resolvePropertyPath(arguments, propertyPath);
+            if (value == null || value.isNull() || value.isMissingNode()) {
+                continue;
+            }
+            String stringValue;
+            if (value.isTextual()) {
+                stringValue = value.asText();
+            } else if (value.isInt() || value.isLong()) {
+                stringValue = String.valueOf(value.asLong());
+            } else if (value.isBoolean()) {
+                stringValue = value.asBoolean() ? "true" : "false";
+            } else {
+                continue;
+            }
+            result.put(headerName, McpHeaderEncoding.encode(stringValue));
+        }
+        return result.isEmpty() ? null : result;
+    }
+
+    private static JsonNode resolvePropertyPath(ObjectNode root, String path) {
+        String[] segments = path.split("\\.");
+        JsonNode current = root;
+        for (String segment : segments) {
+            if (current == null || current.isMissingNode() || !current.isObject()) {
+                return null;
+            }
+            current = current.get(segment);
+        }
+        return current;
+    }
+
+    private void notifyListeners(Consumer<McpClientListener> action) {
+        for (McpClientListener listener : listeners) {
+            try {
+                action.accept(listener);
+            } catch (Exception e) {
+                log.warn("MCP client listener threw an exception", e);
+            }
         }
     }
 
@@ -486,6 +1480,7 @@ public class DefaultMcpClient implements McpClient {
         private String clientVersion;
         private String protocolVersion;
         private Duration initializationTimeout;
+        private Duration protocolDetectionTimeout;
         private Duration toolExecutionTimeout;
         private Duration resourcesTimeout;
         private Duration pingTimeout;
@@ -496,6 +1491,17 @@ public class DefaultMcpClient implements McpClient {
         private Duration autoHealthCheckInterval;
         private List<McpRoot> roots;
         private Boolean cacheToolList;
+        private Boolean cacheResourceList;
+        private Boolean cachePromptList;
+        private final List<McpClientListener> listeners = new ArrayList<>();
+        private McpProgressHandler progressHandler;
+        private McpMetaSupplier metaSupplier;
+        private BiConsumer<McpClient, String> onResourceUpdated;
+        private McpToolResultExtractor toolResultExtractor;
+        private Integer multiRoundTripMaxRetries;
+        private Boolean subscribeToToolListChanges;
+        private Boolean subscribeToPromptListChanges;
+        private Boolean subscribeToResourceListChanges;
 
         /**
          * Sets the transport protocol to use for communicating with the
@@ -538,10 +1544,17 @@ public class DefaultMcpClient implements McpClient {
         }
 
         /**
-         * Sets the protocol version that the client will advertise in the
-         * initialization message. The default value right now is
-         * "2024-11-05", but will change over time in later langchain4j
-         * versions.
+         * Sets the protocol version. If null or empty (the default), the client detects the
+         * server's protocol version, preferring 2026-07-28 over 2025-11-25. If explicitly set
+         * to "2026-07-28", modern protocol is forced. If set to "2025-11-25", legacy protocol
+         * is forced. Any other value triggers detection but uses the given string when
+         * advertising the version to the server.
+         * <p>
+         * Detection costs one extra round trip at startup: the client sends {@code server/discover}
+         * and falls back to the legacy {@code initialize} handshake if the server answers with an
+         * error or does not answer within {@link #protocolDetectionTimeout(Duration)}. Setting the
+         * version explicitly skips the detection round trip entirely, which is also the way out if
+         * a server reacts badly to being sent a method it does not know.
          */
         public Builder protocolVersion(String protocolVersion) {
             this.protocolVersion = protocolVersion;
@@ -554,6 +1567,26 @@ public class DefaultMcpClient implements McpClient {
          */
         public Builder initializationTimeout(Duration initializationTimeout) {
             this.initializationTimeout = initializationTimeout;
+            return this;
+        }
+
+        /**
+         * Sets how long the client waits for the server to answer the {@code server/discover}
+         * request that detects which protocol version the server speaks. A server that does not
+         * answer within this time is assumed to speak the legacy protocol, and the client falls
+         * back to the {@code initialize} handshake.
+         * <p>
+         * This only applies while the protocol version is being detected, which is the case when
+         * no explicit {@link #protocolVersion(String)} is set. It defaults to
+         * {@link #initializationTimeout(Duration)}, because a server that is started as a
+         * subprocess needs time to boot before it can answer anything, and a detection request
+         * that gives up too early makes a modern server look like a legacy one.
+         * <p>
+         * Lower it if your servers answer quickly and you would rather not wait on one that
+         * ignores the request instead of rejecting it.
+         */
+        public Builder protocolDetectionTimeout(Duration protocolDetectionTimeout) {
+            this.protocolDetectionTimeout = protocolDetectionTimeout;
             return this;
         }
 
@@ -664,6 +1697,149 @@ public class DefaultMcpClient implements McpClient {
          */
         public Builder cacheToolList(boolean cacheToolList) {
             this.cacheToolList = cacheToolList;
+            return this;
+        }
+
+        /**
+         * If set to true, the client will cache the resource and resource
+         * template lists obtained from the server until it's notified by
+         * the server that the resources have changed. If set to false,
+         * there is no caching and the client will always fetch the
+         * resource list from the server.
+         * The default is true.
+         */
+        public Builder cacheResourceList(boolean cacheResourceList) {
+            this.cacheResourceList = cacheResourceList;
+            return this;
+        }
+
+        /**
+         * If set to true, the client will cache the prompt list obtained
+         * from the server until it's notified by the server that the
+         * prompts have changed. If set to false, there is no caching
+         * and the client will always fetch the prompt list from the server.
+         * The default is true.
+         */
+        public Builder cachePromptList(boolean cachePromptList) {
+            this.cachePromptList = cachePromptList;
+            return this;
+        }
+
+        /**
+         * Sets a listener to receive MCP client events.
+         * A listener is notified before and after each call to the MCP server.
+         * Currently, this applies to tool calls, resource retrievals, and prompt retrievals.
+         *
+         * @deprecated Use {@link #addListener(McpClientListener)} instead.
+         */
+        @Deprecated
+        public Builder listener(McpClientListener listener) {
+            this.listeners.add(listener);
+            return this;
+        }
+
+        /**
+         * Adds a listener to receive MCP client events.
+         * Multiple listeners can be added; they will all be invoked
+         * before and after each call to the MCP server.
+         * Currently, this applies to tool calls, resource retrievals, and prompt retrievals.
+         */
+        public Builder addListener(McpClientListener listener) {
+            this.listeners.add(listener);
+            return this;
+        }
+
+        /**
+         * Adds multiple listeners to receive MCP client events.
+         * All listeners will be invoked before and after each call to the MCP server.
+         * Currently, this applies to tool calls, resource retrievals, and prompt retrievals.
+         */
+        public Builder addListeners(List<McpClientListener> listeners) {
+            this.listeners.addAll(listeners);
+            return this;
+        }
+
+        /**
+         * Sets the progress handler for the client. When set, the client will include
+         * a progress token in tool execution requests, and progress notifications
+         * received from the server will be forwarded to this handler.
+         */
+        public Builder progressHandler(McpProgressHandler progressHandler) {
+            this.progressHandler = progressHandler;
+            return this;
+        }
+
+        /**
+         * Sets a supplier of {@code _meta} fields for MCP client requests and notifications.
+         * The supplier is called before every request or notification sent to the server.
+         * Unlike HTTP headers, this applies to all transports.
+         */
+        public Builder metaSupplier(McpMetaSupplier metaSupplier) {
+            this.metaSupplier = metaSupplier;
+            return this;
+        }
+
+        /**
+         * Sets the extractor used for MCP tool responses that return ordinary
+         * {@code CallToolResult.result.content[]} items.
+         * Responses with {@code structuredContent} are handled separately and
+         * are not affected by this setting.
+         * The default client only supports {@code structuredContent} and text
+         * content out of the box. More specialized extraction strategies, such as
+         * parsing text items and returning the first JSON object, can be implemented
+         * with a custom extractor.
+         */
+        public Builder toolResultExtractor(McpToolResultExtractor toolResultExtractor) {
+            this.toolResultExtractor = ensureNotNull(toolResultExtractor, "toolResultExtractor");
+            return this;
+        }
+
+        /**
+         * Sets a callback to be invoked when the server sends a
+         * {@code notifications/resources/updated} notification for a
+         * subscribed resource. The callback receives the instance
+         * of the affected MCP client and the URI of the
+         * updated resource.
+         */
+        public Builder onResourceUpdated(BiConsumer<McpClient, String> onResourceUpdated) {
+            this.onResourceUpdated = onResourceUpdated;
+            return this;
+        }
+
+        /**
+         * Sets whether to automatically subscribe to tool list change notifications
+         * when using MCP protocol 2026-07-28 or later. Default is true.
+         */
+        public Builder subscribeToToolListChanges(boolean subscribe) {
+            this.subscribeToToolListChanges = subscribe;
+            return this;
+        }
+
+        /**
+         * Sets whether to automatically subscribe to prompt list change notifications
+         * when using MCP protocol 2026-07-28 or later. Default is true.
+         */
+        public Builder subscribeToPromptListChanges(boolean subscribe) {
+            this.subscribeToPromptListChanges = subscribe;
+            return this;
+        }
+
+        /**
+         * Sets whether to automatically subscribe to resource list change notifications
+         * when using MCP protocol 2026-07-28 or later. Default is true.
+         */
+        public Builder subscribeToResourceListChanges(boolean subscribe) {
+            this.subscribeToResourceListChanges = subscribe;
+            return this;
+        }
+
+        /**
+         * Sets the maximum number of multi round-trip retries for operations
+         * that return {@code input_required} (MCP protocol 2026-07-28 or later).
+         * The default is 3.
+         */
+        public Builder multiRoundTripMaxRetries(int multiRoundTripMaxRetries) {
+            this.multiRoundTripMaxRetries = multiRoundTripMaxRetries;
             return this;
         }
 

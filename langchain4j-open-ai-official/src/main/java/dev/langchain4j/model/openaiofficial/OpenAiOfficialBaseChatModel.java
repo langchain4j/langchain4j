@@ -43,7 +43,7 @@ abstract class OpenAiOfficialBaseChatModel {
             String baseUrl,
             String apiKey,
             Credential credential,
-            String azureDeploymentName,
+            String microsoftFoundryDeploymentName,
             AzureOpenAIServiceVersion azureOpenAIServiceVersion,
             String organizationId,
             boolean isAzure,
@@ -76,35 +76,39 @@ abstract class OpenAiOfficialBaseChatModel {
             boolean isAsync) {
 
         if (isAsync) {
-            this.asyncClient = setupAsyncClient(
-                    baseUrl,
-                    apiKey,
-                    credential,
-                    azureDeploymentName,
-                    azureOpenAIServiceVersion,
-                    organizationId,
-                    isAzure,
-                    isGitHubModels,
-                    modelName,
-                    timeout,
-                    maxRetries,
-                    proxy,
-                    customHeaders);
+            if (this.asyncClient == null) {
+                this.asyncClient = setupAsyncClient(
+                        baseUrl,
+                        apiKey,
+                        credential,
+                        microsoftFoundryDeploymentName,
+                        azureOpenAIServiceVersion,
+                        organizationId,
+                        isAzure,
+                        isGitHubModels,
+                        modelName,
+                        timeout,
+                        maxRetries,
+                        proxy,
+                        customHeaders);
+            }
         } else {
-            this.client = setupSyncClient(
-                    baseUrl,
-                    apiKey,
-                    credential,
-                    azureDeploymentName,
-                    azureOpenAIServiceVersion,
-                    organizationId,
-                    isAzure,
-                    isGitHubModels,
-                    modelName,
-                    timeout,
-                    maxRetries,
-                    proxy,
-                    customHeaders);
+            if (this.client == null) {
+                this.client = setupSyncClient(
+                        baseUrl,
+                        apiKey,
+                        credential,
+                        microsoftFoundryDeploymentName,
+                        azureOpenAIServiceVersion,
+                        organizationId,
+                        isAzure,
+                        isGitHubModels,
+                        modelName,
+                        timeout,
+                        maxRetries,
+                        proxy,
+                        customHeaders);
+            }
         }
 
         ChatRequestParameters commonParameters;
@@ -147,10 +151,10 @@ abstract class OpenAiOfficialBaseChatModel {
                 .reasoningEffort(openAiParameters.reasoningEffort())
                 .build();
 
-        this.modelProvider =
-                detectModelProvider(isAzure, isGitHubModels, baseUrl, azureDeploymentName, azureOpenAIServiceVersion);
+        this.modelProvider = detectModelProvider(
+                isAzure, isGitHubModels, baseUrl, microsoftFoundryDeploymentName, azureOpenAIServiceVersion);
 
-        if (this.modelProvider.equals(ModelProvider.AZURE_OPEN_AI)
+        if (this.modelProvider.equals(ModelProvider.MICROSOFT_FOUNDRY)
                 || this.modelProvider.equals(ModelProvider.GITHUB_MODELS)) {
             if (this.defaultRequestParameters.modelName() != null
                     && !this.defaultRequestParameters.modelName().equals(modelName)) {

@@ -185,7 +185,6 @@ public class LocalAiChatModel implements ChatModel {
 
         public LocalAiChatModelBuilder() {
             // This is public so it can be extended
-            // By default with Lombok it becomes package private
         }
 
         public LocalAiChatModelBuilder baseUrl(String baseUrl) {

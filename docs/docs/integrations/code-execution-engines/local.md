@@ -14,8 +14,14 @@ that can be useful for **Desktop Automation** or **Computer-Use** Agents
  - `tell a story about moon and save it into a text file`
  - ...
 
+:::danger
+⚠️ Security Warning: High-Risk Code Execution
+
 Attention! It might be *dangerous* to execute the code in a production online serving environment.
 It needs to be executed through security sandbox environment if used in online serving.
+
+❗ Do NOT use in production environments!
+:::
 
 ## Maven Dependency
 

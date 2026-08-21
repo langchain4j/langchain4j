@@ -22,7 +22,69 @@ class GeminiGenerationConfigTest {
         void defaultValues() {
             GeminiGenerationConfig result = GeminiGenerationConfig.builder().build();
 
-            assertThatCharSequence(Json.toJson(result)).doesNotContain("\"seed\"");
+            assertThatCharSequence(Json.toJson(result))
+                    .doesNotContain("\"seed\"")
+                    .doesNotContain("\"responseLogprobs\"")
+                    .doesNotContain("\"enableEnhancedCivicAnswers\"");
+        }
+
+        @Test
+        void settingOptionalFlagsToFalseProducesConfigWithOptionalFlags() {
+            GeminiGenerationConfig result = GeminiGenerationConfig.builder()
+                    .responseLogprobs(false)
+                    .enableEnhancedCivicAnswers(false)
+                    .build();
+
+            assertThatCharSequence(Json.toJson(result))
+                    .contains("\"responseLogprobs\" : false")
+                    .contains("\"enableEnhancedCivicAnswers\" : false");
+        }
+
+        @Test
+        void settingMediaResolutionProducesConfigWithMediaResolution() {
+            GeminiGenerationConfig result = GeminiGenerationConfig.builder()
+                    .mediaResolution(GeminiMediaResolutionLevel.MEDIA_RESOLUTION_HIGH)
+                    .build();
+
+            assertThatCharSequence(Json.toJson(result)).contains("\"mediaResolution\" : \"MEDIA_RESOLUTION_HIGH\"");
+        }
+
+        @Test
+        void settingMediaResolutionLowProducesCorrectJson() {
+            GeminiGenerationConfig result = GeminiGenerationConfig.builder()
+                    .mediaResolution(GeminiMediaResolutionLevel.MEDIA_RESOLUTION_LOW)
+                    .build();
+
+            assertThatCharSequence(Json.toJson(result)).contains("\"mediaResolution\" : \"MEDIA_RESOLUTION_LOW\"");
+        }
+
+        @Test
+        void settingMediaResolutionMediumProducesCorrectJson() {
+            GeminiGenerationConfig result = GeminiGenerationConfig.builder()
+                    .mediaResolution(GeminiMediaResolutionLevel.MEDIA_RESOLUTION_MEDIUM)
+                    .build();
+
+            assertThatCharSequence(Json.toJson(result)).contains("\"mediaResolution\" : \"MEDIA_RESOLUTION_MEDIUM\"");
+        }
+
+        @Test
+        void settingMediaResolutionUltraHighProducesCorrectJson() {
+            GeminiGenerationConfig result = GeminiGenerationConfig.builder()
+                    .mediaResolution(GeminiMediaResolutionLevel.MEDIA_RESOLUTION_ULTRA_HIGH)
+                    .build();
+
+            assertThatCharSequence(Json.toJson(result))
+                    .contains("\"mediaResolution\" : \"MEDIA_RESOLUTION_ULTRA_HIGH\"");
+        }
+
+        @Test
+        void settingMediaResolutionUnspecifiedProducesCorrectJson() {
+            GeminiGenerationConfig result = GeminiGenerationConfig.builder()
+                    .mediaResolution(GeminiMediaResolutionLevel.MEDIA_RESOLUTION_UNSPECIFIED)
+                    .build();
+
+            assertThatCharSequence(Json.toJson(result))
+                    .contains("\"mediaResolution\" : \"MEDIA_RESOLUTION_UNSPECIFIED\"");
         }
     }
 }

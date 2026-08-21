@@ -1,14 +1,12 @@
 package dev.langchain4j.agentic.supervisor;
 
-import dev.langchain4j.agentic.observability.AgentRequest;
-import dev.langchain4j.agentic.observability.AgentResponse;
 import dev.langchain4j.agentic.agent.ErrorContext;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
-import dev.langchain4j.agentic.internal.AgentExecutor;
+import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.model.chat.ChatModel;
-import java.util.List;
+import java.util.Collection;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -36,11 +34,17 @@ public interface SupervisorAgentService<T> {
 
     SupervisorAgentService<T> subAgents(Object... agents);
 
-    SupervisorAgentService<T> subAgents(List<AgentExecutor> agentExecutors);
+    SupervisorAgentService<T> subAgents(Collection<?> agents);
 
     SupervisorAgentService<T> maxAgentsInvocations(int maxAgentsInvocations);
 
     SupervisorAgentService<T> output(Function<AgenticScope, Object> output);
 
     SupervisorAgentService<T> errorHandler(Function<ErrorContext, ErrorRecoveryResult> errorHandler);
+
+    SupervisorAgentService<T> listener(AgentListener agentListener);
+
+    SupervisorAgentService<T> beforeCall(Consumer<AgenticScope> beforeCall);
+
+    SupervisorAgentService<T> compensateOnError(boolean compensateOnError);
 }

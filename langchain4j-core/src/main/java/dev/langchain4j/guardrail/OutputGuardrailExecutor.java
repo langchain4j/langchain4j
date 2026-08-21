@@ -3,6 +3,8 @@ package dev.langchain4j.guardrail;
 import static dev.langchain4j.guardrail.OutputGuardrailResult.successWith;
 import static dev.langchain4j.observability.api.event.OutputGuardrailExecutedEvent.OutputGuardrailExecutedEventBuilder;
 
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.guardrail.OutputGuardrailResult.Failure;
 import dev.langchain4j.guardrail.config.OutputGuardrailsConfig;
@@ -32,8 +34,7 @@ public non-sealed class OutputGuardrailExecutor
                 OutputGuardrailExecutedEvent,
                 Failure> {
 
-    public static final String MAX_RETRIES_MESSAGE_TEMPLATE =
-            """
+    public static final String MAX_RETRIES_MESSAGE_TEMPLATE = """
             Output validation failed. The guardrails have reached the maximum number of retries.
             Guardrail messages:
 
@@ -73,7 +74,8 @@ public non-sealed class OutputGuardrailExecutor
             // Not successful
             if (!result.isRetry()) {
                 // Not any kind of retry, so just stop here
-                throw new OutputGuardrailException(result.toString(), result.getFirstFailureException());
+                removeViolatingMessageIfRequested(result, request);
+                throw new OutputGuardrailException(result.toString(), result.getFirstFailureException(), result);
             }
 
             if (++attempt < maxAttempts) {
@@ -101,16 +103,43 @@ public non-sealed class OutputGuardrailExecutor
                     .map(GuardrailResult.Failure::message)
                     .collect(Collectors.joining(System.lineSeparator()));
 
-            throw new OutputGuardrailException(MAX_RETRIES_MESSAGE_TEMPLATE.formatted(failureMessages));
+            removeViolatingMessageIfRequested(result, request);
+            throw new OutputGuardrailException(MAX_RETRIES_MESSAGE_TEMPLATE.formatted(failureMessages), null, result);
         }
 
         return result;
     }
 
-    private OutputGuardrailResult rewriteResult(OutputGuardrailRequest originalRequest, OutputGuardrailRequest validatedRequest, OutputGuardrailResult result) {
+    private void removeViolatingMessageIfRequested(OutputGuardrailResult result, OutputGuardrailRequest request) {
+        if (!result.shouldRemoveViolatingMessage()) {
+            return;
+        }
+        ChatMemory memory = request.requestParams().chatMemory();
+        if (memory == null) {
+            return;
+        }
+        // Remove the last AiMessage — the one that failed the guardrail
+        var messages = new java.util.ArrayList<>(memory.messages());
+        var it = messages.listIterator(messages.size());
+        while (it.hasPrevious()) {
+            ChatMessage msg = it.previous();
+            if (msg instanceof AiMessage) {
+                it.remove();
+                break;
+            }
+        }
+        memory.clear();
+        messages.forEach(memory::add);
+    }
+
+    private OutputGuardrailResult rewriteResult(
+            OutputGuardrailRequest originalRequest,
+            OutputGuardrailRequest validatedRequest,
+            OutputGuardrailResult result) {
         if (result.isSuccess() && !result.hasRewrittenResult()) {
             String originalText = originalRequest.responseFromLLM().aiMessage().text();
-            String validatedText = validatedRequest.responseFromLLM().aiMessage().text();
+            String validatedText =
+                    validatedRequest.responseFromLLM().aiMessage().text();
             if (!originalText.equals(validatedText)) {
                 // The text validated by the output guardrail is different form the original one because of a
                 // successful reprompt, so we need to create a new success result with the new text

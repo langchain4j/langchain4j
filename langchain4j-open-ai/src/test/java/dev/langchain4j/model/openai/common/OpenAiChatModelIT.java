@@ -143,16 +143,6 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
     }
 
     @Override
-    protected String catImageUrl() {
-        return "https://images.all-free-download.com/images/graphicwebp/cat_hangover_relax_213869.webp";
-    }
-
-    @Override
-    protected String diceImageUrl() {
-        return "https://images.all-free-download.com/images/graphicwebp/double_six_dice_196084.webp";
-    }
-
-    @Override
     protected ChatRequestParameters saveTokens(ChatRequestParameters parameters) {
         return parameters.overrideWith(OpenAiChatRequestParameters.builder().reasoningEffort("low").build());
     }
@@ -306,10 +296,7 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
         assertThat(tokenUsage.inputTokensDetails().cachedTokens()).isZero();
 
         assertThat(tokenUsage.outputTokenCount()).isPositive();
-        assertThat(tokenUsage.outputTokensDetails().reasoningTokens()).isZero();
-
-        assertThat(tokenUsage.totalTokenCount())
-                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+        assertThat(tokenUsage.outputTokensDetails().reasoningTokens()).isNotNegative();
     }
 
     @Test

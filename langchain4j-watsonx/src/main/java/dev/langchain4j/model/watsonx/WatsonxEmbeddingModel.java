@@ -3,7 +3,6 @@ package dev.langchain4j.model.watsonx;
 import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
 
-import com.ibm.watsonx.ai.CloudRegion;
 import com.ibm.watsonx.ai.embedding.EmbeddingParameters;
 import com.ibm.watsonx.ai.embedding.EmbeddingResponse;
 import com.ibm.watsonx.ai.embedding.EmbeddingResponse.Result;
@@ -50,6 +49,7 @@ public class WatsonxEmbeddingModel implements EmbeddingModel {
                 .logRequests(builder.logRequests)
                 .logResponses(builder.logResponses)
                 .httpClient(builder.httpClient)
+                .verifySsl(builder.verifySsl)
                 .build();
         this.modelName = builder.modelName;
     }
@@ -77,8 +77,8 @@ public class WatsonxEmbeddingModel implements EmbeddingModel {
 
         List<String> inputs = textSegments.stream().map(TextSegment::text).toList();
 
-        EmbeddingResponse response = WatsonxExceptionMapper.INSTANCE.withExceptionMapper(
-                () -> embeddingService.embedding(inputs, parameters));
+        EmbeddingResponse response =
+                WatsonxExceptionMapper.INSTANCE.withExceptionMapper(() -> embeddingService.embed(inputs, parameters));
 
         return Response.from(response.results().stream()
                 .map(Result::embedding)
@@ -114,22 +114,14 @@ public class WatsonxEmbeddingModel implements EmbeddingModel {
 
         private Builder() {}
 
-        public Builder baseUrl(CloudRegion cloudRegion) {
-            return super.baseUrl(cloudRegion.getMlEndpoint());
-        }
-
+        /**
+         * Sets the watsonx.ai embedding model ID, e.g. {@code "ibm/slate-125m-english-rtrvr"}.
+         *
+         * @param modelName the model ID
+         * @return {@code this}
+         */
         public Builder modelName(String modelName) {
             this.modelName = modelName;
-            return this;
-        }
-
-        public Builder projectId(String projectId) {
-            this.projectId = projectId;
-            return this;
-        }
-
-        public Builder spaceId(String spaceId) {
-            this.spaceId = spaceId;
             return this;
         }
 

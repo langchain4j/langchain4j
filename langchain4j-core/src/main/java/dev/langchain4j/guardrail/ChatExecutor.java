@@ -3,10 +3,14 @@ package dev.langchain4j.guardrail;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.observability.api.AiServiceListenerRegistrar;
+import dev.langchain4j.observability.api.event.AiServiceEvent;
+import dev.langchain4j.observability.api.listener.AiServiceListener;
 import java.util.List;
 import java.util.function.Consumer;
 
@@ -61,6 +65,8 @@ public interface ChatExecutor {
      */
     abstract class AbstractBuilder<T extends AbstractBuilder<T>> {
         protected ChatRequest chatRequest;
+        protected InvocationContext invocationContext;
+        protected AiServiceListenerRegistrar eventListenerRegistrar;
 
         protected AbstractBuilder() {}
 
@@ -74,6 +80,33 @@ public interface ChatExecutor {
          */
         public AbstractBuilder<T> chatRequest(ChatRequest chatRequest) {
             this.chatRequest = chatRequest;
+            return this;
+        }
+
+        /**
+         * Sets the {@link InvocationContext} instance for the builder.
+         * The {@link InvocationContext} provides contextual information
+         * that can be used during the execution of the chat request.
+         *
+         * @param invocationContext the {@link InvocationContext} containing contextual information
+         * @return the updated builder instance of type {@code T} for method chaining
+         */
+        public AbstractBuilder<T> invocationContext(InvocationContext invocationContext) {
+            this.invocationContext = invocationContext;
+            return this;
+        }
+
+        /**
+         * Sets the {@link AiServiceListenerRegistrar} instance for the builder.
+         * The {@link AiServiceListenerRegistrar} facilitates the registration and
+         * management of {@link AiServiceListener}s, allowing the builder to
+         * configure event listeners for handling {@link AiServiceEvent}s.
+         *
+         * @param eventListenerRegistrar the {@link AiServiceListenerRegistrar} to use for managing event listeners
+         * @return the updated builder instance of type {@code T} for method chaining
+         */
+        public AbstractBuilder<T> eventListenerRegistrar(AiServiceListenerRegistrar eventListenerRegistrar) {
+            this.eventListenerRegistrar = eventListenerRegistrar;
             return this;
         }
 

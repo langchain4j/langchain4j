@@ -55,6 +55,22 @@ public @interface Agent {
     boolean async() default false;
 
     /**
+     * If true, the agent's execution will be silently skipped when any of its arguments is missing in the agentic scope,
+     * instead of making the agentic system's execution fail.
+     *
+     * @return true if the agent is optional, false otherwise.
+     */
+    boolean optional() default false;
+
+    /**
+     * If true, all previously successful tool invocations with {@code @CompensateFor} actions will be
+     * compensated in reverse order when any tool in this agent fails.
+     *
+     * @return true if cross-agent compensation should be enabled, false otherwise.
+     */
+    boolean compensateOnError() default false;
+
+    /**
      * Names of other agents participating in the definition of the context of this agent.
      *
      * @return array of names of other agents participating in the definition of the context of this agent.

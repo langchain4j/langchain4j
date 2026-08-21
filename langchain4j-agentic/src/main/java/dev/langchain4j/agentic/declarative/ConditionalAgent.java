@@ -11,7 +11,7 @@ import java.lang.annotation.Target;
 /**
  * Marks a method as a definition of a conditional agent, generally used to route the agentic workflow toward
  * one or more sub-agents according to the verification of their activation conditions.
- * Each sub-agent has its own activation condition, a static method annotated with {@link ActivationCondition} that
+ * Each sub-agent has its own activation predicate, a static method annotated with {@link ActivationCondition} that
  * determines when it should be invoked.
  * <p>
  * Example:
@@ -82,4 +82,12 @@ public @interface ConditionalAgent {
      * @return array of sub-agents.
      */
     Class<?>[] subAgents();
+
+    /**
+     * When true, if any agent in the hierarchy fails, all previously successful tool
+     * executions with {@code @CompensateFor} actions are compensated in reverse order.
+     *
+     * @return whether to enable cross-agent compensation on error.
+     */
+    boolean compensateOnError() default false;
 }

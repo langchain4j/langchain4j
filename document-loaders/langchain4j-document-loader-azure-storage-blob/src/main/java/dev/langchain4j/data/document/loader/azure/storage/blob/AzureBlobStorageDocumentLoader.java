@@ -1,21 +1,21 @@
 package dev.langchain4j.data.document.loader.azure.storage.blob;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
 import com.azure.storage.blob.BlobClient;
 import com.azure.storage.blob.BlobServiceClient;
-import com.azure.storage.blob.BlobServiceClientBuilder;
 import com.azure.storage.blob.models.BlobProperties;
+import com.azure.storage.blob.models.ListBlobsOptions;
 import com.azure.storage.blob.specialized.BlobInputStream;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentLoader;
 import dev.langchain4j.data.document.DocumentParser;
 import dev.langchain4j.data.document.source.azure.storage.blob.AzureBlobStorageSource;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.ArrayList;
 import java.util.List;
-
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import java.util.concurrent.atomic.AtomicInteger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class AzureBlobStorageDocumentLoader {
 
@@ -28,20 +28,66 @@ public class AzureBlobStorageDocumentLoader {
     }
 
     public Document loadDocument(String containerName, String blobName, DocumentParser parser) {
-        BlobClient blobClient = blobServiceClient.getBlobContainerClient(containerName).getBlobClient(blobName);
+        BlobClient blobClient =
+                blobServiceClient.getBlobContainerClient(containerName).getBlobClient(blobName);
         BlobProperties properties = blobClient.getProperties();
         BlobInputStream blobInputStream = blobClient.openInputStream();
-        AzureBlobStorageSource source = new AzureBlobStorageSource(blobInputStream, blobClient.getAccountName(), containerName, blobName, properties);
+        AzureBlobStorageSource source = new AzureBlobStorageSource(
+                blobInputStream, containerName, blobClient.getAccountName(), blobName, properties);
         return DocumentLoader.load(source, parser);
     }
 
+    /**
+     * Loads all documents from an Azure Blob Storage container.
+     * Skips any documents that fail to load.
+     *
+     * @param containerName The name of the container to load from.
+     * @param parser The parser to be used for parsing text from the blob.
+     * @return A list of documents.
+     */
     public List<Document> loadDocuments(String containerName, DocumentParser parser) {
-        List<Document> documents = new ArrayList<>();
+        return loadDocuments(containerName, null, parser);
+    }
 
-        blobServiceClient.getBlobContainerClient(containerName)
-                .listBlobs()
-                .forEach(blob ->
-                        documents.add(loadDocument(containerName, blob.getName(), parser)));
+    /**
+     * Loads all documents from an Azure Blob Storage container.
+     * Skips any documents that fail to load.
+     *
+     * @param containerName The name of the container to load from.
+     * @param prefix Only blobs whose names start with this prefix are loaded; {@code null} loads all blobs.
+     * @param parser The parser to be used for parsing text from the blob.
+     * @return A list of documents.
+     */
+    public List<Document> loadDocuments(String containerName, String prefix, DocumentParser parser) {
+        List<Document> documents = new ArrayList<>();
+        AtomicInteger failed = new AtomicInteger();
+
+        ListBlobsOptions options = new ListBlobsOptions().setPrefix(prefix);
+
+        blobServiceClient
+                .getBlobContainerClient(containerName)
+                .listBlobs(options, null)
+                .forEach(blob -> {
+                    try {
+                        documents.add(loadDocument(containerName, blob.getName(), parser));
+                    } catch (Exception e) {
+                        failed.incrementAndGet();
+                        log.warn(
+                                "Failed to load blob '{}' from container '{}', skipping it.",
+                                blob.getName(),
+                                containerName,
+                                e);
+                    }
+                });
+
+        if (failed.get() > 0) {
+            log.warn(
+                    "Loaded {} of {} documents from container '{}'. Skipped {} that failed to load.",
+                    documents.size(),
+                    documents.size() + failed.get(),
+                    containerName,
+                    failed.get());
+        }
 
         return documents;
     }

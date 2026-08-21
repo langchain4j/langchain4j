@@ -199,4 +199,49 @@ class JsonParsingUtilsTest {
         assertThat(result).isNotNull();
         assertThat(result.value()[1].tags).containsExactly("x", "y");
     }
+
+    static class LogEntry {
+        public String log;
+    }
+
+    @Test
+    void extract_object_with_closing_brace_in_string_and_prefix() throws Exception {
+        String text = """
+                Sure, here is the JSON:
+                {"log":"Unexpected character '}' at position 42"}
+                """;
+
+        JsonParsingUtils.ParsedJson<LogEntry> result =
+                JsonParsingUtils.extractAndParseJson(text, LogEntry.class);
+
+        assertThat(result.value().log).isEqualTo("Unexpected character '}' at position 42");
+    }
+
+    @Test
+    void extract_object_with_closing_bracket_in_string_and_prefix() throws Exception {
+        String text = """
+                Here is your result:
+                {"log":"Error: unexpected ']' found"}
+                """;
+
+        JsonParsingUtils.ParsedJson<LogEntry> result =
+                JsonParsingUtils.extractAndParseJson(text, LogEntry.class);
+
+        assertThat(result.value().log).isEqualTo("Error: unexpected ']' found");
+    }
+
+    @Test
+    void extract_array_with_closing_brace_in_string_and_prefix() throws Exception {
+        String text = """
+                The results are:
+                [{"log":"missing '}'"},{"log":"ok"}]
+                """;
+
+        JsonParsingUtils.ParsedJson<LogEntry[]> result =
+                JsonParsingUtils.extractAndParseJson(text, LogEntry[].class);
+
+        assertThat(result.value()).hasSize(2);
+        assertThat(result.value()[0].log).isEqualTo("missing '}'");
+        assertThat(result.value()[1].log).isEqualTo("ok");
+    }
 }

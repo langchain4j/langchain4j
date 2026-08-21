@@ -1,7 +1,9 @@
 package dev.langchain4j.agentic.planner;
 
 public enum AgenticSystemTopology {
-    SINGLE_AGENT,
+    AI_AGENT,
+    NON_AI_AGENT,
+    HUMAN_IN_THE_LOOP,
     SEQUENCE,
     PARALLEL,
     LOOP,

@@ -1,16 +1,15 @@
 package dev.langchain4j.agentic.declarative;
 
-import dev.langchain4j.agentic.Agent;
-
 import static java.lang.annotation.ElementType.METHOD;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
+import dev.langchain4j.agentic.Agent;
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
 
 /**
  * Marks a method as a definition of a loop agent, used to orchestrate the agentic workflow
- * by invoking a series of sub-agents in a loop until a certain condition is met or a maximum number of iterations is reached.
+ * by invoking a series of sub-agents in a loop until a certain predicate is met or a maximum number of iterations is reached.
  * <p>
  * Example:
  * <pre>
@@ -63,7 +62,7 @@ public @interface LoopAgent {
     Class<? extends TypedKey<?>> typedOutputKey() default Agent.NoTypedKey.class;
 
     /**
-     * Array of sub-agents that will be invoked in parallel.
+     * Array of sub-agents that will be invoked in sequence at each loop iteration.
      *
      * @return array of sub-agents.
      */
@@ -71,9 +70,17 @@ public @interface LoopAgent {
 
     /**
      * Maximum number of iterations the loop will execute.
-     * If the exit condition is not met within this number of iterations, the loop will terminate.
+     * If the exit predicate is not met within this number of iterations, the loop will terminate.
      *
      * @return maximum number of iterations.
      */
     int maxIterations() default 10;
+
+    /**
+     * When true, if any agent in the hierarchy fails, all previously successful tool
+     * executions with {@code @CompensateFor} actions are compensated in reverse order.
+     *
+     * @return whether to enable cross-agent compensation on error.
+     */
+    boolean compensateOnError() default false;
 }

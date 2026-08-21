@@ -3,6 +3,7 @@ package dev.langchain4j.model.openai;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.ModelProvider.OPEN_AI;
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.DEFAULT_OPENAI_URL;
@@ -10,6 +11,7 @@ import static dev.langchain4j.model.openai.internal.OpenAiUtils.DEFAULT_USER_AGE
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.aiMessageFrom;
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.finishReasonFrom;
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.fromOpenAiResponseFormat;
+import static dev.langchain4j.model.openai.internal.OpenAiUtils.logProbsFrom;
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.toOpenAiChatRequest;
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.tokenUsageFrom;
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.validate;
@@ -18,6 +20,7 @@ import static java.time.Duration.ofSeconds;
 import static java.util.Arrays.asList;
 
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.exception.InternalServerException;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.Capability;
@@ -38,6 +41,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Supplier;
 import org.slf4j.Logger;
 
 /**
@@ -55,7 +59,9 @@ public class OpenAiChatModel implements ChatModel {
     private final boolean strictJsonSchema;
     private final boolean strictTools;
     private final boolean returnThinking;
-
+    private final boolean sendThinking;
+    private final String thinkingFieldName;
+    private final boolean useInputImageFormat;
     private final List<ChatModelListener> listeners;
 
     public OpenAiChatModel(OpenAiChatModelBuilder builder) {
@@ -72,7 +78,7 @@ public class OpenAiChatModel implements ChatModel {
                 .logResponses(getOrDefault(builder.logResponses, false))
                 .logger(builder.logger)
                 .userAgent(DEFAULT_USER_AGENT)
-                .customHeaders(builder.customHeaders)
+                .customHeaders(builder.customHeadersSupplier)
                 .customQueryParams(builder.customQueryParams)
                 .build();
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
@@ -112,6 +118,8 @@ public class OpenAiChatModel implements ChatModel {
                 .metadata(getOrDefault(builder.metadata, openAiParameters.metadata()))
                 .serviceTier(getOrDefault(builder.serviceTier, openAiParameters.serviceTier()))
                 .reasoningEffort(getOrDefault(builder.reasoningEffort, openAiParameters.reasoningEffort()))
+                .logprobs(getOrDefault(builder.logprobs, openAiParameters.logprobs()))
+                .topLogprobs(getOrDefault(builder.topLogprobs, openAiParameters.topLogprobs()))
                 .customParameters(getOrDefault(builder.customParameters, openAiParameters.customParameters()))
                 .build();
         this.responseFormatString = builder.responseFormatString;
@@ -119,6 +127,9 @@ public class OpenAiChatModel implements ChatModel {
         this.strictJsonSchema = getOrDefault(builder.strictJsonSchema, false);
         this.strictTools = getOrDefault(builder.strictTools, false);
         this.returnThinking = getOrDefault(builder.returnThinking, false);
+        this.sendThinking = getOrDefault(builder.sendThinking, false);
+        this.thinkingFieldName = getOrDefault(builder.thinkingFieldName, "reasoning_content");
+        this.useInputImageFormat = getOrDefault(builder.useInputImageFormat, false);
         this.listeners = copy(builder.listeners);
     }
 
@@ -143,13 +154,23 @@ public class OpenAiChatModel implements ChatModel {
         validate(parameters);
 
         ChatCompletionRequest openAiRequest = toOpenAiChatRequest(
-                        chatRequest, parameters, strictTools, strictJsonSchema)
+                        chatRequest,
+                        parameters,
+                        sendThinking,
+                        thinkingFieldName,
+                        strictTools,
+                        strictJsonSchema,
+                        useInputImageFormat)
                 .build();
 
         ParsedAndRawResponse<ChatCompletionResponse> parsedAndRawResponse = withRetryMappingExceptions(
                 () -> client.chatCompletion(openAiRequest).executeRaw(), maxRetries);
 
         ChatCompletionResponse openAiResponse = parsedAndRawResponse.parsedResponse();
+
+        if (isNullOrEmpty(openAiResponse.choices())) {
+            throw new InternalServerException("Chat completion failed: no choices returned in response");
+        }
 
         OpenAiChatResponseMetadata responseMetadata = OpenAiChatResponseMetadata.builder()
                 .id(openAiResponse.id())
@@ -160,6 +181,7 @@ public class OpenAiChatModel implements ChatModel {
                 .serviceTier(openAiResponse.serviceTier())
                 .systemFingerprint(openAiResponse.systemFingerprint())
                 .rawHttpResponse(parsedAndRawResponse.rawHttpResponse())
+                .logProbs(logProbsFrom(openAiResponse.choices().get(0).logprobs()))
                 .build();
 
         return ChatResponse.builder()
@@ -216,12 +238,17 @@ public class OpenAiChatModel implements ChatModel {
         private String serviceTier;
         private String reasoningEffort;
         private Boolean returnThinking;
+        private Boolean sendThinking;
+        private String thinkingFieldName;
+        private Boolean useInputImageFormat;
+        private Boolean logprobs;
+        private Integer topLogprobs;
         private Duration timeout;
         private Integer maxRetries;
         private Boolean logRequests;
         private Boolean logResponses;
         private Logger logger;
-        private Map<String, String> customHeaders;
+        private Supplier<Map<String, String>> customHeadersSupplier;
         private Map<String, String> customQueryParams;
         private Map<String, Object> customParameters;
         private List<ChatModelListener> listeners;
@@ -400,6 +427,71 @@ public class OpenAiChatModel implements ChatModel {
             return this;
         }
 
+        /**
+         * This setting is intended for <a href="https://api-docs.deepseek.com/guides/reasoning_model">DeepSeek</a>.
+         * <p>
+         * Controls whether to include thinking/reasoning text in assistant messages when sending requests to the API.
+         * This is needed for some APIs (like DeepSeek) when using reasoning mode with tool calls.
+         * <p>
+         * Disabled by default.
+         * <p>
+         * When enabled, the reasoning content from previous assistant messages (stored in {@link AiMessage#thinking()})
+         * will be included in the request during message conversion to API format.
+         *
+         * @param sendThinking whether to send reasoning content
+         * @param fieldName the field name for reasoning content
+         * @return {@code this}
+         */
+        public OpenAiChatModelBuilder sendThinking(Boolean sendThinking, String fieldName) {
+            this.sendThinking = sendThinking;
+            this.thinkingFieldName = fieldName;
+            return this;
+        }
+
+        /**
+         * This setting is intended for <a href="https://api-docs.deepseek.com/guides/reasoning_model">DeepSeek</a>.
+         * <p>
+         * Controls whether to include thinking/reasoning text in assistant messages when sending requests to the API.
+         * This is needed for some APIs (like DeepSeek) when using reasoning mode with tool calls.
+         * Uses the default field name "reasoning_content" for the reasoning content field.
+         * <p>
+         * Disabled by default.
+         * <p>
+         * When enabled, the reasoning content from previous assistant messages (stored in {@link AiMessage#thinking()})
+         * will be included in the request during message conversion to API format.
+         *
+         * @param sendThinking whether to send reasoning content
+         * @return {@code this}
+         */
+        public OpenAiChatModelBuilder sendThinking(Boolean sendThinking) {
+            this.sendThinking = sendThinking;
+            this.thinkingFieldName = "reasoning_content";
+            return this;
+        }
+
+        /**
+         * Controls whether image content is sent using the {@code input_image} format.
+         * <p>
+         * Disabled by default, preserving the OpenAI Chat Completions {@code image_url} format.
+         *
+         * @param useInputImageFormat whether to send image content as {@code input_image}
+         * @return {@code this}
+         */
+        public OpenAiChatModelBuilder useInputImageFormat(Boolean useInputImageFormat) {
+            this.useInputImageFormat = useInputImageFormat;
+            return this;
+        }
+
+        public OpenAiChatModelBuilder logprobs(Boolean logprobs) {
+            this.logprobs = logprobs;
+            return this;
+        }
+
+        public OpenAiChatModelBuilder topLogprobs(Integer topLogprobs) {
+            this.topLogprobs = topLogprobs;
+            return this;
+        }
+
         public OpenAiChatModelBuilder timeout(Duration timeout) {
             this.timeout = timeout;
             return this;
@@ -430,10 +522,20 @@ public class OpenAiChatModel implements ChatModel {
         }
 
         /**
-         * Sets custom HTTP headers
+         * Sets custom HTTP headers.
          */
         public OpenAiChatModelBuilder customHeaders(Map<String, String> customHeaders) {
-            this.customHeaders = customHeaders;
+            this.customHeadersSupplier = () -> customHeaders;
+            return this;
+        }
+
+        /**
+         * Sets a supplier for custom HTTP headers.
+         * The supplier is called before each request, allowing dynamic header values.
+         * For example, this is useful for OAuth2 tokens that expire and need refreshing.
+         */
+        public OpenAiChatModelBuilder customHeaders(Supplier<Map<String, String>> customHeadersSupplier) {
+            this.customHeadersSupplier = customHeadersSupplier;
             return this;
         }
 
@@ -456,6 +558,10 @@ public class OpenAiChatModel implements ChatModel {
         public OpenAiChatModelBuilder listeners(List<ChatModelListener> listeners) {
             this.listeners = listeners;
             return this;
+        }
+
+        public OpenAiChatModelBuilder listeners(ChatModelListener... listeners) {
+            return listeners(asList(listeners));
         }
 
         public OpenAiChatModel build() {

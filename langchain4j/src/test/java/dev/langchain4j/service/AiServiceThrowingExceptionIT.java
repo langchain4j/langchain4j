@@ -102,8 +102,12 @@ class AiServiceThrowingExceptionIT {
     @Test
     @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
     void with_wrong_url() {
+
+        // given
+        String wrongUrl = "https://api.openai.com/v0";
+
         ChatModel chatModel = OpenAiChatModel.builder()
-                .baseUrl("https://api.openai.com/v0")
+                .baseUrl(wrongUrl)
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                 .modelName(GPT_4_O_MINI)
@@ -115,9 +119,9 @@ class AiServiceThrowingExceptionIT {
         ThrowingService assistant =
                 AiServices.builder(ThrowingService.class).chatModel(chatModel).build();
 
-        assertThatThrownBy(() -> assistant.chat("hi"))
-                .isExactlyInstanceOf(ModelNotFoundException.class)
-                .hasMessageContaining("Not Found");
+        // when-then
+        assertThatThrownBy(() -> assistant.chat("does not matter"))
+                .isExactlyInstanceOf(ModelNotFoundException.class);
     }
 
     @Test

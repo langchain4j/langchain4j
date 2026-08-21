@@ -17,10 +17,8 @@ import java.lang.annotation.Target;
  * {@code
  *     public interface EveningPlannerAgent {
  *
- *         @ParallelAgent(outputKey = "plans", subAgents = {
- *                 @SubAgent(type = FoodExpert.class, outputKey = "meals"),
- *                 @SubAgent(type = MovieExpert.class, outputKey = "movies")
- *         })
+ *         @ParallelAgent(outputKey = "plans",
+ *                 subAgents = { FoodExpert.class, MovieExpert.class })
  *         List<EveningPlan> plan(@V("mood") String mood);
  *
  *         @Output

@@ -8,10 +8,8 @@ import static java.util.Collections.singletonList;
 
 import com.azure.core.credential.AzureKeyCredential;
 import com.azure.core.credential.TokenCredential;
-import com.azure.core.util.Context;
 import com.azure.search.documents.indexes.models.SearchIndex;
 import com.azure.search.documents.models.*;
-import com.azure.search.documents.util.SearchPagedIterable;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
@@ -27,6 +25,7 @@ import dev.langchain4j.store.embedding.azure.search.AzureAiSearchRuntimeExceptio
 import dev.langchain4j.store.embedding.azure.search.Document;
 import dev.langchain4j.store.embedding.filter.Filter;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import org.slf4j.Logger;
@@ -172,7 +171,7 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
         }
 
         List<IndexingResult> indexingResults =
-                searchClient.uploadDocuments(documents).getResults();
+                searchClient.indexDocuments(toUploadBatch(documents)).getResults();
         for (IndexingResult indexingResult : indexingResults) {
             if (!indexingResult.isSucceeded()) {
                 throw new AzureAiSearchRuntimeException("Failed to add content: " + indexingResult.getErrorMessage());
@@ -220,7 +219,7 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
 
     private List<Content> findRelevantWithFullText(String content, int maxResults, double minScore) {
         SearchPagedIterable searchResults = searchClient.search(
-                content, new SearchOptions().setTop(maxResults).setFilter(searchFilter), Context.NONE);
+                new SearchOptions().setSearchText(content).setTop(maxResults).setFilter(searchFilter));
 
         return mapResultsToContentList(searchResults, AzureAiSearchQueryType.FULL_TEXT, minScore);
     }
@@ -231,15 +230,13 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
 
         VectorizedQuery vectorizedQuery = new VectorizedQuery(vector)
                 .setFields(DEFAULT_FIELD_CONTENT_VECTOR)
-                .setKNearestNeighborsCount(maxResults);
+                .setKNearestNeighbors(maxResults);
 
-        SearchPagedIterable searchResults = searchClient.search(
-                content,
-                new SearchOptions()
-                        .setVectorSearchOptions(new VectorSearchOptions().setQueries(vectorizedQuery))
-                        .setTop(maxResults)
-                        .setFilter(searchFilter),
-                Context.NONE);
+        SearchPagedIterable searchResults = searchClient.search(new SearchOptions()
+                .setSearchText(content)
+                .setVectorQueries(vectorizedQuery)
+                .setTop(maxResults)
+                .setFilter(searchFilter));
 
         return mapResultsToContentList(searchResults, AzureAiSearchQueryType.HYBRID, minScore);
     }
@@ -250,18 +247,15 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
 
         VectorizedQuery vectorizedQuery = new VectorizedQuery(vector)
                 .setFields(DEFAULT_FIELD_CONTENT_VECTOR)
-                .setKNearestNeighborsCount(maxResults);
+                .setKNearestNeighbors(maxResults);
 
-        SearchPagedIterable searchResults = searchClient.search(
-                content,
-                new SearchOptions()
-                        .setVectorSearchOptions(new VectorSearchOptions().setQueries(vectorizedQuery))
-                        .setSemanticSearchOptions(
-                                new SemanticSearchOptions().setSemanticConfigurationName(SEMANTIC_SEARCH_CONFIG_NAME))
-                        .setQueryType(com.azure.search.documents.models.QueryType.SEMANTIC)
-                        .setTop(maxResults)
-                        .setFilter(searchFilter),
-                Context.NONE);
+        SearchPagedIterable searchResults = searchClient.search(new SearchOptions()
+                .setSearchText(content)
+                .setVectorQueries(vectorizedQuery)
+                .setSemanticConfigurationName(SEMANTIC_SEARCH_CONFIG_NAME)
+                .setQueryType(com.azure.search.documents.models.QueryType.SEMANTIC)
+                .setTop(maxResults)
+                .setFilter(searchFilter));
 
         return mapResultsToContentList(searchResults, AzureAiSearchQueryType.HYBRID_WITH_RERANKING, minScore);
     }
@@ -311,6 +305,8 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
         private Filter filter;
 
         private AzureAiSearchFilterMapper filterMapper;
+
+        private List<String> metadataFieldNames = List.of();
 
         /**
          * Sets the Azure AI Search endpoint. This is a mandatory parameter.
@@ -458,8 +454,27 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
             return this;
         }
 
+        /**
+         * Sets the names of top-level index fields to copy into the {@link dev.langchain4j.data.document.Metadata} of
+         * each retrieved segment. Use this with a pre-existing (bring-your-own) index whose fields are stored at the
+         * document root rather than in the nested {@code metadata} field this store writes. A field is copied only if
+         * its value is a type {@link dev.langchain4j.data.document.Metadata} supports ({@code String}, {@code Integer},
+         * {@code Long}, {@code Float}, {@code Double}, or {@code UUID}); fields that are absent, {@code null} or of
+         * another type are skipped. Each field must be retrievable in the Azure index for its value to be returned.
+         * When a name matches a key already present in the nested {@code metadata} field, the top-level value takes
+         * precedence.
+         *
+         * @param metadataFieldNames The names of the index fields to expose as metadata; {@code null} is treated as no
+         *     configured fields.
+         * @return builder
+         */
+        public Builder metadataFieldNames(Collection<String> metadataFieldNames) {
+            this.metadataFieldNames = metadataFieldNames == null ? List.of() : List.copyOf(metadataFieldNames);
+            return this;
+        }
+
         public AzureAiSearchContentRetriever build() {
-            return new AzureAiSearchContentRetriever(
+            AzureAiSearchContentRetriever retriever = new AzureAiSearchContentRetriever(
                     endpoint,
                     keyCredential,
                     tokenCredential,
@@ -473,6 +488,8 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
                     azureAiSearchQueryType,
                     filterMapper,
                     filter);
+            retriever.metadataFieldNames = metadataFieldNames;
+            return retriever;
         }
     }
 }

@@ -1,0 +1,15 @@
+[
+  {
+    "extension": "revapi.differences",
+    "configuration": {
+      "ignore": true,
+      "differences": [
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.http.client.HttpClientBuilder",
+          "justification": "HttpClientBuilder is intentionally exposed by the Chroma integration for custom HTTP client configuration"
+        }
+      ]
+    }
+  }
+]

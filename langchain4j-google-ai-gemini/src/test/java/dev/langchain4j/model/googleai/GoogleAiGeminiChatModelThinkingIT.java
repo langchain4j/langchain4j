@@ -3,7 +3,6 @@ package dev.langchain4j.model.googleai;
 import static dev.langchain4j.JsonTestUtils.jsonify;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.util.List;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
@@ -17,6 +16,7 @@ import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -29,8 +29,6 @@ class GoogleAiGeminiChatModelThinkingIT {
     private static final String GOOGLE_AI_GEMINI_API_KEY = System.getenv("GOOGLE_AI_GEMINI_API_KEY");
     static final int THOUGHT_LENGTH_THRESHOLD = 100; // TODO this is brittle, check raw HTTP responses instead
 
-    private final SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder().build());
-
     @ParameterizedTest
     @ValueSource(booleans = {true, false})
     void should_think_and_return_thinking(boolean sendThinking) {
@@ -38,6 +36,8 @@ class GoogleAiGeminiChatModelThinkingIT {
         // given
         boolean includeThoughts = true;
         boolean returnThinking = true;
+
+        SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder().build());
 
         GeminiThinkingConfig thinkingConfig = GeminiThinkingConfig.builder()
                 .includeThoughts(includeThoughts)
@@ -48,11 +48,9 @@ class GoogleAiGeminiChatModelThinkingIT {
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
                 .modelName("gemini-2.5-flash")
-
                 .thinkingConfig(thinkingConfig)
                 .returnThinking(returnThinking)
                 .sendThinking(sendThinking)
-
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -64,12 +62,8 @@ class GoogleAiGeminiChatModelThinkingIT {
 
         // then
         AiMessage aiMessage1 = chatResponse1.aiMessage();
-        assertThat(aiMessage1.text())
-                .containsIgnoringCase("Berlin")
-                .hasSizeLessThan(THOUGHT_LENGTH_THRESHOLD);
-        assertThat(aiMessage1.thinking())
-                .isNotBlank()
-                .hasSizeGreaterThan(THOUGHT_LENGTH_THRESHOLD);
+        assertThat(aiMessage1.text()).containsIgnoringCase("Berlin").hasSizeLessThan(THOUGHT_LENGTH_THRESHOLD);
+        assertThat(aiMessage1.thinking()).isNotBlank().hasSizeGreaterThan(THOUGHT_LENGTH_THRESHOLD);
         assertThat(aiMessage1.text()).doesNotContain(aiMessage1.thinking());
         assertThat(aiMessage1.attributes()).isEmpty();
 
@@ -81,12 +75,8 @@ class GoogleAiGeminiChatModelThinkingIT {
 
         // then
         AiMessage aiMessage2 = chatResponse2.aiMessage();
-        assertThat(aiMessage2.text())
-                .containsIgnoringCase("Paris")
-                .hasSizeLessThan(THOUGHT_LENGTH_THRESHOLD);
-        assertThat(aiMessage2.thinking())
-                .isNotBlank()
-                .hasSizeGreaterThan(THOUGHT_LENGTH_THRESHOLD);
+        assertThat(aiMessage2.text()).containsIgnoringCase("Paris").hasSizeLessThan(THOUGHT_LENGTH_THRESHOLD);
+        assertThat(aiMessage2.thinking()).isNotBlank().hasSizeGreaterThan(THOUGHT_LENGTH_THRESHOLD);
         assertThat(aiMessage2.text()).doesNotContain(aiMessage2.thinking());
         assertThat(aiMessage2.attributes()).isEmpty();
 
@@ -116,10 +106,8 @@ class GoogleAiGeminiChatModelThinkingIT {
         ChatModel model = GoogleAiGeminiChatModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
                 .modelName("gemini-2.5-flash")
-
                 .thinkingConfig(thinkingConfig)
                 .returnThinking(returnThinking)
-
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -131,9 +119,7 @@ class GoogleAiGeminiChatModelThinkingIT {
 
         // then
         AiMessage aiMessage = chatResponse.aiMessage();
-        assertThat(aiMessage.text())
-                .containsIgnoringCase("Berlin")
-                .hasSizeLessThan(THOUGHT_LENGTH_THRESHOLD);
+        assertThat(aiMessage.text()).containsIgnoringCase("Berlin").hasSizeLessThan(THOUGHT_LENGTH_THRESHOLD);
         assertThat(aiMessage.thinking()).isNull();
         assertThat(aiMessage.attributes()).isEmpty();
     }
@@ -165,18 +151,18 @@ class GoogleAiGeminiChatModelThinkingIT {
                         .build())
                 .build();
 
+        SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder().build());
+
         ChatModel model = GoogleAiGeminiChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
                 .modelName("gemini-2.5-flash")
-
                 .thinkingConfig(thinkingConfig)
                 .returnThinking(returnThinking)
                 .sendThinking(sendThinking)
                 .defaultRequestParameters(ChatRequestParameters.builder()
                         .toolSpecifications(toolSpecification)
                         .build())
-
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -193,7 +179,8 @@ class GoogleAiGeminiChatModelThinkingIT {
         String signature1 = aiMessage1.attribute("thinking_signature", String.class);
         assertThat(signature1).isNotBlank();
         assertThat(aiMessage1.toolExecutionRequests()).hasSize(1);
-        ToolExecutionRequest toolExecutionRequest1 = aiMessage1.toolExecutionRequests().get(0);
+        ToolExecutionRequest toolExecutionRequest1 =
+                aiMessage1.toolExecutionRequests().get(0);
         assertThat(toolExecutionRequest1.name()).isEqualTo(toolSpecification.name());
         assertThat(toolExecutionRequest1.arguments()).contains("Munich");
 
@@ -223,7 +210,8 @@ class GoogleAiGeminiChatModelThinkingIT {
         String signature2 = aiMessage3.attribute("thinking_signature", String.class);
         assertThat(signature2).isNotBlank();
         assertThat(aiMessage3.toolExecutionRequests()).hasSize(1);
-        ToolExecutionRequest toolExecutionRequest2 = aiMessage3.toolExecutionRequests().get(0);
+        ToolExecutionRequest toolExecutionRequest2 =
+                aiMessage3.toolExecutionRequests().get(0);
         assertThat(toolExecutionRequest2.name()).isEqualTo(toolSpecification.name());
         assertThat(toolExecutionRequest2.arguments()).contains("Paris");
 
@@ -231,7 +219,8 @@ class GoogleAiGeminiChatModelThinkingIT {
         ToolExecutionResultMessage toolResultMessage2 = ToolExecutionResultMessage.from(toolExecutionRequest2, "rainy");
 
         // when
-        ChatResponse chatResponse4 = model.chat(userMessage1, aiMessage1, toolResultMessage1, aiMessage2, userMessage2, aiMessage3, toolResultMessage2);
+        ChatResponse chatResponse4 = model.chat(
+                userMessage1, aiMessage1, toolResultMessage1, aiMessage2, userMessage2, aiMessage3, toolResultMessage2);
 
         // then
         AiMessage aiMessage4 = chatResponse4.aiMessage();
@@ -247,9 +236,7 @@ class GoogleAiGeminiChatModelThinkingIT {
         assertThat(httpRequests).hasSize(4);
 
         if (sendThinking) {
-            assertThat(httpRequests.get(1).body())
-                    .contains(jsonify(thinking1))
-                    .contains(jsonify(signature1));
+            assertThat(httpRequests.get(1).body()).contains(jsonify(thinking1)).contains(jsonify(signature1));
         } else {
             assertThat(httpRequests.get(1).body())
                     .doesNotContain(jsonify(thinking1))
@@ -257,9 +244,7 @@ class GoogleAiGeminiChatModelThinkingIT {
         }
 
         if (sendThinking) {
-            assertThat(httpRequests.get(3).body())
-                    .contains(jsonify(thinking2))
-                    .contains(jsonify(signature2));
+            assertThat(httpRequests.get(3).body()).contains(jsonify(thinking2)).contains(jsonify(signature2));
         } else {
             assertThat(httpRequests.get(3).body())
                     .doesNotContain(jsonify(thinking2))
@@ -276,9 +261,7 @@ class GoogleAiGeminiChatModelThinkingIT {
         ChatModel model = GoogleAiGeminiChatModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
                 .modelName("gemini-2.5-flash")
-
                 .thinkingConfig(thinkingConfig)
-
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -290,9 +273,7 @@ class GoogleAiGeminiChatModelThinkingIT {
 
         // then
         AiMessage aiMessage = chatResponse.aiMessage();
-        assertThat(aiMessage.text())
-                .contains("Berlin")
-                .hasSizeLessThan(THOUGHT_LENGTH_THRESHOLD);
+        assertThat(aiMessage.text()).contains("Berlin").hasSizeLessThan(THOUGHT_LENGTH_THRESHOLD);
         assertThat(aiMessage.thinking()).isNull();
         assertThat(aiMessage.attributes()).isEmpty();
     }
@@ -312,10 +293,8 @@ class GoogleAiGeminiChatModelThinkingIT {
         ChatModel model = GoogleAiGeminiChatModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
                 .modelName("gemini-2.5-flash")
-
                 .thinkingConfig(thinkingConfig)
                 .returnThinking(returnThinking)
-
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -327,9 +306,7 @@ class GoogleAiGeminiChatModelThinkingIT {
 
         // then
         AiMessage aiMessage = chatResponse.aiMessage();
-        assertThat(aiMessage.text())
-                .contains("Berlin")
-                .hasSizeGreaterThan(THOUGHT_LENGTH_THRESHOLD);
+        assertThat(aiMessage.text()).contains("Berlin").hasSizeGreaterThan(THOUGHT_LENGTH_THRESHOLD);
         assertThat(aiMessage.thinking()).isNull();
         assertThat(aiMessage.attributes()).isEmpty();
     }

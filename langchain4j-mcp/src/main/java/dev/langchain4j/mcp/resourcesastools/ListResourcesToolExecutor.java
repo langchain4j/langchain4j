@@ -1,16 +1,18 @@
 package dev.langchain4j.mcp.resourcesastools;
 
+import static dev.langchain4j.internal.Exceptions.unwrapRuntimeException;
+
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.internal.Json;
+import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.mcp.client.McpClient;
 import dev.langchain4j.mcp.client.McpResource;
 import dev.langchain4j.mcp.client.McpResourceTemplate;
-import dev.langchain4j.exception.ToolExecutionException;
+import dev.langchain4j.service.tool.ToolExecutionResult;
 import dev.langchain4j.service.tool.ToolExecutor;
 import java.util.ArrayList;
 import java.util.List;
-
-import static dev.langchain4j.internal.Exceptions.unwrapRuntimeException;
 
 /**
  * Default Executor for the 'list_resources' synthetic tool that can retrieve a list of resources from one or more MCP servers
@@ -25,18 +27,25 @@ class ListResourcesToolExecutor implements ToolExecutor {
     }
 
     @Override
-    public String execute(ToolExecutionRequest toolExecutionRequest, Object memoryId) {
+    public ToolExecutionResult executeWithContext(ToolExecutionRequest request, InvocationContext invocationContext) {
         try {
-            return doExecute();
+            return ToolExecutionResult.builder()
+                    .resultText(doExecute(invocationContext))
+                    .build();
         } catch (Exception e) {
             throw new ToolExecutionException(unwrapRuntimeException(e));
         }
     }
 
-    private String doExecute() {
+    @Override
+    public String execute(ToolExecutionRequest toolExecutionRequest, Object memoryId) {
+        return executeWithContext(toolExecutionRequest, null).resultText();
+    }
+
+    private String doExecute(InvocationContext invocationContext) {
         List<ResourceDescription> descriptions = new ArrayList<>();
         for (McpClient client : mcpClients) {
-            for (McpResource resource : client.listResources()) {
+            for (McpResource resource : client.listResources(invocationContext)) {
                 descriptions.add(new ResourceDescription(
                         client.key(),
                         resource.uri(),

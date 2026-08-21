@@ -13,6 +13,7 @@ https://ai.google.dev/gemini-api/docs
 - [Models Available](#models-available)
 - [GoogleAiGeminiChatModel](#googleaigeminichatmodel)
     - [Configuring](#configuring)
+    - [Default Request Parameters](#default-request-parameters)
 - [GoogleAiGeminiStreamingChatModel](#googleaigeministreamingchatmodel)
 - [Tools](#tools)
 - [Structured Outputs](#structured-outputs)
@@ -38,7 +39,7 @@ https://ai.google.dev/gemini-api/docs
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-google-ai-gemini</artifactId>
-    <version>1.9.1</version>
+    <version>1.19.0</version>
 </dependency>
 ```
 
@@ -119,9 +120,50 @@ ChatModel gemini = GoogleAiGeminiChatModel.builder()
     .responseLogprobs(...)
     .logprobs(...)
     .enableEnhancedCivicAnswers(...)
+    .mediaResolution(GeminiMediaResolutionLevel.MEDIA_RESOLUTION_HIGH)
+    .mediaResolutionPerPartEnabled(true)
     .listeners(...)
     .supportedCapabilities(...)
     .build();
+```
+
+### Default Request Parameters
+
+Instead of (or in addition to) the individual builder methods shown above, you can supply a single
+`ChatRequestParameters` object via `defaultRequestParameters(...)`. These parameters are applied to every
+request issued by the model, unless they are overridden by the parameters of an individual `ChatRequest`.
+
+You can pass either common `ChatRequestParameters` or Gemini-specific `GoogleAiGeminiChatRequestParameters`.
+The latter additionally exposes Gemini-only options such as `aspectRatio` and `imageSize`:
+
+```java
+GoogleAiGeminiChatRequestParameters parameters = GoogleAiGeminiChatRequestParameters.builder()
+    .modelName("gemini-2.5-flash")
+    .temperature(1.0)
+    .maxOutputTokens(8192)
+    .aspectRatio("16:9") // Gemini-specific
+    .imageSize("2K")     // Gemini-specific
+    .build();
+
+ChatModel gemini = GoogleAiGeminiChatModel.builder()
+    .apiKey(System.getenv("GEMINI_AI_KEY"))
+    .defaultRequestParameters(parameters)
+    .build();
+```
+
+When the same parameter is set both via `defaultRequestParameters(...)` and via an individual builder method
+(e.g., `modelName(String)`), the value set via the individual builder method takes precedence:
+
+```java
+ChatModel gemini = GoogleAiGeminiChatModel.builder()
+    .apiKey(System.getenv("GEMINI_AI_KEY"))
+    .defaultRequestParameters(GoogleAiGeminiChatRequestParameters.builder()
+        .modelName("gemini-2.5-flash")
+        .temperature(1.0)
+        .build())
+    .temperature(0.0) // overrides temperature from defaultRequestParameters
+    .build();
+// effective parameters: modelName=gemini-2.5-flash, temperature=0.0
 ```
 
 ## GoogleAiGeminiStreamingChatModel
@@ -214,6 +256,51 @@ System.out.println("Gemini> " + tokyoWeather);
 //         with a temperature of 32 degrees.
 ```
 
+### Tool Parameters Using `$ref`, `$defs` Or Raw JSON Schema
+
+Tool parameters are usually described with the Gemini `parameters` field, which understands a fixed set of
+schema keywords. Standard JSON Schema goes further than that: it can point one part of a document at another
+with `$ref` and `$defs`, and it has keywords such as `minimum` and `maximum` that `parameters` has no place for.
+
+When the tool parameters contain anything of that kind, LangChain4j sends them through `parametersJsonSchema`
+instead, the Gemini field that takes plain JSON Schema, and the schema reaches the API unchanged. There is
+nothing to configure and nothing to switch on:
+
+```java
+JsonObjectSchema priceRange = JsonObjectSchema.builder()
+        .addNumberProperty("min")
+        .addNumberProperty("max")
+        .build();
+
+ToolSpecification searchProducts = ToolSpecification.builder()
+        .name("search_products")
+        .description("Search the catalog")
+        .parameters(JsonObjectSchema.builder()
+                .definitions(Map.of("PriceRange", priceRange))
+                .addStringProperty("query")
+                // a reference to the definition above, resolved by Gemini
+                .addProperty("retail_price", JsonReferenceSchema.builder()
+                        .reference("PriceRange")
+                        .build())
+                // a fragment of JSON Schema, sent exactly as written
+                .addProperty("max_results", JsonRawSchema.from(
+                        "{\"type\":\"integer\",\"minimum\":1,\"maximum\":50}"))
+                .required("query")
+                .build())
+        .build();
+```
+
+This is not limited to schemas you write by hand. It also covers tools LangChain4j builds for you: a `@Tool`
+method whose parameter type refers to itself, and MCP tools whose schema uses `$ref`.
+
+Response schemas are treated the same way, see [Raw Response Schema](#raw-response-schema).
+
+:::note
+Gemini rejects the `$schema` keyword. Documents coming out of a schema generator usually start with
+`"$schema": "https://json-schema.org/draft/2020-12/schema"`, so drop that line before passing the document
+to `JsonRawSchema`, otherwise the request fails with a `400`.
+:::
+
 ## Structured Outputs
 
 See more info on Structured Outputs [here](/tutorials/structured-outputs).
@@ -277,7 +364,11 @@ WeatherForecast forecast = forecastAssistant.extract("""
 
 ### Response Format / Response Schema
 You can specify a `ResponseFormat` either when creating a `GoogleAiGeminiChatModel` or when calling it.
-Let's have a look at an example to define a JSON schema for a recipe when creating the `GoogleAiGeminiChatModel`:
+
+Especially, in cases of Json format, you can choose to define schema programmatically by creating the respective java objects or by providing raw json schema. 
+#### Response Schema
+Let's have a look at an example to define a JSON schema for a recipe when creating the `GoogleAiGeminiChatModel`.
+In this example we declare the json schema using `JsonObjectSchema` class.
 ```java
 ResponseFormat responseFormat = ResponseFormat.builder()
         .type(ResponseFormatType.JSON)
@@ -330,6 +421,88 @@ ChatResponse chatResponse = gemini.chat(chatRequest);
 System.out.println(chatResponse.aiMessage().text());
 ```
 
+#### Raw Response Schema
+Another example shows how we can use the `responseJsonSchema` of the Gemini API to provide a raw JSON schema using `JsonRawSchema` class.  
+Please be cautious to use only the [supported types](https://ai.google.dev/gemini-api/docs/structured-output?example=recipe#json_schema_support) of the Gemini API.
+The same field is used whenever a response schema contains a `JsonRawSchema` or a `JsonReferenceSchema` anywhere inside it, so `$ref` and `$defs` work here too.
+```
+String rawSchema = """
+{
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "birthDate": {
+      "type": "string",
+      "format": "date"
+    },
+    "preferredContactTime": {
+      "type": "string",
+      "format": "time"
+      },
+    "height": {
+      "type": "number",
+      "minimum": 1.83,
+      "maximum": 1.88
+    },
+    "role": {
+      "type": "string",
+      "enum": ["developer", "maintainer", "researcher"]
+    },
+    "isAvailable": { "type": "boolean" },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "maxItems": 5
+    },
+    "address": {
+      "type": "object",
+      "properties": {
+        "city": { "type": "string" },
+        "streetName": { "type": "string" },
+        "streetNumber": { "type": "string" }
+      },
+      "required": ["city", "streetName", "streetNumber"],
+      "additionalProperties": true
+    }
+  },
+  "required": ["name", "birthDate", "height", "role", "tags", "address"]
+}
+""";
+
+JsonRawSchema jsonRawSchema = JsonRawSchema.builder().schema(rawSchema).build();
+JsonSchema jsonSchema = JsonSchema.builder().rootElement(jsonRawSchema).build();
+        
+ResponseFormat responseFormat = ResponseFormat.builder()
+        .type(ResponseFormatType.JSON)
+        .jsonSchema(jsonSchema)
+        .build();
+
+GoogleAiGeminiChatModel gemini = GoogleAiGeminiChatModel.builder()
+        .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+        .modelName("gemini-2.5-flash-lite")
+        .logRequests(true)
+        .logResponses(true)
+        .responseFormat(responseFormat)
+        .build();
+        
+UserMessage userMessage = UserMessage.from(
+        """
+           Tell me about a detective named Sherlock Holmes,
+           who was born on November 28 1852 and sees the world over six feet from the ground.
+           He is a trouble-seeker, an active volunteer and lives in London at 221B Baker Street.
+           He plays the violin and he likes to conduct various physics and chemistry experiments.
+           He accepts clients or prefers to be contacted at 09:00am.
+           """);
+
+ChatResponse response = gemini.chat(ChatRequest.builder()
+        .messages(userMessage)
+        .build());
+```
 ### JSON Mode
 
 You can force Gemini to reply in JSON:
@@ -354,7 +527,7 @@ If you want a guaranteed application of a JSON schema, you should define a respo
 
 ## Python code execution
 
-Beyond function calling, Google AI Gemini allows to create and execute Python code in a sandboxed environment.
+Beyond function calling, Google AI Gemini allows you to create and execute Python code in a sandboxed environment.
 This is particularly interesting for situations where more advanced calculations or logic is needed.
 
 ```java
@@ -463,12 +636,12 @@ ChatResponse response = gemini.chat(
 
 ### Image Generation Output
 
-Some Gemini models (such as `gemini-2.5-flash-image-preview`) can generate images as part of their response. When images are generated, they are stored in the `AiMessage` attributes and can be accessed using the `GeneratedImageHelper` utility class.
+Some Gemini models (such as `gemini-2.5-flash-image`) can generate images as part of their response. When images are generated, they are stored in the `AiMessage` attributes and can be accessed using the `GeneratedImageHelper` utility class.
 
 ```java
 ChatModel gemini = GoogleAiGeminiChatModel.builder()
     .apiKey("Your API Key")
-    .modelName("gemini-2.5-flash-image-preview")
+    .modelName("gemini-2.5-flash-image")
     .build();
 
 ChatResponse response = gemini.chat(UserMessage.from("A high-resolution, studio-lit product photograph of a minimalist ceramic coffee mug in matte black"));
@@ -494,6 +667,50 @@ if (GeneratedImageHelper.hasGeneratedImages(aiMessage)) {
     System.out.println("Text response: " + aiMessage.text());
 }
 ```
+
+### Media Resolution
+
+You can control the resolution of media (images, videos, PDFs) sent to the model. This can be done globally or per-part (per image).
+
+#### Global Media Resolution
+
+To set the media resolution for all media parts in a request, use the `.mediaResolution()` builder method:
+
+```java
+ChatModel gemini = GoogleAiGeminiChatModel.builder()
+    .apiKey(System.getenv("GEMINI_AI_KEY"))
+    .modelName("gemini-2.5-flash")
+    .mediaResolution(GeminiMediaResolutionLevel.MEDIA_RESOLUTION_LOW) // or MEDIUM, HIGH, ULTRA_HIGH, UNSPECIFIED
+    .build();
+```
+
+#### Per-Part Media Resolution (Gemini 3)
+
+With Gemini 3, you can specify the resolution for individual images using the `DetailLevel` in `ImageContent`.
+First, enable this feature in the builder, then set the detail level on `ImageContent`:
+
+```java
+ChatModel gemini = GoogleAiGeminiChatModel.builder()
+    .apiKey(System.getenv("GEMINI_AI_KEY"))
+    .modelName("gemini-3-pro-preview")
+    .mediaResolutionPerPartEnabled(true)
+    .build();
+
+ChatResponse response = gemini.chat(
+    UserMessage.from(
+        ImageContent.from(url1, ImageContent.DetailLevel.LOW),
+        ImageContent.from(url2, ImageContent.DetailLevel.HIGH),
+        TextContent.from("Compare these two images")
+    )
+);
+```
+
+Supported `DetailLevel` values and their mapping to Gemini's resolution levels:
+- `LOW` -> `MEDIA_RESOLUTION_LOW`
+- `MEDIUM` -> `MEDIA_RESOLUTION_MEDIUM`
+- `HIGH` -> `MEDIA_RESOLUTION_HIGH`
+- `ULTRA_HIGH` -> `MEDIA_RESOLUTION_ULTRA_HIGH` (Highest token count, required for specific use cases such as computer use)
+- `AUTO` -> `MEDIA_RESOLUTION_UNSPECIFIED`
 
 ## Thinking
 
@@ -650,7 +867,7 @@ The `GoogleAiBatchChatModel` provides an interface for processing large volumes 
 **Inline batch creation:**
 
 ```java
-GoogleAiBatchChatModel batchModel = GoogleAiBatchChatModel.builder()
+GoogleAiGeminiBatchChatModel batchModel = GoogleAiGeminiBatchChatModel.builder()
     .apiKey(System.getenv("GEMINI_AI_KEY"))
     .modelName("gemini-2.5-flash")
     .build();
@@ -668,12 +885,15 @@ List<ChatRequest> requests = List.of(
         .build()
 );
 
-// Submit the batch
-BatchResponse response = batchModel.createBatchInline(
-    "Geography Questions Batch",  // display name
-    0L,                            // priority (optional, defaults to 0)
-    requests
-);
+// Submit the batch (generic API, no Gemini-specific options)
+BatchResponse<ChatResponse> response = batchModel.submit(new BatchRequest<>(requests));
+
+// Or, to set a Gemini-specific display name and priority, use GeminiBatchRequest:
+BatchResponse<ChatResponse> response = batchModel.submit(GeminiBatchRequest.from(
+    requests,
+    "Geography Questions Batch", // display name
+    0L                           // priority (optional, defaults to 0)
+));
 ```
 
 **File-based batch creation:**
@@ -698,34 +918,67 @@ while (uploadedFile.isProcessing()) {
 }
 
 // Create batch from file
-BatchResponse response = batchModel.createBatchFromFile(
-    "My Batch Job",
-    uploadedFile
-);
+BatchResponse<ChatResponse> response = batchModel.submit("My Batch Job", uploadedFile);
 ```
 
 ### Handling Batch Responses
 
-The `BatchResponse` is a sealed interface with three possible states:
+A `BatchResponse` exposes the current `state()` together with the per-request `results()` and the
+`responses()` / `errors()` convenience views. Branch on the `state()` (use `state().isTerminal()`
+to tell whether the batch is still in progress):
 
 ```java
-BatchResponse response = batchModel.createBatchInline("My Batch", null, requests);
+BatchResponse<ChatResponse> response = batchModel.submit(new BatchRequest<>(requests));
 
-switch (response) {
-    case BatchIncomplete incomplete -> {
-        System.out.println("Batch is " + incomplete.state());
-        System.out.println("Batch name: " + incomplete.batchName().value());
+if (!response.state().isTerminal()) {
+    System.out.println("Batch is " + response.state());
+    System.out.println("Batch ID: " + response.batchId());
+} else if (response.state() == BatchState.SUCCEEDED) {
+    System.out.println("Batch completed successfully!");
+
+    // Process successful responses
+    for (ChatResponse chatResponse : response.responses()) {
+        System.out.println(chatResponse.aiMessage().text());
     }
-    case BatchSuccess success -> {
-        System.out.println("Batch completed successfully!");
-        for (ChatResponse chatResponse : success.responses()) {
-            System.out.println(chatResponse.aiMessage().text());
+
+    // Check for individual request errors within the batch
+    if (!response.errors().isEmpty()) {
+        System.out.println("Some requests failed:");
+        for (BatchError error : response.errors()) {
+            System.err.println("Error code: " + error.code() + ", message: " + error.message());
         }
     }
-    case BatchError error -> {
-        System.err.println("Batch failed: " + error.message());
-        System.err.println("Error code: " + error.code());
-        System.err.println("State: " + error.state());
+} else {
+    System.err.println("Batch " + response.state() + ": " + response.errors());
+}
+```
+
+**Note:** A batch with `state() == SUCCEEDED` indicates the batch job completed, but individual
+requests within the batch may have failed. The `errors()` list contains any individual request
+failures (e.g., timeouts, rate limits), while `responses()` contains the successful responses.
+Both are convenience views and are never `null` (empty when there is nothing to report), so check
+`!responses().isEmpty()` / `!errors().isEmpty()` to handle partial failures gracefully.
+
+### Correlating Results with Requests
+
+`responses()` and `errors()` are flat views that lose track of which input produced which outcome.
+When you need to map every outcome back to its originating request, use `results()` instead: it
+returns one `BatchItemResult` per request, **in the same order as the submitted requests**, so the
+i-th result corresponds to the i-th request. Each result is either a `BatchItemResult.Success`
+(carrying the `response()`) or a `BatchItemResult.Failure` (carrying the `error()`):
+
+```java
+BatchResponse<ChatResponse> result = batchModel.submit(new BatchRequest<>(requests));
+// ... poll until terminal ...
+
+List<BatchItemResult<ChatResponse>> results = result.results();
+for (int i = 0; i < results.size(); i++) {
+    BatchItemResult<ChatResponse> item = results.get(i);
+    if (item.isSuccess()) {
+        System.out.println("Request #" + i + " -> " + item.response().aiMessage().text());
+    } else {
+        BatchError error = item.error();
+        System.err.println("Request #" + i + " failed: " + error.code() + " - " + error.message());
     }
 }
 ```
@@ -735,33 +988,31 @@ switch (response) {
 Since batch processing is asynchronous, you need to poll for results (results might take up to 24 hours to process):
 
 ```java
-BatchResponse initialResponse = batchModel.createBatchInline(
-    "My Batch",
-    null,
-    requests
-);
+BatchResponse<ChatResponse> result = batchModel.submit(new BatchRequest<>(requests));
+String batchId = result.batchId();
 
-// Extract the batch name for polling
-BatchName batchName = switch (initialResponse) {
-    case BatchIncomplete incomplete -> incomplete.batchName();
-    case BatchSuccess success -> success.batchName();
-    case BatchError error -> throw new RuntimeException("Batch creation failed");
-};
-
-// Poll until completion
-BatchResponse result;
-do {
+// Poll until the batch reaches a terminal state
+while (!result.state().isTerminal()) {
     Thread.sleep(5000); // Wait 5 seconds between polls
-    result = batchModel.retrieveBatchResults(batchName);
-} while (result instanceof BatchIncomplete);
+    result = batchModel.retrieve(batchId);
+}
 
 // Process final result
-if (result instanceof BatchSuccess success) {
-    for (ChatResponse chatResponse : success.responses()) {
+if (result.state() == BatchState.SUCCEEDED) {
+    System.out.println("Successful responses: " + result.responses().size());
+    for (ChatResponse chatResponse : result.responses()) {
         System.out.println(chatResponse.aiMessage().text());
     }
-} else if (result instanceof BatchError error) {
-    System.err.println("Batch failed: " + error.message());
+
+    // Handle any individual request failures
+    if (!result.errors().isEmpty()) {
+        System.out.println("Failed requests: " + result.errors().size());
+        for (BatchError error : result.errors()) {
+            System.err.println("Error: " + error.code() + " - " + error.message());
+        }
+    }
+} else {
+    System.err.println("Batch did not succeed: " + result.state());
 }
 ```
 
@@ -770,10 +1021,10 @@ if (result instanceof BatchSuccess success) {
 **Cancel a batch job:**
 
 ```java
-BatchName batchName = // ... obtained from createBatchInline
+String batchId = // ... obtained from submit(...)
 
 try {
-    batchModel.cancelBatchJob(batchName);
+    batchModel.cancel(batchId);
     System.out.println("Batch cancelled successfully");
 } catch (HttpException e) {
     System.err.println("Failed to cancel batch: " + e.getMessage());
@@ -783,7 +1034,7 @@ try {
 **Delete a batch job:**
 
 ```java
-batchModel.deleteBatchJob(batchName);
+batchModel.deleteBatchJob(batchId);
 System.out.println("Batch deleted successfully");
 ```
 
@@ -791,15 +1042,15 @@ System.out.println("Batch deleted successfully");
 
 ```java
 // List first page of batch jobs
-BatchList<ChatResponse> batchList = batchModel.listBatchJobs(10, null);
+BatchPage<ChatResponse> page = batchModel.list(new BatchPagination(10, null));
 
-for (BatchResponse<ChatResponse> batch : batchList.batches()) {
+for (BatchResponse<ChatResponse> batch : page.batches()) {
     System.out.println("Batch: " + batch);
 }
 
 // Get next page if available
-if (batchList.nextPageToken() != null) {
-    BatchList<ChatResponse> nextPage = batchModel.listBatchJobs(10, batchList.nextPageToken());
+if (page.nextPageToken() != null) {
+    BatchPage<ChatResponse> nextPage = batchModel.list(new BatchPagination(10, page.nextPageToken()));
 }
 ```
 
@@ -832,50 +1083,43 @@ GeminiFiles filesApi = GeminiFiles.builder()
 GeminiFile uploadedFile = filesApi.uploadFile(batchFile, "Batch Chat Requests");
 
 // Create batch from file
-BatchResponse response = batchModel.createBatchFromFile(
-    "File-Based Chat Batch",
-    uploadedFile
-);
+BatchResponse<ChatResponse> response = batchModel.submit("File-Based Chat Batch", uploadedFile);
 ```
 
 ### Batch Job States
 
-The `BatchJobState` enum represents the possible states of a batch job:
+The `BatchState` enum represents the possible states of a batch job:
 
-- `BATCH_STATE_PENDING`: Batch is queued and waiting to be processed
-- `BATCH_STATE_RUNNING`: Batch is currently being processed
-- `BATCH_STATE_SUCCEEDED`: Batch completed successfully
-- `BATCH_STATE_FAILED`: Batch processing failed
-- `BATCH_STATE_CANCELLED`: Batch was cancelled by the user
-- `BATCH_STATE_EXPIRED`: Batch expired before completion
+- `PENDING`: Batch is queued and waiting to be processed
+- `RUNNING`: Batch is currently being processed
+- `SUCCEEDED`: Batch completed successfully (terminal)
+- `FAILED`: Batch processing failed (terminal)
+- `CANCELLED`: Batch was cancelled by the user (terminal)
+- `EXPIRED`: Batch expired before completion (terminal)
 - `UNSPECIFIED`: State is unknown or not provided
+
+Use `BatchState.isTerminal()` on `BatchResponse.state()` to detect when polling can stop.
 
 ### Setting Batch Priority
 
-Higher priority batches are processed before lower priority ones:
+Higher priority batches are processed before lower priority ones. Set priority through `GeminiBatchRequest`:
 
 ```java
 // High priority batch
-BatchResponse highPriorityResponse = batchModel.createBatchInline(
-    "Urgent Batch",
-    100L,  // high priority
-    urgentRequests
-);
+BatchResponse<ChatResponse> highPriority = batchModel.submit(GeminiBatchRequest.from(
+    urgentRequests, "Urgent Batch", 100L));
 
 // Low priority batch
-BatchResponse lowPriorityResponse = batchModel.createBatchInline(
-    "Background Batch",
-    -50L,  // low priority
-    backgroundRequests
-);
+BatchResponse<ChatResponse> lowPriority = batchModel.submit(GeminiBatchRequest.from(
+    backgroundRequests, "Background Batch", -50L));
 ```
 
 ### Configuration
 
-The `GoogleAiBatchChatModel` supports the same configuration options as `GoogleAiGeminiChatModel`:
+The `GoogleAiGeminiBatchChatModel` supports the same configuration options as `GoogleAiGeminiChatModel`:
 
 ```java
-GoogleAiBatchChatModel batchModel = GoogleAiBatchChatModel.builder()
+GoogleAiGeminiBatchChatModel batchModel = GoogleAiGeminiBatchChatModel.builder()
     .apiKey(System.getenv("GEMINI_AI_KEY"))
     .modelName("gemini-2.5-flash")
     .temperature(0.7)
@@ -896,10 +1140,11 @@ GoogleAiBatchChatModel batchModel = GoogleAiBatchChatModel.builder()
 - **Turnaround**: 24-hour SLO, though completion is often much quicker
 - **Use Cases**: Best for large-scale, non-urgent tasks like data pre-processing or evaluations
 
+
 ### Example: Complete Workflow
 
 ```java
-GoogleAiBatchChatModel batchModel = GoogleAiBatchChatModel.builder()
+GoogleAiGeminiBatchChatModel batchModel = GoogleAiGeminiBatchChatModel.builder()
     .apiKey(System.getenv("GEMINI_AI_KEY"))
     .modelName("gemini-2.5-flash")
     .build();
@@ -913,47 +1158,41 @@ for (int i = 0; i < 50; i++) {
 }
 
 // Submit batch
-BatchResponse response = batchModel.createBatchInline(
-    "Story Ideas Batch",
-    0L,
-    requests
-);
-
-// Get batch name
-BatchName batchName = switch (response) {
-    case BatchIncomplete incomplete -> incomplete.batchName();
-    case BatchSuccess success -> success.batchName();
-    case BatchError error -> throw new RuntimeException("Failed: " + error.message());
-};
+BatchResponse<ChatResponse> result = batchModel.submit(GeminiBatchRequest.from(
+    requests, "Story Ideas Batch", 0L));
+String batchId = result.batchId();
 
 // Poll for completion
-BatchResponse finalResult;
 int attempts = 0;
 int maxAttempts = 720; // 1 hour with 5-second intervals
-
-do {
+while (!result.state().isTerminal()) {
     if (attempts++ >= maxAttempts) {
         throw new RuntimeException("Batch processing timeout");
     }
     Thread.sleep(5000);
-    finalResult = batchModel.retrieveBatchResults(batchName);
-    
-    if (finalResult instanceof BatchIncomplete incomplete) {
-        System.out.println("Status: " + incomplete.state());
-    }
-} while (finalResult instanceof BatchIncomplete);
+    result = batchModel.retrieve(batchId);
+    System.out.println("Status: " + result.state());
+}
 
 // Process results
-if (finalResult instanceof BatchSuccess success) {
-    System.out.println("Generated " + success.responses().size() + " stories");
-    for (int i = 0; i < success.responses().size(); i++) {
-        ChatResponse chatResponse = success.responses().get(i);
+if (result.state() == BatchState.SUCCEEDED) {
+    System.out.println("Generated " + result.responses().size() + " stories");
+    for (int i = 0; i < result.responses().size(); i++) {
+        ChatResponse chatResponse = result.responses().get(i);
         System.out.println("Story #" + i + ": " + chatResponse.aiMessage().text());
     }
-} else if (finalResult instanceof BatchError error) {
-    System.err.println("Batch failed: " + error.message());
+
+    // Report any failures
+    if (!result.errors().isEmpty()) {
+        System.err.println(result.errors().size() + " requests failed:");
+        for (BatchError error : result.errors()) {
+            System.err.println("  - Code " + error.code() + ": " + error.message());
+        }
+    }
+} else {
+    System.err.println("Batch did not succeed: " + result.state());
 }
-``` 
+```
 
 ## Learn more
 

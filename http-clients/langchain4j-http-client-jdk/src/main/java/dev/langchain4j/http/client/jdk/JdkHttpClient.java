@@ -1,27 +1,26 @@
 package dev.langchain4j.http.client.jdk;
 
+import static dev.langchain4j.http.client.sse.ServerSentEventListenerUtils.ignoringExceptions;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+
 import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.exception.TimeoutException;
+import dev.langchain4j.http.client.FormDataFile;
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.http.client.sse.ServerSentEventParser;
-
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.net.URI;
 import java.net.http.HttpRequest.BodyPublisher;
 import java.net.http.HttpRequest.BodyPublishers;
 import java.net.http.HttpResponse.BodyHandlers;
 import java.net.http.HttpTimeoutException;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-
-import static dev.langchain4j.http.client.sse.ServerSentEventListenerUtils.ignoringExceptions;
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static java.util.stream.Collectors.joining;
+import java.util.Map;
 
 public class JdkHttpClient implements HttpClient {
 
@@ -47,16 +46,20 @@ public class JdkHttpClient implements HttpClient {
         try {
             java.net.http.HttpRequest jdkRequest = toJdkRequest(request);
 
-            java.net.http.HttpResponse<String> jdkResponse = delegate.send(jdkRequest, BodyHandlers.ofString());
+            java.net.http.HttpResponse<byte[]> jdkResponse = delegate.send(jdkRequest, BodyHandlers.ofByteArray());
 
             if (!isSuccessful(jdkResponse)) {
-                throw new HttpException(jdkResponse.statusCode(), jdkResponse.body());
+                throw new HttpException(
+                        jdkResponse.statusCode(), new String(jdkResponse.body(), StandardCharsets.UTF_8));
             }
 
             return fromJdkResponse(jdkResponse, jdkResponse.body());
         } catch (HttpTimeoutException e) {
             throw new TimeoutException(e);
-        } catch (IOException | InterruptedException e) {
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException(e);
+        } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
@@ -67,7 +70,6 @@ public class JdkHttpClient implements HttpClient {
 
         delegate.sendAsync(jdkRequest, BodyHandlers.ofInputStream())
                 .thenAccept(jdkResponse -> {
-
                     if (!isSuccessful(jdkResponse)) {
                         HttpException exception = new HttpException(jdkResponse.statusCode(), readBody(jdkResponse));
                         ignoringExceptions(() -> listener.onError(exception));
@@ -95,8 +97,8 @@ public class JdkHttpClient implements HttpClient {
     }
 
     private java.net.http.HttpRequest toJdkRequest(HttpRequest request) {
-        java.net.http.HttpRequest.Builder builder = java.net.http.HttpRequest.newBuilder()
-                .uri(URI.create(request.url()));
+        java.net.http.HttpRequest.Builder builder =
+                java.net.http.HttpRequest.newBuilder().uri(URI.create(request.url()));
 
         request.headers().forEach((name, values) -> {
             if (values != null) {
@@ -105,10 +107,15 @@ public class JdkHttpClient implements HttpClient {
         });
 
         BodyPublisher bodyPublisher;
-        if (request.body() != null) {
-            bodyPublisher = BodyPublishers.ofString(request.body());
+        if (request.formDataFields().isEmpty() && request.formDataFiles().isEmpty()) {
+            if (request.body() != null) {
+                bodyPublisher = BodyPublishers.ofString(request.body());
+            } else {
+                bodyPublisher = BodyPublishers.noBody();
+            }
         } else {
-            bodyPublisher = BodyPublishers.noBody();
+            bodyPublisher = ofMultipartData(request.formDataFields(), request.formDataFiles());
+            builder.setHeader("Content-Type", MultipartBodyPublisher.contentType());
         }
         builder.method(request.method().name(), bodyPublisher);
 
@@ -119,7 +126,18 @@ public class JdkHttpClient implements HttpClient {
         return builder.build();
     }
 
-    private static SuccessfulHttpResponse fromJdkResponse(java.net.http.HttpResponse<?> response, String body) {
+    private static BodyPublisher ofMultipartData(Map<String, String> fields, Map<String, FormDataFile> files) {
+        MultipartBodyPublisher publisher = new MultipartBodyPublisher();
+        for (Map.Entry<String, String> entry : fields.entrySet()) {
+            publisher.addField(entry.getKey(), entry.getValue());
+        }
+        for (Map.Entry<String, FormDataFile> entry : files.entrySet()) {
+            publisher.addFile(entry.getKey(), entry.getValue());
+        }
+        return publisher.build();
+    }
+
+    private static SuccessfulHttpResponse fromJdkResponse(java.net.http.HttpResponse<?> response, byte[] body) {
         return SuccessfulHttpResponse.builder()
                 .statusCode(response.statusCode())
                 .headers(response.headers().map())
@@ -133,9 +151,8 @@ public class JdkHttpClient implements HttpClient {
     }
 
     private static String readBody(java.net.http.HttpResponse<InputStream> response) {
-        try (InputStream inputStream = response.body();
-             BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
-            return reader.lines().collect(joining(System.lineSeparator()));
+        try (InputStream inputStream = response.body()) {
+            return new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
         } catch (IOException e) {
             return "Cannot read error response body: " + e.getMessage();
         }

@@ -62,7 +62,8 @@ abstract class PgVectorFilterMapper {
     private String mapContains(ContainsString containsString) {
         String key =
                 formatKey(containsString.key(), containsString.comparisonValue().getClass());
-        return format("%s is not null and %s ~ %s", key, key, formatValue(containsString.comparisonValue()));
+        return format(
+                "%s is not null and position(%s in %s) > 0", key, formatValue(containsString.comparisonValue()), key);
     }
 
     private String mapEqual(IsEqualTo isEqualTo) {
@@ -73,7 +74,7 @@ abstract class PgVectorFilterMapper {
     private String mapNotEqual(IsNotEqualTo isNotEqualTo) {
         String key =
                 formatKey(isNotEqualTo.key(), isNotEqualTo.comparisonValue().getClass());
-        return format("%s is null or %s != %s", key, key, formatValue(isNotEqualTo.comparisonValue()));
+        return format("(%s is null or %s != %s)", key, key, formatValue(isNotEqualTo.comparisonValue()));
     }
 
     private String mapGreaterThan(IsGreaterThan isGreaterThan) {
@@ -114,7 +115,7 @@ abstract class PgVectorFilterMapper {
 
     private String mapNotIn(IsNotIn isNotIn) {
         String key = formatKeyAsString(isNotIn.key());
-        return format("%s is null or %s not in %s", key, key, formatValuesAsString(isNotIn.comparisonValues()));
+        return format("(%s is null or %s not in %s)", key, key, formatValuesAsString(isNotIn.comparisonValues()));
     }
 
     private String mapAnd(And and) {
@@ -144,7 +145,16 @@ abstract class PgVectorFilterMapper {
         }
     }
 
+    String formatCollectionValue(Object value) {
+        if (value instanceof String stringValue) {
+            final String escapedValue = stringValue.replace("'", "''");
+            return '\'' + escapedValue + '\'';
+        } else {
+            return '\'' + value.toString() + '\'';
+        }
+    }
+
     String formatValuesAsString(Collection<?> values) {
-        return "(" + values.stream().map(v -> format("'%s'", v)).collect(Collectors.joining(",")) + ")";
+        return "(" + values.stream().map(this::formatCollectionValue).collect(Collectors.joining(",")) + ")";
     }
 }

@@ -24,6 +24,9 @@ public class AnthropicToolSchema {
     public Map<String, Map<String, Object>> properties;
     public List<String> required;
 
+    @JsonProperty("$defs")
+    public Map<String, Map<String, Object>> defs;
+
     public AnthropicToolSchema() {}
 
     /**
@@ -41,6 +44,7 @@ public class AnthropicToolSchema {
         this.additionalProperties = builder.additionalProperties;
         this.properties = builder.properties;
         this.required = builder.required;
+        this.defs = builder.defs;
     }
 
     @Override
@@ -50,12 +54,13 @@ public class AnthropicToolSchema {
         return Objects.equals(type, that.type)
                 && Objects.equals(additionalProperties, that.additionalProperties)
                 && Objects.equals(properties, that.properties)
-                && Objects.equals(required, that.required);
+                && Objects.equals(required, that.required)
+                && Objects.equals(defs, that.defs);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(type, additionalProperties, properties, required);
+        return Objects.hash(type, additionalProperties, properties, required, defs);
     }
 
     @Override
@@ -65,6 +70,7 @@ public class AnthropicToolSchema {
                 + ", additionalProperties=" + additionalProperties
                 + ", properties=" + properties
                 + ", required=" + required
+                + ", defs=" + defs
                 + '}';
     }
 
@@ -78,6 +84,7 @@ public class AnthropicToolSchema {
         private Boolean additionalProperties;
         private Map<String, Map<String, Object>> properties;
         private List<String> required;
+        private Map<String, Map<String, Object>> defs;
 
         public Builder type(String type) {
             this.type = type;
@@ -96,6 +103,11 @@ public class AnthropicToolSchema {
 
         public Builder required(List<String> required) {
             this.required = required;
+            return this;
+        }
+
+        public Builder defs(Map<String, Map<String, Object>> defs) {
+            this.defs = defs;
             return this;
         }
 

@@ -105,21 +105,21 @@ az cognitiveservices account deployment create \
 
 echo "Storing the key and endpoint in environment variables..."
 echo "--------------------------------------------------------"
-AZURE_OPENAI_KEY=$(
+MICROSOFT_FOUNDRY_API_KEY=$(
   az cognitiveservices account keys list \
     --name "$AI_SERVICE" \
     --resource-group "$RESOURCE_GROUP" \
     | jq -r .key1
   )
-AZURE_OPENAI_ENDPOINT=$(
+MICROSOFT_FOUNDRY_ENDPOINT=$(
   az cognitiveservices account show \
     --name "$AI_SERVICE" \
     --resource-group "$RESOURCE_GROUP" \
     | jq -r .properties.endpoint
   )
 
-echo "AZURE_OPENAI_KEY=$AZURE_OPENAI_KEY"
-echo "AZURE_OPENAI_ENDPOINT=$AZURE_OPENAI_ENDPOINT"
+echo "MICROSOFT_FOUNDRY_API_KEY=$MICROSOFT_FOUNDRY_API_KEY"
+echo "MICROSOFT_FOUNDRY_ENDPOINT=$MICROSOFT_FOUNDRY_ENDPOINT"
 
 # Once you finish the tests, you can delete the resource group with the following command:
 #echo "Deleting the resource group..."

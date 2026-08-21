@@ -1,14 +1,16 @@
 package dev.langchain4j.agentic;
 
 import static dev.langchain4j.agentic.Models.baseModel;
-import static dev.langchain4j.agentic.Models.plannerModel;
 
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
-import dev.langchain4j.agentic.supervisor.SupervisorAgent;
 import dev.langchain4j.agentic.workflow.HumanInTheLoop;
 import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.io.IOException;
+import java.util.Map;
 
 public class HoroscopeMain {
 
@@ -25,27 +27,33 @@ public class HoroscopeMain {
     }
 
     public static void main(String[] args) {
-        AstrologyAgent astrologyAgent = AgenticServices.agentBuilder(AstrologyAgent.class)
-                .chatModel(baseModel())
-                .build();
-
         HumanInTheLoop humanInTheLoop = AgenticServices.humanInTheLoopBuilder()
                 .description("An agent that asks the zodiac sign of the user")
                 .outputKey("sign")
-                .requestWriter(request -> {
-                    System.out.println(request);
+                .responseProvider(scope -> {
+                    System.out.println("Hi " + scope.readState("name") + ", what is your sign?");
                     System.out.print("> ");
+                    try {
+                        BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
+                        return reader.readLine();
+                    } catch (IOException e) {
+                        throw new RuntimeException("Failed to read input", e);
+                    }
                 })
-                .responseReader(() -> System.console().readLine())
                 .build();
 
-        SupervisorAgent horoscopeAgent = AgenticServices.supervisorBuilder()
-                .chatModel(plannerModel())
-                .subAgents(astrologyAgent, humanInTheLoop)
+        AstrologyAgent astrologyAgent = AgenticServices.agentBuilder(AstrologyAgent.class)
+                .chatModel(baseModel())
+                .outputKey("horoscope")
+                .build();
+
+        UntypedAgent horoscopeAgent = AgenticServices.sequenceBuilder()
+                .subAgents(humanInTheLoop, astrologyAgent)
+                .outputKey("horoscope")
                 .build();
 
         ResultWithAgenticScope<String> horoscope =
-                horoscopeAgent.invokeWithAgenticScope("My name is Mario. What is my horoscope?");
+                horoscopeAgent.invokeWithAgenticScope(Map.of("name", "Mario"));
         System.out.println("User's sign: " + horoscope.agenticScope().readState("sign"));
         System.out.println("Horoscope: " + horoscope.result());
     }

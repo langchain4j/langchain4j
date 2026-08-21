@@ -172,6 +172,29 @@ public class TypedAgentsIT {
         assertThat(response).contains("leg");
     }
 
+    public static class NonAiCategoryRouter {
+
+        @Agent(description = "Categorize a user request", typedOutputKey = RequestCategory.class)
+        public static Category classify(@K(UserRequest.class) String request) {
+            return Category.MEDICAL;
+        }
+    }
+
+    public interface ExpertChatbotWithNonAiRouter {
+
+        @SequenceAgent( typedOutputKey = ExpertResponse.class,
+                subAgents = { NonAiCategoryRouter.class, ExpertsRouterAgent.class })
+        String ask(@K(UserRequest.class) String request);
+    }
+
+    @Test
+    void non_ai_typed_agents_tests() {
+        ExpertChatbotWithNonAiRouter expertChatbot = createAgenticSystem(ExpertChatbotWithNonAiRouter.class, baseModel());
+
+        String response = expertChatbot.ask("I broke my leg what should I do");
+        assertThat(response).contains("leg");
+    }
+
     public interface MisconfiguredExpertChatbot {
 
         @SequenceAgent( outputKey = "ExpertResponse", typedOutputKey = ExpertResponse.class,
@@ -215,17 +238,17 @@ public class TypedAgentsIT {
                 .outputKey("story")
                 .build();
 
-        Agents.AudienceEditor audienceEditor = spy(AgenticServices.agentBuilder(AudienceEditor.class)
+        AudienceEditor audienceEditor = spy(AgenticServices.agentBuilder(AudienceEditor.class)
                 .chatModel(baseModel())
                 .outputKey("story")
                 .build());
 
-        Agents.StyleEditor styleEditor = spy(AgenticServices.agentBuilder(StyleEditor.class)
+        StyleEditor styleEditor = spy(AgenticServices.agentBuilder(StyleEditor.class)
                 .chatModel(baseModel())
                 .outputKey("story")
                 .build());
 
-        Agents.ReviewedWriter novelCreator = AgenticServices.sequenceBuilder(ReviewedWriter.class)
+        ReviewedWriter novelCreator = AgenticServices.sequenceBuilder(ReviewedWriter.class)
                 .subAgents(creativeWriter, audienceEditor, styleEditor)
                 .outputKey("story")
                 .build();

@@ -7,6 +7,8 @@ import dev.langchain4j.model.chat.response.PartialResponse;
 import dev.langchain4j.model.chat.response.PartialResponseContext;
 import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.PartialThinkingContext;
+import dev.langchain4j.model.chat.response.PartialToolCall;
+import dev.langchain4j.model.chat.response.PartialToolCallContext;
 import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.service.tool.BeforeToolExecution;
@@ -88,6 +90,40 @@ public interface TokenStream {
     }
 
     /**
+     * The provided consumer will be invoked every time a new partial tool call
+     * (usually containing a single token of the tool's arguments) from a language model is available.
+     * <p>
+     * Either this or the {@link #onPartialToolCallWithContext(BiConsumer)} callback can be used
+     * if you want to consume partial tool calls as soon as they become available.
+     *
+     * @param partialToolCallHandler lambda that will be invoked when a model generates a new partial tool call
+     * @return token stream instance used to configure or start stream processing
+     * @see #onPartialToolCallWithContext(BiConsumer)
+     * @since 1.11.0
+     */
+    @Experimental
+    default TokenStream onPartialToolCall(Consumer<PartialToolCall> partialToolCallHandler) {
+        throw new UnsupportedOperationException("not implemented");
+    }
+
+    /**
+     * The provided consumer will be invoked every time a new partial tool call
+     * (usually containing a single token of the tool's arguments) from a language model is available.
+     * <p>
+     * Either this or the {@link #onPartialToolCall(Consumer)} callback can be used
+     * if you want to consume partial tool calls as soon as they become available.
+     *
+     * @param handler lambda that will be invoked when a model generates a new partial tool call
+     * @return token stream instance used to configure or start stream processing
+     * @see #onPartialToolCall(Consumer)
+     * @since 1.11.0
+     */
+    @Experimental
+    default TokenStream onPartialToolCallWithContext(BiConsumer<PartialToolCall, PartialToolCallContext> handler) {
+        throw new UnsupportedOperationException("not implemented");
+    }
+
+    /**
      * The provided consumer will be invoked if any {@link Content}s are retrieved using {@link RetrievalAugmentor}.
      * <p>
      * The invocation happens before any call is made to the language model.
@@ -121,6 +157,29 @@ public interface TokenStream {
      * @since 1.2.0
      */
     default TokenStream beforeToolExecution(Consumer<BeforeToolExecution> beforeToolExecutionHandler) {
+        throw new UnsupportedOperationException("not implemented");
+    }
+
+    /**
+     * The provided consumer will be invoked when a provider emits a raw streaming event that is <b>not</b> already
+     * exposed through one of the typed callbacks (such as {@link #onPartialResponse(Consumer)},
+     * {@link #onPartialThinking(Consumer)} or {@link #onToolExecuted(Consumer)}).
+     * <p>
+     * This acts as an escape hatch for provider-specific events that langchain4j does not model, such as
+     * server-tool lifecycle events (e.g., OpenAI's {@code web_search_call.in_progress}). Events that are already
+     * delivered as partial responses, thinking or tool calls are not repeated here.
+     * <p>
+     * The event type depends on the provider implementation. Implementations using the
+     * {@code dev.langchain4j.http.client.HttpClient} abstraction (e.g., OpenAI, Anthropic, Google AI Gemini)
+     * typically expose {@code ServerSentEvent}; other implementations can expose provider-specific event objects
+     * (e.g., the OpenAI official Responses model exposes the SDK's {@code ResponseStreamEvent}).
+     *
+     * @param rawEventHandler lambda that consumes raw provider streaming events
+     * @return token stream instance used to configure or start stream processing
+     * @since 1.17.0
+     */
+    @Experimental
+    default TokenStream onUnmappedRawEvent(Consumer<Object> rawEventHandler) {
         throw new UnsupportedOperationException("not implemented");
     }
 

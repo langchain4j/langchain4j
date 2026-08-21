@@ -2,6 +2,7 @@ package dev.langchain4j.agentic;
 
 import static dev.langchain4j.agentic.Models.baseModel;
 import static dev.langchain4j.agentic.Models.plannerModel;
+import static dev.langchain4j.agentic.observability.HtmlReportGenerator.generateReport;
 import static java.util.Collections.singletonMap;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.offset;
@@ -13,15 +14,30 @@ import static org.mockito.Mockito.verify;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.langchain4j.agent.tool.CompensateFor;
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.agentic.Agents.LegalExpert;
+import dev.langchain4j.agentic.Agents.LoanApplicationEvaluator;
+import dev.langchain4j.agentic.Agents.LoanApplicationExtractor;
 import dev.langchain4j.agentic.Agents.MedicalExpert;
 import dev.langchain4j.agentic.Agents.RouterAgent;
 import dev.langchain4j.agentic.Agents.TechnicalExpert;
 import dev.langchain4j.agentic.Agents.ColorExpert;
 import dev.langchain4j.agentic.Agents.ColorMixerExpert;
+import dev.langchain4j.agentic.declarative.Output;
+import dev.langchain4j.agentic.observability.AfterAgentToolExecution;
+import dev.langchain4j.agentic.observability.AgentInvocation;
+import dev.langchain4j.agentic.observability.AgentListener;
+import dev.langchain4j.agentic.observability.AgentMonitor;
+import dev.langchain4j.agentic.observability.AgentResponse;
+import dev.langchain4j.agentic.observability.BeforeAgentToolExecution;
+import dev.langchain4j.agentic.observability.MonitoredAgent;
+import dev.langchain4j.agentic.observability.MonitoredExecution;
+import dev.langchain4j.agentic.scope.AgenticScope;
+import dev.langchain4j.service.tool.ToolExecution;
+import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.agentic.supervisor.SupervisorAgent;
 import dev.langchain4j.agentic.supervisor.SupervisorContextStrategy;
@@ -40,6 +56,7 @@ import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
 import dev.langchain4j.service.memory.ChatMemoryAccess;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -191,6 +208,10 @@ public class SupervisorAgentIT {
 
         private final Map<String, Double> accounts = new HashMap<>();
 
+        void clearAccounts() {
+            accounts.clear();
+        }
+
         void createAccount(String user, Double initialBalance) {
             if (accounts.containsKey(user)) {
                 throw new RuntimeException("Account for user " + user + " already exists");
@@ -217,15 +238,34 @@ public class SupervisorAgentIT {
             return newBalance;
         }
 
+        @CompensateFor("credit")
+        void reverseCredit(String user, Double amount) {
+            Double balance = accounts.get(user);
+            if (balance != null) {
+                accounts.put(user, balance - amount);
+            }
+        }
+
         @Tool("Withdraw the given amount with the given user and return the new balance")
         Double withdraw(@P("user name") String user, @P("amount") Double amount) {
             Double balance = accounts.get(user);
             if (balance == null) {
                 throw new RuntimeException("No balance found for user " + user);
             }
+            if (balance < amount) {
+                throw new RuntimeException("Insufficient balance for user " + user);
+            }
             Double newBalance = balance - amount;
             accounts.put(user, newBalance);
             return newBalance;
+        }
+
+        @CompensateFor("withdraw")
+        void reverseWithdraw(String user, Double amount) {
+            Double balance = accounts.get(user);
+            if (balance != null) {
+                accounts.put(user, balance + amount);
+            }
         }
     }
 
@@ -272,6 +312,57 @@ public class SupervisorAgentIT {
 
         assertThat(bankTool.getBalance("Mario")).isEqualTo(900.0);
         assertThat(bankTool.getBalance("Georgios")).isEqualTo(1100.0);
+    }
+
+    @Test
+    void compensating_agentic_banker_test() {
+        agentic_banker_test_with_compensation(true);
+    }
+
+    @Test
+    void non_compensating_agentic_banker_test() {
+        agentic_banker_test_with_compensation(false);
+    }
+
+    public interface BankerAgentWithMemory {
+
+        String execute(@MemoryId String memoryId, @V("request") String request);
+    }
+
+    void agentic_banker_test_with_compensation(boolean compensating) {
+        BankTool bankTool = new BankTool();
+        bankTool.createAccount("Mario", 150.0);
+        bankTool.createAccount("Georgios", 1000.0);
+
+        WithdrawAgent withdrawAgent = AgenticServices.agentBuilder(WithdrawAgent.class)
+                .chatModel(baseModel())
+                .tools(bankTool)
+                .build();
+        CreditAgent creditAgent = AgenticServices.agentBuilder(CreditAgent.class)
+                .chatModel(baseModel())
+                .tools(bankTool)
+                .build();
+
+        BankerAgentWithMemory bankSupervisor = AgenticServices.supervisorBuilder(BankerAgentWithMemory.class)
+                .chatModel(plannerModel())
+                .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(20))
+                .contextGenerationStrategy(SupervisorContextStrategy.CHAT_MEMORY) // default
+                .responseStrategy(SupervisorResponseStrategy.SUMMARY)
+                .subAgents(withdrawAgent, creditAgent)
+                .compensateOnError(compensating)
+                .build();
+
+        String result = bankSupervisor.execute("1", "Credit 100 USD to Georgios' account and after withdraw them from Mario's one");
+        System.out.println(result);
+
+        assertThat(bankTool.getBalance("Mario")).isEqualTo(50.0);
+        assertThat(bankTool.getBalance("Georgios")).isEqualTo(1100.0);
+
+        result = bankSupervisor.execute("1", "Credit 100 USD to Georgios' account and after withdraw them from Mario's one");
+        System.out.println(result);
+
+        assertThat(bankTool.getBalance("Mario")).isEqualTo(50.0);
+        assertThat(bankTool.getBalance("Georgios")).isEqualTo(compensating ? 1100.0 : 1200.0);
     }
 
     public interface ExchangeAgent {
@@ -330,7 +421,7 @@ public class SupervisorAgentIT {
                 description =
                         "A money exchanger that converts a given amount of money from the original to the target currency",
                 outputKey = "exchange")
-        public Double exchange(
+        Double exchange(
                 @V("originalCurrency") String originalCurrency,
                 @V("amount") Double amount,
                 @V("targetCurrency") String targetCurrency) {
@@ -413,11 +504,30 @@ public class SupervisorAgentIT {
             exchangeAgent = new ExchangeOperator();
         }
 
+        Map<String, String> toolCalls = new HashMap<>();
+        Map<String, Double> toolResults = new HashMap<>();
+
         SupervisorAgent bankSupervisor = AgenticServices.supervisorBuilder()
                 .chatModel(plannerModel())
                 .responseStrategy(SupervisorResponseStrategy.SCORED)
                 .contextGenerationStrategy(SupervisorContextStrategy.CHAT_MEMORY)
                 .subAgents(withdrawAgent, creditAgent, exchangeAgent)
+                .listener(new AgentListener() {
+                    @Override
+                    public void afterAgentToolExecution(AfterAgentToolExecution afterAgentToolExecution) {
+                        toolResults.put(afterAgentToolExecution.toolExecution().request().name(), (Double) afterAgentToolExecution.toolExecution().resultObject());
+                    }
+
+                    @Override
+                    public void beforeAgentToolExecution(BeforeAgentToolExecution beforeAgentToolExecution) {
+                        toolCalls.put(beforeAgentToolExecution.agentInstance().agentId(), beforeAgentToolExecution.toolExecution().request().name());
+                    }
+
+                    @Override
+                    public boolean inheritedBySubagents() {
+                        return true;
+                    }
+                })
                 .build();
 
         ResultWithAgenticScope<String> result = bankSupervisor.invokeWithAgenticScope(userRequest);
@@ -427,6 +537,132 @@ public class SupervisorAgentIT {
         assertThat(bankTool.getBalance("Georgios")).isEqualTo(1115.0);
 
         assertThat(result.agenticScope().readState("exchange", 0.0)).isCloseTo(115.0, offset(0.1));
+
+        assertThat(toolCalls).hasSize(fullyAI ? 3 : 2);
+        assertThat(toolResults).hasSize(fullyAI ? 3 : 2);
+
+        assertThat(toolCalls).containsEntry(((AgentInstance)creditAgent).agentId(), "credit");
+        assertThat(toolCalls).containsEntry(((AgentInstance)withdrawAgent).agentId(), "withdraw");
+
+        assertThat(toolResults.get("credit")).isCloseTo(1115.0, offset(0.1));
+        assertThat(toolResults.get("withdraw")).isCloseTo(885.0, offset(0.1));
+
+        if (fullyAI) {
+            assertThat(toolCalls).containsEntry(((AgentInstance)exchangeAgent).agentId(), "exchange");
+            assertThat(toolResults.get("exchange")).isCloseTo(115.0, offset(0.1));
+        }
+    }
+
+    @Test
+    public void event_lister_in_hierarchy_test() {
+        BankTool bankTool = new BankTool();
+        bankTool.createAccount("Mario", 1000.0);
+        bankTool.createAccount("Georgios", 1000.0);
+
+        AtomicReference<String> beforeWithdrawTool = new AtomicReference<>();
+        AtomicReference<String> afterWithdrawTool = new AtomicReference<>();
+
+        WithdrawAgent withdrawAgent = AgenticServices.agentBuilder(WithdrawAgent.class)
+                .chatModel(baseModel())
+                .listener(new AgentListener() {
+                    @Override
+                    public void beforeAgentToolExecution(BeforeAgentToolExecution beforeAgentToolExecution) {
+                        assertThat(beforeWithdrawTool.get()).isNull();
+                        beforeWithdrawTool.set("before " + beforeAgentToolExecution.toolExecution().request().name() +
+                                " on agent " + beforeAgentToolExecution.agentInstance().agentId());
+                    }
+
+                    @Override
+                    public void afterAgentToolExecution(AfterAgentToolExecution afterAgentToolExecution) {
+                        assertThat(afterWithdrawTool.get()).isNull();
+                        afterWithdrawTool.set("after " + afterAgentToolExecution.toolExecution().request().name() +
+                                " on agent " + afterAgentToolExecution.agentInstance().agentId());
+                    }
+                })
+                .tools(bankTool)
+                .build();
+
+        CreditAgent creditAgent  = AgenticServices.agentBuilder(CreditAgent.class)
+                .chatModel(baseModel())
+                .tools(bankTool)
+                .build();
+
+        ExchangeAgent exchangeAgent = AgenticServices.agentBuilder(ExchangeAgent.class)
+                    .chatModel(baseModel())
+                    .description(
+                            "A money exchanger that converts a given amount of money from the original to the target currency")
+                    .tools(new ExchangeTool())
+                    .build();
+
+        List<String> invokedAgents = new ArrayList<>();
+        Map<String, String> toolCalls = new HashMap<>();
+        Map<String, Double> toolResults = new HashMap<>();
+
+        SupervisorAgent bankSupervisor = AgenticServices.supervisorBuilder()
+                .chatModel(plannerModel())
+                .responseStrategy(SupervisorResponseStrategy.SCORED)
+                .contextGenerationStrategy(SupervisorContextStrategy.CHAT_MEMORY)
+                .subAgents(withdrawAgent, creditAgent, exchangeAgent)
+                .listener(new AgentListener() {
+                    @Override
+                    public void beforeAgentToolExecution(BeforeAgentToolExecution beforeAgentToolExecution) {
+                        assertThat(toolCalls).doesNotContainKey(beforeAgentToolExecution.agentInstance().agentId());
+                        toolCalls.put(beforeAgentToolExecution.agentInstance().agentId(), beforeAgentToolExecution.toolExecution().request().name());
+                    }
+
+                    @Override
+                    public boolean inheritedBySubagents() {
+                        return true;
+                    }
+                })
+                .build();
+
+        SupervisorAgent sequence = AgenticServices.sequenceBuilder(SupervisorAgent.class)
+                .subAgents(bankSupervisor)
+                .listener(new AgentListener() {
+                    @Override
+                    public void afterAgentInvocation(AgentResponse agentResponse) {
+                        invokedAgents.add(agentResponse.agentId());
+                    }
+
+                    @Override
+                    public void afterAgentToolExecution(AfterAgentToolExecution afterAgentToolExecution) {
+                        assertThat(toolResults).doesNotContainKey(afterAgentToolExecution.toolExecution().request().name());
+                        toolResults.put(afterAgentToolExecution.toolExecution().request().name(), (Double) afterAgentToolExecution.toolExecution().resultObject());
+                    }
+
+                    @Override
+                    public boolean inheritedBySubagents() {
+                        return true;
+                    }
+                })
+                .build();
+
+        ResultWithAgenticScope<String> result = sequence.invokeWithAgenticScope("Transfer 100 EUR from Mario's account to Georgios' one");
+        System.out.println(result.result());
+
+        assertThat(bankTool.getBalance("Mario")).isEqualTo(885.0);
+        assertThat(bankTool.getBalance("Georgios")).isEqualTo(1115.0);
+
+        assertThat(result.agenticScope().readState("exchange", 0.0)).isCloseTo(115.0, offset(0.1));
+
+        assertThat(beforeWithdrawTool.get()).isEqualTo("before withdraw on agent " + ((AgentInstance)withdrawAgent).agentId());
+        assertThat(afterWithdrawTool.get()).isEqualTo("after withdraw on agent " + ((AgentInstance)withdrawAgent).agentId());
+
+        assertThat(invokedAgents).hasSize(5)
+                .containsExactlyInAnyOrder(((AgentInstance)exchangeAgent).agentId(),
+                ((AgentInstance)creditAgent).agentId(), ((AgentInstance)withdrawAgent).agentId(),
+                ((AgentInstance)sequence).agentId(), ((AgentInstance)bankSupervisor).agentId());
+
+        assertThat(toolCalls).hasSize(3)
+                .containsEntry(((AgentInstance)exchangeAgent).agentId(), "exchange")
+                .containsEntry(((AgentInstance)creditAgent).agentId(), "credit")
+                .containsEntry(((AgentInstance)withdrawAgent).agentId(), "withdraw");
+
+        assertThat(toolResults).hasSize(3);
+        assertThat(toolResults.get("exchange")).isCloseTo(115.0, offset(0.1));
+        assertThat(toolResults.get("credit")).isCloseTo(1115.0, offset(0.1));
+        assertThat(toolResults.get("withdraw")).isCloseTo(885.0, offset(0.1));
     }
 
     public record TransactionDetails(String fromUser, String toUser, Double amountInUSD) {}
@@ -435,6 +671,13 @@ public class SupervisorAgentIT {
 
         @Agent
         TransactionDetails execute(@V("request") String request);
+
+        @Output
+        static TransactionDetails output(@V("withdrawUser") String withdrawUser,
+                                         @V("creditUser") String creditUser,
+                                         @V("amountInUSD") double amountInUSD) {
+            return new TransactionDetails(withdrawUser, creditUser, amountInUSD);
+        }
     }
 
     @Test
@@ -445,6 +688,19 @@ public class SupervisorAgentIT {
     @Test
     void typed_banker_test_without_maxAgentsInvocations() {
         typed_banker_test(false);
+    }
+
+    public record ExchangeRequest(String originalCurrency, Double amount, String targetCurrency) { }
+
+    public interface TypedExchangeAgent {
+        @UserMessage(
+                """
+            You are an operator exchanging money in different currencies.
+            Use the tool to calculate the given {{exchangeRequest}}
+            returning only the final amount provided by the tool as it is and nothing else.
+            """)
+        @Agent(outputKey = "exchange")
+        Double exchange(@V("exchangeRequest") ExchangeRequest exchangeRequest);
     }
 
     private void typed_banker_test(boolean useMaxAgentsInvocations) {
@@ -481,7 +737,7 @@ public class SupervisorAgentIT {
                 .tools(bankTool)
                 .build();
 
-        ExchangeAgent exchangeAgent = AgenticServices.agentBuilder(ExchangeAgent.class)
+        TypedExchangeAgent exchangeAgent = AgenticServices.agentBuilder(TypedExchangeAgent.class)
                 .chatModel(baseModel())
                 .description(
                         "A money exchanger that converts a given amount of money from the original to the target currency")
@@ -490,10 +746,6 @@ public class SupervisorAgentIT {
 
         var supervisorBuilder = AgenticServices.supervisorBuilder(TypedBankerAgent.class)
                 .chatModel(plannerModel())
-                .output(agenticScope -> new TransactionDetails(
-                        agenticScope.readState("withdrawUser", ""),
-                        agenticScope.readState("creditUser", ""),
-                        agenticScope.readState("amountInUSD", 0.0)))
                 .subAgents(withdrawAgent, creditAgent, exchangeAgent);
 
         if (useMaxAgentsInvocations) {
@@ -522,7 +774,7 @@ public class SupervisorAgentIT {
         }
     }
 
-    public interface TypedBankerAgentWithMemory extends ChatMemoryAccess {
+    public interface TypedBankerAgentWithMemory extends ChatMemoryAccess, MonitoredAgent {
 
         @Agent
         TransactionDetails execute(@MemoryId String memoryId, @V("request") String request);
@@ -590,6 +842,49 @@ public class SupervisorAgentIT {
         ChatMessage lastMessage = messages.get(messages.size() - 1);
         assertThat(lastMessage).isInstanceOf(AiMessage.class);
         assertThat(((AiMessage) lastMessage).text()).contains("done");
+
+        AgentMonitor monitor = bankSupervisor.agentMonitor();
+        assertThat(monitor).isNotNull();
+
+        List<MonitoredExecution> successful = monitor.successfulExecutionsFor("1");
+        assertThat(successful).hasSize(1);
+
+        MonitoredExecution execution = successful.get(0);
+        assertThat(execution.done()).isTrue();
+        assertThat(execution.hasError()).isFalse();
+
+        AgentInvocation topLevel = execution.topLevelInvocations();
+        assertThat(topLevel.done()).isTrue();
+
+        List<AgentInvocation> nestedInvocations = topLevel.nestedInvocations();
+        assertThat(nestedInvocations).isNotEmpty();
+
+        List<ToolExecution> allToolExecutions = collectToolExecutions(topLevel);
+        assertThat(allToolExecutions).isNotEmpty();
+
+        for (ToolExecution toolExec : allToolExecutions) {
+            assertThat(toolExec.request().name()).isNotBlank();
+            assertThat(toolExec.startTime()).isNotNull();
+            assertThat(toolExec.finishTime()).isNotNull();
+            assertThat(toolExec.duration()).isNotNull();
+            assertThat(toolExec.result()).isNotNull();
+        }
+
+        Set<String> toolNames = allToolExecutions.stream()
+                .map(te -> te.request().name())
+                .collect(Collectors.toSet());
+        assertThat(toolNames).contains("withdraw", "credit");
+
+        System.out.println(execution);
+//        generateReport(monitor, Path.of("src", "test", "resources", "agents-exection-with-tools.html"));
+    }
+
+    private List<ToolExecution> collectToolExecutions(AgentInvocation invocation) {
+        List<ToolExecution> result = new ArrayList<>(invocation.toolExecutions());
+        for (AgentInvocation nested : invocation.nestedInvocations()) {
+            result.addAll(collectToolExecutions(nested));
+        }
+        return result;
     }
 
     public interface GeneralAssistant extends ChatMemoryAccess {
@@ -693,6 +988,25 @@ public class SupervisorAgentIT {
         assertThat(result).containsIgnoringCase("purple");
     }
 
+    @Test
+    void pojo_argument_test() {
+        LoanApplicationExtractor loanApplicationExtractor = AgenticServices.agentBuilder(LoanApplicationExtractor.class)
+                .chatModel(baseModel())
+                .outputKey("loanApplication")
+                .build();
+        LoanApplicationEvaluator loanApplicationEvaluator = AgenticServices.agentBuilder(LoanApplicationEvaluator.class)
+                .chatModel(baseModel())
+                .build();
+
+        SupervisorAgent loanAgent = AgenticServices.supervisorBuilder()
+                .chatModel(plannerModel())
+                .responseStrategy(SupervisorResponseStrategy.LAST)
+                .subAgents(loanApplicationExtractor, loanApplicationEvaluator)
+                .build();
+
+        String result = loanAgent.invoke("John Doe submitted a loan application of 80000. He is 30 years old. Evaluate his application.");
+        assertThat(result).containsIgnoringCase("rejected");
+    }
 
     static class PlannerModelReturningDoneWithoutResponse implements ChatModel {
 
@@ -728,6 +1042,45 @@ public class SupervisorAgentIT {
                 .build();
 
         assertDoesNotThrow(() -> supervisor.invoke("Withdraw 100 USD from Mario's account"));
+    }
+
+    static class PlannerModelReturningDoneWithDirectResponse implements ChatModel {
+
+        @Override
+        public ChatResponse chat(ChatRequest request) {
+            String json = """
+                    {
+                      "agentName": "done",
+                      "arguments": {
+                        "response": "Paris"
+                      }
+                    }
+                    """;
+
+            return ChatResponse.builder()
+                    .aiMessage(AiMessage.from(json))
+                    .build();
+        }
+    }
+
+    @Test
+    void output_function_should_access_planner_direct_response() {
+        WithdrawAgent withdrawAgent = AgenticServices.agentBuilder(WithdrawAgent.class)
+                .chatModel(baseModel())
+                .tools(new BankTool())
+                .build();
+
+        SupervisorAgent supervisor = AgenticServices.supervisorBuilder()
+                .chatModel(new PlannerModelReturningDoneWithDirectResponse())
+                .outputKey("capital")
+                .responseStrategy(SupervisorResponseStrategy.SUMMARY)
+                .subAgents(withdrawAgent)
+                .output(agenticScope -> "The capital of France is " + agenticScope.readState("capital", ""))
+                .build();
+
+        String result = supervisor.invoke("What is the capital of France?");
+
+        assertThat(result).isEqualTo("The capital of France is Paris");
     }
 
 }

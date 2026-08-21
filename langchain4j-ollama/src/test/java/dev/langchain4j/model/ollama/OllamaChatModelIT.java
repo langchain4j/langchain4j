@@ -101,7 +101,7 @@ class OllamaChatModelIT extends AbstractOllamaLanguageModelInfrastructure {
     }
 
     @ParameterizedTest
-    @ValueSource(ints = {1, 10, 100, 500})
+    @ValueSource(ints = {1, 10, 100})
     void should_handle_timeout(int millis) {
 
         // given

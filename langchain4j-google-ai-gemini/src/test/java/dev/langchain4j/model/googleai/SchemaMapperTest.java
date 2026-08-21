@@ -1,7 +1,6 @@
 package dev.langchain4j.model.googleai;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.langchain4j.model.chat.request.json.JsonAnyOfSchema;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
@@ -12,6 +11,7 @@ import dev.langchain4j.model.chat.request.json.JsonNullSchema;
 import dev.langchain4j.model.chat.request.json.JsonNumberSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonRawSchema;
+import dev.langchain4j.model.chat.request.json.JsonReferenceSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
@@ -262,14 +262,76 @@ public class SchemaMapperTest {
     }
 
     @Test
-    public void should_throw_exception_for_unsupported_schema_type() {
-        // given
-        JsonSchemaElement unsupportedSchema =
-                new JsonRawSchema.Builder().schema("{ \"type\": \"string\" }").build();
+    public void should_report_every_element_the_mapper_handles_as_mappable() {
+        assertThat(SchemaMapper.canBeMapped(new JsonStringSchema())).isTrue();
+        assertThat(SchemaMapper.canBeMapped(new JsonBooleanSchema())).isTrue();
+        assertThat(SchemaMapper.canBeMapped(new JsonNumberSchema())).isTrue();
+        assertThat(SchemaMapper.canBeMapped(new JsonIntegerSchema())).isTrue();
+        assertThat(SchemaMapper.canBeMapped(new JsonNullSchema())).isTrue();
+        assertThat(SchemaMapper.canBeMapped(
+                        JsonEnumSchema.builder().enumValues("A", "B").build()))
+                .isTrue();
+        assertThat(SchemaMapper.canBeMapped(
+                        JsonObjectSchema.builder().addStringProperty("query").build()))
+                .isTrue();
+        assertThat(SchemaMapper.canBeMapped(JsonArraySchema.builder().build())).isTrue();
+    }
 
-        // when/then
-        assertThrows(IllegalArgumentException.class, () -> {
-            SchemaMapper.fromJsonSchemaToGSchema(unsupportedSchema);
-        });
+    @Test
+    public void should_report_raw_and_reference_elements_as_not_mappable() {
+        assertThat(SchemaMapper.canBeMapped(JsonRawSchema.from("{\"type\":\"integer\",\"minimum\":1}")))
+                .isFalse();
+        assertThat(SchemaMapper.canBeMapped(
+                        JsonReferenceSchema.builder().reference("PriceRange").build()))
+                .isFalse();
+    }
+
+    @Test
+    public void should_report_an_unknown_element_as_not_mappable() {
+        // An element type the mapper does not handle must take the alternative rather than throw.
+        JsonSchemaElement unknown = () -> "unknown";
+
+        assertThat(SchemaMapper.canBeMapped(unknown)).isFalse();
+    }
+
+    @Test
+    public void should_look_below_containers() {
+        JsonSchemaElement raw = JsonRawSchema.from("{\"type\":\"integer\"}");
+
+        assertThat(SchemaMapper.canBeMapped(
+                        JsonObjectSchema.builder().addProperty("size", raw).build()))
+                .isFalse();
+        assertThat(SchemaMapper.canBeMapped(JsonArraySchema.builder().items(raw).build()))
+                .isFalse();
+        assertThat(SchemaMapper.canBeMapped(JsonAnyOfSchema.builder()
+                        .anyOf(new JsonStringSchema(), raw)
+                        .build()))
+                .isFalse();
+        assertThat(SchemaMapper.canBeMapped(JsonObjectSchema.builder()
+                        .addProperty(
+                                "filters",
+                                JsonArraySchema.builder()
+                                        .items(JsonObjectSchema.builder()
+                                                .addProperty("size", raw)
+                                                .build())
+                                        .build())
+                        .build()))
+                .isFalse();
+    }
+
+    @Test
+    public void should_report_definitions_as_not_mappable() {
+        // GeminiSchema has nowhere to put $defs, so the typed form would drop them without a word.
+        JsonObjectSchema withDefinitions = JsonObjectSchema.builder()
+                .definitions(Map.of(
+                        "PriceRange",
+                        JsonObjectSchema.builder()
+                                .addNumberProperty("min")
+                                .addNumberProperty("max")
+                                .build()))
+                .addStringProperty("query")
+                .build();
+
+        assertThat(SchemaMapper.canBeMapped(withDefinitions)).isFalse();
     }
 }

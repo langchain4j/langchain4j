@@ -27,7 +27,6 @@ import java.time.Duration;
 import java.util.List;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
@@ -220,7 +219,6 @@ public class LocalAiStreamingChatModel implements StreamingChatModel {
 
         public LocalAiStreamingChatModelBuilder() {
             // This is public so it can be extended
-            // By default with Lombok it becomes package private
         }
 
         public LocalAiStreamingChatModelBuilder baseUrl(String baseUrl) {

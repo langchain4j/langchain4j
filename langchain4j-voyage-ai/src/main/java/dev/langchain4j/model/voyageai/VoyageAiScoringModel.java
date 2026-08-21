@@ -13,10 +13,11 @@ import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.model.scoring.ScoringModel;
-import org.slf4j.Logger;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
+import org.slf4j.Logger;
 
 /**
  * An implementation of a {@link ScoringModel} that uses
@@ -57,7 +58,7 @@ public class VoyageAiScoringModel implements ScoringModel {
                 .timeout(getOrDefault(timeout, ofSeconds(60)))
                 .logRequests(getOrDefault(logRequests, false))
                 .logResponses(getOrDefault(logResponses, false))
-                .customHeaders(customHeaders)
+                .customHeaders(() -> customHeaders)
                 .build();
     }
 
@@ -77,7 +78,7 @@ public class VoyageAiScoringModel implements ScoringModel {
                 .logRequests(getOrDefault(builder.logRequests, false))
                 .logResponses(getOrDefault(builder.logResponses, false))
                 .logger(builder.logger)
-                .customHeaders(builder.customHeaders)
+                .customHeaders(builder.customHeadersSupplier)
                 .build();
     }
 
@@ -108,7 +109,7 @@ public class VoyageAiScoringModel implements ScoringModel {
     public static class Builder {
 
         private HttpClientBuilder httpClientBuilder;
-        private Map<String, String> customHeaders;
+        private Supplier<Map<String, String>> customHeadersSupplier;
         private String baseUrl;
         private Duration timeout;
         private Integer maxRetries;
@@ -120,21 +121,77 @@ public class VoyageAiScoringModel implements ScoringModel {
         private Boolean logResponses;
         private Logger logger;
 
+        /**
+         * Sets a custom HTTP client builder, allowing fine-grained control over the HTTP client
+         * configuration such as timeouts and proxy settings.
+         *
+         * @param httpClientBuilder the HTTP client builder
+         * @return {@code this}
+         */
+        public Builder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
+            this.httpClientBuilder = httpClientBuilder;
+            return this;
+        }
+
+        /**
+         * Sets custom HTTP headers.
+         */
+        public Builder customHeaders(Map<String, String> customHeaders) {
+            this.customHeadersSupplier = () -> customHeaders;
+            return this;
+        }
+
+        /**
+         * Sets a supplier for custom HTTP headers.
+         * The supplier is called before each request, allowing dynamic header values.
+         * For example, this is useful for OAuth2 tokens that expire and need refreshing.
+         */
+        public Builder customHeaders(Supplier<Map<String, String>> customHeadersSupplier) {
+            this.customHeadersSupplier = customHeadersSupplier;
+            return this;
+        }
+
+        /**
+         * Sets the base URL of the Voyage AI API.
+         * Defaults to {@code "https://api.voyageai.com/v1/"}.
+         *
+         * @param baseUrl the base URL
+         * @return {@code this}
+         */
         public Builder baseUrl(String baseUrl) {
             this.baseUrl = baseUrl;
             return this;
         }
 
+        /**
+         * Sets the HTTP request timeout. Defaults to 60 seconds.
+         *
+         * @param timeout the request timeout
+         * @return {@code this}
+         */
         public Builder timeout(Duration timeout) {
             this.timeout = timeout;
             return this;
         }
 
+        /**
+         * Sets the maximum number of retries on transient errors. Defaults to {@code 3}.
+         *
+         * @param maxRetries the maximum number of retries
+         * @return {@code this}
+         */
         public Builder maxRetries(Integer maxRetries) {
             this.maxRetries = maxRetries;
             return this;
         }
 
+        /**
+         * Sets the Voyage AI API key used to authenticate requests.
+         * See <a href="https://dash.voyageai.com/api-keys">Voyage AI dashboard</a> to obtain a key.
+         *
+         * @param apiKey the Voyage AI API key
+         * @return {@code this}
+         */
         public Builder apiKey(String apiKey) {
             this.apiKey = apiKey;
             return this;
@@ -187,11 +244,23 @@ public class VoyageAiScoringModel implements ScoringModel {
             return this;
         }
 
+        /**
+         * Enables debug logging of request bodies sent to the Voyage AI API.
+         *
+         * @param logRequests {@code true} to enable request logging
+         * @return {@code this}
+         */
         public Builder logRequests(Boolean logRequests) {
             this.logRequests = logRequests;
             return this;
         }
 
+        /**
+         * Enables debug logging of response bodies received from the Voyage AI API.
+         *
+         * @param logResponses {@code true} to enable response logging
+         * @return {@code this}
+         */
         public Builder logResponses(Boolean logResponses) {
             this.logResponses = logResponses;
             return this;

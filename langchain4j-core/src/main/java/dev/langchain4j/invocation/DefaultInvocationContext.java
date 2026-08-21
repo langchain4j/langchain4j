@@ -1,5 +1,8 @@
 package dev.langchain4j.invocation;
 
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.ModelProvider;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -16,7 +19,10 @@ public class DefaultInvocationContext implements InvocationContext {
     private final String interfaceName;
     private final String methodName;
     private final List<Object> methodArguments = new ArrayList<>();
+    private final UserMessage userMessage;
     private final Object chatMemoryId;
+    private final ChatRequestParameters defaultRequestParameters;
+    private final ModelProvider modelProvider;
     private final InvocationParameters invocationParameters;
     private final Map<Class<? extends LangChain4jManaged>, LangChain4jManaged> managedParameters;
     private final Instant timestamp;
@@ -26,7 +32,10 @@ public class DefaultInvocationContext implements InvocationContext {
         this.interfaceName = builder.interfaceName();
         this.methodName = builder.methodName();
         this.methodArguments.addAll(builder.methodArguments());
+        this.userMessage = builder.userMessage();
         this.chatMemoryId = builder.chatMemoryId();
+        this.defaultRequestParameters = builder.defaultRequestParameters();
+        this.modelProvider = builder.modelProvider();
         this.invocationParameters = builder.invocationParameters();
         this.managedParameters = builder.managedParameters();
         this.timestamp = builder.timestamp();
@@ -53,8 +62,23 @@ public class DefaultInvocationContext implements InvocationContext {
     }
 
     @Override
+    public UserMessage userMessage() {
+        return userMessage;
+    }
+
+    @Override
     public Object chatMemoryId() {
         return chatMemoryId;
+    }
+
+    @Override
+    public ChatRequestParameters defaultRequestParameters() {
+        return defaultRequestParameters;
+    }
+
+    @Override
+    public ModelProvider modelProvider() {
+        return modelProvider;
     }
 
     @Override
@@ -81,7 +105,10 @@ public class DefaultInvocationContext implements InvocationContext {
                 && Objects.equals(interfaceName, that.interfaceName)
                 && Objects.equals(methodName, that.methodName)
                 && Objects.equals(methodArguments, that.methodArguments)
+                && Objects.equals(userMessage, that.userMessage)
                 && Objects.equals(chatMemoryId, that.chatMemoryId)
+                && Objects.equals(defaultRequestParameters, that.defaultRequestParameters)
+                && Objects.equals(modelProvider, that.modelProvider)
                 && Objects.equals(invocationParameters, that.invocationParameters)
                 && Objects.equals(managedParameters, that.managedParameters)
                 && Objects.equals(timestamp, that.timestamp);
@@ -94,7 +121,10 @@ public class DefaultInvocationContext implements InvocationContext {
                 interfaceName,
                 methodName,
                 methodArguments,
+                userMessage,
                 chatMemoryId,
+                defaultRequestParameters,
+                modelProvider,
                 invocationParameters,
                 managedParameters,
                 timestamp);
@@ -107,7 +137,10 @@ public class DefaultInvocationContext implements InvocationContext {
                 ", interfaceName='" + interfaceName + '\'' +
                 ", methodName='" + methodName + '\'' +
                 ", methodArguments=" + methodArguments +
+                ", userMessage=" + userMessage +
                 ", chatMemoryId=" + chatMemoryId +
+                ", defaultRequestParameters=" + defaultRequestParameters +
+                ", modelProvider=" + modelProvider +
                 ", invocationParameters=" + invocationParameters +
                 ", managedParameters=" + managedParameters +
                 ", timestamp=" + timestamp +

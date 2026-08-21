@@ -5,7 +5,6 @@ import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static java.util.Objects.nonNull;
 
-import com.ibm.watsonx.ai.CloudRegion;
 import com.ibm.watsonx.ai.tokenization.TokenizationParameters;
 import com.ibm.watsonx.ai.tokenization.TokenizationResponse;
 import com.ibm.watsonx.ai.tokenization.TokenizationResponse.Result;
@@ -32,6 +31,7 @@ import java.util.concurrent.CompletableFuture;
  *     .baseUrl("https://...") // or use CloudRegion
  *     .apiKey("...")
  *     .projectId("...")
+ *     .modelName("ibm/granite-4-h-small")
  *     .build();
  * }</pre>
  *
@@ -56,6 +56,7 @@ public class WatsonxTokenCountEstimator implements TokenCountEstimator {
                 .logRequests(builder.logRequests)
                 .logResponses(builder.logResponses)
                 .httpClient(builder.httpClient)
+                .verifySsl(builder.verifySsl)
                 .build();
     }
 
@@ -89,17 +90,17 @@ public class WatsonxTokenCountEstimator implements TokenCountEstimator {
                 List<CompletableFuture<TokenizationResponse>> futures = new ArrayList<>();
 
                 if (isNotNullOrEmpty(aiMessage.thinking()))
-                    futures.add(tokenizationService.asyncTokenize(aiMessage.thinking()));
+                    futures.add(tokenizationService.tokenizeAsync(aiMessage.thinking()));
 
                 if (isNotNullOrEmpty(aiMessage.text()))
-                    futures.add(tokenizationService.asyncTokenize(aiMessage.text()));
+                    futures.add(tokenizationService.tokenizeAsync(aiMessage.text()));
 
                 if (aiMessage.hasToolExecutionRequests()) {
                     for (var toolExecutionRequest : aiMessage.toolExecutionRequests()) {
-                        futures.add(tokenizationService.asyncTokenize(toolExecutionRequest.id()));
-                        futures.add(tokenizationService.asyncTokenize(toolExecutionRequest.name()));
+                        futures.add(tokenizationService.tokenizeAsync(toolExecutionRequest.id()));
+                        futures.add(tokenizationService.tokenizeAsync(toolExecutionRequest.name()));
                         if (!isNullOrBlank(toolExecutionRequest.arguments()))
-                            futures.add(tokenizationService.asyncTokenize(toolExecutionRequest.arguments()));
+                            futures.add(tokenizationService.tokenizeAsync(toolExecutionRequest.arguments()));
                     }
                 }
 
@@ -117,11 +118,11 @@ public class WatsonxTokenCountEstimator implements TokenCountEstimator {
                 List<CompletableFuture<TokenizationResponse>> futures = new ArrayList<>();
 
                 if (isNotNullOrBlank(userMessage.name()))
-                    futures.add(tokenizationService.asyncTokenize(userMessage.name()));
+                    futures.add(tokenizationService.tokenizeAsync(userMessage.name()));
 
                 for (Content content : userMessage.contents()) {
                     switch (content.type()) {
-                        case TEXT -> futures.add(tokenizationService.asyncTokenize(((TextContent) content).text()));
+                        case TEXT -> futures.add(tokenizationService.tokenizeAsync(((TextContent) content).text()));
                         case AUDIO, IMAGE, PDF, VIDEO ->
                             throw new UnsupportedOperationException(
                                     "The " + content.type().name()
@@ -164,9 +165,11 @@ public class WatsonxTokenCountEstimator implements TokenCountEstimator {
      *     .baseUrl("https://...") // or use CloudRegion
      *     .apiKey("...")
      *     .projectId("...")
+     *     .modelName("ibm/granite-4-h-small")
      *     .build();
      * }</pre>
      *
+     * @return {@link Builder} instance.
      */
     public static Builder builder() {
         return new Builder();
@@ -180,22 +183,14 @@ public class WatsonxTokenCountEstimator implements TokenCountEstimator {
 
         private Builder() {}
 
-        public Builder baseUrl(CloudRegion cloudRegion) {
-            return super.baseUrl(cloudRegion.getMlEndpoint());
-        }
-
+        /**
+         * Sets the watsonx.ai model ID used for token counting, e.g. {@code "ibm/granite-4-h-small"}.
+         *
+         * @param modelName the model ID
+         * @return {@code this}
+         */
         public Builder modelName(String modelName) {
             this.modelName = modelName;
-            return this;
-        }
-
-        public Builder projectId(String projectId) {
-            this.projectId = projectId;
-            return this;
-        }
-
-        public Builder spaceId(String spaceId) {
-            this.spaceId = spaceId;
             return this;
         }
 

@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
+import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
 
 import java.util.Objects;
 
@@ -34,18 +35,21 @@ public class ImageUrl {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public boolean equals(Object another) {
         if (this == another) return true;
         return another instanceof ImageUrl
                 && equalTo((ImageUrl) another);
     }
 
+    @JacocoIgnoreCoverageGenerated
     private boolean equalTo(ImageUrl another) {
         return Objects.equals(url, another.url)
                 && Objects.equals(detail, another.detail);
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public int hashCode() {
         int h = 5381;
         h += (h << 5) + Objects.hashCode(url);
@@ -54,6 +58,7 @@ public class ImageUrl {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public String toString() {
         return "ImageUrl{" +
                 "url=" + url +

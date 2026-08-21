@@ -1,29 +1,29 @@
 package dev.langchain4j.model.ollama;
 
+import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
+
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
-
 import java.util.List;
-
-import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonInclude(NON_NULL)
 @JsonNaming(SnakeCaseStrategy.class)
 public class OllamaModelDetails {
 
+    private String parentModel;
     private String format;
     private String family;
     private List<String> families;
     private String parameterSize;
     private String quantizationLevel;
 
-    OllamaModelDetails() {
-    }
+    OllamaModelDetails() {}
 
-    public OllamaModelDetails(String format, String family, List<String> families, String parameterSize, String quantizationLevel) {
+    public OllamaModelDetails(
+            String format, String family, List<String> families, String parameterSize, String quantizationLevel) {
         this.format = format;
         this.family = family;
         this.families = families;
@@ -33,6 +33,14 @@ public class OllamaModelDetails {
 
     public static Builder builder() {
         return new Builder();
+    }
+
+    public String getParentModel() {
+        return parentModel;
+    }
+
+    public void setParentModel(String parentModel) {
+        this.parentModel = parentModel;
     }
 
     public String getFormat() {
@@ -77,11 +85,17 @@ public class OllamaModelDetails {
 
     public static class Builder {
 
+        private String parentModel;
         private String format;
         private String family;
         private List<String> families;
         private String parameterSize;
         private String quantizationLevel;
+
+        public Builder parentModel(String parentModel) {
+            this.parentModel = parentModel;
+            return this;
+        }
 
         public Builder format(String format) {
             this.format = format;
@@ -109,7 +123,10 @@ public class OllamaModelDetails {
         }
 
         public OllamaModelDetails build() {
-            return new OllamaModelDetails(format, family, families, parameterSize, quantizationLevel);
+            OllamaModelDetails details =
+                    new OllamaModelDetails(format, family, families, parameterSize, quantizationLevel);
+            details.setParentModel(parentModel);
+            return details;
         }
     }
 }

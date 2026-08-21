@@ -22,10 +22,34 @@ Many services and tools expose OpenAI-compatible APIs. The general approach to u
             .logResponses(true)
             .build();
     ```
-Below we provide specific examples for popular OpenAI-compatible APIs, including Groq, Docker Model Runner, GPT4All, Ollama, and LM Studio.
+
+### Configuration for Specific OpenAI-Compatible APIs
+
+Some OpenAI-compatible APIs may have different behaviors in streaming responses, particularly for tool calling. LangChain4j provides configuration options to handle these differences:
+
+#### `accumulateToolCallId` (for `OpenAiStreamingChatModel`)
+
+Controls how tool call IDs are handled in streaming responses. Default is `true`.
+
+- **Enabled (`true`)**: Tool call IDs are accumulated across streaming chunks (standard OpenAI behavior)
+    - Example: Chunk 1 sends "abc", Chunk 2 sends "def" → Final ID: "abcdef"
+- **Disabled (`false`)**: Each chunk's tool call ID replaces the previous one
+    - Example: Chunk 1 sends "abc", Chunk 2 sends "abc" → Final ID: "abc"
+    - Use this for APIs like DeepSeek or Qwen that send the complete tool call ID in every chunk
+
+```java
+StreamingChatModel model = OpenAiStreamingChatModel.builder()
+        .baseUrl("https://api.deepseek.com/v1") // or other provider
+        .apiKey("YOUR_API_KEY")
+        .modelName("deepseek-chat")
+        .accumulateToolCallId(false) // Set to false for DeepSeek, Qwen, etc.
+        .build();
+    ```
+Below we provide specific examples for popular OpenAI-compatible APIs, including Tuning Engines, Groq, Docker Model Runner, GPT4All, Ollama, and LM Studio.
 
 ### Contents:
 - [Prerequisites for Using OpenAI-Compatible Language Models](#prerequisites-for-using-openai-compatible-language-models)
+- [Tuning Engines](#tuning-engines)
 - [Groq](#groq)
 - [Docker Model Runner](#docker-model-runner)
 - [GPT4All](#gpt4all)
@@ -43,7 +67,7 @@ First, make sure you have the OpenAI module in your `pom.xml` or Gradle build fi
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai</artifactId>
-    <version>1.9.1</version>
+    <version>1.19.0</version>
 </dependency>
 ```
 
@@ -52,8 +76,22 @@ First, make sure you have the OpenAI module in your `pom.xml` or Gradle build fi
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai-spring-boot-starter</artifactId>
-    <version>1.9.1-beta17</version>
+    <version>1.19.0-beta29</version>
 </dependency>
+```
+
+## Tuning Engines
+
+**Deployment:** SaaS (key required)
+
+**Description:** [Tuning Engines](https://www.tuningengines.com/) exposes an OpenAI-compatible endpoint that can sit in front of your model providers. LangChain4j keeps the application and agent logic, while the endpoint can centralize routing, policy controls, audit logs, traces, approvals, and cost visibility.
+
+```java
+ChatModel model = OpenAiChatModel.builder()
+        .baseUrl("https://api.tuningengines.com/v1")
+        .apiKey(System.getenv("TUNING_ENGINES_API_KEY"))
+        .modelName("gpt-4o-mini")
+        .build();
 ```
 
 ## Groq
@@ -159,7 +197,7 @@ ChatModel model = OpenAiChatModel.builder()
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-http-client-jdk</artifactId>
-    <version>1.9.1</version>
+    <version>1.19.0</version>
 </dependency>
 ```
 6. Configure LangChain4j and specify the `httpClientBuilder`
@@ -182,4 +220,3 @@ ChatModel model = OpenAiChatModel.builder()
         .httpClientBuilder(jdkHttpClientBuilder)
         .build();
 ```
-

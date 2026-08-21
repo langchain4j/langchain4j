@@ -35,8 +35,6 @@ import org.slf4j.LoggerFactory;
 
 /**
  * A tool for executing code in Azure ACA dynamic sessions.
- * See the examples here for more information:
- * https://github.com/langchain4j/langchain4j-examples/tree/main/code-execution/azure-acads-examples
  *
  * Overview:
  * SessionsREPLTool provides a mechanism to execute code snippets within an Azure
@@ -425,9 +423,10 @@ public class SessionsREPLTool implements CodeExecutionEngine {
                     return "File not found: " + remoteFilePath;
                 }
 
-                // Convert response body to Base64
-                byte[] fileBytes = response.body().getBytes(StandardCharsets.UTF_8);
-                return Base64.getEncoder().encodeToString(fileBytes);
+                // Convert response body to Base64 from the canonical raw bytes.
+                // Using response.body() would round-trip through a decoded String and corrupt
+                // binary files (images, xlsx, etc.) whose bytes are not valid UTF-8.
+                return Base64.getEncoder().encodeToString(response.bodyBytes());
 
             } catch (Exception e) {
                 if (e.getMessage().contains("404")) {

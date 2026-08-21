@@ -3,6 +3,7 @@ package dev.langchain4j.model.anthropic.internal.api;
 import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_EMPTY;
 
 import com.fasterxml.jackson.annotation.JsonAnyGetter;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
@@ -26,9 +27,13 @@ public class AnthropicCreateMessageRequest {
     public Integer topK;
     public List<AnthropicTool> tools;
     public AnthropicToolChoice toolChoice;
-    public AnthropicOutputFormat outputFormat;
+    public AnthropicOutputConfig outputConfig;
     public AnthropicThinking thinking;
     public AnthropicMetadata metadata;
+    public AnthropicContainer container;
+    public AnthropicDiagnosticsParameters diagnostics;
+
+    @JsonIgnore
     public Map<String, Object> customParameters;
 
     public AnthropicCreateMessageRequest() {}
@@ -45,9 +50,11 @@ public class AnthropicCreateMessageRequest {
         this.topK = builder.topK;
         this.tools = builder.tools;
         this.toolChoice = builder.toolChoice;
-        this.outputFormat = builder.outputFormat;
+        this.outputConfig = builder.outputConfig;
         this.thinking = builder.thinking;
         this.metadata = builder.metadata;
+        this.container = builder.container;
+        this.diagnostics = builder.diagnostics;
         this.customParameters = builder.customParameters;
     }
 
@@ -169,12 +176,12 @@ public class AnthropicCreateMessageRequest {
         this.toolChoice = toolChoice;
     }
 
-    public AnthropicOutputFormat getOutputFormat() {
-        return outputFormat;
+    public AnthropicOutputConfig getOutputConfig() {
+        return outputConfig;
     }
 
-    public void setOutputFormat(AnthropicOutputFormat outputFormat) {
-        this.outputFormat = outputFormat;
+    public void setOutputConfig(AnthropicOutputConfig outputConfig) {
+        this.outputConfig = outputConfig;
     }
 
     public AnthropicThinking getThinking() {
@@ -191,6 +198,22 @@ public class AnthropicCreateMessageRequest {
 
     public void setMetadata(AnthropicMetadata metadata) {
         this.metadata = metadata;
+    }
+
+    public AnthropicContainer getContainer() {
+        return container;
+    }
+
+    public void setContainer(AnthropicContainer container) {
+        this.container = container;
+    }
+
+    public AnthropicDiagnosticsParameters getDiagnostics() {
+        return diagnostics;
+    }
+
+    public void setDiagnostics(AnthropicDiagnosticsParameters diagnostics) {
+        this.diagnostics = diagnostics;
     }
 
     @JsonAnyGetter
@@ -219,9 +242,11 @@ public class AnthropicCreateMessageRequest {
                         .topK(this.topK)
                         .tools(this.tools)
                         .toolChoice(this.toolChoice)
-                        .outputFormat(this.outputFormat)
+                        .outputConfig(this.outputConfig)
                         .thinking(this.thinking)
                         .metadata(this.metadata)
+                        .container(this.container)
+                        .diagnostics(this.diagnostics)
                         .customParameters(this.customParameters);
     }
 
@@ -238,9 +263,11 @@ public class AnthropicCreateMessageRequest {
         private Integer topK;
         private List<AnthropicTool> tools;
         private AnthropicToolChoice toolChoice;
-        private AnthropicOutputFormat outputFormat;
+        private AnthropicOutputConfig outputConfig;
         private AnthropicThinking thinking;
         private AnthropicMetadata metadata;
+        private AnthropicContainer container;
+        private AnthropicDiagnosticsParameters diagnostics;
         private Map<String, Object> customParameters;
 
         public Builder model(String model) {
@@ -298,8 +325,8 @@ public class AnthropicCreateMessageRequest {
             return this;
         }
 
-        public Builder outputFormat(AnthropicOutputFormat outputFormat) {
-            this.outputFormat = outputFormat;
+        public Builder outputConfig(AnthropicOutputConfig outputConfig) {
+            this.outputConfig = outputConfig;
             return this;
         }
 
@@ -310,6 +337,16 @@ public class AnthropicCreateMessageRequest {
 
         public Builder metadata(AnthropicMetadata metadata) {
             this.metadata = metadata;
+            return this;
+        }
+
+        public Builder container(AnthropicContainer container) {
+            this.container = container;
+            return this;
+        }
+
+        public Builder diagnostics(AnthropicDiagnosticsParameters diagnostics) {
+            this.diagnostics = diagnostics;
             return this;
         }
 

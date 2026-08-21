@@ -156,7 +156,11 @@ public final class RetryUtils {
         public int jitterDelayMillis(int retry) {
             double delay = rawDelayMs(retry);
             double jitter = delay * jitterScale;
-            return (int) (delay + RANDOM.nextInt((int) jitter));
+            int jitterBound = (int) jitter;
+            if (jitterBound <= 0) {
+                return (int) delay;
+            }
+            return (int) (delay + RANDOM.nextInt(jitterBound));
         }
 
         /**
@@ -164,12 +168,12 @@ public final class RetryUtils {
          *
          * @param retry The retry number.
          */
-        @JacocoIgnoreCoverageGenerated
         public void sleep(int retry) {
             try {
                 Thread.sleep(jitterDelayMillis(retry));
-            } catch (InterruptedException ignored) {
-                // pass
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new RuntimeException("Interrupted while retrying", e);
             }
         }
 
@@ -205,6 +209,10 @@ public final class RetryUtils {
                 } catch (NonRetriableException e) {
                     throw e;
                 } catch (Exception e) {
+                    if (Thread.currentThread().isInterrupted()) {
+                        throw new RuntimeException("Interrupted during action execution", e);
+                    }
+
                     if (retry >= maxRetries) {
                         throw e instanceof RuntimeException re ? re : new LangChain4jException(e);
                     }

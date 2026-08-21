@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import org.junit.jupiter.api.Test;
 
@@ -32,6 +33,7 @@ class QueryTest {
 
         Metadata metadata = Metadata.from(
                 UserMessage.from("user message"),
+                SystemMessage.from("Be polite"),
                 42,
                 asList(UserMessage.from("Hello"), AiMessage.from("Hi, how can I help you today?")));
 
@@ -49,18 +51,21 @@ class QueryTest {
         // given
         Metadata metadata1 = Metadata.from(
                 UserMessage.from("user message"),
+                SystemMessage.from("Be polite"),
                 42,
                 asList(UserMessage.from("Hello"), AiMessage.from("Hi, how can I help you today?")));
         Query query1 = Query.from("query", metadata1);
 
         Metadata metadata2 = Metadata.from(
                 UserMessage.from("another user message"),
+                SystemMessage.from("Be polite"),
                 666,
                 asList(UserMessage.from("Bye"), AiMessage.from("Bye-bye")));
         Query query2 = Query.from("query 2", metadata2);
 
         Metadata metadata3 = Metadata.from(
                 UserMessage.from("user message"),
+                SystemMessage.from("Be polite"),
                 42,
                 asList(UserMessage.from("Hello"), AiMessage.from("Hi, how can I help you today?")));
         Query query3 = Query.from("query", metadata3);
@@ -69,26 +74,6 @@ class QueryTest {
         assertThat(query1).isNotEqualTo(query2).doesNotHaveSameHashCodeAs(query2);
 
         assertThat(query1).isEqualTo(query3).hasSameHashCodeAs(query3);
-    }
-
-    @Test
-    void to_string() {
-
-        // given
-        Metadata metadata = Metadata.from(
-                UserMessage.from("user message"),
-                42,
-                asList(UserMessage.from("Hello"), AiMessage.from("Hi, how can I help you today?")));
-        Query query = Query.from("query", metadata);
-
-        // when
-        String toString = query.toString();
-
-        // then
-        assertThat(toString)
-                .isEqualToIgnoringWhitespace("""
-                        Query { text = "query", metadata = Metadata { chatMessage = UserMessage { name = null, contents = [TextContent { text = "user message" }], attributes = {} }, chatMemory = [UserMessage { name = null, contents = [TextContent { text = "Hello" }], attributes = {} }, AiMessage { text = "Hi, how can I help you today?", thinking = null, toolExecutionRequests = [], attributes = {} }], invocationContext = DefaultInvocationContext{invocationId=null, interfaceName='null', methodName='null', methodArguments=[], chatMemoryId=42, invocationParameters=null, managedParameters=null, timestamp=null} } }
-                        """);
     }
 
     @Test

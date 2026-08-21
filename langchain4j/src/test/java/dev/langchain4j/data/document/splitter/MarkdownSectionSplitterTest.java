@@ -27,8 +27,7 @@ class MarkdownSectionSplitterTest implements WithAssertions {
 
     @Test
     void testNoSubSplitter() {
-        String text =
-                """
+        String text = """
                 # Title
                 ## Section 1
                 section 1
@@ -74,8 +73,7 @@ class MarkdownSectionSplitterTest implements WithAssertions {
 
     @Test
     void testIntroductoryTextNoHeaderNoDocumentTitle() {
-        String text =
-                """
+        String text = """
                 Intro text
                 ## Section 1
                 section 1
@@ -93,8 +91,7 @@ class MarkdownSectionSplitterTest implements WithAssertions {
 
     @Test
     void testIntroductoryTextNoHeaderWithDocumentTitle() {
-        String text =
-                """
+        String text = """
                 Intro text
                 ## Section 1
                 section 1
@@ -113,8 +110,7 @@ class MarkdownSectionSplitterTest implements WithAssertions {
 
     @Test
     void testSectionSplitter() {
-        String text =
-                """
+        String text = """
                 # Title
                 ## Section 1
                 section 1
@@ -161,8 +157,7 @@ class MarkdownSectionSplitterTest implements WithAssertions {
     void testHeaderInFencedCodeBlock() {
         // The parser adds a blank line between the previous paragraph and the code block.
         // Test input with both cases
-        String text =
-                """
+        String text = """
                 # Title
                 ## Section 1
                 section 1
@@ -191,8 +186,7 @@ class MarkdownSectionSplitterTest implements WithAssertions {
 
     @Test
     void testCodeSpan() {
-        String text =
-                """
+        String text = """
                 # Title
                 ## Section 1
                 section 1 is `the best` ever
@@ -213,8 +207,7 @@ class MarkdownSectionSplitterTest implements WithAssertions {
     void testFencedCodeBlock() {
         // The renderer adds empty lines around code blocks
         // Test some variations of the input.
-        String text =
-                """
+        String text = """
                 # Title
                 Some text
                 ```
@@ -236,14 +229,7 @@ class MarkdownSectionSplitterTest implements WithAssertions {
         List<TextSegment> segments = splitter.split(source);
 
         Assertions.assertEquals(1, segments.size());
-        checkTextSegment(
-                source,
-                segments.get(0),
-                "Title",
-                null,
-                0,
-                0,
-                """
+        checkTextSegment(source, segments.get(0), "Title", null, 0, 0, """
                         Some text
 
                         ```
@@ -266,8 +252,7 @@ class MarkdownSectionSplitterTest implements WithAssertions {
         // The renderer adds empty lines around code blocks
         // Test some variations of the input.
         // In the output Markdown, we use the fenced style always for consistency.
-        String text =
-                """
+        String text = """
                 # Title
                 Some text
 
@@ -285,14 +270,7 @@ class MarkdownSectionSplitterTest implements WithAssertions {
         List<TextSegment> segments = splitter.split(source);
 
         Assertions.assertEquals(1, segments.size());
-        checkTextSegment(
-                source,
-                segments.get(0),
-                "Title",
-                null,
-                0,
-                0,
-                """
+        checkTextSegment(source, segments.get(0), "Title", null, 0, 0, """
                         Some text
 
                         ```
@@ -313,8 +291,7 @@ class MarkdownSectionSplitterTest implements WithAssertions {
     @Test
     void testParagraphs() {
         // More than two '\n\n' gets replaced with just one.
-        String text =
-                """
+        String text = """
                 # Title
                 Paragraph 1
 
@@ -335,8 +312,7 @@ class MarkdownSectionSplitterTest implements WithAssertions {
     @Test
     void testEmphasis() {
         // The renderer replaces '__' with '**'. They have the same meaning.
-        String text =
-                """
+        String text = """
                 # Title
                 The *quick* brown _fox_ jumped **over** the __lazy__ dog""";
 
@@ -360,8 +336,7 @@ class MarkdownSectionSplitterTest implements WithAssertions {
     void testSetextHeaders() {
         // We are testing ATX Headers elsewhere (they are of the format "# Header 1", "## Header 2" etc.)
         // Setext uses equals under a line for H1, and hyphens for H2
-        String text =
-                """
+        String text = """
                 Title
                 =====
                 intro
@@ -386,8 +361,7 @@ class MarkdownSectionSplitterTest implements WithAssertions {
     void testBulletList() {
         // The renderer adds empty lines around the lists.
         // Test some variations of the input.
-        String text =
-                """
+        String text = """
                 # Title
                 intro
                 - One
@@ -418,8 +392,7 @@ class MarkdownSectionSplitterTest implements WithAssertions {
     void testOrderedList() {
         // The renderer adds empty lines around the lists.
         // Test some variations of the input.
-        String text =
-                """
+        String text = """
                 # Title
                 intro
                 1. One
@@ -452,8 +425,7 @@ class MarkdownSectionSplitterTest implements WithAssertions {
         // Test some variations of the input.
         // Note that nested lists of ordered lists need at least 3 spaces, while nested lists in
         // bullet lists can do with 2.
-        String body =
-                """
+        String body = """
                 intro
 
                 * One
@@ -489,8 +461,7 @@ class MarkdownSectionSplitterTest implements WithAssertions {
     void testBlockQuotes() {
         // The renderer adds empty lines around the lists.
         // Test some variations of the input.
-        String text =
-                """
+        String text = """
                 # Title
                 intro
                 > line1
@@ -506,8 +477,7 @@ class MarkdownSectionSplitterTest implements WithAssertions {
 
         // The renderer massages the continuing 'line3' a bit, and adds a space after '>' but it is semantically the
         // same.
-        String expected =
-                """
+        String expected = """
                 intro
 
                 > line1
@@ -532,8 +502,7 @@ class MarkdownSectionSplitterTest implements WithAssertions {
 
     @Test
     void testNestedBlockQuotes() {
-        String body =
-                """
+        String body = """
                 > Test
                 >\s
                 > > # Ignored header
@@ -558,8 +527,7 @@ class MarkdownSectionSplitterTest implements WithAssertions {
     @Test
     void testImagesRemoved() {
         // I don't think images are relevant at this stage so let's check they are removed
-        String text =
-                """
+        String text = """
                 # Title
 
                 intro
@@ -596,8 +564,7 @@ class MarkdownSectionSplitterTest implements WithAssertions {
 
     @Test
     void testTables() {
-        String text =
-                """
+        String text = """
                 # Title
 
                 intro
@@ -621,8 +588,7 @@ class MarkdownSectionSplitterTest implements WithAssertions {
 
     @Test
     void testYamlFrontMatter() {
-        String text =
-                """
+        String text = """
                 ---
                 hello: world
                 empty:
@@ -652,8 +618,7 @@ class MarkdownSectionSplitterTest implements WithAssertions {
     @Test
     void testHtmlInHeaders() {
         // HTML tags in headers should be preserved as text, not stripped or interpreted
-        String text =
-                """
+        String text = """
                 # Using <div> Elements
 
                 intro
@@ -685,8 +650,7 @@ class MarkdownSectionSplitterTest implements WithAssertions {
     @Test
     void testBOM() {
         // BOM (Byte Order Mark) at the beginning of the file should be handled correctly
-        String text =
-                """
+        String text = """
                 \uFEFF# Title
 
                 ## Section 1
@@ -711,8 +675,7 @@ class MarkdownSectionSplitterTest implements WithAssertions {
     @Test
     void testHeadersInsideBlocks() {
         // Headers inside blocks (lists, blockquotes) should not create new sections
-        String text =
-                """
+        String text = """
                 # Section 1
 
                 Introduction
@@ -744,8 +707,7 @@ class MarkdownSectionSplitterTest implements WithAssertions {
 
         // Section 1 should contain the list with the embedded heading and the blockquote
         // The renderer adds spaces to blank lines within lists and blockquotes to maintain structure
-        String expectedSection1 =
-                """
+        String expectedSection1 = """
                 Introduction
 
                 - List item 1
@@ -767,8 +729,7 @@ class MarkdownSectionSplitterTest implements WithAssertions {
 
     @Test
     void testEmptySectionPlaceholderText() {
-        String text =
-                """
+        String text = """
                 # Title
                 ## Section 1
                 section 1

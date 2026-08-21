@@ -28,6 +28,7 @@ class EmbeddingTest implements WithAssertions {
         assertThat(e1.dimension()).isEqualTo(3);
         assertThat(e1.vector()).containsExactly(1.0f, 2.0f, 3.0f);
         assertThat(e1.vectorAsList()).containsExactly(1.0f, 2.0f, 3.0f);
+        assertThat(e1.vectorAsDoubleArray()).containsExactly(1.0d, 2.0d, 3.0d);
 
         assertThat(e1).hasToString("Embedding { vector = [1.0, 2.0, 3.0] }");
     }

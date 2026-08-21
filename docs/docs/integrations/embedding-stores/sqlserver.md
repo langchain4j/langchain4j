@@ -131,6 +131,43 @@ By default, the embedding table will have the following columns:
 | metadata | JSON              | Stores the metadata using SQL Server 2025 native JSON data type |
 
 
+## Half-Precision (float16) Support
+
+### Motivation
+
+Standard `float32` vectors in SQL Server are limited to **1998 dimensions**. This means that embedding models producing vectors with more than 1998 dimensions (such as OpenAI's `text-embedding-3-large` with up to 3072 dimensions) cannot be stored using the default vector type.
+
+To overcome this limitation, SQL Server supports half-precision (`float16`) vectors, which allow storing vectors with higher dimensions. See the [Microsoft documentation on half-precision vectors](https://learn.microsoft.com/en-us/sql/t-sql/data-types/vector-data-type-half-precision-float?view=sql-server-ver17) and the [JDBC driver documentation](https://learn.microsoft.com/en-us/sql/connect/jdbc/use-vector-data-type?view=sql-server-ver17#use-vector-float16-data-type) for more details.
+
+### Requirements
+
+- **Preview features must be enabled** in the SQL Server database to use half-precision vectors.
+- The JDBC driver property `vectorTypeSupport` must be set to `v2`.
+
+### Configuration
+
+The `halfPrecision` parameter on `EmbeddingTable` controls whether half-precision vectors are used:
+
+- `HalfPrecisionConfiguration.OFF` (**Default**): Forces the use of `float32` vectors. Note that the table creation will fail if the dimension is greater than 1998.
+- `HalfPrecisionConfiguration.ON`: Forces the use of `float16` vectors.
+- `HalfPrecisionConfiguration.AUTO`: Uses `float32` by default, but automatically switches to `float16` if the configured dimension is greater than 1998.
+
+```java
+EmbeddingStore<TextSegment> embeddingStore = SQLServerEmbeddingStore.dataSourceBuilder()
+   .dataSource(myDataSource)
+   .embeddingTable(EmbeddingTable.builder()
+           .name("my_large_embedding_table")
+           .dimension(3072)
+           .halfPrecision(HalfPrecisionConfiguration.ON)
+           .build())
+   .build();
+```
+
+### Limitations
+
+- Half-precision vector support is currently only available for **Azure SQL databases**.
+- Using half-precision vectors may lead to a **loss of precision** compared to `float32` vectors.
+
 ## Important Notes
 
 ### Numeric Types

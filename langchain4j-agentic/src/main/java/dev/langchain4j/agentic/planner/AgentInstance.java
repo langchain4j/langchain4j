@@ -7,6 +7,8 @@ public interface AgentInstance {
 
     Class<?> type();
 
+    Class<? extends Planner> plannerType();
+
     String name();
 
     String agentId();
@@ -19,6 +21,10 @@ public interface AgentInstance {
 
     boolean async();
 
+    default boolean optional() {
+        return false;
+    }
+
     List<AgentArgument> arguments();
 
     AgentInstance parent();
@@ -29,4 +35,8 @@ public interface AgentInstance {
     }
 
     AgenticSystemTopology topology();
+
+    default <T extends AgentInstance> T as(Class<T> agentInstanceClass) {
+        throw new ClassCastException("Cannot cast to " + agentInstanceClass.getName() + ": incompatible type");
+    }
 }

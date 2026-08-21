@@ -1,5 +1,6 @@
 package dev.langchain4j.model.chat.response;
 
+import static dev.langchain4j.MockitoUtils.ignoreInteractions;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -64,6 +65,7 @@ public class StreamingChatResponseHandlerIT {
         verify(handler, atLeastOnce()).onPartialResponse(any(), any()); // LC4j will always call this callback
         verify(handler, atLeastOnce()).onPartialResponse(any());
         verify(handler).onCompleteResponse(any());
+        ignoreInteractions(handler).onUnmappedRawEvent(any());
         verifyNoMoreInteractions(handler);
     }
 
@@ -102,6 +104,7 @@ public class StreamingChatResponseHandlerIT {
         verify(handler, atLeastOnce()).onPartialResponse(any(), any());
         verify(handler, never()).onPartialResponse(any());
         verify(handler).onCompleteResponse(any());
+        ignoreInteractions(handler).onUnmappedRawEvent(any());
         verifyNoMoreInteractions(handler);
     }
 
@@ -146,6 +149,7 @@ public class StreamingChatResponseHandlerIT {
         verify(handler, atLeastOnce()).onPartialResponse(any(), any());
         verify(handler, never()).onPartialResponse(any());
         verify(handler).onCompleteResponse(any());
+        ignoreInteractions(handler).onUnmappedRawEvent(any());
         verifyNoMoreInteractions(handler);
     }
 }

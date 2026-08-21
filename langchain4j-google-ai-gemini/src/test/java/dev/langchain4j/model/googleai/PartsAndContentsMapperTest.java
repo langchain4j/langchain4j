@@ -3,6 +3,7 @@ package dev.langchain4j.model.googleai;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.audio.Audio;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.AiMessage;
@@ -10,6 +11,8 @@ import dev.langchain4j.data.message.AudioContent;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.PdfFileContent;
 import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.TextContent;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.message.VideoContent;
 import dev.langchain4j.data.pdf.PdfFile;
@@ -108,6 +111,182 @@ class PartsAndContentsMapperTest {
     }
 
     @Test
+    void fromGPartsToAiMessage_preservesFunctionCallId() {
+        // Given
+        String json = """
+                {
+                  "candidates": [
+                    {
+                      "content": {
+                        "role": "model",
+                        "parts": [
+                          {
+                            "functionCall": {
+                              "id": "call-1",
+                              "name": "stringLength",
+                              "args": {
+                                "s": "hello"
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+                """;
+        GeminiGenerateContentResponse response = Json.fromJson(json, GeminiGenerateContentResponse.class);
+        List<GeminiContent.GeminiPart> parts =
+                response.candidates().get(0).content().parts();
+
+        // When
+        AiMessage result = PartsAndContentsMapper.fromGPartsToAiMessage(parts, false, null);
+
+        // Then
+        assertThat(result.toolExecutionRequests()).hasSize(1);
+        ToolExecutionRequest toolExecutionRequest =
+                result.toolExecutionRequests().get(0);
+        assertThat(toolExecutionRequest.id()).isEqualTo("call-1");
+        assertThat(toolExecutionRequest.name()).isEqualTo("stringLength");
+        assertThat(toolExecutionRequest.arguments()).isEqualTo("{\"s\":\"hello\"}");
+    }
+
+    @Test
+    void fromGPartsToAiMessage_doesNotGenerateFunctionCallIdWhenMissing() {
+        // Given
+        String json = """
+                {
+                  "candidates": [
+                    {
+                      "content": {
+                        "role": "model",
+                        "parts": [
+                          {
+                            "functionCall": {
+                              "name": "stringLength",
+                              "args": {
+                                "s": "hello"
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+                """;
+        GeminiGenerateContentResponse response = Json.fromJson(json, GeminiGenerateContentResponse.class);
+        List<GeminiContent.GeminiPart> parts =
+                response.candidates().get(0).content().parts();
+
+        // When
+        AiMessage result = PartsAndContentsMapper.fromGPartsToAiMessage(parts, false, null);
+
+        // Then
+        assertThat(result.toolExecutionRequests()).hasSize(1);
+        ToolExecutionRequest toolExecutionRequest =
+                result.toolExecutionRequests().get(0);
+        assertThat(toolExecutionRequest.id()).isNull();
+        assertThat(toolExecutionRequest.name()).isEqualTo("stringLength");
+        assertThat(toolExecutionRequest.arguments()).isEqualTo("{\"s\":\"hello\"}");
+    }
+
+    @Test
+    void fromMessageToGContent_preservesToolExecutionRequestId() {
+        // Given
+        ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
+                .id("call-1")
+                .name("stringLength")
+                .arguments("{\"s\":\"hello\"}")
+                .build();
+        AiMessage aiMessage = AiMessage.from(toolExecutionRequest);
+
+        // When
+        List<GeminiContent> result = PartsAndContentsMapper.fromMessageToGContent(List.of(aiMessage), null, false);
+
+        // Then
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).parts()).hasSize(1);
+        assertThat(result.get(0).parts().get(0).functionCall().id()).isEqualTo("call-1");
+        assertThat(result.get(0).parts().get(0).functionCall().name()).isEqualTo("stringLength");
+    }
+
+    @Test
+    void fromMessageToGContent_omitsToolExecutionRequestIdWhenNull() {
+        // Given
+        ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
+                .name("stringLength")
+                .arguments("{\"s\":\"hello\"}")
+                .build();
+        AiMessage aiMessage = AiMessage.from(toolExecutionRequest);
+
+        // When
+        List<GeminiContent> result = PartsAndContentsMapper.fromMessageToGContent(List.of(aiMessage), null, false);
+
+        // Then
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).parts()).hasSize(1);
+        assertThat(result.get(0).parts().get(0).functionCall().id()).isNull();
+        assertThat(Json.toJson(result.get(0))).doesNotContain("\"id\"");
+    }
+
+    @Test
+    void fromMessageToGContent_preservesToolExecutionResultId() {
+        // Given
+        ToolExecutionResultMessage toolExecutionResultMessage =
+                ToolExecutionResultMessage.from("call-1", "stringLength", "5");
+
+        // When
+        List<GeminiContent> result =
+                PartsAndContentsMapper.fromMessageToGContent(List.of(toolExecutionResultMessage), null, false);
+
+        // Then
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).parts()).hasSize(1);
+        assertThat(result.get(0).parts().get(0).functionResponse().id()).isEqualTo("call-1");
+        assertThat(result.get(0).parts().get(0).functionResponse().name()).isEqualTo("stringLength");
+    }
+
+    @Test
+    void fromMessageToGContent_omitsToolExecutionResultIdWhenNull() {
+        // Given
+        ToolExecutionResultMessage toolExecutionResultMessage = ToolExecutionResultMessage.builder()
+                .toolName("stringLength")
+                .text("5")
+                .build();
+
+        // When
+        List<GeminiContent> result =
+                PartsAndContentsMapper.fromMessageToGContent(List.of(toolExecutionResultMessage), null, false);
+
+        // Then
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).parts()).hasSize(1);
+        assertThat(result.get(0).parts().get(0).functionResponse().id()).isNull();
+        assertThat(Json.toJson(result.get(0))).doesNotContain("\"id\"");
+    }
+
+    @Test
+    void fromMessageToGContent_preservesToolExecutionResultIdWithMultipleContents() {
+        // Given
+        ToolExecutionResultMessage toolExecutionResultMessage = ToolExecutionResultMessage.builder()
+                .id("call-1")
+                .toolName("stringLength")
+                .contents(TextContent.from("5"), TextContent.from("6"))
+                .build();
+
+        // When
+        List<GeminiContent> result =
+                PartsAndContentsMapper.fromMessageToGContent(List.of(toolExecutionResultMessage), null, false);
+
+        // Then
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).parts()).hasSize(1);
+        assertThat(result.get(0).parts().get(0).functionResponse().id()).isEqualTo("call-1");
+        assertThat(result.get(0).parts().get(0).functionResponse().name()).isEqualTo("stringLength");
+    }
+
+    @Test
     void fromMessageToGContent_systemMessageWithText() {
         SystemMessage msg = new SystemMessage("system text");
         List<GeminiContent> result = PartsAndContentsMapper.fromMessageToGContent(List.of(msg), null, false);
@@ -123,6 +302,23 @@ class PartsAndContentsMapperTest {
         assertThat(result).hasSize(1);
         assertThat(result.get(0).role()).isEqualTo("user");
         assertThat(result.get(0).parts().get(0).text()).isEqualTo("user text");
+    }
+
+    @Test
+    void fromMessageToGContent_userMessageWithTextAndImageContent() {
+        String base64Image =
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==";
+        UserMessage msg = new UserMessage(List.of(
+                new dev.langchain4j.data.message.TextContent("describe this image"),
+                ImageContent.from(base64Image, "image/png", ImageContent.DetailLevel.AUTO)));
+
+        List<GeminiContent> result = PartsAndContentsMapper.fromMessageToGContent(List.of(msg), null, false);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).role()).isEqualTo("user");
+        assertThat(result.get(0).parts()).hasSize(2);
+        assertThat(result.get(0).parts().get(0).text()).isEqualTo("describe this image");
+        assertThat(result.get(0).parts().get(1).inlineData().mimeType()).isEqualTo("image/png");
     }
 
     @Test
@@ -154,10 +350,29 @@ class PartsAndContentsMapperTest {
         assertThat(result.toolExecutionRequests()).isEmpty();
 
         // Verify generated images are stored in attributes
-        List<Image> generatedImages = GeneratedImageHelper.getGeneratedImages(result);
+        List<Image> generatedImages = result.images();
         assertThat(generatedImages).hasSize(1);
         assertThat(generatedImages.get(0).base64Data()).isEqualTo(imageBlob.data());
         assertThat(generatedImages.get(0).mimeType()).isEqualTo("image/png");
+    }
+
+    @Test
+    void fromGPartsToAiMessage_rendersExecutableCodeAsFencedBlock() {
+        // Given
+        GeminiContent.GeminiPart.GeminiExecutableCode executableCode =
+                new GeminiContent.GeminiPart.GeminiExecutableCode(
+                        GeminiContent.GeminiPart.GeminiExecutableCode.GeminiLanguage.PYTHON, "print(1)");
+        GeminiContent.GeminiPart part = GeminiContent.GeminiPart.builder()
+                .executableCode(executableCode)
+                .build();
+        List<GeminiContent.GeminiPart> parts = List.of(part);
+
+        // When
+        AiMessage result = PartsAndContentsMapper.fromGPartsToAiMessage(parts, true, null);
+
+        // Then
+        assertThat(result).isNotNull();
+        assertThat(result.text()).isEqualTo("Code executed:\n```python\nprint(1)\n```\n");
     }
 
     @Test
@@ -173,17 +388,19 @@ class PartsAndContentsMapperTest {
 
         // Then
         assertThat(result).isNotNull();
-        List<Image> generatedImages = GeneratedImageHelper.getGeneratedImages(result);
+        List<Image> generatedImages = result.images();
         assertThat(generatedImages).isEmpty(); // Should ignore non-image data
     }
 
     @Test
     void fromContentToGPart_handlesDataUriImage() {
         // Given - Create a simple base64 encoded 1x1 red pixel PNG
-        String base64Image = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==";
+        String base64Image =
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==";
         String dataUri = "data:image/png;base64," + base64Image;
 
-        // Create ImageContent with data URI (this is how images are typically sent from web clients)
+        // Create ImageContent with data URI (this is how images are typically sent from
+        // web clients)
         ImageContent imageContent = ImageContent.from(dataUri);
 
         // When - This should not throw NullPointerException
@@ -256,7 +473,8 @@ class PartsAndContentsMapperTest {
     @Test
     void fromContentToGPart_handlesDataUriWithoutBase64Marker() {
         // Given - Data URI without ";base64" marker
-        String base64Image = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==";
+        String base64Image =
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==";
         String dataUri = "data:image/png," + base64Image;
 
         ImageContent imageContent = ImageContent.from(dataUri);
@@ -274,7 +492,8 @@ class PartsAndContentsMapperTest {
     @Test
     void fromContentToGPart_handlesDataUriImageWithoutBase64Marker() {
         // Given - Data URI without ";base64" marker
-        String base64Image = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==";
+        String base64Image =
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==";
         String dataUri = "data:image/jpeg," + base64Image;
 
         ImageContent imageContent = ImageContent.from(dataUri);
@@ -405,17 +624,17 @@ class PartsAndContentsMapperTest {
     void fromContentToGPart_handlesDataUriImageWithDifferentMimeTypes() {
         // Test various image MIME types
         String base64Data = "R0lGODlhAQABAAAAACw=";
-        
+
         // GIF
         ImageContent gifContent = ImageContent.from("data:image/gif;base64," + base64Data);
         GeminiContent.GeminiPart gifResult = PartsAndContentsMapper.fromContentToGPart(gifContent);
         assertThat(gifResult.inlineData().mimeType()).isEqualTo("image/gif");
-        
+
         // WebP
         ImageContent webpContent = ImageContent.from("data:image/webp;base64," + base64Data);
         GeminiContent.GeminiPart webpResult = PartsAndContentsMapper.fromContentToGPart(webpContent);
         assertThat(webpResult.inlineData().mimeType()).isEqualTo("image/webp");
-        
+
         // SVG
         ImageContent svgContent = ImageContent.from("data:image/svg+xml;base64," + base64Data);
         GeminiContent.GeminiPart svgResult = PartsAndContentsMapper.fromContentToGPart(svgContent);
@@ -426,19 +645,22 @@ class PartsAndContentsMapperTest {
     void fromContentToGPart_handlesDataUriAudioWithDifferentMimeTypes() {
         // Test various audio MIME types
         String base64Data = "QXVkaW9EYXRh";
-        
+
         // WAV
-        Audio wavAudio = Audio.builder().url("data:audio/wav;base64," + base64Data).build();
+        Audio wavAudio =
+                Audio.builder().url("data:audio/wav;base64," + base64Data).build();
         GeminiContent.GeminiPart wavResult = PartsAndContentsMapper.fromContentToGPart(new AudioContent(wavAudio));
         assertThat(wavResult.inlineData().mimeType()).isEqualTo("audio/wav");
-        
+
         // OGG
-        Audio oggAudio = Audio.builder().url("data:audio/ogg;base64," + base64Data).build();
+        Audio oggAudio =
+                Audio.builder().url("data:audio/ogg;base64," + base64Data).build();
         GeminiContent.GeminiPart oggResult = PartsAndContentsMapper.fromContentToGPart(new AudioContent(oggAudio));
         assertThat(oggResult.inlineData().mimeType()).isEqualTo("audio/ogg");
-        
+
         // FLAC
-        Audio flacAudio = Audio.builder().url("data:audio/flac;base64," + base64Data).build();
+        Audio flacAudio =
+                Audio.builder().url("data:audio/flac;base64," + base64Data).build();
         GeminiContent.GeminiPart flacResult = PartsAndContentsMapper.fromContentToGPart(new AudioContent(flacAudio));
         assertThat(flacResult.inlineData().mimeType()).isEqualTo("audio/flac");
     }
@@ -447,20 +669,115 @@ class PartsAndContentsMapperTest {
     void fromContentToGPart_handlesDataUriVideoWithDifferentMimeTypes() {
         // Test various video MIME types
         String base64Data = "VmlkZW9EYXRh";
-        
+
         // MP4
-        Video mp4Video = Video.builder().url("data:video/mp4;base64," + base64Data).build();
+        Video mp4Video =
+                Video.builder().url("data:video/mp4;base64," + base64Data).build();
         GeminiContent.GeminiPart mp4Result = PartsAndContentsMapper.fromContentToGPart(new VideoContent(mp4Video));
         assertThat(mp4Result.inlineData().mimeType()).isEqualTo("video/mp4");
-        
+
         // WebM
-        Video webmVideo = Video.builder().url("data:video/webm;base64," + base64Data).build();
+        Video webmVideo =
+                Video.builder().url("data:video/webm;base64," + base64Data).build();
         GeminiContent.GeminiPart webmResult = PartsAndContentsMapper.fromContentToGPart(new VideoContent(webmVideo));
         assertThat(webmResult.inlineData().mimeType()).isEqualTo("video/webm");
-        
+
         // MPEG
-        Video mpegVideo = Video.builder().url("data:video/mpeg;base64," + base64Data).build();
+        Video mpegVideo =
+                Video.builder().url("data:video/mpeg;base64," + base64Data).build();
         GeminiContent.GeminiPart mpegResult = PartsAndContentsMapper.fromContentToGPart(new VideoContent(mpegVideo));
         assertThat(mpegResult.inlineData().mimeType()).isEqualTo("video/mpeg");
+    }
+
+    @Test
+    void fromContentToGPart_mapsDetailLevelToMediaResolution_whenPerPartEnabled() {
+        // Given
+        String base64Image =
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==";
+
+        // Test LOW -> MEDIA_RESOLUTION_LOW
+        ImageContent lowContent = ImageContent.from(base64Image, "image/png", ImageContent.DetailLevel.LOW);
+        GeminiContent.GeminiPart lowResult = PartsAndContentsMapper.fromContentToGPart(lowContent, true);
+        assertThat(lowResult.mediaResolution()).isNotNull();
+        assertThat(lowResult.mediaResolution().level()).isEqualTo(GeminiMediaResolutionLevel.MEDIA_RESOLUTION_LOW);
+
+        // Test MEDIUM -> MEDIA_RESOLUTION_MEDIUM
+        ImageContent mediumContent = ImageContent.from(base64Image, "image/png", ImageContent.DetailLevel.MEDIUM);
+        GeminiContent.GeminiPart mediumResult = PartsAndContentsMapper.fromContentToGPart(mediumContent, true);
+        assertThat(mediumResult.mediaResolution()).isNotNull();
+        assertThat(mediumResult.mediaResolution().level())
+                .isEqualTo(GeminiMediaResolutionLevel.MEDIA_RESOLUTION_MEDIUM);
+
+        // Test HIGH -> MEDIA_RESOLUTION_HIGH
+        ImageContent highContent = ImageContent.from(base64Image, "image/png", ImageContent.DetailLevel.HIGH);
+        GeminiContent.GeminiPart highResult = PartsAndContentsMapper.fromContentToGPart(highContent, true);
+        assertThat(highResult.mediaResolution()).isNotNull();
+        assertThat(highResult.mediaResolution().level()).isEqualTo(GeminiMediaResolutionLevel.MEDIA_RESOLUTION_HIGH);
+
+        // Test ULTRA_HIGH -> MEDIA_RESOLUTION_ULTRA_HIGH
+        ImageContent ultraHighContent =
+                ImageContent.from(base64Image, "image/png", ImageContent.DetailLevel.ULTRA_HIGH);
+        GeminiContent.GeminiPart ultraHighResult = PartsAndContentsMapper.fromContentToGPart(ultraHighContent, true);
+        assertThat(ultraHighResult.mediaResolution()).isNotNull();
+        assertThat(ultraHighResult.mediaResolution().level())
+                .isEqualTo(GeminiMediaResolutionLevel.MEDIA_RESOLUTION_ULTRA_HIGH);
+
+        // Test AUTO -> MEDIA_RESOLUTION_UNSPECIFIED
+        ImageContent autoContent = ImageContent.from(base64Image, "image/png", ImageContent.DetailLevel.AUTO);
+        GeminiContent.GeminiPart autoResult = PartsAndContentsMapper.fromContentToGPart(autoContent, true);
+        assertThat(autoResult.mediaResolution()).isNotNull();
+        assertThat(autoResult.mediaResolution().level())
+                .isEqualTo(GeminiMediaResolutionLevel.MEDIA_RESOLUTION_UNSPECIFIED);
+    }
+
+    @Test
+    void fromContentToGPart_doesNotMapMediaResolution_whenPerPartDisabled() {
+        // Given
+        String base64Image =
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==";
+        ImageContent highContent = ImageContent.from(base64Image, "image/png", ImageContent.DetailLevel.HIGH);
+
+        // When - mediaResolutionPerPartEnabled is false (default)
+        GeminiContent.GeminiPart result = PartsAndContentsMapper.fromContentToGPart(highContent, false);
+
+        // Then
+        assertThat(result.mediaResolution()).isNull();
+    }
+
+    @Test
+    void fromContentToGPart_preservesMediaResolution_forDataUriWithDetailLevel() {
+        // Given
+        String base64Image =
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==";
+        String dataUri = "data:image/png;base64," + base64Image;
+        ImageContent imageContent = new ImageContent(dataUri, ImageContent.DetailLevel.ULTRA_HIGH);
+
+        // When
+        GeminiContent.GeminiPart result = PartsAndContentsMapper.fromContentToGPart(imageContent, true);
+
+        // Then
+        assertThat(result.inlineData()).isNotNull();
+        assertThat(result.mediaResolution()).isNotNull();
+        assertThat(result.mediaResolution().level()).isEqualTo(GeminiMediaResolutionLevel.MEDIA_RESOLUTION_ULTRA_HIGH);
+    }
+
+    @Test
+    void fromMessageToGContent_propagatesMediaResolutionPerPartEnabled() {
+        // Given
+        String base64Image =
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==";
+        ImageContent imageContent = ImageContent.from(base64Image, "image/png", ImageContent.DetailLevel.HIGH);
+        UserMessage userMessage = UserMessage.from(imageContent);
+
+        // When
+        List<GeminiContent> result =
+                PartsAndContentsMapper.fromMessageToGContent(List.of(userMessage), null, false, true);
+
+        // Then
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).parts()).hasSize(1);
+        assertThat(result.get(0).parts().get(0).mediaResolution()).isNotNull();
+        assertThat(result.get(0).parts().get(0).mediaResolution().level())
+                .isEqualTo(GeminiMediaResolutionLevel.MEDIA_RESOLUTION_HIGH);
     }
 }

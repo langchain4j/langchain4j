@@ -9,22 +9,46 @@ on:
       betaVersion:
         description: "Beta release version (e.g., 1.8.0-beta15)"
         required: true
+      startFrom:
+        description: "Phase to start from (use to resume after a failed release)"
+        required: false
+        default: "core-and-parent"
+        type: choice
+        options:
+          - core-and-parent
+          - in-process-embeddings
+          - rest-of-modules
+          - commit-and-tag
 
 env:
-  STABLE_VERSION: ${{ github.event.inputs.stableVersion || github.event.client_payload.stableVersion }}
-  BETA_VERSION: ${{ github.event.inputs.betaVersion || github.event.client_payload.betaVersion }}
+  STABLE_VERSION: ${{ inputs.stableVersion }}
+  BETA_VERSION: ${{ inputs.betaVersion }}
+  # The branch to release from is the one selected in "Use workflow from",
+  # so that the workflow file and the released code always come from the same branch
+  BRANCH: ${{ github.ref_name }}
+  START_FROM: ${{ inputs.startFrom }}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
 
 jobs:
   release:
     runs-on: ubuntu-latest
     steps:
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
+          ref: ${{ env.BRANCH }}
           fetch-depth: 0
+          # PAT is required to push the version commit and release tag to a protected branch
+          token: ${{ secrets.GH_RELEASE_AUTOMATION }}
 
       - name: Set up JDK 25
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5
         with:
           java-version: '25'
           distribution: 'temurin'
@@ -37,12 +61,21 @@ jobs:
 
       - name: Show inputs
         run: |
-          echo "Stable version: ${{ env.STABLE_VERSION }}"
-          echo "Beta version: ${{ env.BETA_VERSION }}"
+          echo "Stable version: $STABLE_VERSION"
+          echo "Beta version: $BETA_VERSION"
+          echo "Branch to release from: $BRANCH"
+          echo "Start from phase: $START_FROM"
 
-      - name: Create release branch
+      - name: Compute start phase number
+        id: phase
         run: |
-          git checkout -b release-${{ env.STABLE_VERSION }}
+          case "$START_FROM" in
+            core-and-parent)       echo "num=1" >> "$GITHUB_OUTPUT" ;;
+            in-process-embeddings) echo "num=2" >> "$GITHUB_OUTPUT" ;;
+            rest-of-modules)       echo "num=3" >> "$GITHUB_OUTPUT" ;;
+            commit-and-tag)        echo "num=4" >> "$GITHUB_OUTPUT" ;;
+            *) echo "Unknown startFrom: $START_FROM" >&2; exit 1 ;;
+          esac
 
       - name: Extract current stable SNAPSHOT version from POM property
         id: extract-stable-snapshot-version
@@ -51,10 +84,10 @@ jobs:
           echo "stableVersionSnapshot=$REVISION" >> $GITHUB_OUTPUT
 
       - name: Update stable versions
-        run: mvn versions:set -DnewVersion=${{ env.STABLE_VERSION }} -DoldVersion=${{ steps.extract-stable-snapshot-version.outputs.stableVersionSnapshot }} -DgroupId=* -DartifactId=* -DgenerateBackupPoms=false
+        run: mvn versions:set -DnewVersion="$STABLE_VERSION" -DoldVersion=${{ steps.extract-stable-snapshot-version.outputs.stableVersionSnapshot }} -DgroupId=* -DartifactId=* -DgenerateBackupPoms=false
 
       - name: Update stable version property
-        run: mvn versions:set-property -Dproperty=langchain4j.stable.version -DnewVersion=${{ env.STABLE_VERSION }} -DgenerateBackupPoms=false
+        run: mvn versions:set-property -Dproperty=langchain4j.stable.version -DnewVersion="$STABLE_VERSION" -DgenerateBackupPoms=false
 
       - name: Extract current beta SNAPSHOT version from POM property
         id: extract-beta-snapshot-version
@@ -63,25 +96,21 @@ jobs:
           echo "betaVersionSnapshot=$REVISION" >> $GITHUB_OUTPUT
 
       - name: Update beta versions
-        run: mvn versions:set -DnewVersion=${{ env.BETA_VERSION }} -DoldVersion=${{ steps.extract-beta-snapshot-version.outputs.betaVersionSnapshot }} -DgroupId=* -DartifactId=* -DgenerateBackupPoms=false
+        run: mvn versions:set -DnewVersion="$BETA_VERSION" -DoldVersion=${{ steps.extract-beta-snapshot-version.outputs.betaVersionSnapshot }} -DgroupId=* -DartifactId=* -DgenerateBackupPoms=false
 
       - name: Update beta version property
-        run: mvn versions:set-property -Dproperty=langchain4j.beta.version -DnewVersion=${{ env.BETA_VERSION }} -DgenerateBackupPoms=false
+        run: mvn versions:set-property -Dproperty=langchain4j.beta.version -DnewVersion="$BETA_VERSION" -DgenerateBackupPoms=false
 
-      - name: Remove integration-tests module from root POM
-        run: sed -i '/<module>integration-tests<\/module>/d' pom.xml
-
-      - name: Remove langchain4j-docu-chatbot-updater module from root POM
-        run: sed -i '/<module>internal\/langchain4j-docu-chatbot-updater<\/module>/d' pom.xml
-
-      - name: release_core_and_parent
-        run: mvn -B -U -pl langchain4j-core,langchain4j-parent -Psign clean deploy
+      - name: Release core and parent modules
+        if: ${{ fromJSON(steps.phase.outputs.num) <= 1 }}
+        run: mvn -B -U -pl internal/langchain4j-internal-test-retry,langchain4j-core,langchain4j-parent -Psign clean deploy
         env:
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
           MAVEN_CENTRAL_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
           MAVEN_CENTRAL_PASSWORD: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
 
-      - name: release_embeddings
+      - name: Release in-process embeddings modules
+        if: ${{ fromJSON(steps.phase.outputs.num) <= 2 }}
         run: |
           EMBEDDING_MODULES=$(find embeddings -mindepth 1 -maxdepth 1 -type d -exec test -f "{}/pom.xml" \; -print | paste -sd , -)
           
@@ -94,18 +123,29 @@ jobs:
           MAVEN_CENTRAL_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
           MAVEN_CENTRAL_PASSWORD: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
 
-      - name: release_the_rest_of_modules
+      - name: Release the rest of the modules
+        if: ${{ fromJSON(steps.phase.outputs.num) <= 3 }}
         run: |
           EMBEDDING_MODULES=$(find embeddings -mindepth 1 -maxdepth 1 -type d -exec test -f "{}/pom.xml" \; -print | paste -sd , -)
           
-          EXCLUDES="!langchain4j-core,!langchain4j-parent"
+          EXCLUDES="!internal/langchain4j-internal-test-retry,!langchain4j-core,!langchain4j-parent"
 
           # Append embeddings exclusions (converted to !path syntax)
           if [ -n "$EMBEDDING_MODULES" ]; then
-            # Turn "embeddings/a,embeddings/b" into "!embeddings/a,!embeddings/b"
             EMBEDDING_MODULES_EXCLUDES=$(echo "$EMBEDDING_MODULES" | sed 's/[^,]*/!\0/g')
             EXCLUDES="$EXCLUDES,$EMBEDDING_MODULES_EXCLUDES"
           fi
+
+          # Exclude integration-tests and all its submodules
+          INTEGRATION_TEST_MODULES=$(find integration-tests -mindepth 1 -maxdepth 2 -type d -exec test -f "{}/pom.xml" \; -print | paste -sd , -)
+          EXCLUDES="$EXCLUDES,!integration-tests"
+          if [ -n "$INTEGRATION_TEST_MODULES" ]; then
+            INTEGRATION_TEST_EXCLUDES=$(echo "$INTEGRATION_TEST_MODULES" | sed 's/[^,]*/!\0/g')
+            EXCLUDES="$EXCLUDES,$INTEGRATION_TEST_EXCLUDES"
+          fi
+
+          # Exclude internal modules
+          EXCLUDES="$EXCLUDES,!internal/langchain4j-docu-chatbot-updater"
 
           echo "Excluding modules: $EXCLUDES"
     
@@ -119,36 +159,55 @@ jobs:
           MAVEN_CENTRAL_PASSWORD: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
 
       - name: Commit version changes
+        if: ${{ fromJSON(steps.phase.outputs.num) <= 4 }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add .
-          git commit -m "Release versions ${{ env.STABLE_VERSION }} and ${{ env.BETA_VERSION }}"
+          git add pom.xml '**/pom.xml'
+          git commit -m "Release versions $STABLE_VERSION and $BETA_VERSION"
 
-      - name: Push release branch
+      - name: Push
+        if: ${{ fromJSON(steps.phase.outputs.num) <= 4 }}
         run: |
-          git push origin release-${{ env.STABLE_VERSION }}
+          git push origin "$BRANCH"
 
       - name: Tag release
+        if: ${{ fromJSON(steps.phase.outputs.num) <= 4 }}
         run: |
-          git tag ${{ env.STABLE_VERSION }}
-          git push origin ${{ env.STABLE_VERSION }}
+          git tag "$STABLE_VERSION"
+          git push origin "$STABLE_VERSION"
 
       - name: Trigger release in the langchain4j/langchain4j-spring repo
-        uses: peter-evans/repository-dispatch@v4
-        with:
-          token: ${{ secrets.GH_RELEASE_AUTOMATION_PAT }}
-          repository: langchain4j/langchain4j-spring
-          event-type: trigger-release
-          client-payload: |
-            {
-              "stableVersion": "${{ env.STABLE_VERSION }}",
-              "betaVersion": "${{ env.BETA_VERSION }}"
-            }
+        env:
+          GH_TOKEN: ${{ secrets.GH_RELEASE_AUTOMATION }}
+        run: |
+          gh api repos/langchain4j/langchain4j-spring/dispatches \
+            -f event_type=trigger-release \
+            -f "client_payload[stableVersion]=$STABLE_VERSION" \
+            -f "client_payload[betaVersion]=$BETA_VERSION" \
+            -f "client_payload[branch]=$BRANCH"
 
-      - name: Publish Test Report
-        uses: mikepenz/action-junit-report@v5
-        if: success() || failure() # always run even if the previous step fails
-        with:
-          report_paths: '**/target/*-reports/TEST-*.xml'
-          annotate_only: true
+      # Docs live on main only, so a patch release from an older branch (e.g. 1.11.x) must not update them
+      - name: Check whether the docs should be updated
+        id: docs-check
+        run: |
+          git fetch --no-tags --depth=1 origin main
+          DOCS_VERSION=$(git show FETCH_HEAD:docs/docs/get-started.md | grep -E "^stableVersion:" | sed 's/stableVersion: *//')
+          OLDEST=$(printf '%s\n%s\n' "$DOCS_VERSION" "$STABLE_VERSION" | sort -V | head -1)
+          if [ "$STABLE_VERSION" = "$DOCS_VERSION" ] || [ "$OLDEST" != "$DOCS_VERSION" ]; then
+            echo "Docs are at $DOCS_VERSION, releasing $STABLE_VERSION (not newer), docs will not be updated"
+            echo "proceed=false" >> $GITHUB_OUTPUT
+          else
+            echo "Docs are at $DOCS_VERSION, they will be updated to $STABLE_VERSION"
+            echo "proceed=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Trigger documentation version update
+        if: steps.docs-check.outputs.proceed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GH_RELEASE_AUTOMATION }}
+        run: |
+          gh api repos/langchain4j/langchain4j/dispatches \
+            -f event_type=trigger-docs-update-version \
+            -f "client_payload[stableVersion]=$STABLE_VERSION" \
+            -f "client_payload[betaVersion]=$BETA_VERSION"

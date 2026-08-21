@@ -18,7 +18,7 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
-@EnabledIfEnvironmentVariable(named = "AZURE_OPENAI_KEY", matches = ".+")
+@EnabledIfEnvironmentVariable(named = "MICROSOFT_FOUNDRY_API_KEY", matches = ".+")
 class MicrosoftFoundryChatModelIT extends AbstractChatModelIT {
 
     @Override
@@ -29,9 +29,9 @@ class MicrosoftFoundryChatModelIT extends AbstractChatModelIT {
     @Override
     protected ChatModel createModelWith(ChatRequestParameters parameters) {
         OpenAiOfficialChatModel.Builder openAiChatModelBuilder = OpenAiOfficialChatModel.builder()
-                .baseUrl(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
-                .azureDeploymentName(CHAT_MODEL_NAME_ALTERNATE.asString())
+                .baseUrl(System.getenv("MICROSOFT_FOUNDRY_ENDPOINT"))
+                .apiKey(System.getenv("MICROSOFT_FOUNDRY_API_KEY"))
+                .microsoftFoundryDeploymentName(CHAT_MODEL_NAME_ALTERNATE.asString())
                 .defaultRequestParameters(parameters);
 
         if (parameters.modelName() == null) {
@@ -42,7 +42,7 @@ class MicrosoftFoundryChatModelIT extends AbstractChatModelIT {
 
     @Override
     protected String customModelName() {
-        return com.openai.models.ChatModel.GPT_4O_2024_11_20.toString();
+        return "gpt-5.1-custom";
     }
 
     @Override
@@ -53,7 +53,7 @@ class MicrosoftFoundryChatModelIT extends AbstractChatModelIT {
     @Override
     protected ChatRequestParameters createIntegrationSpecificParameters(int maxOutputTokens) {
         return OpenAiOfficialChatRequestParameters.builder()
-                .maxOutputTokens(maxOutputTokens)
+                .maxCompletionTokens(maxOutputTokens)
                 .build();
     }
 
@@ -98,4 +98,12 @@ class MicrosoftFoundryChatModelIT extends AbstractChatModelIT {
     @MethodSource("modelsSupportingImageInputs")
     @EnabledIf("supportsMultipleImageInputsAsBase64EncodedStrings")
     protected void should_accept_multiple_images_as_base64_encoded_strings(ChatModel model) {}
+
+    @Disabled("Unsupported parameter: 'max_tokens' is not supported with this model. Use 'max_completion_tokens' instead.")
+    @Override
+    protected void should_respect_maxOutputTokens_in_default_model_parameters() {}
+
+    @Disabled("Unsupported parameter: 'stop' is not supported with this model.")
+    @Override
+    protected void should_respect_stopSequences_in_default_model_parameters() {}
 }

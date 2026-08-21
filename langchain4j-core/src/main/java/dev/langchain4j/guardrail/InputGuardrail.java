@@ -22,7 +22,7 @@ public interface InputGuardrail extends Guardrail<InputGuardrailRequest, InputGu
      * <p>
      *
      * @param userMessage
-     *            the response from the LLM
+     *            the user message to be sent to the LLM
      */
     default InputGuardrailResult validate(UserMessage userMessage) {
         return failure("Validation not implemented");
@@ -31,7 +31,7 @@ public interface InputGuardrail extends Guardrail<InputGuardrailRequest, InputGu
     /**
      * Validates the input that will be sent to the LLM.
      * <p>
-     * Unlike {@link #validate(UserMessage)}, this method allows to access the memory and the augmentation result (in
+     * Unlike {@link #validate(UserMessage)}, this method allows you to access the memory and the augmentation result (in
      * the case of a RAG).
      * <p>
      * Implementation must not attempt to write to the memory or the augmentation result.
@@ -105,7 +105,7 @@ public interface InputGuardrail extends Guardrail<InputGuardrailRequest, InputGu
     }
 
     /**
-     * Produces a non-fatal failure
+     * Produces a fatal failure
      *
      * @param message
      *            A message describing the failure.

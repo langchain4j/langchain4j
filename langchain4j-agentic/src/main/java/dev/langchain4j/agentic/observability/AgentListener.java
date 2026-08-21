@@ -14,6 +14,11 @@ public interface AgentListener {
     default void afterAgenticScopeCreated(AgenticScope agenticScope) { }
     default void beforeAgenticScopeDestroyed(AgenticScope agenticScope) { }
 
+    default void onAgenticSystemSuspended(AgenticScope agenticScope) { }
+
+    default void beforeAgentToolExecution(BeforeAgentToolExecution beforeAgentToolExecution) { }
+    default void afterAgentToolExecution(AfterAgentToolExecution afterAgentToolExecution) { }
+
     /**
      * Indicates whether this listener should be used only to the agent where it is registered (default)
      * or also inherited by its subagents.

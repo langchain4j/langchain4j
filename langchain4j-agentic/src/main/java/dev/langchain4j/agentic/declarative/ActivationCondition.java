@@ -7,7 +7,7 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
 
 /**
- * Marks a method as an activation condition for one or more sub-agents of a conditional agent.
+ * Marks a method as an activation predicate for one or more sub-agents of a conditional agent.
  * The method must be static and return a boolean indicating whether the sub-agent(s) should be activated.
  * <p>
  * Example:
@@ -15,14 +15,11 @@ import java.lang.annotation.Target;
  * {@code
  *     public interface ExpertsAgent {
  *
- *         @ConditionalAgent(outputKey = "response", subAgents = {
- *                 @SubAgent(type = MedicalExpert.class, outputKey = "response"),
- *                 @SubAgent(type = TechnicalExpert.class, outputKey = "response"),
- *                 @SubAgent(type = LegalExpert.class, outputKey = "response")
- *         })
+ *         @ConditionalAgent(outputKey = "response",
+ *                 subAgents = { MedicalExpert.class, TechnicalExpert.class, LegalExpert.class })
  *         String askExpert(@V("request") String request);
  *
- *         @ActivationCondition(MedicalExpert.class)
+ *         @ActivationCondition(value = MedicalExpert.class, description = "category is medical")
  *         static boolean activateMedical(@V("category") RequestCategory category) {
  *             return category == RequestCategory.MEDICAL;
  *         }
@@ -43,5 +40,19 @@ import java.lang.annotation.Target;
 @Retention(RUNTIME)
 @Target({METHOD})
 public @interface ActivationCondition {
+
+    /**
+     * One or more sub-agent classes that this activation condition applies to.
+     *
+     * @return array of sub-agent classes.
+     */
     Class<?>[] value();
+
+    /**
+     * Description of the activation condition.
+     * It should be clear and descriptive to allow understanding the purpose of the condition.
+     *
+     * @return description of the activation condition.
+     */
+    String description() default "<unknown>";
 }

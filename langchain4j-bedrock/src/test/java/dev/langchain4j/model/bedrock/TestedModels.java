@@ -1,5 +1,6 @@
 package dev.langchain4j.model.bedrock;
 
+import dev.langchain4j.LoggingChatModelListener;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
 
@@ -15,6 +16,11 @@ public final class TestedModels {
             BedrockChatModel.builder().modelId("us.amazon.nova-lite-v1:0").build();
     public static final StreamingChatModel STREAMING_AWS_NOVA_LITE = BedrockStreamingChatModel.builder()
             .modelId("us.amazon.nova-lite-v1:0")
+            .build();
+
+    public static final ChatModel AWS_NOVA_2_LITE = BedrockChatModel.builder()
+            .modelId("global.amazon.nova-2-lite-v1:0")
+            .listeners(new LoggingChatModelListener())
             .build();
 
     public static final ChatModel AWS_NOVA_PRO =

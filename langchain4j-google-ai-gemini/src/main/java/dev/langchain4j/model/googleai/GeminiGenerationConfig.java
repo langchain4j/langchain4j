@@ -3,12 +3,14 @@ package dev.langchain4j.model.googleai;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
+import java.util.Map;
 
 @JsonInclude(JsonInclude.Include.NON_EMPTY)
 record GeminiGenerationConfig(
         @JsonProperty("stopSequences") List<String> stopSequences,
         @JsonProperty("responseMimeType") String responseMimeType,
         @JsonProperty("responseSchema") GeminiSchema responseSchema,
+        @JsonProperty("responseJsonSchema") Map<String, Object> responseJsonSchema,
         @JsonProperty("candidateCount") Integer candidateCount,
         @JsonProperty("maxOutputTokens") Integer maxOutputTokens,
         @JsonProperty("temperature") Double temperature,
@@ -20,10 +22,43 @@ record GeminiGenerationConfig(
         @JsonProperty("thinkingConfig") GeminiThinkingConfig thinkingConfig,
         @JsonProperty("responseLogprobs") Boolean responseLogprobs,
         @JsonProperty("enableEnhancedCivicAnswers") Boolean enableEnhancedCivicAnswers,
-        @JsonProperty("logprobs") Integer logprobs) {
+        @JsonProperty("responseModalities") List<GeminiResponseModality> responseModalities,
+        @JsonProperty("imageConfig") GeminiImageConfig imageConfig,
+        @JsonProperty("logprobs") Integer logprobs,
+        @JsonProperty("mediaResolution") GeminiMediaResolutionLevel mediaResolution) {
 
     static GeminiGenerationConfigBuilder builder() {
         return new GeminiGenerationConfigBuilder();
+    }
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    record GeminiImageConfig(
+            @JsonProperty("aspectRatio") String aspectRatio, @JsonProperty("imageSize") String imageSize) {
+
+        static GeminiImageConfigBuilder builder() {
+            return new GeminiImageConfigBuilder();
+        }
+
+        static class GeminiImageConfigBuilder {
+            private String aspectRatio;
+            private String imageSize;
+
+            GeminiImageConfigBuilder() {}
+
+            GeminiImageConfigBuilder aspectRatio(String aspectRatio) {
+                this.aspectRatio = aspectRatio;
+                return this;
+            }
+
+            GeminiImageConfigBuilder imageSize(String imageSize) {
+                this.imageSize = imageSize;
+                return this;
+            }
+
+            GeminiImageConfig build() {
+                return new GeminiImageConfig(aspectRatio, imageSize);
+            }
+        }
     }
 
     static class GeminiGenerationConfigBuilder {
@@ -31,6 +66,7 @@ record GeminiGenerationConfig(
         private List<String> stopSequences;
         private String responseMimeType;
         private GeminiSchema responseSchema;
+        private Map<String, Object> responseJsonSchema;
         private Integer candidateCount;
         private Integer maxOutputTokens;
         private Double temperature;
@@ -43,6 +79,9 @@ record GeminiGenerationConfig(
         private Boolean enableEnhancedCivicAnswers;
         private GeminiThinkingConfig thinkingConfig;
         private Integer logprobs;
+        private GeminiMediaResolutionLevel mediaResolution;
+        private List<GeminiResponseModality> responseModalities;
+        private GeminiImageConfig imageConfig;
 
         GeminiGenerationConfigBuilder() {}
 
@@ -58,6 +97,11 @@ record GeminiGenerationConfig(
 
         GeminiGenerationConfigBuilder responseSchema(GeminiSchema responseSchema) {
             this.responseSchema = responseSchema;
+            return this;
+        }
+
+        GeminiGenerationConfigBuilder responseJsonSchema(Map<String, Object> responseJsonSchema) {
+            this.responseJsonSchema = responseJsonSchema;
             return this;
         }
 
@@ -121,11 +165,27 @@ record GeminiGenerationConfig(
             return this;
         }
 
+        GeminiGenerationConfigBuilder mediaResolution(GeminiMediaResolutionLevel mediaResolution) {
+            this.mediaResolution = mediaResolution;
+            return this;
+        }
+
+        GeminiGenerationConfigBuilder responseModalities(List<GeminiResponseModality> responseModalities) {
+            this.responseModalities = responseModalities;
+            return this;
+        }
+
+        GeminiGenerationConfigBuilder imageConfig(GeminiImageConfig imageConfig) {
+            this.imageConfig = imageConfig;
+            return this;
+        }
+
         GeminiGenerationConfig build() {
             return new GeminiGenerationConfig(
                     stopSequences,
                     responseMimeType,
                     responseSchema,
+                    responseJsonSchema,
                     candidateCount,
                     maxOutputTokens,
                     temperature,
@@ -137,7 +197,10 @@ record GeminiGenerationConfig(
                     thinkingConfig,
                     responseLogprobs,
                     enableEnhancedCivicAnswers,
-                    logprobs);
+                    responseModalities,
+                    imageConfig,
+                    logprobs,
+                    mediaResolution);
         }
     }
 }

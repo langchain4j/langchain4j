@@ -5,21 +5,26 @@
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>1.10.0-beta18-SNAPSHOT</version>
+        <version>1.20.0-beta30-SNAPSHOT</version>
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
     <artifactId>langchain4j</artifactId>
-    <version>1.10.0-SNAPSHOT</version>
+    <version>1.20.0-SNAPSHOT</version>
     <name>LangChain4j</name>
     <description>Build LLM-powered applications in Java: chatbots, agents, RAG, and much more</description>
+
+    <properties>
+        <opennlp-tools.version>2.5.11</opennlp-tools.version>
+        <commonmark.version>0.28.0</commonmark.version>
+    </properties>
 
     <dependencies>
 
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
-            <version>1.10.0-SNAPSHOT</version>
+            <version>1.20.0-SNAPSHOT</version>
         </dependency>
 
         <dependency>
@@ -51,16 +56,19 @@
         <dependency>
             <groupId>org.commonmark</groupId>
             <artifactId>commonmark</artifactId>
+            <version>${commonmark.version}</version>
         </dependency>
 
         <dependency>
             <groupId>org.commonmark</groupId>
             <artifactId>commonmark-ext-gfm-tables</artifactId>
+            <version>${commonmark.version}</version>
         </dependency>
 
         <dependency>
             <groupId>org.commonmark</groupId>
             <artifactId>commonmark-ext-yaml-front-matter</artifactId>
+            <version>${commonmark.version}</version>
         </dependency>
 
         <!-- test dependencies -->
@@ -68,14 +76,23 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-open-ai</artifactId>
-            <version>1.10.0-SNAPSHOT</version>
+            <version>1.20.0-SNAPSHOT</version>
             <scope>test</scope>
         </dependency>
 
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
-            <version>1.10.0-SNAPSHOT</version>
+            <version>1.20.0-SNAPSHOT</version>
+            <classifier>tests</classifier>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-http-client</artifactId>
+            <version>1.20.0-SNAPSHOT</version>
             <classifier>tests</classifier>
             <type>test-jar</type>
             <scope>test</scope>
@@ -127,9 +144,15 @@
                         <goals>
                             <goal>test-jar</goal>
                         </goals>
+                        <configuration>
+                            <excludes>
+                                <exclude>junit-platform.properties</exclude>
+                            </excludes>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>
+
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-source-plugin</artifactId>
@@ -144,6 +167,7 @@
                     </execution>
                 </executions>
             </plugin>
+
             <plugin>
                 <groupId>org.honton.chas</groupId>
                 <artifactId>license-maven-plugin</artifactId>
@@ -160,6 +184,7 @@
                     </acceptableLicenses>
                 </configuration>
             </plugin>
+
         </plugins>
     </build>
 </project>

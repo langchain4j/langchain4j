@@ -63,6 +63,21 @@ class PromptTemplateTest {
     }
 
     @Test
+    void should_support_spaces_inside_double_curly_brackets() {
+
+        // given
+        PromptTemplate promptTemplate = PromptTemplate.from("My name is {{ name }}.");
+
+        Map<String, Object> variables = singletonMap("name", "Klaus");
+
+        // when
+        Prompt prompt = promptTemplate.apply(variables);
+
+        // then
+        assertThat(prompt.text()).isEqualTo("My name is Klaus.");
+    }
+
+    @Test
     void should_create_prompt_from_template_with_multiple_variables() {
 
         // given

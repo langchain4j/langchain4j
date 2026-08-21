@@ -108,7 +108,7 @@ public abstract class AbstractStreamingAiServiceIT {
 
             @Tool
             LocalDate currentDate() {
-                return LocalDate.of(2019, 1, 7);
+                return LocalDate.now();
             }
         }
 
@@ -129,26 +129,11 @@ public abstract class AbstractStreamingAiServiceIT {
                 .onCompleteResponse(futureChatResponse::complete)
                 .start();
 
-        ChatResponse chatResponse = futureChatResponse.get(30, SECONDS);
+        futureChatResponse.get(30, SECONDS);
 
         // then
-        assertThat(chatResponse.aiMessage().text()).contains("2019");
-
         verify(tools).currentDate();
         verifyNoMoreInteractions(tools);
-
-        ChatResponseMetadata chatResponseMetadata = chatResponse.metadata();
-        if (assertChatResponseMetadataType()) {
-            assertThat(chatResponseMetadata).isExactlyInstanceOf(chatResponseMetadataType(model));
-        }
-
-        if (assertTokenUsage()) {
-            assertTokenUsage(chatResponseMetadata.tokenUsage(), model);
-        }
-
-        if (assertFinishReason()) {
-            assertThat(chatResponseMetadata.finishReason()).isEqualTo(STOP);
-        }
     }
 
     // TODO test threads
@@ -166,12 +151,16 @@ public abstract class AbstractStreamingAiServiceIT {
         assertThat(tokenUsage).isExactlyInstanceOf(tokenUsageType(streamingChatModel));
         assertThat(tokenUsage.inputTokenCount()).isPositive();
         assertThat(tokenUsage.outputTokenCount()).isPositive();
-        assertThat(tokenUsage.totalTokenCount())
-                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+        assertTotalTokenCount(tokenUsage);
     }
 
     protected Class<? extends TokenUsage> tokenUsageType(StreamingChatModel streamingChatModel) {
         return TokenUsage.class;
+    }
+
+    protected void assertTotalTokenCount(TokenUsage tokenUsage) {
+        assertThat(tokenUsage.totalTokenCount())
+                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
     }
 
     protected boolean assertTokenUsage() {

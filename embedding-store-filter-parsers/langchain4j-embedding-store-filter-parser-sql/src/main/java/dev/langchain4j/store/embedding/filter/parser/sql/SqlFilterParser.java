@@ -57,13 +57,16 @@ import net.sf.jsqlparser.statement.select.PlainSelect;
  * - {@link Not}: {@code NOT(name = 'Klaus')} / {@code NOT name = 'Klaus'}
  * - {@link Or}: {@code name = 'Klaus' OR age = 18}
  *
- * - YEAR/MONTH(CURDATE()): For example, {@code year = YEAR(CURDATE())} to get the current year. Provided {@link Clock} will be used to resolve {@code CURDATE()}.
+ * - YEAR/MONTH/WEEKOFYEAR/DAYOFYEAR/DAYOFMONTH/DAYOFWEEK(CURDATE()): For example, {@code year = YEAR(CURDATE())} to get the current year. Provided {@link Clock} will be used to resolve {@code CURDATE()}.
  * - EXTRACT(YEAR/MONTH/WEEK/DAY/DOW/DOY/HOUR/MINUTE FROM CURRENT_DATE/CURRENT_TIME/CURRENT_TIMESTAMP): For example: {@code year = EXTRACT(YEAR FROM CURRENT_DATE)} to get the current year. Provided {@link Clock} will be used to resolve {@code CURRENT_DATE}.
  *
  * - Arithmetic: {@code +}, {@code -}, {@code *}, {@code /}. For example: {@code year = YEAR(CURDATE()) - 1} to get previous year.
  *
  * - Parentheses: {@code (name = 'Klaus' OR name = 'Francine') AND age = 18}. Expressions within parentheses are evaluated first.
  * </pre>
+ * Values inside {@code IN}/{@code NOT IN} lists can be any of the expressions listed above,
+ * for example {@code age IN (-1, 2 + 3)} or {@code year IN (YEAR(CURDATE()), YEAR(CURDATE()) - 1)}.
+ * <br>
  * If you require additional operations,
  * please <a href="https://github.com/langchain4j/langchain4j/issues/new/choose">open an issue</a>.
  * <br>
@@ -169,24 +172,16 @@ public class SqlFilterParser implements FilterParser {
     private Filter mapInExpression(InExpression inExpression) {
         String key = getKey(inExpression.getLeftExpression());
 
+        Expression rightExpression = inExpression.getRightExpression();
+        if (!(rightExpression instanceof ExpressionList<?> expressionList)) {
+            throw illegalArgument(
+                    "Unsupported expression: '%s'%s", rightExpression, createGithubIssueLink(rightExpression));
+        }
+
         Collection<Object> comparisonValues = new ArrayList<>();
-        inExpression.getRightExpression().accept(new ExpressionVisitorAdapter() {
-
-            @Override
-            public void visit(StringValue value) {
-                comparisonValues.add(value.getValue());
-            }
-
-            @Override
-            public void visit(LongValue value) {
-                comparisonValues.add(value.getValue());
-            }
-
-            @Override
-            public void visit(DoubleValue value) {
-                comparisonValues.add(value.getValue());
-            }
-        });
+        for (Expression expression : expressionList) {
+            comparisonValues.add(getValue(expression));
+        }
 
         if (inExpression.isNot()) {
             return new IsNotIn(key, comparisonValues);
@@ -199,7 +194,8 @@ public class SqlFilterParser implements FilterParser {
         String key = getKey(between.getLeftExpression());
         Comparable<?> from = getValue(between.getBetweenExpressionStart());
         Comparable<?> to = getValue(between.getBetweenExpressionEnd());
-        return new IsGreaterThanOrEqualTo(key, from).and(new IsLessThanOrEqualTo(key, to));
+        Filter range = new IsGreaterThanOrEqualTo(key, from).and(new IsLessThanOrEqualTo(key, to));
+        return between.isNot() ? new Not(range) : range;
     }
 
     private String getKey(BinaryExpression binaryExpression) {
@@ -211,7 +207,12 @@ public class SqlFilterParser implements FilterParser {
             return column.getColumnName();
         } else if (expression instanceof Function function) {
             String name = function.getName();
-            if (name.equalsIgnoreCase("YEAR") || name.equalsIgnoreCase("MONTH")) {
+            if (name.equalsIgnoreCase("YEAR")
+                    || name.equalsIgnoreCase("MONTH")
+                    || name.equalsIgnoreCase("WEEKOFYEAR")
+                    || name.equalsIgnoreCase("DAYOFYEAR")
+                    || name.equalsIgnoreCase("DAYOFMONTH")
+                    || name.equalsIgnoreCase("DAYOFWEEK")) {
                 ExpressionList<?> parameters = function.getParameters();
                 if (parameters != null && parameters.size() == 1) {
                     Expression parameter = parameters.get(0);
@@ -235,15 +236,15 @@ public class SqlFilterParser implements FilterParser {
             return ((LongValue) expression).getValue();
         } else if (expression instanceof DoubleValue) {
             return ((DoubleValue) expression).getValue();
-        } else if (expression instanceof SignedExpression) {
-            SignedExpression signedExpression = (SignedExpression) expression;
-            if (signedExpression.getSign() == '-') {
-                if (signedExpression.getExpression() instanceof LongValue) {
-                    String stringValue = signedExpression.getExpression().toString();
-                    return Long.parseLong("-" + stringValue);
-                } else if (signedExpression.getExpression() instanceof DoubleValue) {
-                    String stringValue = signedExpression.getExpression().toString();
-                    return Double.parseDouble("-" + stringValue);
+        } else if (expression instanceof SignedExpression signedExpression) {
+            char sign = signedExpression.getSign();
+            if (sign == '-' || sign == '+') {
+                Expression innerExpression = signedExpression.getExpression();
+                String stringValue = sign + innerExpression.toString();
+                if (innerExpression instanceof LongValue) {
+                    return Long.parseLong(stringValue);
+                } else if (innerExpression instanceof DoubleValue) {
+                    return Double.parseDouble(stringValue);
                 }
             }
         } else if (expression instanceof Function) {
@@ -264,8 +265,36 @@ public class SqlFilterParser implements FilterParser {
                         return currentMonth();
                     }
                 }
+            } else if (function.getName().equalsIgnoreCase("WEEKOFYEAR")) {
+                ExpressionList<?> parameters = function.getParameters();
+                if (parameters.size() == 1 && parameters.get(0) instanceof Function function2) {
+                    if (function2.getName().equalsIgnoreCase("CURDATE")) {
+                        return currentWeekOfYear();
+                    }
+                }
+            } else if (function.getName().equalsIgnoreCase("DAYOFYEAR")) {
+                ExpressionList<?> parameters = function.getParameters();
+                if (parameters.size() == 1 && parameters.get(0) instanceof Function) {
+                    Function function2 = (Function) parameters.get(0);
+                    if (function2.getName().equalsIgnoreCase("CURDATE")) {
+                        return currentDayOfYear();
+                    }
+                }
+            } else if (function.getName().equalsIgnoreCase("DAYOFMONTH")) {
+                ExpressionList<?> parameters = function.getParameters();
+                if (parameters.size() == 1 && parameters.get(0) instanceof Function function2) {
+                    if (function2.getName().equalsIgnoreCase("CURDATE")) {
+                        return currentDayOfMonth();
+                    }
+                }
+            } else if (function.getName().equalsIgnoreCase("DAYOFWEEK")) {
+                ExpressionList<?> parameters = function.getParameters();
+                if (parameters.size() == 1 && parameters.get(0) instanceof Function function2) {
+                    if (function2.getName().equalsIgnoreCase("CURDATE")) {
+                        return currentDayOfWeek();
+                    }
+                }
             }
-            // TODO add other
         } else if (expression instanceof ExtractExpression) {
             ExtractExpression extractExpression = (ExtractExpression) expression;
             if (extractExpression.getExpression() instanceof TimeKeyExpression) {
@@ -291,7 +320,7 @@ public class SqlFilterParser implements FilterParser {
                             return currentHour();
                         case "MINUTE":
                             return currentMinute();
-                            // TODO add other
+                        // TODO add other
                     }
                 } else {
                     // TODO parse timestamp?

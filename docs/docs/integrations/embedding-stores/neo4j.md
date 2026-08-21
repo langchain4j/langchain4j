@@ -461,7 +461,7 @@ And then pass it to the builder:
 Neo4jGraph neo4jGraph = /* Neo4jGraph instance */;
 
 // ChatModel instance, e.g. OpenAiChatModel
-ChatModel chatLanguageModel = OpenAiChatModel.builder()
+ChatModel chatModel = OpenAiChatModel.builder()
         .apiKey(OPENAI_API_KEY)
         .modelName(GPT_4_O_MINI)
         .build();
@@ -469,7 +469,7 @@ ChatModel chatLanguageModel = OpenAiChatModel.builder()
 // Neo4jText2CypherRetriever instance
 Neo4jText2CypherRetriever retriever = Neo4jText2CypherRetriever.builder()
         .graph(neo4jGraph)
-        .chatLanguageModel(chatLanguageModel)
+        .chatModel(chatModel)
         .build();
 ```
 
@@ -506,7 +506,7 @@ Neo4jGraph neo4jGraph = Neo4jGraph.builder()
 
 Neo4jText2CypherRetriever retriever = Neo4jText2CypherRetriever.builder()
     .graph(neo4jGraph)
-    .chatLanguageModel(chatLanguageModel)
+    .chatModel(chatModel)
     .build();
 ```
 
@@ -526,7 +526,7 @@ Neo4jGraph neo4jGraph = Neo4jGraph.builder()
 // create a Neo4jText2CypherRetriever instance
 Neo4jText2CypherRetriever retriever = Neo4jText2CypherRetriever.builder()
         .graph(neo4jGraph)
-        .chatLanguageModel(chatLanguageModel)
+        .chatModel(chatModel)
         .build();
 
 Query query = new Query("Who is the author of the book 'Dune'?");
@@ -1053,7 +1053,7 @@ public static void customEmbeddingStore() {
 ```
 - `Neo4jText2CypherRetriever`:
 ```java
-    private final ChatLanguageModel chatLanguageModel;
+    private final ChatModel chatModel;
 
     public void Neo4jText2CypherRetriever() {
         try (
@@ -1071,7 +1071,7 @@ public static void customEmbeddingStore() {
                     
                     Neo4jText2CypherRetriever retriever = Neo4jText2CypherRetriever.builder()
                             .graph(graph)
-                            .chatLanguageModel(chatLanguageModel)
+                            .chatModel(chatModel)
                             .build();
 
                     Query query = new Query("Who is the author of the book 'Dune'?");

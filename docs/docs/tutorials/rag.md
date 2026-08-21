@@ -32,8 +32,8 @@ thus capturing deeper semantic meanings.
 - Hybrid. Combining multiple search methods (e.g., full-text + vector) usually improves the effectiveness of the search.
 
 Currently, this page focuses mostly on vector search.
-Full-text and hybrid search are currently supported only by Azure AI Search integration,
-see `AzureAiSearchContentRetriever` for more details.
+Full-text and hybrid search are currently supported only by Azure AI Search integration and Elasticsearch,
+see `AzureAiSearchContentRetriever` and `ElasticsearchContentRetriever` for more details.
 We plan to expand the RAG toolbox to include full-text and hybrid search in the near future.
 
 
@@ -105,7 +105,7 @@ adjusting and customizing more and more aspects.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-easy-rag</artifactId>
-    <version>1.9.1-beta17</version>
+    <version>1.19.0-beta29</version>
 </dependency>
 ```
 
@@ -284,6 +284,8 @@ To parse each of these formats, there's a `DocumentParser` interface with severa
 (e.g. DOC, DOCX, PPT, PPTX, XLS, XLSX, etc.)
 - `ApacheTikaDocumentParser` from the `langchain4j-document-parser-apache-tika` module,
 which can automatically detect and parse almost all existing file formats
+- `DoclingDocumentParser` from the `langchain4j-document-parser-docling` module, 
+  which uses [Docling Java](https://docling-project.github.io/docling-java/current/) and [Docling](https://docling.ai) to process documents.
 - `MarkdownDocumentParser` from the `langchain4j-document-parser-markdown` module,
   which can parse files in markdown format
 - `YamlDocumentParser` from the `langchain4j-document-parser-yaml` module,
@@ -537,6 +539,42 @@ Currently supported embedding models can be found [here](/category/embedding-mod
 - `EmbeddingModel.dimension()` returns the dimension of the `Embedding` produced by this model
 </details>
 
+#### Request/response API and per-call parameters
+
+Besides the convenience methods above, `EmbeddingModel` accepts an `EmbeddingRequest` and returns an
+`EmbeddingResponse`, which lets you pass **per-call parameters**:
+
+```java
+EmbeddingResponse response = embeddingModel.embed(EmbeddingRequest.builder()
+    .input("What is the capital of France?")
+    .inputType(EmbeddingInputType.QUERY) // query vs document, see the section below
+    .dimensions(256)                     // reduce output dimensionality (on models that support it)
+    .build());
+
+List<Embedding> embeddings = response.embeddings();
+```
+
+Per-call parameters are strictly opt-in: each provider declares what it supports via `supportedParameters()`.
+If a request uses a parameter the model does not support, it fails fast with `UnsupportedFeatureException`
+rather than silently ignoring it. See also
+[Query vs Document Embeddings](#query-vs-document-embeddings-opt-in).
+
+#### Multimodal embeddings
+
+Some models embed images (and interleaved text + image) into the same vector space. Build inputs from `Content`
+parts; on models that support it (Cohere Embed v4, Voyage multimodal, Google Gemini Embedding 2, Amazon Titan
+Multimodal, Jina CLIP, ...) the parts are fused into a single embedding:
+
+```java
+EmbeddingResponse response = embeddingModel.embed(EmbeddingRequest.builder()
+    .input(TextContent.from("a photo of a cat"), ImageContent.from("https://example.com/cat.png"))
+    .build());
+```
+
+A model declares its supported modalities via `supportedContentTypes()`; passing an image to a text-only model
+fails fast with `UnsupportedFeatureException`. `EmbeddingModel` observability (listeners) is described in the
+[Observability](/tutorials/observability) tutorial.
+
 
 ### Embedding Store
 The `EmbeddingStore` interface represents a store for `Embedding`s, also known as vector database.
@@ -666,6 +704,25 @@ EmbeddingStoreIngestor ingestor = EmbeddingStoreIngestor.builder()
     .build();
 ```
 
+#### Query vs Document Embeddings (opt-in)
+
+Some embedding models (e.g. Cohere Embed v4, Voyage, Google) produce better retrieval quality when documents
+and queries are embedded differently. You can opt in by declaring the input type: `DOCUMENT` on the
+`EmbeddingStoreIngestor` (for the indexed segments) and `QUERY` on the `EmbeddingStoreContentRetriever` (for the
+query, see [Embedding Store Content Retriever](#embedding-store-content-retriever)).
+
+```java
+EmbeddingStoreIngestor ingestor = EmbeddingStoreIngestor.builder()
+    .embeddingModel(embeddingModel)
+    .embeddingStore(embeddingStore)
+    .embeddingInputType(EmbeddingInputType.DOCUMENT)
+    .build();
+```
+
+When `embeddingInputType` is not set, no input type is sent. When it is set, the selected `EmbeddingModel` must
+support the input type parameter (see its `supportedParameters()`), otherwise embedding fails fast with
+`UnsupportedFeatureException`.
+
 
 ## Naive RAG
 
@@ -787,6 +844,8 @@ Some known approaches to improve retrieval include:
 
 More details can be found [here](https://blog.langchain.dev/query-transformations/).
 
+LangChain4j also has an optional community [Prompt Repetition](/integrations/prompt-repetition/) module that provides `RepeatingQueryTransformer`. It repeats the retrieval query before content retrieval and should be used to transform the query itself, not the final augmented prompt sent to the model.
+
 #### Default Query Transformer
 `DefaultQueryTransformer` is the default implementation used in `DefaultRetrievalAugmentor`.
 It does not make any modifications to the `Query`, it just passes it through.
@@ -866,6 +925,19 @@ InvocationParameters parameters = InvocationParameters.from(Map.of("userId", "12
 String response = assistant.chat("Hello", parameters);
 ```
 
+To embed the query with `input_type=query` (pairing with the ingestor's `DOCUMENT`, see
+[Query vs Document Embeddings](#query-vs-document-embeddings-opt-in)), set the input type on the retriever:
+
+```java
+ContentRetriever contentRetriever = EmbeddingStoreContentRetriever.builder()
+    .embeddingStore(embeddingStore)
+    .embeddingModel(embeddingModel)
+    .embeddingInputType(EmbeddingInputType.QUERY)
+    .build();
+```
+
+The default is unchanged (no input type is sent). The `EmbeddingModel` must support the `input_type` parameter.
+
 #### Web Search Content Retriever
 `WebSearchContentRetriever` retrieves relevant `Content` from the web using a `WebSearchEngine`.
 
@@ -908,6 +980,13 @@ Please refer to the `AzureAiSearchContentRetriever` Javadoc for more information
 It converts natural language queries into Neo4j Cypher queries
 and retrieves relevant information by running these queries in Neo4j.
 It can be found in the `langchain4j-community-neo4j-retriever` module.
+
+#### Elasticsearch Content Retriever
+`ElasticsearchContentRetriever` is an integration with
+[Elasticsearch](https://www.elastic.co/elasticsearch).
+It supports full-text, vector, and hybrid search.
+It can be found in the `langchain4j-elasticsearch` module.
+Please refer to the `ElasticsearchContentRetriever` Javadoc for more information.
 
 ### Query Router
 `QueryRouter` is responsible for routing `Query` to the appropriate `ContentRetriever`(s).
@@ -1023,6 +1102,62 @@ assistant.chat("How to do Easy RAG with LangChain4j?")
     .onCompleteResponse(...)
     .onError(...)
     .start();
+```
+
+## Controlling what is stored in chat memory
+
+When using a `RetrievalAugmentor` with [AI Services](/tutorials/ai-services),
+you can control whether the **augmented** user message (with retrieved `Content` injected)
+or the **original** user message is stored in chat memory.
+
+This behavior is configured using the `storeRetrievedContentInChatMemory` option
+on the `AiServices` builder.
+
+### Configuration
+
+- `true` (default)  
+  Stores the **augmented** `UserMessage` (original query plus retrieved content)
+  in chat memory.  
+  The same augmented message is also sent to the LLM.
+
+- `false`  
+  Stores only the **original** `UserMessage` (without retrieved content)
+  in chat memory.  
+  The augmented message is still sent to the LLM during inference.
+
+Storing only the original user message can be useful when you want to keep
+chat history concise and aligned with the user’s actual input,
+while still providing the LLM with retrieved context for answer generation.
+
+### Example
+
+```java
+interface Assistant {
+
+    String chat(String userMessage);
+}
+
+ChatModel chatModel = OpenAiChatModel.builder()
+    .apiKey(System.getenv("OPENAI_API_KEY"))
+    .modelName(GPT_4_O_MINI)
+    .build();
+
+MessageWindowChatMemory chatMemory =
+    MessageWindowChatMemory.withMaxMessages(10);
+
+RetrievalAugmentor retrievalAugmentor =
+    DefaultRetrievalAugmentor.builder()
+        .contentRetriever(
+            EmbeddingStoreContentRetriever.from(embeddingStore, embeddingModel))
+        .build();
+
+Assistant assistant = AiServices.builder(Assistant.class)
+    .chatModel(chatModel)
+    .chatMemory(chatMemory)
+    .retrievalAugmentor(retrievalAugmentor)
+    // Store only the original user message in chat memory
+    .storeRetrievedContentInChatMemory(false)
+    .build();
 ```
 
 

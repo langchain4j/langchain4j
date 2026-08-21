@@ -1,15 +1,14 @@
 package dev.langchain4j.store.embedding;
 
-import dev.langchain4j.data.document.Metadata;
-import dev.langchain4j.data.embedding.Embedding;
-import dev.langchain4j.data.segment.TextSegment;
-import org.junit.jupiter.api.Test;
-
-import java.util.UUID;
-
 import static dev.langchain4j.store.embedding.TestUtils.awaitUntilAsserted;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.data.Percentage.withPercentage;
+
+import dev.langchain4j.data.document.Metadata;
+import dev.langchain4j.data.embedding.Embedding;
+import dev.langchain4j.data.segment.TextSegment;
+import java.util.UUID;
+import org.junit.jupiter.api.Test;
 
 /**
  * A minimum set of tests that each implementation of {@link EmbeddingStore} must pass.
@@ -32,6 +31,7 @@ public abstract class EmbeddingStoreIT extends EmbeddingStoreWithoutMetadataIT {
 
         EmbeddingSearchRequest searchRequest = EmbeddingSearchRequest.builder()
                 .queryEmbedding(embedding)
+                .query("hello")
                 .maxResults(1)
                 .build();
 
@@ -43,7 +43,7 @@ public abstract class EmbeddingStoreIT extends EmbeddingStoreWithoutMetadataIT {
 
         assertThat(searchResult.matches()).hasSize(1);
         EmbeddingMatch<TextSegment> match = searchResult.matches().get(0);
-        assertThat(match.score()).isCloseTo(1, withPercentage(1));
+        assertScore(match, 1);
         assertThat(match.embeddingId()).isEqualTo(id);
         if (assertEmbedding()) {
             assertThat(match.embedding()).isEqualTo(embedding);
@@ -68,7 +68,8 @@ public abstract class EmbeddingStoreIT extends EmbeddingStoreWithoutMetadataIT {
         assertThat(match.embedded().metadata().getLong("long_0")).isEqualTo(0L);
         assertThat(match.embedded().metadata().getLong("long_1")).isEqualTo(1L);
         if (testLong1746714878034235396()) {
-            assertThat(match.embedded().metadata().getLong("long_1746714878034235396")).isEqualTo(1746714878034235396L);
+            assertThat(match.embedded().metadata().getLong("long_1746714878034235396"))
+                    .isEqualTo(1746714878034235396L);
         }
         assertThat(match.embedded().metadata().getLong("long_max")).isEqualTo(Long.MAX_VALUE);
 
@@ -81,12 +82,17 @@ public abstract class EmbeddingStoreIT extends EmbeddingStoreWithoutMetadataIT {
             assertThat(match.embedded().metadata().getFloat("float_max")).isEqualTo(Float.MAX_VALUE);
         } else {
             double floatPercentage = floatPercentage();
-            assertThat(match.embedded().metadata().getFloat("float_min")).isCloseTo(-Float.MAX_VALUE, withPercentage(floatPercentage));
-            assertThat(match.embedded().metadata().getFloat("float_minus_1")).isCloseTo(-1f, withPercentage(floatPercentage));
-            assertThat(match.embedded().metadata().getFloat("float_0")).isCloseTo(Float.MIN_VALUE, withPercentage(floatPercentage));
+            assertThat(match.embedded().metadata().getFloat("float_min"))
+                    .isCloseTo(-Float.MAX_VALUE, withPercentage(floatPercentage));
+            assertThat(match.embedded().metadata().getFloat("float_minus_1"))
+                    .isCloseTo(-1f, withPercentage(floatPercentage));
+            assertThat(match.embedded().metadata().getFloat("float_0"))
+                    .isCloseTo(Float.MIN_VALUE, withPercentage(floatPercentage));
             assertThat(match.embedded().metadata().getFloat("float_1")).isCloseTo(1f, withPercentage(floatPercentage));
-            assertThat(match.embedded().metadata().getFloat("float_123")).isCloseTo(1.23456789f, withPercentage(floatPercentage));
-            assertThat(match.embedded().metadata().getFloat("float_max")).isCloseTo(Float.MAX_VALUE, withPercentage(floatPercentage));
+            assertThat(match.embedded().metadata().getFloat("float_123"))
+                    .isCloseTo(1.23456789f, withPercentage(floatPercentage));
+            assertThat(match.embedded().metadata().getFloat("float_max"))
+                    .isCloseTo(Float.MAX_VALUE, withPercentage(floatPercentage));
         }
 
         if (testDoubleExactly()) {
@@ -96,10 +102,14 @@ public abstract class EmbeddingStoreIT extends EmbeddingStoreWithoutMetadataIT {
             assertThat(match.embedded().metadata().getDouble("double_123")).isEqualTo(1.23456789d);
         } else {
             double doublePercentage = doublePercentage();
-            assertThat(match.embedded().metadata().getDouble("double_minus_1")).isCloseTo(-1d, withPercentage(doublePercentage));
-            assertThat(match.embedded().metadata().getDouble("double_0")).isCloseTo(Double.MIN_VALUE, withPercentage(doublePercentage));
-            assertThat(match.embedded().metadata().getDouble("double_1")).isCloseTo(1d, withPercentage(doublePercentage));
-            assertThat(match.embedded().metadata().getDouble("double_123")).isCloseTo(1.23456789d, withPercentage(doublePercentage));
+            assertThat(match.embedded().metadata().getDouble("double_minus_1"))
+                    .isCloseTo(-1d, withPercentage(doublePercentage));
+            assertThat(match.embedded().metadata().getDouble("double_0"))
+                    .isCloseTo(Double.MIN_VALUE, withPercentage(doublePercentage));
+            assertThat(match.embedded().metadata().getDouble("double_1"))
+                    .isCloseTo(1d, withPercentage(doublePercentage));
+            assertThat(match.embedded().metadata().getDouble("double_123"))
+                    .isCloseTo(1.23456789d, withPercentage(doublePercentage));
         }
     }
 

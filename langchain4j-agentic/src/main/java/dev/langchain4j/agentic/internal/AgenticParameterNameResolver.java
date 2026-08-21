@@ -1,11 +1,13 @@
 package dev.langchain4j.agentic.internal;
 
-import java.lang.reflect.Parameter;
-import dev.langchain4j.agentic.declarative.K;
-import dev.langchain4j.service.ParameterNameResolver;
-import dev.langchain4j.service.V;
-
 import static dev.langchain4j.agentic.internal.AgentUtil.keyName;
+
+import dev.langchain4j.agentic.declarative.K;
+import dev.langchain4j.service.MemoryId;
+import dev.langchain4j.service.ParameterNameResolver;
+import dev.langchain4j.service.UserMessage;
+import dev.langchain4j.service.V;
+import java.lang.reflect.Parameter;
 
 public class AgenticParameterNameResolver implements ParameterNameResolver {
 
@@ -26,6 +28,17 @@ public class AgenticParameterNameResolver implements ParameterNameResolver {
             return keyName(k.value());
         }
 
-        return parameter.isNamePresent() ? parameter.getName() : null;
+        if (parameter.getAnnotation(MemoryId.class) != null) {
+            return "@MemoryId";
+        }
+        if (parameter.getAnnotation(UserMessage.class) != null) {
+            return "@UserMessage";
+        }
+
+        if (parameter.isNamePresent()) {
+            return parameter.getName();
+        }
+
+        return null;
     }
 }

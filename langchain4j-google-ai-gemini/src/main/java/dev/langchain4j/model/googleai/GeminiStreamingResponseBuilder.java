@@ -1,5 +1,6 @@
 package dev.langchain4j.model.googleai;
 
+import static dev.langchain4j.data.message.AiMessage.GENERATED_IMAGES_KEY;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.model.googleai.FinishReasonMapper.fromGFinishReasonToFinishReason;
 import static dev.langchain4j.model.googleai.PartsAndContentsMapper.fromGPartsToAiMessage;
@@ -8,7 +9,6 @@ import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiCandidate;
 import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiUsageMetadata;
 import dev.langchain4j.model.output.FinishReason;
@@ -60,7 +60,12 @@ class GeminiStreamingResponseBuilder {
             return new TextAndTools(Optional.empty(), Optional.empty(), List.of());
         }
 
-        GeminiCandidate firstCandidate = partialResponse.candidates().get(0);
+        List<GeminiCandidate> candidates = partialResponse.candidates();
+        if (candidates == null || candidates.isEmpty()) {
+            return new TextAndTools(Optional.empty(), Optional.empty(), List.of());
+        }
+
+        GeminiCandidate firstCandidate = candidates.get(0);
 
         updateId(partialResponse);
         updateModelName(partialResponse);
@@ -90,7 +95,7 @@ class GeminiStreamingResponseBuilder {
         AiMessage aiMessage = createAiMessage();
         return ChatResponse.builder()
                 .aiMessage(aiMessage)
-                .metadata(ChatResponseMetadata.builder()
+                .metadata(GoogleAiGeminiChatResponseMetadata.builder()
                         .id(id.get())
                         .modelName(modelName.get())
                         .tokenUsage(tokenUsage.get())
@@ -113,10 +118,13 @@ class GeminiStreamingResponseBuilder {
 
     private void updateTokenUsage(GeminiUsageMetadata usageMetadata) {
         if (usageMetadata != null) {
-            TokenUsage tokenUsage = new TokenUsage(
-                    usageMetadata.promptTokenCount(),
-                    usageMetadata.candidatesTokenCount(),
-                    usageMetadata.totalTokenCount());
+            TokenUsage tokenUsage = GoogleAiGeminiTokenUsage.builder()
+                    .inputTokenCount(usageMetadata.promptTokenCount())
+                    .outputTokenCount(usageMetadata.candidatesTokenCount())
+                    .totalTokenCount(usageMetadata.totalTokenCount())
+                    .cachedContentTokenCount(usageMetadata.cachedContentTokenCount())
+                    .thoughtsTokenCount(usageMetadata.thoughtsTokenCount())
+                    .build();
             this.tokenUsage.set(tokenUsage);
         }
     }
@@ -130,10 +138,26 @@ class GeminiStreamingResponseBuilder {
     private void updateContentAndFunctionCalls(AiMessage message) {
         Optional.ofNullable(message.text()).ifPresent(contentBuilder::append);
         Optional.ofNullable(message.thinking()).ifPresent(thoughtBuilder::append);
-        attributes.putAll(message.attributes());
+        mergeAttributes(message.attributes());
         if (message.hasToolExecutionRequests()) {
             functionCalls.addAll(message.toolExecutionRequests());
         }
+    }
+
+    private void mergeAttributes(Map<String, Object> partialAttributes) {
+        partialAttributes.forEach((key, value) -> {
+            if (GENERATED_IMAGES_KEY.equals(key)) {
+                attributes.merge(key, value, GeminiStreamingResponseBuilder::concatenate);
+            } else {
+                attributes.put(key, value);
+            }
+        });
+    }
+
+    private static Object concatenate(Object existing, Object added) {
+        List<Object> concatenated = new ArrayList<>((List<?>) existing);
+        concatenated.addAll((List<?>) added);
+        return concatenated;
     }
 
     private AiMessage createAiMessage() {

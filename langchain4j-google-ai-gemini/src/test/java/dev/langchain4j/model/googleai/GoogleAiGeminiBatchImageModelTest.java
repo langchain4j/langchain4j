@@ -1,0 +1,1061 @@
+package dev.langchain4j.model.googleai;
+
+import static dev.langchain4j.model.batch.BatchState.CANCELLED;
+import static dev.langchain4j.model.batch.BatchState.FAILED;
+import static dev.langchain4j.model.batch.BatchState.PENDING;
+import static dev.langchain4j.model.batch.BatchState.RUNNING;
+import static dev.langchain4j.model.batch.BatchState.SUCCEEDED;
+import static dev.langchain4j.model.googleai.GeminiService.BatchOperationType.BATCH_GENERATE_CONTENT;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.langchain4j.data.image.Image;
+import dev.langchain4j.http.client.MockHttpClient;
+import dev.langchain4j.http.client.MockHttpClientBuilder;
+import dev.langchain4j.http.client.SuccessfulHttpResponse;
+import dev.langchain4j.model.batch.BatchError;
+import dev.langchain4j.model.batch.BatchPage;
+import dev.langchain4j.model.batch.BatchPagination;
+import dev.langchain4j.model.batch.BatchState;
+import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateFileRequest;
+import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateRequest;
+import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateResponse;
+import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateResponse.InlinedResponseWrapper;
+import dev.langchain4j.model.googleai.BatchRequestResponse.BatchFileRequest;
+import dev.langchain4j.model.googleai.BatchRequestResponse.ListOperationsResponse;
+import dev.langchain4j.model.googleai.BatchRequestResponse.Operation;
+import dev.langchain4j.model.googleai.GeminiContent.GeminiPart;
+import dev.langchain4j.model.googleai.GeminiContent.GeminiPart.GeminiBlob;
+import dev.langchain4j.model.googleai.GeminiFiles.GeminiFile;
+import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiCandidate;
+import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiCandidate.GeminiFinishReason;
+import dev.langchain4j.model.googleai.jsonl.JsonLinesWriters;
+import dev.langchain4j.model.output.Response;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.mockito.ArgumentCaptor;
+import org.mockito.ArgumentMatchers;
+import org.mockito.Captor;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+@ExtendWith(MockitoExtension.class)
+class GoogleAiGeminiBatchImageModelTest {
+
+    private static final String MODEL_NAME = "gemini-2.5-flash-image";
+    private static final String API_KEY = "test-api-key";
+    private static final String TEST_IMAGE_BASE64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk";
+    private static final String TEST_MIME_TYPE = "image/png";
+
+    @Mock
+    private GeminiService mockGeminiService;
+
+    @Captor
+    private ArgumentCaptor<BatchCreateRequest<GeminiGenerateContentRequest>> batchRequestCaptor;
+
+    private GoogleAiGeminiBatchImageModel subject;
+
+    @BeforeEach
+    void setUp() {
+        subject = createSubject();
+    }
+
+    @Nested
+    class CreateBatch {
+
+        @Test
+        void should_submit_with_valid_requests() {
+            // given
+            var displayName = "Test Image Batch";
+            var priority = 1L;
+            var prompts = List.of("A serene mountain landscape", "A futuristic cityscape", "A cute cartoon cat");
+            var expectedOperation = createPendingOperation("batches/test-123", PENDING);
+            when(mockGeminiService.<GeminiGenerateContentRequest, GeminiGenerateContentResponse>batchCreate(
+                            any(),
+                            ArgumentMatchers.<BatchCreateRequest<GeminiGenerateContentRequest>>any(),
+                            eq(BATCH_GENERATE_CONTENT)))
+                    .thenReturn(expectedOperation);
+
+            // when
+            var result = subject.submit(GeminiBatchRequest.from(prompts, displayName, priority));
+
+            // then
+            assertThat(result.state().isTerminal()).isFalse();
+            assertThat(result.batchId()).isEqualTo("batches/test-123");
+            assertThat(result.state()).isEqualTo(PENDING);
+
+            verify(mockGeminiService)
+                    .batchCreate(eq(MODEL_NAME), batchRequestCaptor.capture(), eq(BATCH_GENERATE_CONTENT));
+
+            var capturedRequest = batchRequestCaptor.getValue();
+            assertThat(capturedRequest.batch().displayName()).isEqualTo(displayName);
+            assertThat(capturedRequest.batch().priority()).isEqualTo(priority);
+            assertThat(capturedRequest.batch().inputConfig().requests().requests())
+                    .hasSize(3);
+        }
+
+        @Test
+        void should_submit_with_null_priority_defaulting_to_zero() {
+            // given
+            var displayName = "Test Batch";
+            var prompts = List.of("A simple red circle");
+            var expectedOperation = createPendingOperation("batches/test-456", PENDING);
+            when(mockGeminiService.<GeminiGenerateContentRequest, GeminiGenerateContentResponse>batchCreate(
+                            any(),
+                            ArgumentMatchers.<BatchCreateRequest<GeminiGenerateContentRequest>>any(),
+                            eq(BATCH_GENERATE_CONTENT)))
+                    .thenReturn(expectedOperation);
+
+            // when
+            var result = subject.submit(GeminiBatchRequest.from(prompts, displayName));
+
+            // then
+            assertThat(result.state().isTerminal()).isFalse();
+            assertThat(result.batchId()).isEqualTo("batches/test-456");
+            assertThat(result.state()).isEqualTo(PENDING);
+
+            verify(mockGeminiService)
+                    .batchCreate(eq(MODEL_NAME), batchRequestCaptor.capture(), eq(BATCH_GENERATE_CONTENT));
+
+            var capturedRequest = batchRequestCaptor.getValue();
+            assertThat(capturedRequest.batch().priority()).isZero();
+        }
+
+        @Test
+        void should_submit_with_single_request() {
+            // given
+            var displayName = "Single Request Batch";
+            var priority = 5L;
+            var prompts = List.of("A minimalist logo design");
+            var expectedOperation = createPendingOperation("batches/test-789", PENDING);
+            when(mockGeminiService.<GeminiGenerateContentRequest, GeminiGenerateContentResponse>batchCreate(
+                            any(),
+                            ArgumentMatchers.<BatchCreateRequest<GeminiGenerateContentRequest>>any(),
+                            eq(BATCH_GENERATE_CONTENT)))
+                    .thenReturn(expectedOperation);
+
+            // when
+            var result = subject.submit(GeminiBatchRequest.from(prompts, displayName, priority));
+
+            // then
+            assertThat(result.state().isTerminal()).isFalse();
+            assertThat(result.batchId()).isEqualTo("batches/test-789");
+            assertThat(result.state()).isEqualTo(PENDING);
+
+            verify(mockGeminiService)
+                    .batchCreate(eq(MODEL_NAME), batchRequestCaptor.capture(), eq(BATCH_GENERATE_CONTENT));
+
+            var capturedRequest = batchRequestCaptor.getValue();
+            assertThat(capturedRequest.batch().inputConfig().requests().requests())
+                    .hasSize(1);
+        }
+
+        @Test
+        void should_submit_with_negative_priority() {
+            // given
+            var displayName = "Low Priority Batch";
+            var priority = -10L;
+            var prompts = List.of("A product mockup");
+            var expectedOperation = createPendingOperation("batches/test-negative", PENDING);
+            when(mockGeminiService.<GeminiGenerateContentRequest, GeminiGenerateContentResponse>batchCreate(
+                            any(),
+                            ArgumentMatchers.<BatchCreateRequest<GeminiGenerateContentRequest>>any(),
+                            eq(BATCH_GENERATE_CONTENT)))
+                    .thenReturn(expectedOperation);
+
+            // when
+            var result = subject.submit(GeminiBatchRequest.from(prompts, displayName, priority));
+
+            // then
+            assertThat(result.state().isTerminal()).isFalse();
+            assertThat(result.batchId()).isEqualTo("batches/test-negative");
+            assertThat(result.state()).isEqualTo(PENDING);
+
+            verify(mockGeminiService)
+                    .batchCreate(eq(MODEL_NAME), batchRequestCaptor.capture(), eq(BATCH_GENERATE_CONTENT));
+
+            var capturedRequest = batchRequestCaptor.getValue();
+            assertThat(capturedRequest.batch().priority()).isEqualTo(-10L);
+        }
+
+        @Test
+        void should_include_image_config_when_aspect_ratio_is_set() {
+            // given
+            var subjectWithConfig = new GoogleAiGeminiBatchImageModel(
+                    GoogleAiGeminiBatchImageModel.builder()
+                            .apiKey(API_KEY)
+                            .modelName(MODEL_NAME)
+                            .aspectRatio("16:9")
+                            .imageSize("2K"),
+                    mockGeminiService);
+
+            var displayName = "Image Config Test";
+            var prompts = List.of("A landscape image");
+            var expectedOperation = createPendingOperation("batches/test-config", PENDING);
+            when(mockGeminiService.<GeminiGenerateContentRequest, GeminiGenerateContentResponse>batchCreate(
+                            any(),
+                            ArgumentMatchers.<BatchCreateRequest<GeminiGenerateContentRequest>>any(),
+                            eq(BATCH_GENERATE_CONTENT)))
+                    .thenReturn(expectedOperation);
+
+            // when
+            subjectWithConfig.submit(GeminiBatchRequest.from(prompts, displayName, 1L));
+
+            // then
+            verify(mockGeminiService)
+                    .batchCreate(eq(MODEL_NAME), batchRequestCaptor.capture(), eq(BATCH_GENERATE_CONTENT));
+
+            var capturedRequest = batchRequestCaptor.getValue();
+            var inlinedRequest =
+                    capturedRequest.batch().inputConfig().requests().requests().get(0);
+            assertThat(inlinedRequest.request().generationConfig().imageConfig())
+                    .isNotNull();
+            assertThat(inlinedRequest.request().generationConfig().imageConfig().aspectRatio())
+                    .isEqualTo("16:9");
+            assertThat(inlinedRequest.request().generationConfig().imageConfig().imageSize())
+                    .isEqualTo("2K");
+        }
+
+        @Test
+        void should_set_response_modalities_to_image() {
+            // given
+            var displayName = "Modalities Test";
+            var prompts = List.of("Test image");
+            var expectedOperation = createPendingOperation("batches/test-modalities", PENDING);
+            when(mockGeminiService.<GeminiGenerateContentRequest, GeminiGenerateContentResponse>batchCreate(
+                            any(),
+                            ArgumentMatchers.<BatchCreateRequest<GeminiGenerateContentRequest>>any(),
+                            eq(BATCH_GENERATE_CONTENT)))
+                    .thenReturn(expectedOperation);
+
+            // when
+            subject.submit(GeminiBatchRequest.from(prompts, displayName));
+
+            // then
+            verify(mockGeminiService)
+                    .batchCreate(eq(MODEL_NAME), batchRequestCaptor.capture(), eq(BATCH_GENERATE_CONTENT));
+
+            var capturedRequest = batchRequestCaptor.getValue();
+            var inlinedRequest =
+                    capturedRequest.batch().inputConfig().requests().requests().get(0);
+            assertThat(inlinedRequest.request().generationConfig().responseModalities())
+                    .containsExactly(GeminiResponseModality.IMAGE);
+        }
+
+        @Test
+        void should_submit_using_interface_method() {
+            // given
+            var prompts = List.of("Test image prompt");
+            var expectedOperation = createPendingOperation("batches/test-interface", PENDING);
+            when(mockGeminiService.<GeminiGenerateContentRequest, GeminiGenerateContentResponse>batchCreate(
+                            any(),
+                            ArgumentMatchers.<BatchCreateRequest<GeminiGenerateContentRequest>>any(),
+                            eq(BATCH_GENERATE_CONTENT)))
+                    .thenReturn(expectedOperation);
+
+            // when
+            var result = subject.submit(GeminiBatchRequest.from(prompts));
+
+            // then
+            assertThat(result.state().isTerminal()).isFalse();
+            assertThat(result.batchId()).isEqualTo("batches/test-interface");
+
+            verify(mockGeminiService)
+                    .batchCreate(eq(MODEL_NAME), batchRequestCaptor.capture(), eq(BATCH_GENERATE_CONTENT));
+
+            var capturedRequest = batchRequestCaptor.getValue();
+            assertThat(capturedRequest.batch().priority()).isZero();
+        }
+    }
+
+    @Nested
+    class CreateBatchFromFile {
+
+        @Captor
+        private ArgumentCaptor<BatchCreateFileRequest> batchFileRequestCaptor;
+
+        @Mock
+        private GeminiFile mockGeminiFile;
+
+        @Test
+        void should_submit_from_file_with_valid_parameters() {
+            // given
+            String displayName = "Image Batch from File";
+            when(mockGeminiFile.name()).thenReturn("files/test-file-123");
+            var expectedOperation = createPendingOperation("batches/image-file-test-123", PENDING);
+            when(mockGeminiService.<GeminiGenerateContentRequest, GeminiGenerateContentResponse>batchCreate(
+                            eq(MODEL_NAME), any(BatchCreateFileRequest.class), eq(BATCH_GENERATE_CONTENT)))
+                    .thenReturn(expectedOperation);
+
+            // when
+            var result = subject.submit(displayName, mockGeminiFile);
+
+            // then
+            assertThat(result.state().isTerminal()).isFalse();
+            assertThat(result.batchId()).isEqualTo("batches/image-file-test-123");
+            assertThat(result.state()).isEqualTo(PENDING);
+
+            verify(mockGeminiService)
+                    .<GeminiGenerateContentRequest, GeminiGenerateContentResponse>batchCreate(
+                            eq(MODEL_NAME), batchFileRequestCaptor.capture(), eq(BATCH_GENERATE_CONTENT));
+
+            var capturedRequest = batchFileRequestCaptor.getValue();
+            assertThat(capturedRequest.batch().displayName()).isEqualTo(displayName);
+            assertThat(capturedRequest.batch().inputConfig().fileName()).isEqualTo("files/test-file-123");
+        }
+
+        @Test
+        void should_throw_exception_when_creating_batch_from_file_fails() {
+            // given
+            String displayName = "Batch from File";
+            when(mockGeminiFile.name()).thenReturn("files/test-file-error");
+            when(mockGeminiService.<GeminiGenerateContentRequest, GeminiGenerateContentResponse>batchCreate(
+                            eq(MODEL_NAME), any(BatchCreateFileRequest.class), eq(BATCH_GENERATE_CONTENT)))
+                    .thenThrow(new RuntimeException("Error creating batch from file"));
+
+            // when & then
+            assertThatThrownBy(() -> subject.submit(displayName, mockGeminiFile))
+                    .isInstanceOf(RuntimeException.class)
+                    .hasMessageContaining("Error creating batch from file");
+        }
+    }
+
+    @Nested
+    class WriteBatchToFile {
+
+        private Path tempFile;
+
+        @BeforeEach
+        void setUp() throws IOException {
+            tempFile = Files.createTempFile("testImageBatchFile", ".jsonl");
+        }
+
+        @AfterEach
+        void tearDown() throws IOException {
+            Files.deleteIfExists(tempFile);
+        }
+
+        @Test
+        void should_write_single_request_to_file() throws Exception {
+            // given
+            var request = new BatchFileRequest<>("key-1", "A sunset over mountains");
+            var requests = List.of(request);
+
+            // when
+            try (var writer = JsonLinesWriters.streaming(tempFile)) {
+                subject.writeBatchToFile(writer, requests);
+            }
+
+            // then
+            List<GeminiGenerateContentRequest> writtenRequests = readRequestsFromFile(tempFile);
+            assertThat(writtenRequests).hasSize(1);
+            assertThat(writtenRequests.get(0).contents().get(0).parts().get(0).text())
+                    .isEqualTo("A sunset over mountains");
+        }
+
+        @Test
+        void should_write_multiple_requests_to_file() throws Exception {
+            // given
+            var requests = List.of(
+                    new BatchFileRequest<>("key-1", "First image prompt"),
+                    new BatchFileRequest<>("key-2", "Second image prompt"),
+                    new BatchFileRequest<>("key-3", "Third image prompt"));
+
+            // when
+            try (var writer = JsonLinesWriters.streaming(tempFile)) {
+                subject.writeBatchToFile(writer, requests);
+            }
+
+            // then
+            List<GeminiGenerateContentRequest> writtenRequests = readRequestsFromFile(tempFile);
+            assertThat(writtenRequests).hasSize(3);
+            assertThat(writtenRequests.get(0).contents().get(0).parts().get(0).text())
+                    .isEqualTo("First image prompt");
+            assertThat(writtenRequests.get(1).contents().get(0).parts().get(0).text())
+                    .isEqualTo("Second image prompt");
+            assertThat(writtenRequests.get(2).contents().get(0).parts().get(0).text())
+                    .isEqualTo("Third image prompt");
+        }
+
+        @Test
+        void should_handle_empty_requests_list() throws Exception {
+            // given
+            List<BatchFileRequest<String>> requests = List.of();
+
+            // when
+            try (var writer = JsonLinesWriters.streaming(tempFile)) {
+                subject.writeBatchToFile(writer, requests);
+            }
+
+            // then
+            List<GeminiGenerateContentRequest> writtenRequests = readRequestsFromFile(tempFile);
+            assertThat(writtenRequests).isEmpty();
+        }
+
+        private List<GeminiGenerateContentRequest> readRequestsFromFile(Path file) throws IOException {
+            List<GeminiGenerateContentRequest> requests = new ArrayList<>();
+            ObjectMapper testMapper = new ObjectMapper();
+
+            try (BufferedReader reader = Files.newBufferedReader(file)) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    BatchFileRequest<GeminiGenerateContentRequest> batchRequest =
+                            testMapper.readValue(line, new TypeReference<>() {});
+                    requests.add(batchRequest.request());
+                }
+            }
+            return requests;
+        }
+    }
+
+    @Nested
+    class RetrieveBatchResults {
+
+        @Test
+        void should_return_incomplete_when_batch_is_still_processing() {
+            // given
+            var batchId = "batches/test-pending";
+            var pendingOperation = createPendingOperation("batches/test-pending", PENDING);
+            when(mockGeminiService.<GeminiGenerateContentResponse>batchRetrieveBatch(batchId))
+                    .thenReturn(pendingOperation);
+
+            // when
+            var result = subject.retrieve(batchId);
+
+            // then
+            assertThat(result.state().isTerminal()).isFalse();
+            assertThat(result.batchId()).isEqualTo(batchId);
+            assertThat(result.state()).isEqualTo(PENDING);
+        }
+
+        @Test
+        void should_return_incomplete_when_batch_is_running() {
+            // given
+            var batchId = "batches/test-running";
+            var runningOperation = createPendingOperation("batches/test-running", RUNNING);
+            when(mockGeminiService.<GeminiGenerateContentResponse>batchRetrieveBatch(batchId))
+                    .thenReturn(runningOperation);
+
+            // when
+            var result = subject.retrieve(batchId);
+
+            // then
+            assertThat(result.state().isTerminal()).isFalse();
+            assertThat(result.batchId()).isEqualTo(batchId);
+            assertThat(result.state()).isEqualTo(RUNNING);
+        }
+
+        @Test
+        void should_return_success_when_batch_processing_is_completed() {
+            // given
+            var batchId = "batches/test-success";
+            var imageResponses = List.of(
+                    createImageResponse(TEST_IMAGE_BASE64, TEST_MIME_TYPE),
+                    createImageResponse("secondImageData", TEST_MIME_TYPE));
+            var successOperation = createSuccessOperation("batches/test-success", imageResponses);
+            when(mockGeminiService.<GeminiGenerateContentResponse>batchRetrieveBatch(batchId))
+                    .thenReturn(successOperation);
+
+            // when
+            var result = subject.retrieve(batchId);
+
+            // then
+            assertThat(result.state()).isEqualTo(SUCCEEDED);
+            assertThat(result.batchId()).isEqualTo(batchId);
+            assertThat(result.responses()).hasSize(2);
+            assertThat(result.responses().get(0).content().base64Data()).isEqualTo(TEST_IMAGE_BASE64);
+            assertThat(result.responses().get(1).content().base64Data()).isEqualTo("secondImageData");
+        }
+
+        @Test
+        void should_return_success_with_errors_when_batch_processing_has_individual_failures() {
+            // given
+            var batchId = "batches/test-partial-success";
+            var imageResponses = List.of(
+                    createImageResponse(TEST_IMAGE_BASE64, TEST_MIME_TYPE),
+                    createImageResponse("secondImageData", TEST_MIME_TYPE));
+            var error = new BatchRequestResponse.Operation.Status(
+                    4, "Deadline expired before operation could complete.", null);
+            var successOperation =
+                    createSuccessOperationWithError("batches/test-partial-success", imageResponses, error);
+            when(mockGeminiService.<GeminiGenerateContentResponse>batchRetrieveBatch(batchId))
+                    .thenReturn(successOperation);
+
+            // when
+            var result = subject.retrieve(batchId);
+            assertThat(result.batchId()).isEqualTo(batchId);
+            assertThat(result.responses()).hasSize(2);
+            assertThat(result.responses().get(0).content().base64Data()).isEqualTo(TEST_IMAGE_BASE64);
+            assertThat(result.responses().get(1).content().base64Data()).isEqualTo("secondImageData");
+
+            assertThat(result.errors()).hasSize(1);
+            assertThat(result.errors().get(0).code()).isEqualTo(4);
+            assertThat(result.errors().get(0).message()).isEqualTo("Deadline expired before operation could complete.");
+        }
+
+        @Test
+        void should_return_error_when_batch_processing_is_cancelled() {
+            // given
+            var batchId = "batches/test-cancelled";
+            var cancelledOperation = createCancelledOperation("batches/test-cancelled", "Batch was cancelled");
+            when(mockGeminiService.<GeminiGenerateContentResponse>batchRetrieveBatch(batchId))
+                    .thenReturn(cancelledOperation);
+
+            // when
+            var result = subject.retrieve(batchId);
+
+            // then
+            assertThat(result.state()).isEqualTo(FAILED);
+            assertThat(result.errors()).containsExactly(new BatchError(13, "Batch was cancelled", List.of()));
+        }
+
+        @Test
+        void should_return_success_with_empty_responses_when_response_is_null() {
+            // given
+            var batchId = "batches/test-empty";
+            var successOperation = createSuccessOperationWithNullResponse("batches/test-empty");
+            when(mockGeminiService.<GeminiGenerateContentResponse>batchRetrieveBatch(batchId))
+                    .thenReturn(successOperation);
+
+            // when
+            var result = subject.retrieve(batchId);
+
+            // then
+            assertThat(result.state()).isEqualTo(SUCCEEDED);
+            assertThat(result.batchId()).isEqualTo(batchId);
+            assertThat(result.responses()).isEmpty();
+        }
+
+        @Test
+        void should_return_error_when_batch_processing_fails() {
+            // given
+            var batchId = "batches/test-error";
+            var errorOperation = createErrorOperation("batches/test-error", 500, "Internal Server Error", List.of());
+            when(mockGeminiService.<GeminiGenerateContentResponse>batchRetrieveBatch(batchId))
+                    .thenReturn(errorOperation);
+
+            // when
+            var result = subject.retrieve(batchId);
+
+            // then
+            assertThat(result.state()).isEqualTo(FAILED);
+            assertThat(result.batchId()).isEqualTo(batchId);
+            assertThat(result.state()).isEqualTo(FAILED);
+        }
+    }
+
+    @Nested
+    class BatchImageSerialization {
+
+        private static final String IMAGE_PENDING_RESPONSE = """
+                {
+                  "name": "batches/image-test-123",
+                  "metadata": {
+                    "@type": "type.googleapis.com/google.ai.generativelanguage.v1main.GenerateContentBatch",
+                    "model": "models/gemini-2.5-flash-preview-image-generation",
+                    "displayName": "images-batch",
+                    "state": "BATCH_STATE_PENDING",
+                    "name": "batches/image-test-123"
+                  }
+                }
+                """;
+
+        private static final String IMAGE_SUCCEEDED_RESPONSE = """
+                {
+                  "name": "batches/image-test-123",
+                  "metadata": {
+                    "@type": "type.googleapis.com/google.ai.generativelanguage.v1main.GenerateContentBatch",
+                    "model": "models/gemini-2.5-flash-preview-image-generation",
+                    "displayName": "images-batch",
+                    "state": "BATCH_STATE_SUCCEEDED",
+                    "name": "batches/image-test-123"
+                  },
+                  "done": true,
+                  "response": {
+                    "@type": "type.googleapis.com/google.ai.generativelanguage.v1main.GenerateContentBatchOutput",
+                    "inlinedResponses": {
+                      "inlinedResponses": [
+                        {
+                          "response": {
+                            "candidates": [
+                              {
+                                "content": {
+                                  "parts": [
+                                    {
+                                      "inlineData": {
+                                        "mimeType": "image/png",
+                                        "data": "aW1hZ2UxYmFzZTY0ZGF0YQ=="
+                                      }
+                                    }
+                                  ],
+                                  "role": "model"
+                                },
+                                "finishReason": "STOP",
+                                "index": 0
+                              }
+                            ],
+                            "usageMetadata": {
+                              "promptTokenCount": 10,
+                              "candidatesTokenCount": 256,
+                              "totalTokenCount": 266
+                            },
+                            "modelVersion": "gemini-2.5-flash-preview-image-generation"
+                          }
+                        },
+                        {
+                          "response": {
+                            "candidates": [
+                              {
+                                "content": {
+                                  "parts": [
+                                    {
+                                      "inlineData": {
+                                        "mimeType": "image/jpeg",
+                                        "data": "aW1hZ2UyYmFzZTY0ZGF0YQ=="
+                                      }
+                                    }
+                                  ],
+                                  "role": "model"
+                                },
+                                "finishReason": "STOP",
+                                "index": 0
+                              }
+                            ],
+                            "usageMetadata": {
+                              "promptTokenCount": 12,
+                              "candidatesTokenCount": 300,
+                              "totalTokenCount": 312
+                            },
+                            "modelVersion": "gemini-2.5-flash-preview-image-generation"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+                """;
+
+        @Test
+        void should_deserialize_pending_image_batch_response() {
+            // given
+            var mockHttpClient = MockHttpClient.thatAlwaysResponds(SuccessfulHttpResponse.builder()
+                    .statusCode(200)
+                    .body(IMAGE_PENDING_RESPONSE)
+                    .build());
+            var subject = GoogleAiGeminiBatchImageModel.builder()
+                    .apiKey(API_KEY)
+                    .modelName("gemini-2.5-flash-preview-image-generation")
+                    .httpClientBuilder(new MockHttpClientBuilder(mockHttpClient))
+                    .build();
+
+            var prompts = List.of("A sunset over mountains", "A cat wearing a hat");
+
+            // when
+            var result = subject.submit(GeminiBatchRequest.from(prompts, "images-batch"));
+
+            // then
+            assertThat(result.state().isTerminal()).isFalse();
+            assertThat(result.batchId()).isEqualTo("batches/image-test-123");
+            assertThat(result.state()).isEqualTo(PENDING);
+        }
+
+        @Test
+        void should_deserialize_succeeded_image_batch_response() {
+            // given
+            var mockHttpClient = MockHttpClient.thatAlwaysResponds(SuccessfulHttpResponse.builder()
+                    .statusCode(200)
+                    .body(IMAGE_SUCCEEDED_RESPONSE)
+                    .build());
+            var subject = GoogleAiGeminiBatchImageModel.builder()
+                    .apiKey(API_KEY)
+                    .modelName("gemini-2.5-flash-preview-image-generation")
+                    .httpClientBuilder(new MockHttpClientBuilder(mockHttpClient))
+                    .build();
+
+            var batchId = "batches/image-test-123";
+
+            // when
+            var result = subject.retrieve(batchId);
+
+            // then
+            assertThat(result.state()).isEqualTo(SUCCEEDED);
+            assertThat(result.batchId()).isEqualTo("batches/image-test-123");
+
+            var results = result.responses();
+            assertThat(results).hasSize(2);
+
+            assertThat(results.get(0).content().base64Data()).isEqualTo("aW1hZ2UxYmFzZTY0ZGF0YQ==");
+            assertThat(results.get(0).content().mimeType()).isEqualTo("image/png");
+
+            assertThat(results.get(1).content().base64Data()).isEqualTo("aW1hZ2UyYmFzZTY0ZGF0YQ==");
+            assertThat(results.get(1).content().mimeType()).isEqualTo("image/jpeg");
+        }
+
+        @Test
+        void should_deserialize_image_batch_response_with_error() {
+            // given
+            String IMAGE_ERROR_RESPONSE = """
+                    {
+                      "name": "batches/image-test-123",
+                      "metadata": {
+                        "@type": "type.googleapis.com/google.ai.generativelanguage.v1main.GenerateContentBatch",
+                        "model": "models/gemini-2.5-flash-preview-image-generation",
+                        "displayName": "images-batch",
+                        "state": "BATCH_STATE_SUCCEEDED",
+                        "name": "batches/image-test-123"
+                      },
+                      "done": true,
+                      "response": {
+                        "@type": "type.googleapis.com/google.ai.generativelanguage.v1main.GenerateContentBatchOutput",
+                        "inlinedResponses": {
+                          "inlinedResponses": [
+                            {
+                              "response": {
+                                "candidates": [
+                                  {
+                                    "content": {
+                                      "parts": [
+                                        {
+                                          "inlineData": {
+                                            "mimeType": "image/png",
+                                            "data": "aW1hZ2UxYmFzZTY0ZGF0YQ=="
+                                          }
+                                        }
+                                      ],
+                                      "role": "model"
+                                    },
+                                    "finishReason": "STOP",
+                                    "index": 0
+                                  }
+                                ],
+                                "usageMetadata": {
+                                  "promptTokenCount": 10,
+                                  "candidatesTokenCount": 256,
+                                  "totalTokenCount": 266
+                                },
+                                "modelVersion": "gemini-2.5-flash-preview-image-generation"
+                              }
+                            },
+                            {
+                              "error": {
+                                "code": 4,
+                                "message": "Deadline expired before operation could complete."
+                              }
+                            },
+                            {
+                              "response": {
+                                "candidates": [
+                                  {
+                                    "content": {
+                                      "parts": [
+                                        {
+                                          "inlineData": {
+                                            "mimeType": "image/jpeg",
+                                            "data": "aW1hZ2UyYmFzZTY0ZGF0YQ=="
+                                          }
+                                        }
+                                      ],
+                                      "role": "model"
+                                    },
+                                    "finishReason": "STOP",
+                                    "index": 0
+                                  }
+                                ],
+                                "usageMetadata": {
+                                  "promptTokenCount": 12,
+                                  "candidatesTokenCount": 300,
+                                  "totalTokenCount": 312
+                                },
+                                "modelVersion": "gemini-2.5-flash-preview-image-generation"
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    }
+                    """;
+
+            var mockHttpClient = MockHttpClient.thatAlwaysResponds(SuccessfulHttpResponse.builder()
+                    .statusCode(200)
+                    .body(IMAGE_ERROR_RESPONSE)
+                    .build());
+            var subject = GoogleAiGeminiBatchImageModel.builder()
+                    .apiKey(API_KEY)
+                    .modelName("gemini-2.5-flash-preview-image-generation")
+                    .httpClientBuilder(new MockHttpClientBuilder(mockHttpClient))
+                    .build();
+
+            var batchId = "batches/image-test-123";
+
+            // when
+            var result = subject.retrieve(batchId);
+
+            // then
+            assertThat(result.batchId()).isEqualTo("batches/image-test-123");
+
+            var results = result.responses();
+            assertThat(results).hasSize(2);
+
+            assertThat(results.get(0).content().base64Data()).isEqualTo("aW1hZ2UxYmFzZTY0ZGF0YQ==");
+            assertThat(results.get(0).content().mimeType()).isEqualTo("image/png");
+
+            assertThat(results.get(1).content().base64Data()).isEqualTo("aW1hZ2UyYmFzZTY0ZGF0YQ==");
+            assertThat(results.get(1).content().mimeType()).isEqualTo("image/jpeg");
+
+            assertThat(result.errors()).hasSize(1);
+            assertThat(result.errors().get(0).code()).isEqualTo(4);
+            assertThat(result.errors().get(0).message()).isEqualTo("Deadline expired before operation could complete.");
+        }
+    }
+
+    @Nested
+    class CancelBatchJob {
+
+        @Test
+        void should_cancel_pending_batch() {
+            // given
+            var batchId = "batches/test-pending-cancel";
+
+            // when
+            subject.cancel(batchId);
+
+            // then
+            verify(mockGeminiService).batchCancelBatch("batches/test-pending-cancel");
+        }
+
+        @ParameterizedTest
+        @CsvSource({"batches/test-cannot-cancel, Batch cannot be cancelled", "batches/non-existent, Batch not found"})
+        void should_throw_exception_when_batch_cancellation_fails(String batchIdValue, String errorMessage) {
+            // given
+            var batchId = batchIdValue;
+            when(mockGeminiService.batchCancelBatch(batchId)).thenThrow(new RuntimeException(errorMessage));
+
+            // when & then
+            assertThatThrownBy(() -> subject.cancel(batchId))
+                    .isInstanceOf(RuntimeException.class)
+                    .hasMessageContaining(errorMessage);
+        }
+    }
+
+    @Nested
+    class DeleteBatchJob {
+
+        @Test
+        void should_delete_batch() {
+            // given
+            var batchId = "batches/test-completed-delete";
+
+            // when
+            subject.deleteBatchJob(batchId);
+
+            // then
+            verify(mockGeminiService).batchDeleteBatch("batches/test-completed-delete");
+        }
+
+        @Test
+        void should_throw_exception_when_batch_deletion_fails() {
+            // given
+            var batchId = "batches/non-existent";
+            when(mockGeminiService.batchDeleteBatch(batchId)).thenThrow(new RuntimeException("Batch not found"));
+
+            // when & then
+            assertThatThrownBy(() -> subject.deleteBatchJob(batchId))
+                    .isInstanceOf(RuntimeException.class)
+                    .hasMessageContaining("Batch not found");
+        }
+    }
+
+    @Nested
+    class ListBatchJobs {
+
+        @Test
+        void should_list_batch_jobs_with_default_parameters() {
+            // given
+            var operation1 = createMockOperation("batches/batch-1", SUCCEEDED);
+            var operation2 = createMockOperation("batches/batch-2", RUNNING);
+            var listResponse = new ListOperationsResponse<>(List.of(operation1, operation2), null);
+
+            when(mockGeminiService.<GeminiGenerateContentResponse>batchListBatches(null, null))
+                    .thenReturn(listResponse);
+
+            // when
+            BatchPage<Response<Image>> result = subject.list(null);
+
+            // then
+            assertThat(result.batches()).hasSize(2);
+            verify(mockGeminiService).batchListBatches(null, null);
+        }
+
+        @Test
+        void should_list_batch_jobs_with_pagination() {
+            // given
+            Integer pageSize = 10;
+            String pageToken = "next-token";
+            var operation = createMockOperation("batches/batch-1", SUCCEEDED);
+            var listResponse = new ListOperationsResponse<>(List.of(operation), "another-token");
+
+            when(mockGeminiService.<GeminiGenerateContentResponse>batchListBatches(pageSize, pageToken))
+                    .thenReturn(listResponse);
+
+            // when
+            BatchPage<Response<Image>> result = subject.list(new BatchPagination(pageSize, pageToken));
+
+            // then
+            assertThat(result.batches()).hasSize(1);
+            assertThat(result.nextPageToken()).isEqualTo("another-token");
+            verify(mockGeminiService).batchListBatches(pageSize, pageToken);
+        }
+
+        @Test
+        void should_return_empty_list_when_no_batch_jobs_exist() {
+            // given
+            var listResponse = new ListOperationsResponse<GeminiGenerateContentResponse>(List.of(), null);
+
+            when(mockGeminiService.<GeminiGenerateContentResponse>batchListBatches(null, null))
+                    .thenReturn(listResponse);
+
+            // when
+            BatchPage<Response<Image>> result = subject.list(null);
+
+            // then
+            assertThat(result.batches()).isEmpty();
+        }
+
+        private Operation<GeminiGenerateContentResponse> createMockOperation(String name, BatchState state) {
+            return new Operation<>(name, Map.of("state", state), false, null, null);
+        }
+    }
+
+    @Nested
+    class BuilderValidation {
+
+        @Test
+        void should_use_default_model_name_when_not_specified() {
+            // This test verifies the default model is used
+            var model = GoogleAiGeminiBatchImageModel.builder().apiKey(API_KEY).build();
+
+            // The model should be created successfully with default model name
+            assertThat(model).isNotNull();
+        }
+
+        private static Operation<GeminiGenerateContentResponse> createSuccessOperationWithError(
+                String operationName,
+                List<GeminiGenerateContentResponse> imageResponses,
+                BatchRequestResponse.Operation.Status error) {
+            List<InlinedResponseWrapper<GeminiGenerateContentResponse>> inlinedResponses = new ArrayList<>();
+
+            // Add first successful response
+            if (!imageResponses.isEmpty()) {
+                inlinedResponses.add(new InlinedResponseWrapper<>(imageResponses.get(0), null));
+            }
+
+            // Add error
+            inlinedResponses.add(new InlinedResponseWrapper<>(null, error));
+
+            // Add remaining successful responses
+            for (int i = 1; i < imageResponses.size(); i++) {
+                inlinedResponses.add(new InlinedResponseWrapper<>(imageResponses.get(i), null));
+            }
+
+            var response = new BatchCreateResponse<>(
+                    "type.googleapis.com/google.ai.generativelanguage.v1main.GenerateContentBatchOutput",
+                    new BatchCreateResponse.InlinedResponses<>(inlinedResponses));
+
+            return new Operation<>(operationName, Map.of("state", SUCCEEDED.name()), true, null, response);
+        }
+    }
+
+    private GoogleAiGeminiBatchImageModel createSubject() {
+        return new GoogleAiGeminiBatchImageModel(
+                GoogleAiGeminiBatchImageModel.builder().apiKey(API_KEY).modelName(MODEL_NAME), mockGeminiService);
+    }
+
+    private static Operation<GeminiGenerateContentResponse> createPendingOperation(
+            String operationName, BatchState state) {
+        return new Operation<>(operationName, Map.of("state", state.name()), false, null, null);
+    }
+
+    private static GeminiGenerateContentResponse createImageResponse(String base64Data, String mimeType) {
+        var part = GeminiPart.builder()
+                .inlineData(new GeminiBlob(mimeType, base64Data))
+                .build();
+        var content = new GeminiContent(List.of(part), "model");
+        var candidate = new GeminiCandidate(content, GeminiFinishReason.STOP, null, null);
+
+        return new GeminiGenerateContentResponse("responses-id", MODEL_NAME, List.of(candidate), null, null);
+    }
+
+    private static Operation<GeminiGenerateContentResponse> createSuccessOperation(
+            String operationName, List<GeminiGenerateContentResponse> imageResponses) {
+        var inlinedResponses = imageResponses.stream()
+                .map(response -> new InlinedResponseWrapper<>(response, null))
+                .toList();
+
+        var response = new BatchCreateResponse<>(
+                "type.googleapis.com/google.ai.generativelanguage.v1main.GenerateContentBatchOutput",
+                new BatchCreateResponse.InlinedResponses<>(inlinedResponses));
+
+        return new Operation<>(operationName, Map.of("state", SUCCEEDED.name()), true, null, response);
+    }
+
+    private static Operation<GeminiGenerateContentResponse> createSuccessOperationWithNullResponse(
+            String operationName) {
+        return new Operation<>(operationName, Map.of("state", SUCCEEDED.name()), true, null, null);
+    }
+
+    private static Operation<GeminiGenerateContentResponse> createErrorOperation(
+            String operationName, int errorCode, String errorMessage, List<Map<String, Object>> errorDetails) {
+        var errorStatus = new Operation.Status(errorCode, errorMessage, errorDetails);
+        return new Operation<>(operationName, Map.of("state", FAILED.name()), true, errorStatus, null);
+    }
+
+    private static Operation<GeminiGenerateContentResponse> createSuccessOperationWithError(
+            String operationName,
+            List<GeminiGenerateContentResponse> imageResponses,
+            BatchRequestResponse.Operation.Status error) {
+        List<InlinedResponseWrapper<GeminiGenerateContentResponse>> inlinedResponses = new ArrayList<>();
+
+        // Add first successful response
+        if (!imageResponses.isEmpty()) {
+            inlinedResponses.add(new InlinedResponseWrapper<>(imageResponses.get(0), null));
+        }
+
+        // Add error
+        inlinedResponses.add(new InlinedResponseWrapper<>(null, error));
+
+        // Add remaining successful responses
+        for (int i = 1; i < imageResponses.size(); i++) {
+            inlinedResponses.add(new InlinedResponseWrapper<>(imageResponses.get(i), null));
+        }
+
+        var response = new BatchCreateResponse<>(
+                "type.googleapis.com/google.ai.generativelanguage.v1main.GenerateContentBatchOutput",
+                new BatchCreateResponse.InlinedResponses<>(inlinedResponses));
+
+        return new Operation<>(operationName, Map.of("state", SUCCEEDED.name()), true, null, response);
+    }
+
+    private static Operation<GeminiGenerateContentResponse> createCancelledOperation(
+            String operationName, String errorMessage) {
+        var errorStatus = new Operation.Status(13, errorMessage, List.of());
+        return new Operation<>(operationName, Map.of("state", CANCELLED.name()), true, errorStatus, null);
+    }
+}

@@ -1,6 +1,9 @@
 package dev.langchain4j.invocation;
 
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -41,9 +44,40 @@ public interface InvocationContext {
     List<Object> methodArguments();
 
     /**
+     * The {@link UserMessage} to be sent to the LLM.
+     * This is the message after all transformations (RAG augmentation,
+     * content injection, input guardrails, output format instructions).
+     *
+     * @since 1.13.0
+     */
+    default UserMessage userMessage() {
+        return null;
+    }
+
+    /**
      * The chat memory id parameter of the method
      */
     Object chatMemoryId();
+
+    /**
+     * Returns the default {@link ChatRequestParameters} of the chat model
+     * configured on the AI service.
+     *
+     * @since 1.16.0
+     */
+    default ChatRequestParameters defaultRequestParameters() {
+        return null;
+    }
+
+    /**
+     * Returns the {@link ModelProvider} of the chat model
+     * configured on the AI service.
+     *
+     * @since 1.16.0
+     */
+    default ModelProvider modelProvider() {
+        return null;
+    }
 
     /**
      * The invocation parameters
@@ -88,7 +122,10 @@ public interface InvocationContext {
         private String interfaceName;
         private String methodName;
         private List<@NonNull Object> methodArguments = new ArrayList<>();
+        private UserMessage userMessage;
         private Object chatMemoryId;
+        private ChatRequestParameters defaultRequestParameters;
+        private ModelProvider modelProvider;
         private InvocationParameters invocationParameters;
         private Map<Class<? extends LangChain4jManaged>, LangChain4jManaged> managedParameters;
         private Instant timestamp;
@@ -100,7 +137,10 @@ public interface InvocationContext {
             interfaceName(invocationContext.interfaceName());
             methodName(invocationContext.methodName());
             methodArguments(invocationContext.methodArguments());
+            userMessage(invocationContext.userMessage());
             chatMemoryId(invocationContext.chatMemoryId());
+            defaultRequestParameters(invocationContext.defaultRequestParameters());
+            modelProvider(invocationContext.modelProvider());
             invocationParameters(invocationContext.invocationParameters());
             managedParameters(invocationContext.managedParameters());
             timestamp(invocationContext.timestamp());
@@ -155,10 +195,34 @@ public interface InvocationContext {
         }
 
         /**
+         * Sets the final user message that was sent to the LLM.
+         */
+        public Builder userMessage(UserMessage userMessage) {
+            this.userMessage = userMessage;
+            return this;
+        }
+
+        /**
          * Sets the memory identifier for the builder.
          */
         public Builder chatMemoryId(Object memoryId) {
             this.chatMemoryId = memoryId;
+            return this;
+        }
+
+        /**
+         * Sets the default request parameters for the builder.
+         */
+        public Builder defaultRequestParameters(ChatRequestParameters defaultRequestParameters) {
+            this.defaultRequestParameters = defaultRequestParameters;
+            return this;
+        }
+
+        /**
+         * Sets the model provider for the builder.
+         */
+        public Builder modelProvider(ModelProvider modelProvider) {
+            this.modelProvider = modelProvider;
             return this;
         }
 
@@ -218,8 +282,20 @@ public interface InvocationContext {
             return methodArguments;
         }
 
+        public UserMessage userMessage() {
+            return userMessage;
+        }
+
         public Object chatMemoryId() {
             return chatMemoryId;
+        }
+
+        public ChatRequestParameters defaultRequestParameters() {
+            return defaultRequestParameters;
+        }
+
+        public ModelProvider modelProvider() {
+            return modelProvider;
         }
 
         public InvocationParameters invocationParameters() {

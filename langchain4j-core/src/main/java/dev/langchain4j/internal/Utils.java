@@ -10,9 +10,11 @@ import static java.util.Collections.unmodifiableSet;
 
 import dev.langchain4j.Internal;
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.lang.reflect.Proxy;
 import java.net.HttpURLConnection;
 import java.net.URI;
@@ -22,16 +24,24 @@ import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.HexFormat;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Supplier;
+import java.util.zip.GZIPInputStream;
+import java.util.zip.InflaterInputStream;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
@@ -185,6 +195,16 @@ public class Utils {
     }
 
     /**
+     * Is the collection not {@code null} and not empty?
+     *
+     * @param collection The collection to check.
+     * @return {@code true} if the collection is not {@code null} and not {@link Collection#isEmpty()}, otherwise {@code false}.
+     */
+    public static boolean isNotNullOrEmpty(Collection<?> collection) {
+        return !isNullOrEmpty(collection);
+    }
+
+    /**
      * Is the iterable object {@code null} or empty?
      *
      * @param iterable The iterable object to check.
@@ -331,7 +351,8 @@ public class Utils {
                 int responseCode = connection.getResponseCode();
 
                 if (responseCode == HTTP_OK) {
-                    try (InputStream inputStream = connection.getInputStream();
+                    try (InputStream inputStream =
+                                    decompress(connection.getInputStream(), connection.getContentEncoding());
                             ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
                         byte[] buffer = new byte[1024];
                         int bytesRead;
@@ -355,6 +376,17 @@ public class Utils {
         }
     }
 
+    private static InputStream decompress(InputStream inputStream, String contentEncoding) throws IOException {
+        if (contentEncoding == null) {
+            return inputStream;
+        }
+        return switch (contentEncoding.trim().toLowerCase(Locale.ROOT)) {
+            case "gzip", "x-gzip" -> new GZIPInputStream(inputStream);
+            case "deflate" -> new InflaterInputStream(inputStream);
+            default -> inputStream;
+        };
+    }
+
     /**
      * Returns an (unmodifiable) copy of the provided set.
      * Returns <code>null</code> if the provided set is <code>null</code>.
@@ -368,7 +400,7 @@ public class Utils {
             return null;
         }
 
-        return unmodifiableSet(set);
+        return unmodifiableSet(new LinkedHashSet<>(set));
     }
 
     /**
@@ -384,7 +416,7 @@ public class Utils {
             return Set.of();
         }
 
-        return unmodifiableSet(set);
+        return unmodifiableSet(new LinkedHashSet<>(set));
     }
 
     /**
@@ -400,7 +432,7 @@ public class Utils {
             return null;
         }
 
-        return unmodifiableList(list);
+        return unmodifiableList(new ArrayList<>(list));
     }
 
     /**
@@ -411,12 +443,12 @@ public class Utils {
      * @param <T>  Generic type of the list.
      * @return The copy of the provided list or an empty list.
      */
-    public static <T> List<T> copy(List<T> list) {
+    public static <T> List<T> copy(List<? extends T> list) {
         if (list == null) {
             return List.of();
         }
 
-        return unmodifiableList(list);
+        return unmodifiableList(new ArrayList<>(list));
     }
 
     /**
@@ -436,6 +468,22 @@ public class Utils {
     }
 
     /**
+     * Returns an (unmodifiable) copy of the provided collection.
+     * Returns an empty list if the provided collection is <code>null</code>.
+     *
+     * @param collection The collection to copy.
+     * @param <T>  Generic type of the collection.
+     * @return The list which is a copy of the provided collection or an empty list.
+     */
+    public static <T> List<T> copy(Collection<? extends T> collection) {
+        if (collection == null) {
+            return List.of();
+        }
+
+        return List.copyOf(collection);
+    }
+
+    /**
      * Returns an (unmodifiable) copy of the provided map.
      * Returns <code>null</code> if the provided map is <code>null</code>.
      *
@@ -447,7 +495,7 @@ public class Utils {
             return null;
         }
 
-        return unmodifiableMap(map);
+        return unmodifiableMap(new LinkedHashMap<>(map));
     }
 
     /**
@@ -462,7 +510,7 @@ public class Utils {
             return Map.of();
         }
 
-        return unmodifiableMap(map);
+        return unmodifiableMap(new LinkedHashMap<>(map));
     }
 
     /**
@@ -524,6 +572,81 @@ public class Utils {
         return Optional.empty();
     }
 
+    private record MethodSignature(String name, List<Class<?>> params) {}
+
+    /**
+     * Returns all concrete methods from the given class, its superclasses (excluding {@link Object}),
+     * and default/static methods from implemented interfaces.
+     * If a subclass overrides a method, only the subclass version is included.
+     * Bridge and synthetic methods are filtered out.
+     */
+    public static List<Method> allConcreteMethods(Class<?> clazz) {
+        return allMethods(clazz, true);
+    }
+
+    /**
+     * Returns all methods from the given class, its superclasses (excluding {@link Object}),
+     * and all implemented interfaces.
+     * If a subclass overrides a method, only the subclass version is included.
+     * Bridge and synthetic methods are filtered out.
+     */
+    public static List<Method> allMethods(Class<?> clazz) {
+        return allMethods(clazz, false);
+    }
+
+    private static List<Method> allMethods(Class<?> clazz, boolean concreteOnly) {
+        List<Method> allMethods = new ArrayList<>();
+        Set<MethodSignature> seen = new HashSet<>();
+        Class<?> current = clazz;
+        while (current != null && current != Object.class) {
+            collectConcreteMethods(current, seen, allMethods);
+            current = current.getSuperclass();
+        }
+        collectInterfaceMethods(clazz, seen, allMethods, new HashSet<>(), concreteOnly);
+        return List.copyOf(allMethods);
+    }
+
+    private static void collectConcreteMethods(Class<?> clazz, Set<MethodSignature> seen, List<Method> result) {
+        for (Method method : clazz.getDeclaredMethods()) {
+            if (method.isBridge() || method.isSynthetic()) {
+                continue;
+            }
+            MethodSignature sig = new MethodSignature(method.getName(), List.of(method.getParameterTypes()));
+            if (seen.add(sig)) {
+                result.add(method);
+            }
+        }
+    }
+
+    private static void collectInterfaceMethods(
+            Class<?> clazz,
+            Set<MethodSignature> seen,
+            List<Method> result,
+            Set<Class<?>> visited,
+            boolean concreteOnly) {
+        if (clazz == null) {
+            return;
+        }
+        for (Class<?> iface : clazz.getInterfaces()) {
+            if (!visited.add(iface)) {
+                continue;
+            }
+            for (Method method : iface.getDeclaredMethods()) {
+                if (method.isBridge()
+                        || method.isSynthetic()
+                        || (concreteOnly && Modifier.isAbstract(method.getModifiers()))) {
+                    continue;
+                }
+                MethodSignature sig = new MethodSignature(method.getName(), List.of(method.getParameterTypes()));
+                if (seen.add(sig)) {
+                    result.add(method);
+                }
+            }
+            collectInterfaceMethods(iface, seen, result, visited, concreteOnly);
+        }
+        collectInterfaceMethods(clazz.getSuperclass(), seen, result, visited, concreteOnly);
+    }
+
     /**
      * Logs a warning if the given string value is {@code null} or blank.
      * <p>
@@ -548,9 +671,59 @@ public class Utils {
      * @return the original value (may be {@code null} or blank)
      */
     public static String warnIfNullOrBlank(String value, String fieldName, Class<?> clazz) {
-        if (isNullOrBlank(fieldName)) {
+        if (isNullOrBlank(value)) {
             log.warn("{}: '{}' is null or blank", clazz.getSimpleName(), fieldName);
         }
         return value;
+    }
+
+    public static String toBase64(String s) {
+        if (s == null) {
+            return null;
+        }
+        return Base64.getEncoder().encodeToString(s.getBytes(UTF_8));
+    }
+
+    public static <T> List<T> merge(List<T>... lists) {
+        if (lists.length < 2) {
+            throw new IllegalArgumentException("lists must have at least 2 elements");
+        }
+
+        List<T> result = new ArrayList<>();
+        for (List<T> list : lists) {
+            if (list != null) {
+                result.addAll(list);
+            }
+        }
+        return result;
+    }
+
+    public static <K, V> Map<K, V> merge(Map<K, V>... maps) {
+        if (maps.length < 2) {
+            throw new IllegalArgumentException("maps must have at least 2 elements");
+        }
+
+        Map<K, V> result = new HashMap<>();
+        for (Map<K, V> map : maps) {
+            if (map == null) {
+                continue;
+            }
+            for (Map.Entry<K, V> e : map.entrySet()) {
+                if (result.putIfAbsent(e.getKey(), e.getValue()) != null) {
+                    throw new IllegalArgumentException("Duplicate key: " + e.getKey());
+                }
+            }
+        }
+        return result;
+    }
+
+    public static String randomString(int length) {
+        String characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        Random random = new Random();
+        StringBuilder result = new StringBuilder(length);
+        for (int i = 0; i < length; i++) {
+            result.append(characters.charAt(random.nextInt(characters.length())));
+        }
+        return result.toString();
     }
 }

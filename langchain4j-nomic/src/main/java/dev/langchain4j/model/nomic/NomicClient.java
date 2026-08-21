@@ -1,55 +1,46 @@
 package dev.langchain4j.model.nomic;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import dev.langchain4j.internal.Utils;
-import okhttp3.OkHttpClient;
-import org.slf4j.Logger;
-import retrofit2.Retrofit;
-import retrofit2.converter.jackson.JacksonConverterFactory;
-
-import java.io.IOException;
-import java.time.Duration;
-
+import static dev.langchain4j.http.client.HttpMethod.POST;
+import static dev.langchain4j.internal.Utils.ensureTrailingForwardSlash;
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.model.nomic.NomicJsonUtils.fromJson;
+import static dev.langchain4j.model.nomic.NomicJsonUtils.toJson;
+
+import dev.langchain4j.http.client.HttpClient;
+import dev.langchain4j.http.client.HttpClientBuilder;
+import dev.langchain4j.http.client.HttpClientBuilderLoader;
+import dev.langchain4j.http.client.HttpRequest;
+import dev.langchain4j.http.client.SuccessfulHttpResponse;
+import dev.langchain4j.http.client.log.LoggingHttpClient;
+import java.time.Duration;
+import org.slf4j.Logger;
 
 class NomicClient {
 
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
-            .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
-            .enable(SerializationFeature.INDENT_OUTPUT)
-            .setSerializationInclusion(JsonInclude.Include.NON_NULL)
-            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-
-    private final NomicApi nomicApi;
+    private final HttpClient httpClient;
+    private final String baseUrl;
     private final String authorizationHeader;
 
-    NomicClient(String baseUrl, String apiKey, Duration timeout, Boolean logRequests, Boolean logResponses, Logger logger) {
+    NomicClient(NomicClientBuilder builder) {
+        HttpClientBuilder httpClientBuilder =
+                getOrDefault(builder.httpClientBuilder, HttpClientBuilderLoader::loadHttpClientBuilder);
 
-        OkHttpClient.Builder okHttpClientBuilder = new OkHttpClient.Builder()
-                .callTimeout(timeout)
-                .connectTimeout(timeout)
-                .readTimeout(timeout)
-                .writeTimeout(timeout);
-
-        if (logRequests) {
-            okHttpClientBuilder.addInterceptor(new RequestLoggingInterceptor(logger));
-        }
-        if (logResponses) {
-            okHttpClientBuilder.addInterceptor(new ResponseLoggingInterceptor(logger));
-        }
-
-        Retrofit retrofit = new Retrofit.Builder()
-                .baseUrl(Utils.ensureTrailingForwardSlash(baseUrl))
-                .client(okHttpClientBuilder.build())
-                .addConverterFactory(JacksonConverterFactory.create(OBJECT_MAPPER))
+        HttpClient httpClient = httpClientBuilder
+                .connectTimeout(builder.timeout)
+                .readTimeout(builder.timeout)
                 .build();
 
-        this.nomicApi = retrofit.create(NomicApi.class);
-        this.authorizationHeader = "Bearer " + ensureNotBlank(apiKey, "apiKey");
+        if (builder.logRequests != null && builder.logRequests
+                || builder.logResponses != null && builder.logResponses) {
+            this.httpClient =
+                    new LoggingHttpClient(httpClient, builder.logRequests, builder.logResponses, builder.logger);
+        } else {
+            this.httpClient = httpClient;
+        }
+
+        this.baseUrl = ensureTrailingForwardSlash(builder.baseUrl);
+        this.authorizationHeader = "Bearer " + ensureNotBlank(builder.apiKey, "apiKey");
     }
 
     public static NomicClientBuilder builder() {
@@ -57,25 +48,17 @@ class NomicClient {
     }
 
     public EmbeddingResponse embed(EmbeddingRequest request) {
-        try {
-            retrofit2.Response<EmbeddingResponse> retrofitResponse
-                    = nomicApi.embed(request, authorizationHeader).execute();
+        HttpRequest httpRequest = HttpRequest.builder()
+                .method(POST)
+                .url(baseUrl + "embedding/text")
+                .addHeader("Content-Type", "application/json")
+                .addHeader("Authorization", authorizationHeader)
+                .body(toJson(request))
+                .build();
 
-            if (retrofitResponse.isSuccessful()) {
-                return retrofitResponse.body();
-            } else {
-                throw toException(retrofitResponse);
-            }
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
+        SuccessfulHttpResponse response = httpClient.execute(httpRequest);
 
-    private static RuntimeException toException(retrofit2.Response<?> response) throws IOException {
-        int code = response.code();
-        String body = response.errorBody().string();
-        String errorMessage = String.format("status code: %s; body: %s", code, body);
-        return new RuntimeException(errorMessage);
+        return fromJson(response.body(), EmbeddingResponse.class);
     }
 
     public static class NomicClientBuilder {
@@ -85,6 +68,7 @@ class NomicClient {
         private Boolean logRequests;
         private Boolean logResponses;
         private Logger logger;
+        private HttpClientBuilder httpClientBuilder;
 
         NomicClientBuilder() {
         }
@@ -119,12 +103,17 @@ class NomicClient {
             return this;
         }
 
+        public NomicClientBuilder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
+            this.httpClientBuilder = httpClientBuilder;
+            return this;
+        }
+
         public NomicClient build() {
-            return new NomicClient(this.baseUrl, this.apiKey, this.timeout, this.logRequests, this.logResponses, this.logger);
+            return new NomicClient(this);
         }
 
         public String toString() {
-            return "NomicClient.NomicClientBuilder(baseUrl=" + this.baseUrl + ", apiKey=" + this.apiKey + ", timeout=" + this.timeout + ", logRequests=" + this.logRequests + ", logResponses=" + this.logResponses + ")";
+            return "NomicClient.NomicClientBuilder(baseUrl=" + this.baseUrl + ", apiKey=" + (this.apiKey == null ? null : "********") + ", timeout=" + this.timeout + ", logRequests=" + this.logRequests + ", logResponses=" + this.logResponses + ")";
         }
     }
 }

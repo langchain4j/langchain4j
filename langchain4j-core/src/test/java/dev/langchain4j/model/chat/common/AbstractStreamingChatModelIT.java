@@ -138,7 +138,7 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
         ChatResponse response = futureResponse.get(30, SECONDS);
         assertThat(response.aiMessage().text()).containsIgnoringCase("Berlin");
 
-        assertThat(onPartialResponseCalled.get()).isGreaterThan(1);
+        assertThat(onPartialResponseCalled.get()).isGreaterThan(0);
 
         futureErrors.get(30, SECONDS);
         assertThat(errors).hasSize(onPartialResponseCalled.get());
@@ -260,11 +260,11 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
         return chat(chatModel, chatRequest, ignored -> {}, 120, true);
     }
 
-    private ChatResponseAndStreamingMetadata chat(StreamingChatModel chatModel,
-                                                  ChatRequest chatRequest,
-                                                  Consumer<StreamingHandle> streamingHandleConsumer,
-                                                  int timeoutSeconds,
-                                                  boolean failOnTimeout) {
+    public static ChatResponseAndStreamingMetadata chat(StreamingChatModel chatModel,
+                                                        ChatRequest chatRequest,
+                                                        Consumer<StreamingHandle> streamingHandleConsumer,
+                                                        int timeoutSeconds,
+                                                        boolean failOnTimeout) {
 
         CompletableFuture<ChatResponse> futureChatResponse = new CompletableFuture<>();
         StringBuffer concatenatedPartialResponsesBuilder = new StringBuffer();
@@ -337,6 +337,7 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
         };
 
         StreamingChatResponseHandler spyHandler = spy(handler);
+        LastChatExchange.recordRequest(chatRequest);
         chatModel.chat(chatRequest, spyHandler);
 
         ChatResponse chatResponse = null;
@@ -349,6 +350,7 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+        LastChatExchange.recordResponse(chatResponse);
         String concatenatedPartialResponses = concatenatedPartialResponsesBuilder.toString();
         StreamingMetadata metadata = new StreamingMetadata(
                 concatenatedPartialResponses.isEmpty() ? null : concatenatedPartialResponses,

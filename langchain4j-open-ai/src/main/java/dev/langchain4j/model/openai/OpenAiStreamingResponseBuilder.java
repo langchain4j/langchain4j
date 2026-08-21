@@ -3,6 +3,7 @@ package dev.langchain4j.model.openai;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.finishReasonFrom;
+import static dev.langchain4j.model.openai.internal.OpenAiUtils.logProbsFrom;
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.tokenUsageFrom;
 import static java.util.stream.Collectors.toList;
 
@@ -17,6 +18,8 @@ import dev.langchain4j.model.openai.internal.chat.ChatCompletionChoice;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionResponse;
 import dev.langchain4j.model.openai.internal.chat.Delta;
 import dev.langchain4j.model.openai.internal.chat.FunctionCall;
+import dev.langchain4j.model.openai.internal.chat.LogProb;
+import dev.langchain4j.model.openai.internal.chat.LogProbs;
 import dev.langchain4j.model.openai.internal.chat.ToolCall;
 import dev.langchain4j.model.openai.internal.completion.CompletionChoice;
 import dev.langchain4j.model.openai.internal.completion.CompletionResponse;
@@ -29,6 +32,8 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -47,6 +52,7 @@ public class OpenAiStreamingResponseBuilder {
 
     private final Map<Integer, ToolExecutionRequestBuilder> indexToToolExecutionRequestBuilder =
             new ConcurrentHashMap<>();
+    private final AtomicInteger fallbackToolCallIndex = new AtomicInteger(0);
 
     private final AtomicReference<String> id = new AtomicReference<>();
     private final AtomicReference<Long> created = new AtomicReference<>();
@@ -57,15 +63,22 @@ public class OpenAiStreamingResponseBuilder {
     private final AtomicReference<FinishReason> finishReason = new AtomicReference<>();
     private final AtomicReference<SuccessfulHttpResponse> rawHttpResponse = new AtomicReference<>();
     private final Queue<ServerSentEvent> rawServerSentEvents = new ConcurrentLinkedQueue<>();
+    private final List<LogProb> logProbs = new CopyOnWriteArrayList<>();
 
     private final boolean returnThinking;
+    private final boolean accumulateToolCallId;
 
     public OpenAiStreamingResponseBuilder() {
-        this(false);
+        this(false, true);
     }
 
     public OpenAiStreamingResponseBuilder(boolean returnThinking) {
+        this(returnThinking, true);
+    }
+
+    public OpenAiStreamingResponseBuilder(boolean returnThinking, boolean accumulateToolCallId) {
         this.returnThinking = returnThinking;
+        this.accumulateToolCallId = accumulateToolCallId;
         if (returnThinking) {
             this.reasoningContentBuilder = new StringBuffer();
         } else {
@@ -127,6 +140,11 @@ public class OpenAiStreamingResponseBuilder {
             this.finishReason.set(finishReasonFrom(finishReason));
         }
 
+        LogProbs logProbs = chatCompletionChoice.logprobs();
+        if (logProbs != null && logProbs.content() != null) {
+            this.logProbs.addAll(logProbs.content());
+        }
+
         Delta delta = chatCompletionChoice.delta();
         if (delta == null) {
             return;
@@ -154,22 +172,45 @@ public class OpenAiStreamingResponseBuilder {
             }
         }
 
-        if (delta.toolCalls() != null && !delta.toolCalls().isEmpty()) {
-            ToolCall toolCall = delta.toolCalls().get(0);
+        if (delta.toolCalls() != null) {
+            for (ToolCall toolCall : delta.toolCalls()) {
+                if (isSentinel(toolCall)) {
+                    continue;
+                }
 
-            ToolExecutionRequestBuilder builder = this.indexToToolExecutionRequestBuilder.computeIfAbsent(
-                    toolCall.index(), idx -> new ToolExecutionRequestBuilder());
+                int toolCallIndex = toolCall.index() != null ? toolCall.index() : fallbackToolCallIndex.get();
 
-            if (toolCall.id() != null) {
-                builder.idBuilder.append(toolCall.id());
-            }
+                ToolExecutionRequestBuilder builder = this.indexToToolExecutionRequestBuilder.computeIfAbsent(
+                        toolCallIndex, idx -> new ToolExecutionRequestBuilder());
 
-            FunctionCall functionCall = toolCall.function();
-            if (functionCall.name() != null) {
-                builder.nameBuilder.append(functionCall.name());
-            }
-            if (functionCall.arguments() != null) {
-                builder.argumentsBuilder.append(functionCall.arguments());
+                // When index is null and a different tool call id appears, increment the fallback index
+                if (toolCall.index() == null
+                        && toolCall.id() != null
+                        && !builder.idBuilder.isEmpty()
+                        && !builder.idBuilder.toString().equals(toolCall.id())) {
+                    toolCallIndex = fallbackToolCallIndex.incrementAndGet();
+                    builder = this.indexToToolExecutionRequestBuilder.computeIfAbsent(
+                            toolCallIndex, idx -> new ToolExecutionRequestBuilder());
+                }
+
+                if (toolCall.id() != null) {
+                    if (accumulateToolCallId) {
+                        builder.idBuilder.append(toolCall.id());
+                    } else {
+                        builder.idBuilder.setLength(0);
+                        builder.idBuilder.append(toolCall.id());
+                    }
+                }
+
+                FunctionCall functionCall = toolCall.function();
+                if (functionCall != null) {
+                    if (functionCall.name() != null) {
+                        builder.nameBuilder.append(functionCall.name());
+                    }
+                    if (functionCall.arguments() != null) {
+                        builder.argumentsBuilder.append(functionCall.arguments());
+                    }
+                }
             }
         }
     }
@@ -265,7 +306,24 @@ public class OpenAiStreamingResponseBuilder {
                 .systemFingerprint(systemFingerprint.get())
                 .rawHttpResponse(rawHttpResponse.get())
                 .rawServerSentEvents(new ArrayList<>(rawServerSentEvents))
+                .logProbs(
+                        logProbs.isEmpty()
+                                ? null
+                                : logProbsFrom(LogProbs.builder()
+                                        .content(new ArrayList<>(logProbs))
+                                        .build()))
                 .build();
+    }
+
+    private static boolean isSentinel(ToolCall toolCall) {
+        boolean hasId = !isNullOrBlank(toolCall.id());
+        FunctionCall functionCall = toolCall.function();
+        if (functionCall == null) {
+            return !hasId;
+        }
+        boolean hasName = !isNullOrBlank(functionCall.name());
+        boolean hasArguments = functionCall.arguments() != null;
+        return !hasId && !hasName && !hasArguments;
     }
 
     private static class ToolExecutionRequestBuilder {

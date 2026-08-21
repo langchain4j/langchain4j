@@ -10,11 +10,13 @@ import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.model.output.structured.Description;
 import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
@@ -71,8 +73,8 @@ class ToolSpecificationsTest implements WithAssertions {
                 Collection<String> p24,
                 E p25,
                 Person p26,
-                @P(value = "optional", required = false) int p27,
-                @P(value = "required") int p28) {
+                @P(description = "optional", required = false) int p27,
+                @P(description = "required") int p28) {
             return 42;
         }
 
@@ -385,5 +387,467 @@ class ToolSpecificationsTest implements WithAssertions {
 
         // then
         assertThat(toolSpecification.metadata()).containsExactly(Map.entry("one", "one"), Map.entry("two", 2));
+    }
+
+    @Test
+    void optional_parameter_is_not_required() throws NoSuchMethodException {
+        class Tools {
+            @Tool
+            public void tool(@P("foo") String foo, @P("bar") Optional<String> bar) {}
+        }
+        Method method = Tools.class.getMethod("tool", String.class, Optional.class);
+        ToolSpecification ts = ToolSpecifications.toolSpecificationFrom(method);
+
+        assertThat(ts.parameters()).isInstanceOf(JsonObjectSchema.class);
+        JsonObjectSchema schema = ts.parameters();
+        assertThat(schema.required()).containsExactly("arg0"); // only 'foo' is required
+        assertThat(schema.properties().keySet()).containsExactly("arg0", "arg1");
+    }
+
+    @Test
+    void non_optional_parameter_is_required_by_default() throws NoSuchMethodException {
+        class Tools {
+            @Tool
+            public void tool(@P("foo") String foo, @P("bar") String bar) {}
+        }
+        Method method = Tools.class.getMethod("tool", String.class, String.class);
+        ToolSpecification ts = ToolSpecifications.toolSpecificationFrom(method);
+
+        assertThat(ts.parameters()).isInstanceOf(JsonObjectSchema.class);
+        JsonObjectSchema schema = ts.parameters();
+        assertThat(schema.required()).containsExactly("arg0", "arg1"); // both required
+        assertThat(schema.properties().keySet()).containsExactly("arg0", "arg1");
+    }
+
+    @Test
+    void parameter_explicitly_required_true_is_required() throws NoSuchMethodException {
+        class Tools {
+            @Tool
+            public void tool(@P(description = "foo", required = true) String foo, @P("bar") String bar) {}
+        }
+        Method method = Tools.class.getMethod("tool", String.class, String.class);
+        ToolSpecification ts = ToolSpecifications.toolSpecificationFrom(method);
+
+        assertThat(ts.parameters()).isInstanceOf(JsonObjectSchema.class);
+        JsonObjectSchema schema = ts.parameters();
+        assertThat(schema.required()).containsExactly("arg0", "arg1"); // both required
+        assertThat(schema.properties().keySet()).containsExactly("arg0", "arg1");
+    }
+
+    @Test
+    void parameter_with_default_value_is_not_required() throws NoSuchMethodException {
+        class Tools {
+            @Tool
+            public void tool(String foo, @P(defaultValue = "10") int bar) {}
+        }
+        Method method = Tools.class.getMethod("tool", String.class, int.class);
+        ToolSpecification ts = ToolSpecifications.toolSpecificationFrom(method);
+
+        assertThat(ts.parameters()).isInstanceOf(JsonObjectSchema.class);
+        JsonObjectSchema schema = ts.parameters();
+        assertThat(schema.required()).containsExactly("arg0"); // 'bar' is optional because it has a default
+        assertThat(schema.properties().keySet()).containsExactly("arg0", "arg1");
+    }
+
+    @Test
+    void parameter_with_default_value_is_not_required_even_when_required_is_true() throws NoSuchMethodException {
+        // defaultValue takes precedence over required = true for the schema's required array.
+        class Tools {
+            @Tool
+            public void tool(String foo, @P(required = true, defaultValue = "10") int bar) {}
+        }
+        Method method = Tools.class.getMethod("tool", String.class, int.class);
+        ToolSpecification ts = ToolSpecifications.toolSpecificationFrom(method);
+
+        assertThat(ts.parameters()).isInstanceOf(JsonObjectSchema.class);
+        JsonObjectSchema schema = ts.parameters();
+        assertThat(schema.required()).containsExactly("arg0");
+        assertThat(schema.properties().keySet()).containsExactly("arg0", "arg1");
+    }
+
+    @Test
+    void should_fail_when_both_value_and_description_are_set_in_P() throws NoSuchMethodException {
+        class Tools {
+            @Tool
+            public void tool(@P(value = "desc via value", description = "desc via description") String param) {}
+        }
+        Method method = Tools.class.getMethod("tool", String.class);
+
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> ToolSpecifications.toolSpecificationFrom(method))
+                .withMessageContaining("has both 'value' and 'description' set in @P");
+    }
+
+    @Test
+    void should_use_description_when_only_description_is_set_in_P() throws NoSuchMethodException {
+        class Tools {
+            @Tool
+            public void tool(@P(description = "desc via description") String param) {}
+        }
+        Method method = Tools.class.getMethod("tool", String.class);
+        ToolSpecification ts = ToolSpecifications.toolSpecificationFrom(method);
+
+        JsonSchemaElement element = ts.parameters().properties().get("arg0");
+        assertThat(element).isEqualTo(JsonStringSchema.builder().description("desc via description").build());
+    }
+
+    @Test
+    void should_use_value_when_only_value_is_set_in_P() throws NoSuchMethodException {
+        class Tools {
+            @Tool
+            public void tool(@P(value = "desc via value") String param) {}
+        }
+        Method method = Tools.class.getMethod("tool", String.class);
+        ToolSpecification ts = ToolSpecifications.toolSpecificationFrom(method);
+
+        JsonSchemaElement element = ts.parameters().properties().get("arg0");
+        assertThat(element).isEqualTo(JsonStringSchema.builder().description("desc via value").build());
+    }
+
+    @Test
+    void should_have_null_description_when_only_name_is_set_in_P() throws NoSuchMethodException {
+        class Tools {
+            @Tool
+            public void tool(@P(name = "myParam") String param) {}
+        }
+        Method method = Tools.class.getMethod("tool", String.class);
+        ToolSpecification ts = ToolSpecifications.toolSpecificationFrom(method);
+
+        assertThat(ts.parameters().properties()).containsKey("myParam");
+        JsonStringSchema element = (JsonStringSchema) ts.parameters().properties().get("myParam");
+        assertThat(element.description()).isNull();
+    }
+
+    // --- Inheritance tests ---
+
+    @SuppressWarnings("unused")
+    public static class ParentTool {
+        @Tool("parent tool")
+        public int parentMethod(int a) {
+            return a;
+        }
+    }
+
+    @SuppressWarnings("unused")
+    public static class ChildTool extends ParentTool {
+        @Tool("child tool")
+        public int childMethod(int b) {
+            return b;
+        }
+    }
+
+    @Test
+    void should_discover_tool_from_superclass() {
+        List<ToolSpecification> specs = ToolSpecifications.toolSpecificationsFrom(new ChildTool());
+
+        assertThat(specs).hasSize(2);
+        assertThat(specs).extracting(ToolSpecification::name)
+                .containsExactlyInAnyOrder("childMethod", "parentMethod");
+        assertThat(specs).extracting(ToolSpecification::description)
+                .containsExactlyInAnyOrder("child tool", "parent tool");
+    }
+
+    @SuppressWarnings("unused")
+    public static class ParentWithNamedTool {
+        @Tool(name = "shared_name", value = "parent version")
+        public int doSomething(int a) {
+            return a;
+        }
+    }
+
+    @SuppressWarnings("unused")
+    public static class ChildWithSameToolName extends ParentWithNamedTool {
+        @Tool(name = "shared_name", value = "child version")
+        public int doSomethingElse(int b) {
+            return b;
+        }
+    }
+
+    @Test
+    void should_fail_when_parent_and_child_have_same_tool_name() {
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> ToolSpecifications.toolSpecificationsFrom(new ChildWithSameToolName()))
+                .withMessage("Tool names must be unique. The tool 'shared_name' appears several times");
+    }
+
+    @SuppressWarnings("unused")
+    public static class ParentWithOverridableTool {
+        @Tool("parent description")
+        public int compute(int a) {
+            return a;
+        }
+    }
+
+    @SuppressWarnings("unused")
+    public static class ChildOverridingTool extends ParentWithOverridableTool {
+        @Override
+        @Tool("child description")
+        public int compute(int a) {
+            return a * 2;
+        }
+    }
+
+    @Test
+    void should_use_overriding_method_from_child_class() {
+        List<ToolSpecification> specs = ToolSpecifications.toolSpecificationsFrom(new ChildOverridingTool());
+
+        assertThat(specs).hasSize(1);
+        assertThat(specs.get(0).name()).isEqualTo("compute");
+        assertThat(specs.get(0).description()).isEqualTo("child description");
+    }
+
+    @SuppressWarnings("unused")
+    public static class ChildOverridingToolWithNewAnnotation extends ParentWithOverridableTool {
+        @Override
+        @Tool(name = "renamed_compute", value = "updated description")
+        public int compute(int a) {
+            return a * 3;
+        }
+    }
+
+    @Test
+    void should_use_updated_tool_annotation_from_overriding_child() {
+        List<ToolSpecification> specs = ToolSpecifications.toolSpecificationsFrom(new ChildOverridingToolWithNewAnnotation());
+
+        assertThat(specs).hasSize(1);
+        assertThat(specs.get(0).name()).isEqualTo("renamed_compute");
+        assertThat(specs.get(0).description()).isEqualTo("updated description");
+    }
+
+    @SuppressWarnings("unused")
+    public static class ParentWithProcess {
+        @Tool("process a string")
+        public String process(String input) {
+            return input;
+        }
+    }
+
+    @SuppressWarnings("unused")
+    public static class ChildWithOverloadedProcess extends ParentWithProcess {
+        @Tool("process an int")
+        public int process(int input) {
+            return input;
+        }
+    }
+
+    @Test
+    void should_fail_when_overloaded_methods_in_parent_and_child_default_to_same_tool_name() {
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> ToolSpecifications.toolSpecificationsFrom(new ChildWithOverloadedProcess()))
+                .withMessage("Tool names must be unique. The tool 'process' appears several times");
+    }
+
+    @SuppressWarnings("unused")
+    public static class ParentWithNamedProcess {
+        @Tool(name = "process", value = "process a string")
+        public String process(String input) {
+            return input;
+        }
+    }
+
+    @SuppressWarnings("unused")
+    public static class ChildWithOverloadedSameToolName extends ParentWithNamedProcess {
+        @Tool(name = "process", value = "process an int")
+        public int process(int input) {
+            return input;
+        }
+    }
+
+    @Test
+    void should_fail_when_overloaded_methods_in_parent_and_child_have_same_tool_name() {
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> ToolSpecifications.toolSpecificationsFrom(new ChildWithOverloadedSameToolName()))
+                .withMessage("Tool names must be unique. The tool 'process' appears several times");
+    }
+
+    @SuppressWarnings("unused")
+    public static class ChildWithOverloadedDifferentToolNames extends ParentWithNamedProcess {
+        @Tool(name = "process_int", value = "process an int")
+        public static int process(int input) {
+            return input;
+        }
+    }
+
+    @Test
+    void should_discover_both_when_overloaded_methods_in_parent_and_child_have_different_tool_names() {
+        List<ToolSpecification> specs = ToolSpecifications.toolSpecificationsFrom(new ChildWithOverloadedDifferentToolNames());
+
+        assertThat(specs).hasSize(2);
+        assertThat(specs).extracting(ToolSpecification::name)
+                .containsExactlyInAnyOrder("process", "process_int");
+        assertThat(specs).extracting(ToolSpecification::description)
+                .containsExactlyInAnyOrder("process a string", "process an int");
+    }
+
+    // --- Interface default method tests ---
+
+    public interface ToolInterface {
+        @Tool("interface tool")
+        default int interfaceMethod(int a) {
+            return a;
+        }
+    }
+
+    @SuppressWarnings("unused")
+    public static class ImplementsToolInterface implements ToolInterface {
+    }
+
+    @Test
+    void should_discover_tool_from_interface_default_method() {
+        List<ToolSpecification> specs = ToolSpecifications.toolSpecificationsFrom(new ImplementsToolInterface());
+
+        assertThat(specs).hasSize(1);
+        assertThat(specs.get(0).name()).isEqualTo("interfaceMethod");
+        assertThat(specs.get(0).description()).isEqualTo("interface tool");
+    }
+
+    @SuppressWarnings("unused")
+    public static class ClassWithOwnToolAndInterface implements ToolInterface {
+        @Tool("class tool")
+        public int classMethod(int b) {
+            return b;
+        }
+    }
+
+    @Test
+    void should_discover_tools_from_both_class_and_interface() {
+        List<ToolSpecification> specs = ToolSpecifications.toolSpecificationsFrom(new ClassWithOwnToolAndInterface());
+
+        assertThat(specs).hasSize(2);
+        assertThat(specs).extracting(ToolSpecification::name)
+                .containsExactlyInAnyOrder("classMethod", "interfaceMethod");
+        assertThat(specs).extracting(ToolSpecification::description)
+                .containsExactlyInAnyOrder("class tool", "interface tool");
+    }
+
+    @SuppressWarnings("unused")
+    public static class ClassOverridingInterfaceDefault implements ToolInterface {
+        @Override
+        @Tool("overridden tool")
+        public int interfaceMethod(int a) {
+            return a * 2;
+        }
+    }
+
+    @Test
+    void should_use_class_method_when_overriding_interface_default() {
+        List<ToolSpecification> specs = ToolSpecifications.toolSpecificationsFrom(new ClassOverridingInterfaceDefault());
+
+        assertThat(specs).hasSize(1);
+        assertThat(specs.get(0).name()).isEqualTo("interfaceMethod");
+        assertThat(specs.get(0).description()).isEqualTo("overridden tool");
+    }
+
+    public interface ToolInterfaceWithAbstractMethod {
+        @Tool("abstract tool")
+        int abstractMethod(int a);
+    }
+
+    @SuppressWarnings("unused")
+    public static class ImplementsAbstractToolMethod implements ToolInterfaceWithAbstractMethod {
+        @Override
+        public int abstractMethod(int a) {
+            return a;
+        }
+    }
+
+    @Test
+    void should_not_discover_abstract_interface_method_without_tool_on_implementation() {
+        List<ToolSpecification> specs = ToolSpecifications.toolSpecificationsFrom(new ImplementsAbstractToolMethod());
+
+        assertThat(specs).isEmpty();
+    }
+
+    public interface ToolInterfaceWithStaticMethod {
+        @Tool("static tool")
+        static int staticMethod(int a) {
+            return a;
+        }
+    }
+
+    @SuppressWarnings("unused")
+    public static class ImplementsInterfaceWithStaticTool implements ToolInterfaceWithStaticMethod {
+        @Tool("instance tool")
+        public int instanceMethod(int b) {
+            return b;
+        }
+    }
+
+    @Test
+    void should_discover_static_tool_from_interface() {
+        List<ToolSpecification> specs = ToolSpecifications.toolSpecificationsFrom(new ImplementsInterfaceWithStaticTool());
+
+        assertThat(specs).hasSize(2);
+        assertThat(specs).extracting(ToolSpecification::name)
+                .containsExactlyInAnyOrder("staticMethod", "instanceMethod");
+        assertThat(specs).extracting(ToolSpecification::description)
+                .containsExactlyInAnyOrder("static tool", "instance tool");
+    }
+
+    // These tests need both a parameter whose name survived compilation and one whose name did not.
+    // This module is compiled without the -parameters javac flag, so an ordinary method supplies the
+    // second case, while the canonical constructor of a record supplies the first: javac always emits
+    // parameter names for those, flag or no flag.
+    // The warning is deduplicated per declaring class, so each test needs its own holder class.
+
+    @SuppressWarnings("unused")
+    static class UnnamedParameters {
+        static void f(String first, int second) {}
+    }
+
+    @SuppressWarnings("unused")
+    static class MoreUnnamedParameters {
+        static void f(String first) {}
+    }
+
+    record RecordWithNamedParameters(String named) {}
+
+    private static Parameter firstParameterOf(Class<?> holder, Class<?>... parameterTypes)
+            throws NoSuchMethodException {
+        return holder.getDeclaredMethod("f", parameterTypes).getParameters()[0];
+    }
+
+    @Test
+    void should_warn_when_parameter_name_is_unavailable() throws NoSuchMethodException {
+        Parameter parameter = firstParameterOf(UnnamedParameters.class, String.class, int.class);
+        assertThat(parameter.isNamePresent()).isFalse();
+
+        assertThat(ToolSpecifications.unavailableParameterNameWarning(parameter))
+                .contains("Parameter 'arg0'")
+                .contains(UnnamedParameters.class.getName())
+                .contains("-parameters")
+                .contains("@P(name = \"...\")");
+    }
+
+    @Test
+    void should_not_warn_when_parameter_name_is_available() {
+        Parameter parameter = RecordWithNamedParameters.class.getDeclaredConstructors()[0].getParameters()[0];
+        assertThat(parameter.isNamePresent()).isTrue();
+
+        assertThat(ToolSpecifications.unavailableParameterNameWarning(parameter)).isNull();
+    }
+
+    @Test
+    void should_warn_only_once_per_declaring_class() throws NoSuchMethodException {
+        Parameter parameter = firstParameterOf(MoreUnnamedParameters.class, String.class);
+
+        assertThat(ToolSpecifications.unavailableParameterNameWarning(parameter)).isNotNull();
+        assertThat(ToolSpecifications.unavailableParameterNameWarning(parameter)).isNull();
+    }
+
+    @SuppressWarnings("unused")
+    public static class ToolWithExplicitlyNamedParameter {
+        @Tool("named parameter")
+        public String f(@P(name = "city", value = "The city") String p0) {
+            return p0;
+        }
+    }
+
+    @Test
+    void should_prefer_explicit_parameter_name_over_the_compiled_one() {
+        ToolSpecification spec = ToolSpecifications.toolSpecificationsFrom(new ToolWithExplicitlyNamedParameter())
+                .get(0);
+
+        assertThat(spec.parameters().properties()).containsOnlyKeys("city");
     }
 }

@@ -11,29 +11,34 @@ import dev.langchain4j.data.image.Image;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.image.ImageModel;
 import dev.langchain4j.model.openai.internal.OpenAiClient;
+import dev.langchain4j.model.openai.internal.image.EditImageRequest;
 import dev.langchain4j.model.openai.internal.image.GenerateImagesRequest;
 import dev.langchain4j.model.openai.internal.image.GenerateImagesResponse;
 import dev.langchain4j.model.openai.internal.image.ImageData;
+import dev.langchain4j.model.openai.internal.image.ImageFile;
 import dev.langchain4j.model.openai.spi.OpenAiImageModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 
 /**
- * Represents an OpenAI DALL·E models to generate artistic images. Versions 2 and 3 (default) are supported.
- * Find the parameters description <a href="https://platform.openai.com/docs/api-reference/images/create">here</a>.
+ * Represents an OpenAI image generation model.
+ * Find the parameters description <a href="https://developers.openai.com/api/reference/resources/images/methods/generate">here</a>.
  */
 public class OpenAiImageModel implements ImageModel {
 
     private final String modelName;
     private final String size;
     private final String quality;
-    private final String style;
     private final String user;
-    private final String responseFormat;
+    private final String background;
+    private final String outputFormat;
+    private final Integer outputCompression;
+    private final String moderation;
 
     private final OpenAiClient client;
 
@@ -52,7 +57,7 @@ public class OpenAiImageModel implements ImageModel {
                 .logResponses(getOrDefault(builder.logResponses, false))
                 .logger(builder.logger)
                 .userAgent(DEFAULT_USER_AGENT)
-                .customHeaders(builder.customHeaders)
+                .customHeaders(builder.customHeadersSupplier)
                 .customQueryParams(builder.customQueryParams);
 
         this.client = cBuilder.build();
@@ -61,9 +66,11 @@ public class OpenAiImageModel implements ImageModel {
         this.modelName = builder.modelName;
         this.size = builder.size;
         this.quality = builder.quality;
-        this.style = builder.style;
         this.user = builder.user;
-        this.responseFormat = builder.responseFormat;
+        this.background = builder.background;
+        this.outputFormat = builder.outputFormat;
+        this.outputCompression = builder.outputCompression;
+        this.moderation = builder.moderation;
     }
 
     public String modelName() {
@@ -74,21 +81,44 @@ public class OpenAiImageModel implements ImageModel {
     public Response<Image> generate(String prompt) {
         GenerateImagesRequest request = requestBuilder(prompt).build();
 
-        GenerateImagesResponse response = withRetryMappingExceptions(() -> client.imagesGeneration(request), maxRetries)
-                .execute();
+        GenerateImagesResponse response =
+                withRetryMappingExceptions(() -> client.imagesGeneration(request).execute(), maxRetries);
 
-        return Response.from(fromImageData(response.data().get(0)));
+        return Response.from(fromImageData(response.data().get(0), response.outputFormat()));
     }
 
     @Override
     public Response<List<Image>> generate(String prompt, int n) {
         GenerateImagesRequest request = requestBuilder(prompt).n(n).build();
 
-        GenerateImagesResponse response = withRetryMappingExceptions(() -> client.imagesGeneration(request), maxRetries)
-                .execute();
+        GenerateImagesResponse response =
+                withRetryMappingExceptions(() -> client.imagesGeneration(request).execute(), maxRetries);
 
-        return Response.from(
-                response.data().stream().map(OpenAiImageModel::fromImageData).collect(Collectors.toList()));
+        String responseOutputFormat = response.outputFormat();
+        return Response.from(response.data().stream()
+                .map(data -> fromImageData(data, responseOutputFormat))
+                .collect(Collectors.toList()));
+    }
+
+    @Override
+    public Response<Image> edit(Image image, String prompt) {
+        EditImageRequest request = editRequestBuilder(image, prompt).build();
+
+        GenerateImagesResponse response =
+                withRetryMappingExceptions(() -> client.imagesEdit(request).execute(), maxRetries);
+
+        return Response.from(fromImageData(response.data().get(0), response.outputFormat()));
+    }
+
+    @Override
+    public Response<Image> edit(Image image, Image mask, String prompt) {
+        EditImageRequest request =
+                editRequestBuilder(image, prompt).mask(ImageFile.from(mask)).build();
+
+        GenerateImagesResponse response =
+                withRetryMappingExceptions(() -> client.imagesEdit(request).execute(), maxRetries);
+
+        return Response.from(fromImageData(response.data().get(0), response.outputFormat()));
     }
 
     public static OpenAiImageModelBuilder builder() {
@@ -109,15 +139,17 @@ public class OpenAiImageModel implements ImageModel {
         private String modelName;
         private String size;
         private String quality;
-        private String style;
         private String user;
-        private String responseFormat;
+        private String background;
+        private String outputFormat;
+        private Integer outputCompression;
+        private String moderation;
         private Duration timeout;
         private Integer maxRetries;
         private Boolean logRequests;
         private Boolean logResponses;
         private Logger logger;
-        private Map<String, String> customHeaders;
+        private Supplier<Map<String, String>> customHeadersSupplier;
         private Map<String, String> customQueryParams;
 
         public OpenAiImageModelBuilder() {
@@ -169,18 +201,28 @@ public class OpenAiImageModel implements ImageModel {
             return this;
         }
 
-        public OpenAiImageModelBuilder style(String style) {
-            this.style = style;
-            return this;
-        }
-
         public OpenAiImageModelBuilder user(String user) {
             this.user = user;
             return this;
         }
 
-        public OpenAiImageModelBuilder responseFormat(String responseFormat) {
-            this.responseFormat = responseFormat;
+        public OpenAiImageModelBuilder background(String background) {
+            this.background = background;
+            return this;
+        }
+
+        public OpenAiImageModelBuilder outputFormat(String outputFormat) {
+            this.outputFormat = outputFormat;
+            return this;
+        }
+
+        public OpenAiImageModelBuilder outputCompression(Integer outputCompression) {
+            this.outputCompression = outputCompression;
+            return this;
+        }
+
+        public OpenAiImageModelBuilder moderation(String moderation) {
+            this.moderation = moderation;
             return this;
         }
 
@@ -213,8 +255,21 @@ public class OpenAiImageModel implements ImageModel {
             return this;
         }
 
+        /**
+         * Sets custom HTTP headers.
+         */
         public OpenAiImageModelBuilder customHeaders(Map<String, String> customHeaders) {
-            this.customHeaders = customHeaders;
+            this.customHeadersSupplier = () -> customHeaders;
+            return this;
+        }
+
+        /**
+         * Sets a supplier for custom HTTP headers.
+         * The supplier is called before each request, allowing dynamic header values.
+         * For example, this is useful for OAuth2 tokens that expire and need refreshing.
+         */
+        public OpenAiImageModelBuilder customHeaders(Supplier<Map<String, String>> customHeadersSupplier) {
+            this.customHeadersSupplier = customHeadersSupplier;
             return this;
         }
 
@@ -228,12 +283,15 @@ public class OpenAiImageModel implements ImageModel {
         }
     }
 
-    private static Image fromImageData(ImageData data) {
-        return Image.builder()
-                .url(data.url())
-                .base64Data(data.b64Json())
-                .revisedPrompt(data.revisedPrompt())
-                .build();
+    private static Image fromImageData(ImageData data, String outputFormat) {
+        Image.Builder imageBuilder =
+                Image.builder().url(data.url()).base64Data(data.b64Json()).revisedPrompt(data.revisedPrompt());
+
+        if (outputFormat != null) {
+            imageBuilder.mimeType("image/" + outputFormat);
+        }
+
+        return imageBuilder.build();
     }
 
     private GenerateImagesRequest.Builder requestBuilder(String prompt) {
@@ -242,8 +300,23 @@ public class OpenAiImageModel implements ImageModel {
                 .prompt(prompt)
                 .size(size)
                 .quality(quality)
-                .style(style)
                 .user(user)
-                .responseFormat(responseFormat);
+                .background(background)
+                .outputFormat(outputFormat)
+                .outputCompression(outputCompression)
+                .moderation(moderation);
+    }
+
+    private EditImageRequest.Builder editRequestBuilder(Image image, String prompt) {
+        return EditImageRequest.builder()
+                .image(ImageFile.from(image))
+                .model(modelName)
+                .prompt(prompt)
+                .size(size)
+                .quality(quality)
+                .user(user)
+                .background(background)
+                .outputFormat(outputFormat)
+                .outputCompression(outputCompression);
     }
 }

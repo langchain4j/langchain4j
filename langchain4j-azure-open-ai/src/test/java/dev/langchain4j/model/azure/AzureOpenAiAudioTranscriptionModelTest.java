@@ -12,6 +12,8 @@ import com.azure.ai.openai.OpenAIClient;
 import com.azure.ai.openai.models.AudioTranscription;
 import com.azure.ai.openai.models.AudioTranscriptionFormat;
 import com.azure.ai.openai.models.AudioTranscriptionOptions;
+import com.azure.core.http.HttpClient;
+import com.azure.core.http.HttpClientProvider;
 import dev.langchain4j.data.audio.Audio;
 import dev.langchain4j.model.audio.AudioTranscriptionRequest;
 import dev.langchain4j.model.audio.AudioTranscriptionResponse;
@@ -32,6 +34,26 @@ class AzureOpenAiAudioTranscriptionModelTest {
 
         // then
         assertThat(model).isNotNull();
+    }
+
+    @Test
+    void should_use_custom_http_client_provider_when_provided() {
+        // given
+        HttpClient mockHttpClient = mock(HttpClient.class);
+        HttpClientProvider customProvider = mock(HttpClientProvider.class);
+        when(customProvider.createInstance(any())).thenReturn(mockHttpClient);
+
+        // when
+        AzureOpenAiAudioTranscriptionModel model = AzureOpenAiAudioTranscriptionModel.builder()
+                .endpoint("https://test.openai.azure.com")
+                .apiKey("test-key")
+                .deploymentName("test-deployment")
+                .httpClientProvider(customProvider)
+                .build();
+
+        // then the custom provider is used to create the HTTP client, instead of defaulting to Netty
+        assertThat(model).isNotNull();
+        verify(customProvider).createInstance(any());
     }
 
     @Test
@@ -180,12 +202,13 @@ class AzureOpenAiAudioTranscriptionModelTest {
     @Test
     void should_throw_exception_when_request_is_null() {
         // given
+        AudioTranscriptionRequest audioTranscriptionRequest = null;
         OpenAIClient client = mock(OpenAIClient.class);
         AzureOpenAiAudioTranscriptionModel model =
                 new AzureOpenAiAudioTranscriptionModel(client, "test-deployment", AudioTranscriptionFormat.JSON);
 
         // when & then
-        assertThatThrownBy(() -> model.transcribe(null))
+        assertThatThrownBy(() -> model.transcribe(audioTranscriptionRequest))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Request and audio data are required");
     }

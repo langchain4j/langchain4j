@@ -6,6 +6,7 @@ import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
 import static java.util.Arrays.asList;
 
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import java.util.List;
 import java.util.Objects;
@@ -98,6 +99,9 @@ public class DefaultChatRequestParameters implements ChatRequestParameters {
 
     @Override
     public ChatRequestParameters overrideWith(ChatRequestParameters that) {
+        if (isSubtypeOfThis(that)) {
+            return that.defaultedBy(this);
+        }
         return DefaultChatRequestParameters.builder()
                 .overrideWith(this)
                 .overrideWith(that)
@@ -106,13 +110,29 @@ public class DefaultChatRequestParameters implements ChatRequestParameters {
 
     @Override
     public ChatRequestParameters defaultedBy(ChatRequestParameters that) {
+        if (isSubtypeOfThis(that)) {
+            return that.overrideWith(this);
+        }
         return DefaultChatRequestParameters.builder()
                 .overrideWith(that)
                 .overrideWith(this)
                 .build();
     }
 
+    /**
+     * Checks whether {@code that} is a more specific (provider-specific) type than this one,
+     * for example {@code OpenAiChatRequestParameters} when this is a plain {@code DefaultChatRequestParameters}.
+     * In such a case the merging has to be delegated to {@code that},
+     * otherwise all provider-specific parameters would be silently lost.
+     */
+    private boolean isSubtypeOfThis(ChatRequestParameters that) {
+        return that != null
+                && that.getClass() != this.getClass()
+                && this.getClass().isAssignableFrom(that.getClass());
+    }
+
     @Override
+    @JacocoIgnoreCoverageGenerated
     public boolean equals(final Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
@@ -131,6 +151,7 @@ public class DefaultChatRequestParameters implements ChatRequestParameters {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public int hashCode() {
         return Objects.hash(
                 modelName,
@@ -147,6 +168,7 @@ public class DefaultChatRequestParameters implements ChatRequestParameters {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public String toString() {
         return "DefaultChatRequestParameters{" + "modelName='"
                 + modelName + '\'' + ", temperature="

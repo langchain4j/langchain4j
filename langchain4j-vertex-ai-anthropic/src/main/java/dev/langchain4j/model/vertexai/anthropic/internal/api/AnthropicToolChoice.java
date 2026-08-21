@@ -6,6 +6,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import java.util.StringJoiner;
 
 @JsonInclude(NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
@@ -20,6 +21,22 @@ public class AnthropicToolChoice {
     public AnthropicToolChoice(String type, String name) {
         this.type = type;
         this.name = name;
+    }
+
+    public String getType() {
+        return type;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    @Override
+    public String toString() {
+        return new StringJoiner(", ", "AnthropicToolChoice [", "]")
+                .add("name=" + this.getName())
+                .add("type=" + this.getType())
+                .toString();
     }
 
     public static AnthropicToolChoice auto() {

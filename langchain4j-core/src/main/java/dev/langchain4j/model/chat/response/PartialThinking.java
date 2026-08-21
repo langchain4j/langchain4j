@@ -3,12 +3,15 @@ package dev.langchain4j.model.chat.response;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 
 import dev.langchain4j.Experimental;
+import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
+
 import java.util.Objects;
 
 /**
  * @since 1.2.0
  */
 @Experimental
+@JacocoIgnoreCoverageGenerated
 public class PartialThinking {
 
     private final String text;

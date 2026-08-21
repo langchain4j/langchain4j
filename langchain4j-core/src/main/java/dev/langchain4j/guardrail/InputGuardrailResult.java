@@ -3,6 +3,8 @@ package dev.langchain4j.guardrail;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -77,6 +79,7 @@ public final class InputGuardrailResult implements GuardrailResult<InputGuardrai
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public String toString() {
         return asString();
     }
@@ -93,6 +96,7 @@ public final class InputGuardrailResult implements GuardrailResult<InputGuardrai
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
@@ -103,6 +107,7 @@ public final class InputGuardrailResult implements GuardrailResult<InputGuardrai
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public int hashCode() {
         return Objects.hash(result, successfulText, failures);
     }
