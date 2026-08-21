@@ -5,20 +5,20 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import dev.langchain4j.Internal;
+import dev.langchain4j.mcp.client.McpResourceTemplate;
 import java.util.List;
-import java.util.Map;
 
 /**
- * Corresponds to the {@code ListToolsResult} type from the MCP schema.
+ * Corresponds to the {@code ListResourceTemplatesResult} type from the MCP schema.
  */
 @Internal
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class McpListToolsResult extends McpJsonRpcMessage {
+public class McpListResourceTemplatesResult extends McpJsonRpcMessage {
 
     private final Result result;
 
     @JsonCreator
-    public McpListToolsResult(@JsonProperty("id") Long id, @JsonProperty("result") Result result) {
+    public McpListResourceTemplatesResult(@JsonProperty("id") Long id, @JsonProperty("result") Result result) {
         super(id);
         this.result = result;
     }
@@ -31,19 +31,19 @@ public class McpListToolsResult extends McpJsonRpcMessage {
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Result {
 
-        private final List<Map<String, Object>> tools;
+        private final List<McpResourceTemplate> resourceTemplates;
         private final String nextCursor;
 
         @JsonCreator
         public Result(
-                @JsonProperty("tools") List<Map<String, Object>> tools,
+                @JsonProperty("resourceTemplates") List<McpResourceTemplate> resourceTemplates,
                 @JsonProperty("nextCursor") String nextCursor) {
-            this.tools = tools;
+            this.resourceTemplates = resourceTemplates;
             this.nextCursor = nextCursor;
         }
 
-        public List<Map<String, Object>> getTools() {
-            return tools;
+        public List<McpResourceTemplate> getResourceTemplates() {
+            return resourceTemplates;
         }
 
         public String getNextCursor() {

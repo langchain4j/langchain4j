@@ -2,23 +2,22 @@ package dev.langchain4j.mcp.protocol;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import dev.langchain4j.Internal;
-import java.util.List;
-import java.util.Map;
 
 /**
- * Corresponds to the {@code ListToolsResult} type from the MCP schema.
+ * The pagination envelope shared by every {@code list} operation in the MCP schema. Only the
+ * cursor is modelled, so that paging can be read from any list response without caring which
+ * kind of list it carries.
  */
 @Internal
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class McpListToolsResult extends McpJsonRpcMessage {
+public class McpPaginatedResult extends McpJsonRpcMessage {
 
     private final Result result;
 
     @JsonCreator
-    public McpListToolsResult(@JsonProperty("id") Long id, @JsonProperty("result") Result result) {
+    public McpPaginatedResult(@JsonProperty("id") Long id, @JsonProperty("result") Result result) {
         super(id);
         this.result = result;
     }
@@ -27,23 +26,14 @@ public class McpListToolsResult extends McpJsonRpcMessage {
         return result;
     }
 
-    @JsonInclude(JsonInclude.Include.NON_NULL)
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Result {
 
-        private final List<Map<String, Object>> tools;
         private final String nextCursor;
 
         @JsonCreator
-        public Result(
-                @JsonProperty("tools") List<Map<String, Object>> tools,
-                @JsonProperty("nextCursor") String nextCursor) {
-            this.tools = tools;
+        public Result(@JsonProperty("nextCursor") String nextCursor) {
             this.nextCursor = nextCursor;
-        }
-
-        public List<Map<String, Object>> getTools() {
-            return tools;
         }
 
         public String getNextCursor() {
