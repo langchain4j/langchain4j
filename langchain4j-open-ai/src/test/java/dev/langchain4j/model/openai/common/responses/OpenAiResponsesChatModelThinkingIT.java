@@ -48,7 +48,7 @@ class OpenAiResponsesChatModelThinkingIT {
     void should_return_reasoning_summary() {
 
         // given
-        String reasoningSummary = "auto";
+        String reasoningSummary = "detailed";
 
         ChatModel model = OpenAiResponsesChatModel.builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))

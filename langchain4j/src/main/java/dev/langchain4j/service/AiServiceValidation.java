@@ -9,6 +9,8 @@ import java.lang.reflect.Parameter;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.stream.Stream;
 
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
@@ -57,7 +59,11 @@ class AiServiceValidation {
         }
 
         Class<?> returnType = method.getReturnType();
-        if (returnType == Result.class || returnType == List.class || returnType == Set.class) {
+        if (returnType == Result.class
+                || returnType == List.class
+                || returnType == Set.class
+                || returnType == CompletableFuture.class
+                || returnType == CompletionStage.class) {
             TypeUtils.validateReturnTypesAreProperlyParametrized(method.getName(), method.getGenericReturnType());
         }
 

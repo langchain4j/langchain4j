@@ -1,5 +1,7 @@
 package dev.langchain4j.guardrail;
 
+import dev.langchain4j.exception.AsyncNotSupportedException;
+import dev.langchain4j.internal.AsyncNotSupported;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.data.message.ChatMessage;
@@ -12,6 +14,7 @@ import dev.langchain4j.observability.api.AiServiceListenerRegistrar;
 import dev.langchain4j.observability.api.event.AiServiceEvent;
 import dev.langchain4j.observability.api.listener.AiServiceListener;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
 /**
@@ -32,6 +35,37 @@ public interface ChatExecutor {
      * @return A response object containing the AI's response and additional metadata.
      */
     ChatResponse execute(List<ChatMessage> chatMessages);
+
+    /**
+     * Non-blocking counterpart of {@link #execute()}.
+     * <p>
+     * The default implementation returns a failed future carrying {@link AsyncNotSupportedException}; the built-in executors override it to
+     * call the model without blocking (via the async/reactive model APIs). Used by output-guardrail reprompts on the
+     * non-blocking AI Service paths. Consistent with {@code ChatModel#doChatAsync} and the other async defaults, a
+     * blocking executor is not silently run on the calling thread.
+     *
+     * @return a {@link CompletableFuture} that completes with the response
+     * @since 1.19.0
+     */
+    default CompletableFuture<ChatResponse> executeAsync() {
+        return AsyncNotSupported.failedFuture(getClass(), "executeAsync");
+    }
+
+    /**
+     * Non-blocking counterpart of {@link #execute(List)}.
+     * <p>
+     * The default implementation returns a failed future carrying {@link AsyncNotSupportedException}; the built-in executors override it to
+     * call the model without blocking (via the async/reactive model APIs). Used by output-guardrail reprompts on the
+     * non-blocking AI Service paths. Consistent with {@code ChatModel#doChatAsync} and the other async defaults, a
+     * blocking executor is not silently run on the calling thread.
+     *
+     * @param chatMessages The chat messages containing the context of the conversation.
+     * @return a {@link CompletableFuture} that completes with the response
+     * @since 1.19.0
+     */
+    default CompletableFuture<ChatResponse> executeAsync(List<ChatMessage> chatMessages) {
+        return AsyncNotSupported.failedFuture(getClass(), "executeAsync");
+    }
 
     /**
      * Creates a new {@link SynchronousBuilder} instance for constructing {@link ChatExecutor} objects
@@ -141,7 +175,7 @@ public interface ChatExecutor {
          * @return a fully constructed {@link ChatExecutor} instance
          */
         public ChatExecutor build() {
-            return new SynchronousChatExecutor(this);
+            return new DirectChatExecutor(this);
         }
     }
 
