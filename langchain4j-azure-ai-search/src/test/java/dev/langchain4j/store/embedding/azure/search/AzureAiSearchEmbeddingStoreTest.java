@@ -10,6 +10,7 @@ import dev.langchain4j.data.document.Metadata;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 class AzureAiSearchEmbeddingStoreTest {
@@ -138,5 +139,98 @@ class AzureAiSearchEmbeddingStoreTest {
         Metadata metadata = metadataFrom(rawMetadata);
 
         assertThat(metadata.toMap()).containsOnly(Map.entry("page", "3"));
+    }
+
+    @Test
+    void builder_configures_metadata_field_names() {
+        AzureAiSearchEmbeddingStore store = AzureAiSearchEmbeddingStore.builder()
+                .endpoint(endpoint)
+                .apiKey("test")
+                .createOrUpdateIndex(false)
+                .dimensions(dimensions)
+                .metadataFieldNames(List.of("sourcepage", "topic"))
+                .build();
+
+        assertThat(store.metadataFieldNames).containsExactly("sourcepage", "topic");
+    }
+
+    @Test
+    void builder_treats_null_metadata_field_names_as_none() {
+        AzureAiSearchEmbeddingStore store = AzureAiSearchEmbeddingStore.builder()
+                .endpoint(endpoint)
+                .apiKey("test")
+                .createOrUpdateIndex(false)
+                .dimensions(dimensions)
+                .metadataFieldNames(null)
+                .build();
+
+        assertThat(store.metadataFieldNames).isEmpty();
+    }
+
+    @Test
+    void copies_allowlisted_top_level_fields_into_metadata() {
+        Map<String, Object> searchDocument = new HashMap<>();
+        searchDocument.put("id", "doc-1");
+        searchDocument.put("content", "the document text");
+        searchDocument.put("content_vector", List.of(0.1f, 0.2f));
+        searchDocument.put("sourcepage", "guide.pdf");
+        searchDocument.put("topic", "Ambulatory");
+        searchDocument.put("unlisted", "ignored");
+
+        Metadata metadata = metadataFrom(searchDocument, List.of("sourcepage", "topic"));
+
+        assertThat(metadata.toMap())
+                .containsOnly(Map.entry("sourcepage", "guide.pdf"), Map.entry("topic", "Ambulatory"));
+    }
+
+    @Test
+    void preserves_supported_value_types_for_allowlisted_fields() {
+        UUID ref = UUID.fromString("00000000-0000-0000-0000-000000000001");
+        Map<String, Object> searchDocument = new HashMap<>();
+        searchDocument.put("pages", 12);
+        searchDocument.put("score", 4.5d);
+        searchDocument.put("ref", ref);
+
+        Metadata metadata = metadataFrom(searchDocument, List.of("pages", "score", "ref"));
+
+        assertThat(metadata.toMap())
+                .containsOnly(Map.entry("pages", 12), Map.entry("score", 4.5d), Map.entry("ref", ref));
+    }
+
+    @Test
+    void skips_absent_null_unsupported_and_blank_name_allowlisted_fields() {
+        Map<String, Object> searchDocument = new HashMap<>();
+        searchDocument.put("present", "value");
+        searchDocument.put("nullField", null);
+        searchDocument.put("vector", List.of(0.1f));
+        searchDocument.put("flag", true);
+        searchDocument.put(" ", "value-under-blank-key");
+
+        Metadata metadata =
+                metadataFrom(searchDocument, List.of("present", "nullField", "vector", "flag", "absent", " "));
+
+        assertThat(metadata.toMap()).containsOnly(Map.entry("present", "value"));
+    }
+
+    @Test
+    void merges_complex_attributes_with_allowlisted_fields() {
+        Map<String, Object> searchDocument = new HashMap<>();
+        searchDocument.put("metadata", Map.of("attributes", List.of(Map.of("key", "source", "value", "doc.pdf"))));
+        searchDocument.put("topic", "Ambulatory");
+
+        Metadata metadata = metadataFrom(searchDocument, List.of("topic"));
+
+        assertThat(metadata.toMap()).containsOnly(Map.entry("source", "doc.pdf"), Map.entry("topic", "Ambulatory"));
+    }
+
+    @Test
+    void allowlisted_field_takes_precedence_over_complex_metadata_on_key_collision() {
+        Map<String, Object> searchDocument = new HashMap<>();
+        searchDocument.put("metadata", Map.of("attributes", List.of(Map.of("key", "topic", "value", "from-complex"))));
+        searchDocument.put("topic", "from-root");
+
+        Metadata metadata = metadataFrom(searchDocument, List.of("topic"));
+
+        assertThat(metadata.toMap()).containsOnly(Map.entry("topic", "from-root"));
     }
 }
