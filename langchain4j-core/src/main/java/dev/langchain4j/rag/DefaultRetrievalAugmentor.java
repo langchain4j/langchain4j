@@ -1,5 +1,15 @@
 package dev.langchain4j.rag;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static java.util.Collections.emptyMap;
+import static java.util.Collections.singletonList;
+import static java.util.Collections.singletonMap;
+import static java.util.concurrent.CompletableFuture.allOf;
+import static java.util.concurrent.CompletableFuture.supplyAsync;
+import static java.util.concurrent.TimeUnit.SECONDS;
+import static java.util.stream.Collectors.toMap;
+
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.rag.content.Content;
@@ -13,7 +23,6 @@ import dev.langchain4j.rag.query.router.DefaultQueryRouter;
 import dev.langchain4j.rag.query.router.QueryRouter;
 import dev.langchain4j.rag.query.transformer.DefaultQueryTransformer;
 import dev.langchain4j.rag.query.transformer.QueryTransformer;
-
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -25,16 +34,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.stream.Collectors;
-
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static java.util.Collections.emptyMap;
-import static java.util.Collections.singletonList;
-import static java.util.Collections.singletonMap;
-import static java.util.concurrent.CompletableFuture.allOf;
-import static java.util.concurrent.CompletableFuture.supplyAsync;
-import static java.util.concurrent.TimeUnit.SECONDS;
-import static java.util.stream.Collectors.toMap;
 
 /**
  * The default implementation of {@link RetrievalAugmentor} intended to be suitable for the majority of use cases.
@@ -112,11 +111,12 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
     private final ContentInjector contentInjector;
     private final Executor executor;
 
-    public DefaultRetrievalAugmentor(QueryTransformer queryTransformer,
-                                     QueryRouter queryRouter,
-                                     ContentAggregator contentAggregator,
-                                     ContentInjector contentInjector,
-                                     Executor executor) {
+    public DefaultRetrievalAugmentor(
+            QueryTransformer queryTransformer,
+            QueryRouter queryRouter,
+            ContentAggregator contentAggregator,
+            ContentInjector contentInjector,
+            Executor executor) {
         this.queryTransformer = getOrDefault(queryTransformer, DefaultQueryTransformer::new);
         this.queryRouter = ensureNotNull(queryRouter, "queryRouter");
         this.contentAggregator = getOrDefault(contentAggregator, DefaultContentAggregator::new);
@@ -125,11 +125,7 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
     }
 
     private static ExecutorService createDefaultExecutor() {
-        return new ThreadPoolExecutor(
-            0, Integer.MAX_VALUE,
-            1, SECONDS,
-            new SynchronousQueue<>()
-        );
+        return new ThreadPoolExecutor(0, Integer.MAX_VALUE, 1, SECONDS, new SynchronousQueue<>());
     }
 
     @Override
@@ -153,9 +149,9 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
         ChatMessage augmentedChatMessage = contentInjector.inject(contents, chatMessage);
 
         return AugmentationResult.builder()
-            .chatMessage(augmentedChatMessage)
-            .contents(contents)
-            .build();
+                .chatMessage(augmentedChatMessage)
+                .contents(contents)
+                .build();
     }
 
     private Map<Query, Collection<List<Content>>> process(Collection<Query> queries) {
@@ -167,7 +163,8 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
                 List<Content> contents = contentRetriever.retrieve(query);
                 return singletonMap(query, singletonList(contents));
             } else if (retrievers.size() > 1) {
-                Collection<List<Content>> contents = retrieveFromAll(retrievers, query).join();
+                Collection<List<Content>> contents =
+                        retrieveFromAll(retrievers, query).join();
                 return singletonMap(query, contents);
             } else {
                 return emptyMap();
@@ -175,9 +172,9 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
         } else if (queries.size() > 1) {
             Map<Query, CompletableFuture<Collection<List<Content>>>> queryToFutureContents = new ConcurrentHashMap<>();
             queries.forEach(query -> {
-                CompletableFuture<Collection<List<Content>>> futureContents =
-                        supplyAsync(() -> queryRouter.route(query), executor)
-                                .thenCompose(retrievers -> retrieveFromAll(retrievers, query));
+                CompletableFuture<Collection<List<Content>>> futureContents = supplyAsync(
+                                () -> queryRouter.route(query), executor)
+                        .thenCompose(retrievers -> retrieveFromAll(retrievers, query));
                 queryToFutureContents.put(query, futureContents);
             });
             return join(queryToFutureContents);
@@ -186,29 +183,24 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
         }
     }
 
-    private CompletableFuture<Collection<List<Content>>> retrieveFromAll(Collection<ContentRetriever> retrievers,
-                                                                         Query query) {
+    private CompletableFuture<Collection<List<Content>>> retrieveFromAll(
+            Collection<ContentRetriever> retrievers, Query query) {
         List<CompletableFuture<List<Content>>> futureContents = retrievers.stream()
-            .map(retriever -> supplyAsync(() -> retriever.retrieve(query), executor))
-            .collect(Collectors.toList());
+                .map(retriever -> supplyAsync(() -> retriever.retrieve(query), executor))
+                .collect(Collectors.toList());
 
         return allOf(futureContents.toArray(new CompletableFuture[0]))
-            .thenApply(ignored ->
-                futureContents.stream()
-                    .map(CompletableFuture::join)
-                    .collect(Collectors.toList()));
+                .thenApply(ignored ->
+                        futureContents.stream().map(CompletableFuture::join).collect(Collectors.toList()));
     }
 
     private static Map<Query, Collection<List<Content>>> join(
-        Map<Query, CompletableFuture<Collection<List<Content>>>> queryToFutureContents) {
+            Map<Query, CompletableFuture<Collection<List<Content>>>> queryToFutureContents) {
         return allOf(queryToFutureContents.values().toArray(new CompletableFuture[0]))
-            .thenApply(ignored ->
-                queryToFutureContents.entrySet().stream()
-                    .collect(toMap(
-                        Map.Entry::getKey,
-                        entry -> entry.getValue().join()
-                    ))
-            ).join();
+                .thenApply(ignored -> queryToFutureContents.entrySet().stream()
+                        .collect(toMap(
+                                Map.Entry::getKey, entry -> entry.getValue().join())))
+                .join();
     }
 
     public static DefaultRetrievalAugmentorBuilder builder() {
@@ -223,41 +215,89 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
         private ContentInjector contentInjector;
         private Executor executor;
 
-        DefaultRetrievalAugmentorBuilder() {
-        }
+        DefaultRetrievalAugmentorBuilder() {}
 
+        /**
+         * Sets a single {@link ContentRetriever} to retrieve content from.
+         * Wraps the retriever in a {@link DefaultQueryRouter}. Mutually exclusive with
+         * {@link #queryRouter(QueryRouter)}.
+         *
+         * @param contentRetriever the content retriever
+         * @return {@code this}
+         */
         public DefaultRetrievalAugmentorBuilder contentRetriever(ContentRetriever contentRetriever) {
             this.queryRouter = new DefaultQueryRouter(ensureNotNull(contentRetriever, "contentRetriever"));
             return this;
         }
 
+        /**
+         * Sets the {@link QueryTransformer} used to transform the original query before routing.
+         *
+         * @param queryTransformer the query transformer
+         * @return {@code this}
+         */
         public DefaultRetrievalAugmentorBuilder queryTransformer(QueryTransformer queryTransformer) {
             this.queryTransformer = queryTransformer;
             return this;
         }
 
+        /**
+         * Sets the {@link QueryRouter} used to route queries to one or more {@link ContentRetriever}s.
+         * Takes precedence over any value set via {@link #contentRetriever(ContentRetriever)}.
+         *
+         * @param queryRouter the query router
+         * @return {@code this}
+         */
         public DefaultRetrievalAugmentorBuilder queryRouter(QueryRouter queryRouter) {
             this.queryRouter = queryRouter;
             return this;
         }
 
+        /**
+         * Sets the {@link ContentAggregator} used to aggregate content retrieved from all retrievers.
+         *
+         * @param contentAggregator the content aggregator
+         * @return {@code this}
+         */
         public DefaultRetrievalAugmentorBuilder contentAggregator(ContentAggregator contentAggregator) {
             this.contentAggregator = contentAggregator;
             return this;
         }
 
+        /**
+         * Sets the {@link ContentInjector} used to inject the aggregated content into the user message.
+         *
+         * @param contentInjector the content injector
+         * @return {@code this}
+         */
         public DefaultRetrievalAugmentorBuilder contentInjector(ContentInjector contentInjector) {
             this.contentInjector = contentInjector;
             return this;
         }
 
+        /**
+         * Sets the {@link Executor} used to parallelize query transformation and content retrieval.
+         *
+         * @param executor the executor
+         * @return {@code this}
+         */
         public DefaultRetrievalAugmentorBuilder executor(Executor executor) {
             this.executor = executor;
             return this;
         }
 
+        /**
+         * Builds the {@link DefaultRetrievalAugmentor}.
+         *
+         * @return the configured {@link DefaultRetrievalAugmentor}
+         */
         public DefaultRetrievalAugmentor build() {
-            return new DefaultRetrievalAugmentor(this.queryTransformer, this.queryRouter, this.contentAggregator, this.contentInjector, this.executor);
+            return new DefaultRetrievalAugmentor(
+                    this.queryTransformer,
+                    this.queryRouter,
+                    this.contentAggregator,
+                    this.contentInjector,
+                    this.executor);
         }
     }
 }
