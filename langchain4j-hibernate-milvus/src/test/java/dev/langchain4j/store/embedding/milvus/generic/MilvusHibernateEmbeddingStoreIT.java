@@ -1,4 +1,4 @@
-package dev.langchain4j.store.embedding.generic;
+package dev.langchain4j.store.embedding.milvus.generic;
 
 import static dev.langchain4j.store.embedding.TestUtils.awaitUntilAsserted;
 import static dev.langchain4j.store.embedding.filter.MetadataFilterBuilder.metadataKey;
@@ -34,7 +34,7 @@ class MilvusHibernateEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
 
     @Container
     static MilvusContainer databaseContainer =
-            new MilvusContainer("milvusdb/milvus:v2.6.20").withEnv("DEPLOY_MODE", "STANDALONE");
+            new MilvusContainer("milvusdb/milvus:v2.6.22").withEnv("DEPLOY_MODE", "STANDALONE");
 
     private final EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
 
@@ -51,9 +51,6 @@ class MilvusHibernateEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
                 .password(System.getenv("MILVUS_PASSWORD"))
                 .table("test" + nextInt(1, 1000))
                 .dimension(embeddingModel.dimension())
-                .createIndex(true)
-                .indexType("ivfflat")
-                .indexOptions("lists = 1")
                 .createTable(true)
                 .dropTableFirst(true)
                 .build();

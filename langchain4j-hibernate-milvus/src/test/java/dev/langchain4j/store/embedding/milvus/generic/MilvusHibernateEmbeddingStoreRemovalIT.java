@@ -1,4 +1,4 @@
-package dev.langchain4j.store.embedding.generic;
+package dev.langchain4j.store.embedding.milvus.generic;
 
 import static org.testcontainers.shaded.org.apache.commons.lang3.RandomUtils.nextInt;
 
@@ -20,7 +20,7 @@ class MilvusHibernateEmbeddingStoreRemovalIT extends EmbeddingStoreWithRemovalIT
 
     @Container
     static MilvusContainer databaseContainer =
-            new MilvusContainer("milvusdb/milvus:v2.6.20").withEnv("DEPLOY_MODE", "STANDALONE");
+            new MilvusContainer("milvusdb/milvus:v2.6.22").withEnv("DEPLOY_MODE", "STANDALONE");
 
     EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
 

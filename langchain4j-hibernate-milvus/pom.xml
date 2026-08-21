@@ -13,7 +13,6 @@
     <name>LangChain4j :: Integration :: Hibernate :: Milvus</name>
 
     <properties>
-        <milvus.version>2.6.22</milvus.version>
         <hibernate.version>7.4.5.Final</hibernate.version>
         <hibernate-nosql.version>1.0.0.Alpha1</hibernate-nosql.version>
         <!-- TODO: remove enforcer.skipRules -->
@@ -40,22 +39,21 @@
             <version>${hibernate-nosql.version}</version>
         </dependency>
 
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-core</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-databind</artifactId>
-        </dependency>
-
         <!-- test dependencies -->
 
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
             <version>1.20.0-SNAPSHOT</version>
+            <classifier>tests</classifier>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-hibernate</artifactId>
+            <version>${project.version}</version>
             <classifier>tests</classifier>
             <type>test-jar</type>
             <scope>test</scope>
@@ -76,12 +74,6 @@
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>milvus</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>io.milvus</groupId>
-            <artifactId>milvus-sdk-java-bulkwriter</artifactId>
-            <version>${milvus.version}</version>
             <scope>test</scope>
         </dependency>
 
