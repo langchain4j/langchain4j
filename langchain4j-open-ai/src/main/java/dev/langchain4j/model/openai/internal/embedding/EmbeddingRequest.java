@@ -3,13 +3,13 @@ package dev.langchain4j.model.openai.internal.embedding;
 import static java.util.Arrays.asList;
 import static java.util.Collections.unmodifiableList;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonAnyGetter;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
 import java.util.List;
@@ -18,7 +18,6 @@ import java.util.Objects;
 
 @JsonDeserialize(builder = EmbeddingRequest.Builder.class)
 @JsonInclude(JsonInclude.Include.NON_NULL)
-@JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public final class EmbeddingRequest {
 
     @JsonProperty
@@ -38,6 +37,7 @@ public final class EmbeddingRequest {
 
     private final Map<String, Object> customParameters;
 
+    @JsonCreator
     public EmbeddingRequest(Builder builder) {
         this.model = builder.model;
         this.input = builder.input;
@@ -121,7 +121,7 @@ public final class EmbeddingRequest {
 
     @JsonPOJOBuilder(withPrefix = "")
     @JsonIgnoreProperties(ignoreUnknown = true)
-    @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
+    @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
     public static final class Builder {
 
         private String model;

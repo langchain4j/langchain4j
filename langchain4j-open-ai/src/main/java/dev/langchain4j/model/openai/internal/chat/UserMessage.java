@@ -4,12 +4,12 @@ import static dev.langchain4j.model.openai.internal.chat.ContentType.*;
 import static dev.langchain4j.model.openai.internal.chat.Role.USER;
 import static java.util.Collections.unmodifiableList;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
 
@@ -19,7 +19,6 @@ import java.util.Objects;
 
 @JsonDeserialize(builder = UserMessage.Builder.class)
 @JsonInclude(JsonInclude.Include.NON_NULL)
-@JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public final class UserMessage implements Message {
 
     @JsonProperty
@@ -31,6 +30,7 @@ public final class UserMessage implements Message {
     @JsonProperty
     private final String name;
 
+    @JsonCreator
     public UserMessage(Builder builder) {
         this.content = builder.stringContent != null ? builder.stringContent : builder.content;
         this.name = builder.name;
@@ -92,7 +92,7 @@ public final class UserMessage implements Message {
 
     @JsonPOJOBuilder(withPrefix = "")
     @JsonIgnoreProperties(ignoreUnknown = true)
-    @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
+    @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
     public static final class Builder {
 
         private String stringContent; // keeping it for compatibility with other OpenAI-like APIs

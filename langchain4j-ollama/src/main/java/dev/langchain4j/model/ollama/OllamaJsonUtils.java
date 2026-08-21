@@ -1,11 +1,10 @@
 package dev.langchain4j.model.ollama;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.Internal;
-
-import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
+import dev.langchain4j.internal.Json;
+import dev.langchain4j.internal.WireJson;
+import dev.langchain4j.internal.WireJsonSpec;
+import java.lang.reflect.Type;
 
 @Internal
 class OllamaJsonUtils {
@@ -14,41 +13,29 @@ class OllamaJsonUtils {
         throw new InstantiationException("Can't instantiate this utility class.");
     }
 
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
-            .enable(INDENT_OUTPUT);
+    private static final Json.JsonCodec CODEC = codec(true);
+    private static final Json.JsonCodec CODEC_WITHOUT_IDENT = codec(false);
 
-    private static final ObjectMapper OBJECT_MAPPER_WITHOUT_IDENT = new ObjectMapper()
-            .disable(INDENT_OUTPUT);
+    private static Json.JsonCodec codec(boolean prettyPrint) {
+        return WireJson.codec(WireJsonSpec.builder()
+                .propertyNaming(WireJsonSpec.PropertyNaming.SNAKE_CASE)
+                .prettyPrint(prettyPrint)
+                .build());
+    }
 
     static String toJson(Object object) {
-        try {
-            return OBJECT_MAPPER.writeValueAsString(object);
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
-        }
+        return CODEC.toJson(object);
     }
 
     static String toJsonWithoutIdent(Object object) {
-        try {
-            return OBJECT_MAPPER_WITHOUT_IDENT.writeValueAsString(object);
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
-        }
+        return CODEC_WITHOUT_IDENT.toJson(object);
     }
 
     static <T> T fromJson(String jsonStr, Class<T> clazz) {
-        try {
-            return OBJECT_MAPPER.readValue(jsonStr, clazz);
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
-        }
+        return CODEC.fromJson(jsonStr, clazz);
     }
 
-    static <T> T fromJson(String jsonStr, TypeReference<T> typeReference) {
-        try {
-            return OBJECT_MAPPER.readValue(jsonStr, typeReference);
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
-        }
+    static <T> T fromJson(String jsonStr, Type type) {
+        return CODEC.fromJson(jsonStr, type);
     }
 }

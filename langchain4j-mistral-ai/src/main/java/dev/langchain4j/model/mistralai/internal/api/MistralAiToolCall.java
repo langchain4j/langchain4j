@@ -2,18 +2,17 @@ package dev.langchain4j.model.mistralai.internal.api;
 
 import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import java.util.Objects;
 import java.util.StringJoiner;
 
 @JsonInclude(NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
-@JsonNaming(SnakeCaseStrategy.class)
 @JsonDeserialize(builder = MistralAiToolCall.MistralAiToolCallBuilder.class)
 public class MistralAiToolCall {
     private String id;
@@ -24,6 +23,7 @@ public class MistralAiToolCall {
         return MistralAiToolType.FUNCTION;
     }
 
+    @JsonCreator
     private MistralAiToolCall(MistralAiToolCallBuilder builder) {
         this.id = builder.id;
         this.type = builder.type$value;
@@ -76,7 +76,7 @@ public class MistralAiToolCall {
 
     @JsonPOJOBuilder(withPrefix = "")
     @JsonIgnoreProperties(ignoreUnknown = true)
-    @JsonNaming(SnakeCaseStrategy.class)
+    @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
     public static class MistralAiToolCallBuilder {
         private String id;
         private boolean type$set;

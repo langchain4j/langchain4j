@@ -9,7 +9,7 @@ import static dev.langchain4j.model.ollama.OllamaJsonUtils.fromJson;
 import static dev.langchain4j.model.ollama.OllamaJsonUtils.toJson;
 import static dev.langchain4j.model.ollama.OllamaJsonUtils.toJsonWithoutIdent;
 
-import com.fasterxml.jackson.core.type.TypeReference;
+import java.lang.reflect.Type;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -44,6 +44,24 @@ import java.util.stream.Collectors;
 
 @Internal
 class InternalOllamaHelper {
+
+    private static final Type MAP_OF_OBJECT =
+            new java.lang.reflect.ParameterizedType() {
+                @Override
+                public Type[] getActualTypeArguments() {
+                    return new Type[] {String.class, Object.class};
+                }
+
+                @Override
+                public Type getRawType() {
+                    return HashMap.class;
+                }
+
+                @Override
+                public Type getOwnerType() {
+                    return null;
+                }
+            };
 
     private static final Predicate<ChatMessage> isUserMessage = UserMessage.class::isInstance;
     private static final Predicate<UserMessage> hasImages =
@@ -246,11 +264,9 @@ class InternalOllamaHelper {
             toolCalls = Optional.ofNullable(toolExecutionRequests)
                     .map(reqs -> reqs.stream()
                             .map(toolExecutionRequest -> {
-                                TypeReference<HashMap<String, Object>> typeReference =
-                                        new TypeReference<HashMap<String, Object>>() {};
                                 FunctionCall functionCall = FunctionCall.builder()
                                         .name(toolExecutionRequest.name())
-                                        .arguments(fromJson(toolExecutionRequest.arguments(), typeReference))
+                                        .arguments(fromJson(toolExecutionRequest.arguments(), MAP_OF_OBJECT))
                                         .build();
                                 return ToolCall.builder()
                                         .id(toolExecutionRequest.id())

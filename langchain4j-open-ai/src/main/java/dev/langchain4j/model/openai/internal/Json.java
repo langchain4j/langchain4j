@@ -1,30 +1,21 @@
 package dev.langchain4j.model.openai.internal;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
-import static com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_IGNORED_PROPERTIES;
-import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
+import dev.langchain4j.internal.WireJson;
+import dev.langchain4j.internal.WireJsonSpec;
 
 class Json {
 
-    static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
-            .enable(INDENT_OUTPUT)
-            .disable(FAIL_ON_IGNORED_PROPERTIES);
+    private static final dev.langchain4j.internal.Json.JsonCodec CODEC =
+            WireJson.codec(WireJsonSpec.builder()
+                    .propertyNaming(WireJsonSpec.PropertyNaming.SNAKE_CASE)
+                    .prettyPrint(true)
+                    .build());
 
     static String toJson(Object o) {
-        try {
-            return OBJECT_MAPPER.writeValueAsString(o);
-        } catch (JsonProcessingException jpe) {
-            throw new RuntimeException(jpe);
-        }
+        return CODEC.toJson(o);
     }
 
     static <T> T fromJson(String json, Class<T> type) {
-        try {
-            return OBJECT_MAPPER.readValue(json, type);
-        } catch (JsonProcessingException jpe) {
-            throw new RuntimeException(jpe);
-        }
+        return CODEC.fromJson(json, type);
     }
 }

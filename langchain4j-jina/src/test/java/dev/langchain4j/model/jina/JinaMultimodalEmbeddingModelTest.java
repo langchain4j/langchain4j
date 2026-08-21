@@ -3,7 +3,8 @@ package dev.langchain4j.model.jina;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.langchain4j.internal.WireJson;
+import dev.langchain4j.internal.WireJsonSpec;
 import dev.langchain4j.data.message.ContentType;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.TextContent;
@@ -14,7 +15,10 @@ import org.junit.jupiter.api.Test;
 
 class JinaMultimodalEmbeddingModelTest {
 
-    private static final ObjectMapper MAPPER = new ObjectMapper();
+    // Mirrors the codec JinaJsonUtils uses, which is where the snake_case naming now lives.
+    private static final dev.langchain4j.internal.Json.JsonCodec CODEC = WireJson.codec(WireJsonSpec.builder()
+            .propertyNaming(WireJsonSpec.PropertyNaming.SNAKE_CASE)
+            .build());
 
     private static JinaEmbeddingModel model(String modelName) {
         return JinaEmbeddingModel.builder().apiKey("test-key").modelName(modelName).build();
@@ -31,7 +35,7 @@ class JinaMultimodalEmbeddingModelTest {
     private static String multimodalRequestJson(JinaEmbeddingModel model) throws Exception {
         JinaMultimodalEmbeddingRequest request =
                 model.buildMultimodalRequest(EmbeddingRequest.builder().input("a caption").build());
-        return MAPPER.writeValueAsString(request);
+        return CODEC.toJson(request);
     }
 
     @Test
@@ -62,7 +66,7 @@ class JinaMultimodalEmbeddingModelTest {
                 .input("a caption")
                 .input(ImageContent.from("https://example.com/cat.png"))
                 .build());
-        String json = MAPPER.writeValueAsString(request);
+        String json = CODEC.toJson(request);
 
         // batch of two single-modality items (Jina embeds one modality per item)
         assertThat(json).contains("jina-clip-v2");
@@ -77,7 +81,7 @@ class JinaMultimodalEmbeddingModelTest {
         JinaMultimodalEmbeddingRequest request = model.buildMultimodalRequest(EmbeddingRequest.builder()
                 .input(ImageContent.from("aGVsbG8=", "image/png"))
                 .build());
-        String json = MAPPER.writeValueAsString(request);
+        String json = CODEC.toJson(request);
 
         assertThat(json).contains("data:image/png;base64,aGVsbG8=");
     }

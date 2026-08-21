@@ -283,7 +283,12 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
         return false;
     }
 
-    static class Entry<Embedded> {
+    /**
+     * Public so that alternative JSON codecs, supplied through
+     * {@link dev.langchain4j.spi.store.embedding.inmemory.InMemoryEmbeddingStoreJsonCodecFactory},
+     * can describe how an entry is serialized without living in this package.
+     */
+    public static class Entry<Embedded> {
 
         String id;
         Embedding embedding;

@@ -2,12 +2,12 @@ package dev.langchain4j.model.openai.internal.chat;
 
 import static java.util.Collections.unmodifiableList;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
 import java.util.List;
@@ -15,7 +15,6 @@ import java.util.Objects;
 
 @JsonDeserialize(builder = LogProb.Builder.class)
 @JsonInclude(JsonInclude.Include.NON_NULL)
-@JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public final class LogProb {
 
     @JsonProperty
@@ -30,6 +29,7 @@ public final class LogProb {
     @JsonProperty
     private final List<LogProb> topLogprobs;
 
+    @JsonCreator
     public LogProb(Builder builder) {
         this.token = builder.token;
         this.logprob = builder.logprob;
@@ -96,7 +96,7 @@ public final class LogProb {
 
     @JsonPOJOBuilder(withPrefix = "")
     @JsonIgnoreProperties(ignoreUnknown = true)
-    @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
+    @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
     public static final class Builder {
 
         private String token;
