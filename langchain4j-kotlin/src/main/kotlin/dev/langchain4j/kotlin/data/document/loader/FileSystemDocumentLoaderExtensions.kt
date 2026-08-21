@@ -5,6 +5,7 @@ import dev.langchain4j.data.document.DocumentParser
 import dev.langchain4j.data.document.loader.FileSystemDocumentLoader
 import dev.langchain4j.kotlin.data.document.parseAsync
 import dev.langchain4j.data.document.source.FileSystemSource
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -67,12 +68,27 @@ public suspend fun loadDocuments(
         matchedFiles
             .map { file ->
                 async(context) {
-                    documentParser.parseAsync(
-                        FileSystemSource(file),
-                        context
-                    )
+                    @Suppress("TooGenericExceptionCaught")
+                    // DocumentParser implementations are pluggable and may throw arbitrary unchecked
+                    // exceptions (BlankDocumentException, parser-library-specific failures, wrapped
+                    // IOExceptions, etc.). A single unparsable file must not abort the whole batch;
+                    // it is logged (with the original exception, so nothing is swallowed) and skipped.
+                    // CancellationException is rethrown, never treated as a parse failure, so
+                    // structured concurrency (e.g. an external cancel/timeout) still works correctly.
+                    try {
+                        documentParser.parseAsync(
+                            FileSystemSource(file),
+                            context
+                        )
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        logger.warn("Failed to load document from '{}', skipping it.", file, e)
+                        null
+                    }
                 }
             }.awaitAll()
+            .filterNotNull()
             .map { document ->
                 val metadata = document.metadata()
                 logger.info(
