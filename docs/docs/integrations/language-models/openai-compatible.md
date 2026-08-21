@@ -55,6 +55,7 @@ Below we provide specific examples for popular OpenAI-compatible APIs, including
 - [GPT4All](#gpt4all)
 - [Ollama](#ollama)
 - [LM Studio](#lm-studio)
+- [DaoXE](#daoxe)
 
 ## Prerequisites for Using OpenAI-Compatible Language Models
 
@@ -220,3 +221,28 @@ ChatModel model = OpenAiChatModel.builder()
         .httpClientBuilder(jdkHttpClientBuilder)
         .build();
 ```
+
+## DaoXE
+
+**Deployment:** SaaS (API key required)
+
+**Description:** [DaoXE](https://daoxe.com) is a multi-model API gateway with an OpenAI-compatible Chat Completions endpoint at `https://daoxe.com/v1`.
+
+**Setup:**
+Create an API key in the DaoXE dashboard. Model IDs are **account-scoped** — use exact IDs from authenticated `GET /v1/models` or the dashboard (do not hardcode a static public catalog). DaoXE is not available in mainland China.
+
+Configure LangChain4j's `OpenAiChatModel`:
+
+```java
+ChatModel model = OpenAiChatModel.builder()
+        .baseUrl("https://daoxe.com/v1")
+        .apiKey(System.getenv("DAOXE_API_KEY"))
+        .modelName("your-account-model-id")
+        .build();
+```
+
+Notes:
+
+- Chat Completions path only for this integration.
+- DaoXE also supports other protocols (for example Anthropic Messages) for other clients.
+- Contributor disclosure: this example was contributed by a DaoXE affiliate.
