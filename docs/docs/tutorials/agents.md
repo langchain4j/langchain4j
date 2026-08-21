@@ -3279,3 +3279,115 @@ public interface DeclarativeMcpStoryGenerator {
     }
 }
 ```
+
+## Complete declarative agentic system example
+
+The following example demonstrates how to build a fully declarative multi-agent research assistant. It combines a `Researcher` agent that gathers information, a `Summarizer` agent that condenses findings, and a `FactChecker` agent that validates the summary — all coordinated through annotations, with no imperative workflow code.
+
+```java
+import dev.langchain4j.agentic.AgenticServices;
+import dev.langchain4j.agentic.Agent;
+import dev.langchain4j.agentic.declarative.SequenceAgent;
+import dev.langchain4j.agentic.declarative.Output;
+import dev.langchain4j.agentic.declarative.ChatModelSupplier;
+import dev.langchain4j.agentic.declarative.ToolsSupplier;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.service.UserMessage;
+import dev.langchain4j.service.V;
+
+import java.util.List;
+
+public interface ResearchAssistant {
+
+    @SequenceAgent(
+            outputKey = "report",
+            subAgents = {Researcher.class, Summarizer.class, FactChecker.class})
+    ResearchReport research(@V("topic") String topic);
+
+    @Output
+    static ResearchReport buildReport(
+            @V("findings") List<String> findings,
+            @V("summary") String summary,
+            @V("verified") boolean verified) {
+        return new ResearchReport(findings, summary, verified);
+    }
+
+    // --- Sub-agents ---
+
+    public interface Researcher {
+
+        @UserMessage("""
+                You are a thorough researcher.
+                Gather 3-5 key findings about the following topic.
+                Return one finding per line, prefixed with "- ".
+                Topic: {{topic}}
+                """)
+        @Agent(description = "Gathers findings about a topic", outputKey = "findings")
+        List<String> research(@V("topic") String topic);
+
+        @ChatModelSupplier
+        static ChatModel chatModel() {
+            return AiServices_geminiFlash(); // replace with your model
+        }
+    }
+
+    public interface Summarizer {
+
+        @UserMessage("""
+                You are a concise summarizer.
+                Given these research findings, produce a 2-3 sentence summary.
+                Findings:
+                {{findings}}
+                """)
+        @Agent(description = "Summarizes research findings", outputKey = "summary")
+        String summarize(@V("findings") List<String> findings);
+    }
+
+    public interface FactChecker {
+
+        @UserMessage("""
+                You are a fact-checking assistant.
+                Review the following summary against the original findings.
+                Return "true" if the summary is fully supported by the findings,
+                or "false" if it contains unsupported claims.
+
+                Findings:
+                {{findings}}
+
+                Summary:
+                {{summary}}
+                """)
+        @Agent(description = "Verifies summary against findings", outputKey = "verified")
+        boolean verify(
+                @V("findings") List<String> findings,
+                @V("summary") String summary);
+    }
+
+    // --- Output record ---
+
+    record ResearchReport(List<String> findings, String summary, boolean verified) {}
+}
+```
+
+To run this declarative system:
+
+```java
+ChatModel model = ...; // e.g. OpenAiChatModel, GoogleAiGeminiChatModel, etc.
+
+ResearchAssistant assistant = AgenticServices.createAgenticSystem(
+        ResearchAssistant.class, model);
+
+ResearchReport report = assistant.research("impact of large language models on software development");
+
+System.out.println("Findings: " + report.findings());
+System.out.println("Summary: " + report.summary());
+System.out.println("Verified: " + report.verified());
+```
+
+Key points illustrated by this example:
+
+- **`@SequenceAgent`** chains three sub-agents in order, passing outputs forward through the `AgenticScope`.
+- **`@Output`** defines how to assemble the final result from intermediate outputs.
+- **`@ChatModelSupplier`** shows how to override the model for a specific sub-agent.
+- Each sub-agent is a plain interface with an `@Agent`-annotated method — no builder code required.
+- The entire workflow topology is declared via annotations, making the agentic structure immediately readable.
