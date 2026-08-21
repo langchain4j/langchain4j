@@ -80,6 +80,7 @@ class DefaultA2AClientBuilderTest {
                 .hasMessageContaining("What is your email address?");
         A2ATaskInterruptedException cause = (A2ATaskInterruptedException) getCause(future);
         assertThat(cause.taskId()).isEqualTo("task-111");
+        assertThat(cause.contextId()).isEqualTo("ctx-5");
         assertThat(cause.state()).isEqualTo(TaskState.TASK_STATE_INPUT_REQUIRED);
         assertThat(cause.reason()).isEqualTo("What is your email address?");
     }
@@ -148,6 +149,29 @@ class DefaultA2AClientBuilderTest {
         // Even though artifacts are present, an interrupted task must not be treated as complete.
         assertThat(future).isCompletedExceptionally();
         assertThatThrownBy(future::get).hasCauseInstanceOf(A2ATaskInterruptedException.class);
+    }
+
+    @Test
+    void continuationMessage_reusesInterruptedTaskAndContext() {
+        A2ATaskInterruptedException interruption = new A2ATaskInterruptedException(
+                "task-111", "ctx-5", TaskState.TASK_STATE_INPUT_REQUIRED, "What is your email address?");
+
+        Message message = DefaultA2AClientBuilder.continuationMessage(interruption, "alice@example.com");
+
+        assertThat(message.role()).isEqualTo(Message.Role.ROLE_USER);
+        assertThat(message.contextId()).isEqualTo("ctx-5");
+        assertThat(message.taskId()).isEqualTo("task-111");
+        assertThat(message.parts()).containsExactly(new TextPart("alice@example.com"));
+    }
+
+    @Test
+    void continuationMessage_rejectsNullInput() {
+        A2ATaskInterruptedException interruption = new A2ATaskInterruptedException(
+                "task-111", "ctx-5", TaskState.TASK_STATE_INPUT_REQUIRED, "What is your email address?");
+
+        assertThatThrownBy(() -> DefaultA2AClientBuilder.continuationMessage(interruption, null))
+                .isInstanceOf(NullPointerException.class)
+                .hasMessage("A2A input provider returned null");
     }
 
     @Test
