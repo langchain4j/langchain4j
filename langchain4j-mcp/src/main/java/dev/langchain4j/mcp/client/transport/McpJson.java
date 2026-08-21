@@ -35,6 +35,20 @@ public final class McpJson {
     }
 
     /**
+     * Reads any JSON value as plain JDK types: a {@link Map}, a {@link java.util.List}, a boxed
+     * primitive, or null for a JSON null.
+     *
+     * @throws IllegalArgumentException if the text is not valid JSON.
+     */
+    public static Object toValue(String json) {
+        try {
+            return OBJECT_MAPPER.readValue(json, Object.class);
+        } catch (JsonProcessingException e) {
+            throw new IllegalArgumentException("Failed to parse MCP message: " + json, e);
+        }
+    }
+
+    /**
      * Reads a JSON object as plain values.
      */
     @SuppressWarnings("unchecked")

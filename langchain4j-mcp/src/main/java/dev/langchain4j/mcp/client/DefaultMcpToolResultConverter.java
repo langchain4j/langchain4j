@@ -6,7 +6,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * Default extractor for MCP tool responses backed by {@code content[]}.
+ * Default converter for MCP tool responses backed by {@code content[]}.
  * <p>
  * It only supports {@code content} items of type {@code text}, joins multiple text
  * fragments with newline characters, and stores the result in

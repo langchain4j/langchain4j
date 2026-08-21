@@ -2,6 +2,9 @@ package dev.langchain4j.mcp.client.transport;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import dev.langchain4j.mcp.client.McpCallContext;
+import dev.langchain4j.mcp.protocol.McpClientMessage;
+import dev.langchain4j.mcp.protocol.McpInitializationNotification;
 import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.CancellationException;
@@ -83,5 +86,32 @@ class McpPendingOperationTest {
 
         assertThat(future.join().get("result").get("ok").asBoolean()).isTrue();
         assertThat(pending).isEmpty();
+    }
+
+    @Test
+    void the_deprecated_no_reply_method_should_still_receive_messages() {
+        // sendMessage is the only bridge with no unit coverage; the client sends ping and
+        // roots/list replies through it, and a transport on the old API must still get them.
+        java.util.List<McpClientMessage> sent = new java.util.ArrayList<>();
+        McpTransport legacy = new McpTransport() {
+            public void start(McpOperationHandler h) {}
+            @Override
+            @SuppressWarnings("removal")
+            public void executeOperationWithoutResponse(McpClientMessage request) {
+                sent.add(request);
+            }
+            @Override
+            @SuppressWarnings("removal")
+            public void executeOperationWithoutResponse(McpCallContext context) {
+                sent.add(context.message());
+            }
+            public void checkHealth() {}
+            public void onFailure(Runnable r) {}
+            public void close() {}
+        };
+
+        legacy.sendMessage(new McpInitializationNotification());
+
+        assertThat(sent).hasSize(1);
     }
 }

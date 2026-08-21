@@ -28,7 +28,7 @@
         {
           "ignore": true,
           "code": "java.method.numberOfParametersChanged",
-          "justification": "The handler now keeps a single map of pending operations, keyed by request id and holding the response as raw JSON text, so that cancellation and the client's cleanup act on every in-flight operation regardless of which transport API registered it. Only the type argument changes; the erased signature is unchanged, so this is binary compatible. The constructor is called only by DefaultMcpClient - transports receive an already-built handler through McpTransport.start, which was checked against quarkus-langchain4j rather than assumed.",
+          "justification": "API is only intended for internal consumption",
           "package": "dev.langchain4j.mcp.client.transport",
           "classQualifiedName": "dev.langchain4j.mcp.client.transport.McpOperationHandler",
           "classSimpleName": "McpOperationHandler",
@@ -50,7 +50,7 @@
         {
           "code": "java.class.removed",
           "old": "class dev.langchain4j.mcp.protocol.McpCallToolResult.Content",
-          "justification": "Content only modelled text items and had no callers outside a serialization test. MCP content is open-ended, so entries are now plain maps, matching the McpContentExtractor contract. McpCallToolResult is annotated @Internal, whose javadoc states it may change at any time without notice. The tool-result path now deserializes into this type instead of navigating a Jackson tree, which is what removes Jackson from the parsing code."
+          "justification": "Content only modelled text items and had no callers outside a serialization test. MCP content is open-ended, so entries are now plain maps, matching the McpToolResultConverter contract. McpCallToolResult is annotated @Internal, whose javadoc states it may change at any time without notice. The tool-result path now deserializes into this type instead of navigating a Jackson tree, which is what removes Jackson from the parsing code."
         },
         {
           "code": "java.method.parameterTypeParameterChanged",
@@ -217,6 +217,12 @@
           "classQualifiedName": "dev.langchain4j.mcp.transport.stdio.JsonRpcIoHandler",
           "methodName": "<init>",
           "justification": "The stdio reader now hands whole lines to the operation handler instead of parsing them into a Jackson tree first, so that the stdio transport uses the raw-JSON API like the other transports and JsonRpcIoHandler no longer carries Jackson in its signature or its own ObjectMapper. Only the type argument changes; the erased signature is unchanged, so this is binary compatible. The only caller is StdioMcpTransport; quarkus-langchain4j does not reference this class."
+        },
+        {
+          "code": "java.annotation.added",
+          "classQualifiedName": "dev.langchain4j.mcp.transport.stdio.JsonRpcIoHandler",
+          "annotationType": "dev.langchain4j.Internal",
+          "justification": "JsonRpcIoHandler is the stdio transport's newline framing; only StdioMcpTransport constructs it and quarkus-langchain4j does not reference it. Marking it @Internal records that, and matches the constructor change already recorded below. Adding an annotation changes no signature and is binary and source compatible."
         }
       ]
     }

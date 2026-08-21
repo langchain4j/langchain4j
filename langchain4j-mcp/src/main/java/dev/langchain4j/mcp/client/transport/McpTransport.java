@@ -10,12 +10,17 @@ import java.util.concurrent.CompletableFuture;
 /**
  * The transport contract between the MCP client and a server connection.
  *
- * <p>Each request/response method exists in two forms: one returning the response as JSON text,
- * and a deprecated one returning Jackson's {@code JsonNode}. Both are {@code default} methods that
- * delegate to each other, so an implementation must override <b>one of each pair</b>; overriding
- * neither compiles but fails at runtime. New implementations should override the current forms
- * ({@code sendInitializeRequest}, {@code sendRequest}, {@code sendMessage}), which are the ones the
- * client calls.
+ * <p>Each method exists in two forms: a current one, and a deprecated one that uses Jackson's
+ * {@code JsonNode}. The bridge between them runs one way only: the current method delegates to the
+ * deprecated one, so a transport written against the old API keeps working, but the deprecated one
+ * <b>throws</b> rather than delegating back. Two mutually-delegating defaults would recurse if an
+ * implementation overrode neither, and this way that mistake fails immediately instead.
+ *
+ * <p>New implementations should override the current forms - {@code sendInitializeRequest},
+ * {@code sendRequest} and {@code sendMessage} - which are the ones the client calls. A transport
+ * migrating from the deprecated forms has to move <b>its own internal calls at the same time</b>:
+ * those keep compiling and then throw at runtime, often somewhere the exception is swallowed.
+ * Building with {@code -Xlint:removal -Werror} finds them mechanically.
  */
 public interface McpTransport extends Closeable {
 
@@ -93,7 +98,11 @@ public interface McpTransport extends Closeable {
     }
 
     /**
-     * @deprecated use {@link #sendMessage(McpClientMessage)}, which is named for what MCP calls it.
+     * Sends a message that does not expect a reply.
+     *
+     * @deprecated implement {@link #sendMessage(McpClientMessage)} instead, which is named for what MCP calls
+     * it. This default throws; it does not delegate, because two mutually-delegating defaults
+     * would recurse.
      */
     @Deprecated(since = "1.20.0", forRemoval = true)
     default void executeOperationWithoutResponse(McpClientMessage request) {
@@ -110,7 +119,11 @@ public interface McpTransport extends Closeable {
     }
 
     /**
-     * @deprecated use {@link #sendMessage(McpCallContext)}, which is named for what MCP calls it.
+     * Sends a message that does not expect a reply.
+     *
+     * @deprecated implement {@link #sendMessage(McpCallContext)} instead, which is named for what MCP calls
+     * it. This default throws; it does not delegate, because two mutually-delegating defaults
+     * would recurse.
      */
     @Deprecated(since = "1.20.0", forRemoval = true)
     default void executeOperationWithoutResponse(McpCallContext context) {

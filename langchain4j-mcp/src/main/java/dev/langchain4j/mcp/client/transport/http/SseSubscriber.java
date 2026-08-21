@@ -99,7 +99,7 @@ class SseSubscriber implements Flow.Subscriber<String> {
             try {
                 operationHandler.onMessage(item.substring(5));
             } catch (RuntimeException e) {
-                logger.warn("Failed to parse SSE event: " + item, e);
+                logger.warn("Failed to handle SSE event: " + item, e);
             }
         } else if (item.startsWith("id:") && lastEventId != null) {
             lastEventId.set(item.substring(3).trim());

@@ -2,6 +2,7 @@ package dev.langchain4j.mcp.transport.stdio;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 
+import dev.langchain4j.Internal;
 import dev.langchain4j.mcp.client.logging.McpLoggers;
 import java.io.BufferedReader;
 import java.io.Closeable;
@@ -14,6 +15,7 @@ import java.util.function.Consumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+@Internal
 public class JsonRpcIoHandler implements Runnable, Closeable {
 
     private static final Logger log = LoggerFactory.getLogger(JsonRpcIoHandler.class);

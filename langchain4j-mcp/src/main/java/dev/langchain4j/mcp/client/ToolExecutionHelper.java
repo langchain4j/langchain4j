@@ -104,7 +104,7 @@ class ToolExecutionHelper {
     }
 
     /**
-     * Adds the given attributes to a {@link ToolExecutionResult} produced by a {@link McpToolResultExtractor}.
+     * Adds the given attributes to a {@link ToolExecutionResult} produced by a {@link McpToolResultConverter}.
      * Attributes set by the extractor take precedence.
      */
     private static ToolExecutionResult withAttributes(ToolExecutionResult result, Map<String, Object> attributes) {

@@ -5,8 +5,6 @@ import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.JsonNodeFactory;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.exception.ToolArgumentsException;
@@ -105,7 +103,6 @@ public class DefaultMcpClient implements McpClient {
     private final Duration pingTimeout;
     private static final String MCP_SERVER_INFO_META_KEY = "io.modelcontextprotocol/serverInfo";
 
-    private final JsonNode RESULT_TIMEOUT;
     private final String toolExecutionTimeoutErrorMessage;
     private final Map<Long, CompletableFuture<String>> pendingOperations = new ConcurrentHashMap<>();
     private final McpOperationHandler messageHandler;
@@ -138,7 +135,6 @@ public class DefaultMcpClient implements McpClient {
     private final McpMetaSupplier metaSupplier;
     private final McpToolResultConverter toolResultConverter;
 
-    @Deprecated(since = "1.20.0", forRemoval = true)
     private volatile @Nullable McpInitializeResult initializeResult;
     private final int multiRoundTripMaxRetries;
     private final boolean subscribeToToolListChanges;
@@ -190,13 +186,12 @@ public class DefaultMcpClient implements McpClient {
             }
             toolResultConverter = builder.toolResultExtractor != null
                     ? new LegacyToolResultConverterAdapter(builder.toolResultExtractor)
-                    : getOrDefault(builder.toolResultConverter, new DefaultMcpToolResultConverter());
+                    : getOrDefault(builder.toolResultConverter, DefaultMcpToolResultConverter::new);
             multiRoundTripMaxRetries =
                     getOrDefault(builder.multiRoundTripMaxRetries, DEFAULT_MULTI_ROUND_TRIP_MAX_RETRIES);
             subscribeToToolListChanges = getOrDefault(builder.subscribeToToolListChanges, Boolean.TRUE);
             subscribeToPromptListChanges = getOrDefault(builder.subscribeToPromptListChanges, Boolean.TRUE);
             subscribeToResourceListChanges = getOrDefault(builder.subscribeToResourceListChanges, Boolean.TRUE);
-            RESULT_TIMEOUT = JsonNodeFactory.instance.objectNode();
             messageHandler = new McpOperationHandler(
                     pendingOperations,
                     mcpRoots::get,
@@ -233,12 +228,6 @@ public class DefaultMcpClient implements McpClient {
                     () -> notifyListeners(l -> l.onServerPing()),
                     () -> notifyListeners(l -> l.onServerRootsList()),
                     (requestId, reason) -> notifyListeners(l -> l.onNotificationCancelled(requestId, reason)));
-            ((ObjectNode) RESULT_TIMEOUT)
-                    .putObject("result")
-                    .putArray("content")
-                    .addObject()
-                    .put("type", "text")
-                    .put("text", toolExecutionTimeoutErrorMessage);
             transport.onFailure(() -> {
                 if (!closed) {
                     try {
@@ -412,16 +401,15 @@ public class DefaultMcpClient implements McpClient {
      * The discover result carries the same shape as an initialize result, except that the server
      * info sits under a reserved '_meta' key and no protocol version is reported.
      */
-    private static McpInitializeResult toInitializeResultFromDiscover(JsonNode response) {
+    private static McpInitializeResult toInitializeResultFromDiscover(
+            JsonNode response, McpServerDiscoverResponse.Result discoveredResult) {
         McpInitializeResult discovered = McpJson.deserialize(response, McpInitializeResult.class);
         McpInitializeResult.Result result = discovered.getResult();
         if (result == null) {
             return discovered;
         }
 
-        Map<String, Object> meta = McpJson.deserialize(response, McpServerDiscoverResponse.class)
-                .getResult()
-                .getMeta();
+        Map<String, Object> meta = discoveredResult == null ? null : discoveredResult.getMeta();
         Object serverInfoValue = meta == null ? null : meta.get(MCP_SERVER_INFO_META_KEY);
         McpImplementation serverInfo =
                 serverInfoValue == null ? null : McpJson.convert(serverInfoValue, McpImplementation.class);
@@ -461,9 +449,11 @@ public class DefaultMcpClient implements McpClient {
                         error.getData() == null ? null : McpJson.serialize(error.getData()));
             }
             log.debug("MCP server discover result: {}", response.get("result"));
-            initializeResult = toInitializeResultFromDiscover(response);
+            McpServerDiscoverResponse.Result discovered =
+                    McpJson.deserialize(response, McpServerDiscoverResponse.class).getResult();
+            initializeResult = toInitializeResultFromDiscover(response, discovered);
             modernProtocol = true;
-            McpDiscoverResult discoverResult = toDiscoverResult(response);
+            McpDiscoverResult discoverResult = toDiscoverResult(discovered);
             notifyListeners(l -> l.afterServerDiscover(context, discoverResult));
             // Auto-start list-change subscriptions if enabled
             if (subscribeToToolListChanges || subscribeToPromptListChanges || subscribeToResourceListChanges) {
@@ -487,9 +477,7 @@ public class DefaultMcpClient implements McpClient {
         }
     }
 
-    private static McpDiscoverResult toDiscoverResult(JsonNode response) {
-        McpServerDiscoverResponse.Result result =
-                McpJson.deserialize(response, McpServerDiscoverResponse.class).getResult();
+    private static McpDiscoverResult toDiscoverResult(McpServerDiscoverResponse.Result result) {
         if (result == null) {
             return new McpDiscoverResult(List.of(), Map.of(), null, null, null);
         }
@@ -586,20 +574,17 @@ public class DefaultMcpClient implements McpClient {
     }
 
     /**
-     * Mirrors JsonNode.isEmpty(): an absent value, an empty array and an empty object all count
-     * as empty.
+     * Mirrors JsonNode.isEmpty(), for which only a non-empty array or object is non-empty: an
+     * absent value, an empty array, an empty object and any scalar all count as empty.
      */
     private static boolean isNotEmpty(Object value) {
-        if (value == null) {
-            return false;
-        }
         if (value instanceof List) {
             return !((List<?>) value).isEmpty();
         }
         if (value instanceof Map) {
             return !((Map<?, ?>) value).isEmpty();
         }
-        return true;
+        return false;
     }
 
     private JsonNode handleMultiRoundTrip(
@@ -738,8 +723,10 @@ public class DefaultMcpClient implements McpClient {
                 applyMeta(cancellation, null);
                 transport.sendMessage(cancellation);
             }
-            return ToolExecutionHelper.extractResult(
-                    RESULT_TIMEOUT, false, toolResultConverter);
+            // built on demand, not once at construction: a custom converter must not be invoked
+            // for a tool call that never happened
+            return toolResultConverter.convert(
+                    List.of(Map.of("type", "text", "text", toolExecutionTimeoutErrorMessage)), false);
         } catch (ExecutionException e) {
             notifyListeners(l -> l.onExecuteToolError(context, e));
             throw new ToolExecutionException(e.getCause());
@@ -1804,7 +1791,7 @@ public class DefaultMcpClient implements McpClient {
          * {@code structuredContent} are handled separately and are not affected by this setting.
          *
          * @deprecated use {@link #toolResultConverter(McpToolResultConverter)}, which does not expose
-         * Jackson types. If both are set, the content extractor wins.
+         * Jackson types. Setting both is rejected with an {@link IllegalArgumentException}.
          */
         @Deprecated(since = "1.20.0", forRemoval = true)
         public Builder toolResultExtractor(McpToolResultExtractor toolResultExtractor) {

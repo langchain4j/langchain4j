@@ -73,10 +73,22 @@ public class McpLogMessage {
 
     /**
      * Returns the log payload as a plain map, so consumers do not need a JSON library.
+     *
+     * @return null when the payload is not a JSON object. MCP allows any JSON-serializable value
+     * here and a plain string is common, so use {@link #dataAsObject()} to read those.
      */
     @SuppressWarnings("unchecked")
     public Map<String, Object> dataAsMap() {
         return data instanceof Map ? (Map<String, Object>) data : null;
+    }
+
+    /**
+     * Returns the log payload as a plain JDK value: a {@link String}, a {@link Map}, a
+     * {@link java.util.List}, a boxed primitive, or null. MCP defines the payload as any
+     * JSON-serializable value, so this is the accessor that can represent all of them.
+     */
+    public Object dataAsObject() {
+        return data;
     }
 
     /**

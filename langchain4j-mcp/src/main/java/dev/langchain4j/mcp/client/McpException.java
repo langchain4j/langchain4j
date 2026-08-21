@@ -62,9 +62,27 @@ public class McpException extends LangChain4jException {
     /**
      * Returns the JSON-RPC {@code error.data} member as plain values, so callers do not need a
      * JSON library.
+     *
+     * @return null when there is no {@code error.data}, and also when it is not a JSON object -
+     * JSON-RPC allows any value there. Use {@link #errorDataAsObject()} to read those.
      */
     public @Nullable Map<String, Object> errorDataAsMap() {
-        return errorDataAsJson == null ? null : McpJson.toMap(errorDataAsJson);
+        Object data = errorDataAsObject();
+        return data instanceof Map ? asMap(data) : null;
+    }
+
+    /**
+     * Returns the JSON-RPC {@code error.data} member as a plain JDK value: a {@link Map}, a
+     * {@link java.util.List}, a boxed primitive, or null. JSON-RPC allows {@code error.data} to be
+     * any value, so this is the accessor that can represent all of them.
+     */
+    public @Nullable Object errorDataAsObject() {
+        return errorDataAsJson == null ? null : McpJson.toValue(errorDataAsJson);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<String, Object> asMap(Object value) {
+        return (Map<String, Object>) value;
     }
 
     /**

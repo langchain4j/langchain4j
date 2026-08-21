@@ -35,19 +35,17 @@ public class McpInitializeResult extends McpJsonRpcMessage {
         private final McpImplementation serverInfo;
         private final @Nullable String instructions;
 
+        public Result(
+                String protocolVersion, Capabilities capabilities, McpImplementation serverInfo) {
+            this(protocolVersion, capabilities, serverInfo, null);
+        }
+
         @JsonCreator
         public Result(
                 @JsonProperty("protocolVersion") String protocolVersion,
                 @JsonProperty("capabilities") Capabilities capabilities,
-                @JsonProperty("serverInfo") McpImplementation serverInfo) {
-            this(protocolVersion, capabilities, serverInfo, null);
-        }
-
-        public Result(
-                String protocolVersion,
-                Capabilities capabilities,
-                McpImplementation serverInfo,
-                @Nullable String instructions) {
+                @JsonProperty("serverInfo") McpImplementation serverInfo,
+                @JsonProperty("instructions") @Nullable String instructions) {
             this.protocolVersion = protocolVersion;
             this.capabilities = capabilities;
             this.serverInfo = serverInfo;

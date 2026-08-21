@@ -19,10 +19,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Handles incoming messages from the MCP server. Transport implementations
- * should call the "handle" method on each received message. A transport also has
- * to call "startOperation" before starting an operation that requires a response
- * to register its ID in the map of pending operations.
+ * Handles incoming messages from the MCP server.
+ *
+ * <p>A transport calls {@link #onMessage(String)} for every message it receives, and
+ * {@link #expectResponse(Long, java.util.concurrent.CompletableFuture)} before sending a request,
+ * to register the id whose response it is waiting for.
+ *
+ * <p>The {@code handle} and {@code startOperation} methods do the same through Jackson's
+ * {@code JsonNode} and are deprecated.
  */
 public class McpOperationHandler {
 
@@ -80,21 +84,26 @@ public class McpOperationHandler {
     /**
      * Handles an inbound message from the server, taken exactly as it arrived on the wire, so that
      * a transport does not have to parse it first.
+     *
+     * <p>Valid JSON that is not a JSON-RPC object - a batch array, a scalar, a bare null - is
+     * ignored. Text that is not valid JSON at all throws, so that the transport can decide: fail
+     * the pending operation, or log and keep reading.
+     *
+     * @throws IllegalArgumentException if the message is not valid JSON.
      */
+    @SuppressWarnings("unchecked")
     public void onMessage(String json) {
-        Map<String, Object> message;
-        try {
-            message = McpJson.toMap(json);
-        } catch (RuntimeException e) {
-            // not a JSON-RPC object: a batch array, or something malformed
-            log.warn("Received unknown message: {}", json);
+        // Malformed input is the caller's decision, not this method's: a transport whose response
+        // body is unreadable has to fail the pending operation, while a stream reader only logs it
+        // and carries on. Both behaved that way before the parse moved in here.
+        Object parsed = McpJson.toValue(json);
+        if (!(parsed instanceof Map)) {
+            // valid JSON, but not a JSON-RPC object - a batch array, a bare null or a scalar.
+            // The tree model ignored these rather than failing, so they stay ignored.
+            log.warn("Received a message that is not a JSON-RPC object: {}", json);
             return;
         }
-        if (message == null) {
-            // a bare JSON null parses without error but is not a message
-            log.warn("Received unknown message: {}", json);
-            return;
-        }
+        Map<String, Object> message = (Map<String, Object>) parsed;
         if (message.containsKey("id")) {
             handleMessageWithId(message, json);
         } else if (message.containsKey("method")) {

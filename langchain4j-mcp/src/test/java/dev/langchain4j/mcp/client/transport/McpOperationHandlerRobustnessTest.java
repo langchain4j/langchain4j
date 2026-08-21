@@ -2,6 +2,7 @@ package dev.langchain4j.mcp.client.transport;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -61,8 +62,12 @@ class McpOperationHandlerRobustnessTest {
     }
 
     @Test
-    void ignores_a_malformed_payload_rather_than_failing() {
-        assertThatCode(() -> handler().onMessage("not json")).doesNotThrowAnyException();
+    void a_malformed_payload_should_throw_so_the_transport_can_decide() {
+        // the caller decides: a response body that cannot be read fails the pending operation,
+        // while a stream reader logs it and carries on. Swallowing it here left the streamable-HTTP
+        // and Docker transports with a future nobody completed.
+        assertThatThrownBy(() -> handler().onMessage("not json"))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
@@ -72,9 +77,15 @@ class McpOperationHandlerRobustnessTest {
     }
 
     @Test
-    void a_bare_json_null_should_be_ignored_rather_than_throw() {
-        // it parses without error but is not a message; throwing here kills the stdio reader thread
+    void valid_json_that_is_not_a_jsonrpc_object_should_be_ignored() {
+        // the tree model ignored these rather than failing, so they stay ignored
         assertThatCode(() -> handler().onMessage("null")).doesNotThrowAnyException();
-        assertThatCode(() -> handler().onMessage("")).doesNotThrowAnyException();
+        assertThatCode(() -> handler().onMessage("42")).doesNotThrowAnyException();
+        assertThatCode(() -> handler().onMessage("\"a string\"")).doesNotThrowAnyException();
+    }
+
+    @Test
+    void an_empty_body_should_throw_like_any_other_unreadable_input() {
+        assertThatThrownBy(() -> handler().onMessage("")).isInstanceOf(IllegalArgumentException.class);
     }
 }
