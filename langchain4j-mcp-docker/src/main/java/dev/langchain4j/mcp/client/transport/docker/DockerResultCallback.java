@@ -78,7 +78,7 @@ class DockerResultCallback extends ResultCallback.Adapter<Frame> {
         }
 
         try {
-            messageHandler.handleJson(message);
+            messageHandler.onMessage(message);
             logAggregator.setLength(0);
             countDownLatch.countDown();
         } catch (RuntimeException e) {

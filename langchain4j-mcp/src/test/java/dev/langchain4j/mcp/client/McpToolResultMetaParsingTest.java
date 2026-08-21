@@ -11,9 +11,9 @@ import org.junit.jupiter.api.Test;
 
 class McpToolResultMetaParsingTest {
 
-    private final McpContentExtractor extractor = new DefaultMcpContentExtractor();
-    private final McpContentExtractor legacyExtractor =
-            new LegacyToolResultExtractorAdapter(new DefaultMcpToolResultExtractor());
+    private final McpToolResultConverter extractor = new DefaultMcpToolResultConverter();
+    private final McpToolResultConverter legacyExtractor =
+            new LegacyToolResultConverterAdapter(new DefaultMcpToolResultExtractor());
 
     @Test
     void should_map_meta_of_text_result_into_attributes() throws Exception {
@@ -158,7 +158,7 @@ class McpToolResultMetaParsingTest {
                 .attributes(Map.of("source", "extractor"))
                 .build();
 
-        ToolExecutionResult result = ToolExecutionHelper.extractResult(response, false, new LegacyToolResultExtractorAdapter(customExtractor));
+        ToolExecutionResult result = ToolExecutionHelper.extractResult(response, false, new LegacyToolResultConverterAdapter(customExtractor));
 
         assertThat(result.resultText()).isEqualTo("custom");
         assertThat(result.attributes())

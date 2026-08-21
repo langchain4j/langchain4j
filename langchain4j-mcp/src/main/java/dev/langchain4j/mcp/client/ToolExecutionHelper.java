@@ -25,7 +25,7 @@ class ToolExecutionHelper {
      * {@link ToolExecutionResult#attributes()} and are not sent to the LLM.
      */
     static ToolExecutionResult extractResult(
-            JsonNode response, boolean ignoreApplicationLevelErrors, McpContentExtractor contentExtractor) {
+            JsonNode response, boolean ignoreApplicationLevelErrors, McpToolResultConverter toolResultConverter) {
 
         McpCallToolResult.Result result =
                 McpJson.deserialize(response, McpCallToolResult.class).getResult();
@@ -49,7 +49,7 @@ class ToolExecutionHelper {
 
             if (result.getContent() != null) {
                 ToolExecutionResult toolExecutionResult =
-                        contentExtractor.extract(result.getContent(), applicationError);
+                        toolResultConverter.convert(result.getContent(), applicationError);
                 if (applicationError && !ignoreApplicationLevelErrors) {
                     throw new ToolExecutionException(errorMessage(toolExecutionResult, result.getContent()));
                 }

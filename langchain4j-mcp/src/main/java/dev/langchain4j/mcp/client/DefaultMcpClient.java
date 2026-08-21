@@ -136,7 +136,7 @@ public class DefaultMcpClient implements McpClient {
     private final Boolean cachePromptList;
     private final List<McpClientListener> listeners;
     private final McpMetaSupplier metaSupplier;
-    private final McpContentExtractor contentExtractor;
+    private final McpToolResultConverter toolResultConverter;
 
     @Deprecated(since = "1.20.0", forRemoval = true)
     private volatile @Nullable McpInitializeResult initializeResult;
@@ -184,13 +184,13 @@ public class DefaultMcpClient implements McpClient {
             cacheResourceList = getOrDefault(builder.cacheResourceList, Boolean.TRUE);
             cachePromptList = getOrDefault(builder.cachePromptList, Boolean.TRUE);
             onResourceUpdated = builder.onResourceUpdated;
-            if (builder.contentExtractor != null && builder.toolResultExtractor != null) {
-                throw new IllegalArgumentException("Set either contentExtractor or the deprecated "
+            if (builder.toolResultConverter != null && builder.toolResultExtractor != null) {
+                throw new IllegalArgumentException("Set either toolResultConverter or the deprecated "
                         + "toolResultExtractor, not both");
             }
-            contentExtractor = builder.toolResultExtractor != null
-                    ? new LegacyToolResultExtractorAdapter(builder.toolResultExtractor)
-                    : getOrDefault(builder.contentExtractor, new DefaultMcpContentExtractor());
+            toolResultConverter = builder.toolResultExtractor != null
+                    ? new LegacyToolResultConverterAdapter(builder.toolResultExtractor)
+                    : getOrDefault(builder.toolResultConverter, new DefaultMcpToolResultConverter());
             multiRoundTripMaxRetries =
                     getOrDefault(builder.multiRoundTripMaxRetries, DEFAULT_MULTI_ROUND_TRIP_MAX_RETRIES);
             subscribeToToolListChanges = getOrDefault(builder.subscribeToToolListChanges, Boolean.TRUE);
@@ -736,10 +736,10 @@ public class DefaultMcpClient implements McpClient {
             if (shouldSendCancellationNotification()) {
                 McpCancellationNotification cancellation = new McpCancellationNotification(operationId, "Timeout");
                 applyMeta(cancellation, null);
-                transport.executeOperationWithoutResponse(cancellation);
+                transport.sendMessage(cancellation);
             }
             return ToolExecutionHelper.extractResult(
-                    RESULT_TIMEOUT, false, contentExtractor);
+                    RESULT_TIMEOUT, false, toolResultConverter);
         } catch (ExecutionException e) {
             notifyListeners(l -> l.onExecuteToolError(context, e));
             throw new ToolExecutionException(e.getCause());
@@ -752,7 +752,7 @@ public class DefaultMcpClient implements McpClient {
         final JsonNode finalResult = result;
         try {
             ToolExecutionResult toolResult = ToolExecutionHelper.extractResult(
-                    finalResult, false, contentExtractor);
+                    finalResult, false, toolResultConverter);
             notifyListeners(l -> l.afterExecuteTool(
                     context, toolResult, McpJsonConversions.toMap(finalResult)));
             return toolResult;
@@ -766,7 +766,7 @@ public class DefaultMcpClient implements McpClient {
                 notifyListeners(l -> l.afterExecuteTool(
                         context,
                         ToolExecutionHelper.extractResult(
-                                finalResult, true, contentExtractor),
+                                finalResult, true, toolResultConverter),
                         McpJsonConversions.toMap(finalResult)));
             }
             throw e;
@@ -952,7 +952,7 @@ public class DefaultMcpClient implements McpClient {
         McpRootsListChangedNotification notification = new McpRootsListChangedNotification();
         McpCallContext context = new McpCallContext(null, notification);
         applyMeta(notification, context);
-        transport.executeOperationWithoutResponse(context);
+        transport.sendMessage(context);
         notifyListeners(l -> l.onRootsListChanged(context));
     }
 
@@ -1091,7 +1091,7 @@ public class DefaultMcpClient implements McpClient {
             // Send notifications/cancelled for transports that need it (e.g. stdio)
             if (context != null) {
                 applyMeta(context.message(), context);
-                transport.executeOperationWithoutResponse(context.message());
+                transport.sendMessage(context.message());
             }
         }
 
@@ -1504,7 +1504,7 @@ public class DefaultMcpClient implements McpClient {
         private McpProgressHandler progressHandler;
         private McpMetaSupplier metaSupplier;
         private BiConsumer<McpClient, String> onResourceUpdated;
-        private McpContentExtractor contentExtractor;
+        private McpToolResultConverter toolResultConverter;
 
         @Deprecated(since = "1.20.0", forRemoval = true)
         private McpToolResultExtractor toolResultExtractor;
@@ -1793,8 +1793,8 @@ public class DefaultMcpClient implements McpClient {
          * Sets the extractor used for MCP tool responses backed by {@code content[]}.
          * Takes precedence over {@link #toolResultExtractor(McpToolResultExtractor)}.
          */
-        public Builder contentExtractor(McpContentExtractor contentExtractor) {
-            this.contentExtractor = ensureNotNull(contentExtractor, "contentExtractor");
+        public Builder toolResultConverter(McpToolResultConverter toolResultConverter) {
+            this.toolResultConverter = ensureNotNull(toolResultConverter, "toolResultConverter");
             return this;
         }
 
@@ -1803,7 +1803,7 @@ public class DefaultMcpClient implements McpClient {
          * {@code CallToolResult.result.content[]} items. Responses with
          * {@code structuredContent} are handled separately and are not affected by this setting.
          *
-         * @deprecated use {@link #contentExtractor(McpContentExtractor)}, which does not expose
+         * @deprecated use {@link #toolResultConverter(McpToolResultConverter)}, which does not expose
          * Jackson types. If both are set, the content extractor wins.
          */
         @Deprecated(since = "1.20.0", forRemoval = true)
@@ -1867,15 +1867,15 @@ public class DefaultMcpClient implements McpClient {
     }
 
     private CompletableFuture<JsonNode> executeViaTransport(McpCallContext context) {
-        return McpJson.map(transport.executeOperationWithJsonResponse(context), McpJson::parse);
+        return McpJson.map(transport.sendRequest(context), McpJson::parse);
     }
 
     private CompletableFuture<JsonNode> executeViaTransport(McpClientMessage message) {
-        return McpJson.map(transport.executeOperationWithJsonResponse(message), McpJson::parse);
+        return McpJson.map(transport.sendRequest(message), McpJson::parse);
     }
 
     private CompletableFuture<JsonNode> initializeViaTransport(McpInitializeRequest request) {
-        return McpJson.map(transport.initializeJson(request), McpJson::parse);
+        return McpJson.map(transport.sendInitializeRequest(request), McpJson::parse);
     }
 
 }

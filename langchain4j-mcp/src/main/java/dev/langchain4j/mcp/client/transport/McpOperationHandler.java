@@ -69,14 +69,14 @@ public class McpOperationHandler {
 
     @Deprecated(since = "1.20.0", forRemoval = true)
     public void handle(JsonNode message) {
-        handleJson(McpJson.serialize(message));
+        onMessage(McpJson.serialize(message));
     }
 
     /**
      * JSON-text counterpart of {@link #handle(JsonNode)}, so that transports can hand over
      * the message exactly as it arrived on the wire without parsing it first.
      */
-    public void handleJson(String json) {
+    public void onMessage(String json) {
         Map<String, Object> message;
         try {
             message = McpJson.toMap(json);
@@ -120,13 +120,13 @@ public class McpOperationHandler {
             }
             switch (method) {
                 case PING:
-                    transport.executeOperationWithoutResponse(new McpPingResponse(messageId));
+                    transport.sendMessage(new McpPingResponse(messageId));
                     if (onServerPing != null) {
                         onServerPing.run();
                     }
                     break;
                 case ROOTS_LIST:
-                    transport.executeOperationWithoutResponse(new McpRootsListResponse(messageId, roots.get()));
+                    transport.sendMessage(new McpRootsListResponse(messageId, roots.get()));
                     if (onServerRootsList != null) {
                         onServerRootsList.run();
                     }
@@ -274,13 +274,13 @@ public class McpOperationHandler {
                 future.completeExceptionally(e);
             }
         });
-        startJsonOperation(id, jsonFuture);
+        expectResponse(id, jsonFuture);
     }
 
     /**
      * JSON-text counterpart of {@link #startOperation(Long, CompletableFuture)}.
      */
-    public void startJsonOperation(Long id, CompletableFuture<String> future) {
+    public void expectResponse(Long id, CompletableFuture<String> future) {
         pendingOperations.put(id, future);
     }
 

@@ -99,7 +99,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
     }
 
     @Override
-    public CompletableFuture<String> initializeJson(McpInitializeRequest operation) {
+    public CompletableFuture<String> sendInitializeRequest(McpInitializeRequest operation) {
         this.initializeRequest = operation;
         CompletableFuture<String> completableFuture = execute(new McpCallContext(null, operation), false);
         initializeInProgress.set(completableFuture);
@@ -176,22 +176,22 @@ public class StreamableHttpMcpTransport implements McpTransport {
     }
 
     @Override
-    public CompletableFuture<String> executeOperationWithJsonResponse(McpClientMessage operation) {
-        return executeOperationWithJsonResponse(new McpCallContext(null, operation));
+    public CompletableFuture<String> sendRequest(McpClientMessage operation) {
+        return sendRequest(new McpCallContext(null, operation));
     }
 
     @Override
-    public CompletableFuture<String> executeOperationWithJsonResponse(McpCallContext context) {
+    public CompletableFuture<String> sendRequest(McpCallContext context) {
         return execute(context, false);
     }
 
     @Override
-    public void executeOperationWithoutResponse(McpClientMessage operation) {
-        executeOperationWithoutResponse(new McpCallContext(null, operation));
+    public void sendMessage(McpClientMessage operation) {
+        sendMessage(new McpCallContext(null, operation));
     }
 
     @Override
-    public void executeOperationWithoutResponse(McpCallContext context) {
+    public void sendMessage(McpCallContext context) {
         execute(context, false);
     }
 
@@ -265,7 +265,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
         }
         CompletableFuture<String> future = new CompletableFuture<>();
         if (id != null) {
-            operationHandler.startJsonOperation(id, future);
+            operationHandler.expectResponse(id, future);
         }
 
         httpClient
@@ -330,7 +330,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
                                             future.complete(null);
                                         }
                                         try {
-                                            operationHandler.handleJson(responseBody);
+                                            operationHandler.onMessage(responseBody);
                                             return null;
                                         } catch (RuntimeException e) {
                                             future.completeExceptionally(e);
@@ -628,24 +628,36 @@ public class StreamableHttpMcpTransport implements McpTransport {
 
     /**
      * @deprecated implemented for source and behavioural compatibility; delegates to
-     * {@link #initializeJson(McpInitializeRequest)}. Prefer the JSON-text methods.
+     * {@link #sendInitializeRequest(McpInitializeRequest)}. Prefer the JSON-text methods.
      */
     @Deprecated(since = "1.20.0", forRemoval = true)
     @Override
     public CompletableFuture<JsonNode> initialize(McpInitializeRequest request) {
-        return McpJson.map(initializeJson(request), McpJson::parse);
+        return McpJson.map(sendInitializeRequest(request), McpJson::parse);
     }
 
     @Deprecated(since = "1.20.0", forRemoval = true)
     @Override
     public CompletableFuture<JsonNode> executeOperationWithResponse(McpClientMessage request) {
-        return McpJson.map(executeOperationWithJsonResponse(request), McpJson::parse);
+        return McpJson.map(sendRequest(request), McpJson::parse);
     }
 
     @Deprecated(since = "1.20.0", forRemoval = true)
     @Override
     public CompletableFuture<JsonNode> executeOperationWithResponse(McpCallContext context) {
-        return McpJson.map(executeOperationWithJsonResponse(context), McpJson::parse);
+        return McpJson.map(sendRequest(context), McpJson::parse);
+    }
+
+    @Deprecated(since = "1.20.0", forRemoval = true)
+    @Override
+    public void executeOperationWithoutResponse(McpClientMessage request) {
+        sendMessage(request);
+    }
+
+    @Deprecated(since = "1.20.0", forRemoval = true)
+    @Override
+    public void executeOperationWithoutResponse(McpCallContext context) {
+        sendMessage(context);
     }
 
 }

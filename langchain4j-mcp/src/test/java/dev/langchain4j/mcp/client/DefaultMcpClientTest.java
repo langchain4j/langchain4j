@@ -882,9 +882,9 @@ public class DefaultMcpClientTest {
         McpTransport transport = mock(McpTransport.class);
         // exercise the default bridge: a legacy transport that implements only the
         // deprecated JsonNode methods must still satisfy the raw-JSON contract
-        when(transport.initializeJson(any())).thenCallRealMethod();
-        when(transport.executeOperationWithJsonResponse(any(McpCallContext.class))).thenCallRealMethod();
-        when(transport.executeOperationWithJsonResponse(any(McpClientMessage.class))).thenCallRealMethod();
+        when(transport.sendInitializeRequest(any())).thenCallRealMethod();
+        when(transport.sendRequest(any(McpCallContext.class))).thenCallRealMethod();
+        when(transport.sendRequest(any(McpClientMessage.class))).thenCallRealMethod();
         when(transport.requiresCancellationNotification()).thenReturn(true);
         ObjectNode emptyJsonNode = JsonNodeFactory.instance.objectNode();
         when(transport.initialize(any())).thenReturn(CompletableFuture.completedFuture(emptyJsonNode));
@@ -904,9 +904,9 @@ public class DefaultMcpClientTest {
         McpTransport transport = mock(McpTransport.class);
         // exercise the default bridge: a legacy transport that implements only the
         // deprecated JsonNode methods must still satisfy the raw-JSON contract
-        when(transport.initializeJson(any())).thenCallRealMethod();
-        when(transport.executeOperationWithJsonResponse(any(McpCallContext.class))).thenCallRealMethod();
-        when(transport.executeOperationWithJsonResponse(any(McpClientMessage.class))).thenCallRealMethod();
+        when(transport.sendInitializeRequest(any())).thenCallRealMethod();
+        when(transport.sendRequest(any(McpCallContext.class))).thenCallRealMethod();
+        when(transport.sendRequest(any(McpClientMessage.class))).thenCallRealMethod();
         when(transport.requiresCancellationNotification()).thenReturn(true);
         ObjectNode discoverResult = getDiscoverResult();
         when(transport.executeOperationWithResponse(any(McpCallContext.class)))
@@ -918,9 +918,9 @@ public class DefaultMcpClientTest {
         McpTransport transport = mock(McpTransport.class);
         // exercise the default bridge: a legacy transport that implements only the
         // deprecated JsonNode methods must still satisfy the raw-JSON contract
-        when(transport.initializeJson(any())).thenCallRealMethod();
-        when(transport.executeOperationWithJsonResponse(any(McpCallContext.class))).thenCallRealMethod();
-        when(transport.executeOperationWithJsonResponse(any(McpClientMessage.class))).thenCallRealMethod();
+        when(transport.sendInitializeRequest(any())).thenCallRealMethod();
+        when(transport.sendRequest(any(McpCallContext.class))).thenCallRealMethod();
+        when(transport.sendRequest(any(McpClientMessage.class))).thenCallRealMethod();
         when(transport.requiresCancellationNotification()).thenReturn(false);
         ObjectNode discoverResult = getDiscoverResult();
         when(transport.executeOperationWithResponse(any(McpCallContext.class)))
@@ -932,9 +932,9 @@ public class DefaultMcpClientTest {
         McpTransport transport = mock(McpTransport.class);
         // exercise the default bridge: a legacy transport that implements only the
         // deprecated JsonNode methods must still satisfy the raw-JSON contract
-        when(transport.initializeJson(any())).thenCallRealMethod();
-        when(transport.executeOperationWithJsonResponse(any(McpCallContext.class))).thenCallRealMethod();
-        when(transport.executeOperationWithJsonResponse(any(McpClientMessage.class))).thenCallRealMethod();
+        when(transport.sendInitializeRequest(any())).thenCallRealMethod();
+        when(transport.sendRequest(any(McpCallContext.class))).thenCallRealMethod();
+        when(transport.sendRequest(any(McpClientMessage.class))).thenCallRealMethod();
         when(transport.requiresCancellationNotification()).thenReturn(false);
         ObjectNode emptyJsonNode = JsonNodeFactory.instance.objectNode();
         when(transport.initialize(any())).thenReturn(CompletableFuture.completedFuture(emptyJsonNode));
@@ -1010,7 +1010,7 @@ public class DefaultMcpClientTest {
         client.unsubscribeFromResources(subscriptionId);
 
         assertThat(sseStream.isCancelled()).isTrue();
-        verify(transport, never()).executeOperationWithoutResponse(any(McpClientMessage.class));
+        verify(transport, never()).sendMessage(any(McpClientMessage.class));
     }
 
     @Test
@@ -1034,7 +1034,7 @@ public class DefaultMcpClientTest {
         client.unsubscribeFromResources(subscriptionId);
 
         assertThat(sseStream.isCancelled()).isTrue();
-        verify(transport, times(1)).executeOperationWithoutResponse(any(McpClientMessage.class));
+        verify(transport, times(1)).sendMessage(any(McpClientMessage.class));
     }
 
     @Test
@@ -1102,7 +1102,7 @@ public class DefaultMcpClientTest {
                 ToolExecutionRequest.builder().name("slowTool").arguments("{}").build());
 
         assertThat(neverCompletes.isCancelled()).isTrue();
-        verify(transport, never()).executeOperationWithoutResponse(any(McpClientMessage.class));
+        verify(transport, never()).sendMessage(any(McpClientMessage.class));
     }
 
     @Test
@@ -1122,7 +1122,7 @@ public class DefaultMcpClientTest {
                 ToolExecutionRequest.builder().name("slowTool").arguments("{}").build());
 
         assertThat(neverCompletes.isCancelled()).isTrue();
-        verify(transport, times(1)).executeOperationWithoutResponse(any(McpClientMessage.class));
+        verify(transport, times(1)).sendMessage(any(McpClientMessage.class));
     }
 
     @Test
@@ -1147,7 +1147,7 @@ public class DefaultMcpClientTest {
                 ToolExecutionRequest.builder().name("slowTool").arguments("{}").build());
 
         assertThat(neverCompletes.isCancelled()).isTrue();
-        verify(transport, times(1)).executeOperationWithoutResponse(any(McpClientMessage.class));
+        verify(transport, times(1)).sendMessage(any(McpClientMessage.class));
     }
 
     @Test
@@ -1167,7 +1167,7 @@ public class DefaultMcpClientTest {
                 ToolExecutionRequest.builder().name("slowTool").arguments("{}").build());
 
         assertThat(neverCompletes.isCancelled()).isTrue();
-        verify(transport, times(1)).executeOperationWithoutResponse(any(McpClientMessage.class));
+        verify(transport, times(1)).sendMessage(any(McpClientMessage.class));
     }
 
     @SuppressWarnings("unchecked")

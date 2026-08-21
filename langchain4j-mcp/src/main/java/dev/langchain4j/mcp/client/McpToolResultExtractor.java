@@ -15,7 +15,7 @@ import dev.langchain4j.service.tool.ToolExecutionResult;
  * More specialized extraction strategies can be provided through
  * {@link DefaultMcpClient.Builder#toolResultExtractor(McpToolResultExtractor)}.
  *
- * @deprecated use {@link McpContentExtractor}, which does not expose Jackson types.
+ * @deprecated use {@link McpToolResultConverter}, which does not expose Jackson types.
  */
 @Deprecated(since = "1.20.0", forRemoval = true)
 public interface McpToolResultExtractor {

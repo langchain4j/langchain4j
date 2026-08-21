@@ -12,10 +12,10 @@ import java.util.stream.Collectors;
  * fragments with newline characters, and stores the result in
  * {@link ToolExecutionResult#resultText()}.
  */
-public class DefaultMcpContentExtractor implements McpContentExtractor {
+public class DefaultMcpToolResultConverter implements McpToolResultConverter {
 
     @Override
-    public ToolExecutionResult extract(List<Map<String, Object>> content, boolean isError) {
+    public ToolExecutionResult convert(List<Map<String, Object>> content, boolean isError) {
         String resultText = content.stream().map(this::extractText).collect(Collectors.joining("\n"));
 
         return ToolExecutionResult.builder()

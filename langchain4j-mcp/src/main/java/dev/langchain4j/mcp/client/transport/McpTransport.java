@@ -35,14 +35,14 @@ public interface McpTransport extends Closeable {
     @Deprecated(since = "1.20.0", forRemoval = true)
     default CompletableFuture<JsonNode> initialize(McpInitializeRequest request) {
         throw new UnsupportedOperationException(
-                "Implement initializeJson(McpInitializeRequest) instead of initialize(McpInitializeRequest)");
+                "Implement sendInitializeRequest(McpInitializeRequest) instead of initialize(McpInitializeRequest)");
     }
 
     /**
      * JSON-text counterpart of {@link #initialize(McpInitializeRequest)}, returning the
      * server's response as unparsed JSON text so that transports do not need a JSON library.
      */
-    default CompletableFuture<String> initializeJson(McpInitializeRequest request) {
+    default CompletableFuture<String> sendInitializeRequest(McpInitializeRequest request) {
         return McpJson.map(initialize(request), McpJson::serialize);
     }
 
@@ -51,14 +51,14 @@ public interface McpTransport extends Closeable {
      */
     @Deprecated(since = "1.20.0", forRemoval = true)
     default CompletableFuture<JsonNode> executeOperationWithResponse(McpClientMessage request) {
-        throw new UnsupportedOperationException("Implement executeOperationWithJsonResponse(McpClientMessage) instead"
+        throw new UnsupportedOperationException("Implement sendRequest(McpClientMessage) instead"
                 + " of executeOperationWithResponse(McpClientMessage)");
     }
 
     /**
      * JSON-text counterpart of {@link #executeOperationWithResponse(McpClientMessage)}.
      */
-    default CompletableFuture<String> executeOperationWithJsonResponse(McpClientMessage request) {
+    default CompletableFuture<String> sendRequest(McpClientMessage request) {
         return McpJson.map(executeOperationWithResponse(request), McpJson::serialize);
     }
 
@@ -67,28 +67,50 @@ public interface McpTransport extends Closeable {
      */
     @Deprecated(since = "1.20.0", forRemoval = true)
     default CompletableFuture<JsonNode> executeOperationWithResponse(McpCallContext context) {
-        throw new UnsupportedOperationException("Implement executeOperationWithJsonResponse(McpCallContext) instead"
+        throw new UnsupportedOperationException("Implement sendRequest(McpCallContext) instead"
                 + " of executeOperationWithResponse(McpCallContext)");
     }
 
     /**
      * JSON-text counterpart of {@link #executeOperationWithResponse(McpCallContext)}.
      */
-    default CompletableFuture<String> executeOperationWithJsonResponse(McpCallContext context) {
+    default CompletableFuture<String> sendRequest(McpCallContext context) {
         return McpJson.map(executeOperationWithResponse(context), McpJson::serialize);
     }
 
     /**
-     * Sends a message that does not expect a response from the server - either a
-     * client-initiated notification or a response to a server-initiated request.
+     * @deprecated use {@link #sendMessage(McpClientMessage)}, which is named for what MCP calls it.
      */
-    void executeOperationWithoutResponse(McpClientMessage request);
+    @Deprecated(since = "1.20.0", forRemoval = true)
+    default void executeOperationWithoutResponse(McpClientMessage request) {
+        throw new UnsupportedOperationException(
+                "Implement sendMessage(McpClientMessage) instead of executeOperationWithoutResponse(McpClientMessage)");
+    }
 
     /**
-     * Sends a message that does not expect a response from the server - either a
-     * client-initiated notification or a response to a server-initiated request.
+     * Sends a message that does not expect a reply - in MCP terms a notification, or a
+     * response to a server-initiated request.
      */
-    void executeOperationWithoutResponse(McpCallContext context);
+    default void sendMessage(McpClientMessage request) {
+        executeOperationWithoutResponse(request);
+    }
+
+    /**
+     * @deprecated use {@link #sendMessage(McpCallContext)}, which is named for what MCP calls it.
+     */
+    @Deprecated(since = "1.20.0", forRemoval = true)
+    default void executeOperationWithoutResponse(McpCallContext context) {
+        throw new UnsupportedOperationException(
+                "Implement sendMessage(McpCallContext) instead of executeOperationWithoutResponse(McpCallContext)");
+    }
+
+    /**
+     * Sends a message that does not expect a reply - in MCP terms a notification, or a
+     * response to a server-initiated request.
+     */
+    default void sendMessage(McpCallContext context) {
+        executeOperationWithoutResponse(context);
+    }
 
     /**
      * Performs transport-specific health checks, if applicable. This is called

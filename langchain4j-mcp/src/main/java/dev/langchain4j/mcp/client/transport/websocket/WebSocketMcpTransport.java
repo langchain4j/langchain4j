@@ -146,7 +146,7 @@ public class WebSocketMcpTransport implements McpTransport {
     }
 
     @Override
-    public CompletableFuture<String> initializeJson(McpInitializeRequest operation) {
+    public CompletableFuture<String> sendInitializeRequest(McpInitializeRequest operation) {
         this.initializeRequest = operation;
         CompletableFuture<String> completableFuture =
                 execute(new McpCallContext(null, operation), Optional.empty(), operation.getId());
@@ -160,22 +160,22 @@ public class WebSocketMcpTransport implements McpTransport {
     }
 
     @Override
-    public CompletableFuture<String> executeOperationWithJsonResponse(McpClientMessage request) {
-        return executeOperationWithJsonResponse(new McpCallContext(null, request));
+    public CompletableFuture<String> sendRequest(McpClientMessage request) {
+        return sendRequest(new McpCallContext(null, request));
     }
 
     @Override
-    public CompletableFuture<String> executeOperationWithJsonResponse(McpCallContext context) {
+    public CompletableFuture<String> sendRequest(McpCallContext context) {
         return execute(context, Optional.empty(), context.message().getId());
     }
 
     @Override
-    public void executeOperationWithoutResponse(McpClientMessage request) {
-        executeOperationWithoutResponse(new McpCallContext(null, request));
+    public void sendMessage(McpClientMessage request) {
+        sendMessage(new McpCallContext(null, request));
     }
 
     @Override
-    public void executeOperationWithoutResponse(McpCallContext context) {
+    public void sendMessage(McpCallContext context) {
         execute(context, Optional.empty(), null);
     }
 
@@ -232,7 +232,7 @@ public class WebSocketMcpTransport implements McpTransport {
             return future;
         }
         if (id != null) {
-            operationHandler.startJsonOperation(id, future);
+            operationHandler.expectResponse(id, future);
         }
         try {
             String messageJson = McpJson.serialize(context.message());
@@ -348,24 +348,36 @@ public class WebSocketMcpTransport implements McpTransport {
 
     /**
      * @deprecated implemented for source and behavioural compatibility; delegates to
-     * {@link #initializeJson(McpInitializeRequest)}. Prefer the JSON-text methods.
+     * {@link #sendInitializeRequest(McpInitializeRequest)}. Prefer the JSON-text methods.
      */
     @Deprecated(since = "1.20.0", forRemoval = true)
     @Override
     public CompletableFuture<JsonNode> initialize(McpInitializeRequest request) {
-        return McpJson.map(initializeJson(request), McpJson::parse);
+        return McpJson.map(sendInitializeRequest(request), McpJson::parse);
     }
 
     @Deprecated(since = "1.20.0", forRemoval = true)
     @Override
     public CompletableFuture<JsonNode> executeOperationWithResponse(McpClientMessage request) {
-        return McpJson.map(executeOperationWithJsonResponse(request), McpJson::parse);
+        return McpJson.map(sendRequest(request), McpJson::parse);
     }
 
     @Deprecated(since = "1.20.0", forRemoval = true)
     @Override
     public CompletableFuture<JsonNode> executeOperationWithResponse(McpCallContext context) {
-        return McpJson.map(executeOperationWithJsonResponse(context), McpJson::parse);
+        return McpJson.map(sendRequest(context), McpJson::parse);
+    }
+
+    @Deprecated(since = "1.20.0", forRemoval = true)
+    @Override
+    public void executeOperationWithoutResponse(McpClientMessage request) {
+        sendMessage(request);
+    }
+
+    @Deprecated(since = "1.20.0", forRemoval = true)
+    @Override
+    public void executeOperationWithoutResponse(McpCallContext context) {
+        sendMessage(context);
     }
 
 }

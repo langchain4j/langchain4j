@@ -21,7 +21,7 @@ public class McpMeta {
     /**
      * Returns publisher-provided metadata as plain values, so consumers do not need a JSON library.
      */
-    public Map<String, Object> getPublisherProvidedAsMap() {
+    public Map<String, Object> publisherProvided() {
         if (publisherProvided == null) {
             return null;
         }
@@ -31,7 +31,7 @@ public class McpMeta {
     }
 
     /**
-     * @deprecated use {@link #getPublisherProvidedAsMap()}, which does not expose Jackson types.
+     * @deprecated use {@link #publisherProvided()}, which does not expose Jackson types.
      */
     @Deprecated(since = "1.20.0", forRemoval = true)
     public Map<String, JsonNode> getPublisherProvided() {

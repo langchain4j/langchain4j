@@ -7,22 +7,22 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Presents a user-supplied {@link McpToolResultExtractor} as an {@link McpContentExtractor},
+ * Presents a user-supplied {@link McpToolResultExtractor} as an {@link McpToolResultConverter},
  * so that the client has a single extraction path. The content is rendered back into a Jackson
  * tree here, which is the cost of the deprecated interface and is confined to it.
  */
 @Internal
 @SuppressWarnings("removal")
-class LegacyToolResultExtractorAdapter implements McpContentExtractor {
+class LegacyToolResultConverterAdapter implements McpToolResultConverter {
 
     private final McpToolResultExtractor delegate;
 
-    LegacyToolResultExtractorAdapter(McpToolResultExtractor delegate) {
+    LegacyToolResultConverterAdapter(McpToolResultExtractor delegate) {
         this.delegate = delegate;
     }
 
     @Override
-    public ToolExecutionResult extract(List<Map<String, Object>> content, boolean isError) {
+    public ToolExecutionResult convert(List<Map<String, Object>> content, boolean isError) {
         return delegate.extract(McpJson.parse(McpJson.serialize(content)), isError);
     }
 }
