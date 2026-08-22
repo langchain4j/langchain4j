@@ -2,7 +2,9 @@ package dev.langchain4j.rag.content.retriever;
 
 import static dev.langchain4j.rag.content.ContentMetadata.SCORE;
 import static dev.langchain4j.rag.content.retriever.SmallToBigContentRetriever.ExpansionMode.SIBLINGS;
+import static dev.langchain4j.rag.content.retriever.SmallToBigContentRetriever.MissingContextPolicy.FAIL;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.segment.TextSegment;
@@ -90,6 +92,34 @@ class SmallToBigContentRetrieverTest {
                 .extracting(content -> content.textSegment().text())
                 .containsExactly("parent 1", "child 2");
         assertThat(requestedIds.get()).containsExactly("parent-1", "parent-2");
+    }
+
+    @Test
+    void should_fail_when_larger_context_is_missing_and_policy_is_fail() {
+        Content child = child("child", "missing-parent", 0.9);
+        SmallToBigContentRetriever<String> retriever = SmallToBigContentRetriever.<String>builder()
+                .childRetriever(ignored -> List.of(child))
+                .parentIdProvider(content -> content.textSegment().metadata().getString("parentId"))
+                .parentContentProvider(ignored -> Map.of())
+                .missingContextPolicy(FAIL)
+                .build();
+
+        assertThatThrownBy(() -> retriever.retrieve(QUERY))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("No larger context found for parent ID: missing-parent");
+    }
+
+    @Test
+    void should_reject_a_negative_sibling_window() {
+        assertThatThrownBy(() -> SmallToBigContentRetriever.<String>builder()
+                        .childRetriever(ignored -> List.of())
+                        .parentIdProvider(content -> "parent")
+                        .expansionMode(SIBLINGS)
+                        .siblingContentProvider(ignored -> Map.of())
+                        .siblingWindow(-1, 1)
+                        .build())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("siblingsBefore cannot be negative");
     }
 
     private static Content child(String text, String parentId, double score) {
