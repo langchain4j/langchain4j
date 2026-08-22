@@ -54,9 +54,11 @@ public class CosineSimilarity {
         double normB = 0.0;
 
         for (int i = 0; i < vectorA.length; i++) {
-            dotProduct += vectorA[i] * vectorB[i];
-            normA += vectorA[i] * vectorA[i];
-            normB += vectorB[i] * vectorB[i];
+            double valueA = vectorA[i];
+            double valueB = vectorB[i];
+            dotProduct += valueA * valueB;
+            normA += valueA * valueA;
+            normB += valueB * valueB;
         }
 
         // Avoid division by zero.
