@@ -116,8 +116,7 @@ class MilvusV2MetadataFilterMapper {
 
     private static String formatValue(Object value) {
         if (value instanceof String stringValue) {
-            // Escape double quotes by replacing them with \"
-            final String escapedValue = stringValue.replace("\"", "\\\"");
+            final String escapedValue = stringValue.replace("\\", "\\\\").replace("\"", "\\\"");
             return "\"" + escapedValue + "\"";
         } else if (value instanceof UUID) {
             return "\"" + value + "\"";
