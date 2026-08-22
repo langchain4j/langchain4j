@@ -335,4 +335,37 @@ class OpenAiStreamingResponseBuilderTest {
                         .build()))
                 .build();
     }
+
+    @Test
+    void should_accumulate_refusal() {
+        OpenAiStreamingResponseBuilder builder = new OpenAiStreamingResponseBuilder();
+
+        builder.append(ChatCompletionResponse.builder()
+                .id("resp_1")
+                .model("gpt-4o")
+                .choices(List.of(ChatCompletionChoice.builder()
+                        .index(0)
+                        .delta(Delta.builder()
+                                .refusal("I cannot help with that")
+                                .build())
+                        .build()))
+                .build());
+
+        assertThat(builder.refusal()).isEqualTo("I cannot help with that");
+    }
+
+    @Test
+    void should_keep_refusal_null_when_no_refusal() {
+        OpenAiStreamingResponseBuilder builder = new OpenAiStreamingResponseBuilder();
+        builder.append(ChatCompletionResponse.builder()
+                .id("resp_1")
+                .model("gpt-4o")
+                .choices(List.of(ChatCompletionChoice.builder()
+                        .index(0)
+                        .delta(Delta.builder().content("Hello").build())
+                        .build()))
+                .build());
+
+        assertThat(builder.refusal()).isNull();
+    }
 }
