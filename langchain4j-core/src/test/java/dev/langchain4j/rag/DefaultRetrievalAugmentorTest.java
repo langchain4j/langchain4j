@@ -103,9 +103,7 @@ class DefaultRetrievalAugmentorTest {
 
         // then
         UserMessage augmented = (UserMessage) result.chatMessage();
-        assertThat(augmented.singleText())
-                .isEqualTo(
-                        """
+        assertThat(augmented.singleText()).isEqualTo("""
                 query
                 content 1
                 content 2
@@ -232,9 +230,7 @@ class DefaultRetrievalAugmentorTest {
 
         // then
         UserMessage augmented = (UserMessage) result.chatMessage();
-        assertThat(augmented.singleText())
-                .isEqualTo(
-                        """
+        assertThat(augmented.singleText()).isEqualTo("""
                 query
                 content 1
                 content 2
@@ -311,8 +307,7 @@ class DefaultRetrievalAugmentorTest {
 
         // then
         UserMessage augmented = (UserMessage) result.chatMessage();
-        assertThat(augmented.singleText())
-                .isEqualTo("""
+        assertThat(augmented.singleText()).isEqualTo("""
                 query
                 content 1
                 content 2""");
