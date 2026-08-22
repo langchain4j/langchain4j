@@ -74,10 +74,12 @@ class ReRankingContentAggregatorTest {
 
         List<Content> aggregated = new ReRankingContentAggregator(scoringModel).aggregate(queryToContents);
 
-        assertThat(aggregated).singleElement().satisfies(reranked -> assertThat(reranked.metadata())
-                .containsEntry(ContentMetadata.SCORE, 0.8)
-                .containsEntry(ContentMetadata.EMBEDDING_ID, "embedding-id")
-                .containsEntry(ContentMetadata.RERANKED_SCORE, 0.9));
+        assertThat(aggregated)
+                .singleElement()
+                .satisfies(reranked -> assertThat(reranked.metadata())
+                        .containsEntry(ContentMetadata.SCORE, 0.8)
+                        .containsEntry(ContentMetadata.EMBEDDING_ID, "embedding-id")
+                        .containsEntry(ContentMetadata.RERANKED_SCORE, 0.9));
     }
 
     static Stream<Arguments> should_rerank_when_single_query_and_single_contents() {
