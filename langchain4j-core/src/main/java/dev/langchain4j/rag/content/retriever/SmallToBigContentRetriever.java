@@ -244,7 +244,10 @@ public class SmallToBigContentRetriever<K> implements ContentRetriever {
             return this;
         }
 
-        /** Sets how a retrieved child is located in the ordered sibling list. The default uses {@link Content#equals}. */
+        /**
+         * Sets how a retrieved child is located in the ordered sibling list. The default uses
+         * {@link Object#equals(Object)}.
+         */
         public Builder<K> childMatcher(BiPredicate<Content, Content> childMatcher) {
             this.childMatcher = childMatcher;
             return this;
