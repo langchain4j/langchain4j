@@ -255,6 +255,33 @@ class ToolSpecificationHelperTest {
     }
 
     @Test
+    void objectSchemaWithSchemaTypedAdditionalPropertiesAllowsExtraProperties() throws JsonProcessingException {
+        // "additionalProperties" may be a schema object (common in real MCP schemas) to say "extra
+        // properties are allowed, each matching this schema". JsonObjectSchema only models it as a
+        // boolean, so this must map to "allowed" (true) rather than being collapsed to false, which
+        // would wrongly tell the model to reject any extra property.
+        String text = """
+                [{
+                  "name": "query",
+                  "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                      "filters": {
+                        "type": "object",
+                        "additionalProperties": {"type": "string"}
+                      }
+                    }
+                  }
+                }]
+                """;
+        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        List<ToolSpecification> toolSpecifications = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
+        JsonObjectSchema filters = (JsonObjectSchema)
+                toolSpecifications.get(0).parameters().properties().get("filters");
+        assertThat(filters.additionalProperties()).isEqualTo(true);
+    }
+
+    @Test
     void arrayWithAnyOf() throws JsonProcessingException {
         // trimmed version of the tool from @modelcontextprotocol/server-github
         String text =

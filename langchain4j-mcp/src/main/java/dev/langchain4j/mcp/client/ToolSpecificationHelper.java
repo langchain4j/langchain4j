@@ -124,7 +124,17 @@ class ToolSpecificationHelper {
                 builder.required(toStringArray((ArrayNode) node.get("required")));
             }
             if (node.has("additionalProperties")) {
-                builder.additionalProperties(node.get("additionalProperties").asBoolean(false));
+                JsonNode additionalProperties = node.get("additionalProperties");
+                if (additionalProperties.isBoolean()) {
+                    builder.additionalProperties(additionalProperties.asBoolean());
+                } else {
+                    // A schema-typed additionalProperties (e.g. {"type": "string"}) means additional
+                    // properties ARE allowed, just constrained to that schema. JsonObjectSchema only
+                    // models this as a boolean, so it must be treated as "allowed" (true) rather than
+                    // being collapsed to false, which would wrongly tell the model to reject every
+                    // extra property.
+                    builder.additionalProperties(true);
+                }
             }
             // Handle $defs (draft 2019-09+) and definitions (draft-07)
             JsonNode defsNode = node.has("$defs") ? node.get("$defs") : node.get("definitions");
