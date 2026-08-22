@@ -15,10 +15,10 @@ import dev.langchain4j.rag.query.transformer.DefaultQueryTransformer;
 import dev.langchain4j.rag.query.transformer.QueryTransformer;
 
 import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -34,7 +34,6 @@ import static java.util.Collections.singletonMap;
 import static java.util.concurrent.CompletableFuture.allOf;
 import static java.util.concurrent.CompletableFuture.supplyAsync;
 import static java.util.concurrent.TimeUnit.SECONDS;
-import static java.util.stream.Collectors.toMap;
 
 /**
  * The default implementation of {@link RetrievalAugmentor} intended to be suitable for the majority of use cases.
@@ -173,12 +172,11 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
                 return emptyMap();
             }
         } else if (queries.size() > 1) {
-            Map<Query, CompletableFuture<Collection<List<Content>>>> queryToFutureContents = new ConcurrentHashMap<>();
+            Map<Query, CompletableFuture<Collection<List<Content>>>> queryToFutureContents = new LinkedHashMap<>();
             queries.forEach(query -> {
-                CompletableFuture<Collection<List<Content>>> futureContents =
+                queryToFutureContents.computeIfAbsent(query, ignored ->
                         supplyAsync(() -> queryRouter.route(query), executor)
-                                .thenCompose(retrievers -> retrieveFromAll(retrievers, query));
-                queryToFutureContents.put(query, futureContents);
+                                .thenCompose(retrievers -> retrieveFromAll(retrievers, query)));
             });
             return join(queryToFutureContents);
         } else {
@@ -202,13 +200,14 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
     private static Map<Query, Collection<List<Content>>> join(
         Map<Query, CompletableFuture<Collection<List<Content>>>> queryToFutureContents) {
         return allOf(queryToFutureContents.values().toArray(new CompletableFuture[0]))
-            .thenApply(ignored ->
-                queryToFutureContents.entrySet().stream()
-                    .collect(toMap(
-                        Map.Entry::getKey,
-                        entry -> entry.getValue().join()
-                    ))
-            ).join();
+            .thenApply(ignored -> {
+                Map<Query, Collection<List<Content>>> queryToContents = new LinkedHashMap<>();
+                for (Map.Entry<Query, CompletableFuture<Collection<List<Content>>>> entry
+                        : queryToFutureContents.entrySet()) {
+                    queryToContents.put(entry.getKey(), entry.getValue().join());
+                }
+                return queryToContents;
+            }).join();
     }
 
     public static DefaultRetrievalAugmentorBuilder builder() {
