@@ -60,6 +60,28 @@ class ReRankingContentAggregatorTest {
         assertReRankedContentScore(aggregated, 0.7, 0.5);
     }
 
+    @Test
+    void should_preserve_content_metadata_when_reranking() {
+        Query query = Query.from("query");
+        Content content = Content.from(
+                TextSegment.from("content"),
+                Map.of(ContentMetadata.SCORE, 0.8, ContentMetadata.EMBEDDING_ID, "embedding-id"));
+        Map<Query, Collection<List<Content>>> queryToContents =
+                singletonMap(query, singletonList(singletonList(content)));
+
+        ScoringModel scoringModel = mock(ScoringModel.class);
+        when(scoringModel.scoreAll(any(), any())).thenReturn(Response.from(singletonList(0.9)));
+
+        List<Content> aggregated = new ReRankingContentAggregator(scoringModel).aggregate(queryToContents);
+
+        assertThat(aggregated)
+                .singleElement()
+                .satisfies(reranked -> assertThat(reranked.metadata())
+                        .containsEntry(ContentMetadata.SCORE, 0.8)
+                        .containsEntry(ContentMetadata.EMBEDDING_ID, "embedding-id")
+                        .containsEntry(ContentMetadata.RERANKED_SCORE, 0.9));
+    }
+
     static Stream<Arguments> should_rerank_when_single_query_and_single_contents() {
         return Stream.<Arguments>builder()
                 .add(Arguments.of((Function<ScoringModel, ContentAggregator>) ReRankingContentAggregator::new))
