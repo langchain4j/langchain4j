@@ -229,6 +229,27 @@ It comes with the following options:
 >     .build();
 > ```
 
+### Client-side hybrid retrieval
+
+If the Elasticsearch license does not include the server-side RRF retriever, hybrid retrieval can instead be
+performed in the client. `ElasticsearchClientSideHybridContentRetriever` executes kNN and full-text searches
+independently and combines their rankings with Reciprocal Rank Fusion in Java:
+
+```java
+ContentRetriever retriever = ElasticsearchClientSideHybridContentRetriever.builder()
+    .client(client)
+    .indexName("my-index")
+    .embeddingModel(embeddingModel)
+    .filter(filter) // applied to both search branches
+    .vectorMaxResults(20)
+    .fullTextMaxResults(20)
+    .maxResults(10)
+    .build();
+```
+
+This variant does not use Elasticsearch's `retriever.rrf` API. The two searches run concurrently and their
+independently ranked results are fused in the client.
+
 ### Creating Custom Configurations
 
 You can create your own Elasticsearch configuration by implementing the `ElasticsearchConfiguration` interface. For example:
