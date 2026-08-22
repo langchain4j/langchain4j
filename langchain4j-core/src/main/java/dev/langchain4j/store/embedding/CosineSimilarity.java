@@ -1,9 +1,9 @@
 package dev.langchain4j.store.embedding;
 
-import dev.langchain4j.data.embedding.Embedding;
-
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
+import dev.langchain4j.data.embedding.Embedding;
 
 /**
  * Utility class for calculating cosine similarity between two vectors.
@@ -45,7 +45,8 @@ public class CosineSimilarity {
         float[] vectorB = embeddingB.vector();
 
         if (vectorA.length != vectorB.length) {
-            throw illegalArgument("Length of vector a (%s) must be equal to the length of vector b (%s)",
+            throw illegalArgument(
+                    "Length of vector a (%s) must be equal to the length of vector b (%s)",
                     vectorA.length, vectorB.length);
         }
 
