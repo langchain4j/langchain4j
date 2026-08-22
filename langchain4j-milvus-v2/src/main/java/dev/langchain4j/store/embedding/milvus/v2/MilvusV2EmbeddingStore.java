@@ -260,7 +260,8 @@ public class MilvusV2EmbeddingStore implements EmbeddingStore<TextSegment> {
                 collectionName,
                 fieldDefinition,
                 consistencyLevel,
-                retrieveEmbeddingsOnSearch);
+                retrieveEmbeddingsOnSearch,
+                metricType);
 
         List<EmbeddingMatch<TextSegment>> result = matches.stream()
                 .filter(match -> match.score() >= embeddingSearchRequest.minScore())
