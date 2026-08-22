@@ -988,6 +988,22 @@ It supports full-text, vector, and hybrid search.
 It can be found in the `langchain4j-elasticsearch` module.
 Please refer to the `ElasticsearchContentRetriever` Javadoc for more information.
 
+#### Fallback Content Retriever
+
+`FallbackContentRetriever` composes a primary and a fallback retriever. By default, the fallback is used when the
+primary retriever returns no content or throws an exception:
+
+```java
+ContentRetriever contentRetriever = FallbackContentRetriever.builder()
+    .primaryRetriever(sqlContentRetriever)
+    .fallbackRetriever(embeddingStoreContentRetriever)
+    .build();
+```
+
+A custom `fallbackCondition` can detect domain-specific empty responses, such as a structured query result that
+contains column headers but no data rows. Set `fallbackOnException(false)` when primary retrieval failures should be
+propagated instead of triggering fallback.
+
 ### Query Router
 `QueryRouter` is responsible for routing `Query` to the appropriate `ContentRetriever`(s).
 
