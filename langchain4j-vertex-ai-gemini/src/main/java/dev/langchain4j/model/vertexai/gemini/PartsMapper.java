@@ -13,7 +13,6 @@ import com.google.protobuf.Struct;
 import com.google.protobuf.Value;
 import com.google.protobuf.util.JsonFormat;
 import dev.langchain4j.data.audio.Audio;
-import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.AudioContent;
@@ -28,6 +27,7 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.message.VideoContent;
 import dev.langchain4j.data.pdf.PdfFile;
 import dev.langchain4j.data.video.Video;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Base64;
@@ -84,6 +84,10 @@ class PartsMapper {
     }
 
     static List<Part> map(ChatMessage message) {
+        return map(message, false);
+    }
+
+    static List<Part> map(ChatMessage message, boolean sendThinking) {
         if (message instanceof AiMessage aiMessage) {
 
             List<Part> parts = new ArrayList<>();
@@ -93,12 +97,7 @@ class PartsMapper {
             }
 
             if (aiMessage.hasToolExecutionRequests()) {
-                List<Part> fnCallReqParts = aiMessage.toolExecutionRequests().stream()
-                        .map(FunctionCallHelper::fromToolExecutionRequest)
-                        .map(fnCall -> Part.newBuilder().setFunctionCall(fnCall).build())
-                        .toList();
-
-                parts.addAll(fnCallReqParts);
+                parts.addAll(FunctionCallHelper.toFunctionCallParts(aiMessage, sendThinking));
             }
 
             return parts;

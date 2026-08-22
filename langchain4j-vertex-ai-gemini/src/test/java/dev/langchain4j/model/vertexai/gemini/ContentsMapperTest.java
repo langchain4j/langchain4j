@@ -4,7 +4,11 @@ import static dev.langchain4j.model.vertexai.gemini.ContentsMapper.splitInstruct
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.google.cloud.vertexai.api.Content;
+import com.google.cloud.vertexai.api.FunctionCall;
+import com.google.cloud.vertexai.api.Part;
+import com.google.protobuf.ByteString;
 import com.google.protobuf.Struct;
+import com.google.protobuf.UnknownFieldSet;
 import com.google.protobuf.Value;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
@@ -259,6 +263,27 @@ class ContentsMapperTest {
                         .getFunctionCall()
                         .getName())
                 .isEqualTo("Request");
+    }
+
+    @Test
+    void should_send_function_call_part_thought_signature_only_when_send_thinking_is_enabled() {
+        // given
+        Part functionCallPart = Part.newBuilder()
+                .setFunctionCall(FunctionCall.newBuilder().setName("getWeather").build())
+                .mergeUnknownFields(unknownFields("thought-signature"))
+                .build();
+        AiMessage aiMessage = FunctionCallHelper.fromFunctionCallParts(List.of(functionCallPart), true);
+
+        // when
+        Content contentWithoutThinking =
+                splitInstructionAndContent(List.of(aiMessage)).contents.get(0);
+        Content contentWithThinking =
+                splitInstructionAndContent(List.of(aiMessage), true).contents.get(0);
+
+        // then
+        assertThat(contentWithoutThinking.getParts(0).getUnknownFields().asMap())
+                .isEmpty();
+        assertThat(contentWithThinking.getParts(0).getUnknownFields()).isEqualTo(functionCallPart.getUnknownFields());
     }
 
     @Test
@@ -836,5 +861,15 @@ class ContentsMapperTest {
                 .getResponse();
         assertThat(response.getFieldsMap().get("url").getStringValue())
                 .isEqualTo("https://example.com/path?query=value&other=123");
+    }
+
+    private static UnknownFieldSet unknownFields(String thoughtSignature) {
+        return UnknownFieldSet.newBuilder()
+                .addField(
+                        11,
+                        UnknownFieldSet.Field.newBuilder()
+                                .addLengthDelimited(ByteString.copyFromUtf8(thoughtSignature))
+                                .build())
+                .build();
     }
 }
