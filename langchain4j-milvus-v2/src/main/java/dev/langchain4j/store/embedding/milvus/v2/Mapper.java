@@ -81,7 +81,8 @@ class Mapper {
             String collectionName,
             FieldDefinition fieldDefinition,
             ConsistencyLevel consistencyLevel,
-            boolean queryForVectorOnSearch) {
+            boolean queryForVectorOnSearch,
+            boolean hybridSearch) {
         List<EmbeddingMatch<TextSegment>> matches = new ArrayList<>();
 
         Map<String, Embedding> idToEmbedding = new HashMap<>();
@@ -126,11 +127,20 @@ class Mapper {
             TextSegment textSegment =
                     toTextSegment(searchResp.getSearchResults().get(0).get(i), fieldDefinition);
             EmbeddingMatch<TextSegment> embeddingMatch =
-                    new EmbeddingMatch<>(RelevanceScore.fromCosineSimilarity(score), rowId, embedding, textSegment);
+                    new EmbeddingMatch<>(toRelevanceScore(score, hybridSearch), rowId, embedding, textSegment);
             matches.add(embeddingMatch);
         }
 
         return matches;
+    }
+
+    static double toRelevanceScore(double score, boolean hybridSearch) {
+        if (hybridSearch) {
+            // Milvus returns a Reciprocal Rank Fusion (RRF) score for hybrid search, which is rank-based
+            // and already on a relevance-like scale. It must not be mapped as a cosine similarity.
+            return score;
+        }
+        return RelevanceScore.fromCosineSimilarity(score);
     }
 
     private static TextSegment toTextSegment(SearchResp.SearchResult searchResult, FieldDefinition fieldDefinition) {

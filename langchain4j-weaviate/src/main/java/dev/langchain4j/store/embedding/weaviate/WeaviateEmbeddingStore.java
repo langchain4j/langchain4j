@@ -18,10 +18,12 @@ import static java.util.stream.Collectors.toMap;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.store.embedding.CosineSimilarity;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
+import dev.langchain4j.store.embedding.RelevanceScore;
 import dev.langchain4j.store.embedding.filter.Filter;
 import io.weaviate.client.Config;
 import io.weaviate.client.WeaviateAuthClient;
@@ -263,7 +265,8 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     /**
      * {@inheritDoc}
-     * The score inside {@link EmbeddingMatch} is Weaviate's certainty.
+     * The score inside {@link EmbeddingMatch} is a relevance score derived from Weaviate's certainty
+     * (a raw cosine similarity) via {@link RelevanceScore#fromCosineSimilarity(double)}.
      */
     @Override
     public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest request) {
@@ -297,7 +300,7 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
                 .withFields(fields.toArray(new Field[0]))
                 .withNearVector(NearVectorArgument.builder()
                         .vector(request.queryEmbedding().vectorAsList().toArray(new Float[0]))
-                        .certainty((float) request.minScore())
+                        .certainty((float) CosineSimilarity.fromRelevanceScore(request.minScore()))
                         .build())
                 .withLimit(request.maxResults())
                 .run();
@@ -401,10 +404,11 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
         return metadata;
     }
 
-    private EmbeddingMatch<TextSegment> toEmbeddingMatch(Map<String, ?> item) {
+    EmbeddingMatch<TextSegment> toEmbeddingMatch(Map<String, ?> item) {
 
         Map<String, ?> additional = (Map<String, ?>) item.get(ADDITIONALS);
-        Double score = (Double) additional.get("certainty");
+        double certainty = ((Number) additional.get("certainty")).doubleValue();
+        Double score = RelevanceScore.fromCosineSimilarity(certainty);
         String embeddingId = (String) additional.get("id");
         Embedding embedding = toEmbedding(additional);
 
