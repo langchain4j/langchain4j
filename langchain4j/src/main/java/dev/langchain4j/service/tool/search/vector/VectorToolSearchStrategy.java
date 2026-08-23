@@ -148,12 +148,13 @@ public class VectorToolSearchStrategy implements ToolSearchStrategy {
     private String extractQuery(String argumentsJson) {
         Map<String, Object> map = parseMap(argumentsJson);
 
-        if (isNullOrEmpty(map) || !map.containsKey(toolArgumentName)) {
+        Object value = isNullOrEmpty(map) ? null : map.get(toolArgumentName);
+        if (value == null) {
             String message = "Missing required tool argument '%s'".formatted(toolArgumentName);
             throwException(message, null);
         }
 
-        return map.get(toolArgumentName).toString();
+        return value.toString();
     }
 
     private Map<String, Object> parseMap(String json) {
