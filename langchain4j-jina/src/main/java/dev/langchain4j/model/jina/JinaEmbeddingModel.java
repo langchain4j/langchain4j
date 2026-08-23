@@ -12,7 +12,10 @@ import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.listener.EmbeddingModelListener;
 import dev.langchain4j.model.embedding.request.EmbeddingInput;
+import dev.langchain4j.model.embedding.request.EmbeddingInputType;
+import dev.langchain4j.model.embedding.request.EmbeddingParameter;
 import dev.langchain4j.model.embedding.request.EmbeddingRequest;
+import dev.langchain4j.model.embedding.request.EmbeddingRequestParameters;
 import dev.langchain4j.model.embedding.response.EmbeddingResponse;
 import dev.langchain4j.model.embedding.response.EmbeddingResponseMetadata;
 import dev.langchain4j.model.jina.internal.api.JinaEmbeddingRequest;
@@ -115,6 +118,11 @@ public class JinaEmbeddingModel extends DimensionAwareEmbeddingModel {
     }
 
     @Override
+    public Set<EmbeddingParameter<?>> supportedParameters() {
+        return Set.of(EmbeddingRequestParameters.INPUT_TYPE);
+    }
+
+    @Override
     public EmbeddingResponse doEmbed(EmbeddingRequest request) {
 
         List<Embedding> embeddings;
@@ -124,11 +132,7 @@ public class JinaEmbeddingModel extends DimensionAwareEmbeddingModel {
             JinaMultimodalEmbeddingRequest wireRequest = buildMultimodalRequest(request);
             response = withRetryMappingExceptions(() -> client.embedMultimodal(wireRequest), maxRetries);
         } else {
-            JinaEmbeddingRequest wireRequest = JinaEmbeddingRequest.builder()
-                    .model(modelName)
-                    .lateChunking(lateChunking)
-                    .input(request.inputs().stream().map(EmbeddingInput::text).collect(toList()))
-                    .build();
+            JinaEmbeddingRequest wireRequest = buildRequest(request);
             response = withRetryMappingExceptions(() -> client.embed(wireRequest), maxRetries);
         }
 
@@ -151,9 +155,36 @@ public class JinaEmbeddingModel extends DimensionAwareEmbeddingModel {
                 .build();
     }
 
+    JinaEmbeddingRequest buildRequest(EmbeddingRequest request) {
+        return JinaEmbeddingRequest.builder()
+                .model(modelName)
+                .task(toJinaTask(request.inputType()))
+                .lateChunking(lateChunking)
+                .input(request.inputs().stream().map(EmbeddingInput::text).collect(toList()))
+                .build();
+    }
+
     JinaMultimodalEmbeddingRequest buildMultimodalRequest(EmbeddingRequest request) {
         return new JinaMultimodalEmbeddingRequest(
-                modelName, lateChunking, request.inputs().stream().map(this::toMultimodalInput).collect(toList()));
+                modelName,
+                toJinaTask(request.inputType()),
+                lateChunking,
+                request.inputs().stream().map(this::toMultimodalInput).collect(toList()));
+    }
+
+    /**
+     * Maps a {@link EmbeddingInputType} to the corresponding Jina {@code task}, so that a query and the
+     * documents it is matched against are embedded asymmetrically. Returns {@code null} when no input type
+     * is requested, in which case {@code task} is omitted from the request and Jina applies its own default.
+     */
+    static String toJinaTask(EmbeddingInputType inputType) {
+        if (inputType == null) {
+            return null;
+        }
+        return switch (inputType) {
+            case QUERY -> "retrieval.query";
+            case DOCUMENT -> "retrieval.passage";
+        };
     }
 
     private JinaMultimodalInput toMultimodalInput(EmbeddingInput input) {

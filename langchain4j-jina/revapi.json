@@ -54,6 +54,12 @@
           "old": "method void dev.langchain4j.model.jina.internal.api.JinaMultimodalEmbeddingRequest::<init>(java.lang.String, java.util.List<dev.langchain4j.model.jina.internal.api.JinaMultimodalEmbeddingRequest.JinaMultimodalInput>)",
           "new": "method void dev.langchain4j.model.jina.internal.api.JinaMultimodalEmbeddingRequest::<init>(java.lang.String, java.lang.Boolean, java.util.List<dev.langchain4j.model.jina.internal.api.JinaMultimodalEmbeddingRequest.JinaMultimodalInput>)",
           "justification": "Internal request DTO (internal.api package), not part of the public API; the constructor gained the lateChunking parameter that the multimodal path must send"
+        },
+        {
+          "code": "java.method.numberOfParametersChanged",
+          "old": "method void dev.langchain4j.model.jina.internal.api.JinaMultimodalEmbeddingRequest::<init>(java.lang.String, java.lang.Boolean, java.util.List<dev.langchain4j.model.jina.internal.api.JinaMultimodalEmbeddingRequest.JinaMultimodalInput>)",
+          "new": "method void dev.langchain4j.model.jina.internal.api.JinaMultimodalEmbeddingRequest::<init>(java.lang.String, java.lang.String, java.lang.Boolean, java.util.List<dev.langchain4j.model.jina.internal.api.JinaMultimodalEmbeddingRequest.JinaMultimodalInput>)",
+          "justification": "Internal request DTO (internal.api package), not part of the public API; the constructor gained the task parameter that carries the per-call EmbeddingInputType"
         }
       ]
     }

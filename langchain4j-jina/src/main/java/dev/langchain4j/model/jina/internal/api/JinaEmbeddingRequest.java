@@ -15,11 +15,13 @@ import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 public class JinaEmbeddingRequest {
 
     public String model;
+    public String task;
     public Boolean lateChunking;
     public List<String> input;
 
-    JinaEmbeddingRequest(String model, Boolean lateChunking, List<String> input) {
+    JinaEmbeddingRequest(String model, String task, Boolean lateChunking, List<String> input) {
         this.model = model;
+        this.task = task;
         this.lateChunking = lateChunking;
         this.input = input;
     }
@@ -30,6 +32,7 @@ public class JinaEmbeddingRequest {
 
     public static class JinaEmbeddingRequestBuilder {
         private String model;
+        private String task;
         private Boolean lateChunking;
         private List<String> input;
 
@@ -38,6 +41,11 @@ public class JinaEmbeddingRequest {
 
         public JinaEmbeddingRequestBuilder model(String model) {
             this.model = model;
+            return this;
+        }
+
+        public JinaEmbeddingRequestBuilder task(String task) {
+            this.task = task;
             return this;
         }
 
@@ -52,11 +60,11 @@ public class JinaEmbeddingRequest {
         }
 
         public JinaEmbeddingRequest build() {
-            return new JinaEmbeddingRequest(this.model, this.lateChunking, this.input);
+            return new JinaEmbeddingRequest(this.model, this.task, this.lateChunking, this.input);
         }
 
         public String toString() {
-            return "JinaEmbeddingRequest.JinaEmbeddingRequestBuilder(model=" + this.model + ", lateChunking=" + this.lateChunking + ", input=" + this.input + ")";
+            return "JinaEmbeddingRequest.JinaEmbeddingRequestBuilder(model=" + this.model + ", task=" + this.task + ", lateChunking=" + this.lateChunking + ", input=" + this.input + ")";
         }
     }
 }
