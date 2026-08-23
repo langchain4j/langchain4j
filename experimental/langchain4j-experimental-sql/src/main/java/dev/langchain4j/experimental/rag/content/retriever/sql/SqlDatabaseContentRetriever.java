@@ -339,21 +339,28 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
             while (resultSet.next()) {
                 List<String> columnValues = new ArrayList<>();
                 for (int i = 1; i <= columnCount; i++) {
-
-                    String columnValue = resultSet.getObject(i) == null
-                            ? ""
-                            : resultSet.getObject(i).toString();
-
-                    if (columnValue.contains(",")) {
-                        columnValue = "\"" + columnValue + "\"";
-                    }
-                    columnValues.add(columnValue);
+                    columnValues.add(toCsvValue(resultSet.getObject(i)));
                 }
                 resultRows.add(String.join(",", columnValues));
             }
         }
 
         return String.join("\n", resultRows);
+    }
+
+    /**
+     * Formats a value as a CSV field, escaping it as per RFC 4180 when it contains
+     * a comma, a double quote, or a line break.
+     */
+    static String toCsvValue(Object value) {
+        String stringValue = value == null ? "" : value.toString();
+        if (stringValue.contains(",")
+                || stringValue.contains("\"")
+                || stringValue.contains("\n")
+                || stringValue.contains("\r")) {
+            return '"' + stringValue.replace("\"", "\"\"") + '"';
+        }
+        return stringValue;
     }
 
     private static Content format(String result, String sqlQuery) {
