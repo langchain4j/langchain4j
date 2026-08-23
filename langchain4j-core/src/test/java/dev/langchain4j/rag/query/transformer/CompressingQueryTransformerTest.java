@@ -3,8 +3,10 @@ package dev.langchain4j.rag.query.transformer;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
@@ -19,6 +21,8 @@ import dev.langchain4j.rag.query.Query;
 import java.util.Collection;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class CompressingQueryTransformerTest {
 
@@ -70,6 +74,51 @@ class CompressingQueryTransformerTest {
 
                 It is very important that you provide only reformulated query and nothing else! \
                 Do not prepend a query with anything!""");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"", "   "})
+    void should_fall_back_to_original_query_when_llm_returns_no_query(String llmResponse) {
+
+        // given
+        List<ChatMessage> chatMemory = asList(
+                UserMessage.from("Tell me about Klaus Heisler"), AiMessage.from("He is a cool guy"));
+        UserMessage userMessage = UserMessage.from("How old is he?");
+        Metadata metadata = Metadata.from(userMessage, SystemMessage.from("Be polite"), "default", chatMemory);
+        Query query = Query.from(userMessage.singleText(), metadata);
+
+        ChatModel chatModel = mock(ChatModel.class);
+        when(chatModel.chat(anyString())).thenReturn(llmResponse);
+
+        CompressingQueryTransformer transformer = new CompressingQueryTransformer(chatModel);
+
+        // when
+        Collection<Query> queries = transformer.transform(query);
+
+        // then
+        assertThat(queries).containsExactly(query);
+    }
+
+    @Test
+    void should_fall_back_to_original_query_when_llm_returns_null() {
+
+        // given
+        List<ChatMessage> chatMemory = asList(
+                UserMessage.from("Tell me about Klaus Heisler"), AiMessage.from("He is a cool guy"));
+        UserMessage userMessage = UserMessage.from("How old is he?");
+        Metadata metadata = Metadata.from(userMessage, SystemMessage.from("Be polite"), "default", chatMemory);
+        Query query = Query.from(userMessage.singleText(), metadata);
+
+        ChatModel chatModel = mock(ChatModel.class);
+        when(chatModel.chat(anyString())).thenReturn(null);
+
+        CompressingQueryTransformer transformer = new CompressingQueryTransformer(chatModel);
+
+        // when
+        Collection<Query> queries = transformer.transform(query);
+
+        // then
+        assertThat(queries).containsExactly(query);
     }
 
     @Test

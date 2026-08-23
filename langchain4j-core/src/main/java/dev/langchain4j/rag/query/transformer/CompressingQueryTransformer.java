@@ -79,6 +79,10 @@ public class CompressingQueryTransformer implements QueryTransformer {
 
         Prompt prompt = createPrompt(query, format(chatMemory));
         String compressedQueryText = chatModel.chat(prompt.text());
+        if (compressedQueryText == null || compressedQueryText.isBlank()) {
+            // a blank or empty LLM response is unusable as a query; fall back to the original query
+            return singletonList(query);
+        }
         Query compressedQuery = query.metadata() == null
                 ? Query.from(compressedQueryText)
                 : Query.from(compressedQueryText, query.metadata());
