@@ -11,7 +11,10 @@ import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Base64;
 import javax.imageio.ImageIO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -77,6 +80,33 @@ class WorkersAiImageModelTest {
         JsonNode body = requestBody();
         assertThat(pixelArray(body.get("image"))).isEqualTo(pixelsOf(sourceImage));
         assertThat(pixelArray(body.get("mask"))).isEqualTo(pixelsOf(maskImage));
+    }
+
+    @Test
+    void edit_sends_a_base64_source_image_in_the_image_field() throws Exception {
+        model.edit(base64Of(sourceImage), "make it blue");
+
+        JsonNode body = requestBody();
+        assertThat(pixelArray(body.get("image"))).isEqualTo(pixelsOf(sourceImage));
+        assertThat(body.has("mask")).isTrue();
+        assertThat(body.get("mask").isNull()).isTrue();
+    }
+
+    @Test
+    void edit_with_a_base64_mask_does_not_swap_the_image_and_mask_fields() throws Exception {
+        model.edit(base64Of(sourceImage), base64Of(maskImage), "make it blue");
+
+        JsonNode body = requestBody();
+        assertThat(pixelArray(body.get("image"))).isEqualTo(pixelsOf(sourceImage));
+        assertThat(pixelArray(body.get("mask"))).isEqualTo(pixelsOf(maskImage));
+    }
+
+    private static Image base64Of(Image urlImage) throws Exception {
+        byte[] bytes = Files.readAllBytes(Paths.get(urlImage.url()));
+        return Image.builder()
+                .base64Data(Base64.getEncoder().encodeToString(bytes))
+                .mimeType("image/png")
+                .build();
     }
 
     private Image pngImage(String fileName, int rgb) throws IOException {
