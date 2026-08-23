@@ -1,5 +1,11 @@
 package dev.langchain4j.service.tool.search.vector;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.internal.Utils.toBase64;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
 import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.document.Metadata;
@@ -17,17 +23,10 @@ import dev.langchain4j.service.tool.search.ToolSearchStrategy;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.inmemory.InMemoryEmbeddingStore;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
-
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.Utils.isNullOrBlank;
-import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-import static dev.langchain4j.internal.Utils.toBase64;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
  * A {@link ToolSearchStrategy} that uses vector similarity search
@@ -77,7 +76,8 @@ public class VectorToolSearchStrategy implements ToolSearchStrategy {
     public VectorToolSearchStrategy(Builder builder) {
         Boolean cacheEmbeddings = getOrDefault(builder.cacheEmbeddings, true);
         if (cacheEmbeddings) {
-            this.embeddingModel = ensureNotNull(new ToolCachingEmbeddingModel(builder.embeddingModel), "embeddingModel");
+            this.embeddingModel =
+                    ensureNotNull(new ToolCachingEmbeddingModel(builder.embeddingModel), "embeddingModel");
         } else {
             this.embeddingModel = ensureNotNull(builder.embeddingModel, "embeddingModel");
         }
@@ -87,7 +87,9 @@ public class VectorToolSearchStrategy implements ToolSearchStrategy {
                 .name(getOrDefault(builder.toolName, DEFAULT_TOOL_NAME))
                 .description(getOrDefault(builder.toolDescription, DEFAULT_TOOL_DESCRIPTION))
                 .parameters(JsonObjectSchema.builder()
-                        .addStringProperty(toolArgumentName, getOrDefault(builder.toolArgumentDescription, DEFAULT_TOOL_ARGUMENT_DESCRIPTION))
+                        .addStringProperty(
+                                toolArgumentName,
+                                getOrDefault(builder.toolArgumentDescription, DEFAULT_TOOL_ARGUMENT_DESCRIPTION))
                         .required(toolArgumentName)
                         .build())
                 .build();
@@ -95,7 +97,8 @@ public class VectorToolSearchStrategy implements ToolSearchStrategy {
         this.maxResults = getOrDefault(builder.maxResults, DEFAULT_MAX_RESULTS);
         this.minScore = getOrDefault(builder.minScore, DEFAULT_MIN_SCORE);
         this.throwToolArgumentsExceptions = getOrDefault(builder.throwToolArgumentsExceptions, false);
-        this.toolResultMessageTextProvider = getOrDefault(builder.toolResultMessageTextProvider, DEFAULT_TOOL_RESULT_MESSAGE_TEXT_PROVIDER);
+        this.toolResultMessageTextProvider =
+                getOrDefault(builder.toolResultMessageTextProvider, DEFAULT_TOOL_RESULT_MESSAGE_TEXT_PROVIDER);
     }
 
     @Override
@@ -157,7 +160,8 @@ public class VectorToolSearchStrategy implements ToolSearchStrategy {
         try {
             return Json.fromJson(json, Map.class);
         } catch (Exception e) {
-            String message = "Failed to parse tool search arguments: '%s' (base64: '%s')".formatted(json, toBase64(json));
+            String message =
+                    "Failed to parse tool search arguments: '%s' (base64: '%s')".formatted(json, toBase64(json));
             throwException(message, e);
             return null; // unreachable
         }
@@ -173,13 +177,9 @@ public class VectorToolSearchStrategy implements ToolSearchStrategy {
 
     private void throwException(String message, Exception e) {
         if (throwToolArgumentsExceptions) {
-            throw e == null
-                    ? new ToolArgumentsException(message)
-                    : new ToolArgumentsException(message, e);
+            throw e == null ? new ToolArgumentsException(message) : new ToolArgumentsException(message, e);
         } else {
-            throw e == null
-                    ? new ToolExecutionException(message)
-                    : new ToolExecutionException(message, e);
+            throw e == null ? new ToolExecutionException(message) : new ToolExecutionException(message, e);
         }
     }
 
