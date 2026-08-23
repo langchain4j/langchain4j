@@ -1,13 +1,12 @@
 package dev.langchain4j.model.jina.internal.api;
 
+import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
+
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
-
 import java.util.List;
-
-import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
 @JsonInclude(NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
@@ -36,8 +35,7 @@ public class JinaEmbeddingRequest {
         private Boolean lateChunking;
         private List<String> input;
 
-        JinaEmbeddingRequestBuilder() {
-        }
+        JinaEmbeddingRequestBuilder() {}
 
         public JinaEmbeddingRequestBuilder model(String model) {
             this.model = model;
@@ -64,7 +62,8 @@ public class JinaEmbeddingRequest {
         }
 
         public String toString() {
-            return "JinaEmbeddingRequest.JinaEmbeddingRequestBuilder(model=" + this.model + ", task=" + this.task + ", lateChunking=" + this.lateChunking + ", input=" + this.input + ")";
+            return "JinaEmbeddingRequest.JinaEmbeddingRequestBuilder(model=" + this.model + ", task=" + this.task
+                    + ", lateChunking=" + this.lateChunking + ", input=" + this.input + ")";
         }
     }
 }

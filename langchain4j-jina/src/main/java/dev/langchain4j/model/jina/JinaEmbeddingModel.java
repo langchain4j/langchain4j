@@ -1,10 +1,16 @@
 package dev.langchain4j.model.jina;
 
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
+import static dev.langchain4j.internal.Utils.copy;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static java.time.Duration.ofSeconds;
+import static java.util.stream.Collectors.toList;
+
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.ContentType;
 import dev.langchain4j.data.message.ImageContent;
-import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.ModelProvider;
@@ -23,20 +29,11 @@ import dev.langchain4j.model.jina.internal.api.JinaEmbeddingResponse;
 import dev.langchain4j.model.jina.internal.api.JinaMultimodalEmbeddingRequest;
 import dev.langchain4j.model.jina.internal.api.JinaMultimodalEmbeddingRequest.JinaMultimodalInput;
 import dev.langchain4j.model.jina.internal.client.JinaClient;
-import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
-import org.slf4j.Logger;
-
 import java.time.Duration;
 import java.util.List;
 import java.util.Set;
-
-import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
-import static dev.langchain4j.internal.Utils.copy;
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static java.time.Duration.ofSeconds;
-import static java.util.stream.Collectors.toList;
+import org.slf4j.Logger;
 
 /**
  * An implementation of an {@link EmbeddingModel} that uses
@@ -112,9 +109,7 @@ public class JinaEmbeddingModel extends DimensionAwareEmbeddingModel {
 
     @Override
     public Set<ContentType> supportedContentTypes() {
-        return isMultimodalModel(modelName)
-                ? Set.of(ContentType.TEXT, ContentType.IMAGE)
-                : Set.of(ContentType.TEXT);
+        return isMultimodalModel(modelName) ? Set.of(ContentType.TEXT, ContentType.IMAGE) : Set.of(ContentType.TEXT);
     }
 
     @Override
@@ -199,7 +194,8 @@ public class JinaEmbeddingModel extends DimensionAwareEmbeddingModel {
                 if (image.url() != null) {
                     imageValue = image.url().toString();
                 } else if (image.base64Data() != null) {
-                    imageValue = "data:" + getOrDefault(image.mimeType(), "image/png") + ";base64," + image.base64Data();
+                    imageValue =
+                            "data:" + getOrDefault(image.mimeType(), "image/png") + ";base64," + image.base64Data();
                 } else {
                     throw new UnsupportedFeatureException("ImageContent must have either a URL or base64 data");
                 }
@@ -235,8 +231,7 @@ public class JinaEmbeddingModel extends DimensionAwareEmbeddingModel {
         private HttpClientBuilder httpClientBuilder;
         private List<EmbeddingModelListener> listeners;
 
-        JinaEmbeddingModelBuilder() {
-        }
+        JinaEmbeddingModelBuilder() {}
 
         public JinaEmbeddingModelBuilder listeners(List<EmbeddingModelListener> listeners) {
             this.listeners = listeners;
@@ -309,7 +304,10 @@ public class JinaEmbeddingModel extends DimensionAwareEmbeddingModel {
         }
 
         public String toString() {
-            return "JinaEmbeddingModel.JinaEmbeddingModelBuilder(baseUrl=" + this.baseUrl + ", apiKey=" + (this.apiKey == null ? null : "********") + ", modelName=" + this.modelName + ", timeout=" + this.timeout + ", maxRetries=" + this.maxRetries + ", lateChunking=" + this.lateChunking + ", logRequests=" + this.logRequests + ", logResponses=" + this.logResponses + ")";
+            return "JinaEmbeddingModel.JinaEmbeddingModelBuilder(baseUrl=" + this.baseUrl + ", apiKey="
+                    + (this.apiKey == null ? null : "********") + ", modelName=" + this.modelName + ", timeout="
+                    + this.timeout + ", maxRetries=" + this.maxRetries + ", lateChunking=" + this.lateChunking
+                    + ", logRequests=" + this.logRequests + ", logResponses=" + this.logResponses + ")";
         }
     }
 }
