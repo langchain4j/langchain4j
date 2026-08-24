@@ -9,18 +9,18 @@ import org.junit.jupiter.api.Test;
 
 class AbstractInProcessEmbeddingModelTest {
 
-    // 验证模型资源不依赖线程上下文类加载器。
+    // Verifies that model resources do not depend on the thread context class loader.
     @Test
     void should_load_resource_when_context_class_loader_cannot_find_it() throws IOException {
-        // 保存原始线程上下文类加载器。
+        // Preserve the original thread context class loader.
         ClassLoader originalContextClassLoader = Thread.currentThread().getContextClassLoader();
-        // 获取定义模型类的类加载器。
+        // Obtain the class loader that defines the model class.
         ClassLoader modelClassLoader = AbstractInProcessEmbeddingModelTest.class.getClassLoader();
 
         try {
             Thread.currentThread().setContextClassLoader(new ClassLoader(null) {});
 
-            // 读取仅由模型类加载器可见的资源。
+            // Read a resource that is visible only to the model class loader.
             try (InputStream resource =
                     AbstractInProcessEmbeddingModel.getResourceAsStream(modelClassLoader, "bert-tokenizer.json")) {
                 assertThat(resource).isNotNull();
@@ -30,17 +30,17 @@ class AbstractInProcessEmbeddingModelTest {
         }
     }
 
-    // 验证模型类加载器找不到资源时仍会回退到线程上下文类加载器。
+    // Verifies that resource loading falls back when the model class loader cannot find the resource.
     @Test
     void should_fall_back_to_context_class_loader() throws IOException {
-        // 保存原始线程上下文类加载器。
+        // Preserve the original thread context class loader.
         ClassLoader originalContextClassLoader = Thread.currentThread().getContextClassLoader();
-        // 创建无法读取回退资源的模型类加载器。
+        // Create a model class loader that cannot find the fallback resource.
         ClassLoader modelClassLoader = new ClassLoader(null) {};
 
         try {
             Thread.currentThread().setContextClassLoader(new ClassLoader(null) {
-                // 为测试提供仅在线程上下文类加载器中存在的资源。
+                // Provide a resource that is visible only to the thread context class loader.
                 @Override
                 public InputStream getResourceAsStream(String resourceName) {
                     return "context-only-resource".equals(resourceName)
@@ -49,7 +49,7 @@ class AbstractInProcessEmbeddingModelTest {
                 }
             });
 
-            // 读取线程上下文类加载器提供的回退资源。
+            // Read the fallback resource provided by the thread context class loader.
             try (InputStream resource =
                     AbstractInProcessEmbeddingModel.getResourceAsStream(modelClassLoader, "context-only-resource")) {
                 assertThat(resource).isNotNull();

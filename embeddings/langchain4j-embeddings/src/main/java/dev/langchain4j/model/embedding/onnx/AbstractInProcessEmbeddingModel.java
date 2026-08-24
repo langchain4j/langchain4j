@@ -37,38 +37,38 @@ public abstract class AbstractInProcessEmbeddingModel extends DimensionAwareEmbe
 
     protected static OnnxBertBiEncoder loadFromJar(
             String modelFileName, String tokenizerFileName, PoolingMode poolingMode) {
-        // 获取当前线程提供的兼容类加载器。
+        // Obtain the context class loader used by the compatibility overload.
         ClassLoader contextClassLoader = Thread.currentThread().getContextClassLoader();
         return loadFromJar(contextClassLoader, modelFileName, tokenizerFileName, poolingMode);
     }
 
-    // 使用具体模型类加载器读取内置资源，并保留线程上下文类加载器作为回退。
+    // Load bundled resources with the concrete model class loader and retain the context class loader as a fallback.
     protected static OnnxBertBiEncoder loadFromJar(
             Class<?> modelClass, String modelFileName, String tokenizerFileName, PoolingMode poolingMode) {
-        // 获取定义具体模型类的类加载器。
+        // Obtain the class loader that defines the concrete model class.
         ClassLoader modelClassLoader = modelClass.getClassLoader();
         return loadFromJar(modelClassLoader, modelFileName, tokenizerFileName, poolingMode);
     }
 
-    // 从指定类加载器加载模型和分词器资源。
+    // Load the model and tokenizer resources with the specified class loader.
     private static OnnxBertBiEncoder loadFromJar(
             ClassLoader modelClassLoader, String modelFileName, String tokenizerFileName, PoolingMode poolingMode) {
-        // 加载模型资源。
+        // Load the model resource.
         InputStream model = getResourceAsStream(modelClassLoader, modelFileName);
-        // 加载分词器资源。
+        // Load the tokenizer resource.
         InputStream tokenizer = getResourceAsStream(modelClassLoader, tokenizerFileName);
         return new OnnxBertBiEncoder(model, tokenizer, poolingMode);
     }
 
-    // 优先使用具体模型类加载器读取资源，并保留线程上下文类加载器作为回退。
+    // Prefer the concrete model class loader and fall back to the thread context class loader.
     static InputStream getResourceAsStream(ClassLoader modelClassLoader, String resourceName) {
-        // 使用定义具体模型类的类加载器读取模型模块资源。
+        // Load the model module resource with the concrete model's defining class loader.
         InputStream resource = modelClassLoader == null ? null : modelClassLoader.getResourceAsStream(resourceName);
         if (resource != null) {
             return resource;
         }
 
-        // 获取容器或框架提供的线程上下文类加载器。
+        // Obtain the thread context class loader supplied by the container or framework.
         ClassLoader contextClassLoader = Thread.currentThread().getContextClassLoader();
         return contextClassLoader == null ? null : contextClassLoader.getResourceAsStream(resourceName);
     }
