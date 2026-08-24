@@ -77,12 +77,10 @@ class DockerResultCallback extends ResultCallback.Adapter<Frame> {
             trafficLog.debug("< {}", message);
         }
 
-        try {
-            messageHandler.onMessage(message);
-            logAggregator.setLength(0);
-            countDownLatch.countDown();
-        } catch (RuntimeException e) {
-            throw new RuntimeException(e);
-        }
+        // onMessage throws if the line is not valid JSON, which leaves the latch up so that
+        // awaitResponseAndDetach reports the server as unresponsive rather than detaching cleanly
+        messageHandler.onMessage(message);
+        logAggregator.setLength(0);
+        countDownLatch.countDown();
     }
 }

@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.langchain4j.mcp.client.transport.McpJson;
 import java.util.Map;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
@@ -15,7 +16,6 @@ import org.mockito.Mockito;
 
 class McpOperationHandlerTest {
 
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     @Test
     void should_complete_pending_operation_exceptionally_on_server_cancelled() throws JsonProcessingException {
@@ -42,7 +42,7 @@ class McpOperationHandlerTest {
                     cancelledReason.set(reason);
                 });
 
-        JsonNode notification = OBJECT_MAPPER.readTree("""
+        JsonNode notification = McpJson.parse("""
                 {
                   "jsonrpc": "2.0",
                   "method": "notifications/cancelled",
@@ -92,7 +92,7 @@ class McpOperationHandlerTest {
                     cancelledReason.set(reason);
                 });
 
-        JsonNode notification = OBJECT_MAPPER.readTree("""
+        JsonNode notification = McpJson.parse("""
                 {
                   "jsonrpc": "2.0",
                   "method": "notifications/cancelled",
@@ -129,7 +129,7 @@ class McpOperationHandlerTest {
                 () -> {},
                 (id, reason) -> cancelledId.set(id));
 
-        JsonNode notification = OBJECT_MAPPER.readTree("""
+        JsonNode notification = McpJson.parse("""
                 {
                   "jsonrpc": "2.0",
                   "method": "notifications/cancelled",

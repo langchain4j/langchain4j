@@ -15,6 +15,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.internal.JsonSchemaElementUtils;
+import dev.langchain4j.mcp.client.transport.McpJson;
 import dev.langchain4j.model.chat.request.json.JsonAnyOfSchema;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonBooleanSchema;
@@ -32,7 +33,6 @@ import org.junit.jupiter.api.Test;
 
 class ToolSpecificationHelperTest {
 
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     @Test
     void toolWithSimpleParams() throws JsonProcessingException {
@@ -1322,7 +1322,7 @@ class ToolSpecificationHelperTest {
     @SuppressWarnings("unchecked")
     private static List<Map<String, Object>> toolList(String json) {
         try {
-            return OBJECT_MAPPER.readValue(json, List.class);
+            return McpJson.deserialize(McpJson.parse(json), List.class);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

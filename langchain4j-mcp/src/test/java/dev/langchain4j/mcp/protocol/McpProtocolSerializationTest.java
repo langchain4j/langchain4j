@@ -4,13 +4,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.langchain4j.mcp.client.transport.McpJson;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 class McpProtocolSerializationTest {
 
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     @Test
     void should_serialize_error_response_omitting_null_data() throws Exception {
@@ -19,7 +19,7 @@ class McpProtocolSerializationTest {
                 new McpErrorResponse(1L, new McpErrorResponse.Error(-32601, "Method not found", null));
 
         // when
-        JsonNode json = OBJECT_MAPPER.readTree(OBJECT_MAPPER.writeValueAsString(response));
+        JsonNode json = McpJson.parse(McpJson.serialize(response));
 
         // then
         assertThat(json.get("jsonrpc").asText()).isEqualTo("2.0");
@@ -36,7 +36,7 @@ class McpProtocolSerializationTest {
                 7L, new McpCallToolResult.Result(List.of(Map.of("type", "text", "text", "ok")), null, null));
 
         // when
-        JsonNode json = OBJECT_MAPPER.readTree(OBJECT_MAPPER.writeValueAsString(response));
+        JsonNode json = McpJson.parse(McpJson.serialize(response));
 
         // then
         assertThat(json.get("jsonrpc").asText()).isEqualTo("2.0");
@@ -57,7 +57,7 @@ class McpProtocolSerializationTest {
         params.setClientInfo(new McpImplementation("client", "1.0", "Client Title"));
 
         // when
-        JsonNode json = OBJECT_MAPPER.readTree(OBJECT_MAPPER.writeValueAsString(params));
+        JsonNode json = McpJson.parse(McpJson.serialize(params));
 
         // then
         assertThat(json.get("protocolVersion").asText()).isEqualTo("2025-06-18");
@@ -71,7 +71,7 @@ class McpProtocolSerializationTest {
         Map<String, Object> args = Map.of("location", "Prague");
         McpCallToolRequest request = new McpCallToolRequest(1L, "get_weather", args);
 
-        JsonNode json = OBJECT_MAPPER.readTree(OBJECT_MAPPER.writeValueAsString(request));
+        JsonNode json = McpJson.parse(McpJson.serialize(request));
 
         assertThat(json.get("jsonrpc").asText()).isEqualTo("2.0");
         assertThat(json.get("id").asLong()).isEqualTo(1L);
@@ -87,7 +87,7 @@ class McpProtocolSerializationTest {
         McpCallToolRequest request = new McpCallToolRequest(2L, "get_weather", args);
         request.getParams().setMeta(Map.of("traceparent", "00-0af7651916cd43dd8448eb211c80319c-00f067aa0ba902b7-01"));
 
-        JsonNode json = OBJECT_MAPPER.readTree(OBJECT_MAPPER.writeValueAsString(request));
+        JsonNode json = McpJson.parse(McpJson.serialize(request));
 
         assertThat(json.get("params").get("_meta").get("traceparent").asText())
                 .isEqualTo("00-0af7651916cd43dd8448eb211c80319c-00f067aa0ba902b7-01");
@@ -98,7 +98,7 @@ class McpProtocolSerializationTest {
     void should_serialize_cancellation_notification() throws Exception {
         McpCancellationNotification notification = new McpCancellationNotification(42L, "Timeout");
 
-        JsonNode json = OBJECT_MAPPER.readTree(OBJECT_MAPPER.writeValueAsString(notification));
+        JsonNode json = McpJson.parse(McpJson.serialize(notification));
 
         assertThat(json.has("id")).isFalse();
         assertThat(json.get("method").asText()).isEqualTo("notifications/cancelled");
@@ -110,7 +110,7 @@ class McpProtocolSerializationTest {
     void should_serialize_cancellation_notification_without_reason() throws Exception {
         McpCancellationNotification notification = new McpCancellationNotification(42L, null);
 
-        JsonNode json = OBJECT_MAPPER.readTree(OBJECT_MAPPER.writeValueAsString(notification));
+        JsonNode json = McpJson.parse(McpJson.serialize(notification));
 
         assertThat(json.get("params").get("requestId").asLong()).isEqualTo(42L);
         assertThat(json.get("params").has("reason")).isFalse();
@@ -120,7 +120,7 @@ class McpProtocolSerializationTest {
     void should_serialize_get_prompt_request() throws Exception {
         McpGetPromptRequest request = new McpGetPromptRequest(3L, "summarize", Map.of("text", "hello"));
 
-        JsonNode json = OBJECT_MAPPER.readTree(OBJECT_MAPPER.writeValueAsString(request));
+        JsonNode json = McpJson.parse(McpJson.serialize(request));
 
         assertThat(json.get("method").asText()).isEqualTo("prompts/get");
         assertThat(json.get("params").get("name").asText()).isEqualTo("summarize");
@@ -131,7 +131,7 @@ class McpProtocolSerializationTest {
     void should_serialize_read_resource_request() throws Exception {
         McpReadResourceRequest request = new McpReadResourceRequest(4L, "file:///tmp/test.txt");
 
-        JsonNode json = OBJECT_MAPPER.readTree(OBJECT_MAPPER.writeValueAsString(request));
+        JsonNode json = McpJson.parse(McpJson.serialize(request));
 
         assertThat(json.get("method").asText()).isEqualTo("resources/read");
         assertThat(json.get("params").get("uri").asText()).isEqualTo("file:///tmp/test.txt");
@@ -141,7 +141,7 @@ class McpProtocolSerializationTest {
     void should_serialize_list_tools_request_without_cursor() throws Exception {
         McpListToolsRequest request = new McpListToolsRequest(5L, null);
 
-        JsonNode json = OBJECT_MAPPER.readTree(OBJECT_MAPPER.writeValueAsString(request));
+        JsonNode json = McpJson.parse(McpJson.serialize(request));
 
         assertThat(json.get("method").asText()).isEqualTo("tools/list");
         assertThat(json.has("params")).isFalse();
@@ -151,7 +151,7 @@ class McpProtocolSerializationTest {
     void should_serialize_list_tools_request_with_cursor() throws Exception {
         McpListToolsRequest request = new McpListToolsRequest(5L, "next_page");
 
-        JsonNode json = OBJECT_MAPPER.readTree(OBJECT_MAPPER.writeValueAsString(request));
+        JsonNode json = McpJson.parse(McpJson.serialize(request));
 
         assertThat(json.get("method").asText()).isEqualTo("tools/list");
         assertThat(json.get("params").get("cursor").asText()).isEqualTo("next_page");
@@ -161,7 +161,7 @@ class McpProtocolSerializationTest {
     void should_serialize_ping_request_without_params() throws Exception {
         McpPingRequest request = new McpPingRequest(6L);
 
-        JsonNode json = OBJECT_MAPPER.readTree(OBJECT_MAPPER.writeValueAsString(request));
+        JsonNode json = McpJson.parse(McpJson.serialize(request));
 
         assertThat(json.get("method").asText()).isEqualTo("ping");
         assertThat(json.has("params")).isFalse();
@@ -175,7 +175,7 @@ class McpProtocolSerializationTest {
         params.setClientInfo(new McpImplementation("test", "1.0", null));
         request.setParams(params);
 
-        JsonNode json = OBJECT_MAPPER.readTree(OBJECT_MAPPER.writeValueAsString(request));
+        JsonNode json = McpJson.parse(McpJson.serialize(request));
 
         assertThat(json.get("method").asText()).isEqualTo("initialize");
         assertThat(json.get("params").get("protocolVersion").asText()).isEqualTo("2025-06-18");
@@ -193,7 +193,7 @@ class McpProtocolSerializationTest {
         McpInitializeResult response = new McpInitializeResult(1L, result);
 
         // when
-        JsonNode json = OBJECT_MAPPER.readTree(OBJECT_MAPPER.writeValueAsString(response));
+        JsonNode json = McpJson.parse(McpJson.serialize(response));
 
         // then
         assertThat(json.get("jsonrpc").asText()).isEqualTo("2.0");

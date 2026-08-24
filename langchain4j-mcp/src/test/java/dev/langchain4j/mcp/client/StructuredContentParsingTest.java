@@ -7,6 +7,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.langchain4j.mcp.client.transport.McpJson;
 import dev.langchain4j.service.tool.ToolExecutionResult;
 import java.math.BigInteger;
 import java.util.Map;
@@ -14,7 +15,6 @@ import org.junit.jupiter.api.Test;
 
 public class StructuredContentParsingTest {
 
-    ObjectMapper objectMapper = new ObjectMapper();
 
     @Test
     public void testComplexObject() throws JsonProcessingException {
@@ -37,7 +37,7 @@ public class StructuredContentParsingTest {
                   }
                 }
                 """;
-        JsonNode responseNode = objectMapper.readTree(response);
+        JsonNode responseNode = McpJson.parse(response);
         McpToolResultExtractor extractor = mock(McpToolResultExtractor.class);
         ToolExecutionResult toolExecutionResult =
                 ToolExecutionHelper.extractResult(responseNode, false, new LegacyToolResultConverterAdapter(extractor));
@@ -73,7 +73,7 @@ public class StructuredContentParsingTest {
                 }
                 """;
 
-        JsonNode responseNode = objectMapper.readTree(response);
+        JsonNode responseNode = McpJson.parse(response);
         McpToolResultExtractor extractor = mock(McpToolResultExtractor.class);
 
         ToolExecutionResult toolExecutionResult =
@@ -103,7 +103,7 @@ public class StructuredContentParsingTest {
                 }
                 """;
 
-        JsonNode responseNode = objectMapper.readTree(response);
+        JsonNode responseNode = McpJson.parse(response);
         McpToolResultExtractor extractor = mock(McpToolResultExtractor.class);
 
         ToolExecutionResult toolExecutionResult =
@@ -130,7 +130,7 @@ public class StructuredContentParsingTest {
                 }
                 """;
 
-        JsonNode responseNode = objectMapper.readTree(response);
+        JsonNode responseNode = McpJson.parse(response);
         McpToolResultExtractor extractor = mock(McpToolResultExtractor.class);
 
         ToolExecutionResult toolExecutionResult =
@@ -162,7 +162,7 @@ public class StructuredContentParsingTest {
                 }
                 """;
 
-        JsonNode responseNode = objectMapper.readTree(response);
+        JsonNode responseNode = McpJson.parse(response);
         McpToolResultExtractor extractor = mock(McpToolResultExtractor.class);
 
         ToolExecutionResult toolExecutionResult =

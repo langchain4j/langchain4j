@@ -176,7 +176,7 @@ public class DockerMcpTransport implements McpTransport {
                 final CompletableFuture<String> execute1 = execute(initializationNotification, null);
                 return execute1.thenCompose(nullNode -> CompletableFuture.completedFuture(originalResponse));
             });
-        } catch (RuntimeException e) {
+        } catch (IllegalArgumentException e) {
             return CompletableFuture.failedFuture(e);
         }
     }
@@ -191,7 +191,7 @@ public class DockerMcpTransport implements McpTransport {
         try {
             String requestString = McpJson.serialize(context.message());
             return execute(requestString, context.message().getId());
-        } catch (RuntimeException e) {
+        } catch (IllegalArgumentException e) {
             return CompletableFuture.failedFuture(e);
         }
     }
@@ -203,12 +203,8 @@ public class DockerMcpTransport implements McpTransport {
 
     @Override
     public void sendMessage(McpCallContext context) {
-        try {
-            String requestString = McpJson.serialize(context.message());
-            execute(requestString, null);
-        } catch (RuntimeException e) {
-            throw new RuntimeException(e);
-        }
+        String requestString = McpJson.serialize(context.message());
+        execute(requestString, null);
     }
 
     @Override

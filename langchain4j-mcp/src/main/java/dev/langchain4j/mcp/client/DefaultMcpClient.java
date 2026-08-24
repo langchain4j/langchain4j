@@ -498,14 +498,6 @@ public class DefaultMcpClient implements McpClient {
                 result.getResultType());
     }
 
-    private static @Nullable Long toNullableLong(JsonNode node) {
-        return node == null || node.isNull() || !node.canConvertToLong() ? null : node.asLong();
-    }
-
-    private static @Nullable Boolean toNullableBoolean(JsonNode node) {
-        return node == null || node.isNull() ? null : node.asBoolean();
-    }
-
     private void applyModernMeta(McpClientParams params, String versionToAdvertise) {
         Map<String, Object> meta = params.getMeta();
         if (meta == null) {
