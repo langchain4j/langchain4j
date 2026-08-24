@@ -1,5 +1,6 @@
 package dev.langchain4j.mcp.client;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import static dev.langchain4j.internal.Utils.copy;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -12,6 +13,7 @@ import java.util.Objects;
 /**
  * The 'Resource' object from the MCP protocol schema.
  */
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class McpResource {
     private final String uri;
     private final String name;

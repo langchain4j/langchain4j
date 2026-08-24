@@ -46,6 +46,183 @@
           "code": "java.class.removed",
           "old": "class dev.langchain4j.mcp.client.transport.http.SseEventListener",
           "justification": "Legacy HTTP transport has been removed"
+        },
+        {
+          "code": "java.class.removed",
+          "old": "class dev.langchain4j.mcp.protocol.McpCallToolResult.Content",
+          "justification": "Content only modelled text items and had no callers outside a serialization test. MCP content is open-ended, so entries are now plain maps, matching the McpToolResultConverter contract. McpCallToolResult is annotated @Internal, whose javadoc states it may change at any time without notice. The tool-result path now deserializes into this type instead of navigating a Jackson tree, which is what removes Jackson from the parsing code."
+        },
+        {
+          "code": "java.method.parameterTypeParameterChanged",
+          "classQualifiedName": "dev.langchain4j.mcp.protocol.McpCallToolResult.Result",
+          "justification": "McpCallToolResult is annotated @Internal, whose javadoc states it may change at any time without notice. The tool-result path now deserializes into this type instead of navigating a Jackson tree, which is what removes Jackson from the parsing code."
+        },
+        {
+          "code": "java.method.returnTypeTypeParametersChanged",
+          "classQualifiedName": "dev.langchain4j.mcp.protocol.McpCallToolResult.Result",
+          "justification": "McpCallToolResult is annotated @Internal, whose javadoc states it may change at any time without notice. The tool-result path now deserializes into this type instead of navigating a Jackson tree, which is what removes Jackson from the parsing code."
+        },
+        {
+          "code": "java.annotation.added",
+          "annotationType": "com.fasterxml.jackson.annotation.JsonCreator",
+          "justification": "Added so the protocol types can be deserialized, which is what allows the read path to use them instead of tree navigation. Scoped to the protocol package so it does not blanket-ignore annotation changes elsewhere in the module.",
+          "package": "dev.langchain4j.mcp.protocol"
+        },
+        {
+          "code": "java.annotation.added",
+          "annotationType": "com.fasterxml.jackson.annotation.JsonProperty",
+          "justification": "Names the creator parameters for the same reason. Scoped to the protocol package so it does not blanket-ignore annotation changes elsewhere in the module.",
+          "package": "dev.langchain4j.mcp.protocol"
+        },
+        {
+          "code": "java.annotation.added",
+          "annotationType": "com.fasterxml.jackson.annotation.JsonIgnoreProperties",
+          "justification": "Protocol types must tolerate fields added by future MCP revisions. Scoped to the protocol package so it does not blanket-ignore annotation changes elsewhere in the module.",
+          "package": "dev.langchain4j.mcp.protocol"
+        },
+        {
+          "code": "java.annotation.removed",
+          "annotationType": "com.fasterxml.jackson.annotation.JsonCreator",
+          "classQualifiedName": "dev.langchain4j.mcp.client.logging.McpLogMessage",
+          "justification": "The Jackson creator moved to the constructor taking the payload as a plain value, so that McpLogMessage no longer stores a JsonNode. The JsonNode constructor is still available, deprecated, and delegates to it."
+        },
+        {
+          "code": "java.annotation.removed",
+          "annotationType": "com.fasterxml.jackson.annotation.JsonProperty",
+          "classQualifiedName": "dev.langchain4j.mcp.client.logging.McpLogMessage",
+          "justification": "The Jackson creator moved to the constructor taking the payload as a plain value, so that McpLogMessage no longer stores a JsonNode. The JsonNode constructor is still available, deprecated, and delegates to it."
+        },
+        {
+          "code": "java.method.returnTypeChanged",
+          "classQualifiedName": "dev.langchain4j.mcp.protocol.McpCallToolParams",
+          "methodName": "getRequestState",
+          "justification": "requestState is opaque state the server sends and the client echoes back unchanged, so it is carried as a plain value rather than a JsonNode. These params types are @Internal, whose javadoc states they may change at any time; quarkus-langchain4j uses them but only for getName()/getUri()."
+        },
+        {
+          "code": "java.method.parameterTypeChanged",
+          "classQualifiedName": "dev.langchain4j.mcp.protocol.McpCallToolParams",
+          "methodName": "setRequestState",
+          "justification": "requestState is opaque state the server sends and the client echoes back unchanged, so it is carried as a plain value rather than a JsonNode. These params types are @Internal, whose javadoc states they may change at any time; quarkus-langchain4j uses them but only for getName()/getUri()."
+        },
+        {
+          "code": "java.method.returnTypeChanged",
+          "classQualifiedName": "dev.langchain4j.mcp.protocol.McpGetPromptParams",
+          "methodName": "getRequestState",
+          "justification": "requestState is opaque state the server sends and the client echoes back unchanged, so it is carried as a plain value rather than a JsonNode. These params types are @Internal, whose javadoc states they may change at any time; quarkus-langchain4j uses them but only for getName()/getUri()."
+        },
+        {
+          "code": "java.method.parameterTypeChanged",
+          "classQualifiedName": "dev.langchain4j.mcp.protocol.McpGetPromptParams",
+          "methodName": "setRequestState",
+          "justification": "requestState is opaque state the server sends and the client echoes back unchanged, so it is carried as a plain value rather than a JsonNode. These params types are @Internal, whose javadoc states they may change at any time; quarkus-langchain4j uses them but only for getName()/getUri()."
+        },
+        {
+          "code": "java.method.returnTypeChanged",
+          "classQualifiedName": "dev.langchain4j.mcp.protocol.McpReadResourceParams",
+          "methodName": "getRequestState",
+          "justification": "requestState is opaque state the server sends and the client echoes back unchanged, so it is carried as a plain value rather than a JsonNode. These params types are @Internal, whose javadoc states they may change at any time; quarkus-langchain4j uses them but only for getName()/getUri()."
+        },
+        {
+          "code": "java.method.parameterTypeChanged",
+          "classQualifiedName": "dev.langchain4j.mcp.protocol.McpReadResourceParams",
+          "methodName": "setRequestState",
+          "justification": "requestState is opaque state the server sends and the client echoes back unchanged, so it is carried as a plain value rather than a JsonNode. These params types are @Internal, whose javadoc states they may change at any time; quarkus-langchain4j uses them but only for getName()/getUri()."
+        },
+        {
+          "code": "java.method.parameterTypeChanged",
+          "classQualifiedName": "dev.langchain4j.mcp.protocol.McpCallToolParams",
+          "methodName": "<init>",
+          "justification": "Tool-call arguments are carried as a plain Map rather than a Jackson ObjectNode. A Jackson 3 mapper cannot serialize a Jackson 2 ObjectNode: it does not fail, it bean-serializes the node, so the arguments silently become {\"array\":false,\"bigDecimal\":false,...}. Transports outside LangChain4j serialize the outgoing message with their own mapper, so this type had to stop exposing a Jackson type for them to be able to move to Jackson 3. Both types are @Internal, whose javadoc states they may change at any time; quarkus-langchain4j uses them but only for getName()."
+        },
+        {
+          "code": "java.method.returnTypeChanged",
+          "classQualifiedName": "dev.langchain4j.mcp.protocol.McpCallToolParams",
+          "methodName": "getArguments",
+          "justification": "Tool-call arguments are carried as a plain Map rather than a Jackson ObjectNode. A Jackson 3 mapper cannot serialize a Jackson 2 ObjectNode: it does not fail, it bean-serializes the node, so the arguments silently become {\"array\":false,\"bigDecimal\":false,...}. Transports outside LangChain4j serialize the outgoing message with their own mapper, so this type had to stop exposing a Jackson type for them to be able to move to Jackson 3. Both types are @Internal, whose javadoc states they may change at any time; quarkus-langchain4j uses them but only for getName()."
+        },
+        {
+          "code": "java.method.parameterTypeChanged",
+          "classQualifiedName": "dev.langchain4j.mcp.protocol.McpCallToolParams",
+          "methodName": "setArguments",
+          "justification": "Tool-call arguments are carried as a plain Map rather than a Jackson ObjectNode. A Jackson 3 mapper cannot serialize a Jackson 2 ObjectNode: it does not fail, it bean-serializes the node, so the arguments silently become {\"array\":false,\"bigDecimal\":false,...}. Transports outside LangChain4j serialize the outgoing message with their own mapper, so this type had to stop exposing a Jackson type for them to be able to move to Jackson 3. Both types are @Internal, whose javadoc states they may change at any time; quarkus-langchain4j uses them but only for getName()."
+        },
+        {
+          "code": "java.method.parameterTypeChanged",
+          "classQualifiedName": "dev.langchain4j.mcp.protocol.McpCallToolRequest",
+          "methodName": "<init>",
+          "justification": "Tool-call arguments are carried as a plain Map rather than a Jackson ObjectNode. A Jackson 3 mapper cannot serialize a Jackson 2 ObjectNode: it does not fail, it bean-serializes the node, so the arguments silently become {\"array\":false,\"bigDecimal\":false,...}. Transports outside LangChain4j serialize the outgoing message with their own mapper, so this type had to stop exposing a Jackson type for them to be able to move to Jackson 3. Both types are @Internal, whose javadoc states they may change at any time; quarkus-langchain4j uses them but only for getName()."
+        },
+        {
+          "code": "java.method.parameterTypeParameterChanged",
+          "classQualifiedName": "dev.langchain4j.mcp.client.transport.McpOperationHandler",
+          "methodName": "<init>",
+          "justification": "The handler now keeps a single map of pending operations, keyed by request id and holding the response as raw JSON text, so that cancellation and the client's cleanup act on every in-flight operation regardless of which transport API registered it. Only the type argument changes; the erased signature is unchanged, so this is binary compatible. The constructor is called only by DefaultMcpClient - transports receive an already-built handler through McpTransport.start, which was checked against quarkus-langchain4j rather than assumed."
+        },
+        {
+          "code": "java.annotation.added",
+          "classQualifiedName": "dev.langchain4j.mcp.client.McpImplementation",
+          "annotationType": "com.fasterxml.jackson.annotation.JsonIgnoreProperties",
+          "justification": "Unknown-property tolerance is declared on the type so that it does not depend on the configuration of whichever ObjectMapper deserializes it. MCP adds fields in a backwards-compatible way, so a server may send fields this client does not model yet. Adding an annotation changes no signature and is binary and source compatible."
+        },
+        {
+          "code": "java.annotation.added",
+          "classQualifiedName": "dev.langchain4j.mcp.client.McpResource",
+          "annotationType": "com.fasterxml.jackson.annotation.JsonIgnoreProperties",
+          "justification": "Unknown-property tolerance is declared on the type so that it does not depend on the configuration of whichever ObjectMapper deserializes it. MCP adds fields in a backwards-compatible way, so a server may send fields this client does not model yet. Adding an annotation changes no signature and is binary and source compatible."
+        },
+        {
+          "code": "java.annotation.added",
+          "classQualifiedName": "dev.langchain4j.mcp.client.McpResourceTemplate",
+          "annotationType": "com.fasterxml.jackson.annotation.JsonIgnoreProperties",
+          "justification": "Unknown-property tolerance is declared on the type so that it does not depend on the configuration of whichever ObjectMapper deserializes it. MCP adds fields in a backwards-compatible way, so a server may send fields this client does not model yet. Adding an annotation changes no signature and is binary and source compatible."
+        },
+        {
+          "code": "java.annotation.added",
+          "classQualifiedName": "dev.langchain4j.mcp.client.McpPrompt",
+          "annotationType": "com.fasterxml.jackson.annotation.JsonIgnoreProperties",
+          "justification": "Unknown-property tolerance is declared on the type so that it does not depend on the configuration of whichever ObjectMapper deserializes it. MCP adds fields in a backwards-compatible way, so a server may send fields this client does not model yet. Adding an annotation changes no signature and is binary and source compatible."
+        },
+        {
+          "code": "java.annotation.added",
+          "classQualifiedName": "dev.langchain4j.mcp.client.McpPromptArgument",
+          "annotationType": "com.fasterxml.jackson.annotation.JsonIgnoreProperties",
+          "justification": "Unknown-property tolerance is declared on the type so that it does not depend on the configuration of whichever ObjectMapper deserializes it. MCP adds fields in a backwards-compatible way, so a server may send fields this client does not model yet. Adding an annotation changes no signature and is binary and source compatible."
+        },
+        {
+          "code": "java.annotation.added",
+          "classQualifiedName": "dev.langchain4j.mcp.client.McpIcon",
+          "annotationType": "com.fasterxml.jackson.annotation.JsonIgnoreProperties",
+          "justification": "Unknown-property tolerance is declared on the type so that it does not depend on the configuration of whichever ObjectMapper deserializes it. MCP adds fields in a backwards-compatible way, so a server may send fields this client does not model yet. Adding an annotation changes no signature and is binary and source compatible."
+        },
+        {
+          "code": "java.annotation.added",
+          "classQualifiedName": "dev.langchain4j.mcp.client.McpPromptMessage",
+          "annotationType": "com.fasterxml.jackson.annotation.JsonIgnoreProperties",
+          "justification": "Unknown-property tolerance is declared on the type so that it does not depend on the configuration of whichever ObjectMapper deserializes it. MCP adds fields in a backwards-compatible way, so a server may send fields this client does not model yet. Adding an annotation changes no signature and is binary and source compatible."
+        },
+        {
+          "code": "java.annotation.added",
+          "classQualifiedName": "dev.langchain4j.mcp.client.McpGetPromptResult",
+          "annotationType": "com.fasterxml.jackson.annotation.JsonIgnoreProperties",
+          "justification": "Unknown-property tolerance is declared on the type so that it does not depend on the configuration of whichever ObjectMapper deserializes it. MCP adds fields in a backwards-compatible way, so a server may send fields this client does not model yet. Adding an annotation changes no signature and is binary and source compatible."
+        },
+        {
+          "code": "java.annotation.added",
+          "classQualifiedName": "dev.langchain4j.mcp.client.McpReadResourceResult",
+          "annotationType": "com.fasterxml.jackson.annotation.JsonIgnoreProperties",
+          "justification": "Unknown-property tolerance is declared on the type so that it does not depend on the configuration of whichever ObjectMapper deserializes it. MCP adds fields in a backwards-compatible way, so a server may send fields this client does not model yet. Adding an annotation changes no signature and is binary and source compatible."
+        },
+        {
+          "code": "java.method.parameterTypeParameterChanged",
+          "classQualifiedName": "dev.langchain4j.mcp.transport.stdio.JsonRpcIoHandler",
+          "methodName": "<init>",
+          "justification": "The stdio reader now hands whole lines to the operation handler instead of parsing them into a Jackson tree first, so that the stdio transport uses the raw-JSON API like the other transports and JsonRpcIoHandler no longer carries Jackson in its signature or its own ObjectMapper. Only the type argument changes; the erased signature is unchanged, so this is binary compatible. The only caller is StdioMcpTransport; quarkus-langchain4j does not reference this class."
+        },
+        {
+          "code": "java.annotation.added",
+          "classQualifiedName": "dev.langchain4j.mcp.transport.stdio.JsonRpcIoHandler",
+          "annotationType": "dev.langchain4j.Internal",
+          "justification": "JsonRpcIoHandler is the stdio transport's newline framing; only StdioMcpTransport constructs it and quarkus-langchain4j does not reference it. Marking it @Internal records that, and matches the constructor change already recorded below. Adding an annotation changes no signature and is binary and source compatible."
         }
       ]
     }

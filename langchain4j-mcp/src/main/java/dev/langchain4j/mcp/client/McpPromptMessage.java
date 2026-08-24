@@ -1,6 +1,7 @@
 package dev.langchain4j.mcp.client;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -14,6 +15,7 @@ import java.util.Objects;
  * The 'PromptMessage' object from the MCP protocol schema.
  * This can be directly translated to a ChatMessage object from the LangChain4j API.
  */
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class McpPromptMessage {
 
     private final McpRole role;
