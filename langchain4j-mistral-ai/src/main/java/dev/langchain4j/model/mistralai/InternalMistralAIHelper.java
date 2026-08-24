@@ -1,5 +1,6 @@
 package dev.langchain4j.model.mistralai;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.mistralai.internal.mapper.MistralAiMapper.toMistralAiMessages;
 import static dev.langchain4j.model.mistralai.internal.mapper.MistralAiMapper.toMistralAiResponseFormat;
@@ -35,21 +36,14 @@ class InternalMistralAIHelper {
     }
 
     static MistralAiChatCompletionRequest createMistralAiRequest(
-            ChatRequest chatRequest,
-            Boolean safePrompt,
-            Integer randomSeed,
-            boolean stream,
-            boolean sendThinking,
-            boolean strictJsonSchema) {
+            ChatRequest chatRequest, boolean stream, boolean strictJsonSchema) {
+
         MistralAiChatCompletionRequest.MistralAiChatCompletionRequestBuilder requestBuilder =
                 MistralAiChatCompletionRequest.builder()
                         .model(chatRequest.modelName())
-                        .messages(toMistralAiMessages(chatRequest.messages(), sendThinking))
                         .temperature(chatRequest.temperature())
                         .maxTokens(chatRequest.maxOutputTokens())
                         .topP(chatRequest.topP())
-                        .randomSeed(randomSeed)
-                        .safePrompt(safePrompt)
                         .responseFormat(toMistralAiResponseFormat(chatRequest.responseFormat(), strictJsonSchema))
                         .stop(chatRequest.stopSequences().toArray(new String[0]))
                         .frequencyPenalty(chatRequest.frequencyPenalty())
@@ -61,6 +55,16 @@ class InternalMistralAIHelper {
         }
         if (chatRequest.toolChoice() != null) {
             requestBuilder.toolChoice(toMistralAiToolChoiceName(chatRequest.toolChoice()));
+        }
+        if (chatRequest.parameters() instanceof MistralAiChatRequestParameters parameters) {
+            requestBuilder
+                    .messages(
+                            toMistralAiMessages(chatRequest.messages(), getOrDefault(parameters.sendThinking(), false)))
+                    .randomSeed(parameters.randomSeed())
+                    .safePrompt(parameters.safePrompt())
+                    .promptCacheKey(parameters.promptCacheKey())
+                    .reasoningEffort(parameters.reasoningEffort())
+                    .serviceTier(parameters.serviceTier());
         }
 
         return requestBuilder.build();
