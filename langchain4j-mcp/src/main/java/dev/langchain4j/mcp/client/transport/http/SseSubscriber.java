@@ -91,6 +91,11 @@ class SseSubscriber implements Flow.Subscriber<String> {
 
     @Override
     public void onNext(String item) {
+        if (future != null && future.isCancelled()) {
+            // the operation was cancelled (e.g. by unsubscribeFromResources), so events that are
+            // still in flight on this stream must not reach the operation handler anymore
+            return;
+        }
         if (logResponses && !item.trim().isEmpty()) {
             logger.info("SSE event received: " + item);
         }

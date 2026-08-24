@@ -37,6 +37,7 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -391,7 +392,7 @@ class GoogleGenAiContentMapper {
     static String detectMimeType(URI url) {
         String[] pathParts = url.getPath().split("\\.");
         if (pathParts.length > 1) {
-            String extension = pathParts[pathParts.length - 1].toLowerCase();
+            String extension = pathParts[pathParts.length - 1].toLowerCase(Locale.ROOT);
             String mimeType = EXTENSION_TO_MIME_TYPE.get(extension);
             if (mimeType != null) {
                 return mimeType;
