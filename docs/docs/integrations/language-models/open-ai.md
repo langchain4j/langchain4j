@@ -479,6 +479,33 @@ StreamingChatModel model = OpenAiResponsesStreamingChatModel.builder()
         .build();
 ```
 
+### Custom HTTP headers
+
+If the OpenAI API is reached through an authenticated proxy or a gateway that expects additional HTTP headers,
+these headers can be set on the builder. They are sent with every request:
+```java
+ChatModel model = OpenAiResponsesChatModel.builder()
+        .apiKey(System.getenv("OPENAI_API_KEY"))
+        .modelName("gpt-4o-mini")
+        .customHeaders(Map.of("Proxy-Authorization", "Basic dXNlcjpwYXNz"))
+        .build();
+```
+
+If the header value is not constant (for example, an OAuth2 token that expires and has to be refreshed),
+a `Supplier` can be provided instead. It is called before each request:
+```java
+ChatModel model = OpenAiResponsesChatModel.builder()
+        .apiKey(System.getenv("OPENAI_API_KEY"))
+        .modelName("gpt-4o-mini")
+        .customHeaders(() -> Map.of("Authorization", "Bearer " + tokenProvider.currentToken()))
+        .build();
+```
+
+Custom headers are applied last, so they can also be used to override the headers
+LangChain4j sets by default (for example, `Authorization`).
+
+The same applies to `OpenAiResponsesStreamingChatModel`.
+
 ### `OpenAiResponsesChatRequestParameters`
 
 `OpenAiResponsesChatRequestParameters` extends `DefaultChatRequestParameters` with Responses API-specific fields:

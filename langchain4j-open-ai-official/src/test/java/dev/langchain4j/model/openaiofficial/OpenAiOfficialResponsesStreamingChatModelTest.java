@@ -1,10 +1,19 @@
 package dev.langchain4j.model.openaiofficial;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.openai.client.OpenAIClientImpl;
+import com.openai.core.ClientOptions;
 import com.openai.core.JsonValue;
 import com.openai.core.ObjectMappers;
+import com.openai.core.RequestOptions;
+import com.openai.core.http.Headers;
+import com.openai.core.http.HttpClient;
+import com.openai.core.http.HttpRequest;
+import com.openai.core.http.HttpResponse;
 import com.openai.models.responses.Response;
+import com.openai.models.responses.ResponseCompletedEvent;
 import com.openai.models.responses.ResponseStreamEvent;
 import com.openai.models.responses.ResponseWebSearchCallInProgressEvent;
 import com.openai.models.responses.Tool;
@@ -12,13 +21,19 @@ import com.openai.models.responses.ToolSearchTool;
 import com.openai.models.responses.WebSearchTool;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.ContentFilteredException;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.chat.response.StreamingHandle;
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 
@@ -158,6 +173,168 @@ class OpenAiOfficialResponsesStreamingChatModelTest {
                 .type(JsonValue.from("tool_search"))
                 .description("Search tools")
                 .build());
+    }
+
+    private static final String REFUSAL_RESPONSE_JSON = """
+            {
+              "id": "resp_refusal",
+              "created_at": 1745310000,
+              "model": "gpt-5.4",
+              "object": "response",
+              "parallel_tool_calls": true,
+              "tool_choice": "auto",
+              "output": [
+                {
+                  "id": "msg_1",
+                  "type": "message",
+                  "role": "assistant",
+                  "status": "completed",
+                  "content": [{"type": "refusal", "refusal": "I cannot help with that request."}]
+                }
+              ]
+            }
+            """;
+
+    @Test
+    void should_extract_refusal_from_response() {
+        assertThat(OpenAiOfficialResponsesStreamingChatModel.extractRefusal(response(REFUSAL_RESPONSE_JSON)))
+                .isEqualTo("I cannot help with that request.");
+    }
+
+    @Test
+    void should_return_null_refusal_when_response_contains_only_output_text() {
+        Response response = response("""
+                {
+                  "id": "resp_ok",
+                  "created_at": 1745310000,
+                  "model": "gpt-5.4",
+                  "object": "response",
+                  "parallel_tool_calls": true,
+                  "tool_choice": "auto",
+                  "output": [
+                    {
+                      "id": "msg_1",
+                      "type": "message",
+                      "role": "assistant",
+                      "status": "completed",
+                      "content": [{"type": "output_text", "text": "Paris", "annotations": []}]
+                    }
+                  ]
+                }
+                """);
+
+        assertThat(OpenAiOfficialResponsesStreamingChatModel.extractRefusal(response))
+                .isNull();
+    }
+
+    @Test
+    void should_raise_content_filtered_exception_when_stream_completes_with_refusal() {
+        CapturingStreamingHandler handler = new CapturingStreamingHandler();
+        var eventHandler = new OpenAiOfficialResponsesStreamingChatModel.ResponsesEventHandler(
+                handler, new AtomicReference<>(), "gpt-5.4-mini", new ActiveStreamingHandle());
+
+        eventHandler.handleEvent(ResponseStreamEvent.ofCompleted(ResponseCompletedEvent.builder()
+                .response(response(REFUSAL_RESPONSE_JSON))
+                .sequenceNumber(1)
+                .build()));
+
+        assertThat(handler.error).isInstanceOf(ContentFilteredException.class);
+        assertThat(handler.error).hasMessage("I cannot help with that request.");
+        assertThat(handler.completed).isNull();
+    }
+
+    @Test
+    void should_throw_content_filtered_exception_when_response_contains_refusal() {
+        OpenAiOfficialResponsesChatModel model = OpenAiOfficialResponsesChatModel.builder()
+                .client(new OpenAIClientImpl(ClientOptions.builder()
+                        .apiKey("test-key")
+                        .httpClient(new CannedJsonHttpClient(REFUSAL_RESPONSE_JSON))
+                        .build()))
+                .modelName("gpt-5.4-mini")
+                .build();
+
+        assertThatThrownBy(() -> model.chat("Hello"))
+                .isInstanceOf(ContentFilteredException.class)
+                .hasMessage("I cannot help with that request.");
+    }
+
+    private static class CannedJsonHttpClient implements HttpClient {
+
+        private final String body;
+
+        CannedJsonHttpClient(String body) {
+            this.body = body;
+        }
+
+        @Override
+        public HttpResponse execute(HttpRequest request, RequestOptions requestOptions) {
+            return new CannedJsonHttpResponse(body);
+        }
+
+        @Override
+        public CompletableFuture<HttpResponse> executeAsync(HttpRequest request, RequestOptions requestOptions) {
+            return CompletableFuture.completedFuture(execute(request, requestOptions));
+        }
+
+        @Override
+        public void close() {}
+    }
+
+    private static class CannedJsonHttpResponse implements HttpResponse {
+
+        private final String body;
+
+        CannedJsonHttpResponse(String body) {
+            this.body = body;
+        }
+
+        @Override
+        public int statusCode() {
+            return 200;
+        }
+
+        @Override
+        public Headers headers() {
+            return Headers.builder().put("Content-Type", "application/json").build();
+        }
+
+        @Override
+        public InputStream body() {
+            return new ByteArrayInputStream(body.getBytes(StandardCharsets.UTF_8));
+        }
+
+        @Override
+        public void close() {}
+    }
+
+    private static class ActiveStreamingHandle implements StreamingHandle {
+
+        @Override
+        public void cancel() {}
+
+        @Override
+        public boolean isCancelled() {
+            return false;
+        }
+    }
+
+    private static class CapturingStreamingHandler implements StreamingChatResponseHandler {
+
+        private Throwable error;
+        private ChatResponse completed;
+
+        @Override
+        public void onPartialResponse(String partialResponse) {}
+
+        @Override
+        public void onCompleteResponse(ChatResponse completeResponse) {
+            completed = completeResponse;
+        }
+
+        @Override
+        public void onError(Throwable throwable) {
+            error = throwable;
+        }
     }
 
     private static Response response(String json) {
