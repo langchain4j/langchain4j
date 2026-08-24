@@ -12,10 +12,7 @@ import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.ContentMetadata;
 import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.rag.query.transformer.ExpandingQueryTransformer;
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Comparator;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -131,24 +128,23 @@ public class ReRankingContentAggregator implements ContentAggregator {
 
         List<Double> scores = scoringModel.scoreAll(segments, query.text()).content();
 
-        List<Content> reranked = new ArrayList<>();
+        Map<Content, Double> contentToScore = new LinkedHashMap<>();
         for (int i = 0; i < contents.size(); i++) {
-            Double score = scores.get(i);
-            if (minScore != null && score < minScore) {
-                continue;
-            }
-            Content original = contents.get(i);
-            Map<ContentMetadata, Object> metadata = new HashMap<>(original.metadata());
-            metadata.put(RERANKED_SCORE, score);
-            reranked.add(Content.from(original.textSegment(), metadata));
+            contentToScore.put(contents.get(i), scores.get(i));
         }
 
-        return reranked.stream()
-                .sorted(Comparator.comparing(
-                        (Content content) -> (Double) content.metadata().get(RERANKED_SCORE),
-                        Comparator.reverseOrder()))
+        return contentToScore.entrySet().stream()
+                .filter(entry -> minScore == null || entry.getValue() >= minScore)
+                .sorted(Map.Entry.<Content, Double>comparingByValue().reversed())
+                .map(entry -> withReRankedScore(entry.getKey(), entry.getValue()))
                 .limit(maxResults)
                 .collect(Collectors.toList());
+    }
+
+    private static Content withReRankedScore(Content content, Double score) {
+        Map<ContentMetadata, Object> metadata = new LinkedHashMap<>(content.metadata());
+        metadata.put(RERANKED_SCORE, score);
+        return Content.from(content.textSegment(), metadata);
     }
 
     public static class ReRankingContentAggregatorBuilder {

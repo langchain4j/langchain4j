@@ -25,6 +25,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -324,6 +325,27 @@ class ReRankingContentAggregatorTest {
         assertThat(aggregated.get(0).metadata())
                 .containsEntry(ContentMetadata.SCORE, 0.41)
                 .containsEntry(ContentMetadata.EMBEDDING_ID, "doc-2");
+    }
+
+    @Test
+    void should_keep_fused_order_when_reranked_scores_are_equal() {
+
+        Query query = Query.from("query");
+
+        List<Content> contents = IntStream.range(0, 20)
+                .mapToObj(i -> Content.from("content " + i))
+                .toList();
+        List<Double> equalScores = contents.stream().map(content -> 0.5).toList();
+
+        Map<Query, Collection<List<Content>>> queryToContents = singletonMap(query, singletonList(contents));
+
+        ScoringModel scoringModel = mock(ScoringModel.class);
+        when(scoringModel.scoreAll(any(), any())).thenReturn(Response.from(equalScores));
+        ContentAggregator aggregator = new ReRankingContentAggregator(scoringModel);
+
+        List<Content> aggregated = aggregator.aggregate(queryToContents);
+
+        assertReRankedContentOrder(aggregated, contents.toArray(new Content[0]));
     }
 
     private void assertReRankedContentOrder(List<Content> actual, Content... expectedContents) {
