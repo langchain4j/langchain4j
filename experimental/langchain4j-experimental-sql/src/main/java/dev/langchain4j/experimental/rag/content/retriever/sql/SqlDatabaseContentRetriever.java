@@ -19,6 +19,7 @@ import dev.langchain4j.rag.query.Query;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
@@ -326,12 +327,13 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
         List<String> resultRows = new ArrayList<>();
 
         try (ResultSet resultSet = statement.executeQuery(sqlQuery)) {
-            int columnCount = resultSet.getMetaData().getColumnCount();
+            ResultSetMetaData metaData = resultSet.getMetaData();
+            int columnCount = metaData.getColumnCount();
 
             // header
             List<String> columnNames = new ArrayList<>();
             for (int i = 1; i <= columnCount; i++) {
-                columnNames.add(resultSet.getMetaData().getColumnName(i));
+                columnNames.add(toCsvValue(metaData.getColumnName(i)));
             }
             resultRows.add(String.join(",", columnNames));
 
@@ -352,7 +354,7 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
      * Formats a value as a CSV field, escaping it as per RFC 4180 when it contains
      * a comma, a double quote, or a line break.
      */
-    static String toCsvValue(Object value) {
+    private static String toCsvValue(Object value) {
         String stringValue = value == null ? "" : value.toString();
         if (stringValue.contains(",")
                 || stringValue.contains("\"")
