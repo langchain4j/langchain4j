@@ -222,6 +222,9 @@ class ToolSpecificationHelper {
                     .map(ToolSpecificationHelper::toTypeElement)
                     .toArray(JsonSchemaElement[]::new);
             anyOf.anyOf(types);
+            if (node.has("description")) {
+                anyOf.description(node.get("description").asText());
+            }
             return anyOf.build();
         }
     }
