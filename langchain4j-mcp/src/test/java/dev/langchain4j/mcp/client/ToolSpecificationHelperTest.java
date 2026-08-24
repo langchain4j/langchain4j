@@ -255,6 +255,33 @@ class ToolSpecificationHelperTest {
     }
 
     @Test
+    void arrayTypePreservesDescription() throws JsonProcessingException {
+        // A property whose "type" is a union array (like ["string", "null"]) goes through the
+        // type-array branch of jsonNodeToJsonSchemaElement, which builds a JsonAnyOfSchema.
+        // The node's own "description" must be carried onto that anyOf schema, just like the
+        // dedicated anyOf branch does. Otherwise LLMs lose the parameter's purpose entirely.
+        String text = """
+                [{
+                  "name": "query",
+                  "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                      "status": {
+                        "type": ["string", "null"],
+                        "description": "Filter by status (nullable)"
+                      }
+                    }
+                  }
+                }]
+                """;
+        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        List<ToolSpecification> toolSpecifications = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
+        JsonObjectSchema parameters = toolSpecifications.get(0).parameters();
+        JsonAnyOfSchema status = (JsonAnyOfSchema) parameters.properties().get("status");
+        assertThat(status.description()).isEqualTo("Filter by status (nullable)");
+    }
+
+    @Test
     void arrayWithAnyOf() throws JsonProcessingException {
         // trimmed version of the tool from @modelcontextprotocol/server-github
         String text =
