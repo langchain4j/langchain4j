@@ -3,6 +3,7 @@ package dev.langchain4j.model.google.genai;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
 import com.google.auth.oauth2.GoogleCredentials;
@@ -98,7 +99,8 @@ public class GoogleGenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
         this.titleMetadataKey = getOrDefault(builder.titleMetadataKey, "title");
         this.maxRetries = getOrDefault(builder.maxRetries, 3);
 
-        this.maxSegmentsPerBatch = getOrDefault(builder.maxSegmentsPerBatch, 100);
+        this.maxSegmentsPerBatch =
+                ensureGreaterThanZero(getOrDefault(builder.maxSegmentsPerBatch, 100), "maxSegmentsPerBatch");
         this.logRequests = getOrDefault(builder.logRequests, false);
         this.logResponses = getOrDefault(builder.logResponses, false);
         this.listeners = copy(builder.listeners);
@@ -151,7 +153,9 @@ public class GoogleGenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
             for (EmbeddingInput input : request.inputs()) {
                 Content content = toContent(input, inputType);
                 responses.add(withRetryMappingExceptions(
-                        () -> client.models.embedContent(modelName, content, config), maxRetries));
+                        () -> client.models.embedContent(modelName, content, config),
+                        maxRetries,
+                        GoogleGenAiExceptionMapper.INSTANCE));
             }
         } else {
             List<String> texts = request.inputs().stream()
@@ -160,7 +164,9 @@ public class GoogleGenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
             for (int i = 0; i < texts.size(); i += maxSegmentsPerBatch) {
                 List<String> batch = texts.subList(i, Math.min(i + maxSegmentsPerBatch, texts.size()));
                 responses.add(withRetryMappingExceptions(
-                        () -> client.models.embedContent(modelName, batch, config), maxRetries));
+                        () -> client.models.embedContent(modelName, batch, config),
+                        maxRetries,
+                        GoogleGenAiExceptionMapper.INSTANCE));
             }
         }
 
@@ -316,7 +322,9 @@ public class GoogleGenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
                 }
 
                 EmbedContentResponse response = withRetryMappingExceptions(
-                        () -> client.models.embedContent(modelName, texts, configBuilder.build()), maxRetries);
+                        () -> client.models.embedContent(modelName, texts, configBuilder.build()),
+                        maxRetries,
+                        GoogleGenAiExceptionMapper.INSTANCE);
 
                 if (response.embeddings().isPresent()) {
                     var embeddings = response.embeddings().get();

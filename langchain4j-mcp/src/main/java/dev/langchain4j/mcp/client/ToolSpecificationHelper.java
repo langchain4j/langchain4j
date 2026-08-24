@@ -21,15 +21,21 @@ import dev.langchain4j.model.chat.request.json.JsonReferenceSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.StreamSupport;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 class ToolSpecificationHelper {
 
+    private static final Logger log = LoggerFactory.getLogger(ToolSpecificationHelper.class);
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final TypeReference<List<McpIcon>> MCP_ICON_LIST_TYPE = new TypeReference<>() {};
+    private static final Set<String> ALLOWED_HEADER_PARAM_TYPES = Set.of("string", "integer", "boolean");
 
     /**
      * Converts the 'tools' element from a ListToolsResult MCP message
@@ -38,12 +44,21 @@ class ToolSpecificationHelper {
     static List<ToolSpecification> toolSpecificationListFromMcpResponse(ArrayNode array) {
         List<ToolSpecification> result = new ArrayList<>();
         for (JsonNode tool : array) {
+            String toolName = tool.get("name").asText();
             final ToolSpecification.Builder builder = ToolSpecification.builder();
-            builder.name(tool.get("name").asText());
+            builder.name(toolName);
             if (tool.has("description")) {
                 builder.description(tool.get("description").asText());
             }
-            builder.parameters((JsonObjectSchema) jsonNodeToJsonSchemaElement(tool.get("inputSchema")));
+            JsonNode inputSchema = tool.get("inputSchema");
+            builder.parameters((JsonObjectSchema) jsonNodeToJsonSchemaElement(inputSchema));
+            Map<String, String> paramHeaders = extractAndValidateMcpParamHeaders(inputSchema, toolName);
+            if (paramHeaders == null) {
+                continue;
+            }
+            if (!paramHeaders.isEmpty()) {
+                builder.addMetadata(MCP_PARAM_HEADERS, paramHeaders);
+            }
             if (tool.has("annotations")) {
                 processMcpToolAnnotations(tool.get("annotations"), builder);
             }
@@ -84,11 +99,11 @@ class ToolSpecificationHelper {
             }
             return anyOf.build();
         }
-        // Handle $ref (JSON Schema reference)
         if (node.has("$ref")) {
-            return JsonReferenceSchema.builder()
-                    .reference(extractReferenceKey(node.get("$ref").asText()))
-                    .build();
+            String referenceKey = extractReferenceKey(node.get("$ref").asText());
+            if (referenceKey != null) {
+                return JsonReferenceSchema.builder().reference(referenceKey).build();
+            }
         }
         JsonNode typeNode = node.get("type");
         // If no type is specified, default to object schema
@@ -207,6 +222,9 @@ class ToolSpecificationHelper {
                     .map(ToolSpecificationHelper::toTypeElement)
                     .toArray(JsonSchemaElement[]::new);
             anyOf.anyOf(types);
+            if (node.has("description")) {
+                anyOf.description(node.get("description").asText());
+            }
             return anyOf.build();
         }
     }
@@ -243,8 +261,10 @@ class ToolSpecificationHelper {
     }
 
     /**
-     * Extracts the reference key from a JSON Schema $ref value.
-     * For example, "#/$defs/Foo" returns "Foo", "#/definitions/Bar" returns "Bar".
+     * Extracts the definition key from a JSON Schema $ref that targets a definition.
+     * For example, "#/$defs/Foo" returns "Foo" and "#/definitions/Bar" returns "Bar".
+     * Returns {@code null} for any other $ref (for example a pointer into the schema body),
+     * which is not a definition key.
      */
     private static String extractReferenceKey(String ref) {
         if (ref.startsWith("#/$defs/")) {
@@ -253,7 +273,7 @@ class ToolSpecificationHelper {
         if (ref.startsWith("#/definitions/")) {
             return ref.substring("#/definitions/".length());
         }
-        return ref;
+        return null;
     }
 
     private static String[] toStringArray(ArrayNode jsonArray) {
@@ -293,5 +313,152 @@ class ToolSpecificationHelper {
             // convert the value to a nested Map (independent of Jackson) and store it in the metadata
             builder.addMetadata(property.getKey(), OBJECT_MAPPER.convertValue(property.getValue(), Object.class));
         }
+    }
+
+    static Map<String, String> extractAndValidateMcpParamHeaders(JsonNode schema, String toolName) {
+        Map<String, String> result = new LinkedHashMap<>();
+        Set<String> seenHeaderNamesLower = new HashSet<>();
+        List<String> errors = new ArrayList<>();
+        extractAndValidateMcpParamHeaders(schema, "", result, seenHeaderNamesLower, errors);
+        if (!errors.isEmpty()) {
+            for (String error : errors) {
+                log.warn("Excluding tool '{}' from tools/list: {}", toolName, error);
+            }
+            return null;
+        }
+        return result;
+    }
+
+    private static final List<String> FORBIDDEN_SCHEMA_KEYWORDS = List.of(
+            "items", "prefixItems", "additionalProperties", "oneOf", "anyOf", "allOf", "not", "if", "then", "else");
+
+    private static void extractAndValidateMcpParamHeaders(
+            JsonNode schema,
+            String pathPrefix,
+            Map<String, String> result,
+            Set<String> seenHeaderNamesLower,
+            List<String> errors) {
+        checkForbiddenSubtrees(schema, errors);
+        JsonNode properties = schema.path("properties");
+        if (properties.isMissingNode() || !properties.isObject()) {
+            return;
+        }
+        for (Map.Entry<String, JsonNode> entry : properties.properties()) {
+            JsonNode propSchema = entry.getValue();
+            String propertyPath = pathPrefix.isEmpty() ? entry.getKey() : pathPrefix + "." + entry.getKey();
+            JsonNode headerAnnotation = propSchema.get("x-mcp-header");
+            if (headerAnnotation != null) {
+                if (!headerAnnotation.isTextual()) {
+                    errors.add("x-mcp-header value must be a string, but property '" + propertyPath + "' declares "
+                            + headerAnnotation.getNodeType().name().toLowerCase());
+                } else {
+                    validateMcpParamHeader(
+                            headerAnnotation.asText(), propSchema, propertyPath, result, seenHeaderNamesLower, errors);
+                }
+            }
+            if (propSchema.has("properties")) {
+                extractAndValidateMcpParamHeaders(propSchema, propertyPath, result, seenHeaderNamesLower, errors);
+            } else {
+                checkForbiddenSubtrees(propSchema, errors);
+            }
+        }
+    }
+
+    private static void validateMcpParamHeader(
+            String headerName,
+            JsonNode propSchema,
+            String propertyPath,
+            Map<String, String> result,
+            Set<String> seenHeaderNamesLower,
+            List<String> errors) {
+        if (headerName.isEmpty()) {
+            errors.add("x-mcp-header value must not be empty (property '" + propertyPath + "')");
+        } else if (!isValidToken(headerName)) {
+            errors.add("x-mcp-header value '" + headerName + "' is not a valid HTTP token (property '" + propertyPath
+                    + "')");
+        }
+        if (!seenHeaderNamesLower.add(headerName.toLowerCase())) {
+            errors.add("duplicate x-mcp-header value '" + headerName + "' (case-insensitive, property '" + propertyPath
+                    + "')");
+        }
+        for (String type : declaredTypes(propSchema)) {
+            if (!ALLOWED_HEADER_PARAM_TYPES.contains(type)) {
+                errors.add("x-mcp-header on property '" + propertyPath + "' with forbidden type '" + type
+                        + "' (only string, integer, boolean are allowed)");
+            }
+        }
+        if (errors.isEmpty()) {
+            result.put(propertyPath, headerName);
+        }
+    }
+
+    /**
+     * JSON Schema allows "type" to be either a single name or an array of names,
+     * so a header-carrying property has to be checked against every declared type.
+     * "null" is skipped: it only marks the property as optional.
+     */
+    private static List<String> declaredTypes(JsonNode propSchema) {
+        JsonNode type = propSchema.get("type");
+        if (type == null) {
+            return List.of();
+        }
+        List<String> types = new ArrayList<>();
+        if (type.isTextual()) {
+            types.add(type.asText());
+        } else if (type.isArray()) {
+            for (JsonNode t : type) {
+                if (t.isTextual()) {
+                    types.add(t.asText());
+                }
+            }
+        }
+        types.remove("null");
+        return types;
+    }
+
+    private static void checkForbiddenSubtrees(JsonNode schema, List<String> errors) {
+        for (String keyword : FORBIDDEN_SCHEMA_KEYWORDS) {
+            JsonNode node = schema.get(keyword);
+            if (node != null && containsHeaderAnnotation(node)) {
+                errors.add("x-mcp-header found inside '" + keyword
+                        + "' (annotations must be statically reachable via properties keys only)");
+            }
+        }
+    }
+
+    private static boolean containsHeaderAnnotation(JsonNode node) {
+        if (node.isObject()) {
+            if (node.has("x-mcp-header")) {
+                return true;
+            }
+            for (JsonNode child : node) {
+                if (containsHeaderAnnotation(child)) {
+                    return true;
+                }
+            }
+        } else if (node.isArray()) {
+            for (JsonNode child : node) {
+                if (containsHeaderAnnotation(child)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private static boolean isValidToken(String value) {
+        for (int i = 0; i < value.length(); i++) {
+            if (!isTchar(value.charAt(i))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static boolean isTchar(char c) {
+        if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')) {
+            return true;
+        }
+        return "!#$%&'*+-.^_`|~".indexOf(c) >= 0;
     }
 }

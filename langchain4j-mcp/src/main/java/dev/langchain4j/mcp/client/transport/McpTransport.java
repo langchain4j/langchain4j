@@ -20,6 +20,8 @@ public interface McpTransport extends Closeable {
      * capabilities, supported protocol version etc. When this method
      * returns successfully, the transport is fully initialized and ready to
      * be used. This has to be called AFTER the "start" method.
+     * Only used with the legacy MCP protocol (versions up to 2025-11-25).
+     * Modern protocol uses {@code server/discover} instead.
      */
     CompletableFuture<JsonNode> initialize(McpInitializeRequest request);
 
@@ -56,4 +58,37 @@ public interface McpTransport extends Closeable {
     void checkHealth();
 
     void onFailure(Runnable actionOnFailure);
+
+    /**
+     * Informs the transport whether the modern MCP protocol (2026-07-28 or later) is in use.
+     * HTTP-based transports use this to switch between modern headers (MCP-Protocol-Version,
+     * Mcp-Method, Mcp-Name) and legacy session management (Mcp-Session-Id).
+     * Default implementation is a no-op (for transports like stdio/WebSocket that don't need it).
+     */
+    default void setModernProtocol(boolean modernProtocol) {}
+
+    /**
+     * Sets the protocol version string to be sent in the MCP-Protocol-Version HTTP header.
+     * Only relevant for HTTP-based transports in modern protocol mode.
+     * Default implementation is a no-op.
+     */
+    default void setProtocolVersion(String protocolVersion) {}
+
+    /**
+     * Returns whether this transport requires an explicit {@code notifications/cancelled}
+     * message to cancel an in-progress request. Transports that use per-request SSE
+     * streams (like Streamable HTTP) cancel by closing the stream and should return
+     * {@code false}. Transports that share a single channel (like stdio) must return
+     * {@code true} so the server knows which request to cancel.
+     * <p>
+     * Note: when using the legacy protocol (2025-11-25), the client always sends
+     * {@code notifications/cancelled} regardless of this value, because the legacy
+     * spec states that disconnection should not be interpreted as cancellation.
+     * <p>
+     * Defaults to {@code true}, which is the safe answer for a transport that shares a
+     * single channel; per-request-stream transports override it.
+     */
+    default boolean requiresCancellationNotification() {
+        return true;
+    }
 }

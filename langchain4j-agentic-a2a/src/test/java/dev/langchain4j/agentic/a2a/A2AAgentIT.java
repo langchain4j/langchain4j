@@ -10,6 +10,7 @@ import dev.langchain4j.agentic.a2a.Agents.CreativeWriter;
 import dev.langchain4j.agentic.a2a.Agents.DeclarativeA2ACreativeWriter;
 import dev.langchain4j.agentic.a2a.Agents.StoryCreatorWithCustomizedWriter;
 import dev.langchain4j.agentic.a2a.Agents.StoryCreatorWithReview;
+import dev.langchain4j.agentic.a2a.Agents.StoryCreatorWithUrlSupplier;
 import dev.langchain4j.agentic.a2a.Agents.StyleEditor;
 import dev.langchain4j.agentic.a2a.Agents.StyleReviewLoop;
 import dev.langchain4j.agentic.a2a.Agents.StyleScorer;
@@ -370,6 +371,23 @@ public class A2AAgentIT {
         System.out.println(story);
 
         AgenticScope agenticScope = result.agenticScope();
+        assertThat(story).isEqualTo(agenticScope.readState("story"));
+        assertThat(agenticScope.readState("score", 0.0)).isGreaterThanOrEqualTo(0.8);
+    }
+
+    @Test
+    @Disabled("Requires A2A server to be running")
+    void declarative_a2a_agent_with_url_supplier() {
+        StoryCreatorWithUrlSupplier storyCreator =
+                AgenticServices.createAgenticSystem(StoryCreatorWithUrlSupplier.class, baseModel());
+
+        ResultWithAgenticScope<String> result = storyCreator.write("dragons and wizards", "comedy");
+        String story = result.result();
+        assertThat(story).isNotBlank();
+
+        AgenticScope agenticScope = result.agenticScope();
+        assertThat(agenticScope.readState("topic")).isEqualTo("dragons and wizards");
+        assertThat(agenticScope.readState("style")).isEqualTo("comedy");
         assertThat(story).isEqualTo(agenticScope.readState("story"));
         assertThat(agenticScope.readState("score", 0.0)).isGreaterThanOrEqualTo(0.8);
     }

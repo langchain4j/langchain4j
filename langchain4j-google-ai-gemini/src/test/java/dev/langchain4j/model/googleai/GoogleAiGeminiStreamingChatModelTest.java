@@ -193,6 +193,29 @@ class GoogleAiGeminiStreamingChatModelTest {
         }
 
         @Test
+        void responseLogprobsInContentRequest() {
+            GoogleAiGeminiStreamingChatModel chatModel = GoogleAiGeminiStreamingChatModel.builder()
+                    .apiKey("ApiKey")
+                    .modelName("ModelName")
+                    .responseLogprobs(false)
+                    .build();
+            GeminiGenerateContentRequest result = chatModel.createGenerateContentRequest(DEFAULT_REQUEST);
+
+            assertThat(result.generationConfig().responseLogprobs()).isFalse();
+        }
+
+        @Test
+        void defaultResponseLogprobsInContentRequest() {
+            GoogleAiGeminiStreamingChatModel chatModel = GoogleAiGeminiStreamingChatModel.builder()
+                    .apiKey("ApiKey")
+                    .modelName("ModelName")
+                    .build();
+            GeminiGenerateContentRequest result = chatModel.createGenerateContentRequest(DEFAULT_REQUEST);
+
+            assertThat(result.generationConfig().responseLogprobs()).isNull();
+        }
+
+        @Test
         void defaultEnableEnhancedCivicAnswersInContentRequest() {
             GoogleAiGeminiStreamingChatModel chatModel = GoogleAiGeminiStreamingChatModel.builder()
                     .apiKey("ApiKey")
@@ -200,7 +223,7 @@ class GoogleAiGeminiStreamingChatModelTest {
                     .build();
             GeminiGenerateContentRequest result = chatModel.createGenerateContentRequest(DEFAULT_REQUEST);
 
-            assertThat(result.generationConfig().enableEnhancedCivicAnswers()).isFalse();
+            assertThat(result.generationConfig().enableEnhancedCivicAnswers()).isNull();
         }
     }
 }

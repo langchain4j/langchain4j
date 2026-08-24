@@ -36,7 +36,15 @@ class PojoSetOutputParserTest {
                 Arguments.of("", Set.of()),
                 Arguments.of(" ", Set.of()),
                 Arguments.of("{\"values\":[]}", Set.of()),
-                Arguments.of(" {\"values\":[{\"name\":\"Klaus\"}]} ", Set.of(new Person("Klaus"))));
+                Arguments.of(" {\"values\":[{\"name\":\"Klaus\"}]} ", Set.of(new Person("Klaus"))),
+
+                // Bare JSON array (a common shape returned by LLMs)
+                Arguments.of("[{\"name\":\"Klaus\"}]", Set.of(new Person("Klaus"))),
+                Arguments.of(
+                        "[{\"name\":\"Klaus\"}, {\"name\":\"Franny\"}]",
+                        Set.of(new Person("Klaus"), new Person("Franny"))),
+                Arguments.of("[]", Set.of()),
+                Arguments.of(" [{\"name\":\"Klaus\"}] ", Set.of(new Person("Klaus"))));
     }
 
     @ParameterizedTest
@@ -59,6 +67,7 @@ class PojoSetOutputParserTest {
                 "{\"values\":[\"banana\"]}",
                 "{\"values\":{\"name\":\"Klaus\"}}",
                 "{\"banana\":[{\"name\":\"Klaus\"}]}",
+                "[\"Klaus\"]",
             })
     void should_fail_to_parse_invalid_input(String text) {
 

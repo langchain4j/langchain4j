@@ -337,6 +337,7 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
         };
 
         StreamingChatResponseHandler spyHandler = spy(handler);
+        LastChatExchange.recordRequest(chatRequest);
         chatModel.chat(chatRequest, spyHandler);
 
         ChatResponse chatResponse = null;
@@ -349,6 +350,7 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+        LastChatExchange.recordResponse(chatResponse);
         String concatenatedPartialResponses = concatenatedPartialResponsesBuilder.toString();
         StreamingMetadata metadata = new StreamingMetadata(
                 concatenatedPartialResponses.isEmpty() ? null : concatenatedPartialResponses,

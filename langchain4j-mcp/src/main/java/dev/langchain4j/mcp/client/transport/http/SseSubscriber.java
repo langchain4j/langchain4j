@@ -21,7 +21,7 @@ class SseSubscriber implements Flow.Subscriber<String> {
     private final Logger logger;
     private final boolean logResponses;
     private final McpOperationHandler operationHandler;
-    private Flow.Subscription subscription;
+    private volatile Flow.Subscription subscription;
     private final boolean subsidiary;
     private final AtomicReference<String> lastEventId;
     private final AtomicLong retryMs;
@@ -35,7 +35,8 @@ class SseSubscriber implements Flow.Subscriber<String> {
             CompletableFuture<JsonNode> future,
             boolean logResponses,
             McpOperationHandler operationHandler,
-            Logger logger) {
+            Logger logger,
+            Runnable onStreamEnd) {
         this.future = future;
         this.logResponses = logResponses;
         this.operationHandler = operationHandler;
@@ -43,7 +44,7 @@ class SseSubscriber implements Flow.Subscriber<String> {
         this.subsidiary = false;
         this.lastEventId = null;
         this.retryMs = null;
-        this.onStreamEnd = null;
+        this.onStreamEnd = onStreamEnd;
         // in a regular subscriber, we don't really need this information that the transport is closed
         this.transportClosed = new AtomicBoolean(false);
     }
@@ -73,11 +74,30 @@ class SseSubscriber implements Flow.Subscriber<String> {
     @Override
     public void onSubscribe(Flow.Subscription subscription) {
         this.subscription = subscription;
+        if (future != null) {
+            future.whenComplete((r, t) -> {
+                if (future.isCancelled()) {
+                    subscription.cancel();
+                }
+            });
+        }
         subscription.request(1);
+    }
+
+    void cancel() {
+        Flow.Subscription s = this.subscription;
+        if (s != null) {
+            s.cancel();
+        }
     }
 
     @Override
     public void onNext(String item) {
+        if (future != null && future.isCancelled()) {
+            // the operation was cancelled (e.g. by unsubscribeFromResources), so events that are
+            // still in flight on this stream must not reach the operation handler anymore
+            return;
+        }
         if (logResponses && !item.trim().isEmpty()) {
             logger.info("SSE event received: " + item);
         }
@@ -101,13 +121,16 @@ class SseSubscriber implements Flow.Subscriber<String> {
 
     @Override
     public void onError(Throwable throwable) {
-        if (subsidiary && !transportClosed.get()) {
+        if (subsidiary) {
             logger.debug("Subsidiary SSE channel error", throwable);
-            if (onStreamEnd != null) {
+            if (onStreamEnd != null && !transportClosed.get()) {
                 onStreamEnd.run();
             }
         } else {
             future.completeExceptionally(throwable);
+            if (onStreamEnd != null) {
+                onStreamEnd.run();
+            }
         }
     }
 
@@ -120,6 +143,9 @@ class SseSubscriber implements Flow.Subscriber<String> {
             }
         } else {
             logger.debug("SSE channel closed");
+            if (onStreamEnd != null) {
+                onStreamEnd.run();
+            }
         }
     }
 }
