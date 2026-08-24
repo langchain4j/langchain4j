@@ -37,9 +37,40 @@ public abstract class AbstractInProcessEmbeddingModel extends DimensionAwareEmbe
 
     protected static OnnxBertBiEncoder loadFromJar(
             String modelFileName, String tokenizerFileName, PoolingMode poolingMode) {
-        InputStream model = Thread.currentThread().getContextClassLoader().getResourceAsStream(modelFileName);
-        InputStream tokenizer = Thread.currentThread().getContextClassLoader().getResourceAsStream(tokenizerFileName);
+        // 获取当前线程提供的兼容类加载器。
+        ClassLoader contextClassLoader = Thread.currentThread().getContextClassLoader();
+        return loadFromJar(contextClassLoader, modelFileName, tokenizerFileName, poolingMode);
+    }
+
+    // 使用具体模型类加载器读取内置资源，并保留线程上下文类加载器作为回退。
+    protected static OnnxBertBiEncoder loadFromJar(
+            Class<?> modelClass, String modelFileName, String tokenizerFileName, PoolingMode poolingMode) {
+        // 获取定义具体模型类的类加载器。
+        ClassLoader modelClassLoader = modelClass.getClassLoader();
+        return loadFromJar(modelClassLoader, modelFileName, tokenizerFileName, poolingMode);
+    }
+
+    // 从指定类加载器加载模型和分词器资源。
+    private static OnnxBertBiEncoder loadFromJar(
+            ClassLoader modelClassLoader, String modelFileName, String tokenizerFileName, PoolingMode poolingMode) {
+        // 加载模型资源。
+        InputStream model = getResourceAsStream(modelClassLoader, modelFileName);
+        // 加载分词器资源。
+        InputStream tokenizer = getResourceAsStream(modelClassLoader, tokenizerFileName);
         return new OnnxBertBiEncoder(model, tokenizer, poolingMode);
+    }
+
+    // 优先使用具体模型类加载器读取资源，并保留线程上下文类加载器作为回退。
+    static InputStream getResourceAsStream(ClassLoader modelClassLoader, String resourceName) {
+        // 使用定义具体模型类的类加载器读取模型模块资源。
+        InputStream resource = modelClassLoader == null ? null : modelClassLoader.getResourceAsStream(resourceName);
+        if (resource != null) {
+            return resource;
+        }
+
+        // 获取容器或框架提供的线程上下文类加载器。
+        ClassLoader contextClassLoader = Thread.currentThread().getContextClassLoader();
+        return contextClassLoader == null ? null : contextClassLoader.getResourceAsStream(resourceName);
     }
 
     static OnnxBertBiEncoder loadFromFileSystem(Path pathToModel, Path pathToTokenizer, PoolingMode poolingMode) {
@@ -80,7 +111,7 @@ public abstract class AbstractInProcessEmbeddingModel extends DimensionAwareEmbe
                 embeddings.add(Embedding.from(embeddingAndTokenCount.embedding));
                 inputTokenCount += embeddingAndTokenCount.tokenCount - 2; // do not count special tokens [CLS] and [SEP]
             } catch (InterruptedException e) {
-                Thread.currentThread().interrupt(); 
+                Thread.currentThread().interrupt();
                 throw new RuntimeException(e);
             } catch (ExecutionException e) {
                 throw new RuntimeException(e);

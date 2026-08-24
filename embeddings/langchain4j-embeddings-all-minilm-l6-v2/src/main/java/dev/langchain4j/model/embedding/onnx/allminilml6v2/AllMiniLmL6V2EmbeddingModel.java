@@ -26,8 +26,11 @@ import java.util.concurrent.Executor;
  */
 public class AllMiniLmL6V2EmbeddingModel extends AbstractInProcessEmbeddingModel {
 
-    private static final OnnxBertBiEncoder MODEL =
-            loadFromJar("all-minilm-l6-v2.onnx", "all-minilm-l6-v2-tokenizer.json", PoolingMode.MEAN);
+    private static final OnnxBertBiEncoder MODEL = loadFromJar(
+            AllMiniLmL6V2EmbeddingModel.class,
+            "all-minilm-l6-v2.onnx",
+            "all-minilm-l6-v2-tokenizer.json",
+            PoolingMode.MEAN);
 
     /**
      * Creates an instance of an {@code AllMiniLmL6V2EmbeddingModel}.

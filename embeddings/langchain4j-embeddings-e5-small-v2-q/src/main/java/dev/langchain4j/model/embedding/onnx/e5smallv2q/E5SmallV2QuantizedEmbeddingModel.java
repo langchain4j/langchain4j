@@ -26,8 +26,11 @@ import java.util.concurrent.Executor;
  */
 public class E5SmallV2QuantizedEmbeddingModel extends AbstractInProcessEmbeddingModel {
 
-    private static final OnnxBertBiEncoder MODEL =
-            loadFromJar("e5-small-v2-q.onnx", "e5-small-v2-q-tokenizer.json", PoolingMode.MEAN);
+    private static final OnnxBertBiEncoder MODEL = loadFromJar(
+            E5SmallV2QuantizedEmbeddingModel.class,
+            "e5-small-v2-q.onnx",
+            "e5-small-v2-q-tokenizer.json",
+            PoolingMode.MEAN);
 
     /**
      * Creates an instance of an {@code E5SmallV2QuantizedEmbeddingModel}.

@@ -26,8 +26,11 @@ import java.util.concurrent.Executor;
  */
 public class BgeSmallEnV15EmbeddingModel extends AbstractInProcessEmbeddingModel {
 
-    private static final OnnxBertBiEncoder MODEL =
-            loadFromJar("bge-small-en-v1.5.onnx", "bge-small-en-v1.5-tokenizer.json", PoolingMode.CLS);
+    private static final OnnxBertBiEncoder MODEL = loadFromJar(
+            BgeSmallEnV15EmbeddingModel.class,
+            "bge-small-en-v1.5.onnx",
+            "bge-small-en-v1.5-tokenizer.json",
+            PoolingMode.CLS);
 
     /**
      * Creates an instance of an {@code BgeSmallEnV15EmbeddingModel}.
