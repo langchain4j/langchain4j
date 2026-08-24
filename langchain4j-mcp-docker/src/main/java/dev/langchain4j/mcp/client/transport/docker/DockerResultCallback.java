@@ -2,8 +2,6 @@ package dev.langchain4j.mcp.client.transport.docker;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.dockerjava.api.async.ResultCallback;
 import com.github.dockerjava.api.model.Frame;
 import com.github.dockerjava.api.model.StreamType;
@@ -16,7 +14,6 @@ import org.slf4j.LoggerFactory;
 
 class DockerResultCallback extends ResultCallback.Adapter<Frame> {
     private static final Logger LOG = LoggerFactory.getLogger(DockerResultCallback.class);
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final Logger DEFAULT_TRAFFIC_LOG = LoggerFactory.getLogger("MCP");
     private static final Pattern NEWLINE_PATTERN = Pattern.compile("([^\\r\\n]+)[\\r\\n]+");
 
@@ -80,12 +77,10 @@ class DockerResultCallback extends ResultCallback.Adapter<Frame> {
             trafficLog.debug("< {}", message);
         }
 
-        try {
-            messageHandler.handle(OBJECT_MAPPER.readTree(message));
-            logAggregator.setLength(0);
-            countDownLatch.countDown();
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
-        }
+        // onMessage throws if the line is not valid JSON, which leaves the latch up so that
+        // awaitResponseAndDetach reports the server as unresponsive rather than detaching cleanly
+        messageHandler.onMessage(message);
+        logAggregator.setLength(0);
+        countDownLatch.countDown();
     }
 }

@@ -8,7 +8,7 @@ import java.util.UUID;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static dev.langchain4j.store.embedding.filter.comparison.NumberComparator.compareAsBigDecimals;
+import static dev.langchain4j.store.embedding.filter.comparison.NumberComparator.isEqualTo;
 import static dev.langchain4j.store.embedding.filter.comparison.TypeChecker.ensureTypesAreCompatible;
 
 public class IsNotEqualTo implements Filter {
@@ -43,7 +43,7 @@ public class IsNotEqualTo implements Filter {
         ensureTypesAreCompatible(actualValue, comparisonValue, key);
 
         if (actualValue instanceof Number) {
-            return compareAsBigDecimals(actualValue, comparisonValue) != 0;
+            return !isEqualTo(actualValue, comparisonValue);
         }
 
         if (comparisonValue instanceof UUID && actualValue instanceof String) {

@@ -8,6 +8,7 @@ import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils
 import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.openaiofficial.setup.OpenAiOfficialSetup.setupSyncClient;
 import static java.util.Arrays.asList;
@@ -70,6 +71,7 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.ContentFilteredException;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.internal.ExceptionMapper;
@@ -316,6 +318,20 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
             }
         }
         return textBuilder.isEmpty() ? null : textBuilder.toString();
+    }
+
+    static String extractRefusal(com.openai.models.responses.Response response) {
+        StringBuilder refusalBuilder = new StringBuilder();
+        for (ResponseOutputItem item : response.output()) {
+            if (item.isMessage()) {
+                item.asMessage().content().forEach(content -> {
+                    if (content.isRefusal()) {
+                        refusalBuilder.append(content.asRefusal().refusal());
+                    }
+                });
+            }
+        }
+        return refusalBuilder.isEmpty() ? null : refusalBuilder.toString();
     }
 
     static AiMessage buildAiMessage(
@@ -1262,6 +1278,12 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
         }
 
         private void extractTokenUsageAndComplete(com.openai.models.responses.Response response) {
+            var refusal = extractRefusal(response);
+            if (isNotNullOrBlank(refusal)) {
+                withLoggingExceptions(() -> handler.onError(new ContentFilteredException(refusal)));
+                return;
+            }
+
             var text = !textBuilder.isEmpty() ? textBuilder.toString() : null;
             var aiMessage = buildAiMessage(
                     text, extractReasoningSummary(response), completedToolCalls, extractEncryptedReasoning(response));
