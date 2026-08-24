@@ -68,6 +68,12 @@
           "code": "java\\.method\\.finalMethodAddedToNonFinalClass",
           "new": "method .* dev\\.langchain4j\\.model\\.watsonx\\.WatsonxChatBase<R extends com\\.ibm\\.watsonx\\.ai\\.chat\\.BaseChatRequest>::.*",
           "justification": "executeChat, executeChatStreaming and applyCommonParameters are inherited from the @Internal WatsonxChatBase and are not part of the public API."
+        },
+        {
+          "code": "java.method.returnTypeChangedCovariantly",
+          "old": "method dev.langchain4j.model.chat.response.ChatResponseMetadata dev.langchain4j.model.watsonx.WatsonxChatResponseMetadata.Builder::build()",
+          "new": "method dev.langchain4j.model.watsonx.WatsonxChatResponseMetadata dev.langchain4j.model.watsonx.WatsonxChatResponseMetadata.Builder::build()",
+          "justification": "Covariant override: javac emits a bridge method retaining the original ()Ldev/langchain4j/model/chat/response/ChatResponseMetadata; descriptor (ACC_BRIDGE, ACC_SYNTHETIC), so callers compiled against the previous signature still link and run. Source-compatible as well, and consistent with the other nine ChatResponseMetadata subclasses."
         }
       ]
     }
