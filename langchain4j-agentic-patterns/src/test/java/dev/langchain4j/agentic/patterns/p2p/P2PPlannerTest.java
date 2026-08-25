@@ -5,10 +5,10 @@ import static org.assertj.core.api.Assertions.fail;
 
 import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.AgenticServices;
+import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.agentic.declarative.TypedKey;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
-import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.service.V;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
