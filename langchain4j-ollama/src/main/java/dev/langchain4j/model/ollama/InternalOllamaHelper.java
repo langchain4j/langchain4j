@@ -191,6 +191,7 @@ class InternalOllamaHelper {
                 .tools(toOllamaTools(chatRequest.toolSpecifications()))
                 .keepAlive(requestParameters.keepAlive())
                 .think(requestParameters.think())
+                .truncate(requestParameters.truncate())
                 .build();
     }
 

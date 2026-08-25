@@ -6,6 +6,7 @@ import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.randomUUID;
 import static dev.langchain4j.internal.Utils.toStringValueMap;
+import static dev.langchain4j.internal.ValidationUtils.ensureConsistentSizes;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
@@ -102,15 +103,12 @@ import org.hibernate.relational.SchemaManager;
 import org.hibernate.tool.schema.Action;
 import org.hibernate.tool.schema.SourceType;
 import org.hibernate.type.descriptor.java.JavaType;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Hibernate ORM EmbeddingStore Implementation
  */
 // Needed for inherited bean injection validation
 public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
-    private static final Logger log = LoggerFactory.getLogger(HibernateEmbeddingStore.class);
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final boolean IS_HIBERNATE_ORM_7_1;
 
@@ -400,7 +398,9 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
 
     @Override
     public void removeAll(Collection<String> ids) {
-        ensureNotEmpty(ids, "ids");
+        if (isNullOrEmpty(ids)) {
+            return;
+        }
         sessionFactory.inTransaction(session -> {
             session.createMutationQuery(deleteByIds)
                     .setParameter(
@@ -434,9 +434,9 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
             try {
                 sessionFactory
                         .getSchemaManager()
-                        .truncateTable(entityPersister.getIdentifierTableMapping().getTableName());
-            }
-            catch (UnsupportedOperationException ex) {
+                        .truncateTable(
+                                entityPersister.getIdentifierTableMapping().getTableName());
+            } catch (UnsupportedOperationException ex) {
                 // Workaround HHH-20500 since we can't reliably detect the Hibernate ORM version
                 sessionFactory.inStatelessTransaction(session -> {
                     session.createMutationQuery("delete from " + entityPersister.getEntityName())
@@ -1056,7 +1056,6 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
 
     public void addAllEntities(List<?> entities) {
         if (isNullOrEmpty(entities)) {
-            log.info("Empty entities - no ops");
             return;
         }
         sessionFactory.inStatelessTransaction(session -> session.insertMultiple(entities));
@@ -1163,7 +1162,6 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
         // todo: make this configurable or always work with entities directly?
         if (!idGenerator.allowAssignedIdentifiers() || idGenerator.generatedOnExecution()) {
             if (isNullOrEmpty(embeddings)) {
-                log.info("Empty embeddings - no ops");
                 return Collections.emptyList();
             }
             ensureTrue(
@@ -1205,6 +1203,10 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
 
     @Override
     public void addAll(List<String> idStrings, List<Embedding> embeddings, List<TextSegment> embedded) {
+        ensureConsistentSizes(idStrings, embeddings, embedded);
+        if (isNullOrEmpty(embeddings)) {
+            return;
+        }
         final ArrayList<Object> ids = new ArrayList<>(idStrings.size());
         for (String id : idStrings) {
             ids.add(idType.fromString(id));
@@ -1261,7 +1263,7 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
                 }
                 values[unmappedMetadataAttributeMapping.getStateArrayPosition()] = null;
                 for (Map.Entry<String, AttributeMapping> entry : metadataAttributeMappings.entrySet()) {
-                    if (entry.getValue().getDeclaringType() != entityPersister) {
+                    if (entry.getValue().getDeclaringType() == entityPersister) {
                         values[entry.getValue().getStateArrayPosition()] = null;
                     }
                 }
@@ -1276,14 +1278,10 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
 
     private void addAll(
             List<Object> ids, List<Embedding> embeddings, List<TextSegment> embedded, StatelessSession session) {
-        if (isNullOrEmpty(ids) || isNullOrEmpty(embeddings)) {
-            log.info("Empty embeddings - no ops");
+        ensureConsistentSizes(ids, embeddings, embedded);
+        if (isNullOrEmpty(embeddings)) {
             return;
         }
-        ensureTrue(ids.size() == embeddings.size(), "ids size is not equal to embeddings size");
-        ensureTrue(
-                embedded == null || embeddings.size() == embedded.size(),
-                "embeddings size is not equal to embedded size");
         if (!idGenerator.allowAssignedIdentifiers()) {
             throw new IllegalStateException("Entity does not allow assigning identifiers");
         }

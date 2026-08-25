@@ -2,7 +2,6 @@ package dev.langchain4j.http.client.apache;
 
 import static dev.langchain4j.http.client.sse.ServerSentEventListenerUtils.ignoringExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static java.util.stream.Collectors.joining;
 
 import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.exception.TimeoutException;
@@ -11,12 +10,11 @@ import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.http.client.sse.ServerSentEventParser;
-import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.net.SocketTimeoutException;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -186,9 +184,8 @@ public class ApacheHttpClient implements HttpClient {
             if (entity == null) {
                 return "";
             }
-            try (InputStream inputStream = entity.getContent();
-                    BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
-                return reader.lines().collect(joining(System.lineSeparator()));
+            try (InputStream inputStream = entity.getContent()) {
+                return new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
             }
         } catch (Exception e) {
             return "Cannot read error response body: " + e.getMessage();

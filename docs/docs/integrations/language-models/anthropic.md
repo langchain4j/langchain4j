@@ -13,7 +13,7 @@ sidebar_position: 2
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-anthropic</artifactId>
-    <version>1.18.1</version>
+    <version>1.19.0</version>
 </dependency>
 ```
 
@@ -202,8 +202,11 @@ Anthropic documentation on tools can be found [here](https://docs.anthropic.com/
 ## Tool Choice
 
 Anthropic's [tool choice](https://docs.anthropic.com/en/docs/agents-and-tools/tool-use/implement-tool-use#forcing-tool-use)
-feature is available for both streaming and non-streaming interactions
-by setting `toolChoice(ToolChoice)` or `toolChoiceName(String)`.
+feature is available for both streaming and non-streaming interactions:
+
+- `toolChoice(ToolChoice.REQUIRED)` forces the model to call one of the available tools instead of answering with text.
+- `toolChoiceName("get_weather")` forces the model to call one specific tool. It can be used on its own,
+  and when `toolChoice(ToolChoice)` is set as well, the named tool takes precedence over it.
 
 ## Parallel Tool Use
 
@@ -822,7 +825,7 @@ Import Spring Boot starter for Anthropic:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-anthropic-spring-boot-starter</artifactId>
-    <version>1.18.1-beta28</version>
+    <version>1.19.0-beta29</version>
 </dependency>
 ```
 
