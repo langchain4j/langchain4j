@@ -1180,8 +1180,8 @@ public static class ExpertResponse implements TypedKey<String> { }
 
 public static class Category implements TypedKey<RequestCategory> {
     @Override
-    public Category defaultValue() {
-        return Category.UNKNOWN;
+    public RequestCategory defaultValue() {
+        return RequestCategory.UNKNOWN;
     }
 }
 ```
@@ -1238,9 +1238,9 @@ TechnicalExpert technicalExpert = AgenticServices.agentBuilder(TechnicalExpert.c
         .build();
 
 UntypedAgent expertsAgent = AgenticServices.conditionalBuilder()
-        .subAgents(scope -> scope.readState(Category.class) == Category.MEDICAL, medicalExpert)
-        .subAgents(scope -> scope.readState(Category.class) == Category.LEGAL, legalExpert)
-        .subAgents(scope -> scope.readState(Category.class) == Category.TECHNICAL, technicalExpert)
+        .subAgents(scope -> scope.readState(Category.class) == RequestCategory.MEDICAL, medicalExpert)
+        .subAgents(scope -> scope.readState(Category.class) == RequestCategory.LEGAL, legalExpert)
+        .subAgents(scope -> scope.readState(Category.class) == RequestCategory.TECHNICAL, technicalExpert)
         .build();
 
 ExpertChatbot expertChatbot = AgenticServices.sequenceBuilder(ExpertChatbot.class)

@@ -151,6 +151,8 @@ class OpenAiResponsesClient {
     private static final String FIELD_SCHEMA = "schema";
     private static final String FIELD_ADDITIONAL_PROPERTIES = "additionalProperties";
     private static final String FIELD_STATUS = "status";
+    private static final String FIELD_INCOMPLETE_DETAILS = "incomplete_details";
+    private static final String FIELD_REASON = "reason";
     private static final String FIELD_CREATED_AT = "created_at";
     private static final String FIELD_COMPLETED_AT = "completed_at";
     private static final String DEFAULT_IMAGE_MIME_TYPE = "image/jpeg";
@@ -567,16 +569,21 @@ class OpenAiResponsesClient {
         return usageBuilder.build();
     }
 
-    private static FinishReason finishReasonFromStatus(String status, boolean hasToolCalls) {
+    private static FinishReason finishReasonFromStatus(String status, String incompleteReason, boolean hasToolCalls) {
         if (status == null || status.isBlank()) {
             return null;
         }
         return switch (status) {
             case "completed" -> hasToolCalls ? FinishReason.TOOL_EXECUTION : FinishReason.STOP;
-            case "incomplete" -> FinishReason.LENGTH;
+            case "incomplete" ->
+                "content_filter".equals(incompleteReason) ? FinishReason.CONTENT_FILTER : FinishReason.LENGTH;
             case "failed" -> FinishReason.OTHER;
             default -> FinishReason.OTHER;
         };
+    }
+
+    private static String incompleteReasonFrom(JsonNode responseNode) {
+        return responseNode.path(FIELD_INCOMPLETE_DETAILS).path(FIELD_REASON).asText(null);
     }
 
     private ChatResponse parseChatResponse(SuccessfulHttpResponse rawHttpResponse) throws Exception {
@@ -604,8 +611,10 @@ class OpenAiResponsesClient {
             metadataBuilder.tokenUsage(tokenUsage);
         }
 
-        FinishReason finishReason =
-                finishReasonFromStatus(responseNode.path(FIELD_STATUS).asText(null), !toolExecutionRequests.isEmpty());
+        FinishReason finishReason = finishReasonFromStatus(
+                responseNode.path(FIELD_STATUS).asText(null),
+                incompleteReasonFrom(responseNode),
+                !toolExecutionRequests.isEmpty());
         if (finishReason != null) {
             metadataBuilder.finishReason(finishReason);
         }
@@ -1092,8 +1101,10 @@ class OpenAiResponsesClient {
                 metadataBuilder.tokenUsage(tokenUsage);
             }
 
-            FinishReason finishReason =
-                    finishReasonFromStatus(responseNode.path(FIELD_STATUS).asText(null), !completedToolCalls.isEmpty());
+            FinishReason finishReason = finishReasonFromStatus(
+                    responseNode.path(FIELD_STATUS).asText(null),
+                    incompleteReasonFrom(responseNode),
+                    !completedToolCalls.isEmpty());
             if (finishReason != null) {
                 metadataBuilder.finishReason(finishReason);
             }

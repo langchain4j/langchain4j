@@ -61,6 +61,8 @@ public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingSt
 
     protected AzureAiSearchFilterMapper filterMapper;
 
+    protected List<String> metadataFieldNames = List.of();
+
     protected void initialize(
             String endpoint,
             AzureKeyCredential keyCredential,
@@ -335,7 +337,7 @@ public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingSt
             String embeddedContent = (String) searchDocument.get(DEFAULT_FIELD_CONTENT);
             EmbeddingMatch<TextSegment> embeddingMatch;
             if (isNotNullOrBlank(embeddedContent)) {
-                Metadata langChainMetadata = metadataFrom(searchDocument.get(DEFAULT_FIELD_METADATA));
+                Metadata langChainMetadata = metadataFrom(searchDocument, metadataFieldNames);
                 TextSegment embedded = TextSegment.textSegment(embeddedContent, langChainMetadata);
                 embeddingMatch = new EmbeddingMatch<>(score, embeddingId, embedding, embedded);
             } else {
@@ -344,6 +346,21 @@ public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingSt
             result.add(embeddingMatch);
         }
         return result;
+    }
+
+    static Metadata metadataFrom(Map<String, Object> searchDocument, Collection<String> metadataFieldNames) {
+        Map<String, Object> metadata = new HashMap<>(
+                metadataFrom(searchDocument.get(DEFAULT_FIELD_METADATA)).toMap());
+        for (String fieldName : metadataFieldNames) {
+            if (isNullOrBlank(fieldName)) {
+                continue;
+            }
+            Object value = searchDocument.get(fieldName);
+            if (isSupportedMetadataValue(value)) {
+                metadata.put(fieldName, value);
+            }
+        }
+        return Metadata.from(metadata);
     }
 
     static Metadata metadataFrom(Object rawMetadata) {
@@ -368,6 +385,15 @@ public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingSt
             }
         }
         return Metadata.from(attributesMap);
+    }
+
+    private static boolean isSupportedMetadataValue(Object value) {
+        return value instanceof String
+                || value instanceof Integer
+                || value instanceof Long
+                || value instanceof Float
+                || value instanceof Double
+                || value instanceof UUID;
     }
 
     private void addInternal(String id, Embedding embedding, TextSegment embedded) {

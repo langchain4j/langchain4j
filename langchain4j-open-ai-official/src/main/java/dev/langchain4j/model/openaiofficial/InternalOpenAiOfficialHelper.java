@@ -96,7 +96,7 @@ class InternalOpenAiOfficialHelper {
 
             if (!aiMessage.hasToolExecutionRequests()) {
                 return ChatCompletionMessageParam.ofAssistant(ChatCompletionAssistantMessageParam.builder()
-                        .content(aiMessage.text())
+                        .content(aiMessage.text() != null ? aiMessage.text() : "")
                         .build());
             }
 

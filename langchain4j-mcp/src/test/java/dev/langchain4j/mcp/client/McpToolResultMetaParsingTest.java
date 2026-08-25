@@ -1,9 +1,9 @@
 package dev.langchain4j.mcp.client;
 
-import static dev.langchain4j.mcp.client.DefaultMcpClient.OBJECT_MAPPER;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import dev.langchain4j.mcp.client.transport.McpJson;
 import dev.langchain4j.service.tool.ToolExecutionResult;
 import java.util.List;
 import java.util.Map;
@@ -11,11 +11,13 @@ import org.junit.jupiter.api.Test;
 
 class McpToolResultMetaParsingTest {
 
-    private final McpToolResultExtractor extractor = new DefaultMcpToolResultExtractor();
+    private final McpToolResultConverter extractor = new DefaultMcpToolResultConverter();
+    private final McpToolResultConverter legacyExtractor =
+            new LegacyToolResultConverterAdapter(new DefaultMcpToolResultExtractor());
 
     @Test
     void should_map_meta_of_text_result_into_attributes() throws Exception {
-        JsonNode response = OBJECT_MAPPER.readTree(
+        JsonNode response = McpJson.parse(
                 // language=json
                 """
                         {
@@ -50,7 +52,7 @@ class McpToolResultMetaParsingTest {
 
     @Test
     void should_map_meta_of_structured_content_result_into_attributes() throws Exception {
-        JsonNode response = OBJECT_MAPPER.readTree(
+        JsonNode response = McpJson.parse(
                 // language=json
                 """
                         {
@@ -75,7 +77,7 @@ class McpToolResultMetaParsingTest {
 
     @Test
     void should_return_no_attributes_when_there_is_no_meta() throws Exception {
-        JsonNode response = OBJECT_MAPPER.readTree(
+        JsonNode response = McpJson.parse(
                 // language=json
                 """
                         {
@@ -99,7 +101,7 @@ class McpToolResultMetaParsingTest {
 
     @Test
     void should_keep_meta_of_error_result_when_application_level_errors_are_ignored() throws Exception {
-        JsonNode response = OBJECT_MAPPER.readTree(
+        JsonNode response = McpJson.parse(
                 // language=json
                 """
                         {
@@ -129,7 +131,7 @@ class McpToolResultMetaParsingTest {
 
     @Test
     void should_give_precedence_to_attributes_set_by_the_extractor() throws Exception {
-        JsonNode response = OBJECT_MAPPER.readTree(
+        JsonNode response = McpJson.parse(
                 // language=json
                 """
                         {
@@ -156,7 +158,7 @@ class McpToolResultMetaParsingTest {
                 .attributes(Map.of("source", "extractor"))
                 .build();
 
-        ToolExecutionResult result = ToolExecutionHelper.extractResult(response, false, customExtractor);
+        ToolExecutionResult result = ToolExecutionHelper.extractResult(response, false, new LegacyToolResultConverterAdapter(customExtractor));
 
         assertThat(result.resultText()).isEqualTo("custom");
         assertThat(result.attributes())
@@ -166,7 +168,7 @@ class McpToolResultMetaParsingTest {
 
     @Test
     void should_skip_meta_keys_reserved_by_mcp() throws Exception {
-        JsonNode response = OBJECT_MAPPER.readTree(
+        JsonNode response = McpJson.parse(
                 // language=json
                 """
                         {
@@ -197,5 +199,26 @@ class McpToolResultMetaParsingTest {
         ToolExecutionResult result = ToolExecutionHelper.extractResult(response, false, extractor);
 
         assertThat(result.attributes()).containsOnlyKeys("com.example.mcp/traceId", "traceId");
+    }
+
+    @Test
+    void the_default_and_the_legacy_extractor_should_agree_on_a_text_content_result() {
+        JsonNode response = McpJson.parse(
+                """
+                {"jsonrpc":"2.0","id":1,"result":{"content":[{"type":"text","text":"hello"}]}}""");
+
+        assertThat(ToolExecutionHelper.extractResult(response, false, extractor).resultText())
+                .isEqualTo(ToolExecutionHelper.extractResult(response, false, legacyExtractor)
+                        .resultText())
+                .isEqualTo("hello");
+    }
+
+    @Test
+    void a_text_item_without_text_should_not_yield_the_literal_string_null() {
+        JsonNode response = McpJson.parse("""
+                {"jsonrpc":"2.0","id":1,"result":{"content":[{"type":"text"}]}}""");
+
+        assertThat(ToolExecutionHelper.extractResult(response, false, extractor).resultText())
+                .isEmpty();
     }
 }
