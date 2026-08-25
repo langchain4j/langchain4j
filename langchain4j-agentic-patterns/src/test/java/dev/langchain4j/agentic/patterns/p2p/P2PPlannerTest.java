@@ -9,16 +9,64 @@ import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.agentic.declarative.TypedKey;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
+import dev.langchain4j.service.V;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class P2PPlannerTest {
 
-    // ── Typed keys ──────────────────────────────────────────────────────
+    // Two non-AI agents consuming each other's output: exactly one of them can be activated at a time,
+    // and neither ever runs out of work, so the invocations cap is the only termination condition.
+
+    private final AtomicInteger invocations = new AtomicInteger();
+
+    private final Object pingAgent = new Object() {
+        @Agent(outputKey = "ping")
+        public String ping(@V("pong") String pong) {
+            invocations.incrementAndGet();
+            return "ping-" + pong;
+        }
+    };
+
+    private final Object pongAgent = new Object() {
+        @Agent(outputKey = "pong")
+        public String pong(@V("ping") String ping) {
+            invocations.incrementAndGet();
+            return "pong-" + ping;
+        }
+    };
+
+    @ParameterizedTest
+    @ValueSource(ints = {1, 3, 6, 10})
+    void shouldNotInvokeMoreAgentsThanMaxAgentsInvocations(int maxAgentsInvocations) {
+        UntypedAgent system = AgenticServices.plannerBuilder()
+                .subAgents(pingAgent, pongAgent)
+                .planner(() -> new P2PPlanner(maxAgentsInvocations))
+                .build();
+
+        invokeWithTimeout(system, Map.of("pong", "seed"));
+
+        assertThat(invocations.get()).isEqualTo(maxAgentsInvocations);
+    }
+
+    @Test
+    void shouldStopBeforeMaxAgentsInvocationsWhenExitConditionIsMet() {
+        UntypedAgent system = AgenticServices.plannerBuilder()
+                .subAgents(pingAgent, pongAgent)
+                .planner(() -> new P2PPlanner(10, (scope, invocationCounter) -> invocationCounter >= 2))
+                .build();
+
+        invokeWithTimeout(system, Map.of("pong", "seed"));
+
+        assertThat(invocations.get()).isEqualTo(2);
+    }
 
     public static class Key1 implements TypedKey<String> {
         @Override
@@ -26,10 +74,6 @@ class P2PPlannerTest {
             return "key1";
         }
     }
-
-    // ── Agent wrapper interfaces ────────────────────────────────────────
-    // The @K parameter on the consumer agents tells P2PPlanner to wait until
-    // key1 is present in scope before activating them.
 
     public interface ProducerAgent {
         @Agent
@@ -47,7 +91,7 @@ class P2PPlannerTest {
     }
 
     @Test
-    void should_terminate_when_no_agent_can_be_activated_anymore() throws Exception {
+    void should_terminate_when_no_agent_can_be_activated_anymore() {
         Object producer = producerAgent();
 
         Object consumer = AgenticServices.conditionalBuilder(Consumer2Agent.class)
@@ -66,14 +110,14 @@ class P2PPlannerTest {
                 .name("p2p-quiescence-test")
                 .build();
 
-        ResultWithAgenticScope<String> result = invokeWithTimeout(p2p);
+        ResultWithAgenticScope<String> result = invokeWithTimeout(p2p, Map.of());
 
         assertThat(result.agenticScope().readState("key1", "")).isEqualTo("hello");
         assertThat(result.agenticScope().readState("result2", "")).isEqualTo("analyzed-hello");
     }
 
     @Test
-    void should_not_terminate_while_an_agent_is_still_executing() throws Exception {
+    void should_not_terminate_while_an_agent_is_still_executing() {
         // consumer3 completes first and only then releases consumer2, so the planner is asked for the next
         // action while consumer2 is still running. It must not consider the scope stable at that point.
         CountDownLatch consumer3Completed = new CountDownLatch(1);
@@ -109,7 +153,7 @@ class P2PPlannerTest {
                 .name("p2p-parallel-test")
                 .build();
 
-        ResultWithAgenticScope<String> result = invokeWithTimeout(p2p);
+        ResultWithAgenticScope<String> result = invokeWithTimeout(p2p, Map.of());
 
         assertThat(result.agenticScope().readState("result2", "")).isEqualTo("analyzed-hello");
         assertThat(result.agenticScope().readState("result3", "")).isEqualTo("poem-about-hello");
@@ -126,15 +170,17 @@ class P2PPlannerTest {
     }
 
     // Run on a separate thread so that a planner that never terminates fails the test instead of hanging the build.
-    private static ResultWithAgenticScope<String> invokeWithTimeout(UntypedAgent p2p) throws Exception {
+    private static ResultWithAgenticScope<String> invokeWithTimeout(UntypedAgent p2p, Map<String, Object> args) {
         CompletableFuture<ResultWithAgenticScope<String>> future =
-                CompletableFuture.supplyAsync(() -> p2p.invokeWithAgenticScope(Map.of()));
+                CompletableFuture.supplyAsync(() -> p2p.invokeWithAgenticScope(args));
         try {
             return future.get(10, TimeUnit.SECONDS);
         } catch (TimeoutException e) {
             future.cancel(true);
-            fail("P2P planner did not terminate when the agentic scope reached a stable state");
-            throw e;
+            fail("P2P planner did not terminate");
+            throw new RuntimeException(e);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 }
