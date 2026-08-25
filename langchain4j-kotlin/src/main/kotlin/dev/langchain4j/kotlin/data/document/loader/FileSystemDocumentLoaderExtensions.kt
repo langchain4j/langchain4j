@@ -6,6 +6,7 @@ import dev.langchain4j.data.document.loader.FileSystemDocumentLoader
 import dev.langchain4j.kotlin.data.document.parseAsync
 import dev.langchain4j.data.document.source.FileSystemSource
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -67,12 +68,20 @@ public suspend fun loadDocuments(
         matchedFiles
             .map { file ->
                 async(context) {
-                    documentParser.parseAsync(
-                        FileSystemSource(file),
-                        context
-                    )
+                    try {
+                        documentParser.parseAsync(
+                            FileSystemSource(file),
+                            context
+                        )
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        logger.warn("Failed to load document: {}", file, e)
+                        null
+                    }
                 }
             }.awaitAll()
+            .filterNotNull()
             .map { document ->
                 val metadata = document.metadata()
                 logger.info(

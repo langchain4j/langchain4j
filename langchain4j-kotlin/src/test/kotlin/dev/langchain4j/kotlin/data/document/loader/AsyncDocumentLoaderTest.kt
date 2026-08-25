@@ -18,6 +18,7 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import java.nio.file.Path
 import java.nio.file.Paths
+import java.nio.file.Files
 
 internal class AsyncDocumentLoaderTest {
     private lateinit var documentSource: DocumentSource
@@ -73,5 +74,48 @@ internal class AsyncDocumentLoaderTest {
                         "test-file-3.banana",
                         "test-file-4.banana"
                     )
+        }
+
+    @Test
+    fun `Should skip documents that fail to parse`() =
+        runTest {
+            val directory = Files.createTempDirectory("async-document-loader")
+            try {
+                Files.writeString(directory.resolve("good.txt"), "This document is valid.")
+                Files.writeString(directory.resolve("blank.txt"), "  \n")
+
+                val documents =
+                    loadDocuments(
+                        recursive = false,
+                        documentParser = parser,
+                        directoryPaths = listOf(directory)
+                    )
+
+                documents.map { it.metadata().getString("file_name") }
+                    .shouldContainExactly(listOf("good.txt"))
+            } finally {
+                directory.toFile().deleteRecursively()
+            }
+        }
+
+    @Test
+    fun `Should return an empty list when every document fails to parse`() =
+        runTest {
+            val directory = Files.createTempDirectory("async-document-loader")
+            try {
+                Files.writeString(directory.resolve("blank-1.txt"), "\n")
+                Files.writeString(directory.resolve("blank-2.txt"), "  \n")
+
+                val documents =
+                    loadDocuments(
+                        recursive = false,
+                        documentParser = parser,
+                        directoryPaths = listOf(directory)
+                    )
+
+                documents.shouldHaveSize(0)
+            } finally {
+                directory.toFile().deleteRecursively()
+            }
         }
 }
