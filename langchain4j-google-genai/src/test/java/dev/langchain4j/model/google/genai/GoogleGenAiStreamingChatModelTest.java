@@ -24,10 +24,12 @@ import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.FinishReason;
 import java.lang.reflect.Field;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
@@ -133,6 +135,9 @@ class GoogleGenAiStreamingChatModelTest {
                 .presencePenalty(0.3)
                 .maxOutputTokens(1024)
                 .thinkingBudget(500)
+                .includeThoughts(true)
+                .returnThinking(true)
+                .sendThinking(true)
                 .seed(42)
                 .stopSequences(List.of("STOP"))
                 .safetySettings(List.of(SafetySetting.builder().build()))
@@ -176,6 +181,9 @@ class GoogleGenAiStreamingChatModelTest {
         assertThat(builder.presencePenalty(0.3)).isSameAs(builder);
         assertThat(builder.maxOutputTokens(100)).isSameAs(builder);
         assertThat(builder.thinkingBudget(500)).isSameAs(builder);
+        assertThat(builder.includeThoughts(true)).isSameAs(builder);
+        assertThat(builder.returnThinking(true)).isSameAs(builder);
+        assertThat(builder.sendThinking(true)).isSameAs(builder);
         assertThat(builder.seed(42)).isSameAs(builder);
         assertThat(builder.stopSequences(List.of("STOP"))).isSameAs(builder);
         assertThat(builder.timeout(Duration.ofSeconds(10))).isSameAs(builder);
@@ -389,5 +397,217 @@ class GoogleGenAiStreamingChatModelTest {
 
         assertThat(configCaptor.getValue().cachedContent())
                 .contains("projects/123/locations/us-central1/cachedContents/per-request");
+    }
+
+    private static Client clientStreamingThoughtAndAnswer() throws Exception {
+        Client client = mock(Client.class);
+        Models models = mock(Models.class);
+        Field modelsField = Client.class.getDeclaredField("models");
+        modelsField.setAccessible(true);
+        modelsField.set(client, models);
+
+        @SuppressWarnings("unchecked")
+        ResponseStream<GenerateContentResponse> stream = mock(ResponseStream.class);
+        when(models.generateContentStream(any(String.class), any(List.class), any()))
+                .thenReturn(stream);
+
+        Content content = Content.builder()
+                .role("model")
+                .parts(List.of(
+                        Part.builder().text("Thinking it over.").thought(true).build(),
+                        Part.builder().text("42").build()))
+                .build();
+        GenerateContentResponse chunk = GenerateContentResponse.builder()
+                .candidates(List.of(Candidate.builder().content(content).build()))
+                .build();
+        when(stream.iterator()).thenReturn(List.of(chunk).iterator());
+        return client;
+    }
+
+    private static ChatResponse stream(
+            GoogleGenAiStreamingChatModel model, List<String> partialResponses, List<String> partialThinking)
+            throws Exception {
+        CompletableFuture<ChatResponse> future = new CompletableFuture<>();
+        model.chat(List.of(UserMessage.from("What is 6 times 7?")), new StreamingChatResponseHandler() {
+            @Override
+            public void onPartialResponse(String partialResponse) {
+                partialResponses.add(partialResponse);
+            }
+
+            @Override
+            public void onPartialThinking(PartialThinking thinking) {
+                partialThinking.add(thinking.text());
+            }
+
+            @Override
+            public void onCompleteResponse(ChatResponse completeResponse) {
+                future.complete(completeResponse);
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                future.completeExceptionally(error);
+            }
+        });
+        return future.get(5, TimeUnit.SECONDS);
+    }
+
+    @Test
+    void should_report_thought_summary_through_on_partial_thinking_when_return_thinking_is_true() throws Exception {
+        GoogleGenAiStreamingChatModel model = GoogleGenAiStreamingChatModel.builder()
+                .client(clientStreamingThoughtAndAnswer())
+                .modelName("gemini-3.5-flash")
+                .returnThinking(true)
+                .build();
+
+        List<String> partialResponses = new ArrayList<>();
+        List<String> partialThinking = new ArrayList<>();
+        ChatResponse response = stream(model, partialResponses, partialThinking);
+
+        assertThat(partialThinking).containsExactly("Thinking it over.");
+        assertThat(partialResponses).containsExactly("42");
+        assertThat(response.aiMessage().thinking()).isEqualTo("Thinking it over.");
+        assertThat(response.aiMessage().text()).isEqualTo("42");
+    }
+
+    @Test
+    void should_drop_thought_summary_when_return_thinking_is_not_set() throws Exception {
+        GoogleGenAiStreamingChatModel model = GoogleGenAiStreamingChatModel.builder()
+                .client(clientStreamingThoughtAndAnswer())
+                .modelName("gemini-3.5-flash")
+                .build();
+
+        List<String> partialResponses = new ArrayList<>();
+        List<String> partialThinking = new ArrayList<>();
+        ChatResponse response = stream(model, partialResponses, partialThinking);
+
+        assertThat(partialThinking).isEmpty();
+        assertThat(partialResponses).containsExactly("42");
+        assertThat(response.aiMessage().thinking()).isNull();
+        assertThat(response.aiMessage().text()).isEqualTo("42");
+    }
+
+    @Test
+    void should_drop_thought_summary_when_return_thinking_is_false() throws Exception {
+        GoogleGenAiStreamingChatModel model = GoogleGenAiStreamingChatModel.builder()
+                .client(clientStreamingThoughtAndAnswer())
+                .modelName("gemini-3.5-flash")
+                .returnThinking(false)
+                .build();
+
+        List<String> partialResponses = new ArrayList<>();
+        List<String> partialThinking = new ArrayList<>();
+        ChatResponse response = stream(model, partialResponses, partialThinking);
+
+        assertThat(partialThinking).isEmpty();
+        assertThat(partialResponses).containsExactly("42");
+        assertThat(response.aiMessage().thinking()).isNull();
+        assertThat(response.aiMessage().text()).isEqualTo("42");
+    }
+
+    @Test
+    void should_accumulate_thought_summaries_across_streaming_chunks() throws Exception {
+        Client client = mock(Client.class);
+        Models models = mock(Models.class);
+        Field modelsField = Client.class.getDeclaredField("models");
+        modelsField.setAccessible(true);
+        modelsField.set(client, models);
+
+        @SuppressWarnings("unchecked")
+        ResponseStream<GenerateContentResponse> stream = mock(ResponseStream.class);
+        when(models.generateContentStream(any(String.class), any(List.class), any()))
+                .thenReturn(stream);
+
+        GenerateContentResponse firstChunk = GenerateContentResponse.builder()
+                .candidates(List.of(Candidate.builder()
+                        .content(Content.builder()
+                                .role("model")
+                                .parts(List.of(Part.builder()
+                                        .text("Six ")
+                                        .thought(true)
+                                        .build()))
+                                .build())
+                        .build()))
+                .build();
+        GenerateContentResponse secondChunk = GenerateContentResponse.builder()
+                .candidates(List.of(Candidate.builder()
+                        .content(Content.builder()
+                                .role("model")
+                                .parts(List.of(
+                                        Part.builder()
+                                                .text("times seven.")
+                                                .thought(true)
+                                                .build(),
+                                        Part.builder().text("42").build()))
+                                .build())
+                        .build()))
+                .build();
+        when(stream.iterator()).thenReturn(List.of(firstChunk, secondChunk).iterator());
+
+        GoogleGenAiStreamingChatModel model = GoogleGenAiStreamingChatModel.builder()
+                .client(client)
+                .modelName("gemini-3.5-flash")
+                .returnThinking(true)
+                .build();
+
+        List<String> partialResponses = new ArrayList<>();
+        List<String> partialThinking = new ArrayList<>();
+        ChatResponse response = stream(model, partialResponses, partialThinking);
+
+        assertThat(partialThinking).containsExactly("Six ", "times seven.");
+        assertThat(partialResponses).containsExactly("42");
+        assertThat(response.aiMessage().thinking()).isEqualTo("Six times seven.");
+        assertThat(response.aiMessage().text()).isEqualTo("42");
+    }
+
+    @Test
+    void should_keep_both_thought_summary_and_tool_call_signature_when_streaming() throws Exception {
+        Client client = mock(Client.class);
+        Models models = mock(Models.class);
+        Field modelsField = Client.class.getDeclaredField("models");
+        modelsField.setAccessible(true);
+        modelsField.set(client, models);
+
+        @SuppressWarnings("unchecked")
+        ResponseStream<GenerateContentResponse> stream = mock(ResponseStream.class);
+        when(models.generateContentStream(any(String.class), any(List.class), any()))
+                .thenReturn(stream);
+
+        FunctionCall functionCall = FunctionCall.builder()
+                .name("get_weather")
+                .id("call_1")
+                .args(Map.of("city", "Paris"))
+                .build();
+        GenerateContentResponse chunk = GenerateContentResponse.builder()
+                .candidates(List.of(Candidate.builder()
+                        .content(Content.builder()
+                                .role("model")
+                                .parts(List.of(
+                                        Part.builder()
+                                                .text("I should call the tool.")
+                                                .thought(true)
+                                                .build(),
+                                        Part.builder()
+                                                .functionCall(functionCall)
+                                                .thoughtSignature("sig".getBytes())
+                                                .build()))
+                                .build())
+                        .build()))
+                .build();
+        when(stream.iterator()).thenReturn(List.of(chunk).iterator());
+
+        GoogleGenAiStreamingChatModel model = GoogleGenAiStreamingChatModel.builder()
+                .client(client)
+                .modelName("gemini-3.5-flash")
+                .returnThinking(true)
+                .build();
+
+        ChatResponse response = stream(model, new ArrayList<>(), new ArrayList<>());
+        AiMessage aiMessage = response.aiMessage();
+
+        assertThat(aiMessage.thinking()).isEqualTo("I should call the tool.");
+        assertThat(aiMessage.hasToolExecutionRequests()).isTrue();
+        assertThat(aiMessage.attribute("thought_signature_call_1", String.class))
+                .isEqualTo(Base64.getEncoder().encodeToString("sig".getBytes()));
     }
 }

@@ -2,7 +2,7 @@ package dev.langchain4j.store.embedding.milvus.v2;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
+import static dev.langchain4j.internal.ValidationUtils.ensureConsistentSizes;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.store.embedding.milvus.v2.CollectionOperationsExecutor.createCollection;
 import static dev.langchain4j.store.embedding.milvus.v2.CollectionOperationsExecutor.createIndex;
@@ -275,7 +275,8 @@ public class MilvusV2EmbeddingStore implements EmbeddingStore<TextSegment> {
 
     @Override
     public void addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> textSegments) {
-        if (isNullOrEmpty(ids) || isNullOrEmpty(embeddings)) {
+        ensureConsistentSizes(ids, embeddings, textSegments);
+        if (isNullOrEmpty(embeddings)) {
             return;
         }
 
@@ -315,8 +316,9 @@ public class MilvusV2EmbeddingStore implements EmbeddingStore<TextSegment> {
             throw new IllegalStateException("Built-in sparse mode does not accept client-provided sparse vectors.");
         }
         if (this.dimension == null) {
-            throw new IllegalStateException("dimension must be set (via .dimension(...)) to insert sparse-only vectors, "
-                    + "because a zero-filled dense placeholder vector of that dimension is required.");
+            throw new IllegalStateException(
+                    "dimension must be set (via .dimension(...)) to insert sparse-only vectors, "
+                            + "because a zero-filled dense placeholder vector of that dimension is required.");
         }
 
         List<String> textScalars = toScalars(textSegments, ids.size());
@@ -401,7 +403,9 @@ public class MilvusV2EmbeddingStore implements EmbeddingStore<TextSegment> {
      */
     @Override
     public void removeAll(Collection<String> ids) {
-        ensureNotEmpty(ids, "ids");
+        if (isNullOrEmpty(ids)) {
+            return;
+        }
         removeForVector(
                 this.milvusClientV2,
                 this.collectionName,

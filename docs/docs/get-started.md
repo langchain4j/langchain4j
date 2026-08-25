@@ -1,7 +1,7 @@
 ---
 sidebar_position: 5
-stableVersion: 1.18.1
-betaVersion: 1.18.1-beta28
+stableVersion: 1.19.0
+betaVersion: 1.19.0-beta29
 ---
 
 # Get Started
@@ -27,7 +27,7 @@ As an example, let's import the OpenAI dependency:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai</artifactId>
-    <version>1.18.1</version>
+    <version>1.19.0</version>
 </dependency>
 ```
 
@@ -38,14 +38,14 @@ the following dependency:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j</artifactId>
-    <version>1.18.1</version>
+    <version>1.19.0</version>
 </dependency>
 ```
 
 - For Gradle in `build.gradle`:
 ```groovy
-implementation 'dev.langchain4j:langchain4j-open-ai:1.18.1'
-implementation 'dev.langchain4j:langchain4j:1.18.1'
+implementation 'dev.langchain4j:langchain4j-open-ai:1.19.0'
+implementation 'dev.langchain4j:langchain4j:1.19.0'
 ```
 
 <details>
@@ -57,7 +57,7 @@ implementation 'dev.langchain4j:langchain4j:1.18.1'
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-bom</artifactId>
-            <version>1.18.1</version>
+            <version>1.19.0</version>
             <type>pom</type>
             <scope>import</scope>
         </dependency>
@@ -70,8 +70,8 @@ Please note that `langchain4j-bom` always contains the latest versions of all La
 :::
 
 :::note
-Please note that while the `langchain4j-bom` version is `1.18.1`,
-many of the modules still have version `1.18.1-beta28`,
+Please note that while the `langchain4j-bom` version is `1.19.0`,
+many of the modules still have version `1.19.0-beta29`,
 so there might be some breaking changes for these modules in the future.
 :::
 </details>
@@ -100,7 +100,7 @@ you can use the most recent `SNAPSHOT` dependency:
     <dependency>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j</artifactId>
-        <version>1.18.1-SNAPSHOT</version>
+        <version>1.19.0-SNAPSHOT</version>
     </dependency>
 </dependencies>
 ```
@@ -111,25 +111,6 @@ It's recommended to store your API keys in environment variables to reduce the r
 ```java
 String apiKey = System.getenv("OPENAI_API_KEY");
 ```
-
-<details>
-<summary>What if I don't have an API key?</summary>
-
-If you don't have your own OpenAI API key, don't worry.
-You can temporarily use `demo` key, which we provide for free for demonstration purposes.
-Be aware that when using the `demo` key, all requests to the OpenAI API need to go through our proxy,
-which injects the real key before forwarding your request to the OpenAI API.
-We do not collect or use your data in any way.
-The `demo` key has a quota, is restricted to the `gpt-4o-mini` model, and should only be used for demonstration purposes.
-
-```java
-OpenAiChatModel model = OpenAiChatModel.builder()
-    .baseUrl("http://langchain4j.dev/demo/openai/v1")
-    .apiKey("demo")
-    .modelName("gpt-4o-mini")
-    .build();
-```
-</details>
 
 Once you've set up the key, let's create an instance of an `OpenAiChatModel`:
 ```java
