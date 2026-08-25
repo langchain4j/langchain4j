@@ -109,6 +109,14 @@ public class P2PPlanner implements Planner {
                 .peek(AgentActivator::startExecution)
                 .map(AgentActivator::agent)
                 .toArray(AgentInstance[]::new);
+
+        if (agentsToCall.length == 0 && agentActivators.values().stream().noneMatch(AgentActivator::isExecuting)) {
+            LOG.info(
+                    "No agent can be activated: agentic scope reached a stable state after {} invocations",
+                    invocationCounter);
+            return done();
+        }
+
         invocationCounter += agentsToCall.length;
         return call(agentsToCall);
     }
@@ -147,6 +155,10 @@ public class P2PPlanner implements Planner {
         private void finishExecution() {
             LOG.info("Stopping agent: {}", agent.agentId());
             executing = false;
+        }
+
+        private boolean isExecuting() {
+            return executing;
         }
 
         private void onStateChanged(String state) {
