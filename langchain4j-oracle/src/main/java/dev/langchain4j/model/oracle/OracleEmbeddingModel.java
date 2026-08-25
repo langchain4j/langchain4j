@@ -2,7 +2,6 @@ package dev.langchain4j.model.oracle;
 
 import static java.util.stream.Collectors.toList;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import dev.langchain4j.data.document.splitter.oracle.Chunk;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
@@ -115,7 +114,7 @@ public class OracleEmbeddingModel extends DimensionAwareEmbeddingModel {
 
         try {
             return embedTexts(texts);
-        } catch (SQLException | JsonProcessingException ex) {
+        } catch (SQLException ex) {
             throw new RuntimeException("cannot get embedding", ex);
         }
     }
@@ -123,7 +122,7 @@ public class OracleEmbeddingModel extends DimensionAwareEmbeddingModel {
     /**
      * get embeddings for a list of strings
      */
-    private Response<List<Embedding>> embedTexts(List<String> inputs) throws SQLException, JsonProcessingException {
+    private Response<List<Embedding>> embedTexts(List<String> inputs) throws SQLException {
         List<Embedding> embeddings = new ArrayList<>();
 
         if (proxy != null && !proxy.isEmpty()) {
@@ -152,8 +151,7 @@ public class OracleEmbeddingModel extends DimensionAwareEmbeddingModel {
     /**
      * embed either a string or array
      */
-    private void embed(Object obj, String pref, List<Embedding> embeddings)
-            throws SQLException, JsonProcessingException {
+    private void embed(Object obj, String pref, List<Embedding> embeddings) throws SQLException {
         String query = "select t.column_value as data from dbms_vector_chain.utl_to_embeddings(?, json(?)) t";
         try (PreparedStatement stmt = conn.prepareStatement(query)) {
             stmt.setObject(1, obj);

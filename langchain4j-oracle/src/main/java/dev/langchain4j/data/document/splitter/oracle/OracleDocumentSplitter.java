@@ -1,6 +1,5 @@
 package dev.langchain4j.data.document.splitter.oracle;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentSplitter;
 import dev.langchain4j.data.document.Metadata;
@@ -60,7 +59,7 @@ public class OracleDocumentSplitter implements DocumentSplitter {
                 segments.add(createSegment(part, document, index));
                 index++;
             }
-        } catch (SQLException | JsonProcessingException ex) {
+        } catch (SQLException ex) {
             throw new RuntimeException("cannot split document", ex);
         }
 
@@ -78,7 +77,7 @@ public class OracleDocumentSplitter implements DocumentSplitter {
     /**
      * Split the provided text into parts
      */
-    public String[] split(String content) throws SQLException, JsonProcessingException {
+    public String[] split(String content) throws SQLException {
 
         List<String> strArr = new ArrayList<>();
 
