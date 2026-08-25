@@ -219,12 +219,15 @@ public class JinaEmbeddingModel extends DimensionAwareEmbeddingModel {
     }
 
     /**
-     * Whether the model accepts Jina's {@code task} parameter. Only the jina-embeddings-v3 and
-     * jina-embeddings-v4 families are task-aware; jina-clip-* and jina-embeddings-v2-* are not, and
-     * declaring {@code INPUT_TYPE} for them would send a parameter they cannot apply.
+     * Whether the model accepts Jina's {@code task} parameter. Only the jina-embeddings-v3, v4 and v5
+     * families are task-aware; jina-clip-*, jina-colbert-* and jina-embeddings-v2-* are not, and declaring
+     * {@code INPUT_TYPE} for them would send a parameter they cannot apply.
      */
     private static boolean isTaskAwareModel(String modelName) {
-        return modelName != null && (modelName.contains("embeddings-v3") || modelName.contains("embeddings-v4"));
+        return modelName != null
+                && (modelName.contains("embeddings-v3")
+                        || modelName.contains("embeddings-v4")
+                        || modelName.contains("embeddings-v5"));
     }
 
     public static class JinaEmbeddingModelBuilder {
