@@ -105,7 +105,8 @@ class ToolSpecificationHelper {
                 builder.description(string(node.get("description")));
             }
             if (node.containsKey("properties")) {
-                for (Map.Entry<String, Object> property : object(node.get("properties")).entrySet()) {
+                for (Map.Entry<String, Object> property :
+                        object(node.get("properties")).entrySet()) {
                     builder.addProperty(property.getKey(), jsonNodeToJsonSchemaElement(object(property.getValue())));
                 }
             }
@@ -113,7 +114,17 @@ class ToolSpecificationHelper {
                 builder.required(toStringArray(node.get("required")));
             }
             if (node.containsKey("additionalProperties")) {
-                builder.additionalProperties(bool(node.get("additionalProperties")));
+                Object additionalProperties = node.get("additionalProperties");
+                if (additionalProperties instanceof Map) {
+                    // A schema-typed additionalProperties (e.g. {"type": "string"}) means additional
+                    // properties ARE allowed, just constrained to that schema. JsonObjectSchema only
+                    // models this as a boolean, so it must be treated as "allowed" (true) rather than
+                    // being collapsed to false, which would wrongly tell the model to reject every
+                    // extra property.
+                    builder.additionalProperties(true);
+                } else {
+                    builder.additionalProperties(bool(additionalProperties));
+                }
             }
             // Handle $defs (draft 2019-09+) and definitions (draft-07)
             Object defsNode = node.containsKey("$defs") ? node.get("$defs") : node.get("definitions");
@@ -272,16 +283,13 @@ class ToolSpecificationHelper {
 
     private static void processMcpToolAnnotations(Map<String, Object> annotations, ToolSpecification.Builder builder) {
         if (annotations.containsKey(DESTRUCTIVE_HINT)) {
-            builder.addMetadata(
-                    DESTRUCTIVE_HINT, bool(annotations.get(DESTRUCTIVE_HINT)));
+            builder.addMetadata(DESTRUCTIVE_HINT, bool(annotations.get(DESTRUCTIVE_HINT)));
         }
         if (annotations.containsKey(IDEMPOTENT_HINT)) {
-            builder.addMetadata(
-                    IDEMPOTENT_HINT, bool(annotations.get(IDEMPOTENT_HINT)));
+            builder.addMetadata(IDEMPOTENT_HINT, bool(annotations.get(IDEMPOTENT_HINT)));
         }
         if (annotations.containsKey(OPEN_WORLD_HINT)) {
-            builder.addMetadata(
-                    OPEN_WORLD_HINT, bool(annotations.get(OPEN_WORLD_HINT)));
+            builder.addMetadata(OPEN_WORLD_HINT, bool(annotations.get(OPEN_WORLD_HINT)));
         }
         if (annotations.containsKey(READ_ONLY_HINT)) {
             builder.addMetadata(READ_ONLY_HINT, bool(annotations.get(READ_ONLY_HINT)));
@@ -511,5 +519,4 @@ class ToolSpecificationHelper {
         }
         return "object";
     }
-
 }

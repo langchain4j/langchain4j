@@ -12,7 +12,6 @@ import static dev.langchain4j.mcp.client.McpToolMetadataKeys.TITLE_ANNOTATION;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.internal.JsonSchemaElementUtils;
 import dev.langchain4j.mcp.client.transport.McpJson;
@@ -32,7 +31,6 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 class ToolSpecificationHelperTest {
-
 
     @Test
     void toolWithSimpleParams() throws JsonProcessingException {
@@ -278,6 +276,33 @@ class ToolSpecificationHelperTest {
         JsonObjectSchema parameters = toolSpecifications.get(0).parameters();
         JsonAnyOfSchema status = (JsonAnyOfSchema) parameters.properties().get("status");
         assertThat(status.description()).isEqualTo("Filter by status (nullable)");
+    }
+
+    @Test
+    void objectSchemaWithSchemaTypedAdditionalPropertiesAllowsExtraProperties() throws JsonProcessingException {
+        // "additionalProperties" may be a schema object (common in real MCP schemas) to say "extra
+        // properties are allowed, each matching this schema". JsonObjectSchema only models it as a
+        // boolean, so this must map to "allowed" (true) rather than being collapsed to false, which
+        // would wrongly tell the model to reject any extra property.
+        String text = """
+                [{
+                  "name": "query",
+                  "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                      "filters": {
+                        "type": "object",
+                        "additionalProperties": {"type": "string"}
+                      }
+                    }
+                  }
+                }]
+                """;
+        List<Map<String, Object>> json = toolList(text);
+        List<ToolSpecification> toolSpecifications = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
+        JsonObjectSchema filters = (JsonObjectSchema)
+                toolSpecifications.get(0).parameters().properties().get("filters");
+        assertThat(filters.additionalProperties()).isEqualTo(true);
     }
 
     @Test
@@ -1354,5 +1379,4 @@ class ToolSpecificationHelperTest {
             throw new RuntimeException(e);
         }
     }
-
 }
