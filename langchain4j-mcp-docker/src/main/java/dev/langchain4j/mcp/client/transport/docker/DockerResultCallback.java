@@ -6,6 +6,7 @@ import com.github.dockerjava.api.async.ResultCallback;
 import com.github.dockerjava.api.model.Frame;
 import com.github.dockerjava.api.model.StreamType;
 import dev.langchain4j.mcp.client.transport.McpOperationHandler;
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
@@ -36,7 +37,7 @@ class DockerResultCallback extends ResultCallback.Adapter<Frame> {
 
     @Override
     public void onNext(Frame frame) {
-        String frameStr = new String(frame.getPayload());
+        String frameStr = new String(frame.getPayload(), StandardCharsets.UTF_8);
         if (frame.getStreamType() == StreamType.STDERR) {
             LOG.debug("[STDERR] {}", frameStr);
         } else if (frame.getStreamType() == StreamType.STDOUT) {

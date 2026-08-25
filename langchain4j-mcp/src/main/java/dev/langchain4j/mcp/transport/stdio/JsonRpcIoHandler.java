@@ -11,6 +11,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.PrintStream;
+import java.nio.charset.StandardCharsets;
 import java.util.function.Consumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,21 +34,17 @@ public class JsonRpcIoHandler implements Runnable, Closeable {
     }
 
     public JsonRpcIoHandler(
-            InputStream input,
-            OutputStream output,
-            Consumer<String> messageHandler,
-            boolean logEvents,
-            Logger logger) {
+            InputStream input, OutputStream output, Consumer<String> messageHandler, boolean logEvents, Logger logger) {
         this.input = input;
         this.logEvents = logEvents;
         this.messageHandler = messageHandler;
-        this.out = new PrintStream(output, true);
+        this.out = new PrintStream(output, true, StandardCharsets.UTF_8);
         this.trafficLog = getOrDefault(logger, McpLoggers.traffic());
     }
 
     @Override
     public void run() {
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(input))) {
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(input, StandardCharsets.UTF_8))) {
             String line;
             while ((line = reader.readLine()) != null) {
                 if (logEvents) {

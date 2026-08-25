@@ -73,6 +73,38 @@ class JsonRpcIoHandlerTest {
     }
 
     @Test
+    void should_read_multibyte_messages_as_utf8() {
+        // given
+        String message = "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":\"caf\u00e9 \ud55c\uae00 \ud83d\ude80\"}";
+        ByteArrayInputStream in = new ByteArrayInputStream((message + "\n").getBytes(UTF_8));
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        List<String> received = new ArrayList<>();
+
+        JsonRpcIoHandler handler = new JsonRpcIoHandler(in, out, received::add, false);
+
+        // when
+        handler.run();
+
+        // then
+        assertThat(received).containsExactly(message);
+    }
+
+    @Test
+    void should_write_multibyte_messages_as_utf8() throws Exception {
+        // given
+        String message = "{\"jsonrpc\":\"2.0\",\"id\":1,\"params\":\"caf\u00e9 \ud55c\uae00 \ud83d\ude80\"}";
+        ByteArrayInputStream in = new ByteArrayInputStream(new byte[0]);
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        JsonRpcIoHandler handler = new JsonRpcIoHandler(in, out, ignored -> {}, false);
+
+        // when
+        handler.submit(message);
+
+        // then
+        assertThat(out.toByteArray()).isEqualTo((message + System.lineSeparator()).getBytes(UTF_8));
+    }
+
+    @Test
     void should_stop_reading_after_close() throws Exception {
         // given
         BlockingInputStream in = new BlockingInputStream();

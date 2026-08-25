@@ -34,4 +34,15 @@ class DockerResultCallbackTest {
             verifyNoInteractions(messageHandler);
         }
     }
+
+    @Test
+    void shouldDecodeDockerFramesAsUtf8() {
+        McpOperationHandler messageHandler = mock(McpOperationHandler.class);
+        DockerResultCallback callback = new DockerResultCallback(false, messageHandler);
+        String message = "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":\"caf\u00e9 \ud55c\uae00 \ud83d\ude80\"}";
+
+        callback.onNext(new Frame(StreamType.STDOUT, (message + "\n").getBytes(UTF_8)));
+
+        verify(messageHandler).onMessage(message + "\n");
+    }
 }
