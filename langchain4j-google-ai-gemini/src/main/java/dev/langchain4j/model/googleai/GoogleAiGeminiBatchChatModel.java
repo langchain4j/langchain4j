@@ -3,7 +3,6 @@ package dev.langchain4j.model.googleai;
 import static dev.langchain4j.model.googleai.BaseGeminiChatModel.buildGeminiService;
 import static dev.langchain4j.model.googleai.GeminiService.BatchOperationType.BATCH_GENERATE_CONTENT;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.model.batch.BatchItemResult;
 import dev.langchain4j.model.batch.BatchPage;
@@ -19,6 +18,7 @@ import dev.langchain4j.model.googleai.BatchRequestResponse.BatchFileRequest;
 import dev.langchain4j.model.googleai.GeminiFiles.GeminiFile;
 import dev.langchain4j.model.googleai.jsonl.JsonLinesWriter;
 import java.io.IOException;
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
 import org.jspecify.annotations.Nullable;
@@ -223,8 +223,8 @@ public final class GoogleAiGeminiBatchChatModel implements BatchChatModel {
     private class ChatRequestPreparer
             implements GeminiBatchProcessor.RequestPreparer<
                     ChatRequest, GeminiGenerateContentRequest, GeminiGenerateContentResponse, ChatResponse> {
-        private static final TypeReference<BatchCreateResponse.InlinedResponseWrapper<GeminiGenerateContentResponse>>
-                responseWrapperType = new TypeReference<>() {};
+        private static final Type responseWrapperType = Json.parameterized(
+                BatchCreateResponse.InlinedResponseWrapper.class, GeminiGenerateContentResponse.class);
 
         @Override
         public ChatRequest prepareRequest(ChatRequest request) {
@@ -248,7 +248,8 @@ public final class GoogleAiGeminiBatchChatModel implements BatchChatModel {
 
             List<BatchItemResult<ChatResponse>> results = new ArrayList<>();
             for (Object wrapper : response.inlinedResponses().inlinedResponses()) {
-                var typed = Json.convertValue(wrapper, responseWrapperType);
+                BatchCreateResponse.InlinedResponseWrapper<GeminiGenerateContentResponse> typed =
+                        Json.convertValue(wrapper, responseWrapperType);
                 var typedResponse = typed.response();
                 if (typedResponse != null) {
                     results.add(BatchItemResult.success(chatModel.processResponse(typedResponse)));

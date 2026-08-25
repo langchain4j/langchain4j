@@ -1,10 +1,10 @@
 package dev.langchain4j.data.document.loader.oracle;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.Metadata;
+import dev.langchain4j.internal.Json;
+import dev.langchain4j.internal.WireJson;
+import dev.langchain4j.internal.WireJsonSpec;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -17,6 +17,8 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
@@ -38,6 +40,8 @@ import org.jsoup.select.Elements;
  * {"owner": "owner", "tablename": "table name", "colname": "column name"}
  */
 public class OracleDocumentLoader {
+
+    private static final Json.JsonCodec CODEC = WireJson.codec(WireJsonSpec.builder().build());
 
     private final Connection conn;
 
@@ -63,28 +67,19 @@ public class OracleDocumentLoader {
     public List<Document> loadDocuments(String pref) throws IOException, SQLException {
         List<Document> documents = new ArrayList<>();
 
-        ObjectMapper mapper = new ObjectMapper();
-        JsonNode rootNode = mapper.readTree(pref);
+        Map<String, Object> rootNode = CODEC.fromJson(pref, Map.class);
 
-        if (rootNode.has("file")) {
-            FilePreference filePref;
-            try {
-                filePref = mapper.readValue(pref, FilePreference.class);
-            } catch (UnrecognizedPropertyException ex) {
-                throw new InvalidParameterException("Invalid file preference: unknown property specified");
-            }
+        if (rootNode.containsKey("file")) {
+            ensureOnlyKnownProperties(rootNode, "file", Set.of("file"));
+            FilePreference filePref = CODEC.fromJson(pref, FilePreference.class);
             String filename = filePref.getFilename();
             Document doc = loadDocument(filename, pref);
             if (doc != null) {
                 documents.add(doc);
             }
-        } else if (rootNode.has("dir")) {
-            DirectoryPreference dirPref;
-            try {
-                dirPref = mapper.readValue(pref, DirectoryPreference.class);
-            } catch (UnrecognizedPropertyException ex) {
-                throw new InvalidParameterException("Invalid directory preference: unknown property specified");
-            }
+        } else if (rootNode.containsKey("dir")) {
+            ensureOnlyKnownProperties(rootNode, "directory", Set.of("dir"));
+            DirectoryPreference dirPref = CODEC.fromJson(pref, DirectoryPreference.class);
             String dir = dirPref.getDirectory();
             Path root = Paths.get(dir);
             Files.walk(root).forEach(path -> {
@@ -100,13 +95,9 @@ public class OracleDocumentLoader {
                     }
                 }
             });
-        } else if (rootNode.has("tablename")) {
-            TablePreference tablePref;
-            try {
-                tablePref = mapper.readValue(pref, TablePreference.class);
-            } catch (UnrecognizedPropertyException ex) {
-                throw new InvalidParameterException("Invalid table preference: unknown property specified");
-            }
+        } else if (rootNode.containsKey("tablename")) {
+            ensureOnlyKnownProperties(rootNode, "table", Set.of("owner", "tablename", "colname"));
+            TablePreference tablePref = CODEC.fromJson(pref, TablePreference.class);
             if (!tablePref.isValid()) {
                 throw new InvalidParameterException("Invalid table preference: missing owner, table, or column name");
             }
@@ -216,4 +207,15 @@ public class OracleDocumentLoader {
 
         return metadata;
     }
+
+    // The codec ignores unknown properties, so a preference is checked against its own keys instead:
+    // a typo has to be reported rather than silently dropped.
+    private static void ensureOnlyKnownProperties(Map<String, Object> pref, String kind, Set<String> known) {
+        for (String property : pref.keySet()) {
+            if (!known.contains(property)) {
+                throw new InvalidParameterException("Invalid " + kind + " preference: unknown property specified");
+            }
+        }
+    }
+
 }

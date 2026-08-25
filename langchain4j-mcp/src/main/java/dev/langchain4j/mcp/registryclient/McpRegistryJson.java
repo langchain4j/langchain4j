@@ -1,0 +1,38 @@
+package dev.langchain4j.mcp.registryclient;
+
+import static java.time.format.DateTimeFormatter.ISO_DATE_TIME;
+
+import dev.langchain4j.Internal;
+import dev.langchain4j.internal.Json;
+import dev.langchain4j.internal.WireJson;
+import dev.langchain4j.internal.WireJsonSpec;
+import java.time.LocalDateTime;
+
+@Internal
+public class McpRegistryJson {
+
+    private McpRegistryJson() throws InstantiationException {
+        throw new InstantiationException("Can't instantiate this utility class.");
+    }
+
+    private static final Json.JsonCodec CODEC =
+            WireJson.codec(WireJsonSpec.builder().prettyPrint(true).build());
+
+    public static <T> T fromJson(String json, Class<T> type) {
+        return CODEC.fromJson(json, type);
+    }
+
+    /**
+     * The registry sends UTC timestamps such as {@code 2025-09-29T12:00:00Z}. They are parsed here
+     * rather than by a JSON-library-specific deserializer, so that any codec reads them.
+     */
+    public static LocalDateTime parseTimestamp(Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof LocalDateTime localDateTime) {
+            return localDateTime;
+        }
+        return LocalDateTime.parse(value.toString(), ISO_DATE_TIME);
+    }
+}
