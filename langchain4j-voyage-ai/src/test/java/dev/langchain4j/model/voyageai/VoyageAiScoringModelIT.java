@@ -79,40 +79,6 @@ class VoyageAiScoringModelIT {
         assertThat(response.finishReason()).isNull();
     }
 
-    @Test
-    void should_allow_top_k_when_it_does_not_truncate_scores() {
-        // given
-        ScoringModel model = VoyageAiScoringModel.builder()
-                .apiKey(System.getenv("VOYAGE_API_KEY"))
-                .modelName(RERANK_LITE_1)
-                .timeout(Duration.ofSeconds(60))
-                .topK(2)
-                .logRequests(true)
-                .logResponses(true)
-                .build();
-
-        TextSegment catSegment = TextSegment.from("The Maine Coon is a large domesticated cat breed.");
-        TextSegment dogSegment = TextSegment.from(
-                "The sweet-faced, lovable Labrador Retriever is one of America's most popular dog breeds, year after year.");
-        List<TextSegment> segments = asList(catSegment, dogSegment);
-
-        String query = "tell me about dogs";
-
-        // when
-        Response<List<Double>> response = model.scoreAll(segments, query);
-
-        // then
-        List<Double> scores = response.content();
-        assertThat(scores).hasSize(2);
-        assertThat(scores.get(0)).isLessThan(scores.get(1));
-
-        assertThat(response.tokenUsage().inputTokenCount()).isNotNegative();
-        assertThat(response.tokenUsage().outputTokenCount()).isNull();
-        assertThat(response.tokenUsage().totalTokenCount()).isNotNegative();
-
-        assertThat(response.finishReason()).isNull();
-    }
-
     @AfterEach
     void afterEach() throws InterruptedException {
         String ciDelaySeconds = System.getenv("CI_DELAY_SECONDS_VOYAGE_AI");

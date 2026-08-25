@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.exception.InternalServerException;
 import dev.langchain4j.http.client.MockHttpClient;
 import dev.langchain4j.http.client.MockHttpClientBuilder;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
@@ -87,10 +88,75 @@ class VoyageAiScoringModelTest {
 
         // when / then
         assertThatThrownBy(() -> model.scoreAll(SEGMENTS, "query"))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Voyage AI returned 1 scores for 2 segments");
+                .isInstanceOf(InternalServerException.class)
+                .hasMessage("Re-ranking failed: expected 2 scores, but got 1");
     }
 
+    @Test
+    void should_fail_when_response_contains_duplicate_index() {
+        // given
+        MockHttpClient mockHttpClient = respondingWith("""
+                {
+                  "object": "list",
+                  "data": [
+                    {
+                      "object": "rerank_result",
+                      "relevance_score": 0.9,
+                      "index": 1
+                    },
+                    {
+                      "object": "rerank_result",
+                      "relevance_score": 0.1,
+                      "index": 1
+                    }
+                  ],
+                  "model": "rerank-2",
+                  "usage": {
+                    "total_tokens": 10
+                  }
+                }
+                """);
+        VoyageAiScoringModel model = model(mockHttpClient, null);
+
+        // when / then
+        assertThatThrownBy(() -> model.scoreAll(SEGMENTS, "query"))
+                .isInstanceOf(InternalServerException.class)
+                .hasMessage("Re-ranking failed: got a duplicate document index: 1");
+    }
+
+    @Test
+    void should_fail_when_response_contains_out_of_range_index() {
+        // given
+        MockHttpClient mockHttpClient = respondingWith("""
+                {
+                  "object": "list",
+                  "data": [
+                    {
+                      "object": "rerank_result",
+                      "relevance_score": 0.9,
+                      "index": 0
+                    },
+                    {
+                      "object": "rerank_result",
+                      "relevance_score": 0.1,
+                      "index": 7
+                    }
+                  ],
+                  "model": "rerank-2",
+                  "usage": {
+                    "total_tokens": 10
+                  }
+                }
+                """);
+        VoyageAiScoringModel model = model(mockHttpClient, null);
+
+        // when / then
+        assertThatThrownBy(() -> model.scoreAll(SEGMENTS, "query"))
+                .isInstanceOf(InternalServerException.class)
+                .hasMessage("Re-ranking failed: got an out-of-range document index: 7");
+    }
+
+    @SuppressWarnings({"deprecation", "removal"}) // 'topK' is deprecated, but its guard still needs to be tested
     private static VoyageAiScoringModel model(MockHttpClient mockHttpClient, Integer topK) {
         return VoyageAiScoringModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(mockHttpClient))
