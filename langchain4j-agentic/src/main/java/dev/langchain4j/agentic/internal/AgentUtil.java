@@ -1,6 +1,7 @@
 package dev.langchain4j.agentic.internal;
 
 import static dev.langchain4j.agentic.AgenticServices.createBuiltInAgentExecutor;
+import static dev.langchain4j.agentic.scope.DefaultAgenticScope.isSerializable;
 import static dev.langchain4j.internal.Utils.allMethods;
 import static dev.langchain4j.internal.Utils.getAnnotatedMethod;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
@@ -221,6 +222,23 @@ public class AgentUtil {
     private static Object parameterDefaultValue(Parameter p) {
         K k = p.getAnnotation(K.class);
         return k != null ? stateInstance(k.value()).defaultValue() : null;
+    }
+
+    /**
+     * Builds the arguments for an untyped agent, which receives the whole {@link AgenticScope} state as a single
+     * {@link Map}. The map is a filtered copy rather than the state itself: a copy so that the recorded
+     * {@link dev.langchain4j.agentic.scope.AgentInvocation#input()} keeps the state as it was at invocation time
+     * instead of following later writes, and filtered so that values which cannot be serialized never reach the
+     * agent or the persisted invocation.
+     */
+    public static AgentInvocationArguments untypedAgentInvocationArguments(AgenticScope agenticScope) {
+        Map<String, Object> args = new HashMap<>();
+        for (var entry : agenticScope.state().entrySet()) {
+            if (isSerializable(entry.getValue())) {
+                args.put(entry.getKey(), entry.getValue());
+            }
+        }
+        return new AgentInvocationArguments(args, new Object[] {args});
     }
 
     public static AgentInvocationArguments agentInvocationArguments(AgenticScope agenticScope, Method method)

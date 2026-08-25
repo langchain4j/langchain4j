@@ -197,6 +197,13 @@ public interface McpClientListener {
     default void afterResourcesSubscribe(McpCallContext context, long subscriptionId, List<String> uris) {}
 
     /**
+     * Called when subscribing to resources fails, either because the server rejected the
+     * {@code subscriptions/listen} request or because it never acknowledged it in time.
+     * Only used with MCP protocol 2026-07-28 and later.
+     */
+    default void onResourcesSubscribeError(McpCallContext context, Throwable error) {}
+
+    /**
      * Called before unsubscribing from resources via subscription ID.
      * Only used with MCP protocol 2026-07-28 and later.
      *

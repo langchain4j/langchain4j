@@ -15,6 +15,7 @@ import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.observability.AgentRequest;
+import dev.langchain4j.agentic.scope.AgentInvocation;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.mcp.client.McpClient;
@@ -24,6 +25,7 @@ import dev.langchain4j.service.V;
 import dev.langchain4j.service.tool.ToolExecutionResult;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
@@ -260,6 +262,74 @@ class McpAgentTest {
 
         AgenticScope scope = result.agenticScope();
         assertThat(scope.readState("story")).isEqualTo("A STORY ABOUT DRAGONS");
+    }
+
+    @Test
+    void untyped_mcp_agent_records_a_snapshot_of_the_state_as_its_input() {
+        McpClient mcpClient1 = mockMcpClient("generate", "Generate content", "topic");
+        mockToolResult(mcpClient1, "A story about dragons");
+
+        McpClient mcpClient2 = mockMcpClient("uppercase", "Uppercase text", "story");
+        mockToolResult(mcpClient2, "A STORY ABOUT DRAGONS");
+
+        UntypedAgent generator = McpAgent.builder(mcpClient1)
+                .inputKeys("topic")
+                .outputKey("story")
+                .build();
+
+        UntypedAgent uppercaser = McpAgent.builder(mcpClient2)
+                .inputKeys("story")
+                .outputKey("upperCaseStory")
+                .build();
+
+        UntypedAgent pipeline = AgenticServices.sequenceBuilder()
+                .subAgents(generator, uppercaser)
+                .outputKey("upperCaseStory")
+                .build();
+
+        ResultWithAgenticScope<String> result = pipeline.invokeWithAgenticScope(Map.of("topic", "dragons"));
+        assertThat(result.result()).isEqualTo("A STORY ABOUT DRAGONS");
+
+        AgenticScope scope = result.agenticScope();
+        List<AgentInvocation> invocations = scope.agentInvocations();
+        assertThat(invocations).hasSize(2);
+
+        AgentInvocation generatorInvocation = invocations.get(0);
+        assertThat(generatorInvocation.agentName()).isEqualTo("generate");
+        // The input must be the state as it was when the agent was invoked, not a live view of it.
+        assertThat(generatorInvocation.input()).isNotSameAs(scope.state());
+        assertThat(generatorInvocation.input()).isEqualTo(Map.of("topic", "dragons"));
+
+        AgentInvocation uppercaserInvocation = invocations.get(1);
+        assertThat(uppercaserInvocation.agentName()).isEqualTo("uppercase");
+        assertThat(uppercaserInvocation.input())
+                .containsEntry("topic", "dragons")
+                .containsEntry("story", "A story about dragons")
+                .doesNotContainKey("upperCaseStory");
+    }
+
+    @Test
+    void untyped_mcp_agent_does_not_receive_non_serializable_state_values() {
+        McpClient mcpClient = mockMcpClient("generate", "Generate content", "topic");
+        mockToolResult(mcpClient, "A story about dragons");
+
+        UntypedAgent generator = McpAgent.builder(mcpClient)
+                .inputKeys("topic")
+                .outputKey("story")
+                .build();
+
+        UntypedAgent pipeline = AgenticServices.sequenceBuilder()
+                .subAgents(generator)
+                .outputKey("story")
+                .build();
+
+        ResultWithAgenticScope<String> result =
+                pipeline.invokeWithAgenticScope(Map.of("topic", "dragons", "pendingResult", new CompletableFuture<>()));
+        assertThat(result.result()).isEqualTo("A story about dragons");
+
+        AgenticScope scope = result.agenticScope();
+        assertThat(scope.state()).containsKey("pendingResult");
+        assertThat(scope.agentInvocations().get(0).input()).isEqualTo(Map.of("topic", "dragons"));
     }
 
     @Test
