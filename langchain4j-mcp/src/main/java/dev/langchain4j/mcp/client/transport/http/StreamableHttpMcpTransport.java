@@ -3,15 +3,14 @@ package dev.langchain4j.mcp.client.transport.http;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.mcp.client.McpCallContext;
 import dev.langchain4j.mcp.client.McpHeadersSupplier;
 import dev.langchain4j.mcp.client.logging.McpLoggers;
 import dev.langchain4j.mcp.client.transport.McpHeaderEncoding;
 import dev.langchain4j.mcp.client.transport.McpOperationHandler;
+import dev.langchain4j.mcp.client.transport.McpJson;
 import dev.langchain4j.mcp.client.transport.McpTransport;
 import dev.langchain4j.mcp.protocol.McpClientMessage;
 import dev.langchain4j.mcp.protocol.McpInitializationNotification;
@@ -48,8 +47,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
     private final boolean logResponses;
     private final boolean logRequests;
     private final Logger trafficLog;
-    static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-    private final AtomicReference<CompletableFuture<JsonNode>> initializeInProgress = new AtomicReference<>(null);
+    private final AtomicReference<CompletableFuture<String>> initializeInProgress = new AtomicReference<>(null);
     private volatile McpOperationHandler operationHandler;
     private final HttpClient httpClient;
     private final SSLContext sslContext;
@@ -101,9 +99,9 @@ public class StreamableHttpMcpTransport implements McpTransport {
     }
 
     @Override
-    public CompletableFuture<JsonNode> initialize(McpInitializeRequest operation) {
+    public CompletableFuture<String> sendInitializeRequest(McpInitializeRequest operation) {
         this.initializeRequest = operation;
-        CompletableFuture<JsonNode> completableFuture = execute(new McpCallContext(null, operation), false);
+        CompletableFuture<String> completableFuture = execute(new McpCallContext(null, operation), false);
         initializeInProgress.set(completableFuture);
         return completableFuture
                 .thenCompose(originalResponse -> {
@@ -122,9 +120,8 @@ public class StreamableHttpMcpTransport implements McpTransport {
                 });
     }
 
-    private HttpRequest createRequest(McpJsonRpcMessage message, McpCallContext callContext)
-            throws JsonProcessingException {
-        String body = OBJECT_MAPPER.writeValueAsString(message);
+    private HttpRequest createRequest(McpJsonRpcMessage message, McpCallContext callContext) {
+        String body = McpJson.serialize(message);
         HttpRequest.BodyPublisher bodyPublisher = HttpRequest.BodyPublishers.ofString(body);
         if (logRequests) {
             trafficLog.info("Request: {}", body);
@@ -137,7 +134,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
                 builder.header("MCP-Protocol-Version", protocolVersionHeader);
             }
             // Extract method from JSON-RPC message
-            JsonNode bodyNode = OBJECT_MAPPER.readTree(body);
+            JsonNode bodyNode = McpJson.parse(body);
             String method = bodyNode.path("method").asText(null);
             if (method != null) {
                 builder.header("Mcp-Method", method);
@@ -179,22 +176,22 @@ public class StreamableHttpMcpTransport implements McpTransport {
     }
 
     @Override
-    public CompletableFuture<JsonNode> executeOperationWithResponse(McpClientMessage operation) {
-        return executeOperationWithResponse(new McpCallContext(null, operation));
+    public CompletableFuture<String> sendRequest(McpClientMessage operation) {
+        return sendRequest(new McpCallContext(null, operation));
     }
 
     @Override
-    public CompletableFuture<JsonNode> executeOperationWithResponse(McpCallContext context) {
+    public CompletableFuture<String> sendRequest(McpCallContext context) {
         return execute(context, false);
     }
 
     @Override
-    public void executeOperationWithoutResponse(McpClientMessage operation) {
-        executeOperationWithoutResponse(new McpCallContext(null, operation));
+    public void sendMessage(McpClientMessage operation) {
+        sendMessage(new McpCallContext(null, operation));
     }
 
     @Override
-    public void executeOperationWithoutResponse(McpCallContext context) {
+    public void sendMessage(McpCallContext context) {
         execute(context, false);
     }
 
@@ -252,10 +249,10 @@ public class StreamableHttpMcpTransport implements McpTransport {
         this.protocolVersionHeader = protocolVersion;
     }
 
-    private CompletableFuture<JsonNode> execute(McpCallContext context, boolean isRetry) {
+    private CompletableFuture<String> execute(McpCallContext context, boolean isRetry) {
         Long id = context.message().getId();
         if (!(context.message() instanceof McpInitializeRequest)) {
-            CompletableFuture<JsonNode> reinitializeInProgress = this.initializeInProgress.get();
+            CompletableFuture<String> reinitializeInProgress = this.initializeInProgress.get();
             if (reinitializeInProgress != null) {
                 reinitializeInProgress.join();
             }
@@ -263,12 +260,12 @@ public class StreamableHttpMcpTransport implements McpTransport {
         HttpRequest request = null;
         try {
             request = createRequest(context.message(), context);
-        } catch (JsonProcessingException e) {
+        } catch (IllegalArgumentException e) {
             return CompletableFuture.failedFuture(e);
         }
-        CompletableFuture<JsonNode> future = new CompletableFuture<>();
+        CompletableFuture<String> future = new CompletableFuture<>();
         if (id != null) {
-            operationHandler.startOperation(id, future);
+            operationHandler.expectResponse(id, future);
         }
 
         httpClient
@@ -333,10 +330,9 @@ public class StreamableHttpMcpTransport implements McpTransport {
                                             future.complete(null);
                                         }
                                         try {
-                                            JsonNode node = OBJECT_MAPPER.readTree(responseBody);
-                                            operationHandler.handle(node);
+                                            operationHandler.onMessage(responseBody);
                                             return null;
-                                        } catch (IOException e) {
+                                        } catch (RuntimeException e) {
                                             future.completeExceptionally(e);
                                             return null;
                                         }
@@ -629,4 +625,55 @@ public class StreamableHttpMcpTransport implements McpTransport {
             return new StreamableHttpMcpTransport(this);
         }
     }
+
+    /**
+     * @deprecated use {@link #sendInitializeRequest(McpInitializeRequest)} instead, which does not
+     * expose Jackson types.
+     */
+    @Deprecated(since = "1.20.0", forRemoval = true)
+    @Override
+    public CompletableFuture<JsonNode> initialize(McpInitializeRequest request) {
+        return McpJson.map(sendInitializeRequest(request), McpJson::parse);
+    }
+
+    /**
+     * @deprecated use {@link #sendRequest(McpClientMessage)} instead, which does not expose Jackson
+     * types.
+     */
+    @Deprecated(since = "1.20.0", forRemoval = true)
+    @Override
+    public CompletableFuture<JsonNode> executeOperationWithResponse(McpClientMessage request) {
+        return McpJson.map(sendRequest(request), McpJson::parse);
+    }
+
+    /**
+     * @deprecated use {@link #sendRequest(McpCallContext)} instead, which does not expose Jackson
+     * types.
+     */
+    @Deprecated(since = "1.20.0", forRemoval = true)
+    @Override
+    public CompletableFuture<JsonNode> executeOperationWithResponse(McpCallContext context) {
+        return McpJson.map(sendRequest(context), McpJson::parse);
+    }
+
+    /**
+     * @deprecated use {@link #sendMessage(McpClientMessage)} instead, which does not expose Jackson
+     * types.
+     */
+    @Deprecated(since = "1.20.0", forRemoval = true)
+    @Override
+    public void executeOperationWithoutResponse(McpClientMessage request) {
+        sendMessage(request);
+    }
+
+    /**
+     * @deprecated use {@link #sendMessage(McpCallContext)} instead, which does not expose Jackson
+     * types.
+     */
+    @Deprecated(since = "1.20.0", forRemoval = true)
+    @Override
+    public void executeOperationWithoutResponse(McpCallContext context) {
+        sendMessage(context);
+    }
+
 }

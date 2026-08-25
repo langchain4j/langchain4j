@@ -1,26 +1,27 @@
 package dev.langchain4j.agentic.a2a;
 
+import static dev.langchain4j.agentic.internal.AgentUtil.agentInvocationArguments;
+import static dev.langchain4j.agentic.internal.AgentUtil.argumentsFromMethod;
+import static dev.langchain4j.agentic.internal.AgentUtil.untypedAgentInvocationArguments;
+
 import dev.langchain4j.agentic.UntypedAgent;
+import dev.langchain4j.agentic.internal.AgentInvocationArguments;
+import dev.langchain4j.agentic.internal.AgentInvoker;
 import dev.langchain4j.agentic.internal.InternalAgent;
 import dev.langchain4j.agentic.observability.AgentListener;
-import dev.langchain4j.agentic.internal.AgentInvocationArguments;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.planner.Planner;
 import dev.langchain4j.agentic.scope.AgenticScope;
-import dev.langchain4j.agentic.internal.AgentInvoker;
 import dev.langchain4j.service.ParameterNameResolver;
-import org.a2aproject.sdk.spec.AgentCard;
 import java.lang.reflect.Method;
 import java.lang.reflect.Type;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
-import static dev.langchain4j.agentic.internal.AgentUtil.agentInvocationArguments;
-import static dev.langchain4j.agentic.internal.AgentUtil.argumentsFromMethod;
+import org.a2aproject.sdk.spec.AgentCard;
 
 public class A2AClientAgentInvoker implements AgentInvoker {
 
@@ -47,11 +48,11 @@ public class A2AClientAgentInvoker implements AgentInvoker {
                 .filter(p -> p.isAnnotationPresent(A2AContextId.class) || p.isAnnotationPresent(A2ATaskId.class))
                 .map(ParameterNameResolver::name)
                 .collect(Collectors.toSet());
-        return isUntyped() ?
-                Stream.of(a2AClientInstance.inputKeys())
+        return isUntyped()
+                ? Stream.of(a2AClientInstance.inputKeys())
                         .map(input -> new AgentArgument(Object.class, input))
-                        .toList() :
-                argumentsFromMethod(method, a2aArgs);
+                        .toList()
+                : argumentsFromMethod(method, a2aArgs);
     }
 
     @Override
@@ -112,7 +113,7 @@ public class A2AClientAgentInvoker implements AgentInvoker {
     @Override
     public AgentInvocationArguments toInvocationArguments(AgenticScope agenticScope) {
         return isUntyped()
-                ? new AgentInvocationArguments(agenticScope.state(), new Object[] {agenticScope.state()})
+                ? untypedAgentInvocationArguments(agenticScope)
                 : agentInvocationArguments(agenticScope, arguments);
     }
 
@@ -139,6 +140,7 @@ public class A2AClientAgentInvoker implements AgentInvoker {
     public void setParent(InternalAgent parent) {
         this.parent = parent;
     }
+
     @Override
     public void registerInheritedParentListener(AgentListener parentListener) {
         a2AClientInstance.registerInheritedParentListener(parentListener);
