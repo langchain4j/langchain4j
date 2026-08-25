@@ -190,6 +190,9 @@ public class TablestoreEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     @Override
     public void addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
+    	ValidationUtils.ensureNotNull(ids, "ids");
+    	ValidationUtils.ensureNotNull(embeddings, "embeddings");
+    	ValidationUtils.ensureEq(embeddings.size(), ids.size(), "the size of embeddings should be the same as the size of ids");
         if (embedded != null) {
             ValidationUtils.ensureEq(embeddings.size(), embedded.size(), "the size of embeddings should be the same as the size of embedded");
         }
