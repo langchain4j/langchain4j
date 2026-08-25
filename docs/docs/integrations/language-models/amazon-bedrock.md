@@ -253,3 +253,23 @@ ChatModel model = BedrockChatModel.builder()
 ### Additional Resources
 
 - [AWS Bedrock Prompt Caching Documentation](https://docs.aws.amazon.com/bedrock/latest/userguide/prompt-caching.html)
+
+## Using a Custom BedrockRuntimeClient
+
+You can pass your own pre-configured `BedrockRuntimeClient` (for example,
+to connect via a VPC endpoint, custom proxy, or specific timeout settings)
+directly to the model builder:
+
+```java
+BedrockRuntimeClient client = BedrockRuntimeClient.builder()
+    .region(Region.US_EAST_1)
+    .endpointOverride(URI.create("https://vpce-xxxx.bedrock-runtime.us-east-1.vpce.amazonaws.com"))
+    .build();
+
+BedrockAnthropicMessageChatModel model = BedrockAnthropicMessageChatModel.builder()
+    .client(client)
+    .build();
+```
+
+This is useful when the default client configuration doesn't meet your
+networking or security requirements.
