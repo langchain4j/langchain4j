@@ -1,12 +1,12 @@
 package dev.langchain4j.store.embedding.mariadb;
 
-import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.data.document.Metadata;
+import dev.langchain4j.internal.Json;
+import dev.langchain4j.internal.WireJson;
+import dev.langchain4j.internal.WireJsonSpec;
 import dev.langchain4j.store.embedding.filter.Filter;
 import java.sql.*;
 import java.util.*;
@@ -15,7 +15,8 @@ import java.util.*;
  * Handle metadata as JSON column.
  */
 class JSONMetadataHandler implements MetadataHandler {
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper().enable(INDENT_OUTPUT);
+    private static final Json.JsonCodec CODEC =
+            WireJson.codec(WireJsonSpec.builder().prettyPrint(true).build());
     public static final String DEFAULT_COLUMN_METADATA = "metadata";
     private final MetadataColumDefinition columnDefinition;
     private final String escapedColumnsName;
@@ -70,8 +71,8 @@ class JSONMetadataHandler implements MetadataHandler {
     public Metadata fromResultSet(ResultSet resultSet) {
         try {
             String metadataJson = getOrDefault(resultSet.getString(5), "{}");
-            return new Metadata(OBJECT_MAPPER.readValue(metadataJson, Map.class));
-        } catch (SQLException | JsonProcessingException e) {
+            return new Metadata(CODEC.fromJson(metadataJson, Map.class));
+        } catch (SQLException e) {
             throw new RuntimeException(e);
         }
     }
@@ -84,9 +85,9 @@ class JSONMetadataHandler implements MetadataHandler {
     @Override
     public void setMetadata(PreparedStatement upsertStmt, Integer parameterInitialIndex, Metadata metadata) {
         try {
-            String jsonValue = OBJECT_MAPPER.writeValueAsString(metadata.toMap());
+            String jsonValue = CODEC.toJson(metadata.toMap());
             upsertStmt.setString(parameterInitialIndex, jsonValue);
-        } catch (SQLException | JsonProcessingException e) {
+        } catch (SQLException e) {
             throw new RuntimeException(e);
         }
     }

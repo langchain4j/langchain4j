@@ -2,12 +2,6 @@ package dev.langchain4j.store.embedding.chroma;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies;
-import com.fasterxml.jackson.databind.SerializationFeature;
 import dev.langchain4j.Internal;
 import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.http.client.HttpClient;
@@ -17,7 +11,10 @@ import dev.langchain4j.http.client.HttpMethod;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.http.client.log.LoggingHttpClient;
+import dev.langchain4j.internal.Json;
 import dev.langchain4j.internal.Utils;
+import dev.langchain4j.internal.WireJson;
+import dev.langchain4j.internal.WireJsonSpec;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -33,7 +30,7 @@ class ChromaHttpClient {
     private static final Logger log = LoggerFactory.getLogger(ChromaHttpClient.class);
 
     private final HttpClient httpClient;
-    private final ObjectMapper objectMapper;
+    private final Json.JsonCodec codec;
     private final String baseUrl;
     private final Supplier<Map<String, String>> customHeadersSupplier;
 
@@ -80,11 +77,11 @@ class ChromaHttpClient {
                 clientBuilder.connectTimeout(timeout).readTimeout(timeout).build(), logRequests, logResponses);
         this.customHeadersSupplier = getOrDefault(customHeadersSupplier, () -> Map::of);
 
-        this.objectMapper = new ObjectMapper()
-                .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
-                .enable(SerializationFeature.INDENT_OUTPUT)
-                .setSerializationInclusion(JsonInclude.Include.NON_NULL)
-                .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        this.codec = WireJson.codec(WireJsonSpec.builder()
+                .propertyNaming(WireJsonSpec.PropertyNaming.SNAKE_CASE)
+                .inclusion(WireJsonSpec.Inclusion.NON_NULL)
+                .prettyPrint(true)
+                .build());
     }
 
     public <T> T get(String path, Class<T> responseType) throws IOException {
@@ -111,7 +108,7 @@ class ChromaHttpClient {
     public <T> T post(String path, Object requestBody, Class<T> responseType, Map<String, String> pathParams)
             throws IOException {
         String url = buildUrl(path, pathParams);
-        String jsonBody = objectMapper.writeValueAsString(requestBody);
+        String jsonBody = codec.toJson(requestBody);
 
         HttpRequest request = HttpRequest.builder()
                 .method(HttpMethod.POST)
@@ -148,8 +145,8 @@ class ChromaHttpClient {
                 return null;
             }
             try {
-                return objectMapper.readValue(response.body(), responseType);
-            } catch (JsonProcessingException e) {
+                return codec.fromJson(response.body(), responseType);
+            } catch (RuntimeException e) {
                 throw new RuntimeException("Failed to parse response: " + response.body(), e);
             }
         } catch (HttpException e) {

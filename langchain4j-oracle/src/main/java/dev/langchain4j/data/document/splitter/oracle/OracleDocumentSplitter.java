@@ -1,11 +1,13 @@
 package dev.langchain4j.data.document.splitter.oracle;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentSplitter;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.internal.Json;
+import dev.langchain4j.internal.WireJson;
+import dev.langchain4j.internal.WireJsonSpec;
 import java.sql.Clob;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -29,6 +31,8 @@ import java.util.List;
  * {"by": "characters", "max": 100}
  */
 public class OracleDocumentSplitter implements DocumentSplitter {
+
+    private static final Json.JsonCodec CODEC = WireJson.codec(WireJsonSpec.builder().build());
 
     private static final String INDEX = "index";
 
@@ -90,8 +94,7 @@ public class OracleDocumentSplitter implements DocumentSplitter {
                 while (rs.next()) {
                     String text = rs.getString("data");
 
-                    ObjectMapper mapper = new ObjectMapper();
-                    Chunk chunk = mapper.readValue(text, Chunk.class);
+                    Chunk chunk = CODEC.fromJson(text, Chunk.class);
                     strArr.add(chunk.getData());
                 }
             }
