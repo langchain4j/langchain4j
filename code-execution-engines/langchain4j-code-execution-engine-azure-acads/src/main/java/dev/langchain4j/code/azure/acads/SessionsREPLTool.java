@@ -6,15 +6,15 @@ import com.azure.core.credential.AccessToken;
 import com.azure.core.credential.TokenRequestContext;
 import com.azure.identity.DefaultAzureCredential;
 import com.azure.identity.DefaultAzureCredentialBuilder;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.code.CodeExecutionEngine;
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpMethod;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
+import dev.langchain4j.internal.Json;
+import dev.langchain4j.internal.WireJson;
+import dev.langchain4j.internal.WireJsonSpec;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
@@ -80,11 +80,10 @@ public class SessionsREPLTool implements CodeExecutionEngine {
     private static final String USER_AGENT = "langchain4j-azure-dynamic-sessions";
     private static final String API_VERSION = "2024-02-02-preview";
     private static final Logger log = LoggerFactory.getLogger(SessionsREPLTool.class);
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final Json.JsonCodec CODEC = WireJson.codec(WireJsonSpec.builder().build());
+    private static final Json.JsonCodec PRETTY_CODEC =
+            WireJson.codec(WireJsonSpec.builder().prettyPrint(true).build());
 
-    private static final TypeReference<Map<String, Object>> MAP_TYPE_REF = new TypeReference<Map<String, Object>>() {};
-    private static final TypeReference<List<Map<String, Object>>> LIST_MAP_TYPE_REF =
-            new TypeReference<List<Map<String, Object>>>() {};
 
     private static final Pattern SANITIZE_PATTERN_START = Pattern.compile("^(\\s|`)*(?i:python)?\\s*");
     private static final Pattern SANITIZE_PATTERN_END = Pattern.compile("(\\s|`)*$");
@@ -222,7 +221,7 @@ public class SessionsREPLTool implements CodeExecutionEngine {
         contentMap.put("stderr", response.get("stderr"));
 
         try {
-            return OBJECT_MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(contentMap);
+            return PRETTY_CODEC.toJson(contentMap);
         } catch (Exception e) {
             throw new RuntimeException("Failed to serialize response.", e);
         }
@@ -294,7 +293,7 @@ public class SessionsREPLTool implements CodeExecutionEngine {
         body.put("properties", properties);
 
         try {
-            String requestBody = OBJECT_MAPPER.writeValueAsString(body);
+            String requestBody = CODEC.toJson(body);
 
             HttpRequest request = HttpRequest.builder()
                     .method(HttpMethod.POST)
@@ -308,7 +307,7 @@ public class SessionsREPLTool implements CodeExecutionEngine {
             SuccessfulHttpResponse response = langchainHttpClient.execute(request);
 
             if (response.statusCode() >= 200 && response.statusCode() < 300) {
-                Map<String, Object> responseJson = OBJECT_MAPPER.readValue(response.body(), MAP_TYPE_REF);
+                Map<String, Object> responseJson = CODEC.fromJson(response.body(), Map.class);
                 return getNestedMapProperty(responseJson, "properties");
             } else {
                 throw new RuntimeException(
@@ -379,10 +378,10 @@ public class SessionsREPLTool implements CodeExecutionEngine {
                     throw new IOException("Unexpected code " + response);
                 }
 
-                Map<String, Object> responseJson = OBJECT_MAPPER.readValue(response.body(), MAP_TYPE_REF);
-                List<Map<String, Object>> valueList =
-                        OBJECT_MAPPER.convertValue(responseJson.get("value"), LIST_MAP_TYPE_REF);
-                Map<String, Object> fileMetadataMap = valueList.get(0);
+                Map<String, Object> responseJson = CODEC.fromJson(response.body(), Map.class);
+                List<?> valueList = (List<?>) responseJson.get("value");
+                @SuppressWarnings("unchecked")
+                Map<String, Object> fileMetadataMap = (Map<String, Object>) valueList.get(0);
                 return RemoteFileMetadata.fromDict(fileMetadataMap);
 
             } catch (Exception e) {
@@ -464,41 +463,25 @@ public class SessionsREPLTool implements CodeExecutionEngine {
             try {
                 SuccessfulHttpResponse response = langchainHttpClient.execute(request);
 
-                // Parse the response body as JSON using Jackson
-                JsonNode json = OBJECT_MAPPER.readTree(response.body());
+                Map<String, Object> json = CODEC.fromJson(response.body(), Map.class);
+                List<?> valueArray = (List<?>) json.get("value");
 
-                // Create a StringBuilder to store the filenames
-                StringBuilder filenames = new StringBuilder();
-
-                // Get the "value" array from the JSON object
-                JsonNode valueArray = json.get("value");
-
-                // Check if the "value" array is empty
-                if (valueArray.isEmpty()) {
+                if (valueArray == null || valueArray.isEmpty()) {
                     return "No files were found at " + apiUrl;
                 }
 
-                // Loop through each object in the "value" array
+                StringBuilder filenames = new StringBuilder();
                 for (int i = 0; i < valueArray.size(); i++) {
-                    // Get the current object
-                    JsonNode currentObject = valueArray.get(i);
+                    Map<?, ?> currentObject = (Map<?, ?>) valueArray.get(i);
+                    Map<?, ?> properties = (Map<?, ?>) currentObject.get("properties");
 
-                    // Get the "properties" object from the current object
-                    JsonNode properties = currentObject.get("properties");
+                    filenames.append(properties.get("filename"));
 
-                    // Get the filename from the "properties" object
-                    String filename = properties.get("filename").asText();
-
-                    // Append the filename to the StringBuilder
-                    filenames.append(filename);
-
-                    // If this is not the last filename, append a comma and a space
                     if (i < valueArray.size() - 1) {
                         filenames.append(", ");
                     }
                 }
 
-                // Return the string representation of the StringBuilder
                 return filenames.toString();
 
             } catch (Exception e) {

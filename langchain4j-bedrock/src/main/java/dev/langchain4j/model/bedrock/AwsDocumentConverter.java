@@ -1,17 +1,15 @@
 package dev.langchain4j.model.bedrock;
 
-import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
-
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.internal.Json;
 import dev.langchain4j.internal.JsonSchemaElementUtils;
+import dev.langchain4j.internal.WireJson;
+import dev.langchain4j.internal.WireJsonSpec;
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import software.amazon.awssdk.core.document.Document;
@@ -20,8 +18,7 @@ import software.amazon.awssdk.core.document.internal.MapDocument;
 @Internal
 class AwsDocumentConverter {
 
-    static final ObjectMapper OBJECT_MAPPER =
-            new ObjectMapper().disable(INDENT_OUTPUT).disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
+    private static final Json.JsonCodec CODEC = WireJson.codec(WireJsonSpec.builder().build());
 
     private AwsDocumentConverter() {}
 
@@ -30,16 +27,12 @@ class AwsDocumentConverter {
             return "{}";
         }
 
-        try {
-            Map<String, Object> actualValues = new HashMap<>();
-            for (Map.Entry<String, Document> entry : document.asMap().entrySet()) {
-                Document doc = entry.getValue();
-                actualValues.put(entry.getKey(), documentToObject(doc));
-            }
-            return OBJECT_MAPPER.writeValueAsString(actualValues);
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
+        Map<String, Object> actualValues = new HashMap<>();
+        for (Map.Entry<String, Document> entry : document.asMap().entrySet()) {
+            Document doc = entry.getValue();
+            actualValues.put(entry.getKey(), documentToObject(doc));
         }
+        return CODEC.toJson(actualValues);
     }
 
     private static Object documentToObject(Document doc) {
@@ -63,48 +56,37 @@ class AwsDocumentConverter {
     }
 
     public static Document documentFromJson(String json) {
-        try {
-            JsonNode jsonNode = OBJECT_MAPPER.readValue(json, JsonNode.class);
-            Iterator<Map.Entry<String, JsonNode>> fields = jsonNode.fields();
-            return new MapDocument(fieldsToDocumentMap(fields));
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
-        }
+        return new MapDocument(fieldsToDocumentMap(CODEC.fromJson(json, Map.class)));
     }
 
-    private static Map<String, Document> fieldsToDocumentMap(Iterator<Map.Entry<String, JsonNode>> fields) {
+    private static Map<String, Document> fieldsToDocumentMap(Map<?, ?> fields) {
         Map<String, Document> documentMap = new HashMap<>();
-        while (fields.hasNext()) {
-            Map.Entry<String, JsonNode> entry = fields.next();
-            JsonNode value = entry.getValue();
-            Document doc = getDocument(value);
-            documentMap.put(entry.getKey(), doc);
-        }
+        fields.forEach((key, value) -> documentMap.put(String.valueOf(key), getDocument(value)));
         return documentMap;
     }
 
-    private static Document getDocument(JsonNode value) {
-        Document doc;
-        if (value.isNull()) {
-            doc = Document.fromNull();
-        } else if (value.isBoolean()) {
-            doc = Document.fromBoolean(value.asBoolean());
-        } else if (value.isDouble() || value.isFloat() || value.isBigDecimal()) {
-            doc = Document.fromNumber(value.asDouble());
-        } else if (value.isInt() || value.isLong() || value.isShort() || value.isBigInteger()) {
-            doc = Document.fromNumber(value.bigIntegerValue());
-        } else if (value.isArray()) {
-            List<Document> list = new ArrayList<>();
-            for (JsonNode node : value) {
-                list.add(getDocument(node));
+    private static Document getDocument(Object value) {
+        if (value == null) {
+            return Document.fromNull();
+        } else if (value instanceof Boolean bool) {
+            return Document.fromBoolean(bool);
+        } else if (value instanceof Double || value instanceof Float || value instanceof BigDecimal) {
+            return Document.fromNumber(((Number) value).doubleValue());
+        } else if (value instanceof BigInteger bigInteger) {
+            return Document.fromNumber(bigInteger);
+        } else if (value instanceof Number number) {
+            return Document.fromNumber(BigInteger.valueOf(number.longValue()));
+        } else if (value instanceof List<?> list) {
+            List<Document> documents = new ArrayList<>(list.size());
+            for (Object element : list) {
+                documents.add(getDocument(element));
             }
-            doc = Document.fromList(list);
-        } else if (value.isObject() || value.isPojo()) {
-            doc = Document.fromMap(fieldsToDocumentMap(value.fields()));
+            return Document.fromList(documents);
+        } else if (value instanceof Map<?, ?> map) {
+            return Document.fromMap(fieldsToDocumentMap(map));
         } else {
-            doc = Document.fromString(value.asText());
+            return Document.fromString(String.valueOf(value));
         }
-        return doc;
     }
 
     public static Document convertJsonObjectSchemaToDocument(ToolSpecification toolSpecification) {
@@ -121,20 +103,10 @@ class AwsDocumentConverter {
             schemaMap.put("required", required);
         }
 
-        try {
-            String jsonSchema = OBJECT_MAPPER.writeValueAsString(schemaMap);
-            return documentFromJson(jsonSchema);
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException("Failed to convert schema to Document", e);
-        }
+        return documentFromJson(CODEC.toJson(schemaMap));
     }
 
     public static Document convertAdditionalModelRequestFields(Map<String, Object> additionalModelRequestFields) {
-        try {
-            String json = OBJECT_MAPPER.writeValueAsString(additionalModelRequestFields);
-            return documentFromJson(json);
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException("Failed to convert additionalModelRequestFields to Document", e);
-        }
+        return documentFromJson(CODEC.toJson(additionalModelRequestFields));
     }
 }
