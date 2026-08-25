@@ -43,6 +43,7 @@ public class McpOperationHandler {
     private final Runnable onServerPing;
     private final Runnable onServerRootsList;
     private final BiConsumer<Long, String> onServerCancelled;
+    private final BiConsumer<Long, Map<String, Object>> onSubscriptionAcknowledged;
 
     public McpOperationHandler(
             Map<Long, CompletableFuture<String>> pendingOperations,
@@ -56,7 +57,8 @@ public class McpOperationHandler {
             McpProgressHandler progressHandler,
             Runnable onServerPing,
             Runnable onServerRootsList,
-            BiConsumer<Long, String> onServerCancelled) {
+            BiConsumer<Long, String> onServerCancelled,
+            BiConsumer<Long, Map<String, Object>> onSubscriptionAcknowledged) {
         this.pendingOperations = pendingOperations;
         this.transport = transport;
         this.logMessageConsumer = logMessageConsumer;
@@ -69,6 +71,7 @@ public class McpOperationHandler {
         this.onServerPing = onServerPing;
         this.onServerRootsList = onServerRootsList;
         this.onServerCancelled = onServerCancelled;
+        this.onSubscriptionAcknowledged = onSubscriptionAcknowledged;
     }
 
     /**
@@ -186,7 +189,7 @@ public class McpOperationHandler {
                 handleCancelledNotification(message);
                 break;
             case NOTIFICATION_SUBSCRIPTIONS_ACKNOWLEDGED:
-                log.debug("Subscriptions acknowledged: {}", message);
+                handleSubscriptionAcknowledgedNotification(message);
                 break;
             default:
                 log.warn("Received unknown message: {}", message);
@@ -240,6 +243,21 @@ public class McpOperationHandler {
             log.warn("Received resource updated notification without uri: {}", message);
         } else if (onResourceUpdate != null) {
             onResourceUpdate.accept(String.valueOf(uri));
+        }
+    }
+
+    private void handleSubscriptionAcknowledgedNotification(Map<String, Object> message) {
+        Map<String, Object> params = params(message);
+        Object meta = params == null ? null : params.get("_meta");
+        Long subscriptionId = meta instanceof Map
+                ? toLong(((Map<?, ?>) meta).get("io.modelcontextprotocol/subscriptionId"))
+                : null;
+        if (subscriptionId == null) {
+            log.warn("Received subscriptions acknowledged notification without a subscription ID: {}", message);
+            return;
+        }
+        if (onSubscriptionAcknowledged != null) {
+            onSubscriptionAcknowledged.accept(subscriptionId, message);
         }
     }
 

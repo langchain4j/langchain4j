@@ -29,6 +29,7 @@ class McpOperationHandlerRobustnessTest {
                 null,
                 null,
                 null,
+                null,
                 null);
     }
 
