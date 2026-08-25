@@ -26,6 +26,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -255,7 +256,7 @@ public class DockerMcpTransport implements McpTransport {
                     .exec(new DockerResultCallback(logEvents, logger, messageHandler));
             callback.awaitStarted(attachTimeout.toMillis(), TimeUnit.MILLISECONDS);
 
-            out.write((request + "\n").getBytes());
+            out.write((request + "\n").getBytes(StandardCharsets.UTF_8));
             out.flush();
 
             if (id != null) {
