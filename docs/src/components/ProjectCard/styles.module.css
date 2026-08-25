@@ -1,0 +1,23 @@
+.headerRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.badge {
+  flex-shrink: 0;
+  padding: 0.15rem 0.6rem;
+  border-radius: var(--ifm-badge-border-radius, 0.25rem);
+  background-color: var(--ifm-color-primary);
+  color: var(--ifm-color-white);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.stars {
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
