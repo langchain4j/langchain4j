@@ -4,7 +4,6 @@ import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import java.util.List;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
@@ -15,8 +14,7 @@ class OllamaChatRequest {
     private List<Message> messages;
     private Options options;
 
-    @JsonSerialize(using = FormatSerializer.class)
-    private String format;
+    private Object format;
 
     private Boolean stream;
     private List<Tool> tools;
@@ -68,11 +66,11 @@ class OllamaChatRequest {
         this.options = options;
     }
 
-    public String getFormat() {
+    public Object getFormat() {
         return format;
     }
 
-    public void setFormat(String format) {
+    public void setFormat(Object format) {
         this.format = format;
     }
 
@@ -121,7 +119,7 @@ class OllamaChatRequest {
         private String model;
         private List<Message> messages;
         private Options options;
-        private String format;
+        private Object format;
         private Boolean stream;
         private List<Tool> tools;
         private Integer keepAlive;
@@ -143,7 +141,7 @@ class OllamaChatRequest {
             return this;
         }
 
-        Builder format(String format) {
+        Builder format(Object format) {
             this.format = format;
             return this;
         }

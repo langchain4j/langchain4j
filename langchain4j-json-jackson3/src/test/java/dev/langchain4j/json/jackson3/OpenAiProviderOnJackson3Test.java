@@ -7,8 +7,14 @@ import dev.langchain4j.internal.Json;
 import dev.langchain4j.internal.WireJson;
 import dev.langchain4j.internal.WireJsonSpec;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionRequest;
+import dev.langchain4j.model.openai.internal.chat.Content;
+import dev.langchain4j.model.openai.internal.chat.ContentType;
+import dev.langchain4j.model.openai.internal.chat.ImageDetail;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionResponse;
 import dev.langchain4j.model.openai.internal.embedding.EmbeddingResponse;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.util.Base64;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -86,6 +92,41 @@ class OpenAiProviderOnJackson3Test {
 
         assertThat(response.model()).isEqualTo("text-embedding-3-small");
         assertThat(response.embedding()).containsExactly(0.1f, 0.2f);
+    }
+
+    @Test
+    void deserializes_an_image_content_sent_as_an_object() {
+        Content content = codec.fromJson(
+                "{\"type\":\"image_url\",\"image_url\":{\"url\":\"https://example.com/cat.png\",\"detail\":\"high\"}}",
+                Content.class);
+
+        assertThat(content.type()).isEqualTo(ContentType.IMAGE_URL);
+        assertThat(content.imageUrl().getUrl()).isEqualTo("https://example.com/cat.png");
+        assertThat(content.imageUrl().getDetail()).isEqualTo(ImageDetail.HIGH);
+    }
+
+    @Test
+    void deserializes_an_image_content_sent_as_a_bare_string() {
+        Content content =
+                codec.fromJson("{\"type\":\"input_image\",\"image_url\":\"https://example.com/cat.png\"}", Content.class);
+
+        assertThat(content.inputImageUrl()).isEqualTo("https://example.com/cat.png");
+        assertThat(content.imageUrl()).isNull();
+    }
+
+    @Test
+    void deserializes_a_base64_encoded_embedding() {
+        List<Float> original = List.of(4.2f, -1.5f, 0.0f);
+        ByteBuffer buffer = ByteBuffer.allocate(original.size() * Float.BYTES).order(ByteOrder.LITTLE_ENDIAN);
+        original.forEach(buffer::putFloat);
+        String base64 = Base64.getEncoder().encodeToString(buffer.array());
+
+        EmbeddingResponse response = codec.fromJson(
+                "{\"model\":\"text-embedding-3-small\",\"data\":[{\"index\":0,\"embedding\":\"%s\"}]}"
+                        .formatted(base64),
+                EmbeddingResponse.class);
+
+        assertThat(response.embedding()).containsExactlyElementsOf(original);
     }
 
     @Test

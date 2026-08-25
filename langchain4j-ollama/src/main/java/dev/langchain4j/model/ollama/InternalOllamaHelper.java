@@ -6,7 +6,6 @@ import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.ollama.OllamaJsonUtils.fromJson;
-import static dev.langchain4j.model.ollama.OllamaJsonUtils.toJson;
 import static dev.langchain4j.model.ollama.OllamaJsonUtils.toJsonWithoutIdent;
 
 import java.lang.reflect.Type;
@@ -115,13 +114,13 @@ class InternalOllamaHelper {
                 .collect(Collectors.toList());
     }
 
-    static String toOllamaResponseFormat(ResponseFormat responseFormat) {
+    static Object toOllamaResponseFormat(ResponseFormat responseFormat) {
         if (responseFormat == null || responseFormat.type() == ResponseFormatType.TEXT) {
             return null;
         } else if (responseFormat.type() == ResponseFormatType.JSON && responseFormat.jsonSchema() == null) {
             return "json";
         } else {
-            return toJson(toMap(responseFormat.jsonSchema().rootElement()));
+            return toMap(responseFormat.jsonSchema().rootElement());
         }
     }
 

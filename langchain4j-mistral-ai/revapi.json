@@ -55,6 +55,30 @@
           "code": "java.annotation.added",
           "annotationType": "com.fasterxml.jackson.annotation.JsonAutoDetect",
           "justification": "Added to the builders so the Jackson 3 creator does not depend on the consuming mapper enabling field visibility."
+        },
+        {
+          "code": "java.annotation.added",
+          "old": "method dev.langchain4j.model.mistralai.internal.api.MistralAiChatMessage.MistralAiChatMessageBuilder dev.langchain4j.model.mistralai.internal.api.MistralAiChatMessage.MistralAiChatMessageBuilder::content(java.util.List<dev.langchain4j.model.mistralai.internal.api.MistralAiMessageContent>)",
+          "annotationType": "com.fasterxml.jackson.annotation.JsonFormat",
+          "justification": "The custom Jackson 2 deserializer that turned a plain string content into a single text block was replaced by annotations from the shared jackson-annotations artifact, so that the same wire formats are read when another JSON library is on the classpath. Behaviour is unchanged and covered by MistralAiMessageContentTest; these are internal wire types."
+        },
+        {
+          "code": "java.annotation.removed",
+          "old": "method dev.langchain4j.model.mistralai.internal.api.MistralAiChatMessage.MistralAiChatMessageBuilder dev.langchain4j.model.mistralai.internal.api.MistralAiChatMessage.MistralAiChatMessageBuilder::content(java.util.List<dev.langchain4j.model.mistralai.internal.api.MistralAiMessageContent>)",
+          "annotationType": "com.fasterxml.jackson.databind.annotation.JsonDeserialize",
+          "justification": "The custom Jackson 2 deserializer that turned a plain string content into a single text block was replaced by annotations from the shared jackson-annotations artifact, so that the same wire formats are read when another JSON library is on the classpath. Behaviour is unchanged and covered by MistralAiMessageContentTest; these are internal wire types."
+        },
+        {
+          "code": "java.annotation.added",
+          "old": "parameter void dev.langchain4j.model.mistralai.internal.api.MistralAiDeltaMessage::<init>(dev.langchain4j.model.mistralai.internal.api.MistralAiRole, ===java.util.List<dev.langchain4j.model.mistralai.internal.api.MistralAiMessageContent>===, java.util.List<dev.langchain4j.model.mistralai.internal.api.MistralAiToolCall>)",
+          "annotationType": "com.fasterxml.jackson.annotation.JsonFormat",
+          "justification": "The custom Jackson 2 deserializer that turned a plain string content into a single text block was replaced by annotations from the shared jackson-annotations artifact, so that the same wire formats are read when another JSON library is on the classpath. Behaviour is unchanged and covered by MistralAiMessageContentTest; these are internal wire types."
+        },
+        {
+          "code": "java.annotation.attributeAdded",
+          "old": "class dev.langchain4j.model.mistralai.internal.api.MistralAiMessageContent",
+          "annotationType": "com.fasterxml.jackson.annotation.JsonTypeInfo",
+          "justification": "The custom Jackson 2 deserializer that turned a plain string content into a single text block was replaced by annotations from the shared jackson-annotations artifact, so that the same wire formats are read when another JSON library is on the classpath. Behaviour is unchanged and covered by MistralAiMessageContentTest; these are internal wire types."
         }
       ]
     }

@@ -4,7 +4,7 @@ import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
@@ -24,7 +24,6 @@ public class OllamaModelCard {
     private Map<String, Object> projectorInfo;
     private List<OllamaModelTensor> tensors;
 
-    @JsonDeserialize(using = OllamaDateDeserializer.class)
     private OffsetDateTime modifiedAt;
 
     private List<String> capabilities;
@@ -128,6 +127,11 @@ public class OllamaModelCard {
 
     public void setModifiedAt(OffsetDateTime modifiedAt) {
         this.modifiedAt = modifiedAt;
+    }
+
+    @JsonProperty("modified_at")
+    void setModifiedAt(Object modifiedAt) {
+        this.modifiedAt = OllamaTimestamps.parse(modifiedAt);
     }
 
     public List<String> getCapabilities() {

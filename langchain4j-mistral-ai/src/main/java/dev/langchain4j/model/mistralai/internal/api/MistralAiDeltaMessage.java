@@ -3,10 +3,10 @@ package dev.langchain4j.model.mistralai.internal.api;
 import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import java.util.List;
 import java.util.Objects;
 import java.util.StringJoiner;
@@ -17,7 +17,6 @@ public class MistralAiDeltaMessage {
 
     private MistralAiRole role;
 
-    @JsonDeserialize(using = MistralAiMessageContentDeserializer.class)
     private List<MistralAiMessageContent> content;
 
     private List<MistralAiToolCall> toolCalls;
@@ -25,7 +24,8 @@ public class MistralAiDeltaMessage {
     @JsonCreator
     public MistralAiDeltaMessage(
             @JsonProperty("role") MistralAiRole role,
-            @JsonProperty("content") List<MistralAiMessageContent> content,
+            @JsonProperty("content") @JsonFormat(with = JsonFormat.Feature.ACCEPT_SINGLE_VALUE_AS_ARRAY)
+                    List<MistralAiMessageContent> content,
             @JsonProperty("tool_calls") List<MistralAiToolCall> toolCalls) {
         this.role = role;
         this.content = content;

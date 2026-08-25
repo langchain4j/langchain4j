@@ -2,7 +2,7 @@ package dev.langchain4j.model.ollama;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.time.OffsetDateTime;
 
@@ -14,7 +14,6 @@ public class OllamaModel {
 
     private String name;
     private String model;
-    @JsonDeserialize(using = OllamaDateDeserializer.class)
     private OffsetDateTime modifiedAt;
     private long size;
     private String digest;
@@ -82,6 +81,11 @@ public class OllamaModel {
 
     public void setModifiedAt(OffsetDateTime modifiedAt) {
         this.modifiedAt = modifiedAt;
+    }
+
+    @JsonProperty("modified_at")
+    void setModifiedAt(Object modifiedAt) {
+        this.modifiedAt = OllamaTimestamps.parse(modifiedAt);
     }
 
     public static class Builder {

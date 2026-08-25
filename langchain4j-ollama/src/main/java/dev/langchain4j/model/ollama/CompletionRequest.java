@@ -4,7 +4,6 @@ import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonInclude(NON_NULL)
@@ -18,8 +17,7 @@ class CompletionRequest {
     private Integer height;
     private Integer steps;
 
-    @JsonSerialize(using = FormatSerializer.class)
-    private String format;
+    private Object format;
 
     private Boolean stream;
 
@@ -33,7 +31,7 @@ class CompletionRequest {
             Integer width,
             Integer height,
             Integer steps,
-            String format,
+            Object format,
             Boolean stream) {
         this.model = model;
         this.system = system;
@@ -106,11 +104,11 @@ class CompletionRequest {
         this.steps = steps;
     }
 
-    public String getFormat() {
+    public Object getFormat() {
         return format;
     }
 
-    public void setFormat(String format) {
+    public void setFormat(Object format) {
         this.format = format;
     }
 
@@ -131,7 +129,7 @@ class CompletionRequest {
         private Integer width;
         private Integer height;
         private Integer steps;
-        private String format;
+        private Object format;
         private Boolean stream;
 
         Builder model(String model) {
@@ -169,7 +167,7 @@ class CompletionRequest {
             return this;
         }
 
-        Builder format(String format) {
+        Builder format(Object format) {
             this.format = format;
             return this;
         }

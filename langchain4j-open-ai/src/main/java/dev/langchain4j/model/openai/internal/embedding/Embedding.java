@@ -10,7 +10,10 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
-
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 import java.util.Objects;
 
@@ -77,12 +80,46 @@ public final class Embedding {
         private List<Float> embedding;
         private Integer index;
 
-        @JsonDeserialize(using = OpenAiEmbeddingDeserializer.class)
         public Builder embedding(List<Float> embedding) {
             if (embedding != null) {
                 this.embedding = unmodifiableList(embedding);
             }
             return this;
+        }
+
+        @JsonProperty("embedding")
+        Builder embedding(Object embedding) {
+            if (embedding == null) {
+                return this;
+            }
+            if (embedding instanceof String base64) {
+                return embedding(decodeBase64(base64));
+            }
+            if (embedding instanceof List<?> values) {
+                List<Float> floats = new ArrayList<>(values.size());
+                for (Object value : values) {
+                    if (!(value instanceof Number number)) {
+                        throw new IllegalArgumentException("Illegal embedding: " + value);
+                    }
+                    floats.add(number.floatValue());
+                }
+                return embedding(floats);
+            }
+            throw new IllegalArgumentException("Illegal embedding: " + embedding);
+        }
+
+        /**
+         * OpenAI returns the embedding either as an array of numbers or, when
+         * {@code encoding_format} is {@code base64}, as little-endian float bytes in Base64.
+         */
+        private static List<Float> decodeBase64(String base64) {
+            byte[] bytes = Base64.getDecoder().decode(base64);
+            ByteBuffer buffer = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN);
+            List<Float> floats = new ArrayList<>(bytes.length / Float.BYTES);
+            while (buffer.remaining() >= Float.BYTES) {
+                floats.add(buffer.getFloat());
+            }
+            return floats;
         }
 
         public Builder index(Integer index) {

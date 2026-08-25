@@ -20,6 +20,11 @@ public class MistralAiTextContent extends MistralAiMessageContent {
         this.text = text;
     }
 
+    @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
+    static MistralAiTextContent fromText(String text) {
+        return new MistralAiTextContent(text);
+    }
+
     public String asText() {
         return text;
     }

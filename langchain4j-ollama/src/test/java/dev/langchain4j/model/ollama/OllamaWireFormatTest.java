@@ -2,6 +2,10 @@ package dev.langchain4j.model.ollama;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import dev.langchain4j.model.chat.request.ResponseFormat;
+import dev.langchain4j.model.chat.request.ResponseFormatType;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchema;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -54,6 +58,45 @@ class OllamaWireFormatTest {
                 .build());
 
         assertThat(json).contains("\"keep_alive\":300").doesNotContain("keepAlive");
+    }
+
+    @Test
+    void a_json_response_format_without_a_schema_is_sent_as_the_string_json() {
+        String json = OllamaJsonUtils.toJsonWithoutIdent(OllamaChatRequest.builder()
+                .model("llama3")
+                .format(InternalOllamaHelper.toOllamaResponseFormat(
+                        ResponseFormat.builder().type(ResponseFormatType.JSON).build()))
+                .build());
+
+        assertThat(json).contains("\"format\":\"json\"");
+    }
+
+    @Test
+    void a_json_schema_response_format_is_sent_as_an_embedded_json_object() {
+        ResponseFormat responseFormat = ResponseFormat.builder()
+                .type(ResponseFormatType.JSON)
+                .jsonSchema(JsonSchema.builder()
+                        .name("Person")
+                        .rootElement(JsonObjectSchema.builder()
+                                .addStringProperty("name")
+                                .addIntegerProperty("age")
+                                .required("name")
+                                .build())
+                        .build())
+                .build();
+
+        String json = OllamaJsonUtils.toJsonWithoutIdent(OllamaChatRequest.builder()
+                .model("llama3")
+                .format(InternalOllamaHelper.toOllamaResponseFormat(responseFormat))
+                .build());
+
+        assertThat(json)
+                .contains("\"format\":{")
+                .contains("\"type\":\"object\"")
+                .contains("\"name\":{\"type\":\"string\"}")
+                .contains("\"age\":{\"type\":\"integer\"}")
+                .contains("\"required\":[\"name\"]");
+        assertThat(json).doesNotContain("\"format\":\"{");
     }
 
     @Test

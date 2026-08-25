@@ -14,7 +14,8 @@ import java.util.Objects;
         use = JsonTypeInfo.Id.NAME,
         include = JsonTypeInfo.As.EXISTING_PROPERTY,
         property = "type",
-        visible = true)
+        visible = true,
+        defaultImpl = MistralAiTextContent.class)
 @JsonSubTypes({
     @JsonSubTypes.Type(value = MistralAiTextContent.class, name = "text"),
     @JsonSubTypes.Type(value = MistralAiThinkingContent.class, name = "thinking")
