@@ -1,9 +1,8 @@
 package dev.langchain4j.model.ovhai.internal.client;
 
-import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
-
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.langchain4j.internal.Json;
+import dev.langchain4j.internal.WireJson;
+import dev.langchain4j.internal.WireJsonSpec;
 
 class OvhAiJsonUtils {
 
@@ -11,21 +10,14 @@ class OvhAiJsonUtils {
         throw new InstantiationException("Can't instantiate this utility class.");
     }
 
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper().enable(INDENT_OUTPUT);
+    private static final Json.JsonCodec CODEC =
+            WireJson.codec(WireJsonSpec.builder().prettyPrint(true).build());
 
     static String toJson(Object object) {
-        try {
-            return OBJECT_MAPPER.writeValueAsString(object);
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
-        }
+        return CODEC.toJson(object);
     }
 
     static <T> T fromJson(String jsonStr, Class<T> clazz) {
-        try {
-            return OBJECT_MAPPER.readValue(jsonStr, clazz);
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
-        }
+        return CODEC.fromJson(jsonStr, clazz);
     }
 }
