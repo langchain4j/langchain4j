@@ -24,6 +24,8 @@ import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import dev.langchain4j.mcp.client.transport.McpTransport;
+import dev.langchain4j.mcp.protocol.McpCancellationNotification;
+import dev.langchain4j.mcp.protocol.McpCancellationParams;
 import dev.langchain4j.mcp.protocol.McpClientMessage;
 import dev.langchain4j.mcp.protocol.McpClientRequest;
 import dev.langchain4j.mcp.protocol.McpListToolsParams;
@@ -1624,6 +1626,122 @@ public class DefaultMcpClientTest {
 
         client.executeTool(
                 ToolExecutionRequest.builder().name("slowTool").arguments("{}").build());
+
+        assertThat(neverCompletes.isCancelled()).isTrue();
+        verify(transport, times(1)).sendMessage(any(McpClientMessage.class));
+    }
+
+    @Test
+    public void resource_read_timeout_cancels_pending_request_and_sends_cancellation_notification() {
+        McpTransport transport = getModernStdioTransportMock();
+
+        CompletableFuture<JsonNode> neverCompletes = new CompletableFuture<>();
+        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
+                .thenReturn(CompletableFuture.completedFuture(getDiscoverResult()))
+                .thenReturn(neverCompletes);
+
+        DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion("2026-07-28")
+                .resourcesTimeout(java.time.Duration.ofMillis(100))
+                .subscribeToToolListChanges(false)
+                .subscribeToPromptListChanges(false)
+                .subscribeToResourceListChanges(false)
+                .build();
+
+        assertThatThrownBy(() -> client.readResource("test://resource")).isInstanceOf(RuntimeException.class);
+
+        assertThat(neverCompletes.isCancelled()).isTrue();
+        verify(transport, times(1)).sendMessage(any(McpClientMessage.class));
+    }
+
+    @Test
+    public void resource_read_retry_timeout_cancels_retry_request_and_notifies_server() {
+        McpTransport transport = getModernStdioTransportMock();
+        CompletableFuture<JsonNode> retryNeverCompletes = new CompletableFuture<>();
+        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
+                .thenReturn(CompletableFuture.completedFuture(getDiscoverResult()))
+                .thenReturn(CompletableFuture.completedFuture(buildInputRequiredResponse(true, false)))
+                .thenReturn(retryNeverCompletes);
+
+        DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion("2026-07-28")
+                .resourcesTimeout(java.time.Duration.ofMillis(100))
+                .subscribeToToolListChanges(false)
+                .subscribeToPromptListChanges(false)
+                .subscribeToResourceListChanges(false)
+                .build();
+
+        assertThatThrownBy(() -> client.readResource("test://resource")).isInstanceOf(RuntimeException.class);
+
+        assertThat(retryNeverCompletes.isCancelled()).isTrue();
+
+        ArgumentCaptor<McpCallContext> requestCaptor = ArgumentCaptor.forClass(McpCallContext.class);
+        verify(transport, times(3)).executeOperationWithResponse(requestCaptor.capture());
+        long retryOperationId =
+                ((McpClientRequest) requestCaptor.getAllValues().get(2).message()).getId();
+
+        ArgumentCaptor<McpClientMessage> cancellationCaptor = ArgumentCaptor.forClass(McpClientMessage.class);
+        verify(transport).sendMessage(cancellationCaptor.capture());
+        McpCancellationNotification cancellation = (McpCancellationNotification) cancellationCaptor.getValue();
+        assertThat(((McpCancellationParams) cancellation.getParams()).getRequestId())
+                .isEqualTo(retryOperationId);
+    }
+
+    @Test
+    public void prompt_get_timeout_cancels_pending_request_and_sends_cancellation_notification() {
+        McpTransport transport = getLegacyHttpTransportMock();
+
+        CompletableFuture<JsonNode> neverCompletes = new CompletableFuture<>();
+        when(transport.executeOperationWithResponse(any(McpCallContext.class))).thenReturn(neverCompletes);
+
+        DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion("2025-11-25")
+                .promptsTimeout(java.time.Duration.ofMillis(100))
+                .build();
+
+        assertThatThrownBy(() -> client.getPrompt("test", Map.of())).isInstanceOf(RuntimeException.class);
+
+        assertThat(neverCompletes.isCancelled()).isTrue();
+        verify(transport, times(1)).sendMessage(any(McpClientMessage.class));
+    }
+
+    @Test
+    public void resource_subscribe_timeout_cancels_pending_request_and_sends_cancellation_notification() {
+        McpTransport transport = getLegacyHttpTransportMock();
+
+        CompletableFuture<JsonNode> neverCompletes = new CompletableFuture<>();
+        when(transport.executeOperationWithResponse(any(McpCallContext.class))).thenReturn(neverCompletes);
+
+        DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion("2025-11-25")
+                .resourcesTimeout(java.time.Duration.ofMillis(100))
+                .build();
+
+        assertThatThrownBy(() -> client.subscribeToResource("test://resource")).isInstanceOf(RuntimeException.class);
+
+        assertThat(neverCompletes.isCancelled()).isTrue();
+        verify(transport, times(1)).sendMessage(any(McpClientMessage.class));
+    }
+
+    @Test
+    public void resource_unsubscribe_timeout_cancels_pending_request_and_sends_cancellation_notification() {
+        McpTransport transport = getLegacyHttpTransportMock();
+
+        CompletableFuture<JsonNode> neverCompletes = new CompletableFuture<>();
+        when(transport.executeOperationWithResponse(any(McpCallContext.class))).thenReturn(neverCompletes);
+
+        DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion("2025-11-25")
+                .resourcesTimeout(java.time.Duration.ofMillis(100))
+                .build();
+
+        assertThatThrownBy(() -> client.unsubscribeFromResource("test://resource"))
+                .isInstanceOf(RuntimeException.class);
 
         assertThat(neverCompletes.isCancelled()).isTrue();
         verify(transport, times(1)).sendMessage(any(McpClientMessage.class));
