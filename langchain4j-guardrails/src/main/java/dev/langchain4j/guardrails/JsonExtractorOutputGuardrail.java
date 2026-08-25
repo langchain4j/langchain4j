@@ -8,7 +8,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.guardrail.OutputGuardrail;
 import dev.langchain4j.guardrail.OutputGuardrailResult;
+import dev.langchain4j.internal.Json;
 import dev.langchain4j.internal.JsonParsingUtils;
+import java.lang.reflect.Type;
 import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,24 +40,67 @@ public class JsonExtractorOutputGuardrail<T> implements OutputGuardrail {
     private static final Logger LOGGER = LoggerFactory.getLogger(JsonExtractorOutputGuardrail.class);
     private final ObjectMapper objectMapper;
     private Class<T> outputClass;
+    private Type reflectedType;
     private TypeReference<T> outputType;
 
+    /**
+     * @deprecated use a constructor without an {@link ObjectMapper}; deserialization then goes
+     * through LangChain4j's configured JSON codec, which can be swapped for Jackson 3.
+     */
+    @Deprecated(since = "1.20.0", forRemoval = true)
     public JsonExtractorOutputGuardrail(ObjectMapper objectMapper, Class<T> outputClass) {
         this.objectMapper = ensureNotNull(objectMapper, "objectMapper");
         this.outputClass = ensureNotNull(outputClass, "outputClass");
     }
 
+    /**
+     * @deprecated use a constructor without an {@link ObjectMapper}; deserialization then goes
+     * through LangChain4j's configured JSON codec, which can be swapped for Jackson 3.
+     */
+    @Deprecated(since = "1.20.0", forRemoval = true)
     public JsonExtractorOutputGuardrail(ObjectMapper objectMapper, TypeReference<T> outputType) {
         this.objectMapper = ensureNotNull(objectMapper, "objectMapper");
         this.outputType = ensureNotNull(outputType, "outputType");
     }
 
+    /**
+     * Deserializes with LangChain4j's configured JSON codec, so that swapping the JSON library -
+     * for example by putting {@code langchain4j-json-jackson3} on the classpath - applies here too.
+     */
     public JsonExtractorOutputGuardrail(Class<T> outputClass) {
-        this(new ObjectMapper(), outputClass);
+        this.objectMapper = null;
+        this.outputClass = ensureNotNull(outputClass, "outputClass");
     }
 
+    /**
+     * Deserializes with LangChain4j's configured JSON codec, so that swapping the JSON library
+     * applies here too.
+     */
+    public JsonExtractorOutputGuardrail(Type outputType) {
+        this.objectMapper = null;
+        this.reflectedType = ensureNotNull(outputType, "outputType");
+    }
+
+    /**
+     * @deprecated use {@link #JsonExtractorOutputGuardrail(Type)}, which does not expose Jackson
+     * types - {@code TypeReference} lives in Jackson's core package, which moved in Jackson 3.
+     * Pass {@code new TypeReference<Foo>() {}.getType()} to migrate.
+     */
+    @Deprecated(since = "1.20.0", forRemoval = true)
     public JsonExtractorOutputGuardrail(TypeReference<T> outputType) {
         this(new ObjectMapper(), outputType);
+    }
+
+    @SuppressWarnings("unchecked")
+    private T parse(String text) throws Exception {
+        if (objectMapper != null) {
+            return outputClass != null
+                    ? objectMapper.readValue(text, outputClass)
+                    : objectMapper.readValue(text, outputType);
+        }
+        return outputClass != null
+                ? Json.fromJson(text, outputClass)
+                : (T) Json.fromJson(text, reflectedType);
     }
 
     @Override
@@ -109,9 +154,7 @@ public class JsonExtractorOutputGuardrail<T> implements OutputGuardrail {
      */
     protected Optional<JsonParsingUtils.ParsedJson<T>> deserialize(String llmResponse) {
         try {
-            return Optional.of(this.outputClass != null
-                    ? extractAndParseJson(llmResponse, text -> this.objectMapper.readValue(text, this.outputClass))
-                    : extractAndParseJson(llmResponse, text -> this.objectMapper.readValue(text, this.outputType)));
+            return Optional.of(extractAndParseJson(llmResponse, this::parse));
         } catch (Exception e) {
             return Optional.empty();
         }

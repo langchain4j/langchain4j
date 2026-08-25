@@ -1,0 +1,16 @@
+[
+  {
+    "extension": "revapi.differences",
+    "configuration": {
+      "ignore": true,
+      "differences": [
+        {
+          "ignore": true,
+          "code": "java.class.removed",
+          "classQualifiedName": "dev.langchain4j.guardrail.JsonExtractorOutputGuardrail",
+          "justification": "Deprecated for removal since 1.9.0, when it moved to the langchain4j-guardrails module; the replacement is dev.langchain4j.guardrails.JsonExtractorOutputGuardrail. Removing it also takes two public constructors taking Jackson's ObjectMapper and TypeReference out of core's API, which a caller cannot satisfy under Jackson 3."
+        }
+      ]
+    }
+  }
+]
