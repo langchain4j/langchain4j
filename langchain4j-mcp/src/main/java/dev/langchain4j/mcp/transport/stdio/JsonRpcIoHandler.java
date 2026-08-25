@@ -33,11 +33,7 @@ public class JsonRpcIoHandler implements Runnable, Closeable {
     }
 
     public JsonRpcIoHandler(
-            InputStream input,
-            OutputStream output,
-            Consumer<String> messageHandler,
-            boolean logEvents,
-            Logger logger) {
+            InputStream input, OutputStream output, Consumer<String> messageHandler, boolean logEvents, Logger logger) {
         this.input = input;
         this.logEvents = logEvents;
         this.messageHandler = messageHandler;
