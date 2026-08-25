@@ -1,6 +1,5 @@
 package dev.langchain4j.mcp.client.transport.docker;
 
-import dev.langchain4j.mcp.client.transport.McpJson;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.api.command.CreateContainerCmd;
@@ -17,6 +16,7 @@ import com.github.dockerjava.httpclient5.ApacheDockerHttpClient;
 import com.github.dockerjava.transport.DockerHttpClient;
 import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.mcp.client.McpCallContext;
+import dev.langchain4j.mcp.client.transport.McpJson;
 import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import dev.langchain4j.mcp.client.transport.McpTransport;
 import dev.langchain4j.mcp.protocol.McpClientMessage;
@@ -26,6 +26,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -255,7 +256,7 @@ public class DockerMcpTransport implements McpTransport {
                     .exec(new DockerResultCallback(logEvents, logger, messageHandler));
             callback.awaitStarted(attachTimeout.toMillis(), TimeUnit.MILLISECONDS);
 
-            out.write((request + "\n").getBytes());
+            out.write((request + "\n").getBytes(StandardCharsets.UTF_8));
             out.flush();
 
             if (id != null) {
@@ -528,5 +529,4 @@ public class DockerMcpTransport implements McpTransport {
     public void executeOperationWithoutResponse(McpCallContext context) {
         sendMessage(context);
     }
-
 }
