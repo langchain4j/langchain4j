@@ -2209,7 +2209,10 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
         // when
         ArithmeticExpression expression = extractor.extractFrom(
                 "Represent the literal expression 1+2+3 as a syntax tree. Do NOT simplify or evaluate. "
-                        + "Use a left-associative tree: Addition(Addition(Constant(1), Constant(2)), Constant(3)).");
+                        + "Use a left-associative tree: Addition(Addition(Constant(1), Constant(2)), Constant(3)). "
+                        + "An Addition has exactly two fields: 'left' and 'right'. "
+                        + "A Constant has exactly one field: 'value'. "
+                        + "Do NOT add any other fields to any node.");
 
         // then
         assertThat(expression).isInstanceOf(Addition.class);

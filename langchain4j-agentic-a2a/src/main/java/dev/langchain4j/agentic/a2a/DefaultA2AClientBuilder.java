@@ -278,6 +278,14 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
 
     static void completeFromTask(Task task, CompletableFuture<String> messageResponse) {
         TaskState state = task.status().state();
+        if (state.isInterrupted()) {
+            // The remote agent paused the task (input-required/auth-required) and will not advance it
+            // on its own, so this must complete exceptionally rather than being left pending forever.
+            Message statusMessage = task.status().message();
+            String reason = statusMessage != null ? extractTextFromParts(statusMessage.parts()) : "";
+            messageResponse.completeExceptionally(new A2ATaskInterruptedException(task.id(), state, reason));
+            return;
+        }
         if (!isTerminalState(state) && task.artifacts().isEmpty()) {
             return;
         }

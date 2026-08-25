@@ -6,6 +6,7 @@ sidebar_position: 7
 
 - [watsonx.ai API Reference](https://cloud.ibm.com/apidocs/watsonx-ai#text-rerank)
 - [watsonx.ai Java SDK](https://github.com/IBM/watsonx-ai-java-sdk)
+- [watsonx.ai Java SDK documentation](https://ibm.github.io/watsonx-ai-java-sdk/services/rerank-service)
 
 ## Maven Dependency
 
@@ -13,7 +14,7 @@ sidebar_position: 7
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-watsonx</artifactId>
-    <version>1.18.1-beta28</version>
+    <version>1.19.0-beta29</version>
 </dependency>
 ```
 

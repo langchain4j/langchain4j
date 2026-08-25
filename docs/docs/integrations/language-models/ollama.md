@@ -36,7 +36,7 @@ To get started, add the following dependencies to your project's `pom.xml`:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-ollama</artifactId>
-    <version>1.18.1</version>
+    <version>1.19.0</version>
 </dependency>
 
 <dependency>
@@ -289,6 +289,7 @@ params with the builder pattern:
 | `minP`                     |                                                                                                                                                                                   | `Double`                  |                             |
 | `responseFormat`           | The desired format for the generated output. TEXT or JSON with optional JSON Schema definition                                                                                    | `ResponseFormat`          |                             |
 | `think`                    | Controls [thinking](https://ollama.com/blog/thinking).                                                                                                                            | `Boolean`                 |                             |
+| `truncate`                 | Controls what the server does with a prompt that does not fit the context window. See below.                                                                                       | `Boolean`                 | `true` (server default)     |
 | `returnThinking`           |                                                                                                                                                                                   | `Boolean`                 |                             |
 | `timeout`                  | The maximum time allowed for the API call to complete.                                                                                                                            | `Duration`                | PT60S                       |
 | `customHeaders`            | Custom HTTP headers.                                                                                                                                                              | `Map<String, String>`     |                             |
@@ -408,6 +409,28 @@ OllamaChatModel ollamaChatModel = OllamaChatModel.builder()
     .supportedCapabilities(RESPONSE_FORMAT_JSON_SCHEMA)    
     .build();
 ```
+
+### Prompts that exceed the context window
+
+By default, Ollama drops the part of a prompt that does not fit the context window and answers from
+the rest. The response is a normal `200`, and `promptEvalCount` counts the prompt after the trim, so
+neither the response nor the token usage shows that input was lost.
+
+Set `truncate` to `false` to get an error instead. The server then rejects the request with HTTP 400
+and reports both the prompt size and the context size:
+
+```java
+ChatModel model = OllamaChatModel.builder()
+        .baseUrl("http://localhost:11434")
+        .modelName("llama3.1:8b")
+        .numCtx(4096)
+        .truncate(false)
+        .build();
+```
+
+This is useful in a multi-turn agent loop, where the conversation grows with every tool result and a
+silently shortened prompt is worse than a failed request. Leave `truncate` unset to keep the server
+default.
 
 ### Thinking / Reasoning
 
