@@ -103,10 +103,8 @@ class VoyageAiScoringModelTest {
     }
 
     private static MockHttpClient respondingWith(String body) {
-        SuccessfulHttpResponse response = SuccessfulHttpResponse.builder()
-                .statusCode(200)
-                .body(body)
-                .build();
+        SuccessfulHttpResponse response =
+                SuccessfulHttpResponse.builder().statusCode(200).body(body).build();
         return MockHttpClient.thatAlwaysResponds(response);
     }
 }

@@ -1,19 +1,18 @@
 package dev.langchain4j.model.voyageai;
 
-import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.output.Response;
-import dev.langchain4j.model.scoring.ScoringModel;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
-
-import java.time.Duration;
-import java.util.List;
-
 import static dev.langchain4j.model.voyageai.VoyageAiScoringModelName.RERANK_LITE_1;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.data.Percentage.withPercentage;
+
+import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.scoring.ScoringModel;
+import java.time.Duration;
+import java.util.List;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 @EnabledIfEnvironmentVariable(named = "VOYAGE_API_KEY", matches = ".+")
 class VoyageAiScoringModelIT {
@@ -59,7 +58,8 @@ class VoyageAiScoringModelIT {
                 .build();
 
         TextSegment catSegment = TextSegment.from("The Maine Coon is a large domesticated cat breed.");
-        TextSegment dogSegment = TextSegment.from("The sweet-faced, lovable Labrador Retriever is one of America's most popular dog breeds, year after year.");
+        TextSegment dogSegment = TextSegment.from(
+                "The sweet-faced, lovable Labrador Retriever is one of America's most popular dog breeds, year after year.");
         List<TextSegment> segments = asList(catSegment, dogSegment);
 
         String query = "tell me about dogs";
@@ -92,7 +92,8 @@ class VoyageAiScoringModelIT {
                 .build();
 
         TextSegment catSegment = TextSegment.from("The Maine Coon is a large domesticated cat breed.");
-        TextSegment dogSegment = TextSegment.from("The sweet-faced, lovable Labrador Retriever is one of America's most popular dog breeds, year after year.");
+        TextSegment dogSegment = TextSegment.from(
+                "The sweet-faced, lovable Labrador Retriever is one of America's most popular dog breeds, year after year.");
         List<TextSegment> segments = asList(catSegment, dogSegment);
 
         String query = "tell me about dogs";

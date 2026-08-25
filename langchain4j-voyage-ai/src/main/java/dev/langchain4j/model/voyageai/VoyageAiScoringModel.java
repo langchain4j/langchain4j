@@ -94,8 +94,7 @@ public class VoyageAiScoringModel implements ScoringModel {
                     "'topK' (%s) must be greater than or equal to the number of segments (%s) because "
                             + "ScoringModel must return one score per segment. Use "
                             + "ReRankingContentAggregator.builder().maxResults(...) to limit the final results.",
-                    topK,
-                    segments.size());
+                    topK, segments.size());
         }
 
         RerankRequest request = RerankRequest.builder()
