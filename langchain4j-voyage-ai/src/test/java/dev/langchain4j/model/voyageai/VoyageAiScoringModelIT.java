@@ -80,13 +80,13 @@ class VoyageAiScoringModelIT {
     }
 
     @Test
-    void should_respect_top_k() {
+    void should_allow_top_k_when_it_does_not_truncate_scores() {
         // given
         ScoringModel model = VoyageAiScoringModel.builder()
                 .apiKey(System.getenv("VOYAGE_API_KEY"))
                 .modelName(RERANK_LITE_1)
                 .timeout(Duration.ofSeconds(60))
-                .topK(1)
+                .topK(2)
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -102,7 +102,8 @@ class VoyageAiScoringModelIT {
 
         // then
         List<Double> scores = response.content();
-        assertThat(scores).hasSize(1);
+        assertThat(scores).hasSize(2);
+        assertThat(scores.get(0)).isLessThan(scores.get(1));
 
         assertThat(response.tokenUsage().inputTokenCount()).isNotNegative();
         assertThat(response.tokenUsage().outputTokenCount()).isNull();

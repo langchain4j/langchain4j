@@ -1,11 +1,14 @@
 package dev.langchain4j.model.voyageai;
 
+import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureBetween;
+import static dev.langchain4j.internal.ValidationUtils.ensureEq;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.voyageai.VoyageAiClient.DEFAULT_BASE_URL;
 import static java.time.Duration.ofSeconds;
-import static java.util.Comparator.comparingInt;
 import static java.util.stream.Collectors.toList;
 
 import dev.langchain4j.data.segment.TextSegment;
@@ -14,6 +17,8 @@ import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.model.scoring.ScoringModel;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
@@ -84,6 +89,15 @@ public class VoyageAiScoringModel implements ScoringModel {
 
     @Override
     public Response<List<Double>> scoreAll(List<TextSegment> segments, String query) {
+        if (topK != null && topK < segments.size()) {
+            throw illegalArgument(
+                    "'topK' (%s) must be greater than or equal to the number of segments (%s) because "
+                            + "ScoringModel must return one score per segment. Use "
+                            + "ReRankingContentAggregator.builder().maxResults(...) to limit the final results.",
+                    topK,
+                    segments.size());
+        }
+
         RerankRequest request = RerankRequest.builder()
                 .model(modelName)
                 .query(query)
@@ -94,10 +108,22 @@ public class VoyageAiScoringModel implements ScoringModel {
 
         RerankResponse response = withRetryMappingExceptions(() -> client.rerank(request), maxRetries);
 
-        List<Double> scores = response.getData().stream()
-                .sorted(comparingInt(RerankResponse.RerankData::getIndex))
-                .map(RerankResponse.RerankData::getRelevanceScore)
-                .collect(toList());
+        List<RerankResponse.RerankData> results = ensureNotNull(response.getData(), "rerank results");
+        ensureEq(
+                results.size(),
+                segments.size(),
+                "Voyage AI returned %s scores for %s segments",
+                results.size(),
+                segments.size());
+
+        List<Double> scores = new ArrayList<>(Collections.nCopies(segments.size(), null));
+        for (RerankResponse.RerankData result : results) {
+            int index = ensureBetween(result.getIndex(), 0, segments.size() - 1, "rerank result index");
+            if (scores.get(index) != null) {
+                throw illegalArgument("Voyage AI returned duplicate rerank result index: %s", index);
+            }
+            scores.set(index, ensureNotNull(result.getRelevanceScore(), "relevanceScore"));
+        }
 
         return Response.from(scores, new TokenUsage(response.getUsage().getTotalTokens()));
     }
@@ -220,7 +246,13 @@ public class VoyageAiScoringModel implements ScoringModel {
         }
 
         /**
-         * The number of most relevant documents to return. If not specified, the reranking results of all documents will be returned.
+         * The number of most relevant documents to return. If not specified, the reranking results of all documents
+         * will be returned.
+         * <p>
+         * This value must be greater than or equal to the number of segments passed to
+         * {@link VoyageAiScoringModel#scoreAll(List, String)}, because {@link ScoringModel} requires one score per
+         * segment. To limit the final number of re-ranked results, use
+         * {@code ReRankingContentAggregator.builder().maxResults(...)} instead.
          *
          * @param topK the number of most relevant documents to return.
          */
