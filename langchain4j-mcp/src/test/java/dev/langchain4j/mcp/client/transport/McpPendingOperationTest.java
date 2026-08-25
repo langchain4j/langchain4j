@@ -32,7 +32,8 @@ class McpPendingOperationTest {
                 null,
                 () -> {},
                 () -> {},
-                (id, reason) -> {});
+                (id, reason) -> {},
+                (id, message) -> {});
     }
 
     @Test

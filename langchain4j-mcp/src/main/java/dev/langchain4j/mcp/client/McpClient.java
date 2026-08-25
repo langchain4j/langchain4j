@@ -101,13 +101,34 @@ public interface McpClient extends AutoCloseable {
     void unsubscribeFromResource(String uri);
 
     /**
-     * Subscribes to resource content update notifications for the given URIs.
-     * Returns a subscription ID that can be used to unsubscribe later.
+     * Subscribes to resource content update notifications for the given URIs. Once subscribed,
+     * the server notifies the client whenever one of those resources changes; the notifications
+     * are delivered to the callback registered via {@code DefaultMcpClient.Builder#onResourceUpdated}.
+     * <p>
+     * The MCP specification requires the server to confirm a subscription before it sends anything
+     * on it, so this method blocks until that confirmation arrives and fails if it does not. When it
+     * returns normally, the subscription is established and the returned subscription ID can be
+     * passed to {@link #unsubscribeFromResources(long)} to stop receiving the notifications.
+     * How long the client waits for the confirmation is governed by
+     * {@code DefaultMcpClient.Builder#resourcesTimeout(Duration)}.
+     * <p>
+     * Because this method blocks, do not call it from inside a notification callback such as
+     * {@code onResourceUpdated}: those callbacks run on the thread that reads messages from the
+     * server, which is the same thread that would have to deliver the confirmation.
+     * <p>
      * Only available with MCP protocol version 2026-07-28 and later.
      *
      * @param uris the list of resource URIs to subscribe to
      * @return a subscription ID
      * @throws UnsupportedOperationException when using legacy protocol (2025-11-25)
+     * @throws McpException if the server rejects the subscription
+     * @throws IllegalStateException if the server confirms the subscription but declines to honour
+     *     the requested resource URIs, if it ends the subscription without ever confirming it, or if
+     *     the client is closed while the call is still waiting
+     * @throws java.util.concurrent.CancellationException if the subscription is cancelled before the
+     *     server confirms it, for example by a concurrent {@link #unsubscribeFromResources(long)}
+     * @throws RuntimeException if the underlying transport fails, or the server does not confirm the
+     *     subscription in time
      */
     default long subscribeToResources(List<String> uris) {
         throw new UnsupportedOperationException("subscribeToResources requires MCP protocol 2026-07-28 or later");

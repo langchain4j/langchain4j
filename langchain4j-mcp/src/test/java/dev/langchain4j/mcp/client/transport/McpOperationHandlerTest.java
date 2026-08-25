@@ -40,7 +40,8 @@ class McpOperationHandlerTest {
                 (id, reason) -> {
                     cancelledId.set(id);
                     cancelledReason.set(reason);
-                });
+                },
+                (id, message) -> {});
 
         JsonNode notification = McpJson.parse("""
                 {
@@ -90,7 +91,8 @@ class McpOperationHandlerTest {
                 (id, reason) -> {
                     cancelledId.set(id);
                     cancelledReason.set(reason);
-                });
+                },
+                (id, message) -> {});
 
         JsonNode notification = McpJson.parse("""
                 {
@@ -127,7 +129,8 @@ class McpOperationHandlerTest {
                 null,
                 () -> {},
                 () -> {},
-                (id, reason) -> cancelledId.set(id));
+                (id, reason) -> cancelledId.set(id),
+                (id, message) -> {});
 
         JsonNode notification = McpJson.parse("""
                 {
@@ -142,5 +145,83 @@ class McpOperationHandlerTest {
         assertThat(future).isNotCompleted();
         assertThat(pending).containsKey(99L);
         assertThat(cancelledId.get()).isNull();
+    }
+
+    @Test
+    void should_invoke_callback_on_subscription_acknowledged() throws JsonProcessingException {
+        AtomicReference<Long> acknowledgedId = new AtomicReference<>();
+        AtomicReference<Map<String, Object>> acknowledgedMessage = new AtomicReference<>();
+        McpOperationHandler handler = new McpOperationHandler(
+                new ConcurrentHashMap<>(),
+                java.util.Collections::emptyList,
+                Mockito.mock(McpTransport.class),
+                msg -> {},
+                () -> {},
+                () -> {},
+                () -> {},
+                uri -> {},
+                null,
+                () -> {},
+                () -> {},
+                (id, reason) -> {},
+                (id, message) -> {
+                    acknowledgedId.set(id);
+                    acknowledgedMessage.set(message);
+                });
+
+        String notification =
+                """
+                {
+                  "jsonrpc": "2.0",
+                  "method": "notifications/subscriptions/acknowledged",
+                  "params": {
+                    "_meta": {
+                      "io.modelcontextprotocol/subscriptionId": 7
+                    },
+                    "notifications": {
+                      "resourceSubscriptions": ["file:///project/config.json"]
+                    }
+                  }
+                }
+                """;
+
+        handler.onMessage(notification);
+
+        assertThat(acknowledgedId.get()).isEqualTo(7L);
+        assertThat(acknowledgedMessage.get()).isEqualTo(McpJson.toValue(notification));
+    }
+
+    @Test
+    void should_ignore_subscription_acknowledged_notification_without_subscription_id() throws JsonProcessingException {
+        AtomicReference<Long> acknowledgedId = new AtomicReference<>();
+        McpOperationHandler handler = new McpOperationHandler(
+                new ConcurrentHashMap<>(),
+                java.util.Collections::emptyList,
+                Mockito.mock(McpTransport.class),
+                msg -> {},
+                () -> {},
+                () -> {},
+                () -> {},
+                uri -> {},
+                null,
+                () -> {},
+                () -> {},
+                (id, reason) -> {},
+                (id, message) -> acknowledgedId.set(id));
+
+        String notification =
+                """
+                {
+                  "jsonrpc": "2.0",
+                  "method": "notifications/subscriptions/acknowledged",
+                  "params": {
+                    "notifications": {}
+                  }
+                }
+                """;
+
+        handler.onMessage(notification);
+
+        assertThat(acknowledgedId.get()).isNull();
     }
 }
