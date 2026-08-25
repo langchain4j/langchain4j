@@ -39,7 +39,14 @@
         </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-annotations</artifactId>
+        </dependency>
+
+        <!-- Tests build request JSON with an ObjectMapper; the main code only needs the annotations -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
+            <scope>test</scope>
         </dependency>
 
         <!-- Tests use the Universal Connection Pool as a JDBC DataSource -->
