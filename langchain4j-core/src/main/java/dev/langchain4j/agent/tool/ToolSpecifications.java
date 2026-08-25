@@ -1,6 +1,7 @@
 package dev.langchain4j.agent.tool;
 
 import static dev.langchain4j.internal.Utils.allConcreteMethods;
+import static dev.langchain4j.internal.Utils.getAnnotatedMethod;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static java.util.Arrays.stream;
@@ -80,7 +81,8 @@ public class ToolSpecifications {
      */
     public static List<ToolSpecification> toolSpecificationsFrom(Class<?> classWithTools) {
         List<ToolSpecification> toolSpecifications = allConcreteMethods(classWithTools).stream()
-                .filter(method -> method.isAnnotationPresent(Tool.class))
+                .map(method -> getAnnotatedMethod(method, Tool.class))
+                .flatMap(Optional::stream)
                 .map(ToolSpecifications::toolSpecificationFrom)
                 .collect(toList());
         validateSpecifications(toolSpecifications);
