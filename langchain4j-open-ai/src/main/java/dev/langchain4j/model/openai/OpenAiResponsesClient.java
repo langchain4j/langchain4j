@@ -36,7 +36,10 @@ import dev.langchain4j.http.client.sse.ServerSentEventContext;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.internal.ExceptionMapper;
 import dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils;
+import dev.langchain4j.internal.Json;
 import dev.langchain4j.internal.MappingTrackingStreamingChatResponseHandler;
+import dev.langchain4j.internal.WireJson;
+import dev.langchain4j.internal.WireJsonSpec;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
@@ -60,6 +63,17 @@ import java.util.function.Supplier;
 
 class OpenAiResponsesClient {
 
+    /**
+     * Serialization goes through the pluggable wire codec, so the JSON library can be swapped.
+     * Pretty-printing is kept because that is what this client has always sent.
+     */
+    private static final Json.JsonCodec CODEC =
+            WireJson.codec(WireJsonSpec.builder().prettyPrint(true).build());
+
+    /**
+     * Still Jackson: responses are navigated as a tree in ~80 places in this class. Converting that
+     * to plain values is the same job the MCP client went through and belongs in its own change.
+     */
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper().enable(INDENT_OUTPUT);
 
     private static final String DEFAULT_BASE_URL = "https://api.openai.com/v1";
@@ -364,7 +378,7 @@ class OpenAiResponsesClient {
     }
 
     private HttpRequest buildHttpRequest(Map<String, Object> payload, boolean stream) throws Exception {
-        String requestBody = OBJECT_MAPPER.writeValueAsString(payload);
+        String requestBody = CODEC.toJson(payload);
 
         HttpRequest.Builder requestBuilder = HttpRequest.builder()
                 .url(baseUrl + "/responses")
