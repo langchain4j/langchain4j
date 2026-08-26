@@ -12,23 +12,21 @@ import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.gpullama3.GPULlama3StreamingChatModel;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import org.mockito.InOrder;
 
 public class GPULlama3CStreamingChatModelIT extends AbstractStreamingChatModelIT {
-    private static final Path MODEL_PATH = Paths.get("beehive-llama-3.2-1b-instruct-fp16.gguf");
     private static GPULlama3StreamingChatModel model;
 
     @BeforeAll
     public static void setup() {
         // @formatter:off
         model = GPULlama3StreamingChatModel.builder()
-                .modelPath(MODEL_PATH)
+                .modelPath(TestModelPath.fromEnvironment())
                 .temperature(0.6)
                 .topP(1.0)
                 .maxTokens(2048)
@@ -95,7 +93,7 @@ public class GPULlama3CStreamingChatModelIT extends AbstractStreamingChatModelIT
     // Override feature support methods to return false for unsupported features
     @Override
     protected boolean supportsTools() {
-        return false;
+        return true;
     }
 
     @Override
@@ -238,12 +236,6 @@ public class GPULlama3CStreamingChatModelIT extends AbstractStreamingChatModelIT
     }
 
     @Override
-    @Disabled("GPU Llama3 does not support tools")
-    protected void should_fail_if_tools_are_not_supported(StreamingChatModel model) {
-        // This test expects the feature to be supported but fail - GPU Llama3 doesn't support it at all
-    }
-
-    @Override
     @Disabled("GPU Llama3 does not support image inputs")
     protected void should_fail_if_images_as_base64_encoded_strings_are_not_supported(StreamingChatModel model) {
         // This test has configuration issues with empty parameter sources
@@ -288,5 +280,26 @@ public class GPULlama3CStreamingChatModelIT extends AbstractStreamingChatModelIT
     @Disabled("GPU Llama3 does not support system messages reliably")
     protected void should_respect_system_message(StreamingChatModel model) {
         // This test might fail due to GPU Llama3 limitations
+    }
+
+    @Override
+    protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder inOrder, String id) {
+        inOrder.verify(handler).onCompleteToolCall(complete(0, id, "getWeather", "{\"city\":\"Munich\"}"));
+    }
+
+    @Override
+    protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder inOrder, String id1, String id2) {
+        verifyToolCallbacks(handler, inOrder, id1);
+        inOrder.verify(handler).onCompleteToolCall(complete(1, id2, "getTime", "{\"country\":\"France\"}"));
+    }
+
+    @Override
+    protected boolean supportsPartialToolStreaming(StreamingChatModel model) {
+        return false;
+    }
+
+    @Override
+    protected boolean assertThreads() {
+        return false;
     }
 }

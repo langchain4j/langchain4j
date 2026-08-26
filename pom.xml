@@ -246,17 +246,20 @@
             </activation>
             <modules>
                 <module>langchain4j-jlama</module>
-            </modules>
-        </profile>
-
-        <profile>
-            <id>jdk25</id>
-            <activation>
-                <jdk>25</jdk>
-            </activation>
-            <modules>
                 <module>langchain4j-gpu-llama3</module>
             </modules>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-javadoc-plugin</artifactId>
+                        <configuration>
+                            <release>${java.specification.version}</release>
+                            <additionalOptions>--enable-preview</additionalOptions>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
         </profile>
 
         <profile>
