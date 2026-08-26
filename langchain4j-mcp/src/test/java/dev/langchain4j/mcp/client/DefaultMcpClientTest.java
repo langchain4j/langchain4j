@@ -3,7 +3,9 @@ package dev.langchain4j.mcp.client;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -31,6 +33,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
@@ -880,6 +886,11 @@ public class DefaultMcpClientTest {
 
     private static McpTransport getMinimalMcpTransportMock() {
         McpTransport transport = mock(McpTransport.class);
+        // exercise the default bridge: a legacy transport that implements only the
+        // deprecated JsonNode methods must still satisfy the raw-JSON contract
+        when(transport.sendInitializeRequest(any())).thenCallRealMethod();
+        when(transport.sendRequest(any(McpCallContext.class))).thenCallRealMethod();
+        when(transport.sendRequest(any(McpClientMessage.class))).thenCallRealMethod();
         when(transport.requiresCancellationNotification()).thenReturn(true);
         ObjectNode emptyJsonNode = JsonNodeFactory.instance.objectNode();
         when(transport.initialize(any())).thenReturn(CompletableFuture.completedFuture(emptyJsonNode));
@@ -897,6 +908,11 @@ public class DefaultMcpClientTest {
 
     private static McpTransport getModernStdioTransportMock() {
         McpTransport transport = mock(McpTransport.class);
+        // exercise the default bridge: a legacy transport that implements only the
+        // deprecated JsonNode methods must still satisfy the raw-JSON contract
+        when(transport.sendInitializeRequest(any())).thenCallRealMethod();
+        when(transport.sendRequest(any(McpCallContext.class))).thenCallRealMethod();
+        when(transport.sendRequest(any(McpClientMessage.class))).thenCallRealMethod();
         when(transport.requiresCancellationNotification()).thenReturn(true);
         ObjectNode discoverResult = getDiscoverResult();
         when(transport.executeOperationWithResponse(any(McpCallContext.class)))
@@ -906,6 +922,11 @@ public class DefaultMcpClientTest {
 
     private static McpTransport getModernHttpTransportMock() {
         McpTransport transport = mock(McpTransport.class);
+        // exercise the default bridge: a legacy transport that implements only the
+        // deprecated JsonNode methods must still satisfy the raw-JSON contract
+        when(transport.sendInitializeRequest(any())).thenCallRealMethod();
+        when(transport.sendRequest(any(McpCallContext.class))).thenCallRealMethod();
+        when(transport.sendRequest(any(McpClientMessage.class))).thenCallRealMethod();
         when(transport.requiresCancellationNotification()).thenReturn(false);
         ObjectNode discoverResult = getDiscoverResult();
         when(transport.executeOperationWithResponse(any(McpCallContext.class)))
@@ -915,6 +936,11 @@ public class DefaultMcpClientTest {
 
     private static McpTransport getLegacyHttpTransportMock() {
         McpTransport transport = mock(McpTransport.class);
+        // exercise the default bridge: a legacy transport that implements only the
+        // deprecated JsonNode methods must still satisfy the raw-JSON contract
+        when(transport.sendInitializeRequest(any())).thenCallRealMethod();
+        when(transport.sendRequest(any(McpCallContext.class))).thenCallRealMethod();
+        when(transport.sendRequest(any(McpClientMessage.class))).thenCallRealMethod();
         when(transport.requiresCancellationNotification()).thenReturn(false);
         ObjectNode emptyJsonNode = JsonNodeFactory.instance.objectNode();
         when(transport.initialize(any())).thenReturn(CompletableFuture.completedFuture(emptyJsonNode));
@@ -952,12 +978,20 @@ public class DefaultMcpClientTest {
     @Test
     public void activeSubscriptions_cleared_after_unsubscribe() throws Exception {
         McpTransport transport = getModernMcpTransportMock();
+        AtomicReference<McpOperationHandler> handlerRef = captureMessageHandler(transport);
 
         // The subscription request gets a future that never completes (simulating an open SSE stream)
         CompletableFuture<JsonNode> sseStream = new CompletableFuture<>();
         when(transport.executeOperationWithResponse(any(McpCallContext.class)))
                 .thenReturn(CompletableFuture.completedFuture(getDiscoverResult()))
-                .thenReturn(sseStream);
+                .thenAnswer(invocation -> {
+                    McpCallContext ctx = invocation.getArgument(0);
+                    handlerRef
+                            .get()
+                            .handle(buildSubscriptionAcknowledgedNotification(
+                                    ctx.message().getId(), "file:///test"));
+                    return sseStream;
+                });
 
         DefaultMcpClient client = createMcpClient(transport);
         long subscriptionId = client.subscribeToResources(List.of("file:///test"));
@@ -970,13 +1004,52 @@ public class DefaultMcpClientTest {
     }
 
     @Test
-    public void unsubscribe_over_http_does_not_send_cancellation_notification() throws Exception {
-        McpTransport transport = getModernHttpTransportMock();
+    public void activeSubscriptions_cleared_after_graceful_server_closure() throws Exception {
+        McpTransport transport = getModernMcpTransportMock();
+        AtomicReference<McpOperationHandler> handlerRef = captureMessageHandler(transport);
 
         CompletableFuture<JsonNode> sseStream = new CompletableFuture<>();
         when(transport.executeOperationWithResponse(any(McpCallContext.class)))
                 .thenReturn(CompletableFuture.completedFuture(getDiscoverResult()))
-                .thenReturn(sseStream);
+                .thenAnswer(invocation -> {
+                    McpCallContext ctx = invocation.getArgument(0);
+                    handlerRef
+                            .get()
+                            .handle(buildSubscriptionAcknowledgedNotification(
+                                    ctx.message().getId(), "file:///test"));
+                    return sseStream;
+                });
+
+        DefaultMcpClient client = createMcpClient(transport);
+        long subscriptionId = client.subscribeToResources(List.of("file:///test"));
+        assertThat(getActiveSubscriptions(client)).containsKey(subscriptionId);
+
+        // The server ends the subscription gracefully, e.g. during its own shutdown
+        // (see the spec's Graceful Closure) - the original subscriptions/listen request
+        // finally gets its (empty) response, well after it was acknowledged.
+        ObjectNode gracefulClosure = JsonNodeFactory.instance.objectNode();
+        gracefulClosure.putObject("result").put("resultType", "complete");
+        sseStream.complete(gracefulClosure);
+
+        assertThat(getActiveSubscriptions(client)).doesNotContainKey(subscriptionId);
+    }
+
+    @Test
+    public void unsubscribe_over_http_does_not_send_cancellation_notification() throws Exception {
+        McpTransport transport = getModernHttpTransportMock();
+        AtomicReference<McpOperationHandler> handlerRef = captureMessageHandler(transport);
+
+        CompletableFuture<JsonNode> sseStream = new CompletableFuture<>();
+        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
+                .thenReturn(CompletableFuture.completedFuture(getDiscoverResult()))
+                .thenAnswer(invocation -> {
+                    McpCallContext ctx = invocation.getArgument(0);
+                    handlerRef
+                            .get()
+                            .handle(buildSubscriptionAcknowledgedNotification(
+                                    ctx.message().getId(), "file:///test"));
+                    return sseStream;
+                });
 
         DefaultMcpClient client = new DefaultMcpClient.Builder()
                 .transport(transport)
@@ -990,17 +1063,25 @@ public class DefaultMcpClientTest {
         client.unsubscribeFromResources(subscriptionId);
 
         assertThat(sseStream.isCancelled()).isTrue();
-        verify(transport, never()).executeOperationWithoutResponse(any(McpClientMessage.class));
+        verify(transport, never()).sendMessage(any(McpClientMessage.class));
     }
 
     @Test
     public void unsubscribe_over_stdio_sends_cancellation_notification() throws Exception {
         McpTransport transport = getModernStdioTransportMock();
+        AtomicReference<McpOperationHandler> handlerRef = captureMessageHandler(transport);
 
         CompletableFuture<JsonNode> sseStream = new CompletableFuture<>();
         when(transport.executeOperationWithResponse(any(McpCallContext.class)))
                 .thenReturn(CompletableFuture.completedFuture(getDiscoverResult()))
-                .thenReturn(sseStream);
+                .thenAnswer(invocation -> {
+                    McpCallContext ctx = invocation.getArgument(0);
+                    handlerRef
+                            .get()
+                            .handle(buildSubscriptionAcknowledgedNotification(
+                                    ctx.message().getId(), "file:///test"));
+                    return sseStream;
+                });
 
         DefaultMcpClient client = new DefaultMcpClient.Builder()
                 .transport(transport)
@@ -1014,14 +1095,15 @@ public class DefaultMcpClientTest {
         client.unsubscribeFromResources(subscriptionId);
 
         assertThat(sseStream.isCancelled()).isTrue();
-        verify(transport, times(1)).executeOperationWithoutResponse(any(McpClientMessage.class));
+        verify(transport, times(1)).sendMessage(any(McpClientMessage.class));
     }
 
     @Test
-    public void activeSubscriptions_cleared_after_server_rejection() throws Exception {
+    public void subscribeToResources_throws_mcp_exception_on_immediate_server_rejection() throws Exception {
         McpTransport transport = getModernMcpTransportMock();
 
-        // The subscription request completes immediately with a JSON-RPC error
+        // The subscription request completes immediately with a JSON-RPC error, before any
+        // notifications/subscriptions/acknowledged notification is ever sent
         ObjectNode errorResponse = JsonNodeFactory.instance.objectNode();
         ObjectNode error = errorResponse.putObject("error");
         error.put("code", -32602);
@@ -1031,17 +1113,17 @@ public class DefaultMcpClientTest {
                 .thenReturn(CompletableFuture.completedFuture(errorResponse));
 
         DefaultMcpClient client = createMcpClient(transport);
-        long subscriptionId = client.subscribeToResources(List.of("file:///nonexistent"));
 
-        // The whenComplete handler runs asynchronously — wait for it
-        Map<Long, ?> activeSubscriptions = getActiveSubscriptions(client);
-        org.awaitility.Awaitility.await()
-                .atMost(java.time.Duration.ofSeconds(2))
-                .untilAsserted(() -> assertThat(activeSubscriptions).doesNotContainKey(subscriptionId));
+        // The rejection must surface as an exception to the caller, not just a logged warning
+        assertThatThrownBy(() -> client.subscribeToResources(List.of("file:///nonexistent")))
+                .isInstanceOf(McpException.class)
+                .hasMessageContaining("Unknown resource URI");
+
+        assertThat(getActiveSubscriptions(client)).isEmpty();
     }
 
     @Test
-    public void activeSubscriptions_cleared_after_transport_error() throws Exception {
+    public void subscribeToResources_throws_on_transport_error_before_acknowledgement() throws Exception {
         McpTransport transport = getModernMcpTransportMock();
 
         // The subscription request fails with a transport error
@@ -1052,12 +1134,409 @@ public class DefaultMcpClientTest {
                 .thenReturn(failed);
 
         DefaultMcpClient client = createMcpClient(transport);
+
+        assertThatThrownBy(() -> client.subscribeToResources(List.of("file:///test")))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("Connection refused");
+
+        assertThat(getActiveSubscriptions(client)).isEmpty();
+    }
+
+    @Test
+    public void subscribeToResources_returns_only_after_server_acknowledges() throws Exception {
+        McpTransport transport = getModernMcpTransportMock();
+        AtomicReference<McpOperationHandler> handlerRef = captureMessageHandler(transport);
+
+        // Simulates an open SSE stream that stays open for the lifetime of the subscription
+        CompletableFuture<JsonNode> sseStream = new CompletableFuture<>();
+        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
+                .thenReturn(CompletableFuture.completedFuture(getDiscoverResult()))
+                .thenAnswer(invocation -> {
+                    McpCallContext ctx = invocation.getArgument(0);
+                    // The server acknowledges the subscription right after accepting the request
+                    handlerRef
+                            .get()
+                            .handle(buildSubscriptionAcknowledgedNotification(
+                                    ctx.message().getId(), "file:///test"));
+                    return sseStream;
+                });
+
+        DefaultMcpClient client = createMcpClient(transport);
         long subscriptionId = client.subscribeToResources(List.of("file:///test"));
 
-        Map<Long, ?> activeSubscriptions = getActiveSubscriptions(client);
-        org.awaitility.Awaitility.await()
-                .atMost(java.time.Duration.ofSeconds(2))
-                .untilAsserted(() -> assertThat(activeSubscriptions).doesNotContainKey(subscriptionId));
+        assertThat(getActiveSubscriptions(client)).containsKey(subscriptionId);
+    }
+
+    /**
+     * Unlike the test above, the acknowledgement here is deliberately delayed and delivered
+     * from a separate thread, so this test can actually distinguish "blocks until acknowledged"
+     * from an implementation that (bug) returns immediately regardless of the ack.
+     */
+    @Test
+    public void subscribeToResources_blocks_until_server_sends_delayed_acknowledgement() throws Exception {
+        McpTransport transport = getModernMcpTransportMock();
+        AtomicReference<McpOperationHandler> handlerRef = captureMessageHandler(transport);
+        AtomicReference<Long> capturedSubscriptionId = new AtomicReference<>();
+
+        CompletableFuture<JsonNode> sseStream = new CompletableFuture<>();
+        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
+                .thenReturn(CompletableFuture.completedFuture(getDiscoverResult()))
+                .thenAnswer(invocation -> {
+                    McpCallContext ctx = invocation.getArgument(0);
+                    capturedSubscriptionId.set(ctx.message().getId());
+                    // No acknowledgement is sent yet - the test sends it later, explicitly
+                    return sseStream;
+                });
+
+        DefaultMcpClient client = createMcpClient(transport);
+
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        try {
+            Future<Long> subscribeFuture = executor.submit(() -> client.subscribeToResources(List.of("file:///test")));
+
+            // The call must still be blocked, since no acknowledgement has been sent
+            Thread.sleep(200);
+            assertThat(subscribeFuture.isDone()).isFalse();
+
+            handlerRef
+                    .get()
+                    .handle(buildSubscriptionAcknowledgedNotification(capturedSubscriptionId.get(), "file:///test"));
+
+            long subscriptionId = subscribeFuture.get(2, java.util.concurrent.TimeUnit.SECONDS);
+            assertThat(subscriptionId).isEqualTo(capturedSubscriptionId.get());
+        } finally {
+            executor.shutdownNow();
+        }
+    }
+
+    @Test
+    public void late_acknowledgement_after_timeout_is_a_safe_no_op() throws Exception {
+        McpTransport transport = getModernMcpTransportMock();
+        AtomicReference<McpOperationHandler> handlerRef = captureMessageHandler(transport);
+        AtomicReference<Long> capturedSubscriptionId = new AtomicReference<>();
+
+        CompletableFuture<JsonNode> sseStream = new CompletableFuture<>();
+        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
+                .thenReturn(CompletableFuture.completedFuture(getDiscoverResult()))
+                .thenAnswer(invocation -> {
+                    McpCallContext ctx = invocation.getArgument(0);
+                    capturedSubscriptionId.set(ctx.message().getId());
+                    return sseStream;
+                });
+
+        DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion("2026-07-28")
+                .subscribeToToolListChanges(false)
+                .subscribeToPromptListChanges(false)
+                .subscribeToResourceListChanges(false)
+                .resourcesTimeout(java.time.Duration.ofMillis(100))
+                .build();
+
+        assertThatThrownBy(() -> client.subscribeToResources(List.of("file:///test")))
+                .isInstanceOf(RuntimeException.class)
+                .hasCauseInstanceOf(java.util.concurrent.TimeoutException.class);
+
+        // The server's acknowledgement finally arrives, well after the client gave up.
+        // It must be ignored rather than throw or resurrect the timed-out subscription.
+        assertThatCode(() -> handlerRef
+                        .get()
+                        .handle(buildSubscriptionAcknowledgedNotification(
+                                capturedSubscriptionId.get(), "file:///test")))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    public void close_unblocks_a_pending_subscribeToResources_call() throws Exception {
+        McpTransport transport = getModernMcpTransportMock();
+
+        // The stream never completes and the server never acknowledges
+        CompletableFuture<JsonNode> sseStream = new CompletableFuture<>();
+        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
+                .thenReturn(CompletableFuture.completedFuture(getDiscoverResult()))
+                .thenReturn(sseStream);
+
+        DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion("2026-07-28")
+                .subscribeToToolListChanges(false)
+                .subscribeToPromptListChanges(false)
+                .subscribeToResourceListChanges(false)
+                // long enough that only close() (not the timeout) can unblock the call below
+                .resourcesTimeout(java.time.Duration.ofSeconds(30))
+                .build();
+
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        try {
+            Future<Long> subscribeFuture = executor.submit(() -> client.subscribeToResources(List.of("file:///test")));
+            Thread.sleep(200);
+            assertThat(subscribeFuture.isDone()).isFalse();
+
+            client.close();
+
+            // Not merely an IllegalStateException: cancelling the stream would complete the
+            // acknowledgement with a CancellationException, which extends IllegalStateException
+            // and would therefore satisfy a laxer assertion while telling the caller nothing
+            assertThatThrownBy(() -> subscribeFuture.get(2, java.util.concurrent.TimeUnit.SECONDS))
+                    .rootCause()
+                    .isExactlyInstanceOf(IllegalStateException.class)
+                    .hasMessage("MCP client was closed");
+        } finally {
+            executor.shutdownNow();
+        }
+    }
+
+    @Test
+    public void subscribeToResources_throws_if_server_never_acknowledges() throws Exception {
+        McpTransport transport = getModernMcpTransportMock();
+
+        // The stream stays open but the server never sends notifications/subscriptions/acknowledged
+        CompletableFuture<JsonNode> sseStream = new CompletableFuture<>();
+        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
+                .thenReturn(CompletableFuture.completedFuture(getDiscoverResult()))
+                .thenReturn(sseStream);
+
+        DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion("2026-07-28")
+                .subscribeToToolListChanges(false)
+                .subscribeToPromptListChanges(false)
+                .subscribeToResourceListChanges(false)
+                .resourcesTimeout(java.time.Duration.ofMillis(100))
+                .build();
+
+        // Without a wait-for-acknowledgement fix, this call would return immediately
+        // instead of timing out
+        assertThatThrownBy(() -> client.subscribeToResources(List.of("file:///test")))
+                .isInstanceOf(RuntimeException.class)
+                .hasCauseInstanceOf(java.util.concurrent.TimeoutException.class);
+
+        assertThat(getActiveSubscriptions(client)).isEmpty();
+        assertThat(sseStream.isCancelled()).isTrue();
+    }
+
+    @Test
+    public void subscribeToResources_throws_when_server_declines_the_requested_resources() throws Exception {
+        McpTransport transport = getModernMcpTransportMock();
+        AtomicReference<McpOperationHandler> handlerRef = captureMessageHandler(transport);
+
+        CompletableFuture<JsonNode> sseStream = new CompletableFuture<>();
+        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
+                .thenReturn(CompletableFuture.completedFuture(getDiscoverResult()))
+                .thenAnswer(invocation -> {
+                    McpCallContext ctx = invocation.getArgument(0);
+                    // The server acknowledges the subscription, but the acknowledgement carries none
+                    // of the requested resource subscriptions, meaning it will never send updates
+                    handlerRef
+                            .get()
+                            .handle(buildSubscriptionAcknowledgedNotification(
+                                    ctx.message().getId()));
+                    return sseStream;
+                });
+
+        List<Throwable> reportedErrors = new ArrayList<>();
+        DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion("2026-07-28")
+                .subscribeToToolListChanges(false)
+                .subscribeToPromptListChanges(false)
+                .subscribeToResourceListChanges(false)
+                .listener(new McpClientListener() {
+                    @Override
+                    public void onResourcesSubscribeError(McpCallContext context, Throwable error) {
+                        reportedErrors.add(error);
+                    }
+                })
+                .build();
+
+        assertThatThrownBy(() -> client.subscribeToResources(List.of("file:///test")))
+                .isExactlyInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("declined to honour");
+
+        assertThat(reportedErrors).hasSize(1);
+        assertThat(getActiveSubscriptions(client)).isEmpty();
+        assertThat(getPendingSubscriptionAcks(client)).isEmpty();
+        assertThat(sseStream.isCancelled()).isTrue();
+    }
+
+    @Test
+    public void subscribeToResources_fails_fast_when_server_ends_subscription_without_acknowledging() throws Exception {
+        McpTransport transport = getModernMcpTransportMock();
+
+        CompletableFuture<JsonNode> sseStream = new CompletableFuture<>();
+        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
+                .thenReturn(CompletableFuture.completedFuture(getDiscoverResult()))
+                .thenReturn(sseStream);
+
+        DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion("2026-07-28")
+                .subscribeToToolListChanges(false)
+                .subscribeToPromptListChanges(false)
+                .subscribeToResourceListChanges(false)
+                // long enough that a timeout, rather than the closure below, would fail the test
+                .resourcesTimeout(java.time.Duration.ofSeconds(30))
+                .build();
+
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        try {
+            Future<Long> subscribeFuture = executor.submit(() -> client.subscribeToResources(List.of("file:///test")));
+            Thread.sleep(200);
+            assertThat(subscribeFuture.isDone()).isFalse();
+
+            // The server closes the subscription (see the spec's Graceful Closure) without ever
+            // having acknowledged it, so the caller must not keep waiting for an acknowledgement
+            ObjectNode gracefulClosure = JsonNodeFactory.instance.objectNode();
+            gracefulClosure.putObject("result").put("resultType", "complete");
+            sseStream.complete(gracefulClosure);
+
+            assertThatThrownBy(() -> subscribeFuture.get(2, java.util.concurrent.TimeUnit.SECONDS))
+                    .rootCause()
+                    .isExactlyInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("without ever acknowledging it");
+        } finally {
+            executor.shutdownNow();
+        }
+
+        assertThat(getActiveSubscriptions(client)).isEmpty();
+        assertThat(getPendingSubscriptionAcks(client)).isEmpty();
+    }
+
+    @Test
+    public void subscribeToResources_reports_cancellation_before_acknowledgement_to_listener() throws Exception {
+        McpTransport transport = getModernMcpTransportMock();
+
+        CompletableFuture<JsonNode> sseStream = new CompletableFuture<>();
+        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
+                .thenReturn(CompletableFuture.completedFuture(getDiscoverResult()))
+                .thenReturn(sseStream);
+
+        List<Throwable> reportedErrors = new ArrayList<>();
+        DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion("2026-07-28")
+                .subscribeToToolListChanges(false)
+                .subscribeToPromptListChanges(false)
+                .subscribeToResourceListChanges(false)
+                .resourcesTimeout(java.time.Duration.ofSeconds(30))
+                .listener(new McpClientListener() {
+                    @Override
+                    public void onResourcesSubscribeError(McpCallContext context, Throwable error) {
+                        reportedErrors.add(error);
+                    }
+                })
+                .build();
+
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        try {
+            Future<Long> subscribeFuture = executor.submit(() -> client.subscribeToResources(List.of("file:///test")));
+            Thread.sleep(200);
+            assertThat(subscribeFuture.isDone()).isFalse();
+
+            // Cancelling the stream is what unsubscribeFromResources() and a server-sent
+            // notifications/cancelled both end up doing
+            sseStream.cancel(true);
+
+            assertThatThrownBy(() -> subscribeFuture.get(2, java.util.concurrent.TimeUnit.SECONDS))
+                    .rootCause()
+                    .isInstanceOf(java.util.concurrent.CancellationException.class);
+        } finally {
+            executor.shutdownNow();
+        }
+
+        assertThat(reportedErrors).hasSize(1);
+        assertThat(getPendingSubscriptionAcks(client)).isEmpty();
+    }
+
+    @Test
+    public void subscribeToResources_does_not_leak_when_transport_throws_synchronously() throws Exception {
+        McpTransport transport = getModernMcpTransportMock();
+
+        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
+                .thenReturn(CompletableFuture.completedFuture(getDiscoverResult()))
+                .thenThrow(new IllegalStateException("Transport is reconnecting"));
+
+        List<Throwable> reportedErrors = new ArrayList<>();
+        DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion("2026-07-28")
+                .subscribeToToolListChanges(false)
+                .subscribeToPromptListChanges(false)
+                .subscribeToResourceListChanges(false)
+                .listener(new McpClientListener() {
+                    @Override
+                    public void onResourcesSubscribeError(McpCallContext context, Throwable error) {
+                        reportedErrors.add(error);
+                    }
+                })
+                .build();
+
+        assertThatThrownBy(() -> client.subscribeToResources(List.of("file:///test")))
+                .isExactlyInstanceOf(IllegalStateException.class)
+                .hasMessage("Transport is reconnecting");
+
+        assertThat(reportedErrors).hasSize(1);
+        assertThat(getPendingSubscriptionAcks(client)).isEmpty();
+        assertThat(getActiveSubscriptions(client)).isEmpty();
+    }
+
+    @Test
+    public void subscribeToResources_throws_on_malformed_server_rejection() throws Exception {
+        McpTransport transport = getModernMcpTransportMock();
+
+        // A rejection whose error object lacks the mandatory "code" and "message" fields.
+        // Parsing it fails, but the caller still has to be unblocked rather than wait out the timeout
+        ObjectNode malformedError = JsonNodeFactory.instance.objectNode();
+        malformedError.putObject("error");
+
+        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
+                .thenReturn(CompletableFuture.completedFuture(getDiscoverResult()))
+                .thenReturn(CompletableFuture.completedFuture(malformedError));
+
+        DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion("2026-07-28")
+                .subscribeToToolListChanges(false)
+                .subscribeToPromptListChanges(false)
+                .subscribeToResourceListChanges(false)
+                // long enough that the call timing out, instead of failing, would fail the test
+                .resourcesTimeout(java.time.Duration.ofSeconds(5))
+                .build();
+
+        // Which exception the malformed error produces is an implementation detail; what matters is
+        // that the caller is told promptly instead of waiting out resourcesTimeout
+        long startedAt = System.nanoTime();
+        Throwable thrown = catchThrowable(() -> client.subscribeToResources(List.of("file:///test")));
+        java.time.Duration elapsed = java.time.Duration.ofNanos(System.nanoTime() - startedAt);
+
+        assertThat(thrown).isNotNull();
+        assertThat(elapsed).isLessThan(java.time.Duration.ofSeconds(2));
+
+        assertThat(getActiveSubscriptions(client)).isEmpty();
+        assertThat(getPendingSubscriptionAcks(client)).isEmpty();
+    }
+
+    @Test
+    public void pendingSubscriptionAcks_cleared_after_successful_subscribe() throws Exception {
+        McpTransport transport = getModernMcpTransportMock();
+        AtomicReference<McpOperationHandler> handlerRef = captureMessageHandler(transport);
+
+        CompletableFuture<JsonNode> sseStream = new CompletableFuture<>();
+        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
+                .thenReturn(CompletableFuture.completedFuture(getDiscoverResult()))
+                .thenAnswer(invocation -> {
+                    McpCallContext ctx = invocation.getArgument(0);
+                    handlerRef
+                            .get()
+                            .handle(buildSubscriptionAcknowledgedNotification(
+                                    ctx.message().getId(), "file:///test"));
+                    return sseStream;
+                });
+
+        DefaultMcpClient client = createMcpClient(transport);
+        client.subscribeToResources(List.of("file:///test"));
+
+        assertThat(getPendingSubscriptionAcks(client)).isEmpty();
     }
 
     @Test
@@ -1082,7 +1561,7 @@ public class DefaultMcpClientTest {
                 ToolExecutionRequest.builder().name("slowTool").arguments("{}").build());
 
         assertThat(neverCompletes.isCancelled()).isTrue();
-        verify(transport, never()).executeOperationWithoutResponse(any(McpClientMessage.class));
+        verify(transport, never()).sendMessage(any(McpClientMessage.class));
     }
 
     @Test
@@ -1102,7 +1581,7 @@ public class DefaultMcpClientTest {
                 ToolExecutionRequest.builder().name("slowTool").arguments("{}").build());
 
         assertThat(neverCompletes.isCancelled()).isTrue();
-        verify(transport, times(1)).executeOperationWithoutResponse(any(McpClientMessage.class));
+        verify(transport, times(1)).sendMessage(any(McpClientMessage.class));
     }
 
     @Test
@@ -1127,7 +1606,7 @@ public class DefaultMcpClientTest {
                 ToolExecutionRequest.builder().name("slowTool").arguments("{}").build());
 
         assertThat(neverCompletes.isCancelled()).isTrue();
-        verify(transport, times(1)).executeOperationWithoutResponse(any(McpClientMessage.class));
+        verify(transport, times(1)).sendMessage(any(McpClientMessage.class));
     }
 
     @Test
@@ -1147,7 +1626,7 @@ public class DefaultMcpClientTest {
                 ToolExecutionRequest.builder().name("slowTool").arguments("{}").build());
 
         assertThat(neverCompletes.isCancelled()).isTrue();
-        verify(transport, times(1)).executeOperationWithoutResponse(any(McpClientMessage.class));
+        verify(transport, times(1)).sendMessage(any(McpClientMessage.class));
     }
 
     @SuppressWarnings("unchecked")
@@ -1155,6 +1634,50 @@ public class DefaultMcpClientTest {
         java.lang.reflect.Field field = DefaultMcpClient.class.getDeclaredField("activeSubscriptions");
         field.setAccessible(true);
         return (Map<Long, ?>) field.get(client);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<Long, ?> getPendingSubscriptionAcks(DefaultMcpClient client) throws Exception {
+        java.lang.reflect.Field field = DefaultMcpClient.class.getDeclaredField("pendingSubscriptionAcks");
+        field.setAccessible(true);
+        return (Map<Long, ?>) field.get(client);
+    }
+
+    /**
+     * Captures the {@link McpOperationHandler} that the client hands to {@code transport.start(...)},
+     * so that tests can simulate server-initiated notifications (e.g. subscription acknowledgements).
+     * Must be called before the transport is passed to {@link DefaultMcpClient.Builder#build()}.
+     */
+    private static AtomicReference<McpOperationHandler> captureMessageHandler(McpTransport transport) {
+        AtomicReference<McpOperationHandler> handlerRef = new AtomicReference<>();
+        doAnswer(invocation -> {
+                    handlerRef.set(invocation.getArgument(0));
+                    return null;
+                })
+                .when(transport)
+                .start(any(McpOperationHandler.class));
+        return handlerRef;
+    }
+
+    /**
+     * Builds the acknowledgement a spec-compliant server sends as the first message on a
+     * subscription stream. {@code honouredUris} are the resource subscriptions the server agreed
+     * to honour; passing none simulates a server that acknowledges but declines them all.
+     */
+    private static ObjectNode buildSubscriptionAcknowledgedNotification(long subscriptionId, String... honouredUris) {
+        ObjectNode node = JsonNodeFactory.instance.objectNode();
+        node.put("jsonrpc", "2.0");
+        node.put("method", "notifications/subscriptions/acknowledged");
+        ObjectNode params = node.putObject("params");
+        params.putObject("_meta").put("io.modelcontextprotocol/subscriptionId", subscriptionId);
+        ObjectNode notifications = params.putObject("notifications");
+        if (honouredUris.length > 0) {
+            ArrayNode resourceSubscriptions = notifications.putArray("resourceSubscriptions");
+            for (String uri : honouredUris) {
+                resourceSubscriptions.add(uri);
+            }
+        }
+        return node;
     }
 
     private static record ToolDefinition(String name, String description, ToolArg... args) {}

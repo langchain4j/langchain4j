@@ -2,9 +2,7 @@ package dev.langchain4j.mcp.transport.stdio;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.langchain4j.Internal;
 import dev.langchain4j.mcp.client.logging.McpLoggers;
 import java.io.BufferedReader;
 import java.io.Closeable;
@@ -13,52 +11,50 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.PrintStream;
+import java.nio.charset.StandardCharsets;
 import java.util.function.Consumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+@Internal
 public class JsonRpcIoHandler implements Runnable, Closeable {
 
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final Logger log = LoggerFactory.getLogger(JsonRpcIoHandler.class);
 
     private final InputStream input;
     private final PrintStream out;
     private final boolean logEvents;
     private final Logger trafficLog;
-    private final Consumer<JsonNode> messageHandler;
+    private final Consumer<String> messageHandler;
     private volatile boolean closed = false;
 
     public JsonRpcIoHandler(
-            InputStream input, OutputStream output, Consumer<JsonNode> messageHandler, boolean logEvents) {
+            InputStream input, OutputStream output, Consumer<String> messageHandler, boolean logEvents) {
         this(input, output, messageHandler, logEvents, null);
     }
 
     public JsonRpcIoHandler(
-            InputStream input,
-            OutputStream output,
-            Consumer<JsonNode> messageHandler,
-            boolean logEvents,
-            Logger logger) {
+            InputStream input, OutputStream output, Consumer<String> messageHandler, boolean logEvents, Logger logger) {
         this.input = input;
         this.logEvents = logEvents;
         this.messageHandler = messageHandler;
-        this.out = new PrintStream(output, true);
+        this.out = new PrintStream(output, true, StandardCharsets.UTF_8);
         this.trafficLog = getOrDefault(logger, McpLoggers.traffic());
     }
 
     @Override
     public void run() {
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(input))) {
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(input, StandardCharsets.UTF_8))) {
             String line;
             while ((line = reader.readLine()) != null) {
                 if (logEvents) {
                     trafficLog.debug("< {}", line);
                 }
                 try {
-                    messageHandler.accept(OBJECT_MAPPER.readTree(line));
-                } catch (JsonProcessingException e) {
-                    log.warn("Ignoring message received because it is not valid JSON: {}", line);
+                    messageHandler.accept(line);
+                } catch (RuntimeException e) {
+                    // one bad message must not end the read loop and strand the subprocess
+                    log.warn("Ignoring message that could not be handled: {}", line, e);
                 }
             }
         } catch (IOException e) {

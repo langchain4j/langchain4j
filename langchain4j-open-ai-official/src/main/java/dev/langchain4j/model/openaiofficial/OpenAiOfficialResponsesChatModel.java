@@ -8,6 +8,7 @@ import static dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesStream
 import static dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesStreamingChatModel.buildRequestParams;
 import static dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesStreamingChatModel.buildResponseMetadata;
 import static dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesStreamingChatModel.extractEncryptedReasoning;
+import static dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesStreamingChatModel.extractIncompleteReason;
 import static dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesStreamingChatModel.extractReasoningSummary;
 import static dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesStreamingChatModel.extractRefusal;
 import static dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesStreamingChatModel.extractText;
@@ -147,7 +148,8 @@ public class OpenAiOfficialResponsesChatModel implements ChatModel {
             AiMessage aiMessage = buildAiMessage(text, thinking, toolExecutionRequests, encryptedReasoning);
 
             String finishReason = response.status()
-                    .map(status -> mapStatusToFinishReason(status.asString(), !toolExecutionRequests.isEmpty()))
+                    .map(status -> mapStatusToFinishReason(
+                            status.asString(), extractIncompleteReason(response), !toolExecutionRequests.isEmpty()))
                     .orElse(null);
 
             OpenAiOfficialResponsesChatResponseMetadata metadata = buildResponseMetadata(
