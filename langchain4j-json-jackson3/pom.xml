@@ -14,10 +14,6 @@
     <name>LangChain4j :: JSON :: Jackson 3</name>
     <description>Opt-in Jackson 3 JSON codecs for LangChain4j</description>
 
-    <properties>
-        <jackson3.version>3.2.2</jackson3.version>
-    </properties>
-
     <dependencies>
 
         <dependency>
@@ -55,7 +51,6 @@
         <dependency>
             <groupId>tools.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
-            <version>${jackson3.version}</version>
         </dependency>
 
         <!-- test dependencies -->

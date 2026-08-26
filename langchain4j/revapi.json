@@ -13,6 +13,12 @@
           "code": "java.annotation.removed",
           "new": "class dev.langchain4j.service.tool.AiServiceTool",
           "justification": "@Internal removed intentionally: AiServiceTool is now part of the public API and can be constructed and passed to AiServices directly by users (e.g. via AiServices.tools(List<AiServiceTool>))."
+        },
+        {
+          "code": "java.annotation.added",
+          "new": "class dev.langchain4j.store.embedding.inmemory.InMemoryEmbeddingStore.Entry<Embedded>",
+          "annotationType": "dev.langchain4j.Internal",
+          "justification": "Entry was widened from package-private to public in this release so that an alternative JSON codec supplied through InMemoryEmbeddingStoreJsonCodecFactory can describe how an entry is serialized. @Internal says what that visibility is for: it is public for the SPI, not supported API."
         }
       ]
     }

@@ -10,6 +10,8 @@ import tools.jackson.databind.DeserializationFeature;
 import tools.jackson.databind.MapperFeature;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.SerializationFeature;
+import tools.jackson.databind.introspect.AnnotationIntrospectorPair;
+import tools.jackson.databind.introspect.JacksonAnnotationIntrospector;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
@@ -30,10 +32,13 @@ public class Jackson3JsonCodec implements Json.JsonCodec {
                 .disable(SerializationFeature.INDENT_OUTPUT)
                 .enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
                 .enable(MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS)
+                // the Jackson 2 codec calls findAndRegisterModules(); without the same here, a
+                // user's own datatype module - Kotlin, Guava, Joda - would be picked up on the
+                // default codec and silently dropped on this one
+                .findAndAddModules()
                 .addModule(Jackson3LangChain4jModule.create())
-                .annotationIntrospector(new tools.jackson.databind.introspect.AnnotationIntrospectorPair(
-                        new Jackson3SealedTypeIntrospector(),
-                        new tools.jackson.databind.introspect.JacksonAnnotationIntrospector()))
+                .annotationIntrospector(new AnnotationIntrospectorPair(
+                        new Jackson3SealedTypeIntrospector(), new JacksonAnnotationIntrospector()))
                 .build();
     }
 

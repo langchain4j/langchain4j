@@ -6,7 +6,6 @@ import dev.langchain4j.internal.WireJsonSpec;
 import java.lang.reflect.Type;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.DeserializationFeature;
-import tools.jackson.databind.MapperFeature;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.PropertyNamingStrategies;
 import tools.jackson.databind.SerializationFeature;
@@ -26,11 +25,7 @@ public class Jackson3WireJsonCodec implements Json.JsonCodec {
         JsonMapper.Builder builder = Jackson3Defaults.pinJackson2Defaults(JsonMapper.builder())
                 .disable(DeserializationFeature.FAIL_ON_IGNORED_PROPERTIES)
                 // a provider adding a field must never break deserialization
-                .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
-                // --- Jackson 3 changed these defaults; keep 2.x behaviour ---
-                .disable(MapperFeature.SORT_PROPERTIES_ALPHABETICALLY)
-                .disable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS)
-                .disable(DeserializationFeature.FAIL_ON_NULL_FOR_PRIMITIVES);
+                .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
         if (spec.prettyPrint()) {
             builder.enable(SerializationFeature.INDENT_OUTPUT);
         }
