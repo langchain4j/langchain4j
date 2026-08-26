@@ -755,6 +755,47 @@ class DefaultToolExecutorTest implements WithAssertions {
         }
     }
 
+    static class ToolReturningToolExecutionResult {
+
+        private final ToolExecutionResult result;
+
+        ToolReturningToolExecutionResult(ToolExecutionResult result) {
+            this.result = result;
+        }
+
+        @Tool("Tool that returns a ToolExecutionResult")
+        public ToolExecutionResult execute() {
+            return result;
+        }
+    }
+
+    @Test
+    void should_return_ToolExecutionResult_returned_by_tool_method() throws Exception {
+        ToolExecutionResult expected = ToolExecutionResult.builder()
+                .isError(true)
+                .result("raw result")
+                .resultTextSupplier(() -> "result for the LLM")
+                .attributes(Map.of("recordId", 42))
+                .build();
+        ToolReturningToolExecutionResult tool = new ToolReturningToolExecutionResult(expected);
+        Method method = ToolReturningToolExecutionResult.class.getMethod("execute");
+        DefaultToolExecutor executor = new DefaultToolExecutor(tool, method);
+        ToolExecutionRequest request = ToolExecutionRequest.builder()
+                .id("1")
+                .name("execute")
+                .arguments("{}")
+                .build();
+
+        ToolExecutionResult actual =
+                executor.executeWithContext(request, InvocationContext.builder().build());
+
+        assertThat(actual).isSameAs(expected);
+        assertThat(actual.resultText()).isEqualTo("result for the LLM");
+        assertThat(actual.result()).isEqualTo("raw result");
+        assertThat(actual.attributes()).containsEntry("recordId", 42);
+        assertThat(actual.isError()).isTrue();
+    }
+
     @Test
     void should_return_error_result_when_tool_execution_fails() throws Exception {
         ToolWithException tool = new ToolWithException();

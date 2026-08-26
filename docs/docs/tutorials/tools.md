@@ -1107,6 +1107,18 @@ ToolExecutor toolExecutor = (toolExecutionRequest, context) -> ToolExecutionResu
         .attributes(Map.of("widget", weatherWidget)) // not sent to the LLM
         .build();
 ```
+
+An `@Tool`-annotated method can also return a `ToolExecutionResult` directly:
+```java
+@Tool
+ToolExecutionResult getWeather(String city) {
+    return ToolExecutionResult.builder()
+            .resultText("Sunny, 22 degrees") // sent to the LLM
+            .attributes(Map.of("widget", weatherWidget)) // not sent to the LLM
+            .build();
+}
+```
+
 For [MCP](/tutorials/mcp) tools, they originate from the `_meta` field of the tool call response.
 For those, the tool provider needs to be configured with
 [`returnToolResultAttributes(true)`](/tutorials/mcp#mcp-tool-result-metadata).
