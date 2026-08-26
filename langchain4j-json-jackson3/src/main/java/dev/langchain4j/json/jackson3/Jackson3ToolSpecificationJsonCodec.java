@@ -1,6 +1,7 @@
 package dev.langchain4j.json.jackson3;
 
 import dev.langchain4j.agent.tool.ToolSpecificationJsonCodec;
+import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -24,11 +25,19 @@ public class Jackson3ToolSpecificationJsonCodec implements ToolSpecificationJson
 
     @Override
     public String toJson(Object object) {
-        return objectMapper.writeValueAsString(object);
+        try {
+            return objectMapper.writeValueAsString(object);
+        } catch (JacksonException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Override
     public <T> T fromJson(String json, Class<T> type) {
-        return objectMapper.readValue(json, type);
+        try {
+            return objectMapper.readValue(json, type);
+        } catch (JacksonException e) {
+            throw new RuntimeException(e);
+        }
     }
 }

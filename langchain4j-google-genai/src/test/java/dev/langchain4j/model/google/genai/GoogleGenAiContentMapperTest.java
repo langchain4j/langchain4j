@@ -171,9 +171,12 @@ class GoogleGenAiContentMapperTest {
                 .build();
         AiMessage message = AiMessage.from(toolRequest);
 
+        // The cause is whatever the configured JSON codec threw, so its type depends on which
+        // codec is on the classpath. What callers can rely on is the RuntimeException and that the
+        // library's own failure is kept as its cause.
         assertThatThrownBy(() -> GoogleGenAiContentMapper.toContent(message))
                 .isInstanceOf(RuntimeException.class)
-                .hasCauseInstanceOf(com.fasterxml.jackson.core.JsonProcessingException.class);
+                .hasCauseInstanceOf(Exception.class);
     }
 
     @Test

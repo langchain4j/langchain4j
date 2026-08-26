@@ -13,6 +13,7 @@ import dev.langchain4j.store.embedding.inmemory.InMemoryEmbeddingStoreJsonCodec;
 import java.io.InputStream;
 import java.io.OutputStream;
 import tools.jackson.core.type.TypeReference;
+import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -35,22 +36,38 @@ public class Jackson3InMemoryEmbeddingStoreJsonCodec implements InMemoryEmbeddin
 
     @Override
     public InMemoryEmbeddingStore<TextSegment> fromJson(String json) {
-        return OBJECT_MAPPER.readValue(json, TYPE_REFERENCE);
+        try {
+            return OBJECT_MAPPER.readValue(json, TYPE_REFERENCE);
+        } catch (JacksonException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Override
     public String toJson(InMemoryEmbeddingStore<?> store) {
-        return OBJECT_MAPPER.writeValueAsString(store);
+        try {
+            return OBJECT_MAPPER.writeValueAsString(store);
+        } catch (JacksonException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Override
     public void toJson(OutputStream outputStream, InMemoryEmbeddingStore<?> store) {
-        OBJECT_MAPPER.writeValue(outputStream, store);
+        try {
+            OBJECT_MAPPER.writeValue(outputStream, store);
+        } catch (JacksonException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Override
     public InMemoryEmbeddingStore<TextSegment> fromJson(InputStream inputStream) {
-        return OBJECT_MAPPER.readValue(inputStream, TYPE_REFERENCE);
+        try {
+            return OBJECT_MAPPER.readValue(inputStream, TYPE_REFERENCE);
+        } catch (JacksonException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private abstract static class EntryMixIn<T> {

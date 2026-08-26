@@ -21,6 +21,7 @@ import dev.langchain4j.data.video.Video;
 import java.util.List;
 import java.util.Map;
 import tools.jackson.core.type.TypeReference;
+import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.annotation.JsonDeserialize;
 import tools.jackson.databind.json.JsonMapper;
@@ -72,12 +73,20 @@ public class Jackson3ChatMessageJsonCodec implements ChatMessageJsonCodec {
 
     @Override
     public String messageToJson(ChatMessage message) {
-        return OBJECT_MAPPER.writeValueAsString(message);
+        try {
+            return OBJECT_MAPPER.writeValueAsString(message);
+        } catch (JacksonException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Override
     public String messagesToJson(List<ChatMessage> messages) {
-        return OBJECT_MAPPER.writeValueAsString(messages);
+        try {
+            return OBJECT_MAPPER.writeValueAsString(messages);
+        } catch (JacksonException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @JsonInclude(NON_NULL)

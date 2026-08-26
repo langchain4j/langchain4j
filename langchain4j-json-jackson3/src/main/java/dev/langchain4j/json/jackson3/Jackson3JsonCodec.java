@@ -5,6 +5,7 @@ import static com.fasterxml.jackson.annotation.PropertyAccessor.FIELD;
 
 import dev.langchain4j.internal.Json;
 import java.lang.reflect.Type;
+import tools.jackson.core.JacksonException;
 import tools.jackson.databind.DeserializationFeature;
 import tools.jackson.databind.MapperFeature;
 import tools.jackson.databind.ObjectMapper;
@@ -46,16 +47,28 @@ public class Jackson3JsonCodec implements Json.JsonCodec {
 
     @Override
     public String toJson(Object o) {
-        return objectMapper.writeValueAsString(o);
+        try {
+            return objectMapper.writeValueAsString(o);
+        } catch (JacksonException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Override
     public <T> T fromJson(String json, Class<T> type) {
-        return objectMapper.readValue(json, type);
+        try {
+            return objectMapper.readValue(json, type);
+        } catch (JacksonException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Override
     public <T> T fromJson(String json, Type type) {
-        return objectMapper.readValue(json, objectMapper.constructType(type));
+        try {
+            return objectMapper.readValue(json, objectMapper.constructType(type));
+        } catch (JacksonException e) {
+            throw new RuntimeException(e);
+        }
     }
 }
