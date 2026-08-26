@@ -12,6 +12,7 @@ import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.mcp.client.DefaultMcpClient;
 import dev.langchain4j.mcp.client.McpToolResultExtractor;
+import dev.langchain4j.mcp.client.transport.McpJson;
 import dev.langchain4j.mcp.client.transport.McpTransport;
 import dev.langchain4j.mcp.client.transport.stdio.StdioMcpTransport;
 import dev.langchain4j.service.tool.ToolExecutionResult;
@@ -25,7 +26,6 @@ import org.junit.jupiter.api.Test;
 
 class McpToolResultExtractorStdioLegacyIT {
 
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private static DefaultMcpClient client;
 
@@ -47,8 +47,8 @@ class McpToolResultExtractorStdioLegacyIT {
 
                 if ("text".equals(type) && content.size() == 1) {
                     try {
-                        Map<String, Object> map = OBJECT_MAPPER.convertValue(
-                                OBJECT_MAPPER.readTree(
+                        Map<String, Object> map = McpJson.convert(
+                                McpJson.parse(
                                         content.get(0).get("text").asText()),
                                 Map.class);
                         return ToolExecutionResult.builder()
