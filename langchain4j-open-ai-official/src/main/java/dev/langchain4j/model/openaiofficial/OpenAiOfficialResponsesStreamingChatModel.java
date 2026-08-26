@@ -366,16 +366,23 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
         return builder.build();
     }
 
-    static String mapStatusToFinishReason(String status, boolean hasToolCalls) {
+    static String mapStatusToFinishReason(String status, String incompleteReason, boolean hasToolCalls) {
         if (status == null) {
             return null;
         }
         return switch (status) {
             case "completed" -> hasToolCalls ? "TOOL_EXECUTION" : "STOP";
-            case "incomplete" -> "LENGTH";
+            case "incomplete" -> "content_filter".equals(incompleteReason) ? "CONTENT_FILTER" : "LENGTH";
             case "failed" -> "OTHER";
             default -> "OTHER";
         };
+    }
+
+    static String extractIncompleteReason(com.openai.models.responses.Response response) {
+        return response.incompleteDetails()
+                .flatMap(com.openai.models.responses.Response.IncompleteDetails::reason)
+                .map(com.openai.models.responses.Response.IncompleteDetails.Reason::asString)
+                .orElse(null);
     }
 
     static OpenAiOfficialTokenUsage extractTokenUsage(com.openai.models.responses.Response response) {
@@ -1242,7 +1249,8 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
 
             // Extract status and map to finish reason
             response.status().ifPresent(status -> {
-                this.finishReason = mapStatusToFinishReason(status.asString(), !completedToolCalls.isEmpty());
+                this.finishReason = mapStatusToFinishReason(
+                        status.asString(), extractIncompleteReason(response), !completedToolCalls.isEmpty());
             });
 
             // Extract token usage and complete
@@ -1269,12 +1277,10 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
         }
 
         private void handleIncomplete(ResponseIncompleteEvent event) {
-            // Incomplete is not an error - it just means the response was cut off due to token limits
-            // Treat it as a normal completion with finish reason LENGTH
-            finishReason = "LENGTH";
+            var response = event.response();
+            finishReason = mapStatusToFinishReason("incomplete", extractIncompleteReason(response), false);
 
-            // Complete the response normally
-            extractTokenUsageAndComplete(event.response());
+            extractTokenUsageAndComplete(response);
         }
 
         private void extractTokenUsageAndComplete(com.openai.models.responses.Response response) {

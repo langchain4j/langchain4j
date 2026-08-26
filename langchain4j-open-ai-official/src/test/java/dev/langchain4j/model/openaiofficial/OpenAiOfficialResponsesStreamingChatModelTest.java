@@ -14,6 +14,7 @@ import com.openai.core.http.HttpRequest;
 import com.openai.core.http.HttpResponse;
 import com.openai.models.responses.Response;
 import com.openai.models.responses.ResponseCompletedEvent;
+import com.openai.models.responses.ResponseIncompleteEvent;
 import com.openai.models.responses.ResponseStreamEvent;
 import com.openai.models.responses.ResponseWebSearchCallInProgressEvent;
 import com.openai.models.responses.Tool;
@@ -28,6 +29,7 @@ import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.chat.response.StreamingHandle;
+import dev.langchain4j.model.output.FinishReason;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -225,6 +227,80 @@ class OpenAiOfficialResponsesStreamingChatModelTest {
 
         assertThat(OpenAiOfficialResponsesStreamingChatModel.extractRefusal(response))
                 .isNull();
+    }
+
+    private static String incompleteResponseJson(String incompleteDetails) {
+        return """
+                {
+                  "id": "resp_incomplete",
+                  "created_at": 1745310000,
+                  "model": "gpt-5.4",
+                  "object": "response",
+                  "parallel_tool_calls": true,
+                  "tool_choice": "auto",
+                  "status": "incomplete",
+                  %s
+                  "output": [
+                    {
+                      "id": "msg_1",
+                      "type": "message",
+                      "role": "assistant",
+                      "status": "incomplete",
+                      "content": [{"type": "output_text", "text": "Partial", "annotations": []}]
+                    }
+                  ]
+                }
+                """.formatted(incompleteDetails);
+    }
+
+    private static ChatResponse chatWith(String responseJson) {
+        OpenAiOfficialResponsesChatModel model = OpenAiOfficialResponsesChatModel.builder()
+                .client(new OpenAIClientImpl(ClientOptions.builder()
+                        .apiKey("test-key")
+                        .httpClient(new CannedJsonHttpClient(responseJson))
+                        .build()))
+                .modelName("gpt-5.4-mini")
+                .build();
+
+        return model.chat(
+                ChatRequest.builder().messages(UserMessage.from("Hello")).build());
+    }
+
+    @Test
+    void should_report_content_filter_when_response_is_incomplete_because_of_the_content_filter() {
+        ChatResponse response =
+                chatWith(incompleteResponseJson("\"incomplete_details\": {\"reason\": \"content_filter\"},"));
+
+        assertThat(response.metadata().finishReason()).isEqualTo(FinishReason.CONTENT_FILTER);
+    }
+
+    @Test
+    void should_report_length_when_response_is_incomplete_because_of_the_token_limit() {
+        ChatResponse response =
+                chatWith(incompleteResponseJson("\"incomplete_details\": {\"reason\": \"max_output_tokens\"},"));
+
+        assertThat(response.metadata().finishReason()).isEqualTo(FinishReason.LENGTH);
+    }
+
+    @Test
+    void should_report_length_when_response_is_incomplete_without_details() {
+        ChatResponse response = chatWith(incompleteResponseJson(""));
+
+        assertThat(response.metadata().finishReason()).isEqualTo(FinishReason.LENGTH);
+    }
+
+    @Test
+    void should_report_content_filter_when_stream_ends_incomplete_because_of_the_content_filter() {
+        CapturingStreamingHandler handler = new CapturingStreamingHandler();
+        var eventHandler = new OpenAiOfficialResponsesStreamingChatModel.ResponsesEventHandler(
+                handler, new AtomicReference<>(), "gpt-5.4-mini", new ActiveStreamingHandle());
+
+        eventHandler.handleEvent(ResponseStreamEvent.ofIncomplete(ResponseIncompleteEvent.builder()
+                .response(response(incompleteResponseJson("\"incomplete_details\": {\"reason\": \"content_filter\"},")))
+                .sequenceNumber(1)
+                .build()));
+
+        assertThat(handler.completed.metadata().finishReason()).isEqualTo(FinishReason.CONTENT_FILTER);
     }
 
     @Test

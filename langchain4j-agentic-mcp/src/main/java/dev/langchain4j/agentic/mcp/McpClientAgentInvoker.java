@@ -1,5 +1,7 @@
 package dev.langchain4j.agentic.mcp;
 
+import static dev.langchain4j.agentic.internal.AgentUtil.untypedAgentInvocationArguments;
+
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
 import dev.langchain4j.agentic.internal.AgentInvocationArguments;
@@ -107,9 +109,7 @@ public class McpClientAgentInvoker implements AgentInvoker {
 
     @Override
     public AgentInvocationArguments toInvocationArguments(AgenticScope agenticScope) {
-        return isUntyped()
-                ? new AgentInvocationArguments(agenticScope.state(), new Object[] {agenticScope.state()})
-                : agentInvocationArguments(agenticScope);
+        return isUntyped() ? untypedAgentInvocationArguments(agenticScope) : agentInvocationArguments(agenticScope);
     }
 
     private AgentInvocationArguments agentInvocationArguments(AgenticScope agenticScope) {
