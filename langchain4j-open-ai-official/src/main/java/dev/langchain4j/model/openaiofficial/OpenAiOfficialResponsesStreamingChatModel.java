@@ -679,11 +679,14 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
             if (toolSpec.parameters() != null) {
                 toMap(toolSpec.parameters(), effectiveStrict)
                         .forEach((key, value) -> parametersBuilder.putAdditionalProperty(key, JsonValue.from(value)));
-            } else if (effectiveStrict) {
+            } else {
                 parametersBuilder
                         .putAdditionalProperty("type", JsonValue.from("object"))
                         .putAdditionalProperty("properties", JsonValue.from(Collections.emptyMap()))
-                        .putAdditionalProperty("additionalProperties", JsonValue.from(false));
+                        .putAdditionalProperty("required", JsonValue.from(Collections.emptyList()));
+                if (effectiveStrict) {
+                    parametersBuilder.putAdditionalProperty("additionalProperties", JsonValue.from(false));
+                }
             }
             return FunctionTool.builder()
                     .name(toolSpec.name())

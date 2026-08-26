@@ -85,6 +85,7 @@ class OpenAiResponsesClient {
     private static final String FIELD_DESCRIPTION = "description";
     private static final String FIELD_PARAMETERS = "parameters";
     private static final String FIELD_PROPERTIES = "properties";
+    private static final String FIELD_REQUIRED = "required";
     private static final String FIELD_ARGUMENTS = "arguments";
     private static final String FIELD_DELTA = "delta";
     private static final String FIELD_TEXT = "text";
@@ -316,23 +317,22 @@ class OpenAiResponsesClient {
                     tool.put(FIELD_DESCRIPTION, toolSpec.description());
                 }
 
-                Map<String, Object> functionParameters = null;
+                Map<String, Object> functionParameters;
                 if (toolSpec.parameters() != null) {
                     functionParameters = toMap(toolSpec.parameters(), effectiveStrict);
-                } else if (effectiveStrict) {
+                } else {
                     functionParameters = new LinkedHashMap<>();
                     functionParameters.put(FIELD_TYPE, TYPE_OBJECT);
                     functionParameters.put(FIELD_PROPERTIES, Map.of());
-                    functionParameters.put(FIELD_ADDITIONAL_PROPERTIES, false);
+                    functionParameters.put(FIELD_REQUIRED, List.of());
+                    if (effectiveStrict) {
+                        functionParameters.put(FIELD_ADDITIONAL_PROPERTIES, false);
+                    }
                 }
 
-                if (functionParameters != null) {
-                    tool.put(FIELD_PARAMETERS, functionParameters);
-                }
-
-                if (effectiveStrict) {
-                    tool.put(FIELD_STRICT, true);
-                }
+                tool.put(FIELD_PARAMETERS, functionParameters);
+                // "strict" must be sent explicitly: unlike Chat Completions, the Responses API defaults it to true
+                tool.put(FIELD_STRICT, effectiveStrict);
 
                 tools.add(tool);
             }
