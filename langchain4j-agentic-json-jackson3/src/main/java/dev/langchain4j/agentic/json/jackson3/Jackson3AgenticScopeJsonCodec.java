@@ -1,4 +1,4 @@
-package dev.langchain4j.json.jackson3;
+package dev.langchain4j.agentic.json.jackson3;
 
 import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
@@ -6,6 +6,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import dev.langchain4j.Internal;
+import dev.langchain4j.json.jackson3.Jackson3ChatMessageJsonCodec;
 import dev.langchain4j.agentic.scope.AgentInvocation;
 import dev.langchain4j.agentic.scope.AgenticScopeJsonCodec;
 import dev.langchain4j.agentic.scope.AgenticScopeTypeAllowlist;

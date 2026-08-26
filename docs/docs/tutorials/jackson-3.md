@@ -26,6 +26,17 @@ That is the whole of it. LangChain4j finds the module through the `ServiceLoader
 JSON through Jackson 3. There is nothing to configure and no API to call, and if you remove the
 dependency everything goes back to Jackson 2.
 
+If you use agents and persist their state, add the matching module as well - it is separate because
+it is only useful with `langchain4j-agentic`:
+
+```xml
+<dependency>
+    <groupId>dev.langchain4j</groupId>
+    <artifactId>langchain4j-agentic-json-jackson3</artifactId>
+    <version>1.20.0-beta30</version>
+</dependency>
+```
+
 ## What stays the same
 
 Switching a JSON library is a good way to change behaviour by accident, so the module works hard not
@@ -41,6 +52,11 @@ to. Jackson 3 changed several defaults, and every one of them is set back to wha
 
 The first one matters most: without it, a final collection field is left empty instead of being
 populated, and nothing tells you.
+
+**Failures have one type.** Reading or writing JSON that fails throws `JsonReadException` or
+`JsonWriteException` - both `LangChain4jException` - whichever library is underneath. The library's
+own exception is kept as the cause, so nothing is lost, but code that reacts to a JSON failure does
+not have to know which library produced it.
 
 **Data you have already stored stays readable.** Chat memory and `InMemoryEmbeddingStore` files
 written by Jackson 2 are read correctly by Jackson 3, and what Jackson 3 writes is byte-for-byte
@@ -59,7 +75,7 @@ leave your classpath depends on which modules you use:
 | Provider modules — OpenAI, Anthropic, Mistral, Ollama, Gemini, Bedrock, and the rest | No |
 | Embedding stores, web search, code execution | No |
 | `langchain4j-mcp` | Yes — Jackson's `JsonNode` appears in its public API |
-| `langchain4j-agentic` | No |
+| `langchain4j-agentic` | No, with `langchain4j-agentic-json-jackson3` added |
 | `langchain4j-vespa` | Yes — its HTTP client uses Retrofit's own Jackson converter |
 | Anything using a vendor SDK — AWS, Azure, Google | Yes — the SDK depends on Jackson 2 itself |
 

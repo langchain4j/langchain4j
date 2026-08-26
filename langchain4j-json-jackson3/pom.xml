@@ -48,28 +48,6 @@
             </exclusions>
         </dependency>
 
-        <!--
-            Optional: only needed to provide a Jackson 3 codec for AgenticScope persistence. Users
-            who do not use langchain4j-agentic never see it, and the codec class is only ever loaded
-            through AgenticScopeSerializer, which does not exist without that module. Jackson 2
-            arrives with it and is excluded, so this module stays Jackson 2-free.
-        -->
-        <dependency>
-            <groupId>dev.langchain4j</groupId>
-            <artifactId>langchain4j-agentic</artifactId>
-            <version>1.20.0-beta30-SNAPSHOT</version>
-            <optional>true</optional>
-            <exclusions>
-                <exclusion>
-                    <groupId>com.fasterxml.jackson.core</groupId>
-                    <artifactId>jackson-databind</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>com.fasterxml.jackson.core</groupId>
-                    <artifactId>jackson-core</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
 
         <dependency>
             <groupId>tools.jackson.core</groupId>

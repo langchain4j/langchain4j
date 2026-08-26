@@ -1,4 +1,4 @@
-package dev.langchain4j.json.jackson3;
+package dev.langchain4j.agentic.json.jackson3;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;

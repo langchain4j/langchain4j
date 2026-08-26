@@ -1,0 +1,15 @@
+[
+  {
+    "extension": "revapi.differences",
+    "configuration": {
+      "ignore": true,
+      "differences": [
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.agentic.scope.DefaultAgenticScope",
+          "justification": "Jackson3AgenticScopeJsonCodec implements AgenticScopeJsonCodec, whose contract is expressed in terms of DefaultAgenticScope. Both are @Internal; the type is exposed because the SPI is."
+        }
+      ]
+    }
+  }
+]
