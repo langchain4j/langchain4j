@@ -23,13 +23,9 @@ public class MistralAiParameters {
 
     @JsonCreator
     private MistralAiParameters(MistralAiParametersBuilder builder) {
-        this.type = builder.type$value;
+        this.type = builder.type;
         this.properties = builder.properties;
         this.required = builder.required;
-    }
-
-    private static String $default$type() {
-        return "object";
     }
 
     public String getType() {
@@ -80,8 +76,9 @@ public class MistralAiParameters {
     @JsonIgnoreProperties(ignoreUnknown = true)
     @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
     public static class MistralAiParametersBuilder {
-        private boolean type$set;
-        private String type$value;
+        // Defaulted here rather than in build(): a codec that binds the builder's fields directly,
+        // as Jackson 3 does through the @JsonCreator below, never calls build().
+        private String type = "object";
         private Map<String, Map<String, Object>> properties;
         private List<String> required;
 
@@ -91,8 +88,7 @@ public class MistralAiParameters {
          * @return {@code this}.
          */
         public MistralAiParametersBuilder type(String type) {
-            this.type$value = type;
-            type$set = true;
+            this.type = type;
             return this;
         }
 
@@ -113,8 +109,6 @@ public class MistralAiParameters {
         }
 
         public MistralAiParameters build() {
-            String type$value = this.type$value;
-            if (!this.type$set) this.type$value = MistralAiParameters.$default$type();
             return new MistralAiParameters(this);
         }
     }

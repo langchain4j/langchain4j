@@ -19,14 +19,10 @@ public class MistralAiToolCall {
     private MistralAiToolType type;
     private MistralAiFunctionCall function;
 
-    private static MistralAiToolType $default$type() {
-        return MistralAiToolType.FUNCTION;
-    }
-
     @JsonCreator
     private MistralAiToolCall(MistralAiToolCallBuilder builder) {
         this.id = builder.id;
-        this.type = builder.type$value;
+        this.type = builder.type;
         this.function = builder.function;
     }
 
@@ -79,8 +75,11 @@ public class MistralAiToolCall {
     @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
     public static class MistralAiToolCallBuilder {
         private String id;
-        private boolean type$set;
-        private MistralAiToolType type$value;
+
+        // Defaulted here rather than in build(): a codec that binds the builder's fields directly,
+        // as Jackson 3 does through the @JsonCreator below, never calls build().
+        private MistralAiToolType type = MistralAiToolType.FUNCTION;
+
         private MistralAiFunctionCall function;
 
         private MistralAiToolCallBuilder() {}
@@ -97,8 +96,7 @@ public class MistralAiToolCall {
          * @return {@code this}.
          */
         public MistralAiToolCallBuilder type(MistralAiToolType type) {
-            this.type$value = type;
-            type$set = true;
+            this.type = type;
             return this;
         }
 
@@ -111,10 +109,6 @@ public class MistralAiToolCall {
         }
 
         public MistralAiToolCall build() {
-            MistralAiToolType type$value = this.type$value;
-            if (!this.type$set) {
-                this.type$value = MistralAiToolCall.$default$type();
-            }
             return new MistralAiToolCall(this);
         }
     }

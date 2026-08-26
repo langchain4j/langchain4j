@@ -22,6 +22,19 @@ import org.slf4j.LoggerFactory;
  *     If deserialization fails, the LLM will be reprompted with {@link #getInvalidJsonReprompt(AiMessage, String)}, which
  *     defaults to {@link #DEFAULT_REPROMPT_PROMPT}.
  * </p>
+ * <p>
+ *     Deserialization goes through LangChain4j's configured JSON codec - the same one AI Services
+ *     use to read structured output - so that swapping the JSON library applies here too. That
+ *     codec is deliberately more forgiving than a bare Jackson {@code ObjectMapper}: it reads
+ *     private fields without setters, accepts enum constants case-insensitively, and parses dates
+ *     that an LLM has written in a field-wise form. It does still reject unknown properties, which
+ *     is the check that catches a hallucinated field.
+ * </p>
+ * <p>
+ *     If you need the stricter behaviour of a plain {@code ObjectMapper}, configure one and pass it
+ *     to {@link #JsonExtractorOutputGuardrail(ObjectMapper, Class)}, which is deprecated but is
+ *     honoured for as long as it exists.
+ * </p>
  *
  * @param <T> The type of object that the class should deserialize from JSON
  */
@@ -44,8 +57,10 @@ public class JsonExtractorOutputGuardrail<T> implements OutputGuardrail {
     private TypeReference<T> outputType;
 
     /**
-     * @deprecated use a constructor without an {@link ObjectMapper}; deserialization then goes
-     * through LangChain4j's configured JSON codec, which can be swapped for Jackson 3.
+     * @deprecated use {@link #JsonExtractorOutputGuardrail(Class)}, which does not expose Jackson
+     * types. Deserialization then goes through LangChain4j's configured JSON codec, which can be
+     * swapped for Jackson 3. Note that the codec is configured differently from a plain
+     * {@code ObjectMapper}: see the class javadoc.
      */
     @Deprecated(since = "1.20.0", forRemoval = true)
     public JsonExtractorOutputGuardrail(ObjectMapper objectMapper, Class<T> outputClass) {
@@ -54,8 +69,11 @@ public class JsonExtractorOutputGuardrail<T> implements OutputGuardrail {
     }
 
     /**
-     * @deprecated use a constructor without an {@link ObjectMapper}; deserialization then goes
-     * through LangChain4j's configured JSON codec, which can be swapped for Jackson 3.
+     * @deprecated use {@link #JsonExtractorOutputGuardrail(Type)}, which does not expose Jackson
+     * types. Pass {@code new TypeReference<Foo>() {}.getType()} to migrate. Deserialization then
+     * goes through LangChain4j's configured JSON codec, which can be swapped for Jackson 3. Note
+     * that the codec is configured differently from a plain {@code ObjectMapper}: see the class
+     * javadoc.
      */
     @Deprecated(since = "1.20.0", forRemoval = true)
     public JsonExtractorOutputGuardrail(ObjectMapper objectMapper, TypeReference<T> outputType) {
