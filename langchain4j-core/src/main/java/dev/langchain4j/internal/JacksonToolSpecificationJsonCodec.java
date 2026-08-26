@@ -2,6 +2,8 @@ package dev.langchain4j.internal;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.langchain4j.exception.JsonWriteException;
+import dev.langchain4j.exception.JsonReadException;
 import dev.langchain4j.agent.tool.ToolSpecificationJsonCodec;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
@@ -38,7 +40,7 @@ class JacksonToolSpecificationJsonCodec implements ToolSpecificationJsonCodec {
         try {
             return objectMapper.writeValueAsString(object);
         } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
+            throw new JsonWriteException(e);
         }
     }
 
@@ -47,7 +49,7 @@ class JacksonToolSpecificationJsonCodec implements ToolSpecificationJsonCodec {
         try {
             return objectMapper.readValue(json, type);
         } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
+            throw new JsonReadException(e);
         }
     }
 }

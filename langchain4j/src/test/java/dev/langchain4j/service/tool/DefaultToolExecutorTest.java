@@ -5,6 +5,7 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.singletonMap;
 
 import com.fasterxml.jackson.core.JsonParseException;
+import dev.langchain4j.exception.JsonReadException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -621,7 +622,7 @@ class DefaultToolExecutorTest implements WithAssertions {
 
         // when-then
         assertThatThrownBy(() -> toolExecutor.execute(toolRequest, "default"))
-                .isExactlyInstanceOf(RuntimeException.class)
+                .isExactlyInstanceOf(JsonReadException.class)
                 .hasCauseExactlyInstanceOf(JsonParseException.class)
                 .hasMessageContaining("was expecting double-quote");
     }

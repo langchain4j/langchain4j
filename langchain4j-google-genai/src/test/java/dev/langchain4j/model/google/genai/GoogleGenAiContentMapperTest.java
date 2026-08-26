@@ -12,6 +12,7 @@ import com.google.genai.types.Part;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.exception.JsonReadException;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.SystemMessage;
@@ -171,11 +172,9 @@ class GoogleGenAiContentMapperTest {
                 .build();
         AiMessage message = AiMessage.from(toolRequest);
 
-        // The cause is whatever the configured JSON codec threw, so its type depends on which
-        // codec is on the classpath. What callers can rely on is the RuntimeException and that the
-        // library's own failure is kept as its cause.
+        // JsonReadException is the same whichever JSON library is installed; only its cause differs.
         assertThatThrownBy(() -> GoogleGenAiContentMapper.toContent(message))
-                .isInstanceOf(RuntimeException.class)
+                .isInstanceOf(JsonReadException.class)
                 .hasCauseInstanceOf(Exception.class);
     }
 

@@ -12,6 +12,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import dev.langchain4j.exception.JsonWriteException;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.audio.Audio;
 import dev.langchain4j.data.image.Image;
@@ -76,7 +77,7 @@ public class Jackson3ChatMessageJsonCodec implements ChatMessageJsonCodec {
         try {
             return OBJECT_MAPPER.writeValueAsString(message);
         } catch (JacksonException e) {
-            throw new RuntimeException(e);
+            throw new JsonWriteException(e);
         }
     }
 
@@ -85,7 +86,7 @@ public class Jackson3ChatMessageJsonCodec implements ChatMessageJsonCodec {
         try {
             return OBJECT_MAPPER.writeValueAsString(messages);
         } catch (JacksonException e) {
-            throw new RuntimeException(e);
+            throw new JsonWriteException(e);
         }
     }
 

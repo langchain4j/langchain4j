@@ -127,7 +127,7 @@ public final class McpJson {
         try {
             return OBJECT_MAPPER.readTree(json);
         } catch (Exception e) {
-            throw new IllegalArgumentException("Failed to parse MCP message: " + json, e);
+            throw new IllegalArgumentException("Failed to parse MCP message", e);
         }
     }
 
@@ -152,7 +152,7 @@ public final class McpJson {
             // codecs wrap the library's own parse failure; keep that as the cause rather than
             // adding a layer, so callers still see why the text could not be read
             Throwable cause = e.getCause() != null ? e.getCause() : e;
-            throw new IllegalArgumentException("Failed to parse MCP message: " + json, cause);
+            throw new IllegalArgumentException("Failed to parse MCP message", cause);
         }
     }
 

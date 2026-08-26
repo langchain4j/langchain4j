@@ -3,6 +3,8 @@ package dev.langchain4j.json.jackson3;
 import static com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility.ANY;
 import static com.fasterxml.jackson.annotation.PropertyAccessor.FIELD;
 
+import dev.langchain4j.exception.JsonWriteException;
+import dev.langchain4j.exception.JsonReadException;
 import dev.langchain4j.internal.Json;
 import java.lang.reflect.Type;
 import tools.jackson.core.JacksonException;
@@ -55,7 +57,7 @@ public class Jackson3JsonCodec implements Json.JsonCodec {
         try {
             return objectMapper.writeValueAsString(o);
         } catch (JacksonException e) {
-            throw new RuntimeException(e);
+            throw new JsonWriteException(e);
         }
     }
 
@@ -64,7 +66,7 @@ public class Jackson3JsonCodec implements Json.JsonCodec {
         try {
             return objectMapper.readValue(json, type);
         } catch (JacksonException e) {
-            throw new RuntimeException(e);
+            throw new JsonReadException(e);
         }
     }
 
@@ -73,7 +75,7 @@ public class Jackson3JsonCodec implements Json.JsonCodec {
         try {
             return objectMapper.readValue(json, objectMapper.constructType(type));
         } catch (JacksonException e) {
-            throw new RuntimeException(e);
+            throw new JsonReadException(e);
         }
     }
 }

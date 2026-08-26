@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import dev.langchain4j.exception.JsonReadException;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -166,7 +167,7 @@ class JsonParsingUtilsTest {
     void extract_invalid_json() throws Exception {
         String json = "not a json";
         assertThatThrownBy(() -> JsonParsingUtils.extractAndParseJson(json, MyPojo.class))
-                .isExactlyInstanceOf(RuntimeException.class)
+                .isExactlyInstanceOf(JsonReadException.class)
                 .hasRootCauseInstanceOf(JsonParseException.class);
     }
 

@@ -1,5 +1,7 @@
 package dev.langchain4j.json.jackson3;
 
+import dev.langchain4j.exception.JsonWriteException;
+import dev.langchain4j.exception.JsonReadException;
 import dev.langchain4j.agent.tool.ToolSpecificationJsonCodec;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
@@ -28,7 +30,7 @@ public class Jackson3ToolSpecificationJsonCodec implements ToolSpecificationJson
         try {
             return objectMapper.writeValueAsString(object);
         } catch (JacksonException e) {
-            throw new RuntimeException(e);
+            throw new JsonWriteException(e);
         }
     }
 
@@ -37,7 +39,7 @@ public class Jackson3ToolSpecificationJsonCodec implements ToolSpecificationJson
         try {
             return objectMapper.readValue(json, type);
         } catch (JacksonException e) {
-            throw new RuntimeException(e);
+            throw new JsonReadException(e);
         }
     }
 }

@@ -1,6 +1,8 @@
 package dev.langchain4j.json.jackson3;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import dev.langchain4j.exception.JsonWriteException;
+import dev.langchain4j.exception.JsonReadException;
 import dev.langchain4j.internal.Json;
 import dev.langchain4j.internal.WireJsonSpec;
 import java.lang.reflect.Type;
@@ -49,7 +51,7 @@ public class Jackson3WireJsonCodec implements Json.JsonCodec {
         try {
             return objectMapper.writeValueAsString(o);
         } catch (JacksonException e) {
-            throw new RuntimeException(e);
+            throw new JsonWriteException(e);
         }
     }
 
@@ -58,7 +60,7 @@ public class Jackson3WireJsonCodec implements Json.JsonCodec {
         try {
             return objectMapper.readValue(json, type);
         } catch (JacksonException e) {
-            throw new RuntimeException(e);
+            throw new JsonReadException(e);
         }
     }
 
@@ -67,7 +69,7 @@ public class Jackson3WireJsonCodec implements Json.JsonCodec {
         try {
             return objectMapper.readValue(json, objectMapper.constructType(type));
         } catch (JacksonException e) {
-            throw new RuntimeException(e);
+            throw new JsonReadException(e);
         }
     }
 }

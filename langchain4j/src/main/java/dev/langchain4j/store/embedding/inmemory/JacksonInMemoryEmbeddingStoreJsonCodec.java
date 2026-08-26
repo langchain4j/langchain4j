@@ -9,6 +9,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
+import dev.langchain4j.exception.JsonWriteException;
+import dev.langchain4j.exception.JsonReadException;
 import dev.langchain4j.Internal;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
@@ -34,7 +36,7 @@ class JacksonInMemoryEmbeddingStoreJsonCodec implements InMemoryEmbeddingStoreJs
         try {
             return OBJECT_MAPPER.readValue(json, TYPE_REFERENCE);
         } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
+            throw new JsonReadException(e);
         }
     }
 
@@ -43,7 +45,7 @@ class JacksonInMemoryEmbeddingStoreJsonCodec implements InMemoryEmbeddingStoreJs
         try {
             return OBJECT_MAPPER.writeValueAsString(store);
         } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
+            throw new JsonWriteException(e);
         }
     }
 
@@ -52,7 +54,7 @@ class JacksonInMemoryEmbeddingStoreJsonCodec implements InMemoryEmbeddingStoreJs
         try {
             OBJECT_MAPPER.writeValue(outputStream, store);
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new JsonWriteException(e);
         }
     }
 
@@ -61,7 +63,7 @@ class JacksonInMemoryEmbeddingStoreJsonCodec implements InMemoryEmbeddingStoreJs
         try {
             return OBJECT_MAPPER.readValue(inputStream, TYPE_REFERENCE);
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new JsonReadException(e);
         }
     }
 

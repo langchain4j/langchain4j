@@ -29,6 +29,8 @@ import com.fasterxml.jackson.databind.jsontype.impl.StdTypeResolverBuilder;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.ser.std.StdSerializer;
+import dev.langchain4j.exception.JsonWriteException;
+import dev.langchain4j.exception.JsonReadException;
 import dev.langchain4j.Internal;
 import java.io.IOException;
 import java.lang.reflect.Type;
@@ -177,7 +179,7 @@ class JacksonJsonCodec implements Json.JsonCodec {
         try {
             return objectMapper.writeValueAsString(o);
         } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
+            throw new JsonWriteException(e);
         }
     }
 
@@ -186,7 +188,7 @@ class JacksonJsonCodec implements Json.JsonCodec {
         try {
             return objectMapper.readValue(json, type);
         } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
+            throw new JsonReadException(e);
         }
     }
 
@@ -195,7 +197,7 @@ class JacksonJsonCodec implements Json.JsonCodec {
         try {
             return objectMapper.readValue(json, objectMapper.constructType(type));
         } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
+            throw new JsonReadException(e);
         }
     }
 

@@ -10,6 +10,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 import com.fasterxml.jackson.core.JsonParseException;
+import dev.langchain4j.exception.JsonReadException;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
@@ -280,7 +281,7 @@ public abstract class AbstractAiServicesWithToolErrorHandlerTest {
 
         // when
         assertThatThrownBy(() -> assistant.chat("What is the weather in Munich?"))
-                .isExactlyInstanceOf(RuntimeException.class)
+                .isExactlyInstanceOf(JsonReadException.class)
                 .hasCauseExactlyInstanceOf(JsonParseException.class)
                 .hasMessageContaining("Unexpected character");
 
@@ -315,7 +316,7 @@ public abstract class AbstractAiServicesWithToolErrorHandlerTest {
 
         ToolArgumentsErrorHandler toolArgumentsErrorHandler = (error, context) -> {
             assertThat(error)
-                    .isExactlyInstanceOf(JsonParseException.class)
+                    .isExactlyInstanceOf(JsonReadException.class)
                     .hasMessageContaining("Unexpected character");
 
             assertThat(context.toolExecutionRequest()).isEqualTo(toolExecutionRequest1);
@@ -364,7 +365,7 @@ public abstract class AbstractAiServicesWithToolErrorHandlerTest {
 
         ToolArgumentsErrorHandler toolArgumentsErrorHandler = (error, context) -> {
             assertThat(error)
-                    .isExactlyInstanceOf(JsonParseException.class)
+                    .isExactlyInstanceOf(JsonReadException.class)
                     .hasMessageContaining("Unexpected character");
 
             assertThat(context.toolExecutionRequest()).isEqualTo(toolExecutionRequest);
