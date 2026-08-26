@@ -18,7 +18,6 @@ import dev.langchain4j.agentic.agent.AgentBuilder;
 import dev.langchain4j.agentic.agent.UntypedAgentBuilder;
 import dev.langchain4j.agentic.declarative.A2AClientAgent;
 import dev.langchain4j.agentic.declarative.A2AClientCustomizer;
-import dev.langchain4j.agentic.declarative.A2AInputProvider;
 import dev.langchain4j.agentic.declarative.A2AServerUrlSupplier;
 import dev.langchain4j.agentic.declarative.ActivationCondition;
 import dev.langchain4j.agentic.declarative.AgentListenerSupplier;
@@ -764,14 +763,6 @@ public class AgenticServices {
                         method -> method.isAnnotationPresent(A2AClientCustomizer.class)
                                 && method.getParameterCount() == 1)
                 .ifPresent(method -> a2aClientBuilder.clientCustomizer(cb -> invokeStatic(method, cb)));
-
-        selectMethod(
-                        agentServiceClass,
-                        method -> method.isAnnotationPresent(A2AInputProvider.class) && method.getParameterCount() == 1)
-                .ifPresent(method -> {
-                    checkReturnType(method, String.class);
-                    a2aClientBuilder.inputProvider(interruption -> invokeStatic(method, interruption));
-                });
 
         getAnnotatedMethodOnClass(agentServiceClass, AgentListenerSupplier.class)
                 .ifPresent(method -> {

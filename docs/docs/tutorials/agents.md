@@ -3170,30 +3170,41 @@ In this sequence, the first agent sends a message with no `contextId`/`taskId` (
 
 ### Human-in-the-loop A2A agents
 
-An A2A server can pause a task in the `input-required` or `auth-required` state. A declarative A2A
-client agent can handle this by defining a static method annotated with `@A2AInputProvider`. The
-method receives an `A2ATaskInterruptedException` containing the server's prompt and task details,
-and returns the input that should be sent to resume the task.
+An A2A server can pause a task in the `input-required` or `auth-required` state. When this happens
+inside an agentic system, the A2A client stores a `SuspendedResponse` in the `AgenticScope`,
+checkpoints the workflow, and releases the calling thread. The interruption contains the task and
+context IDs required to continue the same remote task.
 
-Declare the provider alongside the A2A client agent method:
+The caller can publish those details to an external system, such as a Kafka topic:
 
 ```java
-public interface ApprovalAgent {
+try {
+    workflow.invoke("request-123", "Book the trip");
+} catch (AgenticSystemSuspendedException e) {
+    AgenticScope scope = e.scope();
+    String responseId = scope.pendingResponseIds().iterator().next();
+    A2ATaskInterruptedException interruption = A2ATaskInterruptedException.from(scope, responseId);
 
-    @A2AClientAgent(a2aServerUrl = "http://localhost:8080", outputKey = "response")
-    String invoke(@V("message") String message);
-
-    @A2AInputProvider
-    static String provideInput(A2ATaskInterruptedException interruption) {
-        return requestInputFromUser(interruption.reason());
-    }
+    inputRequests.publish(new InputRequest(
+            scope.memoryId(), responseId, interruption.taskId(),
+            interruption.contextId(), interruption.reason()));
 }
 ```
 
-When the remote agent requests input, LangChain4j calls the input provider and sends its return value
-with the `contextId` and `taskId` of the existing remote task. This repeats if the agent requests input
-more than once. Without an `@A2AInputProvider`, the client throws `A2ATaskInterruptedException`,
-allowing the interruption to be handled manually.
+When the human response arrives later, complete the pending response and invoke the workflow again.
+The planner resumes from its checkpoint, and the A2A client sends the response with the stored
+`contextId` and `taskId` instead of starting a new task:
+
+```java
+void onInputResponse(InputResponse response) {
+    AgenticScope scope = workflow.getAgenticScope(response.memoryId());
+    scope.completePendingResponse(response.responseId(), response.text());
+    workflow.invoke(response.memoryId(), "Book the trip");
+}
+```
+
+If an A2A client is invoked outside an agentic system, there is no scope to suspend. In that case it
+throws `A2ATaskInterruptedException` directly so the caller can handle the interruption manually.
 
 ### Customizing the A2A client
 
