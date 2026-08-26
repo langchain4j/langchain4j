@@ -122,7 +122,7 @@ public class P2PPlanner implements Planner {
     }
 
     private boolean terminated(AgenticScope agenticScope) {
-        return invocationCounter > maxAgentsInvocations || exitCondition.test(agenticScope, invocationCounter);
+        return invocationCounter >= maxAgentsInvocations || exitCondition.test(agenticScope, invocationCounter);
     }
 
     private static class AgentActivator {
