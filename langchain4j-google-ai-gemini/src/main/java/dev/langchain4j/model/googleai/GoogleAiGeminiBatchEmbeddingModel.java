@@ -3,6 +3,7 @@ package dev.langchain4j.model.googleai;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.googleai.GeminiService.BatchOperationType.ASYNC_BATCH_EMBED_CONTENT;
 
+import dev.langchain4j.internal.Types;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
@@ -221,7 +222,7 @@ public final class GoogleAiGeminiBatchEmbeddingModel implements BatchEmbeddingMo
     private class EmbeddingRequestPreparer
             implements GeminiBatchProcessor.RequestPreparer<
                     TextSegment, GeminiEmbeddingRequest, GeminiEmbeddingResponse, Response<@NonNull Embedding>> {
-        private static final Type responseWrapperType = Json.parameterized(
+        private static final Type responseWrapperType = Types.parameterized(
                 BatchCreateResponse.InlinedResponseWrapper.class, GeminiEmbeddingResponse.class);
 
         @Override

@@ -62,4 +62,32 @@ class WireJsonTest {
                         .toJson(dto))
                 .isEqualToIgnoringWhitespace("{}");
     }
+
+    @Test
+    void reuses_a_codec_for_the_same_spec() {
+        WireJsonSpec spec = WireJsonSpec.builder()
+                .propertyNaming(WireJsonSpec.PropertyNaming.SNAKE_CASE)
+                .prettyPrint(true)
+                .build();
+
+        // Equal specs describe the same wire format, so they can share a codec. Callers that build
+        // one per instance would otherwise run a ServiceLoader scan and build a mapper every time.
+        assertThat(WireJson.codec(spec)).isSameAs(WireJson.codec(spec));
+        assertThat(WireJson.codec(WireJsonSpec.builder()
+                        .propertyNaming(WireJsonSpec.PropertyNaming.SNAKE_CASE)
+                        .prettyPrint(true)
+                        .build()))
+                .isSameAs(WireJson.codec(spec));
+    }
+
+    @Test
+    void gives_a_different_codec_to_a_different_spec() {
+        assertThat(WireJson.codec(WireJsonSpec.builder().prettyPrint(true).build()))
+                .isNotSameAs(WireJson.codec(WireJsonSpec.builder().prettyPrint(false).build()));
+        assertThat(WireJson.codec(WireJsonSpec.builder()
+                        .propertyNaming(WireJsonSpec.PropertyNaming.SNAKE_CASE)
+                        .build()))
+                .isNotSameAs(WireJson.codec(WireJsonSpec.builder().build()));
+    }
+
 }

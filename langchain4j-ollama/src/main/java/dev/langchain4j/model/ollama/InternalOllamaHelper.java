@@ -9,6 +9,7 @@ import static dev.langchain4j.model.ollama.OllamaJsonUtils.fromJson;
 import static dev.langchain4j.model.ollama.OllamaJsonUtils.toJsonWithoutIdent;
 
 import java.lang.reflect.Type;
+import dev.langchain4j.internal.Types;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -44,23 +45,7 @@ import java.util.stream.Collectors;
 @Internal
 class InternalOllamaHelper {
 
-    private static final Type MAP_OF_OBJECT =
-            new java.lang.reflect.ParameterizedType() {
-                @Override
-                public Type[] getActualTypeArguments() {
-                    return new Type[] {String.class, Object.class};
-                }
-
-                @Override
-                public Type getRawType() {
-                    return HashMap.class;
-                }
-
-                @Override
-                public Type getOwnerType() {
-                    return null;
-                }
-            };
+    private static final Type MAP_OF_OBJECT = Types.parameterized(HashMap.class, String.class, Object.class);
 
     private static final Predicate<ChatMessage> isUserMessage = UserMessage.class::isInstance;
     private static final Predicate<UserMessage> hasImages =

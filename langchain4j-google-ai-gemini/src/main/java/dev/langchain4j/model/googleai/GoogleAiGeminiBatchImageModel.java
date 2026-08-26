@@ -4,6 +4,7 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.googleai.GeminiResponseModality.IMAGE;
 import static dev.langchain4j.model.googleai.GeminiService.BatchOperationType.BATCH_GENERATE_CONTENT;
 
+import dev.langchain4j.internal.Types;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.http.client.HttpClientBuilder;
@@ -454,7 +455,7 @@ public final class GoogleAiGeminiBatchImageModel implements BatchImageModel {
             implements GeminiBatchProcessor.RequestPreparer<
                     String, GeminiGenerateContentRequest, GeminiGenerateContentResponse, Response<@NonNull Image>> {
         private static final Type responseWrapperType = GeminiGenerateContentResponse.class;
-        private static final Type inlinedResponseWrapperType = Json.parameterized(
+        private static final Type inlinedResponseWrapperType = Types.parameterized(
                 BatchCreateResponse.InlinedResponseWrapper.class, GeminiGenerateContentResponse.class);
 
         @Override

@@ -9,9 +9,9 @@ import dev.langchain4j.exception.JsonException;
 import dev.langchain4j.exception.JsonReadException;
 import dev.langchain4j.exception.JsonWriteException;
 import dev.langchain4j.internal.Json;
+import dev.langchain4j.internal.Types;
 import dev.langchain4j.internal.WireJson;
 import dev.langchain4j.internal.WireJsonSpec;
-import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.List;
 import java.util.Map;
@@ -94,27 +94,9 @@ public final class McpJson {
      * Re-reads an already-decoded JSON array as a list of the given element type.
      */
     public static <T> List<T> convertList(Object value, Class<T> elementType) {
-        return read(serialize(value), listOf(elementType));
+        return read(serialize(value), Types.listOf(elementType));
     }
 
-    private static ParameterizedType listOf(Class<?> elementType) {
-        return new ParameterizedType() {
-            @Override
-            public Type[] getActualTypeArguments() {
-                return new Type[] {elementType};
-            }
-
-            @Override
-            public Type getRawType() {
-                return List.class;
-            }
-
-            @Override
-            public Type getOwnerType() {
-                return null;
-            }
-        };
-    }
 
     /**
      * Serializes an outbound MCP message. A null message renders as null rather than as the

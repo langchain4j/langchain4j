@@ -87,6 +87,12 @@ public final class Embedding {
             return this;
         }
 
+        /**
+         * Paired with the {@code List<Float>} overload above rather than replacing it: callers keep
+         * the typed method, while JSON binds through this one because it carries the explicit
+         * {@code @JsonProperty}. It has to accept {@code Object} because OpenAI sends the embedding
+         * either as an array of numbers or as a Base64 string.
+         */
         @JsonProperty("embedding")
         Builder embedding(Object embedding) {
             if (embedding == null) {

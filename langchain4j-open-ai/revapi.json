@@ -117,7 +117,7 @@
         {
           "code": "java.annotation.removed",
           "annotationType": "com.fasterxml.jackson.annotation.JsonCreator",
-          "justification": "Added so the internal wire DTOs can also be deserialized by Jackson 3, whose databind-package @JsonDeserialize(builder=...) differs from Jackson 2's. Jackson 2 behaviour is unchanged: the explicit @JsonDeserialize still takes precedence."
+          "justification": "Moved off the DTOs: the annotation is applied by the codec now, so that the wire format does not depend on annotations only one JSON library can see. Wire format is unchanged and covered by WireFormatTest."
         },
         {
           "code": "java.annotation.added",

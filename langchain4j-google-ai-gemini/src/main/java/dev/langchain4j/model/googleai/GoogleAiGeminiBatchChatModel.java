@@ -3,6 +3,7 @@ package dev.langchain4j.model.googleai;
 import static dev.langchain4j.model.googleai.BaseGeminiChatModel.buildGeminiService;
 import static dev.langchain4j.model.googleai.GeminiService.BatchOperationType.BATCH_GENERATE_CONTENT;
 
+import dev.langchain4j.internal.Types;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.model.batch.BatchItemResult;
 import dev.langchain4j.model.batch.BatchPage;
@@ -223,7 +224,7 @@ public final class GoogleAiGeminiBatchChatModel implements BatchChatModel {
     private class ChatRequestPreparer
             implements GeminiBatchProcessor.RequestPreparer<
                     ChatRequest, GeminiGenerateContentRequest, GeminiGenerateContentResponse, ChatResponse> {
-        private static final Type responseWrapperType = Json.parameterized(
+        private static final Type responseWrapperType = Types.parameterized(
                 BatchCreateResponse.InlinedResponseWrapper.class, GeminiGenerateContentResponse.class);
 
         @Override

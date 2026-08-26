@@ -3,7 +3,6 @@ package dev.langchain4j.model.googleai;
 import dev.langchain4j.Internal;
 import dev.langchain4j.internal.WireJson;
 import dev.langchain4j.internal.WireJsonSpec;
-import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 
 @Internal
@@ -37,24 +36,4 @@ class Json {
         return CODEC.fromJson(CODEC.toJson(fromValue), type);
     }
 
-    /** Builds the {@link Type} of a generic class, so a type token is not needed. */
-    static Type parameterized(Class<?> raw, Type... typeArguments) {
-        return new ParameterizedType() {
-
-            @Override
-            public Type[] getActualTypeArguments() {
-                return typeArguments.clone();
-            }
-
-            @Override
-            public Type getRawType() {
-                return raw;
-            }
-
-            @Override
-            public Type getOwnerType() {
-                return null;
-            }
-        };
-    }
 }
