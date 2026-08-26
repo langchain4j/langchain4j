@@ -1,6 +1,5 @@
 package dev.langchain4j.mcp.client;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import dev.langchain4j.mcp.client.transport.McpJson;
 import dev.langchain4j.mcp.protocol.McpGetPromptResponse;
 import dev.langchain4j.mcp.protocol.McpListPromptsResult;
@@ -12,7 +11,7 @@ class PromptsHelper {
 
     private static final Logger log = LoggerFactory.getLogger(PromptsHelper.class);
 
-    static List<McpPrompt> parsePromptRefs(JsonNode mcpMessage) {
+    static List<McpPrompt> parsePromptRefs(String mcpMessage) {
         McpErrorHelper.checkForErrors(mcpMessage);
         McpListPromptsResult.Result result =
                 McpJson.deserialize(mcpMessage, McpListPromptsResult.class).getResult();
@@ -27,7 +26,7 @@ class PromptsHelper {
         return result.getPrompts();
     }
 
-    static McpGetPromptResult parsePromptContents(JsonNode mcpMessage) {
+    static McpGetPromptResult parsePromptContents(String mcpMessage) {
         McpErrorHelper.checkForErrors(mcpMessage);
         return McpJson.deserialize(mcpMessage, McpGetPromptResponse.class).getResult();
     }

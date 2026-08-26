@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.mcp.client.McpCallContext;
 import dev.langchain4j.mcp.client.transport.McpOperationHandler;
+import dev.langchain4j.exception.JsonException;
 import dev.langchain4j.mcp.client.transport.McpJson;
 import dev.langchain4j.mcp.client.transport.McpTransport;
 import dev.langchain4j.mcp.protocol.McpClientMessage;
@@ -87,7 +88,7 @@ public class StdioMcpTransport implements McpTransport {
             return execute(requestString, operation.getId())
                     .thenCompose(originalResponse -> execute(initializationNotification, null)
                             .thenCompose(nullNode -> CompletableFuture.completedFuture(originalResponse)));
-        } catch (IllegalArgumentException e) {
+        } catch (JsonException e) {
             return CompletableFuture.failedFuture(e);
         }
     }
@@ -102,7 +103,7 @@ public class StdioMcpTransport implements McpTransport {
         try {
             String requestString = McpJson.serialize(context.message());
             return execute(requestString, context.message().getId());
-        } catch (IllegalArgumentException e) {
+        } catch (JsonException e) {
             return CompletableFuture.failedFuture(e);
         }
     }

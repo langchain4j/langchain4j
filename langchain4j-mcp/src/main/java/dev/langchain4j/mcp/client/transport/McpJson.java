@@ -5,6 +5,9 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.Internal;
+import dev.langchain4j.exception.JsonException;
+import dev.langchain4j.exception.JsonReadException;
+import dev.langchain4j.exception.JsonWriteException;
 import dev.langchain4j.internal.Json;
 import dev.langchain4j.internal.WireJson;
 import dev.langchain4j.internal.WireJsonSpec;
@@ -42,7 +45,22 @@ public final class McpJson {
 
     /**
      * Deserializes an MCP message into a protocol type.
+     *
+     * <p>The message is taken as it arrived on the wire, so this is a single parse. Reading it into
+     * a tree first and then into a type costs two more passes and, for high-precision numbers, is
+     * not guaranteed to round-trip.
      */
+    public static <T> T deserialize(String message, Class<T> type) {
+        return read(message, type);
+    }
+
+    /**
+     * Deserializes an MCP message held as a Jackson 2 tree.
+     *
+     * @deprecated use {@link #deserialize(String, Class)}, which does not expose Jackson types and
+     * avoids re-serializing the tree in order to read it.
+     */
+    @Deprecated(since = "1.20.0", forRemoval = true)
     public static <T> T deserialize(JsonNode message, Class<T> type) {
         return read(message.toString(), type);
     }
@@ -51,7 +69,7 @@ public final class McpJson {
      * Reads any JSON value as plain JDK types: a {@link Map}, a {@link java.util.List}, a boxed
      * primitive, or null for a JSON null.
      *
-     * @throws IllegalArgumentException if the text is not valid JSON.
+     * @throws JsonReadException if the text is not valid JSON.
      */
     public static Object toValue(String json) {
         return read(json, Object.class);
@@ -114,9 +132,10 @@ public final class McpJson {
         }
         try {
             return CODEC.toJson(message);
+        } catch (JsonException e) {
+            throw e;
         } catch (RuntimeException e) {
-            Throwable cause = e.getCause() != null ? e.getCause() : e;
-            throw new IllegalArgumentException("Failed to serialize MCP message", cause);
+            throw new JsonWriteException("Failed to serialize MCP message", e);
         }
     }
 
@@ -127,7 +146,7 @@ public final class McpJson {
         try {
             return OBJECT_MAPPER.readTree(json);
         } catch (Exception e) {
-            throw new IllegalArgumentException("Failed to parse MCP message", e);
+            throw new JsonReadException("Failed to parse MCP message", e);
         }
     }
 
@@ -137,9 +156,9 @@ public final class McpJson {
      * transport's response stream open after the client cancels the operation.
      */
     /**
-     * Reads JSON text, reporting a failure the same way whichever codec is plugged in. Without
-     * this the exception a transport sees would change with the JSON library, and transports
-     * choose whether to fail an operation or log and continue based on it.
+     * Reads JSON text. The codecs already report a failure as {@link JsonReadException} whichever
+     * JSON library is plugged in, which is what a transport branches on when deciding whether to
+     * fail an operation or log and carry on; this adds which message could not be read.
      */
     private static <T> T read(String json, Class<T> type) {
         return read(json, (Type) type);
@@ -148,11 +167,10 @@ public final class McpJson {
     private static <T> T read(String json, Type type) {
         try {
             return CODEC.fromJson(json, type);
+        } catch (JsonException e) {
+            throw e;
         } catch (RuntimeException e) {
-            // codecs wrap the library's own parse failure; keep that as the cause rather than
-            // adding a layer, so callers still see why the text could not be read
-            Throwable cause = e.getCause() != null ? e.getCause() : e;
-            throw new IllegalArgumentException("Failed to parse MCP message", cause);
+            throw new JsonReadException("Failed to parse MCP message", e);
         }
     }
 

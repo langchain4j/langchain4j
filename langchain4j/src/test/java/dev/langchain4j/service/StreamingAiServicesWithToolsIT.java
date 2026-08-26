@@ -21,6 +21,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 import com.fasterxml.jackson.core.JsonParseException;
+import dev.langchain4j.exception.JsonReadException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -1154,7 +1155,7 @@ class StreamingAiServicesWithToolsIT {
         Throwable error = futureError.get(60, SECONDS);
 
         assertThat(error)
-                .isExactlyInstanceOf(RuntimeException.class)
+                .isExactlyInstanceOf(JsonReadException.class)
                 .hasCauseExactlyInstanceOf(JsonParseException.class)
                 .hasMessageContaining("Unexpected character");
 
@@ -1200,7 +1201,7 @@ class StreamingAiServicesWithToolsIT {
 
         ToolArgumentsErrorHandler toolArgumentsErrorHandler = (error, context) -> {
             assertThat(error)
-                    .isExactlyInstanceOf(JsonParseException.class)
+                    .isExactlyInstanceOf(JsonReadException.class)
                     .hasMessageContaining("Unexpected character");
 
             assertThat(context.toolExecutionRequest()).isEqualTo(toolExecutionRequest1);
@@ -1297,7 +1298,7 @@ class StreamingAiServicesWithToolsIT {
 
         ToolArgumentsErrorHandler toolArgumentsErrorHandler = (error, context) -> {
             assertThat(error)
-                    .isExactlyInstanceOf(JsonParseException.class)
+                    .isExactlyInstanceOf(JsonReadException.class)
                     .hasMessageContaining("Unexpected character");
 
             assertThat(context.toolExecutionRequest()).isEqualTo(toolExecutionRequest);
