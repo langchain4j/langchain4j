@@ -59,7 +59,7 @@ leave your classpath depends on which modules you use:
 | Provider modules — OpenAI, Anthropic, Mistral, Ollama, Gemini, Bedrock, and the rest | No |
 | Embedding stores, web search, code execution | No |
 | `langchain4j-mcp` | Yes — Jackson's `JsonNode` appears in its public API |
-| `langchain4j-agentic` | Yes — `AgenticScope` persistence has no Jackson 3 implementation yet |
+| `langchain4j-agentic` | No |
 | `langchain4j-vespa` | Yes — its HTTP client uses Retrofit's own Jackson converter |
 | Anything using a vendor SDK — AWS, Azure, Google | Yes — the SDK depends on Jackson 2 itself |
 

@@ -85,7 +85,11 @@ public class DefaultAgenticScope implements AgenticScope {
 
     private final Kind kind;
 
-    DefaultAgenticScope serializableCopy() {
+    /**
+     * The state that is safe to persist. Public so that a JSON codec supplied through the SPI can
+     * reach it from another package.
+     */
+    public DefaultAgenticScope serializableCopy() {
         DefaultAgenticScope copy = new DefaultAgenticScope(memoryId, kind);
         state.forEach((key, value) -> {
             if (isSerializable(value)) {
