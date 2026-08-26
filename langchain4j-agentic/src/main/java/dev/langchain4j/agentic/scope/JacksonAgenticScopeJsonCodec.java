@@ -49,6 +49,18 @@ class JacksonAgenticScopeJsonCodec implements AgenticScopeJsonCodec {
     }
 
     @Override
+    public boolean allowPackagePrefix(String packagePrefix) {
+        PTV.addAllowedPrefix(packagePrefix);
+        return true;
+    }
+
+    @Override
+    public boolean allowType(Class<?> type) {
+        PTV.addAllowedClass(type.getName());
+        return true;
+    }
+
+    @Override
     public String toJson(DefaultAgenticScope agenticScope) {
         try {
             return MAPPER.writeValueAsString(agenticScope.serializableCopy());

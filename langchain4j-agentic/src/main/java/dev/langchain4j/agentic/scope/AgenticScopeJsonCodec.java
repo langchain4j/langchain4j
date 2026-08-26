@@ -21,4 +21,28 @@ public interface AgenticScopeJsonCodec {
      * @return the serialized JSON string.
      */
     String toJson(DefaultAgenticScope agenticScope);
+
+    /**
+     * Allows every class under the given package prefix to be deserialized as part of an
+     * {@link AgenticScope}'s state.
+     *
+     * <p>Deserializing arbitrary types by name is how polymorphic deserialization becomes a
+     * vulnerability, so a codec that supports it keeps an allowlist. A codec that does not
+     * support allowlisting should return {@code false} rather than silently accept everything.
+     *
+     * @return whether this codec applied the registration.
+     */
+    default boolean allowPackagePrefix(String packagePrefix) {
+        return false;
+    }
+
+    /**
+     * Allows a single class to be deserialized as part of an {@link AgenticScope}'s state.
+     *
+     * @return whether this codec applied the registration.
+     * @see #allowPackagePrefix(String)
+     */
+    default boolean allowType(Class<?> type) {
+        return false;
+    }
 }

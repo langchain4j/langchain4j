@@ -71,10 +71,10 @@ public class AgenticScopeSerializer {
      * @see #allowDeserializationType(Class)
      */
     public static void allowDeserializationPackagePrefix(String packagePrefix) {
-        if (CODEC instanceof JacksonAgenticScopeJsonCodec) {
-            JacksonAgenticScopeJsonCodec.PTV.addAllowedPrefix(packagePrefix);
-        } else {
-            LOG.warn("allowDeserializationPackagePrefix has no effect: the active codec ({}) does not support type allowlisting", CODEC.getClass().getName());
+        if (!CODEC.allowPackagePrefix(packagePrefix)) {
+            LOG.warn(
+                    "allowDeserializationPackagePrefix has no effect: the active codec ({}) does not support type allowlisting",
+                    CODEC.getClass().getName());
         }
     }
 
@@ -94,10 +94,10 @@ public class AgenticScopeSerializer {
      * @see #allowDeserializationPackagePrefix(String)
      */
     public static void allowDeserializationType(Class<?> type) {
-        if (CODEC instanceof JacksonAgenticScopeJsonCodec) {
-            JacksonAgenticScopeJsonCodec.PTV.addAllowedClass(type.getName());
-        } else {
-            LOG.warn("allowDeserializationType has no effect: the active codec ({}) does not support type allowlisting", CODEC.getClass().getName());
+        if (!CODEC.allowType(type)) {
+            LOG.warn(
+                    "allowDeserializationType has no effect: the active codec ({}) does not support type allowlisting",
+                    CODEC.getClass().getName());
         }
     }
 }
