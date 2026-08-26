@@ -11,8 +11,7 @@ class PromptsHelper {
 
     private static final Logger log = LoggerFactory.getLogger(PromptsHelper.class);
 
-    static List<McpPrompt> parsePromptRefs(String mcpMessage) {
-        McpErrorHelper.checkForErrors(mcpMessage);
+    static McpPage<McpPrompt> parsePromptRefs(String mcpMessage) {
         McpListPromptsResult.Result result =
                 McpJson.deserialize(mcpMessage, McpListPromptsResult.class).getResult();
         if (result == null) {
@@ -23,7 +22,7 @@ class PromptsHelper {
             log.warn("Result does not contain 'prompts' element: {}", mcpMessage);
             throw new IllegalResponseException("Result does not contain 'prompts' element");
         }
-        return result.getPrompts();
+        return new McpPage<>(result.getPrompts(), result.getNextCursor());
     }
 
     static McpGetPromptResult parsePromptContents(String mcpMessage) {

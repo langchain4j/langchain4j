@@ -36,7 +36,6 @@ import dev.langchain4j.mcp.protocol.McpListResourceTemplatesRequest;
 import dev.langchain4j.mcp.protocol.McpListResourcesRequest;
 import dev.langchain4j.mcp.protocol.McpListToolsRequest;
 import dev.langchain4j.mcp.protocol.McpListToolsResult;
-import dev.langchain4j.mcp.protocol.McpPaginatedResult;
 import dev.langchain4j.mcp.protocol.McpPingRequest;
 import dev.langchain4j.mcp.protocol.McpReadResourceParams;
 import dev.langchain4j.mcp.protocol.McpReadResourceRequest;
@@ -1247,10 +1246,13 @@ public class DefaultMcpClient implements McpClient {
                     (id, cursor) -> new McpListToolsRequest(id, cursor),
                     toolExecutionTimeout,
                     invocationContext,
-                    result -> ToolSpecificationHelper.toolSpecificationListFromMcpResponse(
-                            McpJson.deserialize(result, McpListToolsResult.class)
-                                    .getResult()
-                                    .getTools()));
+                    result -> {
+                        McpListToolsResult.Result parsed = McpJson.deserialize(result, McpListToolsResult.class)
+                                .getResult();
+                        return new McpPage<>(
+                                ToolSpecificationHelper.toolSpecificationListFromMcpResponse(parsed.getTools()),
+                                parsed.getNextCursor());
+                    });
             toolListRefs.set(list);
             notifyListeners(l -> l.afterToolsList(listenerContext, list));
             return list;
@@ -1352,7 +1354,7 @@ public class DefaultMcpClient implements McpClient {
             BiFunction<Long, String, McpClientRequest> requestFactory,
             Duration timeout,
             InvocationContext invocationContext,
-            Function<String, List<T>> resultParser) {
+            Function<String, McpPage<T>> pageParser) {
         long timeoutMillis = timeout.toMillis() == 0 ? Integer.MAX_VALUE : timeout.toMillis();
         List<T> allItems = new ArrayList<>();
         String cursor = null;
@@ -1384,8 +1386,11 @@ public class DefaultMcpClient implements McpClient {
                     throw new RuntimeException("Unexpected resultType: " + resultType);
                 }
             }
-            allItems.addAll(resultParser.apply(result));
-            cursor = getNextCursor(result);
+            // The items and the cursor come from the same parse; reading the cursor separately
+            // meant parsing the whole list response a second time.
+            McpPage<T> page = pageParser.apply(result);
+            allItems.addAll(page.items());
+            cursor = page.nextCursor();
         } while (cursor != null);
         return allItems;
     }
@@ -1396,14 +1401,6 @@ public class DefaultMcpClient implements McpClient {
         return error == null ? "" : error.getMessage();
     }
 
-    private static String getNextCursor(String response) {
-        McpPaginatedResult.Result result =
-                McpJson.deserialize(response, McpPaginatedResult.class).getResult();
-        if (result == null || result.getNextCursor() == null || result.getNextCursor().isEmpty()) {
-            return null;
-        }
-        return result.getNextCursor();
-    }
 
     @Override
     public void close() {

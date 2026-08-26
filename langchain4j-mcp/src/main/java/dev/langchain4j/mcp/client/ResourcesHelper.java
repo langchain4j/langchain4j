@@ -13,20 +13,19 @@ class ResourcesHelper {
 
     private static final Logger log = LoggerFactory.getLogger(ResourcesHelper.class);
 
-    static List<McpResource> parseResourceRefs(String mcpMessage) {
-        McpErrorHelper.checkForErrors(mcpMessage);
+    static McpPage<McpResource> parseResourceRefs(String mcpMessage) {
         McpListResourcesResult.Result result =
                 McpJson.deserialize(mcpMessage, McpListResourcesResult.class).getResult();
         requireResult(result, mcpMessage);
-        return require(result.getResources(), "resources", mcpMessage);
+        return new McpPage<>(require(result.getResources(), "resources", mcpMessage), result.getNextCursor());
     }
 
-    static List<McpResourceTemplate> parseResourceTemplateRefs(String mcpMessage) {
-        McpErrorHelper.checkForErrors(mcpMessage);
+    static McpPage<McpResourceTemplate> parseResourceTemplateRefs(String mcpMessage) {
         McpListResourceTemplatesResult.Result result =
                 McpJson.deserialize(mcpMessage, McpListResourceTemplatesResult.class).getResult();
         requireResult(result, mcpMessage);
-        return require(result.getResourceTemplates(), "resourceTemplates", mcpMessage);
+        return new McpPage<>(
+                require(result.getResourceTemplates(), "resourceTemplates", mcpMessage), result.getNextCursor());
     }
 
     static McpReadResourceResult parseResourceContents(String mcpMessage) {

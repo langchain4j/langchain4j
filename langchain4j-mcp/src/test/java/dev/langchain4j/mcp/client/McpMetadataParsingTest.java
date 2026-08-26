@@ -40,7 +40,7 @@ class McpMetadataParsingTest {
                         }
                         """;
 
-        McpResource resource = ResourcesHelper.parseResourceRefs(json).get(0);
+        McpResource resource = ResourcesHelper.parseResourceRefs(json).items().get(0);
 
         assertThat(resource.metadata().get("example.org/status")).isEqualTo("stable");
         assertThat(resource.metadata()).doesNotContainKey(ICONS);
@@ -80,7 +80,7 @@ class McpMetadataParsingTest {
                         """;
 
         McpResourceTemplate resourceTemplate =
-                ResourcesHelper.parseResourceTemplateRefs(json).get(0);
+                ResourcesHelper.parseResourceTemplateRefs(json).items().get(0);
 
         assertThat(resourceTemplate.metadata().get("example.org/status")).isEqualTo("stable");
         assertThat(resourceTemplate.metadata()).doesNotContainKey(ICONS);
@@ -122,7 +122,7 @@ class McpMetadataParsingTest {
                         }
                         """;
 
-        McpPrompt prompt = PromptsHelper.parsePromptRefs(json).get(0);
+        McpPrompt prompt = PromptsHelper.parsePromptRefs(json).items().get(0);
 
         assertThat(prompt.metadata().get("example.org/status")).isEqualTo("stable");
         assertThat(prompt.metadata()).doesNotContainKey(ICONS);
@@ -174,10 +174,10 @@ class McpMetadataParsingTest {
                         }
                         """;
 
-        McpResource resource = ResourcesHelper.parseResourceRefs(resourcesJson).get(0);
+        McpResource resource = ResourcesHelper.parseResourceRefs(resourcesJson).items().get(0);
         McpResourceTemplate resourceTemplate =
-                ResourcesHelper.parseResourceTemplateRefs(resourceTemplatesJson).get(0);
-        McpPrompt prompt = PromptsHelper.parsePromptRefs(promptsJson).get(0);
+                ResourcesHelper.parseResourceTemplateRefs(resourceTemplatesJson).items().get(0);
+        McpPrompt prompt = PromptsHelper.parsePromptRefs(promptsJson).items().get(0);
 
         assertThat(resource.metadata()).isEmpty();
         assertThat(resource.icons()).isEmpty();
