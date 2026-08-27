@@ -1,6 +1,9 @@
 package dev.langchain4j.model.bedrock;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.ChatMessage;
@@ -167,25 +170,13 @@ class BedrockGuardContentExtractionTest {
     @Test
     void should_apply_guard_content_placement_when_building_sync_request() {
         AtomicReference<ConverseRequest> capturedRequest = new AtomicReference<>();
-        BedrockChatModel model = BedrockChatModel.builder()
-                .modelId("test-model")
-                .client(new BedrockRuntimeClient() {
-
-                    @Override
-                    public ConverseResponse converse(ConverseRequest request) {
-                        capturedRequest.set(request);
-                        return minimalConverseResponse();
-                    }
-
-                    @Override
-                    public String serviceName() {
-                        return "bedrock-runtime";
-                    }
-
-                    @Override
-                    public void close() {}
-                })
-                .build();
+        BedrockRuntimeClient client = mock(BedrockRuntimeClient.class);
+        when(client.converse(any(ConverseRequest.class))).thenAnswer(invocation -> {
+            capturedRequest.set(invocation.getArgument(0));
+            return minimalConverseResponse();
+        });
+        BedrockChatModel model =
+                BedrockChatModel.builder().modelId("test-model").client(client).build();
 
         model.doChat(chatRequestWithGuardContentPlacement(BedrockGuardContentPlacement.LAST_USER_MESSAGE));
 
@@ -208,25 +199,15 @@ class BedrockGuardContentExtractionTest {
     @Test
     void should_apply_guard_content_placement_when_building_streaming_request() {
         AtomicReference<ConverseStreamRequest> capturedRequest = new AtomicReference<>();
+        BedrockRuntimeAsyncClient client = mock(BedrockRuntimeAsyncClient.class);
+        when(client.converseStream(any(ConverseStreamRequest.class), any(ConverseStreamResponseHandler.class)))
+                .thenAnswer(invocation -> {
+                    capturedRequest.set(invocation.getArgument(0));
+                    return CompletableFuture.completedFuture(null);
+                });
         BedrockStreamingChatModel model = BedrockStreamingChatModel.builder()
                 .modelId("test-model")
-                .client(new BedrockRuntimeAsyncClient() {
-
-                    @Override
-                    public CompletableFuture<Void> converseStream(
-                            ConverseStreamRequest request, ConverseStreamResponseHandler responseHandler) {
-                        capturedRequest.set(request);
-                        return CompletableFuture.completedFuture(null);
-                    }
-
-                    @Override
-                    public String serviceName() {
-                        return "bedrock-runtime";
-                    }
-
-                    @Override
-                    public void close() {}
-                })
+                .client(client)
                 .build();
 
         model.doChat(

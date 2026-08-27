@@ -27,8 +27,10 @@ class BedrockGuardrailConfigurationTest {
 
     @Test
     void should_not_be_equal_when_guardrail_version_differs() {
-        BedrockGuardrailConfiguration first = fullyPopulated().guardrailVersion("1").build();
-        BedrockGuardrailConfiguration second = fullyPopulated().guardrailVersion("2").build();
+        BedrockGuardrailConfiguration first =
+                fullyPopulated().guardrailVersion("1").build();
+        BedrockGuardrailConfiguration second =
+                fullyPopulated().guardrailVersion("2").build();
 
         assertThat(first).isNotEqualTo(second);
     }
