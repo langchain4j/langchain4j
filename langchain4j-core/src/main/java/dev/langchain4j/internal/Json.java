@@ -1,6 +1,9 @@
 package dev.langchain4j.internal;
 
 import dev.langchain4j.Internal;
+import dev.langchain4j.exception.JsonException;
+import dev.langchain4j.exception.JsonReadException;
+import dev.langchain4j.exception.JsonWriteException;
 import dev.langchain4j.spi.json.JsonCodecFactory;
 
 import java.lang.reflect.Type;
@@ -18,6 +21,12 @@ public class Json {
 
     /**
      * The abstract JSON codec interface.
+     *
+     * <p>An implementation reports every failure as a {@link JsonException}: a
+     * {@link JsonReadException} when reading, a {@link JsonWriteException} when writing. Callers
+     * branch on those, so an implementation that lets its JSON library's own exception escape - or
+     * wraps it in something else - is not interchangeable with the others. Keep the library's
+     * exception as the {@linkplain Throwable#getCause() cause} rather than discarding it.
      */
     @Internal
     public interface JsonCodec {
@@ -27,6 +36,7 @@ public class Json {
          *
          * @param o the object to convert.
          * @return the JSON string.
+         * @throws JsonWriteException if the object has no JSON representation.
          */
         String toJson(Object o);
 
@@ -37,6 +47,7 @@ public class Json {
          * @param type the class of the object.
          * @param <T>  the type of the object.
          * @return the object.
+         * @throws JsonReadException if the JSON is malformed or does not describe the given type.
          */
         <T> T fromJson(String json, Class<T> type);
 
@@ -47,6 +58,7 @@ public class Json {
          * @param type the type of the object.
          * @param <T>  the type of the object.
          * @return the object.
+         * @throws JsonReadException if the JSON is malformed or does not describe the given type.
          */
         <T> T fromJson(String json, Type type);
     }
@@ -65,6 +77,7 @@ public class Json {
      *
      * @param o the object to convert.
      * @return the JSON string.
+     * @throws JsonWriteException if the object has no JSON representation.
      */
     public static String toJson(Object o) {
         return CODEC.toJson(o);
@@ -77,6 +90,7 @@ public class Json {
      * @param type the class of the object.
      * @param <T>  the type of the object.
      * @return the object.
+     * @throws JsonReadException if the JSON is malformed or does not describe the given type.
      */
     public static <T> T fromJson(String json, Class<T> type) {
         return CODEC.fromJson(json, type);
@@ -89,6 +103,7 @@ public class Json {
      * @param type the type of the object.
      * @param <T>  the type of the object.
      * @return the object.
+     * @throws JsonReadException if the JSON is malformed or does not describe the given type.
      */
     public static <T> T fromJson(String json, Type type) {
         return CODEC.fromJson(json, type);
