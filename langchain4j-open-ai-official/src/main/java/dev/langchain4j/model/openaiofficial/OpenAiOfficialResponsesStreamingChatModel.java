@@ -10,6 +10,7 @@ import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.model.openaiofficial.setup.OpenAiOfficialSetup.detectModelProvider;
 import static dev.langchain4j.model.openaiofficial.setup.OpenAiOfficialSetup.setupSyncClient;
 import static java.util.Arrays.asList;
 
@@ -127,6 +128,7 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
     private final ExecutorService executorService;
     private final OpenAiOfficialResponsesChatRequestParameters defaultRequestParameters;
     private final List<ChatModelListener> listeners;
+    private final ModelProvider modelProvider;
 
     private OpenAiOfficialResponsesStreamingChatModel(Builder builder) {
         this.client = builder.client != null
@@ -192,6 +194,12 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                 .build();
 
         this.listeners = copy(builder.listeners);
+        this.modelProvider = detectModelProvider(
+                builder.isMicrosoftFoundry,
+                builder.isGitHubModels,
+                builder.baseUrl,
+                builder.microsoftFoundryDeploymentName,
+                builder.azureOpenAIServiceVersion);
     }
 
     public static Builder builder() {
@@ -259,7 +267,7 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
 
     @Override
     public ModelProvider provider() {
-        return ModelProvider.OPEN_AI;
+        return modelProvider;
     }
 
     @Override
