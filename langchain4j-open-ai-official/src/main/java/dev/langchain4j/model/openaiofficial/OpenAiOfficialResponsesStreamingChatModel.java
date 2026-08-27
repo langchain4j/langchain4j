@@ -578,7 +578,9 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
 
             return List.of(ResponseInputItem.ofFunctionCallOutput(outputBuilder.build()));
         } else {
-            return List.of(createTextMessage(EasyInputMessage.Role.USER, msg.toString()));
+            throw new UnsupportedFeatureException(
+                    "Unsupported message type: " + msg.getClass().getName()
+                            + ". Only SystemMessage, UserMessage, AiMessage, and ToolExecutionResultMessage are supported.");
         }
     }
 
@@ -630,6 +632,10 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                     throw new IllegalArgumentException("PDF must have either url or base64Data");
                 }
                 contentList.add(ResponseInputContent.ofInputFile(pdfInput.build()));
+            } else {
+                throw new UnsupportedFeatureException("Unsupported content type: "
+                        + content.getClass().getName()
+                        + ". Only TextContent, ImageContent, and PdfFileContent are supported.");
             }
         }
 
