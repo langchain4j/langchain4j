@@ -42,10 +42,23 @@ to. Jackson 3 changed several defaults, and every one of them is set back to wha
 The first one matters most: without it, a final collection field is left empty instead of being
 populated, and nothing tells you.
 
-**Failures have one type.** Reading or writing JSON that fails throws `JsonReadException` or
-`JsonWriteException` - both `LangChain4jException` - whichever library is underneath. The library's
-own exception is kept as the cause, so nothing is lost, but code that reacts to a JSON failure does
-not have to know which library produced it.
+**Failures get a LangChain4j type.** This is the one place where the opt-in does change something.
+By default, a JSON failure surfaces as a `RuntimeException` wrapping Jackson 2's own exception -
+which means code that reacts to it has to know Jackson 2. With this module, reading or writing JSON
+that fails throws `JsonReadException` or `JsonWriteException` instead, both `LangChain4jException`,
+with the library's exception kept as the cause.
+
+That is a deliberate step rather than an inconsistency: the typed exceptions are where LangChain4j
+is going in the next major version, and the Jackson 2 codecs stay as they are until then so that
+existing code keeps working. If you catch a JSON failure by its Jackson type, that is the one thing
+to revisit when you add this module:
+
+```java
+- } catch (JsonParseException e) {
++ } catch (JsonReadException e) {
+```
+
+Catching `RuntimeException` works either way.
 
 **Data you have already stored stays readable.** Chat memory and `InMemoryEmbeddingStore` files
 written by Jackson 2 are read correctly by Jackson 3, and what Jackson 3 writes is byte-for-byte

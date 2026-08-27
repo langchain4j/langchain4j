@@ -22,11 +22,16 @@ public class Json {
     /**
      * The abstract JSON codec interface.
      *
-     * <p>An implementation reports every failure as a {@link JsonException}: a
-     * {@link JsonReadException} when reading, a {@link JsonWriteException} when writing. Callers
-     * branch on those, so an implementation that lets its JSON library's own exception escape - or
-     * wraps it in something else - is not interchangeable with the others. Keep the library's
-     * exception as the {@linkplain Throwable#getCause() cause} rather than discarding it.
+     * <p>A new implementation should report every failure as a {@link JsonException}: a
+     * {@link JsonReadException} when reading, a {@link JsonWriteException} when writing, keeping
+     * its JSON library's own exception as the {@linkplain Throwable#getCause() cause}. That is what
+     * lets one implementation stand in for another without callers noticing which library is
+     * underneath.
+     *
+     * <p>The Jackson 2 implementations shipped here do not do that yet - they wrap the library's
+     * exception in a plain {@link RuntimeException}, as they always have, and will move in the next
+     * major version. So a caller that must work against any implementation catches
+     * {@link RuntimeException}.
      */
     @Internal
     public interface JsonCodec {
@@ -36,7 +41,8 @@ public class Json {
          *
          * @param o the object to convert.
          * @return the JSON string.
-         * @throws JsonWriteException if the object has no JSON representation.
+         * @throws JsonWriteException if the object has no JSON representation, from an implementation
+         *         that reports the typed exceptions; otherwise a {@link RuntimeException}.
          */
         String toJson(Object o);
 
@@ -47,7 +53,8 @@ public class Json {
          * @param type the class of the object.
          * @param <T>  the type of the object.
          * @return the object.
-         * @throws JsonReadException if the JSON is malformed or does not describe the given type.
+         * @throws JsonReadException if the JSON is malformed or does not describe the given type, from an
+         *         implementation that reports the typed exceptions; otherwise a {@link RuntimeException}.
          */
         <T> T fromJson(String json, Class<T> type);
 
@@ -58,7 +65,8 @@ public class Json {
          * @param type the type of the object.
          * @param <T>  the type of the object.
          * @return the object.
-         * @throws JsonReadException if the JSON is malformed or does not describe the given type.
+         * @throws JsonReadException if the JSON is malformed or does not describe the given type, from an
+         *         implementation that reports the typed exceptions; otherwise a {@link RuntimeException}.
          */
         <T> T fromJson(String json, Type type);
     }
@@ -77,7 +85,8 @@ public class Json {
      *
      * @param o the object to convert.
      * @return the JSON string.
-     * @throws JsonWriteException if the object has no JSON representation.
+     * @throws JsonWriteException if the object has no JSON representation, from an implementation
+     *         that reports the typed exceptions; otherwise a {@link RuntimeException}.
      */
     public static String toJson(Object o) {
         return CODEC.toJson(o);
@@ -90,7 +99,8 @@ public class Json {
      * @param type the class of the object.
      * @param <T>  the type of the object.
      * @return the object.
-     * @throws JsonReadException if the JSON is malformed or does not describe the given type.
+     * @throws JsonReadException if the JSON is malformed or does not describe the given type, from an
+     *         implementation that reports the typed exceptions; otherwise a {@link RuntimeException}.
      */
     public static <T> T fromJson(String json, Class<T> type) {
         return CODEC.fromJson(json, type);
@@ -103,7 +113,8 @@ public class Json {
      * @param type the type of the object.
      * @param <T>  the type of the object.
      * @return the object.
-     * @throws JsonReadException if the JSON is malformed or does not describe the given type.
+     * @throws JsonReadException if the JSON is malformed or does not describe the given type, from an
+     *         implementation that reports the typed exceptions; otherwise a {@link RuntimeException}.
      */
     public static <T> T fromJson(String json, Type type) {
         return CODEC.fromJson(json, type);

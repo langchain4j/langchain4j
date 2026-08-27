@@ -8,9 +8,7 @@ import com.fasterxml.jackson.databind.exc.InvalidTypeIdException;
 import com.fasterxml.jackson.databind.jsontype.PolymorphicTypeValidator;
 import dev.langchain4j.Internal;
 import dev.langchain4j.data.message.JacksonChatMessageJsonCodec;
-import dev.langchain4j.exception.JsonReadException;
 import dev.langchain4j.exception.JsonTypeNotAllowedException;
-import dev.langchain4j.exception.JsonWriteException;
 import java.lang.reflect.Type;
 
 /**
@@ -33,7 +31,7 @@ class JacksonPolymorphicJsonCodec implements Json.JsonCodec {
         try {
             return mapper.writeValueAsString(o);
         } catch (JsonProcessingException e) {
-            throw new JsonWriteException(e);
+            throw new RuntimeException(e);
         }
     }
 
@@ -49,7 +47,7 @@ class JacksonPolymorphicJsonCodec implements Json.JsonCodec {
         } catch (InvalidTypeIdException e) {
             throw new JsonTypeNotAllowedException(e.getTypeId(), e);
         } catch (JsonProcessingException e) {
-            throw new JsonReadException(e);
+            throw new RuntimeException(e);
         }
     }
 

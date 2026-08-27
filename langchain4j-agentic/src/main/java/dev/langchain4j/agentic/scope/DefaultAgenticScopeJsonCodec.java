@@ -42,12 +42,20 @@ class DefaultAgenticScopeJsonCodec implements AgenticScopeJsonCodec {
             return CODEC.fromJson(json, DefaultAgenticScope.class);
         } catch (JsonTypeNotAllowedException e) {
             throw new UnserializableAgenticScopeException(e.typeId(), e);
+        } catch (RuntimeException e) {
+            // The exception this has always thrown, so persistence behaves the same whichever
+            // JSON library is underneath.
+            throw new RuntimeException("Failed to deserialize AgenticScope from JSON", e);
         }
     }
 
     @Override
     public String toJson(DefaultAgenticScope agenticScope) {
-        return CODEC.toJson(agenticScope.serializableCopy());
+        try {
+            return CODEC.toJson(agenticScope.serializableCopy());
+        } catch (RuntimeException e) {
+            throw new RuntimeException("Failed to serialize AgenticScope to JSON", e);
+        }
     }
 
     @Override

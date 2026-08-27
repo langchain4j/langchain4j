@@ -18,8 +18,6 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.json.JsonMapper;
-import dev.langchain4j.exception.JsonWriteException;
-import dev.langchain4j.exception.JsonReadException;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.audio.Audio;
@@ -65,7 +63,7 @@ public class JacksonChatMessageJsonCodec implements ChatMessageJsonCodec {
         try {
             return OBJECT_MAPPER.readValue(json, ChatMessage.class);
         } catch (JsonProcessingException e) {
-            throw new JsonReadException(e);
+            throw new RuntimeException(e);
         }
     }
 
@@ -78,7 +76,7 @@ public class JacksonChatMessageJsonCodec implements ChatMessageJsonCodec {
             List<ChatMessage> messages = OBJECT_MAPPER.readValue(json, OBJECT_MAPPER.constructType(MESSAGE_LIST_TYPE));
             return messages == null ? emptyList() : messages;
         } catch (JsonProcessingException e) {
-            throw new JsonReadException(e);
+            throw new RuntimeException(e);
         }
     }
 
@@ -87,7 +85,7 @@ public class JacksonChatMessageJsonCodec implements ChatMessageJsonCodec {
         try {
             return OBJECT_MAPPER.writeValueAsString(message);
         } catch (JsonProcessingException e) {
-            throw new JsonWriteException(e);
+            throw new RuntimeException(e);
         }
     }
 
@@ -96,7 +94,7 @@ public class JacksonChatMessageJsonCodec implements ChatMessageJsonCodec {
         try {
             return OBJECT_MAPPER.writeValueAsString(messages);
         } catch (JsonProcessingException e) {
-            throw new JsonWriteException(e);
+            throw new RuntimeException(e);
         }
     }
 

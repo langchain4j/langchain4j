@@ -6,7 +6,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
 import com.fasterxml.jackson.databind.exc.ValueInstantiationException;
-import dev.langchain4j.exception.JsonReadException;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -102,7 +101,7 @@ class JsonCodecTest {
 
         // when-then
         assertThatThrownBy(() -> codec.fromJson(json, Person.class))
-                .isExactlyInstanceOf(JsonReadException.class)
+                .isExactlyInstanceOf(RuntimeException.class)
                 .hasCauseExactlyInstanceOf(UnrecognizedPropertyException.class)
                 .hasMessageContaining("married");
 
@@ -360,7 +359,7 @@ class JsonCodecTest {
 
         // when-then
         assertThatThrownBy(() -> codec.fromJson(json, PersonRecordWithValidation.class))
-                .isExactlyInstanceOf(JsonReadException.class)
+                .isExactlyInstanceOf(RuntimeException.class)
                 .hasCauseExactlyInstanceOf(ValueInstantiationException.class)
                 .hasRootCauseExactlyInstanceOf(IllegalArgumentException.class)
                 .hasRootCauseMessage("age must be positive");
