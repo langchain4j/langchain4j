@@ -2,6 +2,7 @@ package dev.langchain4j.model.openaiofficial;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
+import dev.langchain4j.model.output.TokenUsage;
 import java.util.Objects;
 
 @Experimental
@@ -20,7 +21,21 @@ public class OpenAiOfficialChatResponseMetadata extends ChatResponseMetadata {
 
     @Override
     public OpenAiOfficialTokenUsage tokenUsage() {
-        return (OpenAiOfficialTokenUsage) super.tokenUsage();
+
+        TokenUsage base = super.tokenUsage();
+        if (base == null) {
+            return null;
+        }
+
+        if (base instanceof OpenAiOfficialTokenUsage openAiOfficialTokenUsage) {
+            return openAiOfficialTokenUsage;
+        }
+
+        return OpenAiOfficialTokenUsage.builder()
+                .inputTokenCount(base.inputTokenCount())
+                .outputTokenCount(base.outputTokenCount())
+                .totalTokenCount(base.totalTokenCount())
+                .build();
     }
 
     public Long created() {

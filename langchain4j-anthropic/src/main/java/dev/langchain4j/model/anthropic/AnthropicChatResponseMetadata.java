@@ -5,6 +5,7 @@ import static dev.langchain4j.internal.Utils.copy;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
+import dev.langchain4j.model.output.TokenUsage;
 import java.util.List;
 import java.util.Objects;
 
@@ -26,7 +27,20 @@ public class AnthropicChatResponseMetadata extends ChatResponseMetadata {
 
     @Override
     public AnthropicTokenUsage tokenUsage() {
-        return (AnthropicTokenUsage) super.tokenUsage();
+
+        TokenUsage base = super.tokenUsage();
+        if (base == null) {
+            return null;
+        }
+
+        if (base instanceof AnthropicTokenUsage anthropicTokenUsage) {
+            return anthropicTokenUsage;
+        }
+
+        return AnthropicTokenUsage.builder()
+                .inputTokenCount(base.inputTokenCount())
+                .outputTokenCount(base.outputTokenCount())
+                .build();
     }
 
     public SuccessfulHttpResponse rawHttpResponse() {
