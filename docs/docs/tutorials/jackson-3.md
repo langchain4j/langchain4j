@@ -22,20 +22,9 @@ Add one dependency:
 </dependency>
 ```
 
-That is the whole of it. LangChain4j finds the module through the `ServiceLoader` and routes its
-JSON through Jackson 3. There is nothing to configure and no API to call, and if you remove the
-dependency everything goes back to Jackson 2.
-
-If you use agents and persist their state, add the matching module as well - it is separate because
-it is only useful with `langchain4j-agentic`:
-
-```xml
-<dependency>
-    <groupId>dev.langchain4j</groupId>
-    <artifactId>langchain4j-agentic-json-jackson3</artifactId>
-    <version>1.20.0-beta30</version>
-</dependency>
-```
+That is the whole of it, for every module including `langchain4j-agentic`. LangChain4j finds the
+module through the `ServiceLoader` and routes its JSON through Jackson 3. There is nothing to
+configure and no API to call, and if you remove the dependency everything goes back to Jackson 2.
 
 ## What stays the same
 
@@ -75,7 +64,7 @@ Whether it can actually leave depends on which modules you use:
 | `langchain4j-core`, `langchain4j` | Yes — they ship Jackson 2 codecs, but those are the fallback and are never loaded while this module is on the classpath |
 | Provider modules — OpenAI, Anthropic, Mistral, Ollama, Gemini, and the rest | Yes |
 | Embedding stores, web search, code execution | Yes |
-| `langchain4j-agentic` | Yes, with `langchain4j-agentic-json-jackson3` added |
+| `langchain4j-agentic` | Yes |
 | `langchain4j-mcp` | No — Jackson's `JsonNode` appears in its public API, so the module loads Jackson 2 on every path |
 | `langchain4j-vespa` | No — its HTTP client uses Retrofit's own Jackson 2 converter |
 | Anything using a vendor SDK — AWS, Azure, Google | No — the SDK depends on Jackson 2 itself |
@@ -107,8 +96,8 @@ but is shared: Jackson 3 depends on it and reads those annotations.
 
 This configuration is not just believed to work, it is built and run on every pull request:
 `integration-tests/integration-tests-jackson3` is an application assembled exactly this way - core,
-the main module, a provider, agents and both Jackson 3 modules, with Jackson 2 excluded from the
-whole graph - and its
+the main module, a provider, agents and this module, with Jackson 2 excluded from the whole graph -
+and its
 tests cover AI Services structured output, tool calling, chat-memory persistence, embedding-store
 persistence and agent-state persistence. If any of that started needing Jackson 2, those tests would
 fail to find the class.

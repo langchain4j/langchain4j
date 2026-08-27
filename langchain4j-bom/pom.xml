@@ -609,11 +609,6 @@
             </dependency>
             <dependency>
                 <groupId>dev.langchain4j</groupId>
-                <artifactId>langchain4j-agentic-json-jackson3</artifactId>
-                <version>${langchain4j.beta.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-agentic-a2a</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>

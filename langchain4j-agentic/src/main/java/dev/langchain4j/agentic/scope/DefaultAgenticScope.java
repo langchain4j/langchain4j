@@ -1,5 +1,7 @@
 package dev.langchain4j.agentic.scope;
 
+import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
+
 import static dev.langchain4j.agentic.internal.AgentUtil.keyDefaultValue;
 import static dev.langchain4j.agentic.internal.AgentUtil.keyName;
 
@@ -36,15 +38,23 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @Internal
+@JsonInclude(NON_NULL)
 public class DefaultAgenticScope implements AgenticScope {
 
     private static final Logger LOG = LoggerFactory.getLogger(DefaultAgenticScope.class);
 
-    public record AgentMessage(String agentName, String agentId, ChatMessage message) {}
+    @JsonInclude(NON_NULL)
+    public record AgentMessage(
+            @JsonProperty("agentName") String agentName,
+            @JsonProperty("agentId") String agentId,
+            @JsonProperty("message") ChatMessage message) {}
 
     private final Object memoryId;
     private final Map<String, Object> state = new ConcurrentHashMap<>();
@@ -122,7 +132,8 @@ public class DefaultAgenticScope implements AgenticScope {
         this(Utils.randomUUID(), kind);
     }
 
-    DefaultAgenticScope(Object memoryId, Kind kind) {
+    @JsonCreator
+    DefaultAgenticScope(@JsonProperty("memoryId") Object memoryId, @JsonProperty("kind") Kind kind) {
         this.memoryId = memoryId;
         this.kind = kind;
         this.lock = (kind == Kind.PERSISTENT) ? new ReentrantReadWriteLock() : null;

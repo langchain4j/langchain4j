@@ -16,12 +16,9 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 /**
- * Agent state persistence in the same Jackson-2-free application, with
- * {@code langchain4j-agentic-json-jackson3} supplying the codec.
- *
- * <p>{@code langchain4j-agentic} carries a Jackson 2 codec of its own as the fallback. These pass
- * only if that fallback is genuinely never reached, since the classes it needs are not on the
- * classpath here.
+ * Agent state persistence in the same Jackson-2-free application. {@code langchain4j-agentic}
+ * carries no JSON library of its own: it persists state through the polymorphic codec SPI, which
+ * {@code langchain4j-json-jackson3} supplies here.
  */
 class AgenticScopeWithoutJackson2Test {
 

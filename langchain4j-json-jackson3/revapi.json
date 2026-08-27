@@ -58,6 +58,11 @@
           "code": "java.class.externalClassExposedInAPI",
           "new": "missing-class dev.langchain4j.data.segment.TextSegment",
           "justification": "This module exists to implement the LangChain4j codec SPIs; implementing this one necessarily exposes the SPI types."
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.internal.TypeAllowlist",
+          "justification": "This module exists to implement the LangChain4j codec SPIs; implementing the polymorphic one necessarily exposes the allowlist it is configured with."
         }
       ]
     }

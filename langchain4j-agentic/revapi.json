@@ -159,6 +159,21 @@
           "code": "java.method.addedToInterface",
           "new": "method dev.langchain4j.agentic.supervisor.SupervisorAgentService<T> dev.langchain4j.agentic.supervisor.SupervisorAgentService<T>::compensateOnError(boolean)",
           "justification": "Add tool actions compensation at agentic system level for supervisor agents"
+        },
+        {
+          "code": "java.annotation.added",
+          "annotationType": "com.fasterxml.jackson.annotation.JsonProperty",
+          "justification": "Names the JSON properties of the agent-state types on the types themselves, replacing the Jackson-2-only mixins that named them before. The annotation comes from jackson-annotations, which both Jackson versions read, which is what lets this module carry no JSON library. The persisted format is unchanged and pinned by Jackson3PolymorphicCompatibilityTest."
+        },
+        {
+          "code": "java.annotation.added",
+          "annotationType": "com.fasterxml.jackson.annotation.JsonCreator",
+          "justification": "Marks the constructor the persisted state is read back through, replacing the Jackson-2-only mixin that marked it before. From jackson-annotations, which both Jackson versions read. The persisted format is unchanged and pinned by Jackson3PolymorphicCompatibilityTest."
+        },
+        {
+          "code": "java.annotation.added",
+          "annotationType": "com.fasterxml.jackson.annotation.JsonInclude",
+          "justification": "Keeps null properties out of persisted agent state, as the Jackson-2-only mixin did before. From jackson-annotations, which both Jackson versions read. The persisted format is unchanged and pinned by Jackson3PolymorphicCompatibilityTest."
         }
       ]
     }
