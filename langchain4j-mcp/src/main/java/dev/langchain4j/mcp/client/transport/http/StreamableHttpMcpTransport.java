@@ -9,8 +9,8 @@ import dev.langchain4j.mcp.client.McpCallContext;
 import dev.langchain4j.mcp.client.McpHeadersSupplier;
 import dev.langchain4j.mcp.client.logging.McpLoggers;
 import dev.langchain4j.mcp.client.transport.McpHeaderEncoding;
-import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import dev.langchain4j.mcp.client.transport.McpJson;
+import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import dev.langchain4j.mcp.client.transport.McpTransport;
 import dev.langchain4j.mcp.protocol.McpClientMessage;
 import dev.langchain4j.mcp.protocol.McpInitializationNotification;
@@ -289,6 +289,11 @@ public class StreamableHttpMcpTransport implements McpTransport {
                                             future.completeExceptionally(t);
                                             return null;
                                         });
+                            } else {
+                                // Reinitialization did not help; fail instead of leaving the caller hanging
+                                future.completeExceptionally(new RuntimeException(
+                                        "Session expired again after reinitialization: server returned status code "
+                                                + responseInfo.statusCode()));
                             }
                         } else {
                             future.completeExceptionally(
@@ -675,5 +680,4 @@ public class StreamableHttpMcpTransport implements McpTransport {
     public void executeOperationWithoutResponse(McpCallContext context) {
         sendMessage(context);
     }
-
 }
