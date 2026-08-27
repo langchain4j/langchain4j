@@ -110,6 +110,7 @@ public class TokenWindowChatMemory implements ChatMemory {
     private void set(List<ChatMessage> messages) {
         Integer maxTokens = maxTokensProvider.apply(id);
         ensureGreaterThanZero(maxTokens, "maxTokens");
+        messages = new ArrayList<>(messages);
         ensureCapacity(messages, maxTokens, tokenCountEstimator);
         store.updateMessages(id, messages);
     }

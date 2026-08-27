@@ -19,7 +19,7 @@ public enum WorkersAiChatModelName {
     /** Deepseek Coder is composed of a series of code language models, each trained from scratch on 2T tokens, with a composition of 87% code and 13% natural language in both English and Chinese.. */
     DEEPSEEK_CODER_6_7_BASE("@hf/thebloke/deepseek-coder-6.7b-base-awq"),
     /** Deepseek Coder is composed of a series of code language models, each trained from scratch on 2T tokens, with a composition of 87% code and 13% natural language in both English and Chinese.. */
-    DEEPSEEK_CODER_MATH_7B_AWQ(" @hf/thebloke/deepseek-math-7b-awq"),
+    DEEPSEEK_CODER_MATH_7B_AWQ("@hf/thebloke/deepseek-math-7b-awq"),
     /** DeepSeekMath is initialized with DeepSeek-Coder-v1.5 7B and continues pre-training on math-related tokens sourced from Common Crawl, together with natural language and code data for 500B tokens. */
     DEEPSEEK_CODER_MATH_7B_INSTRUCT("@hf/thebloke/deepseek-math-7b-instruct"),
     /** DeepSeekMath-Instruct 7B is a mathematically instructed tuning model derived from DeepSeekMath-Base 7B. DeepSeekMath is initialized with DeepSeek-Coder-v1.5 7B and continues pre-training on math-related tokens sourced from Common Crawl, together with natural language and code data for 500B tokens.. */
@@ -91,6 +91,4 @@ public enum WorkersAiChatModelName {
     public String toString() {
         return stringValue;
     }
-
-
 }

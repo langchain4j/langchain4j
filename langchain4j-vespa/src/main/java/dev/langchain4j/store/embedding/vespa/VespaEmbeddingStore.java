@@ -4,6 +4,7 @@ import static dev.langchain4j.internal.Utils.generateUUIDFrom;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.randomUUID;
+import static dev.langchain4j.internal.ValidationUtils.ensureConsistentSizes;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.store.embedding.vespa.Record.Fields.Vector;
 import static dev.langchain4j.store.embedding.vespa.VespaClient.createInstance;
@@ -170,8 +171,9 @@ public class VespaEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     @Override
     public void addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
-        if (embedded != null && embeddings.size() != embedded.size()) {
-            throw new IllegalArgumentException("The list of embeddings and embedded must have the same size");
+        ensureConsistentSizes(ids, embeddings, embedded);
+        if (isNullOrEmpty(embeddings)) {
+            return;
         }
 
         try (JsonFeeder jsonFeeder = feeder()) {

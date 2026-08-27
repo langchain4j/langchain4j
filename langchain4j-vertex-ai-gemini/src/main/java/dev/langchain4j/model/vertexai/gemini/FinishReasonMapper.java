@@ -12,6 +12,10 @@ class FinishReasonMapper {
             case MAX_TOKENS:
                 return FinishReason.LENGTH;
             case SAFETY:
+            case RECITATION:
+            case BLOCKLIST:
+            case PROHIBITED_CONTENT:
+            case SPII:
                 return FinishReason.CONTENT_FILTER;
         }
         return FinishReason.OTHER;

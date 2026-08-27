@@ -1,6 +1,8 @@
 package dev.langchain4j.agentic.internal;
 
 import static dev.langchain4j.agentic.AgenticServices.createBuiltInAgentExecutor;
+import static dev.langchain4j.agentic.scope.DefaultAgenticScope.isSerializable;
+import static dev.langchain4j.internal.Utils.allMethods;
 import static dev.langchain4j.internal.Utils.getAnnotatedMethod;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.service.TypeUtils.isImageType;
@@ -222,6 +224,23 @@ public class AgentUtil {
         return k != null ? stateInstance(k.value()).defaultValue() : null;
     }
 
+    /**
+     * Builds the arguments for an untyped agent, which receives the whole {@link AgenticScope} state as a single
+     * {@link Map}. The map is a filtered copy rather than the state itself: a copy so that the recorded
+     * {@link dev.langchain4j.agentic.scope.AgentInvocation#input()} keeps the state as it was at invocation time
+     * instead of following later writes, and filtered so that values which cannot be serialized never reach the
+     * agent or the persisted invocation.
+     */
+    public static AgentInvocationArguments untypedAgentInvocationArguments(AgenticScope agenticScope) {
+        Map<String, Object> args = new HashMap<>();
+        for (var entry : agenticScope.state().entrySet()) {
+            if (isSerializable(entry.getValue())) {
+                args.put(entry.getKey(), entry.getValue());
+            }
+        }
+        return new AgentInvocationArguments(args, new Object[] {args});
+    }
+
     public static AgentInvocationArguments agentInvocationArguments(AgenticScope agenticScope, Method method)
             throws MissingArgumentException {
         return agentInvocationArguments(agenticScope, argumentsFromMethod(method), Map.of());
@@ -343,7 +362,7 @@ public class AgentUtil {
             boolean failOnMissingAnnotation,
             Class<? extends Annotation> patternAnnotation) {
         Method agentMethod = null;
-        for (Method method : agentServiceClass.getMethods()) {
+        for (Method method : allMethods(agentServiceClass)) {
             if (method.isAnnotationPresent(Agent.class)
                     || (patternAnnotation != null && method.isAnnotationPresent(patternAnnotation))) {
                 if (agentMethod != null) {
@@ -353,7 +372,9 @@ public class AgentUtil {
                 agentMethod = method;
             }
         }
-        if (agentMethod == null && failOnMissingAnnotation) {
+        if (agentMethod != null) {
+            agentMethod.setAccessible(true);
+        } else if (failOnMissingAnnotation) {
             throw new IllegalArgumentException("No agent method found in class: " + agentServiceClass.getName());
         }
         return agentMethod;

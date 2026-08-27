@@ -12,7 +12,6 @@ import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -39,7 +38,7 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
     }
 
     @Override
-    public ChatRequestParameters defaultRequestParameters() {
+    public GoogleAiGeminiChatRequestParameters defaultRequestParameters() {
         return defaultRequestParameters;
     }
 

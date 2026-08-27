@@ -769,7 +769,7 @@ This way, the LLM has more information to decide whether or not to call the give
 
 ### Inheritance and tool discovery
 
-Concrete `@Tool`-annotated methods are inherited from superclasses and interfaces. When you pass a tool object to an AI Service, LangChain4j discovers `@Tool` methods from the object's class, all of its superclasses (up to, but excluding, `Object`), and `default` and `static` methods from implemented interfaces.
+When you pass a tool object to an AI Service, LangChain4j discovers `@Tool` methods from the object's class, all of its superclasses (up to, but excluding, `Object`), and `default` and `static` methods from implemented interfaces.
 
 ```java
 class BaseMathTools {
@@ -816,6 +816,38 @@ class ChildTools extends ParentTools {
 ```
 
 Here the LLM will see a single tool named `greet_formal` with description "Returns a formal greeting".
+
+A method is a tool also when it overrides or implements a `@Tool`-annotated method without repeating the annotation.
+This is handy when the tools are declared in an interface and implemented elsewhere:
+
+```java
+interface WeatherTools {
+
+    @Tool("Returns the weather in the given city")
+    String weather(String city);
+}
+
+class OpenMeteoWeatherTools implements WeatherTools {
+
+    @Override
+    public String weather(String city) {
+        return ...;
+    }
+}
+
+Assistant assistant = AiServices.builder(Assistant.class)
+    .chatModel(model)
+    .tools(new OpenMeteoWeatherTools()) // "weather" is available, described as declared in the interface
+    .build();
+```
+
+The LLM sees the `@Tool` annotation of the overridden method, unless the overriding method declares its own.
+
+This is also what makes tools work when the tool object is wrapped in a proxy,
+for example a Spring bean to which an `@Aspect`, `@Transactional` or `@Async` has been applied.
+Such a proxy is a generated subclass that overrides the tool methods, and Java does not copy method annotations
+into overriding methods, so the annotations are looked up on the class being proxied.
+Tools are invoked through the proxy, so interceptors and aspects still run.
 
 If a subclass declares a method with the same name as a parent method but with different parameters (an overload, not an override), both methods are discovered. Since tool names must be unique and default to the method name, you must give at least one of them an explicit name:
 
@@ -1042,6 +1074,7 @@ ToolExecutionRequest request = toolExecution.request();
 String result = toolExecution.result(); // tool execution result as text
 List<Content> resultContents = toolExecution.resultContents(); // tool execution result as content list (may include images)
 Object resultObject = toolExecution.resultObject(); // actual value returned by the tool
+Map<String, Object> attributes = toolExecution.attributes(); // attributes of the tool execution result, see below
 ```
 
 In streaming mode, you can do so by specifying `onToolExecuted` callback:
@@ -1060,6 +1093,38 @@ tokenStream
     .onError(...)
     .start();
 ```
+
+### Tool Result Attributes
+
+A tool execution result can carry attributes: a `Map<String, Object>` that is **not** sent to the LLM.
+Attributes are useful for data that only your application needs, for example the ID of a record
+that the tool has created, or a widget that your UI should render.
+
+Attributes can be set by a custom `ToolExecutor`:
+```java
+ToolExecutor toolExecutor = (toolExecutionRequest, context) -> ToolExecutionResult.builder()
+        .resultText("Sunny, 22 degrees") // sent to the LLM
+        .attributes(Map.of("widget", weatherWidget)) // not sent to the LLM
+        .build();
+```
+For [MCP](/tutorials/mcp) tools, they originate from the `_meta` field of the tool call response.
+For those, the tool provider needs to be configured with
+[`returnToolResultAttributes(true)`](/tutorials/mcp#mcp-tool-result-metadata).
+
+Attributes can be read from the `ToolExecution` (see [Accessing Executed Tools](#accessing-executed-tools) above).
+They are also propagated into `ToolExecutionResultMessage.attributes()`,
+so they are stored in the [`ChatMemory`](/tutorials/chat-memory) together with the message.
+
+:::note
+If you use a `ChatMemoryStore` that persists messages, they are serialized to JSON.
+Make sure that all attribute values can be serialized to JSON and are useful once deserialized:
+- A value that cannot be serialized (for example an `InputStream`) will fail the whole store operation.
+- Values are deserialized as plain JSON types, so a custom object stored as an attribute
+comes back as a `Map` and can no longer be cast to its original type.
+
+Attributes are also stored for every message, so avoid putting large values there
+if the conversation is persisted.
+:::
 
 ### Specifying Tools Programmatically
 

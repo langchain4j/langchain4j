@@ -3,6 +3,7 @@ package dev.langchain4j.model.openaiofficial;
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
 import static dev.langchain4j.internal.ToolSpecificationUtils.isEffectivelyStrict;
+import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.chat.request.ResponseFormat.JSON;
 import static dev.langchain4j.model.chat.request.ResponseFormatType.TEXT;
@@ -45,6 +46,7 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.ContentFilteredException;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
@@ -94,7 +96,7 @@ class InternalOpenAiOfficialHelper {
 
             if (!aiMessage.hasToolExecutionRequests()) {
                 return ChatCompletionMessageParam.ofAssistant(ChatCompletionAssistantMessageParam.builder()
-                        .content(aiMessage.text())
+                        .content(aiMessage.text() != null ? aiMessage.text() : "")
                         .build());
             }
 
@@ -141,6 +143,7 @@ class InternalOpenAiOfficialHelper {
                         ChatCompletionContentPartImage.ImageUrl.builder();
                 if (imageContent.image().url() != null) {
                     imageUrlBuilder.url(imageContent.image().url().toString());
+                    imageUrlBuilder.detail(toImageDetail(imageContent.detailLevel()));
                     parts.add(ChatCompletionContentPart.ofImageUrl(ChatCompletionContentPartImage.builder()
                             .imageUrl(imageUrlBuilder.build())
                             .build()));
@@ -149,6 +152,7 @@ class InternalOpenAiOfficialHelper {
                     // https://github.com/openai/openai-java/blob/e5b8e55762ecde475fa2de081b770d28537c9cd3/openai-java-core/src/main/kotlin/com/openai/models/ChatCompletionContentPartImage.kt#L130
                     imageUrlBuilder.url("data:" + imageContent.image().mimeType() + ";base64,"
                             + imageContent.image().base64Data());
+                    imageUrlBuilder.detail(toImageDetail(imageContent.detailLevel()));
                     parts.add(ChatCompletionContentPart.ofImageUrl(ChatCompletionContentPartImage.builder()
                             .imageUrl(imageUrlBuilder.build())
                             .build()));
@@ -191,6 +195,17 @@ class InternalOpenAiOfficialHelper {
             }
         }
         return parts;
+    }
+
+    private static ChatCompletionContentPartImage.ImageUrl.Detail toImageDetail(ImageContent.DetailLevel detailLevel) {
+        return switch (detailLevel) {
+            case LOW -> ChatCompletionContentPartImage.ImageUrl.Detail.LOW;
+            case HIGH -> ChatCompletionContentPartImage.ImageUrl.Detail.HIGH;
+            case AUTO -> ChatCompletionContentPartImage.ImageUrl.Detail.AUTO;
+            case MEDIUM, ULTRA_HIGH ->
+                throw new UnsupportedFeatureException("DetailLevel " + detailLevel
+                        + " is not supported by OpenAI Chat Completions API. Supported values: LOW, HIGH, AUTO");
+        };
     }
 
     static List<ChatCompletionTool> toTools(Collection<ToolSpecification> toolSpecifications, boolean strict) {
@@ -255,6 +270,12 @@ class InternalOpenAiOfficialHelper {
 
     static AiMessage aiMessageFrom(ChatCompletion chatCompletion) {
         ChatCompletionMessage assistantMessage = chatCompletion.choices().get(0).message();
+
+        String refusal = assistantMessage.refusal().orElse(null);
+        if (isNotNullOrBlank(refusal)) {
+            throw new ContentFilteredException(refusal);
+        }
+
         Optional<String> text = assistantMessage.content();
 
         Optional<List<ChatCompletionMessageToolCall>> toolCalls = assistantMessage.toolCalls();

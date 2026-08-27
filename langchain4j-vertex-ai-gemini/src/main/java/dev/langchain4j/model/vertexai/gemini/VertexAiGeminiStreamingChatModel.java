@@ -530,17 +530,18 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
                     logger.debug("GEMINI ({}) response: {}", modelName, fullResponse);
                 }
             } catch (Exception exception) {
+                RuntimeException mappedException = VertexAiGeminiExceptionMapper.INSTANCE.mapException(exception);
                 listeners.forEach((listener) -> {
                     try {
-                        ChatModelErrorContext chatModelErrorContext =
-                                new ChatModelErrorContext(exception, listenerRequest, provider(), listenerAttributes);
+                        ChatModelErrorContext chatModelErrorContext = new ChatModelErrorContext(
+                                mappedException, listenerRequest, provider(), listenerAttributes);
                         listener.onError(chatModelErrorContext);
                     } catch (Exception t) {
                         logger.warn("Exception while calling model listener (onError)", t);
                     }
                 });
 
-                handler.onError(exception);
+                handler.onError(mappedException);
             }
         });
     }
