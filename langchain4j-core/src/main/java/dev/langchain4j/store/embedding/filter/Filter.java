@@ -26,6 +26,13 @@ import dev.langchain4j.store.embedding.filter.logical.Or;
  * <br>
  * Each {@link EmbeddingStore} implementation that supports metadata filtering is mapping {@link Filter}
  * into it's native filter expression.
+ * <br>
+ * Metadata values can be {@code Float} or {@code Double}, and those can be infinite or {@code NaN}.
+ * Infinite values are compared as one would expect: {@code -Infinity} is smaller and {@code +Infinity} is
+ * greater than any other number. {@code NaN} is not comparable to anything, not even to itself, so every
+ * comparison with it is {@code false}: a {@code NaN} metadata value satisfies neither
+ * {@code IsEqualTo("key", NaN)} nor {@code IsGreaterThan("key", 0)}, and only {@link IsNotEqualTo} and
+ * {@link IsNotIn} match it.
  *
  * @see IsEqualTo
  * @see IsNotEqualTo

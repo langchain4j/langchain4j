@@ -25,6 +25,7 @@ import dev.langchain4j.model.chat.request.ToolChoice;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 
 class GoogleGenAiConfigBuilder {
 
@@ -34,6 +35,7 @@ class GoogleGenAiConfigBuilder {
             List<SafetySetting> safetySettings,
             Integer thinkingBudget,
             String thinkingLevel,
+            Boolean includeThoughts,
             Integer seed,
             boolean googleSearchEnabled,
             boolean googleMapsEnabled,
@@ -42,6 +44,40 @@ class GoogleGenAiConfigBuilder {
             String vertexSearchDatastore,
             Map<String, String> labels,
             String cachedContent) {
+        return buildConfig(
+                parameters,
+                systemInstruction,
+                safetySettings,
+                thinkingBudget,
+                thinkingLevel,
+                includeThoughts,
+                seed,
+                googleSearchEnabled,
+                googleMapsEnabled,
+                urlContextEnabled,
+                allowedFunctionNames,
+                vertexSearchDatastore,
+                labels,
+                cachedContent,
+                null);
+    }
+
+    static GenerateContentConfig buildConfig(
+            ChatRequestParameters parameters,
+            Content systemInstruction,
+            List<SafetySetting> safetySettings,
+            Integer thinkingBudget,
+            String thinkingLevel,
+            Boolean includeThoughts,
+            Integer seed,
+            boolean googleSearchEnabled,
+            boolean googleMapsEnabled,
+            boolean urlContextEnabled,
+            List<String> allowedFunctionNames,
+            String vertexSearchDatastore,
+            Map<String, String> labels,
+            String cachedContent,
+            Consumer<GenerateContentConfig.Builder> generateContentConfigCustomizer) {
 
         GenerateContentConfig.Builder configBuilder = GenerateContentConfig.builder();
 
@@ -85,13 +121,16 @@ class GoogleGenAiConfigBuilder {
             throw new IllegalArgumentException("Cannot use both thinkingBudget and thinkingLevel at the same time");
         }
 
-        if (thinkingBudget != null || thinkingLevel != null) {
+        if (thinkingBudget != null || thinkingLevel != null || includeThoughts != null) {
             ThinkingConfig.Builder thinkingBuilder = ThinkingConfig.builder();
             if (thinkingBudget != null) {
                 thinkingBuilder.thinkingBudget(thinkingBudget);
             }
             if (thinkingLevel != null) {
                 thinkingBuilder.thinkingLevel(new ThinkingLevel(thinkingLevel));
+            }
+            if (includeThoughts != null) {
+                thinkingBuilder.includeThoughts(includeThoughts);
             }
             configBuilder.thinkingConfig(thinkingBuilder.build());
         }
@@ -121,6 +160,9 @@ class GoogleGenAiConfigBuilder {
                 allowedFunctionNames,
                 vertexSearchDatastore);
 
+        if (generateContentConfigCustomizer != null) {
+            generateContentConfigCustomizer.accept(configBuilder);
+        }
         return configBuilder.build();
     }
 

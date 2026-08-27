@@ -12,6 +12,7 @@ import java.nio.file.StandardOpenOption;
 import java.nio.file.spi.FileTypeDetector;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -124,7 +125,7 @@ public class CustomMimeTypesFileTypeDetector extends FileTypeDetector {
      */
     @Override
     public String probeContentType(Path path) {
-        String extension = extension(path).toLowerCase();
+        String extension = extension(path).toLowerCase(Locale.ROOT);
 
         if (mappings.containsKey(extension)) {
             return mappings.get(extension);
@@ -150,16 +151,29 @@ public class CustomMimeTypesFileTypeDetector extends FileTypeDetector {
      *     returns null if no mapping was found.
      */
     public String probeContentType(URI uri) {
+        // Opaque URIs (e.g. "data:image/png;base64,...", "mailto:...") have no path component,
+        // and URIs such as "https://example.com" have an empty one. Neither carries a file name.
+        String uriPath = uri.getPath();
+        if (uriPath == null || uriPath.isEmpty()) {
+            return null;
+        }
+
         // First let's try to guess via the Path
-        Path path = Path.of(uri.getPath());
+        Path path = Path.of(uriPath);
+
+        // Paths that denote a root (e.g. "https://example.com/") have no file name either
+        Path fileName = path.getFileName();
+        if (fileName == null) {
+            return null;
+        }
+
         String mimeTypeFromPath = probeContentType(path);
         if (mimeTypeFromPath != null) {
             return mimeTypeFromPath;
         }
 
         // Second, let's see if URLConnection can guess from the file name
-        String mimeTypeGuessedFromUrlCon =
-                URLConnection.guessContentTypeFromName(path.getFileName().toString());
+        String mimeTypeGuessedFromUrlCon = URLConnection.guessContentTypeFromName(fileName.toString());
         if (mimeTypeGuessedFromUrlCon != null) {
             return mimeTypeGuessedFromUrlCon;
         }
@@ -175,7 +189,12 @@ public class CustomMimeTypesFileTypeDetector extends FileTypeDetector {
     }
 
     static String extension(Path path) {
-        String fileName = path.getFileName().toFile().toString();
+        Path fileNamePath = path.getFileName();
+        if (fileNamePath == null) {
+            // e.g. a root path such as "/"
+            return "";
+        }
+        String fileName = fileNamePath.toString();
         int lastDotPosition = fileName.lastIndexOf('.');
         return lastDotPosition > 0 ? fileName.substring(lastDotPosition + 1) : "";
     }

@@ -5,6 +5,31 @@
       "ignore": true,
       "differences": [
         {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.model.embedding.listener.EmbeddingModelListener",
+          "justification": "Core langchain4j type intentionally exposed by the EmbeddingModel request/response API"
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.model.embedding.request.EmbeddingParameter",
+          "justification": "Core langchain4j type intentionally exposed by the EmbeddingModel request/response API"
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.model.embedding.request.EmbeddingRequest",
+          "justification": "Core langchain4j type intentionally exposed by the EmbeddingModel request/response API"
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.model.embedding.response.EmbeddingResponse",
+          "justification": "Core langchain4j type intentionally exposed by the EmbeddingModel request/response API"
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.data.message.ContentType",
+          "justification": "Core langchain4j type intentionally exposed by EmbeddingModel.supportedContentTypes()"
+        },
+        {
           "code": "java.class.nonPublicPartOfAPI",
           "old": "class dev.langchain4j.model.googleai.BatchRequestResponse.Operation.Status",
           "justification": "Exposed only through package-private base classes"
@@ -204,6 +229,58 @@
           "code": "java.class.externalClassExposedInAPI",
           "new": "missing-class dev.langchain4j.model.batch.BatchResponse",
           "justification": "Classes/Methods moved to generic batch impl in langchain4j-core"
+        },
+        {
+          "ignore": true,
+          "code": "java.method.returnTypeChanged",
+          "old": "method dev.langchain4j.model.chat.request.ChatRequestParameters dev.langchain4j.model.googleai.GoogleAiGeminiChatModel::defaultRequestParameters()",
+          "new": "method dev.langchain4j.model.googleai.GoogleAiGeminiChatRequestParameters dev.langchain4j.model.googleai.GoogleAiGeminiChatModel::defaultRequestParameters()",
+          "justification": "defaultRequestParameters() now returns the provider-specific GoogleAiGeminiChatRequestParameters, consistent with OpenAiChatModel and AnthropicChatModel"
+        },
+        {
+          "ignore": true,
+          "code": "java.method.returnTypeChanged",
+          "old": "method dev.langchain4j.model.chat.request.ChatRequestParameters dev.langchain4j.model.googleai.GoogleAiGeminiStreamingChatModel::defaultRequestParameters()",
+          "new": "method dev.langchain4j.model.googleai.GoogleAiGeminiChatRequestParameters dev.langchain4j.model.googleai.GoogleAiGeminiStreamingChatModel::defaultRequestParameters()",
+          "justification": "defaultRequestParameters() now returns the provider-specific GoogleAiGeminiChatRequestParameters, consistent with OpenAiChatModel and AnthropicChatModel"
+        },
+        {
+          "ignore": true,
+          "code": "java.field.typeChanged",
+          "old": "field dev.langchain4j.model.googleai.BaseGeminiChatModel.defaultRequestParameters @ dev.langchain4j.model.googleai.GoogleAiGeminiChatModel",
+          "new": "field dev.langchain4j.model.googleai.BaseGeminiChatModel.defaultRequestParameters @ dev.langchain4j.model.googleai.GoogleAiGeminiChatModel",
+          "justification": "defaultRequestParameters is now stored as the provider-specific GoogleAiGeminiChatRequestParameters, consistent with OpenAiChatModel and AnthropicChatModel"
+        },
+        {
+          "ignore": true,
+          "code": "java.field.typeChanged",
+          "old": "field dev.langchain4j.model.googleai.BaseGeminiChatModel.defaultRequestParameters @ dev.langchain4j.model.googleai.GoogleAiGeminiStreamingChatModel",
+          "new": "field dev.langchain4j.model.googleai.BaseGeminiChatModel.defaultRequestParameters @ dev.langchain4j.model.googleai.GoogleAiGeminiStreamingChatModel",
+          "justification": "defaultRequestParameters is now stored as the provider-specific GoogleAiGeminiChatRequestParameters, consistent with OpenAiChatModel and AnthropicChatModel"
+        },
+        {
+          "ignore": true,
+          "code": "java.field.removed",
+          "old": "field dev.langchain4j.model.googleai.BaseGeminiChatModel.imageConfig @ dev.langchain4j.model.googleai.GoogleAiGeminiChatModel",
+          "justification": "Image generation config (aspectRatio/imageSize) is now part of GoogleAiGeminiChatRequestParameters and resolved per-request, replacing the model-level imageConfig field"
+        },
+        {
+          "ignore": true,
+          "code": "java.field.removed",
+          "old": "field dev.langchain4j.model.googleai.BaseGeminiChatModel.imageConfig @ dev.langchain4j.model.googleai.GoogleAiGeminiStreamingChatModel",
+          "justification": "Image generation config (aspectRatio/imageSize) is now part of GoogleAiGeminiChatRequestParameters and resolved per-request, replacing the model-level imageConfig field"
+        },
+        {
+          "ignore": true,
+          "code": "java.field.removed",
+          "old": "field dev.langchain4j.model.googleai.BaseGeminiChatModel.cachedContentName @ dev.langchain4j.model.googleai.GoogleAiGeminiChatModel",
+          "justification": "cachedContentName is now part of GoogleAiGeminiChatRequestParameters and resolved per-request, replacing the model-level cachedContentName field"
+        },
+        {
+          "ignore": true,
+          "code": "java.field.removed",
+          "old": "field dev.langchain4j.model.googleai.BaseGeminiChatModel.cachedContentName @ dev.langchain4j.model.googleai.GoogleAiGeminiStreamingChatModel",
+          "justification": "cachedContentName is now part of GoogleAiGeminiChatRequestParameters and resolved per-request, replacing the model-level cachedContentName field"
         }
       ]
     }

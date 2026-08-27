@@ -10,11 +10,11 @@ import static java.util.Collections.unmodifiableSet;
 
 import dev.langchain4j.Internal;
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.lang.reflect.Proxy;
 import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URL;
@@ -22,13 +22,18 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Collection;
-import java.util.HashSet;
+import java.util.Deque;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.HexFormat;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -36,6 +41,8 @@ import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Supplier;
+import java.util.zip.GZIPInputStream;
+import java.util.zip.InflaterInputStream;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
@@ -345,7 +352,8 @@ public class Utils {
                 int responseCode = connection.getResponseCode();
 
                 if (responseCode == HTTP_OK) {
-                    try (InputStream inputStream = connection.getInputStream();
+                    try (InputStream inputStream =
+                                    decompress(connection.getInputStream(), connection.getContentEncoding());
                             ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
                         byte[] buffer = new byte[1024];
                         int bytesRead;
@@ -369,6 +377,17 @@ public class Utils {
         }
     }
 
+    private static InputStream decompress(InputStream inputStream, String contentEncoding) throws IOException {
+        if (contentEncoding == null) {
+            return inputStream;
+        }
+        return switch (contentEncoding.trim().toLowerCase(Locale.ROOT)) {
+            case "gzip", "x-gzip" -> new GZIPInputStream(inputStream);
+            case "deflate" -> new InflaterInputStream(inputStream);
+            default -> inputStream;
+        };
+    }
+
     /**
      * Returns an (unmodifiable) copy of the provided set.
      * Returns <code>null</code> if the provided set is <code>null</code>.
@@ -382,7 +401,7 @@ public class Utils {
             return null;
         }
 
-        return unmodifiableSet(set);
+        return unmodifiableSet(new LinkedHashSet<>(set));
     }
 
     /**
@@ -398,7 +417,7 @@ public class Utils {
             return Set.of();
         }
 
-        return unmodifiableSet(set);
+        return unmodifiableSet(new LinkedHashSet<>(set));
     }
 
     /**
@@ -414,7 +433,7 @@ public class Utils {
             return null;
         }
 
-        return unmodifiableList(list);
+        return unmodifiableList(new ArrayList<>(list));
     }
 
     /**
@@ -430,7 +449,7 @@ public class Utils {
             return List.of();
         }
 
-        return unmodifiableList(list);
+        return unmodifiableList(new ArrayList<>(list));
     }
 
     /**
@@ -477,7 +496,7 @@ public class Utils {
             return null;
         }
 
-        return unmodifiableMap(map);
+        return unmodifiableMap(new LinkedHashMap<>(map));
     }
 
     /**
@@ -492,7 +511,7 @@ public class Utils {
             return Map.of();
         }
 
-        return unmodifiableMap(map);
+        return unmodifiableMap(new LinkedHashMap<>(map));
     }
 
     /**
@@ -526,8 +545,12 @@ public class Utils {
 
     /**
      * Returns the method eventually annotated with the given annotation.
-     * It could be the method itself or, if the method belongs to a proxy,
-     * a method from one of the interfaces implemented by the proxy.
+     * It could be the method itself or, if the method overrides or implements an annotated one,
+     * the annotated method with the same signature from one of the supertypes.
+     * <p>
+     * Searching the supertypes is required because Java does not inherit method annotations,
+     * so a method that is generated to override an annotated one (for example, by a JDK proxy
+     * or by a class-based proxy such as CGLIB or Byte Buddy) does not carry the annotation itself.
      *
      * @param method     The method to check for the annotation.
      * @param annotation The annotation to look for.
@@ -539,19 +562,34 @@ public class Utils {
             return Optional.of(method);
         }
 
-        if (Proxy.isProxyClass(method.getDeclaringClass())) {
-            for (Class<?> iface : method.getDeclaringClass().getInterfaces()) {
-                try {
-                    Method interfaceMethod = iface.getMethod(method.getName(), method.getParameterTypes());
-                    if (interfaceMethod.isAnnotationPresent(annotation)) {
-                        return Optional.of(interfaceMethod);
-                    }
-                } catch (NoSuchMethodException e) {
-                    // Ignore and continue searching in the next interface
+        Set<Class<?>> visited = new HashSet<>();
+        Deque<Class<?>> supertypes = new ArrayDeque<>();
+        addSupertypes(method.getDeclaringClass(), supertypes, visited);
+        while (!supertypes.isEmpty()) {
+            Class<?> supertype = supertypes.poll();
+            try {
+                Method supertypeMethod = supertype.getDeclaredMethod(method.getName(), method.getParameterTypes());
+                if (supertypeMethod.isAnnotationPresent(annotation)) {
+                    return Optional.of(supertypeMethod);
                 }
+            } catch (NoSuchMethodException e) {
+                // Ignore and continue searching in the next supertype
             }
+            addSupertypes(supertype, supertypes, visited);
         }
         return Optional.empty();
+    }
+
+    private static void addSupertypes(Class<?> clazz, Deque<Class<?>> supertypes, Set<Class<?>> visited) {
+        Class<?> superclass = clazz.getSuperclass();
+        if (superclass != null && superclass != Object.class && visited.add(superclass)) {
+            supertypes.add(superclass);
+        }
+        for (Class<?> iface : clazz.getInterfaces()) {
+            if (visited.add(iface)) {
+                supertypes.add(iface);
+            }
+        }
     }
 
     private record MethodSignature(String name, List<Class<?>> params) {}
@@ -563,6 +601,20 @@ public class Utils {
      * Bridge and synthetic methods are filtered out.
      */
     public static List<Method> allConcreteMethods(Class<?> clazz) {
+        return allMethods(clazz, true);
+    }
+
+    /**
+     * Returns all methods from the given class, its superclasses (excluding {@link Object}),
+     * and all implemented interfaces.
+     * If a subclass overrides a method, only the subclass version is included.
+     * Bridge and synthetic methods are filtered out.
+     */
+    public static List<Method> allMethods(Class<?> clazz) {
+        return allMethods(clazz, false);
+    }
+
+    private static List<Method> allMethods(Class<?> clazz, boolean concreteOnly) {
         List<Method> allMethods = new ArrayList<>();
         Set<MethodSignature> seen = new HashSet<>();
         Class<?> current = clazz;
@@ -570,7 +622,7 @@ public class Utils {
             collectConcreteMethods(current, seen, allMethods);
             current = current.getSuperclass();
         }
-        collectInterfaceMethods(clazz, seen, allMethods, new HashSet<>());
+        collectInterfaceMethods(clazz, seen, allMethods, new HashSet<>(), concreteOnly);
         return List.copyOf(allMethods);
     }
 
@@ -586,8 +638,12 @@ public class Utils {
         }
     }
 
-    private static void collectInterfaceMethods(Class<?> clazz, Set<MethodSignature> seen,
-                                                List<Method> result, Set<Class<?>> visited) {
+    private static void collectInterfaceMethods(
+            Class<?> clazz,
+            Set<MethodSignature> seen,
+            List<Method> result,
+            Set<Class<?>> visited,
+            boolean concreteOnly) {
         if (clazz == null) {
             return;
         }
@@ -596,7 +652,9 @@ public class Utils {
                 continue;
             }
             for (Method method : iface.getDeclaredMethods()) {
-                if (method.isBridge() || method.isSynthetic() || Modifier.isAbstract(method.getModifiers())) {
+                if (method.isBridge()
+                        || method.isSynthetic()
+                        || (concreteOnly && Modifier.isAbstract(method.getModifiers()))) {
                     continue;
                 }
                 MethodSignature sig = new MethodSignature(method.getName(), List.of(method.getParameterTypes()));
@@ -604,9 +662,9 @@ public class Utils {
                     result.add(method);
                 }
             }
-            collectInterfaceMethods(iface, seen, result, visited);
+            collectInterfaceMethods(iface, seen, result, visited, concreteOnly);
         }
-        collectInterfaceMethods(clazz.getSuperclass(), seen, result, visited);
+        collectInterfaceMethods(clazz.getSuperclass(), seen, result, visited, concreteOnly);
     }
 
     /**
@@ -651,17 +709,11 @@ public class Utils {
             throw new IllegalArgumentException("lists must have at least 2 elements");
         }
 
-        if (lists.length == 2) {
-            if (lists[0] == null || lists[0].isEmpty()) {
-                return lists[1];
-            } else if (lists[1] == null || lists[1].isEmpty()) {
-                return lists[0];
-            }
-        }
-
         List<T> result = new ArrayList<>();
         for (List<T> list : lists) {
-            result.addAll(list);
+            if (list != null) {
+                result.addAll(list);
+            }
         }
         return result;
     }
@@ -671,16 +723,11 @@ public class Utils {
             throw new IllegalArgumentException("maps must have at least 2 elements");
         }
 
-        if (maps.length == 2) {
-            if (maps[0] == null || maps[0].isEmpty()) {
-                return maps[1];
-            } else if (maps[1] == null || maps[1].isEmpty()) {
-                return maps[0];
-            }
-        }
-
         Map<K, V> result = new HashMap<>();
         for (Map<K, V> map : maps) {
+            if (map == null) {
+                continue;
+            }
             for (Map.Entry<K, V> e : map.entrySet()) {
                 if (result.putIfAbsent(e.getKey(), e.getValue()) != null) {
                     throw new IllegalArgumentException("Duplicate key: " + e.getKey());

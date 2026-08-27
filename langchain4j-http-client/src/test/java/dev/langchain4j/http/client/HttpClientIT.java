@@ -147,9 +147,17 @@ public abstract class HttpClientIT {
                 assertThat(e).isExactlyInstanceOf(HttpException.class);
                 HttpException httpException = (HttpException) e;
                 assertThat(httpException.statusCode()).isEqualTo(401);
-                assertThat(httpException.getMessage()).contains("Incorrect API key provided");
+                if (supportsErrorBodyOnUnauthorized()) {
+                    assertThat(httpException.getMessage()).contains("Incorrect API key provided");
+                } else {
+                    assertThat(httpException.getMessage()).isNotBlank();
+                }
             }
         }
+    }
+
+    protected boolean supportsErrorBodyOnUnauthorized() {
+        return true;
     }
 
     @Test
@@ -748,9 +756,12 @@ public abstract class HttpClientIT {
             assertThat(response.get()).isNull();
             assertThat(events).isEmpty();
             assertThat(errors).hasSize(1);
-            assertThat(errors.get(0))
-                    .isExactlyInstanceOf(HttpException.class)
-                    .hasMessageContaining("Incorrect API key provided");
+            assertThat(errors.get(0)).isExactlyInstanceOf(HttpException.class);
+            if (supportsErrorBodyOnUnauthorized()) {
+                assertThat(errors.get(0)).hasMessageContaining("Incorrect API key provided");
+            } else {
+                assertThat(errors.get(0).getMessage()).isNotBlank();
+            }
 
             assertThat(threads).hasSize(1);
             assertThat(threads.iterator().next()).isNotEqualTo(Thread.currentThread());
@@ -870,6 +881,48 @@ public abstract class HttpClientIT {
             assertThat(response.statusCode()).isEqualTo(200);
             assertThat(response.headers()).isNotEmpty();
             assertThat(response.body().toLowerCase()).containsAnyOf("hello", "hallo");
+        }
+    }
+
+    @Test
+    void should_return_binary_response_sync() {
+
+        for (HttpClient client : clients()) {
+
+            // given
+            HttpRequest request = HttpRequest.builder()
+                    .method(POST)
+                    .url("https://api.openai.com/v1/audio/speech")
+                    .addHeader("Authorization", "Bearer " + OPENAI_API_KEY)
+                    .addHeader("Content-Type", "application/json")
+                    .body(
+                            """
+                                    {
+                                        "model": "tts-1",
+                                        "input": "Hello world!",
+                                        "voice": "alloy"
+                                    }
+                                    """)
+                    .build();
+
+            // when
+            SuccessfulHttpResponse response = client.execute(request);
+
+            // then
+            assertThat(response.statusCode()).isEqualTo(200);
+            assertThat(response.headers()).isNotEmpty();
+
+            byte[] audio = response.bodyBytes();
+            assertThat(audio).isNotNull();
+            assertThat(audio.length).isGreaterThan(1000);
+
+            // Verify the raw bytes are a real MP3 (frame-sync 0xFFEx or an "ID3" tag),
+            // proving binary data is returned intact and not corrupted by text decoding.
+            boolean isMp3 = (audio[0] == (byte) 0xFF && (audio[1] & 0xE0) == 0xE0)
+                    || (audio[0] == 'I' && audio[1] == 'D' && audio[2] == '3');
+            assertThat(isMp3)
+                    .as("response body should be a valid MP3 (first bytes: %02X %02X %02X)", audio[0], audio[1], audio[2])
+                    .isTrue();
         }
     }
 }

@@ -27,6 +27,8 @@ class OllamaChatRequest {
 
     private Boolean think;
 
+    private Boolean truncate;
+
     OllamaChatRequest() {}
 
     OllamaChatRequest(Builder builder) {
@@ -38,6 +40,7 @@ class OllamaChatRequest {
         this.format = builder.format;
         this.keepAlive = builder.keepAlive;
         this.think = builder.think;
+        this.truncate = builder.truncate;
     }
 
     static Builder builder() {
@@ -108,6 +111,14 @@ class OllamaChatRequest {
         this.think = think;
     }
 
+    public Boolean getTruncate() {
+        return truncate;
+    }
+
+    public void setTruncate(Boolean truncate) {
+        this.truncate = truncate;
+    }
+
     static class Builder {
 
         private String model;
@@ -118,6 +129,7 @@ class OllamaChatRequest {
         private List<Tool> tools;
         private Integer keepAlive;
         private Boolean think;
+        private Boolean truncate;
 
         Builder model(String model) {
             this.model = model;
@@ -156,6 +168,11 @@ class OllamaChatRequest {
 
         Builder think(Boolean think) {
             this.think = think;
+            return this;
+        }
+
+        Builder truncate(Boolean truncate) {
+            this.truncate = truncate;
             return this;
         }
 

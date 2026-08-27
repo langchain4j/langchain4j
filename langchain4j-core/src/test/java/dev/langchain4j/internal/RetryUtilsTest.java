@@ -27,6 +27,28 @@ class RetryUtilsTest {
     }
 
     @Test
+    void jitterDelayMillis_returns_base_delay_when_jitter_is_disabled() {
+        // jitterScale == 0 disables jitter; the jitter bound is 0, which must not
+        // be passed to Random.nextInt (it requires a strictly positive bound).
+        RetryUtils.RetryPolicy policy = RetryUtils.retryPolicyBuilder()
+                .delayMillis(500)
+                .jitterScale(0.0)
+                .build();
+
+        assertThat(policy.jitterDelayMillis(0)).isEqualTo(500);
+        assertThat(policy.jitterDelayMillis(2)).isEqualTo((int) policy.rawDelayMs(2));
+    }
+
+    @Test
+    void jitterDelayMillis_returns_base_delay_when_base_delay_too_small_for_jitter() {
+        // With a tiny base delay, delay * jitterScale rounds down to a 0 jitter bound.
+        RetryUtils.RetryPolicy policy =
+                RetryUtils.retryPolicyBuilder().delayMillis(1).jitterScale(0.2).build();
+
+        assertThat(policy.jitterDelayMillis(0)).isEqualTo(1);
+    }
+
+    @Test
     void with_retry_directly() throws Exception {
         @SuppressWarnings("unchecked")
         Callable<String> mockAction = mock(Callable.class);

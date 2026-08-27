@@ -11,6 +11,13 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.request.ResponseFormat;
+import dev.langchain4j.model.chat.request.ResponseFormatType;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonRawSchema;
+import dev.langchain4j.model.chat.request.json.JsonReferenceSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiCandidate;
 import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiCandidate.GeminiFinishReason;
@@ -395,8 +402,6 @@ class GoogleAiGeminiChatModelTest {
                             .stopSequences(List.of("STOP", "END"))
                             .seed(42)
                             .candidateCount(1)
-                            .responseLogprobs(false)
-                            .enableEnhancedCivicAnswers(false)
                             .build());
         }
 
@@ -431,6 +436,172 @@ class GoogleAiGeminiChatModelTest {
                             .aspectRatio("16:9")
                             .imageSize("2K")
                             .build());
+        }
+
+        @Test
+        void shouldUseRequestLevelImageConfigWhenProvided() {
+            // Given
+            var expectedResponse = createGeminiResponse("Response");
+            when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class)))
+                    .thenReturn(expectedResponse);
+
+            var subject = GoogleAiGeminiChatModel.builder()
+                    .apiKey("test-api-key")
+                    .modelName(TEST_MODEL_NAME)
+                    .imageAspectRatio("16:9")
+                    .imageSize("2K")
+                    .build(mockGeminiService);
+
+            var chatRequest = ChatRequest.builder()
+                    .messages(new UserMessage("Generate image"))
+                    .parameters(GoogleAiGeminiChatRequestParameters.builder()
+                            .imageAspectRatio("1:1")
+                            .imageSize("1K")
+                            .build())
+                    .build();
+
+            // When
+            subject.chat(chatRequest);
+
+            // Then
+            verify(mockGeminiService).generateContent(eq(TEST_MODEL_NAME), requestCaptor.capture());
+            var request = requestCaptor.getValue();
+
+            assertThat(request.generationConfig()).isNotNull();
+            assertThat(request.generationConfig().imageConfig())
+                    .isEqualTo(GeminiImageConfig.builder()
+                            .aspectRatio("1:1")
+                            .imageSize("1K")
+                            .build());
+        }
+
+        @Test
+        void shouldFallbackToBuilderImageConfigWhenRequestLevelNotProvided() {
+            // Given
+            var expectedResponse = createGeminiResponse("Response");
+            when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class)))
+                    .thenReturn(expectedResponse);
+
+            var subject = GoogleAiGeminiChatModel.builder()
+                    .apiKey("test-api-key")
+                    .modelName(TEST_MODEL_NAME)
+                    .imageAspectRatio("16:9")
+                    .imageSize("2K")
+                    .build(mockGeminiService);
+
+            var chatRequest = ChatRequest.builder()
+                    .messages(new UserMessage("Generate image"))
+                    .parameters(ChatRequestParameters.builder().temperature(0.2).build())
+                    .build();
+
+            // When
+            subject.chat(chatRequest);
+
+            // Then
+            verify(mockGeminiService).generateContent(eq(TEST_MODEL_NAME), requestCaptor.capture());
+            var request = requestCaptor.getValue();
+
+            assertThat(request.generationConfig()).isNotNull();
+            assertThat(request.generationConfig().imageConfig())
+                    .isEqualTo(GeminiImageConfig.builder()
+                            .aspectRatio("16:9")
+                            .imageSize("2K")
+                            .build());
+        }
+    }
+
+    @Nested
+    class ResponseFormatTest {
+        @Captor
+        ArgumentCaptor<GeminiGenerateContentRequest> requestCaptor;
+
+        @Test
+        void shouldSendTypedResponseSchemaWhenEveryElementHasATypedForm() {
+            // Given
+            var subject = modelReturning("Response");
+            var responseFormat = jsonResponseFormat(
+                    JsonObjectSchema.builder().addStringProperty("name").build());
+
+            // When
+            subject.chat(ChatRequest.builder()
+                    .messages(new UserMessage("Hi"))
+                    .responseFormat(responseFormat)
+                    .build());
+
+            // Then
+            verify(mockGeminiService).generateContent(eq(TEST_MODEL_NAME), requestCaptor.capture());
+
+            var generationConfig = requestCaptor.getValue().generationConfig();
+            assertThat(generationConfig.responseJsonSchema()).isNull();
+            assertThat(generationConfig.responseSchema().getType()).isEqualTo(GeminiType.OBJECT);
+        }
+
+        @Test
+        void shouldSendResponseJsonSchemaWhenTheRootIsRaw() {
+            // Given
+            var subject = modelReturning("Response");
+            var responseFormat = jsonResponseFormat(
+                    JsonRawSchema.from("{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"}}}"));
+
+            // When
+            subject.chat(ChatRequest.builder()
+                    .messages(new UserMessage("Hi"))
+                    .responseFormat(responseFormat)
+                    .build());
+
+            // Then
+            verify(mockGeminiService).generateContent(eq(TEST_MODEL_NAME), requestCaptor.capture());
+
+            var generationConfig = requestCaptor.getValue().generationConfig();
+            assertThat(generationConfig.responseSchema()).isNull();
+            assertThat(generationConfig.responseJsonSchema()).containsEntry("type", "object");
+        }
+
+        @Test
+        void shouldSendResponseJsonSchemaWhenAnElementBelowTheRootHasNoTypedForm() {
+            // Given
+            var subject = modelReturning("Response");
+            var address = JsonObjectSchema.builder().addStringProperty("city").build();
+            var responseFormat = jsonResponseFormat(JsonObjectSchema.builder()
+                    .definitions(Map.of("Address", address))
+                    .addStringProperty("name")
+                    .addProperty(
+                            "address",
+                            JsonReferenceSchema.builder().reference("Address").build())
+                    .build());
+
+            // When
+            subject.chat(ChatRequest.builder()
+                    .messages(new UserMessage("Hi"))
+                    .responseFormat(responseFormat)
+                    .build());
+
+            // Then
+            verify(mockGeminiService).generateContent(eq(TEST_MODEL_NAME), requestCaptor.capture());
+
+            var generationConfig = requestCaptor.getValue().generationConfig();
+            assertThat(generationConfig.responseSchema()).isNull();
+            assertThat(generationConfig.responseJsonSchema()).containsKey("$defs");
+        }
+
+        private GoogleAiGeminiChatModel modelReturning(String text) {
+            when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class)))
+                    .thenReturn(createGeminiResponse(text));
+
+            return GoogleAiGeminiChatModel.builder()
+                    .apiKey("test-api-key")
+                    .modelName(TEST_MODEL_NAME)
+                    .build(mockGeminiService);
+        }
+
+        private ResponseFormat jsonResponseFormat(JsonSchemaElement rootElement) {
+            return ResponseFormat.builder()
+                    .type(ResponseFormatType.JSON)
+                    .jsonSchema(JsonSchema.builder()
+                            .name("Response")
+                            .rootElement(rootElement)
+                            .build())
+                    .build();
         }
     }
 

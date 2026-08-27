@@ -8,6 +8,7 @@ import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils
 import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.openaiofficial.setup.OpenAiOfficialSetup.setupSyncClient;
 import static java.util.Arrays.asList;
@@ -70,6 +71,7 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.ContentFilteredException;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.internal.ExceptionMapper;
@@ -318,6 +320,20 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
         return textBuilder.isEmpty() ? null : textBuilder.toString();
     }
 
+    static String extractRefusal(com.openai.models.responses.Response response) {
+        StringBuilder refusalBuilder = new StringBuilder();
+        for (ResponseOutputItem item : response.output()) {
+            if (item.isMessage()) {
+                item.asMessage().content().forEach(content -> {
+                    if (content.isRefusal()) {
+                        refusalBuilder.append(content.asRefusal().refusal());
+                    }
+                });
+            }
+        }
+        return refusalBuilder.isEmpty() ? null : refusalBuilder.toString();
+    }
+
     static AiMessage buildAiMessage(
             String text, String thinking, List<ToolExecutionRequest> toolExecutionRequests, String encryptedReasoning) {
         AiMessage.Builder builder =
@@ -350,16 +366,23 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
         return builder.build();
     }
 
-    static String mapStatusToFinishReason(String status, boolean hasToolCalls) {
+    static String mapStatusToFinishReason(String status, String incompleteReason, boolean hasToolCalls) {
         if (status == null) {
             return null;
         }
         return switch (status) {
             case "completed" -> hasToolCalls ? "TOOL_EXECUTION" : "STOP";
-            case "incomplete" -> "LENGTH";
+            case "incomplete" -> "content_filter".equals(incompleteReason) ? "CONTENT_FILTER" : "LENGTH";
             case "failed" -> "OTHER";
             default -> "OTHER";
         };
+    }
+
+    static String extractIncompleteReason(com.openai.models.responses.Response response) {
+        return response.incompleteDetails()
+                .flatMap(com.openai.models.responses.Response.IncompleteDetails::reason)
+                .map(com.openai.models.responses.Response.IncompleteDetails.Reason::asString)
+                .orElse(null);
     }
 
     static OpenAiOfficialTokenUsage extractTokenUsage(com.openai.models.responses.Response response) {
@@ -555,7 +578,9 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
 
             return List.of(ResponseInputItem.ofFunctionCallOutput(outputBuilder.build()));
         } else {
-            return List.of(createTextMessage(EasyInputMessage.Role.USER, msg.toString()));
+            throw new UnsupportedFeatureException(
+                    "Unsupported message type: " + msg.getClass().getName()
+                            + ". Only SystemMessage, UserMessage, AiMessage, and ToolExecutionResultMessage are supported.");
         }
     }
 
@@ -607,6 +632,10 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                     throw new IllegalArgumentException("PDF must have either url or base64Data");
                 }
                 contentList.add(ResponseInputContent.ofInputFile(pdfInput.build()));
+            } else {
+                throw new UnsupportedFeatureException("Unsupported content type: "
+                        + content.getClass().getName()
+                        + ". Only TextContent, ImageContent, and PdfFileContent are supported.");
             }
         }
 
@@ -656,11 +685,14 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
             if (toolSpec.parameters() != null) {
                 toMap(toolSpec.parameters(), effectiveStrict)
                         .forEach((key, value) -> parametersBuilder.putAdditionalProperty(key, JsonValue.from(value)));
-            } else if (effectiveStrict) {
+            } else {
                 parametersBuilder
                         .putAdditionalProperty("type", JsonValue.from("object"))
                         .putAdditionalProperty("properties", JsonValue.from(Collections.emptyMap()))
-                        .putAdditionalProperty("additionalProperties", JsonValue.from(false));
+                        .putAdditionalProperty("required", JsonValue.from(Collections.emptyList()));
+                if (effectiveStrict) {
+                    parametersBuilder.putAdditionalProperty("additionalProperties", JsonValue.from(false));
+                }
             }
             return FunctionTool.builder()
                     .name(toolSpec.name())
@@ -1226,7 +1258,8 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
 
             // Extract status and map to finish reason
             response.status().ifPresent(status -> {
-                this.finishReason = mapStatusToFinishReason(status.asString(), !completedToolCalls.isEmpty());
+                this.finishReason = mapStatusToFinishReason(
+                        status.asString(), extractIncompleteReason(response), !completedToolCalls.isEmpty());
             });
 
             // Extract token usage and complete
@@ -1253,15 +1286,19 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
         }
 
         private void handleIncomplete(ResponseIncompleteEvent event) {
-            // Incomplete is not an error - it just means the response was cut off due to token limits
-            // Treat it as a normal completion with finish reason LENGTH
-            finishReason = "LENGTH";
+            var response = event.response();
+            finishReason = mapStatusToFinishReason("incomplete", extractIncompleteReason(response), false);
 
-            // Complete the response normally
-            extractTokenUsageAndComplete(event.response());
+            extractTokenUsageAndComplete(response);
         }
 
         private void extractTokenUsageAndComplete(com.openai.models.responses.Response response) {
+            var refusal = extractRefusal(response);
+            if (isNotNullOrBlank(refusal)) {
+                withLoggingExceptions(() -> handler.onError(new ContentFilteredException(refusal)));
+                return;
+            }
+
             var text = !textBuilder.isEmpty() ? textBuilder.toString() : null;
             var aiMessage = buildAiMessage(
                     text, extractReasoningSummary(response), completedToolCalls, extractEncryptedReasoning(response));

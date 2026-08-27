@@ -2,6 +2,7 @@ package dev.langchain4j.service;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatNoException;
 import static org.mockito.Mockito.mock;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -124,9 +125,9 @@ class AiServicesBuilderTest {
 
         TestService service = AiServices.builder(TestService.class)
                 .chatModel(chatModel)
+                .tools(new InheritedFieldTool())
                 .includeInheritedFields(true)
                 .respectJsonIgnoreAnnotations(true)
-                .tools(new InheritedFieldTool())
                 .build();
 
         service.chat("hello");
@@ -138,6 +139,32 @@ class AiServicesBuilderTest {
         org.assertj.core.api.Assertions.assertThat(requestSchema.properties())
                 .containsKeys("inherited", "declared")
                 .doesNotContainKey("ignored");
+    }
+
+    @Test
+    void should_accept_tool_object_whose_tool_methods_are_overridden_without_annotation() {
+        class ToolClass {
+            @Tool("Say hello")
+            String sayHello(String name) {
+                return "Hello " + name + "!";
+            }
+        }
+
+        // simulates a tool object wrapped by a class-based proxy (Spring AOP/CGLIB, Byte Buddy, ...):
+        // the generated subclass overrides the tool method, but Java does not inherit method annotations
+        class ProxiedToolClass extends ToolClass {
+            @Override
+            String sayHello(String name) {
+                return super.sayHello(name);
+            }
+        }
+
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds("Hello there!");
+
+        assertThatNoException().isThrownBy(() -> AiServices.builder(TestService.class)
+                .chatModel(chatModel)
+                .tools(new ProxiedToolClass())
+                .build());
     }
 
     @Test

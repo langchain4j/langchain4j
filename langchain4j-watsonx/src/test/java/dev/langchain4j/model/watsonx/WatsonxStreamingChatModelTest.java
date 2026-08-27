@@ -18,6 +18,8 @@ import com.ibm.watsonx.ai.CloudRegion;
 import com.ibm.watsonx.ai.chat.ChatHandler;
 import com.ibm.watsonx.ai.chat.ChatResponse;
 import com.ibm.watsonx.ai.chat.ChatService;
+import com.ibm.watsonx.ai.chat.EmptyChatResponseException;
+import com.ibm.watsonx.ai.chat.TextChatResponse;
 import com.ibm.watsonx.ai.chat.model.AssistantMessage;
 import com.ibm.watsonx.ai.chat.model.ChatMessage;
 import com.ibm.watsonx.ai.chat.model.ChatUsage;
@@ -28,7 +30,6 @@ import com.ibm.watsonx.ai.chat.model.ExtractionTags.Think;
 import com.ibm.watsonx.ai.chat.model.FunctionCall;
 import com.ibm.watsonx.ai.chat.model.ResultMessage;
 import com.ibm.watsonx.ai.chat.model.ToolCall;
-import com.ibm.watsonx.ai.deployment.DeploymentService;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.ContentFilteredException;
@@ -71,18 +72,12 @@ public class WatsonxStreamingChatModelTest {
     ChatService mockChatService;
 
     @Mock
-    DeploymentService deploymentService;
-
-    @Mock
     ChatService.Builder mockChatServiceBuilder;
-
-    @Mock
-    DeploymentService.Builder mockDeploymentServiceBuilder;
 
     @Captor
     ArgumentCaptor<com.ibm.watsonx.ai.chat.ChatRequest> chatRequestCaptor;
 
-    static ChatResponse.Builder chatResponse;
+    static TextChatResponse.Builder<?> chatResponse;
 
     @BeforeEach
     void setUp() {
@@ -101,19 +96,8 @@ public class WatsonxStreamingChatModelTest {
         when(mockChatServiceBuilder.verifySsl(anyBoolean())).thenReturn(mockChatServiceBuilder);
         when(mockChatServiceBuilder.build()).thenReturn(mockChatService);
 
-        when(mockDeploymentServiceBuilder.baseUrl(any(URI.class))).thenReturn(mockDeploymentServiceBuilder);
-        when(mockDeploymentServiceBuilder.timeout(any())).thenReturn(mockDeploymentServiceBuilder);
-        when(mockDeploymentServiceBuilder.version(any())).thenReturn(mockDeploymentServiceBuilder);
-        when(mockDeploymentServiceBuilder.logRequests(any())).thenReturn(mockDeploymentServiceBuilder);
-        when(mockDeploymentServiceBuilder.logResponses(any())).thenReturn(mockDeploymentServiceBuilder);
-        when(mockDeploymentServiceBuilder.authenticator(any())).thenReturn(mockDeploymentServiceBuilder);
-        when(mockDeploymentServiceBuilder.apiKey(any())).thenReturn(mockDeploymentServiceBuilder);
-        when(mockDeploymentServiceBuilder.httpClient(any())).thenReturn(mockDeploymentServiceBuilder);
-        when(mockDeploymentServiceBuilder.verifySsl(anyBoolean())).thenReturn(mockDeploymentServiceBuilder);
-        when(mockDeploymentServiceBuilder.build()).thenReturn(deploymentService);
-
         var chatUsage = new ChatUsage(10, 10, 20);
-        chatResponse = ChatResponse.build()
+        chatResponse = TextChatResponse.builder()
                 .id("id")
                 .modelId("modelId")
                 .model("model")
@@ -141,11 +125,11 @@ public class WatsonxStreamingChatModelTest {
         var defaultRequestParameters =
                 assertInstanceOf(WatsonxChatRequestParameters.class, streamingChatModel.defaultRequestParameters());
 
-        var chatProviderField = assertDoesNotThrow(
-                () -> streamingChatModel.getClass().getSuperclass().getDeclaredField("chatProvider"));
-        var chatProvider = assertDoesNotThrow(() -> chatProviderField.get(streamingChatModel));
+        var chatServiceField = assertDoesNotThrow(
+                () -> streamingChatModel.getClass().getSuperclass().getDeclaredField("chatService"));
+        var chatService = assertDoesNotThrow(() -> chatServiceField.get(streamingChatModel));
 
-        assertInstanceOf(ChatService.class, chatProvider);
+        assertInstanceOf(ChatService.class, chatService);
         assertNull(defaultRequestParameters.frequencyPenalty());
         assertNull(defaultRequestParameters.logitBias());
         assertNull(defaultRequestParameters.logprobs());
@@ -170,50 +154,6 @@ public class WatsonxStreamingChatModelTest {
         assertNull(defaultRequestParameters.guidedRegex());
         assertNull(defaultRequestParameters.repetitionPenalty());
         assertNull(defaultRequestParameters.lengthPenalty());
-    }
-
-    @Test
-    void should_create_create_a_watsonx_chat_model_from_a_deployment_service() {
-
-        var streamingChatModel = assertDoesNotThrow(() -> WatsonxStreamingChatModel.builder()
-                .baseUrl(CloudRegion.FRANKFURT)
-                .apiKey("api-key-test")
-                .version("my-version")
-                .logRequests(true)
-                .logResponses(true)
-                .deploymentId("deployment-id")
-                .build());
-
-        var defaultRequestParameters =
-                assertInstanceOf(WatsonxChatRequestParameters.class, streamingChatModel.defaultRequestParameters());
-
-        var chatProviderField = assertDoesNotThrow(
-                () -> streamingChatModel.getClass().getSuperclass().getDeclaredField("chatProvider"));
-        var chatProvider = assertDoesNotThrow(() -> chatProviderField.get(streamingChatModel));
-
-        assertInstanceOf(DeploymentService.class, chatProvider);
-        assertNull(defaultRequestParameters.frequencyPenalty());
-        assertNull(defaultRequestParameters.logitBias());
-        assertNull(defaultRequestParameters.logprobs());
-        assertNull(defaultRequestParameters.maxOutputTokens());
-        assertNull(defaultRequestParameters.modelName());
-        assertNull(defaultRequestParameters.presencePenalty());
-        assertNull(defaultRequestParameters.projectId());
-        assertNull(defaultRequestParameters.responseFormat());
-        assertNull(defaultRequestParameters.seed());
-        assertNull(defaultRequestParameters.spaceId());
-        assertEquals(List.of(), defaultRequestParameters.stopSequences());
-        assertNull(defaultRequestParameters.temperature());
-        assertNull(defaultRequestParameters.timeout());
-        assertNull(defaultRequestParameters.toolChoice());
-        assertNull(defaultRequestParameters.toolChoiceName());
-        assertEquals(List.of(), defaultRequestParameters.toolSpecifications());
-        assertNull(defaultRequestParameters.topK());
-        assertNull(defaultRequestParameters.topLogprobs());
-        assertNull(defaultRequestParameters.topP());
-        assertNull(defaultRequestParameters.guidedChoice());
-        assertNull(defaultRequestParameters.guidedGrammar());
-        assertNull(defaultRequestParameters.guidedRegex());
     }
 
     @Test
@@ -288,7 +228,7 @@ public class WatsonxStreamingChatModelTest {
                 assertNull(parameters.responseFormat());
                 assertNull(parameters.seed());
                 assertEquals("spaceId", parameters.spaceId());
-                assertEquals(List.of(), parameters.stop());
+                assertNull(parameters.stop());
                 assertNull(parameters.temperature());
                 assertNull(parameters.timeLimit());
                 assertNull(parameters.toolChoice());
@@ -300,89 +240,10 @@ public class WatsonxStreamingChatModelTest {
                 assertNull(parameters.guidedRegex());
                 assertNull(parameters.repetitionPenalty());
                 assertNull(parameters.lengthPenalty());
-                assertNull(chatRequestCaptor.getValue().deploymentId());
 
             } catch (Exception e) {
                 fail(e);
             }
-        });
-    }
-
-    @Test
-    public void should_do_chat_with_deployment_service() throws Exception {
-
-        var messages = List.<ChatMessage>of(com.ibm.watsonx.ai.chat.model.UserMessage.text("Hello"));
-        doAnswer(invocation -> {
-                    ChatHandler handler = invocation.getArgument(1);
-
-                    for (String response : List.of("Hello", "World")) handler.onPartialResponse(response, null);
-
-                    var resultMessage = new ResultMessage(AssistantMessage.ROLE, "Hello World", null, null, null);
-                    var resultChoice = new ChatResponse.ResultChoice(0, resultMessage, "stop");
-                    chatResponse.choices(List.of(resultChoice));
-                    handler.onCompleteResponse(chatResponse.build());
-
-                    return CompletableFuture.completedFuture(null);
-                })
-                .when(deploymentService)
-                .chatStreaming(chatRequestCaptor.capture(), any(ChatHandler.class));
-
-        withDeploymentServiceMock(() -> {
-            var streamingChatModel = WatsonxStreamingChatModel.builder()
-                    .baseUrl("https://test.com")
-                    .deploymentId("deployment-id")
-                    .apiKey("api-key")
-                    .build();
-
-            var chatRequest =
-                    ChatRequest.builder().messages(UserMessage.from("Hello")).build();
-
-            var receivedResponses = new ArrayList<>();
-            var latch = new CountDownLatch(1);
-
-            var streamingHandler = new StreamingChatResponseHandler() {
-                @Override
-                public void onPartialResponse(String partialResponse) {
-                    receivedResponses.add(partialResponse);
-                }
-
-                @Override
-                public void onCompleteResponse(dev.langchain4j.model.chat.response.ChatResponse completeResponse) {
-                    assertEquals("Hello World", completeResponse.aiMessage().text());
-                    latch.countDown();
-                }
-
-                @Override
-                public void onError(Throwable error) {
-                    fail("Unexpected error: " + error);
-                }
-            };
-
-            streamingChatModel.chat(chatRequest, streamingHandler);
-            assertEquals(messages, chatRequestCaptor.getValue().messages());
-
-            try {
-                boolean completed = latch.await(2, TimeUnit.SECONDS);
-                assertTrue(completed, "Handler did not complete in time");
-                assertEquals(List.of("Hello", "World"), receivedResponses);
-            } catch (Exception e) {
-                fail(e);
-            }
-
-            chatRequest = ChatRequest.builder()
-                    .messages(List.of(dev.langchain4j.data.message.UserMessage.from("hello")))
-                    .parameters(WatsonxChatRequestParameters.builder()
-                            .deploymentId("deployment-id-override")
-                            .build())
-                    .build();
-
-            streamingChatModel.chat(chatRequest, streamingHandler);
-            assertEquals(2, chatRequestCaptor.getAllValues().size());
-            assertEquals(
-                    "deployment-id", chatRequestCaptor.getAllValues().get(0).deploymentId());
-            assertEquals(
-                    "deployment-id-override",
-                    chatRequestCaptor.getAllValues().get(1).deploymentId());
         });
     }
 
@@ -663,7 +524,7 @@ public class WatsonxStreamingChatModelTest {
                     ChatRequest.builder().messages(UserMessage.from("Hello")).build();
 
             var receivedResponses = new ArrayList<>();
-            var latch = new CountDownLatch(2);
+            var latch = new CountDownLatch(1);
 
             var streamingHandler = new StreamingChatResponseHandler() {
                 @Override
@@ -673,8 +534,7 @@ public class WatsonxStreamingChatModelTest {
 
                 @Override
                 public void onCompleteResponse(dev.langchain4j.model.chat.response.ChatResponse completeResponse) {
-                    assertEquals("Hello World", completeResponse.aiMessage().text());
-                    latch.countDown();
+                    fail("onCompleteResponse must not be called after a refusal");
                 }
 
                 @Override
@@ -705,13 +565,68 @@ public class WatsonxStreamingChatModelTest {
                 assertNull(parameters.responseFormat());
                 assertNull(parameters.seed());
                 assertEquals("spaceId", parameters.spaceId());
-                assertEquals(List.of(), parameters.stop());
+                assertNull(parameters.stop());
                 assertNull(parameters.temperature());
                 assertNull(parameters.timeLimit());
                 assertNull(parameters.toolChoice());
                 assertNull(parameters.toolChoiceOption());
                 assertNull(parameters.topLogprobs());
                 assertNull(parameters.topP());
+            } catch (Exception e) {
+                fail(e);
+            }
+        });
+    }
+
+    @Test
+    void should_report_empty_response_to_onError() {
+
+        doAnswer(invocation -> {
+                    ChatHandler handler = invocation.getArgument(1);
+
+                    var resultMessage = new ResultMessage(AssistantMessage.ROLE, null, null, null, null);
+                    var resultChoice = new ChatResponse.ResultChoice(0, resultMessage, "length");
+                    chatResponse.choices(List.of(resultChoice));
+                    handler.onCompleteResponse(chatResponse.build());
+
+                    return CompletableFuture.completedFuture(null);
+                })
+                .when(mockChatService)
+                .chatStreaming(chatRequestCaptor.capture(), any());
+
+        withChatServiceMock(() -> {
+            var streamingChatModel = WatsonxStreamingChatModel.builder()
+                    .baseUrl("https://test.com")
+                    .modelName("modelId")
+                    .projectId("projectId")
+                    .apiKey("api-key")
+                    .build();
+
+            var chatRequest =
+                    ChatRequest.builder().messages(UserMessage.from("Hello")).build();
+
+            var latch = new CountDownLatch(1);
+
+            var streamingHandler = new StreamingChatResponseHandler() {
+                @Override
+                public void onPartialResponse(String partialResponse) {}
+
+                @Override
+                public void onCompleteResponse(dev.langchain4j.model.chat.response.ChatResponse completeResponse) {
+                    fail("onCompleteResponse must not be called for an empty response");
+                }
+
+                @Override
+                public void onError(Throwable error) {
+                    assertInstanceOf(EmptyChatResponseException.class, error);
+                    latch.countDown();
+                }
+            };
+
+            streamingChatModel.chat(chatRequest, streamingHandler);
+
+            try {
+                assertTrue(latch.await(2, TimeUnit.SECONDS), "Handler did not complete in time");
             } catch (Exception e) {
                 fail(e);
             }
@@ -984,13 +899,6 @@ public class WatsonxStreamingChatModelTest {
     private void withChatServiceMock(Runnable action) {
         try (MockedStatic<ChatService> mockedStatic = mockStatic(ChatService.class)) {
             mockedStatic.when(ChatService::builder).thenReturn(mockChatServiceBuilder);
-            action.run();
-        }
-    }
-
-    private void withDeploymentServiceMock(Runnable action) {
-        try (MockedStatic<DeploymentService> mockedStatic = mockStatic(DeploymentService.class)) {
-            mockedStatic.when(DeploymentService::builder).thenReturn(mockDeploymentServiceBuilder);
             action.run();
         }
     }

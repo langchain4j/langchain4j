@@ -1,8 +1,10 @@
 package dev.langchain4j.model.openai;
 
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
+import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
+import static dev.langchain4j.model.ModelProvider.OPEN_AI;
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.DEFAULT_OPENAI_URL;
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.DEFAULT_USER_AGENT;
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.tokenUsageFrom;
@@ -13,10 +15,16 @@ import static java.util.Collections.unmodifiableMap;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.http.client.HttpClientBuilder;
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
+import dev.langchain4j.model.embedding.listener.EmbeddingModelListener;
+import dev.langchain4j.model.embedding.request.EmbeddingInput;
+import dev.langchain4j.model.embedding.request.EmbeddingParameter;
+import dev.langchain4j.model.embedding.request.EmbeddingRequest;
+import dev.langchain4j.model.embedding.request.EmbeddingRequestParameters;
+import dev.langchain4j.model.embedding.response.EmbeddingResponse;
+import dev.langchain4j.model.embedding.response.EmbeddingResponseMetadata;
 import dev.langchain4j.model.openai.internal.OpenAiClient;
-import dev.langchain4j.model.openai.internal.embedding.EmbeddingRequest;
-import dev.langchain4j.model.openai.internal.embedding.EmbeddingResponse;
 import dev.langchain4j.model.openai.spi.OpenAiEmbeddingModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
@@ -26,6 +34,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.Supplier;
 import org.slf4j.Logger;
 
@@ -42,6 +51,7 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
     private final Integer maxSegmentsPerBatch;
     private final String encodingFormat;
     private final Map<String, Object> customParameters;
+    private final List<EmbeddingModelListener> listeners;
 
     public OpenAiEmbeddingModel(OpenAiEmbeddingModelBuilder builder) {
 
@@ -69,7 +79,18 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
         this.customParameters = builder.customParameters == null
                 ? null
                 : unmodifiableMap(new LinkedHashMap<>(builder.customParameters));
+        this.listeners = copy(builder.listeners);
         ensureGreaterThanZero(this.maxSegmentsPerBatch, "maxSegmentsPerBatch");
+    }
+
+    @Override
+    public List<EmbeddingModelListener> listeners() {
+        return listeners;
+    }
+
+    @Override
+    public ModelProvider provider() {
+        return OPEN_AI;
     }
 
     @Override
@@ -87,14 +108,64 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
     }
 
     @Override
-    public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
+    public Set<EmbeddingParameter<?>> supportedParameters() {
+        return Set.of(
+                EmbeddingRequestParameters.MODEL_NAME,
+                EmbeddingRequestParameters.DIMENSIONS,
+                OpenAiEmbeddingRequestParameters.USER,
+                OpenAiEmbeddingRequestParameters.ENCODING_FORMAT,
+                OpenAiEmbeddingRequestParameters.CUSTOM_PARAMETERS);
+    }
 
-        List<String> texts = textSegments.stream().map(TextSegment::text).toList();
+    @Override
+    public EmbeddingRequestParameters defaultRequestParameters() {
+        return OpenAiEmbeddingRequestParameters.builder()
+                .modelName(modelName)
+                .dimensions(dimensions)
+                .user(user)
+                .encodingFormat(encodingFormat)
+                .customParameters(customParameters)
+                .build();
+    }
 
+    @Override
+    public EmbeddingResponse doEmbed(EmbeddingRequest request) {
+
+        EmbeddingRequestParameters parameters = request.parameters();
+
+        List<String> texts = request.inputs().stream()
+                .map(EmbeddingInput::text)
+                .toList();
         List<List<String>> textBatches = partition(texts, maxSegmentsPerBatch);
 
-        return embedBatchedTexts(textBatches);
+        List<EmbeddedBatch> responses = new ArrayList<>();
+        for (List<String> batch : textBatches) {
+            responses.add(embedTexts(batch, parameters));
+        }
+
+        List<Embedding> embeddings =
+                responses.stream().flatMap(batch -> batch.embeddings().stream()).toList();
+        TokenUsage tokenUsage = responses.stream()
+                .map(EmbeddedBatch::tokenUsage)
+                .filter(Objects::nonNull)
+                .reduce(TokenUsage::add)
+                .orElse(null);
+        String responseModelName = responses.stream()
+                .map(EmbeddedBatch::modelName)
+                .filter(Objects::nonNull)
+                .findFirst()
+                .orElse(null);
+
+        return EmbeddingResponse.builder()
+                .embeddings(embeddings)
+                .metadata(EmbeddingResponseMetadata.builder()
+                        .modelName(getOrDefault(responseModelName, getOrDefault(parameters.modelName(), modelName)))
+                        .tokenUsage(tokenUsage)
+                        .build())
+                .build();
     }
+
+    private record EmbeddedBatch(List<Embedding> embeddings, TokenUsage tokenUsage, String modelName) {}
 
     private List<List<String>> partition(List<String> inputList, int size) {
         List<List<String>> result = new ArrayList<>();
@@ -106,42 +177,27 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
         return result;
     }
 
-    private Response<List<Embedding>> embedBatchedTexts(List<List<String>> textBatches) {
-        List<Response<List<Embedding>>> responses = new ArrayList<>();
-        for (List<String> batch : textBatches) {
-            Response<List<Embedding>> response = embedTexts(batch);
-            responses.add(response);
-        }
-        return Response.from(
-                responses.stream()
-                        .flatMap(response -> response.content().stream())
-                        .toList(),
-                responses.stream()
-                        .map(Response::tokenUsage)
-                        .filter(Objects::nonNull)
-                        .reduce(TokenUsage::add)
-                        .orElse(null));
-    }
+    @SuppressWarnings("unchecked")
+    private EmbeddedBatch embedTexts(List<String> texts, EmbeddingRequestParameters parameters) {
 
-    private Response<List<Embedding>> embedTexts(List<String> texts) {
+        dev.langchain4j.model.openai.internal.embedding.EmbeddingRequest request =
+                dev.langchain4j.model.openai.internal.embedding.EmbeddingRequest.builder()
+                        .input(texts)
+                        .model(parameters.modelName())
+                        .dimensions(parameters.dimensions())
+                        .user(parameters.parameter(OpenAiEmbeddingRequestParameters.USER))
+                        .encodingFormat(parameters.parameter(OpenAiEmbeddingRequestParameters.ENCODING_FORMAT))
+                        .customParameters(parameters.parameter(OpenAiEmbeddingRequestParameters.CUSTOM_PARAMETERS))
+                        .build();
 
-        EmbeddingRequest request = EmbeddingRequest.builder()
-                .input(texts)
-                .model(modelName)
-                .dimensions(dimensions)
-                .user(user)
-                .encodingFormat(encodingFormat)
-                .customParameters(customParameters)
-                .build();
-
-        EmbeddingResponse response =
+        dev.langchain4j.model.openai.internal.embedding.EmbeddingResponse response =
                 withRetryMappingExceptions(() -> client.embedding(request).execute(), maxRetries);
 
         List<Embedding> embeddings = response.data().stream()
                 .map(openAiEmbedding -> Embedding.from(openAiEmbedding.embedding()))
                 .toList();
 
-        return Response.from(embeddings, tokenUsageFrom(response.usage()));
+        return new EmbeddedBatch(embeddings, tokenUsageFrom(response.usage()), response.model());
     }
 
     public static OpenAiEmbeddingModelBuilder builder() {
@@ -172,9 +228,15 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
         private Map<String, String> customQueryParams;
         private String encodingFormat;
         private Map<String, Object> customParameters;
+        private List<EmbeddingModelListener> listeners;
 
         public OpenAiEmbeddingModelBuilder() {
             // This is public so it can be extended
+        }
+
+        public OpenAiEmbeddingModelBuilder listeners(List<EmbeddingModelListener> listeners) {
+            this.listeners = listeners;
+            return this;
         }
 
         public OpenAiEmbeddingModelBuilder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
