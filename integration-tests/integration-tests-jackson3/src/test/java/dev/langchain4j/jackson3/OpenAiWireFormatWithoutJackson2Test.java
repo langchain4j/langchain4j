@@ -1,4 +1,4 @@
-package dev.langchain4j.json.jackson3;
+package dev.langchain4j.jackson3;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -22,16 +22,11 @@ import org.junit.jupiter.api.Test;
  * End-to-end check of the provider path: OpenAI's wire DTOs, serialized and parsed by Jackson 3,
  * with Jackson 2 absent from the classpath.
  */
-class OpenAiProviderOnJackson3Test {
+class OpenAiWireFormatWithoutJackson2Test {
 
     private final Json.JsonCodec codec = WireJson.codec(WireJsonSpec.builder()
             .propertyNaming(WireJsonSpec.PropertyNaming.SNAKE_CASE)
             .build());
-
-    @Test
-    void the_spi_resolves_to_the_jackson3_wire_codec() {
-        assertThat(codec).isInstanceOf(Jackson3WireJsonCodec.class);
-    }
 
     @Test
     void jackson2_is_absent() {

@@ -133,11 +133,6 @@ public final class McpJson {
     }
 
     /**
-     * Maps a future's value while keeping cancellation linked to the source. A plain
-     * {@code thenApply} would not propagate cancellation upstream, which would leave the
-     * transport's response stream open after the client cancels the operation.
-     */
-    /**
      * Reads JSON text. The codecs already report a failure as {@link JsonReadException} whichever
      * JSON library is plugged in, which is what a transport branches on when deciding whether to
      * fail an operation or log and carry on; this adds which message could not be read.
@@ -156,6 +151,11 @@ public final class McpJson {
         }
     }
 
+    /**
+     * Maps a future's value while keeping cancellation linked to the source. A plain
+     * {@code thenApply} would not propagate cancellation upstream, which would leave the
+     * transport's response stream open after the client cancels the operation.
+     */
     public static <T, R> CompletableFuture<R> map(CompletableFuture<T> source, Function<T, R> mapper) {
         CompletableFuture<R> mapped = new CompletableFuture<>() {
             @Override

@@ -115,24 +115,9 @@
           "justification": "Added so the internal wire DTOs can also be deserialized by Jackson 3, whose databind-package @JsonDeserialize(builder=...) differs from Jackson 2's. Jackson 2 behaviour is unchanged: the explicit @JsonDeserialize still takes precedence."
         },
         {
-          "code": "java.annotation.removed",
-          "annotationType": "com.fasterxml.jackson.annotation.JsonCreator",
-          "justification": "Moved off the DTOs: the annotation is applied by the codec now, so that the wire format does not depend on annotations only one JSON library can see. Wire format is unchanged and covered by WireFormatTest."
-        },
-        {
           "code": "java.annotation.added",
           "annotationType": "com.fasterxml.jackson.annotation.JsonAutoDetect",
           "justification": "Added to the builders so the Jackson 3 creator does not depend on the consuming mapper enabling field visibility. Affects internal wire DTOs only."
-        },
-        {
-          "code": "java.annotation.removed",
-          "annotationType": "com.fasterxml.jackson.annotation.JsonAutoDetect",
-          "justification": "Added to the builders so the Jackson 3 creator does not depend on the consuming mapper enabling field visibility. Affects internal wire DTOs only."
-        },
-        {
-          "code": "java.annotation.added",
-          "annotationType": "com.fasterxml.jackson.databind.annotation.JsonNaming",
-          "justification": "Removed from the internal wire DTOs; the snake_case naming strategy now lives on the codec, which is what allows the JSON library to be swapped. Wire format is unchanged and covered by WireFormatTest."
         },
         {
           "code": "java.annotation.removed",

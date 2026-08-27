@@ -11,8 +11,11 @@ package dev.langchain4j.exception;
  * failure means the input was not what was expected, which is often worth retrying or reporting,
  * while a write failure means the object being written cannot be represented, which is a bug.
  *
- * <p>The text that could not be read is deliberately not part of the message. It is untrusted input
- * that regularly carries credentials or user data, and exception messages end up in logs.
+ * <p>The document being read is deliberately not part of the message: it is untrusted input that
+ * regularly carries credentials or user data, and exception messages end up in logs. What the
+ * message does carry is the underlying library's reason for failing, and that reason can quote the
+ * fragment it tripped on - the value that would not convert, or the token that would not parse. So
+ * the message is bounded, not sanitised.
  */
 public class JsonException extends LangChain4jException {
 

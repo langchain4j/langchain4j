@@ -740,21 +740,20 @@ public class DefaultMcpClient implements McpClient {
         try {
             ToolExecutionResult toolResult = ToolExecutionHelper.extractResult(
                     finalResult, false, toolResultConverter);
-            notifyListeners(l -> l.afterExecuteTool(
-                    context, toolResult, McpJson.toMap(finalResult)));
+            notifyListeners(finalResult, (l, response) -> l.afterExecuteTool(context, toolResult, response));
             return toolResult;
         } catch (ToolExecutionException e) {
             if (e.errorCode() != null) {
                 // protocol error
                 notifyListeners(l -> l.onExecuteToolError(context, e));
-            } else {
+            } else if (!listeners.isEmpty()) {
                 // application-level error (called "Tool Execution Error" in MCP spec)
-                // -> we notify the listener with afterExecuteTool
-                notifyListeners(l -> l.afterExecuteTool(
-                        context,
-                        ToolExecutionHelper.extractResult(
-                                finalResult, true, toolResultConverter),
-                        McpJson.toMap(finalResult)));
+                // -> we notify the listener with afterExecuteTool. Checked here rather than left
+                // to notifyListeners because extracting the result runs the tool result converter,
+                // which is the caller's code and must not run for a notification nobody receives.
+                ToolExecutionResult errorResult =
+                        ToolExecutionHelper.extractResult(finalResult, true, toolResultConverter);
+                notifyListeners(finalResult, (l, response) -> l.afterExecuteTool(context, errorResult, response));
             }
             throw e;
         }
@@ -808,8 +807,7 @@ public class DefaultMcpClient implements McpClient {
                     "resources/read");
             McpReadResourceResult resourceResult = ResourcesHelper.parseResourceContents(result);
             final String finalResult = result;
-            notifyListeners(l -> l.afterResourceGet(
-                    context, resourceResult, McpJson.toMap(finalResult)));
+            notifyListeners(finalResult, (l, response) -> l.afterResourceGet(context, resourceResult, response));
             return resourceResult;
         } catch (ExecutionException | TimeoutException e) {
             notifyListeners(l -> l.onResourceGetError(context, e));
@@ -861,8 +859,7 @@ public class DefaultMcpClient implements McpClient {
                     "prompts/get");
             McpGetPromptResult promptResult = PromptsHelper.parsePromptContents(result);
             final String finalResult = result;
-            notifyListeners(l -> l.afterPromptGet(
-                    context, promptResult, McpJson.toMap(finalResult)));
+            notifyListeners(finalResult, (l, response) -> l.afterPromptGet(context, promptResult, response));
             return promptResult;
         } catch (ExecutionException | TimeoutException e) {
             notifyListeners(l -> l.onPromptGetError(context, e));
@@ -1549,6 +1546,19 @@ public class DefaultMcpClient implements McpClient {
                 log.warn("MCP client listener threw an exception", e);
             }
         }
+    }
+
+    /**
+     * Hands every listener the same parsed response. Parsing it inside the per-listener action
+     * would re-read the whole response once per listener, and reading it before the check would
+     * do that work for the common case of having none.
+     */
+    private void notifyListeners(String rawResponse, BiConsumer<McpClientListener, Map<String, Object>> action) {
+        if (listeners.isEmpty()) {
+            return;
+        }
+        Map<String, Object> response = McpJson.toMap(rawResponse);
+        notifyListeners(listener -> action.accept(listener, response));
     }
 
     private void assertNotClosed() {

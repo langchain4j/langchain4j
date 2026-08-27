@@ -13,8 +13,8 @@ public class JsonWriteException extends JsonException {
     }
 
     public JsonWriteException(String message, Throwable cause) {
-        // The cause's own message says what went wrong; both Jackson versions redact the source
-        // text from it, so this carries the reason without carrying the input.
+        // The cause's own message says what went wrong. It names the type that had no JSON
+        // representation rather than reproducing the object, which is why it can be carried here.
         super(cause == null || cause.getMessage() == null ? message : message + ": " + cause.getMessage(), cause);
     }
 }

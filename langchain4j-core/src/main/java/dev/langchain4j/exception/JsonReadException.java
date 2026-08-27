@@ -13,8 +13,9 @@ public class JsonReadException extends JsonException {
     }
 
     public JsonReadException(String message, Throwable cause) {
-        // The cause's own message says what went wrong; both Jackson versions redact the source
-        // text from it, so this carries the reason without carrying the input.
+        // The cause's own message says what went wrong. Both Jackson versions keep the document
+        // out of it, which is why it can be carried here; see JsonException for what that does
+        // and does not promise.
         super(cause == null || cause.getMessage() == null ? message : message + ": " + cause.getMessage(), cause);
     }
 }

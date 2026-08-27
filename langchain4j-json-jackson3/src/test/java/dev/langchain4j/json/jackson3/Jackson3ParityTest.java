@@ -1,7 +1,9 @@
 package dev.langchain4j.json.jackson3;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import dev.langchain4j.exception.JsonReadException;
 import dev.langchain4j.internal.Json;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -10,7 +12,8 @@ import org.junit.jupiter.api.Test;
 
 /**
  * Behaviour the Jackson 2 codec provides and which the Jackson 3 codec must match:
- * lenient date/time parsing and polymorphic handling of sealed types.
+ * lenient date/time parsing, polymorphic handling of sealed types, and keeping the document
+ * being read out of the failure message.
  */
 class Jackson3ParityTest {
 
@@ -34,6 +37,11 @@ class Jackson3ParityTest {
 
     static class HasShape {
         Shape shape;
+    }
+
+    static class Pojo {
+        String name;
+        int age;
     }
 
     @Test
@@ -88,5 +96,20 @@ class Jackson3ParityTest {
 
         assertThat(restored.shape).isInstanceOf(Square.class);
         assertThat(((Square) restored.shape).side()).isEqualTo(5);
+    }
+
+    /**
+     * Mirrors {@code JsonExceptionMessageTest} in langchain4j-core. The promise in
+     * {@link dev.langchain4j.exception.JsonException} rests on Jackson leaving
+     * {@code INCLUDE_SOURCE_IN_LOCATION} off, which has to hold for this codec too.
+     */
+    @Test
+    void the_document_being_read_is_not_in_the_message() {
+        String secret = "sk-not-a-real-key-2f7a";
+
+        assertThatThrownBy(() -> Json.fromJson("{\"name\":\"" + secret + "\", \"age\": }", Pojo.class))
+                .isInstanceOf(JsonReadException.class)
+                .hasMessageContaining("Unexpected character")
+                .hasMessageNotContaining(secret);
     }
 }

@@ -144,11 +144,7 @@ class ChromaHttpClient {
             if (responseType == Void.class || response.body().isEmpty()) {
                 return null;
             }
-            try {
-                return codec.fromJson(response.body(), responseType);
-            } catch (RuntimeException e) {
-                throw new RuntimeException("Failed to parse response: " + response.body(), e);
-            }
+            return codec.fromJson(response.body(), responseType);
         } catch (HttpException e) {
             throw new RuntimeException("HTTP error: " + e.getMessage(), e);
         }

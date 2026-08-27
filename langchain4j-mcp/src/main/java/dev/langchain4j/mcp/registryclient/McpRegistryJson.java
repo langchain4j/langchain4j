@@ -15,6 +15,14 @@ public class McpRegistryJson {
         throw new InstantiationException("Can't instantiate this utility class.");
     }
 
+    /**
+     * The registry model classes keep their fields private and expose public getters, which is what
+     * lets a codec see them: a wire codec detects properties from accessors, not from fields. A new
+     * field without a public getter, or one named other than {@code getX}/{@code isX}, would be
+     * skipped silently and read as null - so such a field has to name itself with
+     * {@code @JsonProperty}, as {@code McpRegistryPong} does. {@code McpRegistryModelTest} enforces
+     * this.
+     */
     private static final Json.JsonCodec CODEC =
             WireJson.codec(WireJsonSpec.builder().prettyPrint(true).build());
 
