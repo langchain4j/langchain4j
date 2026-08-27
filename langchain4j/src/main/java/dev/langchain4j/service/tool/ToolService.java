@@ -324,7 +324,8 @@ public class ToolService {
         }
 
         for (Method candidateMethod : allConcreteMethods(objectWithTools.getClass())) {
-            Method method = getAnnotatedMethod(candidateMethod, CompensateFor.class).orElse(null);
+            Method method =
+                    getAnnotatedMethod(candidateMethod, CompensateFor.class).orElse(null);
             if (method != null) {
                 CompensateFor compensateFor = method.getAnnotation(CompensateFor.class);
                 String toolName = compensateFor.value();
@@ -383,8 +384,10 @@ public class ToolService {
                             .methodToInvoke(method)
                             .propagateToolExecutionExceptions(true)
                             .build();
-                    compensatingActions.put(toolName, toolExecution ->
-                            executor.executeWithContext(toolExecution.request(), toolExecution.invocationContext()));
+                    compensatingActions.put(
+                            toolName,
+                            toolExecution -> executor.executeWithContext(
+                                    toolExecution.request(), toolExecution.invocationContext()));
                 }
             }
         }
@@ -457,7 +460,8 @@ public class ToolService {
         return afterToolExecution;
     }
 
-    public void onCompensableToolExecution(BiConsumer<ToolExecution, Consumer<ToolExecution>> onCompensableToolExecution) {
+    public void onCompensableToolExecution(
+            BiConsumer<ToolExecution, Consumer<ToolExecution>> onCompensableToolExecution) {
         if (compensatingToolMisconfiguration != null) {
             throw compensatingToolMisconfiguration;
         }

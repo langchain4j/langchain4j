@@ -161,10 +161,11 @@ class AiServicesBuilderTest {
 
         ChatModel chatModel = ChatModelMock.thatAlwaysResponds("Hello there!");
 
-        assertThatNoException().isThrownBy(() -> AiServices.builder(TestService.class)
-                .chatModel(chatModel)
-                .tools(new ProxiedToolClass())
-                .build());
+        assertThatNoException()
+                .isThrownBy(() -> AiServices.builder(TestService.class)
+                        .chatModel(chatModel)
+                        .tools(new ProxiedToolClass())
+                        .build());
     }
 
     @Test
