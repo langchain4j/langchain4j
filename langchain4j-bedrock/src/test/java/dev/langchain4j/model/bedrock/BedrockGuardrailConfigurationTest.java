@@ -54,6 +54,7 @@ class BedrockGuardrailConfigurationTest {
         return BedrockGuardrailConfiguration.builder()
                 .guardrailIdentifier("guardrail")
                 .guardrailVersion("1")
-                .streamProcessingMode(ProcessingMode.SYNC);
+                .streamProcessingMode(ProcessingMode.SYNC)
+                .guardContentPlacement(BedrockGuardContentPlacement.LAST_USER_MESSAGE);
     }
 }

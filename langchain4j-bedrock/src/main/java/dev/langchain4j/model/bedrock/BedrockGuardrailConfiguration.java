@@ -55,12 +55,13 @@ public class BedrockGuardrailConfiguration {
         BedrockGuardrailConfiguration that = (BedrockGuardrailConfiguration) o;
         return Objects.equals(guardrailIdentifier, that.guardrailIdentifier)
                 && Objects.equals(guardrailVersion, that.guardrailVersion)
-                && Objects.equals(streamProcessingMode, that.streamProcessingMode);
+                && Objects.equals(streamProcessingMode, that.streamProcessingMode)
+                && Objects.equals(guardContentPlacement, that.guardContentPlacement);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(guardrailIdentifier, guardrailVersion, streamProcessingMode);
+        return Objects.hash(guardrailIdentifier, guardrailVersion, streamProcessingMode, guardContentPlacement);
     }
 
     @Override

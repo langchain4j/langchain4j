@@ -393,14 +393,16 @@ class BedrockChatRequestParametersTest {
     void should_not_be_equal_when_guardrail_configuration_differs() {
         BedrockChatRequestParameters first = BedrockChatRequestParameters.builder()
                 .guardrailConfiguration(BedrockGuardrailConfiguration.builder()
-                        .guardrailIdentifier("first")
+                        .guardrailIdentifier("guardrail")
                         .guardrailVersion("1")
+                        .guardContentPlacement(BedrockGuardContentPlacement.LAST_USER_MESSAGE)
                         .build())
                 .build();
         BedrockChatRequestParameters second = BedrockChatRequestParameters.builder()
                 .guardrailConfiguration(BedrockGuardrailConfiguration.builder()
-                        .guardrailIdentifier("second")
+                        .guardrailIdentifier("guardrail")
                         .guardrailVersion("1")
+                        .guardContentPlacement(BedrockGuardContentPlacement.ALL_USER_MESSAGES)
                         .build())
                 .build();
 
