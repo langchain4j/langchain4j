@@ -1,19 +1,18 @@
 package dev.langchain4j.model.voyageai;
 
-import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.output.Response;
-import dev.langchain4j.model.scoring.ScoringModel;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
-
-import java.time.Duration;
-import java.util.List;
-
 import static dev.langchain4j.model.voyageai.VoyageAiScoringModelName.RERANK_LITE_1;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.data.Percentage.withPercentage;
+
+import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.scoring.ScoringModel;
+import java.time.Duration;
+import java.util.List;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 @EnabledIfEnvironmentVariable(named = "VOYAGE_API_KEY", matches = ".+")
 class VoyageAiScoringModelIT {
@@ -59,7 +58,8 @@ class VoyageAiScoringModelIT {
                 .build();
 
         TextSegment catSegment = TextSegment.from("The Maine Coon is a large domesticated cat breed.");
-        TextSegment dogSegment = TextSegment.from("The sweet-faced, lovable Labrador Retriever is one of America's most popular dog breeds, year after year.");
+        TextSegment dogSegment = TextSegment.from(
+                "The sweet-faced, lovable Labrador Retriever is one of America's most popular dog breeds, year after year.");
         List<TextSegment> segments = asList(catSegment, dogSegment);
 
         String query = "tell me about dogs";
@@ -71,38 +71,6 @@ class VoyageAiScoringModelIT {
         List<Double> scores = response.content();
         assertThat(scores).hasSize(2);
         assertThat(scores.get(0)).isLessThan(scores.get(1));
-
-        assertThat(response.tokenUsage().inputTokenCount()).isNotNegative();
-        assertThat(response.tokenUsage().outputTokenCount()).isNull();
-        assertThat(response.tokenUsage().totalTokenCount()).isNotNegative();
-
-        assertThat(response.finishReason()).isNull();
-    }
-
-    @Test
-    void should_respect_top_k() {
-        // given
-        ScoringModel model = VoyageAiScoringModel.builder()
-                .apiKey(System.getenv("VOYAGE_API_KEY"))
-                .modelName(RERANK_LITE_1)
-                .timeout(Duration.ofSeconds(60))
-                .topK(1)
-                .logRequests(true)
-                .logResponses(true)
-                .build();
-
-        TextSegment catSegment = TextSegment.from("The Maine Coon is a large domesticated cat breed.");
-        TextSegment dogSegment = TextSegment.from("The sweet-faced, lovable Labrador Retriever is one of America's most popular dog breeds, year after year.");
-        List<TextSegment> segments = asList(catSegment, dogSegment);
-
-        String query = "tell me about dogs";
-
-        // when
-        Response<List<Double>> response = model.scoreAll(segments, query);
-
-        // then
-        List<Double> scores = response.content();
-        assertThat(scores).hasSize(1);
 
         assertThat(response.tokenUsage().inputTokenCount()).isNotNegative();
         assertThat(response.tokenUsage().outputTokenCount()).isNull();

@@ -412,7 +412,7 @@ OpenAiOfficialResponsesChatResponseMetadata metadata =
 
 metadata.id();               // Response ID (can be used as previousResponseId)
 metadata.modelName();        // Model name used for the request
-metadata.finishReason();     // Finish reason (STOP, LENGTH, TOOL_EXECUTION, OTHER)
+metadata.finishReason();     // Finish reason (STOP, LENGTH, TOOL_EXECUTION, CONTENT_FILTER, OTHER)
 metadata.tokenUsage();       // Returns OpenAiOfficialTokenUsage with detailed token counts
 metadata.createdAt();        // Timestamp when the response was created
 metadata.completedAt();      // Timestamp when the response was completed

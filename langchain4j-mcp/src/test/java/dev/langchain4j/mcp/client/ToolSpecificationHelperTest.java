@@ -12,10 +12,9 @@ import static dev.langchain4j.mcp.client.McpToolMetadataKeys.TITLE_ANNOTATION;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.internal.JsonSchemaElementUtils;
+import dev.langchain4j.mcp.client.transport.McpJson;
 import dev.langchain4j.model.chat.request.json.JsonAnyOfSchema;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonBooleanSchema;
@@ -32,8 +31,6 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 class ToolSpecificationHelperTest {
-
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     @Test
     void toolWithSimpleParams() throws JsonProcessingException {
@@ -84,7 +81,7 @@ class ToolSpecificationHelperTest {
                       }
                     } ]
                 """;
-        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        List<Map<String, Object>> json = toolList(text);
         List<ToolSpecification> toolSpecifications = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
         assertThat(toolSpecifications).hasSize(1);
         ToolSpecification toolSpecification = toolSpecifications.get(0);
@@ -154,7 +151,7 @@ class ToolSpecificationHelperTest {
                   }
                 ]
                 """;
-        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        List<Map<String, Object>> json = toolList(text);
         List<ToolSpecification> toolSpecifications = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
         assertThat(toolSpecifications).hasSize(1);
         ToolSpecification toolSpecification = toolSpecifications.get(0);
@@ -195,7 +192,7 @@ class ToolSpecificationHelperTest {
                     }
                 }]
                 """;
-        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        List<Map<String, Object>> json = toolList(text);
         List<ToolSpecification> toolSpecifications = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
         assertThat(toolSpecifications).hasSize(1);
         ToolSpecification toolSpecification = toolSpecifications.get(0);
@@ -238,7 +235,7 @@ class ToolSpecificationHelperTest {
                           }
                         }]
                         """;
-        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        List<Map<String, Object>> json = toolList(text);
         List<ToolSpecification> toolSpecifications = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
         assertThat(toolSpecifications).hasSize(1);
         ToolSpecification toolSpecification = toolSpecifications.get(0);
@@ -274,11 +271,38 @@ class ToolSpecificationHelperTest {
                   }
                 }]
                 """;
-        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        List<Map<String, Object>> json = toolList(text);
         List<ToolSpecification> toolSpecifications = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
         JsonObjectSchema parameters = toolSpecifications.get(0).parameters();
         JsonAnyOfSchema status = (JsonAnyOfSchema) parameters.properties().get("status");
         assertThat(status.description()).isEqualTo("Filter by status (nullable)");
+    }
+
+    @Test
+    void objectSchemaWithSchemaTypedAdditionalPropertiesAllowsExtraProperties() throws JsonProcessingException {
+        // "additionalProperties" may be a schema object (common in real MCP schemas) to say "extra
+        // properties are allowed, each matching this schema". JsonObjectSchema only models it as a
+        // boolean, so this must map to "allowed" (true) rather than being collapsed to false, which
+        // would wrongly tell the model to reject any extra property.
+        String text = """
+                [{
+                  "name": "query",
+                  "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                      "filters": {
+                        "type": "object",
+                        "additionalProperties": {"type": "string"}
+                      }
+                    }
+                  }
+                }]
+                """;
+        List<Map<String, Object>> json = toolList(text);
+        List<ToolSpecification> toolSpecifications = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
+        JsonObjectSchema filters = (JsonObjectSchema)
+                toolSpecifications.get(0).parameters().properties().get("filters");
+        assertThat(filters.additionalProperties()).isEqualTo(true);
     }
 
     @Test
@@ -352,7 +376,7 @@ class ToolSpecificationHelperTest {
                     }
                 }]
                 """;
-        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        List<Map<String, Object>> json = toolList(text);
         List<ToolSpecification> toolSpecifications = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
 
         assertThat(toolSpecifications).hasSize(1);
@@ -407,7 +431,7 @@ class ToolSpecificationHelperTest {
                     }
                 }]
                 """;
-        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        List<Map<String, Object>> json = toolList(text);
         List<ToolSpecification> toolSpecifications = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
 
         assertThat(toolSpecifications).hasSize(1);
@@ -441,7 +465,7 @@ class ToolSpecificationHelperTest {
                     }
                 }]
                 """;
-        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        List<Map<String, Object>> json = toolList(text);
         List<ToolSpecification> toolSpecifications = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
 
         assertThat(toolSpecifications).hasSize(1);
@@ -471,7 +495,7 @@ class ToolSpecificationHelperTest {
                    }
                  }]
                 """;
-        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        List<Map<String, Object>> json = toolList(text);
         List<ToolSpecification> toolSpecifications = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
         assertThat(toolSpecifications.get(0).parameters().properties().get("value"))
                 .isInstanceOf(JsonObjectSchema.class);
@@ -516,7 +540,7 @@ class ToolSpecificationHelperTest {
                   }
                 }]
                 """;
-        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        List<Map<String, Object>> json = toolList(text);
         List<ToolSpecification> toolSpecifications = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
         assertThat(toolSpecifications.get(0).parameters().properties().get("fieldSelections"))
                 .isInstanceOf(JsonAnyOfSchema.class);
@@ -551,7 +575,7 @@ class ToolSpecificationHelperTest {
                     }
                 }]
                 """;
-        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        List<Map<String, Object>> json = toolList(text);
         List<ToolSpecification> toolSpecifications = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
 
         assertThat(toolSpecifications).hasSize(1);
@@ -580,7 +604,7 @@ class ToolSpecificationHelperTest {
                     "title": "A title in the root tool object"
                 }]
                 """;
-        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        List<Map<String, Object>> json = toolList(text);
         Map<String, Object> metadata = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json)
                 .get(0)
                 .metadata();
@@ -622,7 +646,7 @@ class ToolSpecificationHelperTest {
                     }
                 }]
                 """;
-        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        List<Map<String, Object>> json = toolList(text);
         Map<String, Object> metadata = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json)
                 .get(0)
                 .metadata();
@@ -655,7 +679,7 @@ class ToolSpecificationHelperTest {
                     ]
                 }]
                 """;
-        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        List<Map<String, Object>> json = toolList(text);
         Map<String, Object> metadata = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json)
                 .get(0)
                 .metadata();
@@ -675,7 +699,7 @@ class ToolSpecificationHelperTest {
                     "inputSchema": {}
                 }]
                 """;
-        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        List<Map<String, Object>> json = toolList(text);
         Map<String, Object> metadata = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json)
                 .get(0)
                 .metadata();
@@ -701,7 +725,7 @@ class ToolSpecificationHelperTest {
                     }
                 }]
                 """;
-        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        List<Map<String, Object>> json = toolList(text);
         Map<String, Object> metadata = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json)
                 .get(0)
                 .metadata();
@@ -751,7 +775,7 @@ class ToolSpecificationHelperTest {
                     }
                 }]
                 """;
-        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        List<Map<String, Object>> json = toolList(text);
         List<ToolSpecification> toolSpecifications = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
         assertThat(toolSpecifications).hasSize(1);
         ToolSpecification toolSpecification = toolSpecifications.get(0);
@@ -810,7 +834,7 @@ class ToolSpecificationHelperTest {
                     }
                 }]
                 """;
-        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        List<Map<String, Object>> json = toolList(text);
         List<ToolSpecification> toolSpecifications = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
         assertThat(toolSpecifications).hasSize(1);
 
@@ -860,7 +884,7 @@ class ToolSpecificationHelperTest {
                     }
                 }]
                 """;
-        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        List<Map<String, Object>> json = toolList(text);
         List<ToolSpecification> toolSpecifications = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
         assertThat(toolSpecifications).hasSize(1);
 
@@ -909,7 +933,7 @@ class ToolSpecificationHelperTest {
                     }
                 }]
                 """;
-        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        List<Map<String, Object>> json = toolList(text);
         List<ToolSpecification> toolSpecifications = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
         JsonObjectSchema parameters = toolSpecifications.get(0).parameters();
 
@@ -941,7 +965,7 @@ class ToolSpecificationHelperTest {
                     }
                 }]
                 """;
-        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        List<Map<String, Object>> json = toolList(text);
         List<ToolSpecification> toolSpecifications = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
         JsonObjectSchema parameters = toolSpecifications.get(0).parameters();
 
@@ -971,7 +995,7 @@ class ToolSpecificationHelperTest {
                     }
                 }]
                 """;
-        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        List<Map<String, Object>> json = toolList(text);
         List<ToolSpecification> toolSpecifications = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
         JsonObjectSchema parameters = toolSpecifications.get(0).parameters();
 
@@ -1006,7 +1030,7 @@ class ToolSpecificationHelperTest {
                     }
                 }]
                 """;
-        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        List<Map<String, Object>> json = toolList(text);
         List<ToolSpecification> tools = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
         assertThat(tools).hasSize(1);
         Map<String, String> headers =
@@ -1038,7 +1062,7 @@ class ToolSpecificationHelperTest {
                     }
                 }]
                 """;
-        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        List<Map<String, Object>> json = toolList(text);
         List<ToolSpecification> tools = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
         Map<String, String> headers =
                 (Map<String, String>) tools.get(0).metadata().get(MCP_PARAM_HEADERS);
@@ -1060,7 +1084,7 @@ class ToolSpecificationHelperTest {
                     }
                 }]
                 """;
-        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        List<Map<String, Object>> json = toolList(text);
         List<ToolSpecification> tools = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
         assertThat(tools.get(0).metadata()).doesNotContainKey(MCP_PARAM_HEADERS);
     }
@@ -1083,7 +1107,7 @@ class ToolSpecificationHelperTest {
                     }
                 }]
                 """;
-        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        List<Map<String, Object>> json = toolList(text);
         List<ToolSpecification> tools = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
         assertThat(tools).isEmpty();
     }
@@ -1106,7 +1130,7 @@ class ToolSpecificationHelperTest {
                     }
                 }]
                 """;
-        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        List<Map<String, Object>> json = toolList(text);
         List<ToolSpecification> tools = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
         assertThat(tools).isEmpty();
     }
@@ -1133,7 +1157,7 @@ class ToolSpecificationHelperTest {
                     }
                 }]
                 """;
-        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        List<Map<String, Object>> json = toolList(text);
         List<ToolSpecification> tools = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
         assertThat(tools).isEmpty();
     }
@@ -1156,7 +1180,7 @@ class ToolSpecificationHelperTest {
                     }
                 }]
                 """;
-        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        List<Map<String, Object>> json = toolList(text);
         List<ToolSpecification> tools = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
         assertThat(tools).isEmpty();
     }
@@ -1179,7 +1203,7 @@ class ToolSpecificationHelperTest {
                     }
                 }]
                 """;
-        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        List<Map<String, Object>> json = toolList(text);
         List<ToolSpecification> tools = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
         assertThat(tools).isEmpty();
     }
@@ -1202,7 +1226,7 @@ class ToolSpecificationHelperTest {
                     }
                 }]
                 """;
-        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        List<Map<String, Object>> json = toolList(text);
         List<ToolSpecification> tools = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
         assertThat(tools).isEmpty();
     }
@@ -1225,7 +1249,7 @@ class ToolSpecificationHelperTest {
                     }
                 }]
                 """;
-        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        List<Map<String, Object>> json = toolList(text);
         List<ToolSpecification> tools = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
         assertThat(tools).hasSize(1);
         assertThat(tools.get(0).metadata().get(MCP_PARAM_HEADERS)).isEqualTo(Map.of("tenant", "X-Tenant"));
@@ -1258,7 +1282,7 @@ class ToolSpecificationHelperTest {
                     }
                 }]
                 """;
-        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        List<Map<String, Object>> json = toolList(text);
         List<ToolSpecification> tools = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
         assertThat(tools).hasSize(1);
         assertThat(tools.get(0).name()).isEqualTo("good_tool");
@@ -1285,7 +1309,7 @@ class ToolSpecificationHelperTest {
                     }
                 }]
                 """;
-        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        List<Map<String, Object>> json = toolList(text);
         List<ToolSpecification> tools = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
         assertThat(tools).isEmpty();
     }
@@ -1312,7 +1336,7 @@ class ToolSpecificationHelperTest {
                     }
                 }]
                 """;
-        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        List<Map<String, Object>> json = toolList(text);
         List<ToolSpecification> tools = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
         assertThat(tools).isEmpty();
     }
@@ -1342,8 +1366,17 @@ class ToolSpecificationHelperTest {
                     }
                 }]
                 """;
-        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        List<Map<String, Object>> json = toolList(text);
         List<ToolSpecification> tools = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
         assertThat(tools).isEmpty();
+    }
+
+    @SuppressWarnings("unchecked")
+    private static List<Map<String, Object>> toolList(String json) {
+        try {
+            return McpJson.deserialize(McpJson.parse(json), List.class);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 }
