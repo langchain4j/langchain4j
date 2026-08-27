@@ -882,18 +882,33 @@ class TokenWindowChatMemoryTest implements WithAssertions {
     }
 
     @Test
-    void messages_should_not_write_back_to_store_when_auto_recover_cleans_up() {
+    void should_recover_interrupted_tool_execution_when_enabled() {
 
+        // given
         var store = new HitCountChatMemoryStore();
-
-        ToolExecutionRequest toolRequest = ToolExecutionRequest.builder()
+        ToolExecutionRequest firstRequest = ToolExecutionRequest.builder()
                 .id("1")
-                .name("tool")
+                .name("tool1")
                 .arguments("{}")
                 .build();
-        AiMessage aiMessageWithTools = AiMessage.from(toolRequest);
+        ToolExecutionRequest secondRequest = ToolExecutionRequest.builder()
+                .id("2")
+                .name("tool2")
+                .arguments("{}")
+                .build();
+        UserMessage firstUserMessage = userMessage("hello");
+        AiMessage interruptedAiMessage = AiMessage.from(firstRequest, secondRequest);
+        ToolExecutionResultMessage partialResult = ToolExecutionResultMessage.from(firstRequest, "result");
+        UserMessage secondUserMessage = userMessage("world");
+        List<ChatMessage> interruptedHistory = List.of(firstUserMessage, interruptedAiMessage, partialResult);
+        store.updateMessages("default", interruptedHistory);
 
-        store.updateMessages("default", List.of(userMessage("hello"), aiMessageWithTools));
+        // disabled by default
+        ChatMemory defaultChatMemory = TokenWindowChatMemory.builder()
+                .maxTokens(1000, TOKEN_COUNT_ESTIMATOR)
+                .chatMemoryStore(store)
+                .build();
+        assertThat(defaultChatMemory.messages()).containsExactlyElementsOf(interruptedHistory);
 
         ChatMemory chatMemory = TokenWindowChatMemory.builder()
                 .maxTokens(1000, TOKEN_COUNT_ESTIMATOR)
@@ -901,41 +916,42 @@ class TokenWindowChatMemoryTest implements WithAssertions {
                 .autoRecoverOrphanedToolMessages(true)
                 .build();
 
-        var counts =
-                store.measureHitCounts(() -> assertThat(chatMemory.messages()).containsExactly(userMessage("hello")));
-        assertThat(counts).isEqualTo(new HitCountChatMemoryStore.HitCounts(1, 0, 0));
+        // when-then: reading returns a cleaned view without changing the store
+        assertThat(chatMemory.messages()).containsExactly(firstUserMessage);
+        assertThat(store.getMessages("default")).containsExactlyElementsOf(interruptedHistory);
 
-        assertThat(store.getMessages("default")).containsExactly(userMessage("hello"), aiMessageWithTools);
+        // when-then: a later user message persists the cleanup
+        chatMemory.add(secondUserMessage);
+        assertThat(chatMemory.messages()).containsExactly(firstUserMessage, secondUserMessage);
+        assertThat(store.getMessages("default")).containsExactly(firstUserMessage, secondUserMessage);
     }
 
     @Test
-    void add_should_recover_stale_tool_messages_before_enforcing_capacity_when_auto_recover_is_enabled() {
+    void should_not_remove_in_flight_tool_block_during_add_when_auto_recover_is_enabled() {
 
+        // given
         var store = new HitCountChatMemoryStore();
-
         ToolExecutionRequest toolRequest = ToolExecutionRequest.builder()
                 .id("1")
                 .name("tool")
                 .arguments("{}")
                 .build();
-        UserMessage firstUserMessage = userMessage("hello");
         AiMessage aiMessageWithTools = AiMessage.from(toolRequest);
-        UserMessage secondUserMessage = userMessage("world");
-
-        store.updateMessages("default", List.of(firstUserMessage, aiMessageWithTools));
-
+        ToolExecutionResultMessage resultMessage = ToolExecutionResultMessage.from(toolRequest, "result");
         ChatMemory chatMemory = TokenWindowChatMemory.builder()
-                .maxTokens(
-                        TOKEN_COUNT_ESTIMATOR.estimateTokenCountInMessages(
-                                List.of(firstUserMessage, secondUserMessage)),
-                        TOKEN_COUNT_ESTIMATOR)
+                .maxTokens(1000, TOKEN_COUNT_ESTIMATOR)
                 .chatMemoryStore(store)
                 .autoRecoverOrphanedToolMessages(true)
                 .build();
 
-        chatMemory.add(secondUserMessage);
+        // when
+        chatMemory.add(userMessage("hello"));
+        chatMemory.add(aiMessageWithTools);
+        chatMemory.add(resultMessage);
 
-        assertThat(store.getMessages("default")).containsExactly(firstUserMessage, secondUserMessage);
-        assertThat(chatMemory.messages()).containsExactly(firstUserMessage, secondUserMessage);
+        // then
+        assertThat(store.getMessages("default"))
+                .containsExactly(userMessage("hello"), aiMessageWithTools, resultMessage);
+        assertThat(chatMemory.messages()).containsExactly(userMessage("hello"), aiMessageWithTools, resultMessage);
     }
 }

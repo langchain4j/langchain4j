@@ -72,7 +72,9 @@ public class TokenWindowChatMemory implements ChatMemory {
 
     @Override
     public void add(ChatMessage message) {
-        List<ChatMessage> messages = messagesForAdd(message);
+        List<ChatMessage> messages = autoRecoverOrphanedToolMessages && message instanceof ToolExecutionResultMessage
+                ? new LinkedList<>(store.getMessages(id))
+                : messages();
 
         if (message instanceof SystemMessage) {
             Optional<SystemMessage> maybeSystemMessage = SystemMessage.findFirst(messages);
@@ -96,17 +98,6 @@ public class TokenWindowChatMemory implements ChatMemory {
         ensureCapacity(messages, maxTokens, tokenCountEstimator);
 
         store.updateMessages(id, messages);
-    }
-
-    private List<ChatMessage> messagesForAdd(ChatMessage message) {
-        if (autoRecoverOrphanedToolMessages) {
-            List<ChatMessage> messages = new LinkedList<>(store.getMessages(id));
-            if (!(message instanceof ToolExecutionResultMessage)) {
-                ChatMemoryUtils.removeOrphanedToolMessages(messages);
-            }
-            return messages;
-        }
-        return messages();
     }
 
     @Override
@@ -134,7 +125,7 @@ public class TokenWindowChatMemory implements ChatMemory {
         ensureGreaterThanZero(maxTokens, "maxTokens");
         List<ChatMessage> messages = new LinkedList<>(store.getMessages(id));
         if (autoRecoverOrphanedToolMessages) {
-            ChatMemoryUtils.removeOrphanedToolMessages(messages);
+            ChatMemoryUtils.removeInterruptedToolExecutions(messages);
         }
         ensureCapacity(messages, maxTokens, tokenCountEstimator);
         return messages;
@@ -253,25 +244,11 @@ public class TokenWindowChatMemory implements ChatMemory {
         }
 
         /**
-         * When enabled, orphaned tool-related messages are automatically removed
-         * when {@link ChatMemory#messages()} is called. Stale orphaned tool messages
-         * are also removed before adding new non-tool-result messages, so they do not
-         * affect window capacity. In-flight tool blocks are preserved while adding
-         * {@link ToolExecutionResultMessage}(s).
-         * <p>
-         * An {@link AiMessage} with {@link ToolExecutionRequest}(s) is considered orphaned
-         * if it is not immediately followed by the expected number of contiguous
-         * {@link ToolExecutionResultMessage}(s), or when the available tool call IDs do not match.
-         * Standalone {@link ToolExecutionResultMessage}(s) that are not part of a complete tool block
-         * are also removed.
-         * <p>
-         * This typically happens when the application restarts or an error occurs during
-         * tool execution, leaving the chat memory in an inconsistent state that causes
-         * LLM providers (such as OpenAI) to reject subsequent requests.
-         * <p>
-         * Disabled by default for backward compatibility.
+         * Removes interrupted tool calls from the messages returned by {@link ChatMemory#messages()}.
+         * A later non-result message persists the cleanup, while tool result messages preserve an
+         * in-flight tool execution. Disabled by default.
          *
-         * @param autoRecoverOrphanedToolMessages whether to automatically remove orphaned tool messages
+         * @param autoRecoverOrphanedToolMessages whether to remove interrupted tool calls
          * @return builder
          * @since 1.20.0
          */

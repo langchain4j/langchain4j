@@ -672,19 +672,34 @@ class MessageWindowChatMemoryTest implements WithAssertions {
     }
 
     @Test
-    void messages_should_not_write_back_to_store_when_auto_recover_cleans_up() {
+    void should_recover_interrupted_tool_execution_when_enabled() {
 
+        // given
         var store = new HitCountChatMemoryStore();
-
-        ToolExecutionRequest toolRequest = ToolExecutionRequest.builder()
+        ToolExecutionRequest firstRequest = ToolExecutionRequest.builder()
                 .id("1")
-                .name("tool")
+                .name("tool1")
                 .arguments("{}")
                 .build();
-        AiMessage aiMessageWithTools = AiMessage.from(toolRequest);
+        ToolExecutionRequest secondRequest = ToolExecutionRequest.builder()
+                .id("2")
+                .name("tool2")
+                .arguments("{}")
+                .build();
+        UserMessage firstUserMessage = userMessage("hello");
+        AiMessage interruptedAiMessage = AiMessage.from(firstRequest, secondRequest);
+        ToolExecutionResultMessage partialResult = ToolExecutionResultMessage.from(firstRequest, "result");
+        UserMessage secondUserMessage = userMessage("world");
+        List<dev.langchain4j.data.message.ChatMessage> interruptedHistory =
+                List.of(firstUserMessage, interruptedAiMessage, partialResult);
+        store.updateMessages("default", interruptedHistory);
 
-        // Pre-populate store with an incomplete tool block
-        store.updateMessages("default", List.of(userMessage("hello"), aiMessageWithTools));
+        // disabled by default
+        ChatMemory defaultChatMemory = MessageWindowChatMemory.builder()
+                .maxMessages(10)
+                .chatMemoryStore(store)
+                .build();
+        assertThat(defaultChatMemory.messages()).containsExactlyElementsOf(interruptedHistory);
 
         ChatMemory chatMemory = MessageWindowChatMemory.builder()
                 .maxMessages(10)
@@ -692,41 +707,14 @@ class MessageWindowChatMemoryTest implements WithAssertions {
                 .autoRecoverOrphanedToolMessages(true)
                 .build();
 
-        // messages() should return the cleaned view without writing it back
-        var counts =
-                store.measureHitCounts(() -> assertThat(chatMemory.messages()).containsExactly(userMessage("hello")));
-        assertThat(counts).isEqualTo(new HitCounts(1, 0, 0));
+        // when-then: reading returns a cleaned view without changing the store
+        assertThat(chatMemory.messages()).containsExactly(firstUserMessage);
+        assertThat(store.getMessages("default")).containsExactlyElementsOf(interruptedHistory);
 
-        // Store still contains the dirty data
-        assertThat(store.getMessages("default")).containsExactly(userMessage("hello"), aiMessageWithTools);
-    }
-
-    @Test
-    void add_should_recover_stale_tool_messages_before_enforcing_capacity_when_auto_recover_is_enabled() {
-
-        var store = new HitCountChatMemoryStore();
-
-        ToolExecutionRequest toolRequest = ToolExecutionRequest.builder()
-                .id("1")
-                .name("tool")
-                .arguments("{}")
-                .build();
-        UserMessage firstUserMessage = userMessage("hello");
-        AiMessage aiMessageWithTools = AiMessage.from(toolRequest);
-        UserMessage secondUserMessage = userMessage("world");
-
-        store.updateMessages("default", List.of(firstUserMessage, aiMessageWithTools));
-
-        ChatMemory chatMemory = MessageWindowChatMemory.builder()
-                .maxMessages(2)
-                .chatMemoryStore(store)
-                .autoRecoverOrphanedToolMessages(true)
-                .build();
-
+        // when-then: a later user message persists the cleanup
         chatMemory.add(secondUserMessage);
-
-        assertThat(store.getMessages("default")).containsExactly(firstUserMessage, secondUserMessage);
         assertThat(chatMemory.messages()).containsExactly(firstUserMessage, secondUserMessage);
+        assertThat(store.getMessages("default")).containsExactly(firstUserMessage, secondUserMessage);
     }
 
     @Test

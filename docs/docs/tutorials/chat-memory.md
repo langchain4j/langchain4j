@@ -126,9 +126,8 @@ the following orphan `ToolExecutionResultMessage`(s) are also automatically evic
 to avoid problems with some LLM providers (such as OpenAI)
 that prohibit sending orphan `ToolExecutionResultMessage`(s) in the request.
 
-If an application restarts or fails while tool execution is in progress,
-the chat memory can contain an incomplete tool-call block. In this case, later LLM requests can fail because
-some providers require every tool call to have a matching tool result. You can enable opt-in recovery:
+If tool execution is interrupted, chat memory can contain tool calls without all required results.
+Opt-in recovery removes those incomplete tool calls from later model requests:
 
 ```java
 ChatMemory chatMemory = MessageWindowChatMemory.builder()
@@ -138,10 +137,9 @@ ChatMemory chatMemory = MessageWindowChatMemory.builder()
         .build();
 ```
 
-The same option is available on `TokenWindowChatMemory`. When enabled, orphaned tool-related messages are removed
-from the messages returned by `messages()`. Stale orphaned tool messages are also removed before adding new
-non-tool-result messages, so they do not affect window capacity. In-flight tool blocks are preserved while tool
-results are being added.
+The option is disabled by default and is also available on `TokenWindowChatMemory`. Calling `messages()` returns a
+cleaned view without updating the store. A later non-result message persists the cleanup; tool result messages
+preserve in-flight tool executions.
 
 ## Examples
 - With `AiServices`:
