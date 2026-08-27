@@ -1,5 +1,6 @@
 package dev.langchain4j.spi.json;
 
+import dev.langchain4j.Internal;
 import dev.langchain4j.internal.Json;
 import dev.langchain4j.internal.TypeAllowlist;
 import dev.langchain4j.spi.ServiceHelper;
@@ -14,6 +15,7 @@ import dev.langchain4j.spi.ServiceHelper;
  *
  * @see dev.langchain4j.internal.PolymorphicJson
  */
+@Internal
 public interface PolymorphicJsonCodecFactory {
 
     /**
