@@ -145,3 +145,37 @@ on `langchain4j`, whose own tests depend on `langchain4j-open-ai`, so the profil
 module graph cyclic. Its wire types are checked from `langchain4j-json-jackson3` instead, where
 `OpenAiBuilderCreatorParityTest` compares every builder-based DTO built through its builder against
 the same DTO parsed from `{}`, which is what the missing `build()` call above would change.
+
+## If you plug in your own JSON
+
+You do not need this section to use Jackson 3 — adding the dependency is enough. It is for
+frameworks that supply their own configured JSON mapper to LangChain4j rather than letting it pick
+one, which is what `langchain4j-json-jackson3` itself does.
+
+LangChain4j does not have a single JSON entry point. It asks a `ServiceLoader` for a codec at each
+of the places below, so that each can be answered separately:
+
+| Service interface | Decides how LangChain4j reads and writes |
+|---|---|
+| `dev.langchain4j.spi.json.JsonCodecFactory` | general-purpose JSON — an AI Service's structured output, a model's tool arguments |
+| `dev.langchain4j.spi.json.WireJsonCodecFactory` | the requests and responses exchanged with LLM providers |
+| `dev.langchain4j.spi.json.PolymorphicJsonCodecFactory` | state whose types are not known ahead of time, and which therefore carries type names — agent state |
+| `dev.langchain4j.spi.data.message.ChatMessageJsonCodecFactory` | chat memory you persist |
+| `dev.langchain4j.spi.agent.tool.ToolSpecificationJsonCodecFactory` | `ToolSpecification.toJson()` and `ToolSpecification.fromJson(String)` |
+| `dev.langchain4j.spi.prompt.structured.StructuredPromptFactory` | `@StructuredPrompt` templates |
+| `dev.langchain4j.spi.store.embedding.inmemory.InMemoryEmbeddingStoreJsonCodecFactory` | `InMemoryEmbeddingStore.serializeToJson()` |
+
+The last one lives in `langchain4j`; the rest live in `langchain4j-core`. All are `@Internal`, which
+here means they are meant for integrations rather than applications, and can change between minor
+versions.
+
+**Implement all of them, or know which you are leaving out.** Each is resolved independently, and
+one with no implementation registered falls back to Jackson 2. Answering some but not others is not
+an error and produces no warning — it produces an application where, say, chat memory is written by
+your mapper and agent state by a different library. If you deliberately leave one out, the fallback
+is what you get.
+
+Two of these are worth a second look if you already integrate with an older version:
+`WireJsonCodecFactory` and `PolymorphicJsonCodecFactory` are new, so an existing integration that
+does not know about them keeps working while quietly using Jackson 2 for provider traffic and agent
+state.
