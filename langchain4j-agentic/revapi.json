@@ -159,6 +159,12 @@
           "code": "java.method.addedToInterface",
           "new": "method dev.langchain4j.agentic.supervisor.SupervisorAgentService<T> dev.langchain4j.agentic.supervisor.SupervisorAgentService<T>::compensateOnError(boolean)",
           "justification": "Add tool actions compensation at agentic system level for supervisor agents"
+        },
+        {
+          "ignore": true,
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class com.fasterxml.jackson.databind.ObjectMapper",
+          "justification": "Allows advanced users to customize the ObjectMapper used for json serialization of objects in the AgenticScope"
         }
       ]
     }

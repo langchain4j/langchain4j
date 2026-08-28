@@ -18,7 +18,11 @@ import java.util.Map;
 import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
 @Internal
-class JacksonAgenticScopeJsonCodec implements AgenticScopeJsonCodec {
+class JacksonAgenticScopeJsonCodec implements ConfigurableAgenticScopeJsonCodec {
+
+    private static final ConfigurablePolymorphicTypeValidator PTV = new ConfigurablePolymorphicTypeValidator();
+
+    private static final ObjectMapper MAPPER = agenticScopeJsonSerializer();
 
     static JsonMapper.Builder agenticScopeJsonMapperBuilder() {
         return JacksonChatMessageJsonCodec.chatMessageJsonMapperBuilder()
@@ -27,7 +31,6 @@ class JacksonAgenticScopeJsonCodec implements AgenticScopeJsonCodec {
                 .addMixIn(AgentInvocation.class, AgentInvocationMixin.class);
     }
 
-    static final ConfigurablePolymorphicTypeValidator PTV = new ConfigurablePolymorphicTypeValidator();
 
     static ObjectMapper agenticScopeJsonSerializer() {
         ObjectMapper mapper = agenticScopeJsonMapperBuilder().build();
@@ -35,7 +38,32 @@ class JacksonAgenticScopeJsonCodec implements AgenticScopeJsonCodec {
         return mapper;
     }
 
-    private static final ObjectMapper MAPPER = agenticScopeJsonSerializer();
+    @Override
+    public void allowDeserializationPackagePrefix(final String packagePrefix) {
+        PTV.addAllowedPrefix(packagePrefix);
+    }
+
+    @Override
+    public void allowDeserializationType(final Class<?> type) {
+        PTV.addAllowedClass(type.getName());
+    }
+
+    @Override
+    public void withClassLoader(ClassLoader classloader) {
+        MAPPER.setTypeFactory(MAPPER.getTypeFactory().withClassLoader(classloader));
+    }
+
+    @Override
+    public void registerForDeserializationPackageOf(final Class<?> type) {
+        String packageName = type.getPackageName();
+        allowDeserializationPackagePrefix(packageName + ".");
+        withClassLoader(type.getClassLoader());
+    }
+
+    @Override
+    public ObjectMapper objectMapper() {
+        return MAPPER;
+    }
 
     @Override
     public DefaultAgenticScope fromJson(String json) {

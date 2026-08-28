@@ -1,5 +1,6 @@
 package dev.langchain4j.agentic.scope;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -71,8 +72,8 @@ public class AgenticScopeSerializer {
      * @see #allowDeserializationType(Class)
      */
     public static void allowDeserializationPackagePrefix(String packagePrefix) {
-        if (CODEC instanceof JacksonAgenticScopeJsonCodec) {
-            JacksonAgenticScopeJsonCodec.PTV.addAllowedPrefix(packagePrefix);
+        if (CODEC instanceof ConfigurableAgenticScopeJsonCodec agenticCodec) {
+            agenticCodec.allowDeserializationPackagePrefix(packagePrefix);
         } else {
             LOG.warn("allowDeserializationPackagePrefix has no effect: the active codec ({}) does not support type allowlisting", CODEC.getClass().getName());
         }
@@ -94,10 +95,85 @@ public class AgenticScopeSerializer {
      * @see #allowDeserializationPackagePrefix(String)
      */
     public static void allowDeserializationType(Class<?> type) {
-        if (CODEC instanceof JacksonAgenticScopeJsonCodec) {
-            JacksonAgenticScopeJsonCodec.PTV.addAllowedClass(type.getName());
+        if (CODEC instanceof ConfigurableAgenticScopeJsonCodec agenticCodec) {
+            agenticCodec.allowDeserializationType(type);
         } else {
             LOG.warn("allowDeserializationType has no effect: the active codec ({}) does not support type allowlisting", CODEC.getClass().getName());
+        }
+    }
+
+    /**
+     * Sets the {@link ClassLoader} used to resolve types during deserialization
+     * of {@link AgenticScope} state.
+     * <p>
+     * By default, the deserializer uses the parent {@link ClassLoader}. In
+     * environments where domain types are loaded by a different classloader
+     * , you must set the appropriate {@link ClassLoader} before calling {@link #fromJson(String)},
+     * otherwise deserialization will fail with a {@link ClassNotFoundException}.
+     * <p>
+     * The setting is process-wide: it applies to every subsequent deserialization
+     * in the JVM.
+     *
+     * @param classloader the class loader to use for resolving types
+     * @see #registerForDeserializationPackageOf(Class)
+     */
+    public static void withClassLoader(ClassLoader classloader) {
+        if (CODEC instanceof ConfigurableAgenticScopeJsonCodec agenticCodec) {
+            agenticCodec.withClassLoader(classloader);
+        } else {
+            LOG.warn("withClassLoader has no effect: the active codec ({}) does not support setting the classloader", CODEC.getClass().getName());
+        }
+    }
+
+    /**
+     * Convenience method that registers the package of the given class for
+     * deserialization and sets the class loader used to resolve types.
+     * <p>
+     * This is equivalent to calling:
+     * <pre>{@code
+     * AgenticScopeSerializer.allowDeserializationPackagePrefix(type.getPackageName() + ".");
+     * AgenticScopeSerializer.withClassLoader(type.getClassLoader());
+     * }</pre>
+     * <p>
+     * Use this when your agents store domain objects in the {@link AgenticScope}
+     * state and you want to allow all types in the same package with a single call:
+     * <pre>{@code
+     * AgenticScopeSerializer.registerForDeserializationPackageOf(Order.class);
+     * }</pre>
+     * <p>
+     * Registrations are process-wide and permanent. Register the package before
+     * the {@link #fromJson(String)} call that encounters its types, otherwise
+     * that call fails with {@link UnserializableAgenticScopeException}.
+     *
+     * @param type a class whose package will be allowed and whose class loader
+     *             will be used for type resolution
+     * @see #allowDeserializationPackagePrefix(String)
+     * @see #withClassLoader(ClassLoader)
+     */
+    public static void registerForDeserializationPackageOf(Class<?> type) {
+        if (CODEC instanceof ConfigurableAgenticScopeJsonCodec agenticCodec) {
+            agenticCodec.registerForDeserializationPackageOf(type);
+        } else {
+            LOG.warn("registerForDeserializationPackageOf has no effect: the active codec ({}) does not support setting the classloader", CODEC.getClass().getName());
+        }
+    }
+
+    /**
+     * Returns the {@link ObjectMapper} used for serialization and deserialization
+     * of {@link AgenticScope} state.
+     * <p>
+     * This allows advanced users to customize the {@link ObjectMapper} (e.g. to
+     * register additional modules) before calling {@link #fromJson(String)} or
+     * {@link #toJson(DefaultAgenticScope)}.
+     *
+     * @return the {@link ObjectMapper} used for serialization and deserialization
+     */
+    public static ObjectMapper objectMapper() {
+        if (CODEC instanceof ConfigurableAgenticScopeJsonCodec agenticCodec) {
+            return agenticCodec.objectMapper();
+        } else {
+            LOG.warn("objectMapper has no effect: the active codec ({}) does not support setting the classloader", CODEC.getClass().getName());
+            return null;
         }
     }
 }
