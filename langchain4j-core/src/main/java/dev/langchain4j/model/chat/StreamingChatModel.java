@@ -129,7 +129,8 @@ public interface StreamingChatModel {
     /**
      * Reactive entry point: sends a chat request and returns a {@link Publisher} of {@link ChatModelStreamingEvent}s.
      * <p>
-     * The publisher is cold: each {@code subscribe()} call initiates a new LLM request.
+     * The publisher is cold: nothing happens until you subscribe, and each {@code subscribe()} call
+     * initiates a new LLM request.
      * It emits events in this order:
      * <ul>
      *     <li>0..N {@link dev.langchain4j.model.chat.response.PartialThinking} (thinking/reasoning chunks),</li>
@@ -171,7 +172,7 @@ public interface StreamingChatModel {
      * @since 1.20.0
      */
     @Experimental
-    default Publisher<ChatModelStreamingEvent> chat(ChatRequest request) { // TODO chatAsync?
+    default Publisher<ChatModelStreamingEvent> chat(ChatRequest request) {
 
         ChatRequest finalChatRequest = ChatRequest.builder()
                 .messages(request.messages())
@@ -288,6 +289,8 @@ public interface StreamingChatModel {
      * {@code String}): it emits only the text chunks ({@link PartialResponse#text()}), filtering out the other
      * {@link ChatModelStreamingEvent}s of the underlying {@link #chat(ChatRequest)} stream. For the full event stream,
      * use {@link #chat(ChatMessage...)} / {@link #chat(List)} / {@link #chat(ChatRequest)}.
+     * <p>
+     * Nothing happens until you subscribe: the request is sent on each {@code subscribe()} call.
      *
      * @since 1.20.0
      */
@@ -331,6 +334,8 @@ public interface StreamingChatModel {
     /**
      * Reactive convenience overload accepting the messages directly: returns a cold {@code Publisher} that streams
      * the response to {@code messages}.
+     * <p>
+     * Nothing happens until you subscribe: the request is sent on each {@code subscribe()} call.
      *
      * @since 1.20.0
      */
@@ -345,6 +350,8 @@ public interface StreamingChatModel {
     /**
      * Reactive convenience counterpart of {@link #chat(List, StreamingChatResponseHandler)}: returns a cold
      * {@code Publisher} that streams the response to {@code messages}.
+     * <p>
+     * Nothing happens until you subscribe: the request is sent on each {@code subscribe()} call.
      *
      * @since 1.20.0
      */

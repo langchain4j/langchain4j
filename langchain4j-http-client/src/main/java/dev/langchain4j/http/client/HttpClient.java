@@ -91,7 +91,8 @@ public interface HttpClient {
 
     /**
      * Executes a streaming HTTP request and exposes the parsed events as a cold
-     * {@link Publisher} of {@link HttpStreamingEvent}s. Each {@code subscribe()} initiates a new request.
+     * {@link Publisher} of {@link HttpStreamingEvent}s. Nothing happens until you subscribe: each
+     * {@code subscribe()} initiates a new request.
      * <p>
      * This interface gives no guarantee about thread-pinning or whether events are delivered incrementally;
      * such guarantees depend on the implementation. Consult the chosen implementation's javadoc.
