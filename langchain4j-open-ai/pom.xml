@@ -61,7 +61,6 @@
             <version>${jtokkit.version}</version>
         </dependency>
 
-        <!-- TODO required here? -->
         <dependency>
             <groupId>io.smallrye.reactive</groupId>
             <artifactId>mutiny-zero</artifactId>

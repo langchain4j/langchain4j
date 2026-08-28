@@ -330,7 +330,6 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     method.getName());
                         }
 
-                        // TODO should it be called when returnType==String?
                         boolean supportsJsonSchema = supportsJsonSchema();
                         Optional<JsonSchema> jsonSchema = Optional.empty();
                         boolean returnsImage = isImage(returnType);

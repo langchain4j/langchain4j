@@ -33,7 +33,6 @@
             <version>5.6.3</version>
         </dependency>
 
-<!--        TODO-->
         <dependency>
             <groupId>io.smallrye.reactive</groupId>
             <artifactId>mutiny-zero</artifactId>
