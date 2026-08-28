@@ -92,7 +92,8 @@ public class McpOperationHandler {
      * ignored. Text that is not valid JSON at all throws, so that the transport can decide: fail
      * the pending operation, or log and keep reading.
      *
-     * @throws dev.langchain4j.exception.JsonReadException if the message is not valid JSON.
+     * @throws IllegalArgumentException if the message is not valid JSON, or
+     * {@link dev.langchain4j.exception.JsonException} from a codec that reports the typed exceptions.
      */
     @SuppressWarnings("unchecked")
     public void onMessage(String json) {

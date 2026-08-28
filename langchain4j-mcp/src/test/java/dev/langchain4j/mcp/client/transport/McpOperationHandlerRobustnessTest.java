@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import dev.langchain4j.exception.JsonReadException;
+import dev.langchain4j.exception.JsonException;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -68,8 +68,10 @@ class McpOperationHandlerRobustnessTest {
         // the caller decides: a response body that cannot be read fails the pending operation,
         // while a stream reader logs it and carries on. Swallowing it here left the streamable-HTTP
         // and Docker transports with a future nobody completed.
+        // Either of the two types the transports catch: the Jackson 2 codecs report the
+        // IllegalArgumentException this has always thrown, langchain4j-json-jackson3 a JsonException.
         assertThatThrownBy(() -> handler().onMessage("not json"))
-                .isInstanceOf(JsonReadException.class);
+                .isInstanceOfAny(JsonException.class, IllegalArgumentException.class);
     }
 
     @Test
@@ -88,6 +90,7 @@ class McpOperationHandlerRobustnessTest {
 
     @Test
     void an_empty_body_should_throw_like_any_other_unreadable_input() {
-        assertThatThrownBy(() -> handler().onMessage("")).isInstanceOf(JsonReadException.class);
+        assertThatThrownBy(() -> handler().onMessage(""))
+                .isInstanceOfAny(JsonException.class, IllegalArgumentException.class);
     }
 }

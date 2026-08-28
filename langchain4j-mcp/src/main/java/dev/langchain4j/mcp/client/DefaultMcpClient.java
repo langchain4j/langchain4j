@@ -681,9 +681,13 @@ public class DefaultMcpClient implements McpClient {
             }
             arguments = McpJson.toMap(args);
         } catch (JsonException e) {
-            // Not unwrapped: ToolArgumentsErrorHandler is handed this, and it must be the same
-            // type whether the tool is a Java method or an MCP tool.
+            // Reported by a codec that uses the typed exceptions; its type is the information, so
+            // it is handed over as-is.
             throw new ToolArgumentsException(e);
+        } catch (IllegalArgumentException e) {
+            // The Jackson 2 path, where the cause is the JSON library's own exception - which is
+            // what ToolArgumentsErrorHandler has always been given for a Java tool too.
+            throw new ToolArgumentsException(e.getCause() != null ? e.getCause() : e);
         }
         long operationId = idGenerator.getAndIncrement();
         String progressToken = progressHandler != null ? String.valueOf(operationId) : null;

@@ -1,13 +1,13 @@
 package dev.langchain4j.mcp.client.transport;
 
+import static dev.langchain4j.internal.Exceptions.unwrapRuntimeException;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.Internal;
 import dev.langchain4j.exception.JsonException;
-import dev.langchain4j.exception.JsonReadException;
-import dev.langchain4j.exception.JsonWriteException;
 import dev.langchain4j.internal.Json;
 import dev.langchain4j.internal.Types;
 import dev.langchain4j.internal.WireJson;
@@ -69,7 +69,8 @@ public final class McpJson {
      * Reads any JSON value as plain JDK types: a {@link Map}, a {@link java.util.List}, a boxed
      * primitive, or null for a JSON null.
      *
-     * @throws JsonReadException if the text is not valid JSON.
+     * @throws IllegalArgumentException if the text is not valid JSON, or {@link JsonException} from a
+     * codec that reports the typed exceptions.
      */
     public static Object toValue(String json) {
         return read(json, Object.class);
@@ -117,7 +118,7 @@ public final class McpJson {
         } catch (JsonException e) {
             throw e;
         } catch (RuntimeException e) {
-            throw new JsonWriteException("Failed to serialize MCP message", e);
+            throw new IllegalArgumentException("Failed to serialize MCP message", unwrapRuntimeException(e));
         }
     }
 
@@ -128,14 +129,19 @@ public final class McpJson {
         try {
             return OBJECT_MAPPER.readTree(json);
         } catch (Exception e) {
-            throw new JsonReadException("Failed to parse MCP message", e);
+            throw new IllegalArgumentException("Failed to parse MCP message", e);
         }
     }
 
     /**
-     * Reads JSON text. The codecs already report a failure as {@link JsonReadException} whichever
-     * JSON library is plugged in, which is what a transport branches on when deciding whether to
-     * fail an operation or log and carry on; this adds which message could not be read.
+     * Reads JSON text.
+     *
+     * <p>A transport branches on the failure to decide whether to fail an operation or log and
+     * carry on, so which type it is matters. The Jackson 2 codecs report a plain
+     * {@link RuntimeException}, which is normalised here to the {@link IllegalArgumentException}
+     * this has always thrown; {@code langchain4j-json-jackson3} reports a {@link JsonException},
+     * which is left alone. Both carry the JSON library's own exception as the cause. The
+     * normalisation goes away when the Jackson 2 codecs move to the typed exceptions.
      */
     private static <T> T read(String json, Class<T> type) {
         return read(json, (Type) type);
@@ -147,7 +153,7 @@ public final class McpJson {
         } catch (JsonException e) {
             throw e;
         } catch (RuntimeException e) {
-            throw new JsonReadException("Failed to parse MCP message", e);
+            throw new IllegalArgumentException("Failed to parse MCP message", unwrapRuntimeException(e));
         }
     }
 

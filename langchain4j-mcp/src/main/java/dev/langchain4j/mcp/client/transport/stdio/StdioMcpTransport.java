@@ -88,7 +88,7 @@ public class StdioMcpTransport implements McpTransport {
             return execute(requestString, operation.getId())
                     .thenCompose(originalResponse -> execute(initializationNotification, null)
                             .thenCompose(nullNode -> CompletableFuture.completedFuture(originalResponse)));
-        } catch (JsonException e) {
+        } catch (JsonException | IllegalArgumentException e) {
             return CompletableFuture.failedFuture(e);
         }
     }
@@ -103,7 +103,7 @@ public class StdioMcpTransport implements McpTransport {
         try {
             String requestString = McpJson.serialize(context.message());
             return execute(requestString, context.message().getId());
-        } catch (JsonException e) {
+        } catch (JsonException | IllegalArgumentException e) {
             return CompletableFuture.failedFuture(e);
         }
     }
