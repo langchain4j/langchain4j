@@ -125,7 +125,8 @@ class WatsonxChatResponseMetadataTest {
         assertThat(base).isNotEqualTo(fullyPopulated().created(1L).build());
         assertThat(base).isNotEqualTo(fullyPopulated().modelVersion("other").build());
         assertThat(base).isNotEqualTo(fullyPopulated().serviceTier("other").build());
-        assertThat(base).isNotEqualTo(fullyPopulated().systemFingerprint("other").build());
+        assertThat(base)
+                .isNotEqualTo(fullyPopulated().systemFingerprint("other").build());
         assertThat(base).isNotEqualTo(fullyPopulated().cached(false).build());
         assertThat(base).isNotEqualTo(fullyPopulated().moderations(Map.of()).build());
         assertThat(base).isNotEqualTo(fullyPopulated().detections(Map.of()).build());
