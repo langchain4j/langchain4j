@@ -1,7 +1,7 @@
 package dev.langchain4j.model.bedrock.common;
 
 import static dev.langchain4j.model.bedrock.TestedModels.AWS_NOVA_MICRO;
-import static dev.langchain4j.model.bedrock.TestedModels.COHERE_COMMAND_R_PLUS;
+import static dev.langchain4j.model.bedrock.TestedModels.CLAUDE_HAIKU_4_5;
 import static dev.langchain4j.model.bedrock.TestedModels.MISTRAL_LARGE;
 import static dev.langchain4j.model.bedrock.common.BedrockAiServicesIT.sleepIfNeeded;
 
@@ -28,7 +28,7 @@ class BedrockChatModelWithoutVisionIT extends AbstractChatModelIT {
 
     @Override
     protected List<ChatModel> models() {
-        return List.of(AWS_NOVA_MICRO, COHERE_COMMAND_R_PLUS, MISTRAL_LARGE);
+        return List.of(AWS_NOVA_MICRO, CLAUDE_HAIKU_4_5, MISTRAL_LARGE);
     }
 
     @Override
@@ -38,7 +38,7 @@ class BedrockChatModelWithoutVisionIT extends AbstractChatModelIT {
 
     @Override
     protected String customModelName() {
-        return "cohere.command-r-v1:0";
+        return "us.amazon.nova-lite-v1:0";
     }
 
     @Override
@@ -50,11 +50,12 @@ class BedrockChatModelWithoutVisionIT extends AbstractChatModelIT {
 
     @Override
     protected ChatModel createModelWith(ChatRequestParameters parameters) {
-        return BedrockChatModel.builder()
-                .defaultRequestParameters(parameters)
-                // force a working model with stopSequence parameter for @Tests
-                .modelId("cohere.command-r-v1:0")
-                .build();
+        BedrockChatModel.Builder builder = BedrockChatModel.builder().defaultRequestParameters(parameters);
+        if (parameters.modelName() == null) {
+            // Claude excludes the stop sequence from the response, as should_respect_stopSequences_* expects
+            builder.modelId("us.anthropic.claude-haiku-4-5-20251001-v1:0");
+        }
+        return builder.build();
     }
 
     @Override
