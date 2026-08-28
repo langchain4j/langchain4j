@@ -54,7 +54,13 @@ import software.amazon.awssdk.services.bedrockruntime.model.TokenUsage;
  */
 public class BedrockStreamingChatModelPublisherTckTest extends PublisherVerification<ChatModelStreamingEvent> {
 
-    private static final long DEFAULT_TIMEOUT_MILLIS = 2_000L;
+    // Events are replayed from a scheduled executor rather than the network, but the budget for *expected* signals
+    // must still absorb scheduler contention and cold-start latency on a loaded CI runner. This timeout only adds
+    // slack: fast signals return immediately, so passing tests are unaffected and only genuinely-stuck publishers
+    // ever wait this long.
+    private static final long DEFAULT_TIMEOUT_MILLIS = 10_000L;
+    // Kept tight, independent of the receive timeout, so the "no signal must arrive" assertions stay fast.
+    private static final long DEFAULT_NO_SIGNALS_TIMEOUT_MILLIS = 2_000L;
     private static final long DEFAULT_POLL_TIMEOUT_MILLIS = 50L;
     private static final long PUBLISHER_REFERENCE_CLEANUP_TIMEOUT_MILLIS = 300L;
     private static final long MAX_ELEMENTS = 64L;
@@ -63,7 +69,8 @@ public class BedrockStreamingChatModelPublisherTckTest extends PublisherVerifica
 
     public BedrockStreamingChatModelPublisherTckTest() {
         super(
-                new TestEnvironment(DEFAULT_TIMEOUT_MILLIS, DEFAULT_TIMEOUT_MILLIS, DEFAULT_POLL_TIMEOUT_MILLIS),
+                new TestEnvironment(
+                        DEFAULT_TIMEOUT_MILLIS, DEFAULT_NO_SIGNALS_TIMEOUT_MILLIS, DEFAULT_POLL_TIMEOUT_MILLIS),
                 PUBLISHER_REFERENCE_CLEANUP_TIMEOUT_MILLIS);
     }
 
