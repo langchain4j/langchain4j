@@ -41,7 +41,6 @@ import java.util.stream.Collectors;
 
 class GoogleGenAiContentMapper {
 
-
     private static final Map<String, String> EXTENSION_TO_MIME_TYPE = new HashMap<>();
 
     static {
@@ -101,6 +100,8 @@ class GoogleGenAiContentMapper {
 
     private static final String THOUGHT_SIGNATURE_KEY_PREFIX =
             "thought_signature_"; // do not change, will break backward compatibility!
+    private static final String THOUGHT_SIGNATURE_KEY =
+            "thought_signature"; // do not change, will break backward compatibility!
 
     static Content toSystemInstruction(List<ChatMessage> messages) {
         String systemInstructions = messages.stream()
@@ -187,7 +188,12 @@ class GoogleGenAiContentMapper {
                 parts.add(Part.builder().text(aiMsg.thinking()).thought(true).build());
             }
             if (aiMsg.text() != null) {
-                parts.add(Part.builder().text(aiMsg.text()).build());
+                Part.Builder textPartBuilder = Part.builder().text(aiMsg.text());
+                String textSignature = aiMsg.attribute(THOUGHT_SIGNATURE_KEY, String.class);
+                if (textSignature != null) {
+                    textPartBuilder.thoughtSignature(Base64.getDecoder().decode(textSignature));
+                }
+                parts.add(textPartBuilder.build());
             }
             if (aiMsg.toolExecutionRequests() != null) {
                 for (ToolExecutionRequest req : aiMsg.toolExecutionRequests()) {
@@ -286,6 +292,13 @@ class GoogleGenAiContentMapper {
                     } else {
                         textBuilder.append(part.text().get());
                     }
+                }
+
+                if (part.functionCall().isEmpty() && part.thoughtSignature().isPresent()) {
+                    attributes.put(
+                            THOUGHT_SIGNATURE_KEY,
+                            Base64.getEncoder()
+                                    .encodeToString(part.thoughtSignature().get()));
                 }
 
                 if (part.functionCall().isPresent()) {
