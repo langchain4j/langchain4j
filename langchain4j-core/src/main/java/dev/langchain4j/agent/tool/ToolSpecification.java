@@ -24,6 +24,7 @@ public class ToolSpecification {
     private final String description;
     private final JsonObjectSchema parameters;
     private final Map<String, Object> metadata;
+    private final Boolean strict;
 
     /**
      * Creates a {@link ToolSpecification} from a {@link Builder}.
@@ -35,6 +36,7 @@ public class ToolSpecification {
         this.description = builder.description;
         this.parameters = builder.parameters;
         this.metadata = copy(builder.metadata);
+        this.strict = builder.strict;
     }
 
     /**
@@ -74,6 +76,22 @@ public class ToolSpecification {
         return metadata;
     }
 
+    /**
+     * Returns whether this tool should use strict schema enforcement.
+     * <p>
+     * When {@code true}, the LLM provider will validate tool calls against this tool's schema server-side.
+     * When {@code false}, strict enforcement is explicitly disabled for this tool.
+     * When {@code null} (default), the model-level strict setting is used.
+     * <p>
+     * NOTE: Currently, per-tool strict is supported by the {@code langchain4j-anthropic}
+     * and {@code langchain4j-open-ai} modules.
+     *
+     * @return {@code true} to enable strict enforcement, {@code false} to disable, or {@code null} to use the model default.
+     */
+    public Boolean strict() {
+        return strict;
+    }
+
     @Override
     public boolean equals(Object another) {
         if (this == another) return true;
@@ -84,7 +102,8 @@ public class ToolSpecification {
         return Objects.equals(name, another.name)
                 && Objects.equals(description, another.description)
                 && Objects.equals(parameters, another.parameters)
-                && Objects.equals(metadata, another.metadata);
+                && Objects.equals(metadata, another.metadata)
+                && Objects.equals(strict, another.strict);
     }
 
     @Override
@@ -94,6 +113,7 @@ public class ToolSpecification {
         h += (h << 5) + Objects.hashCode(description);
         h += (h << 5) + Objects.hashCode(parameters);
         h += (h << 5) + Objects.hashCode(metadata);
+        h += (h << 5) + Objects.hashCode(strict);
         return h;
     }
 
@@ -104,6 +124,7 @@ public class ToolSpecification {
                 + ", description = " + quoted(description)
                 + ", parameters = " + parameters
                 + ", metadata = " + metadata
+                + ", strict = " + strict
                 + " }";
     }
 
@@ -133,7 +154,8 @@ public class ToolSpecification {
                 .name(name)
                 .description(description)
                 .parameters(parameters)
-                .metadata(mutableCopy(metadata));
+                .metadata(mutableCopy(metadata))
+                .strict(strict);
     }
 
     /**
@@ -154,6 +176,7 @@ public class ToolSpecification {
         private String description;
         private JsonObjectSchema parameters;
         private Map<String, Object> metadata;
+        private Boolean strict;
 
         /**
          * Creates a {@link Builder}.
@@ -211,6 +234,21 @@ public class ToolSpecification {
          */
         public Builder addMetadata(String key, Object value) {
             this.metadata.put(key, value);
+            return this;
+        }
+
+        /**
+         * Sets whether this tool should use strict schema enforcement.
+         * <p>
+         * When {@code true}, the LLM provider will validate tool calls against this tool's schema server-side.
+         * When {@code false}, strict enforcement is explicitly disabled for this tool.
+         * When {@code null} (default), the model-level strict setting is used.
+         *
+         * @param strict whether to enable strict enforcement for this tool
+         * @return {@code this}
+         */
+        public Builder strict(Boolean strict) {
+            this.strict = strict;
             return this;
         }
 

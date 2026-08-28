@@ -4,6 +4,10 @@ import com.fasterxml.jackson.annotation.JsonValue;
 
 import java.util.List;
 
+/**
+ * @deprecated use {@code EmbeddingRequest} from {@code langchain4j-open-ai} module instead
+ */
+@Deprecated(forRemoval = true, since = "1.14.0")
 public class EmbeddingRequest {
     @JsonValue
     private List<String> input;

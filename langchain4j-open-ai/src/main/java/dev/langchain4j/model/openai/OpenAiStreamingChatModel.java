@@ -5,6 +5,7 @@ import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialThinking;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialToolCall;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onUnmappedRawEvent;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -23,6 +24,7 @@ import static java.util.Arrays.asList;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.internal.ExceptionMapper;
+import dev.langchain4j.internal.MappingTrackingStreamingChatResponseHandler;
 import dev.langchain4j.internal.ToolCallBuilder;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.StreamingResponseHandler;
@@ -42,6 +44,7 @@ import dev.langchain4j.model.openai.internal.chat.ChatCompletionChoice;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionRequest;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionResponse;
 import dev.langchain4j.model.openai.internal.chat.Delta;
+import dev.langchain4j.model.openai.internal.chat.FunctionCall;
 import dev.langchain4j.model.openai.internal.chat.ToolCall;
 import dev.langchain4j.model.openai.internal.shared.StreamOptions;
 import dev.langchain4j.model.openai.spi.OpenAiStreamingChatModelBuilderFactory;
@@ -66,6 +69,7 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
     private final boolean sendThinking;
     private final String thinkingFieldName;
     private final boolean accumulateToolCallId;
+    private final boolean useInputImageFormat;
     private final List<ChatModelListener> listeners;
 
     public OpenAiStreamingChatModel(OpenAiStreamingChatModelBuilder builder) {
@@ -130,6 +134,7 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
         this.sendThinking = getOrDefault(builder.sendThinking, false);
         this.thinkingFieldName = getOrDefault(builder.thinkingFieldName, "reasoning_content");
         this.accumulateToolCallId = getOrDefault(builder.accumulateToolCallId, true);
+        this.useInputImageFormat = getOrDefault(builder.useInputImageFormat, false);
         this.listeners = copy(builder.listeners);
     }
 
@@ -144,30 +149,42 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
         OpenAiChatRequestParameters parameters = (OpenAiChatRequestParameters) chatRequest.parameters();
         validate(parameters);
 
-        ChatCompletionRequest openAiRequest =
-                toOpenAiChatRequest(
-                                chatRequest, parameters, sendThinking, thinkingFieldName, strictTools, strictJsonSchema)
-                        .stream(true)
-                        .streamOptions(
-                                StreamOptions.builder().includeUsage(true).build())
-                        .build();
+        ChatCompletionRequest openAiRequest = toOpenAiChatRequest(
+                        chatRequest,
+                        parameters,
+                        sendThinking,
+                        thinkingFieldName,
+                        strictTools,
+                        strictJsonSchema,
+                        useInputImageFormat)
+                .stream(true)
+                .streamOptions(StreamOptions.builder().includeUsage(true).build())
+                .build();
 
         OpenAiStreamingResponseBuilder openAiResponseBuilder =
                 new OpenAiStreamingResponseBuilder(returnThinking, accumulateToolCallId);
         ToolCallBuilder toolCallBuilder = new ToolCallBuilder();
 
+        MappingTrackingStreamingChatResponseHandler trackingHandler =
+                new MappingTrackingStreamingChatResponseHandler(handler);
+
         client.chatCompletion(openAiRequest)
                 .onRawPartialResponse(parsedAndRawResponse -> {
+                    trackingHandler.resetMappingTracking();
                     openAiResponseBuilder.append(parsedAndRawResponse);
-                    handle(parsedAndRawResponse, toolCallBuilder, handler);
+                    handle(parsedAndRawResponse, toolCallBuilder, trackingHandler);
+
+                    if (!trackingHandler.wasMapped()) {
+                        onUnmappedRawEvent(trackingHandler, parsedAndRawResponse.rawServerSentEvent());
+                    }
                 })
                 .onComplete(() -> {
                     if (toolCallBuilder.hasRequests()) {
-                        onCompleteToolCall(handler, toolCallBuilder.buildAndReset());
+                        onCompleteToolCall(trackingHandler, toolCallBuilder.buildAndReset());
                     }
 
                     ChatResponse completeResponse = openAiResponseBuilder.build();
-                    onCompleteResponse(handler, completeResponse);
+                    onCompleteResponse(trackingHandler, completeResponse);
                 })
                 .onError(throwable -> {
                     RuntimeException mappedException = ExceptionMapper.DEFAULT.mapException(throwable);
@@ -232,9 +249,10 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
                 }
 
                 String id = toolCallBuilder.updateId(toolCall.id());
-                String name = toolCallBuilder.updateName(toolCall.function().name());
+                FunctionCall functionCall = toolCall.function();
+                String name = toolCallBuilder.updateName(functionCall == null ? null : functionCall.name());
 
-                String partialArguments = toolCall.function().arguments();
+                String partialArguments = functionCall == null ? null : functionCall.arguments();
                 if (isNotNullOrEmpty(partialArguments)) {
                     toolCallBuilder.appendArguments(partialArguments);
 
@@ -300,6 +318,7 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
         private Boolean sendThinking;
         private String thinkingFieldName;
         private Boolean accumulateToolCallId;
+        private Boolean useInputImageFormat;
         private Duration timeout;
         private Boolean logRequests;
         private Boolean logResponses;
@@ -533,6 +552,19 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
          */
         public OpenAiStreamingChatModelBuilder accumulateToolCallId(Boolean accumulateToolCallId) {
             this.accumulateToolCallId = accumulateToolCallId;
+            return this;
+        }
+
+        /**
+         * Controls whether image content is sent using the {@code input_image} format.
+         * <p>
+         * Disabled by default, preserving the OpenAI Chat Completions {@code image_url} format.
+         *
+         * @param useInputImageFormat whether to send image content as {@code input_image}
+         * @return {@code this}
+         */
+        public OpenAiStreamingChatModelBuilder useInputImageFormat(Boolean useInputImageFormat) {
+            this.useInputImageFormat = useInputImageFormat;
             return this;
         }
 

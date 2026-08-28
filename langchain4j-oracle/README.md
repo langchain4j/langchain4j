@@ -71,11 +71,11 @@ OracleEmbeddingStore.builder()
     .build();
 ```
 
-The builder allows to create an indexes on the embedding and metadata columns of the
-EmbeddingTable by providing an instance of the Index class. Two builders allow to 
+The builder allows you to create indexes on the embedding and metadata columns of the
+EmbeddingTable by providing an instance of the Index class. Two builders allow you to 
 create instances of the Index class: IVFIndexBuilder and JSONIndexBuilder.
 
-*IVFIndexBuilder* allows to configure an **IVF (Inverted File Flat)** index on the embedding
+*IVFIndexBuilder* allows you to configure an **IVF (Inverted File Flat)** index on the embedding
 column of the EmbeddingTable.
 
 ```java
@@ -94,7 +94,7 @@ OracleEmbeddingStore embeddingStore =
         .build();
 ```
 
-*JSONIndexBuilder* allows to configure a function-based index on keys of the metadata 
+*JSONIndexBuilder* allows you to configure a function-based index on keys of the metadata 
 column of the EmbeddingTable.
 
 ```java
@@ -117,6 +117,36 @@ OracleEmbeddingStore.builder()
 ```
 
 For more information about Oracle AI Vector Search refer to the [documentation](https://docs.oracle.com/en/database/oracle/oracle-database/23/vecse/overview-ai-vector-search.html).
+
+## Chat Memory Store
+
+This module also provides `OracleChatMemoryStore`, a simple persistent implementation of `ChatMemoryStore`.
+
+Create a table:
+
+```sql
+CREATE TABLE chat_memory (
+    memory_id VARCHAR2(255) PRIMARY KEY,
+    content CLOB NOT NULL
+);
+```
+
+Use it in chat memory:
+
+```java
+ChatMemoryStore store = OracleChatMemoryStore.builder()
+   .dataSource(myDataSource)
+   .tableName("chat_memory")
+   .build();
+
+ChatMemory chatMemory = MessageWindowChatMemory.builder()
+   .id("conversation-1")
+   .maxMessages(10)
+   .chatMemoryStore(store)
+   .build();
+```
+
+`OracleChatMemoryStore` stores one row per memory id, with all messages serialized as JSON in the `content` column.
 
 ## Running the Test Suite
 By default, integration tests will

@@ -31,6 +31,16 @@ public class Models {
                         .logResponses(true)
                         .build();
 
+    private static final ChatModel OPENAI_ENHANCED_MODEL = OpenAiChatModel.builder()
+            .baseUrl(System.getenv("OPENAI_BASE_URL"))
+            .apiKey(System.getenv("OPENAI_API_KEY"))
+            .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+            .modelName(OpenAiChatModelName.GPT_5_1)
+            .temperature(0.0)
+            .logRequests(true)
+            .logResponses(true)
+            .build();
+
     private static final ChatModel OPENAI_PLANNER_MODEL = OPENAI_BASE_MODEL;
 
     private static final ChatModel OLLAMA_BASE_MODEL = OllamaChatModel.builder()
@@ -62,6 +72,13 @@ public class Models {
     public static ChatModel plannerModel() {
         return switch (modelProvider) {
             case OPENAI -> OPENAI_PLANNER_MODEL;
+            case OLLAMA -> OLLAMA_PLANNER_MODEL;
+        };
+    }
+
+    public static ChatModel enhancedModel() {
+        return switch (modelProvider) {
+            case OPENAI -> OPENAI_ENHANCED_MODEL;
             case OLLAMA -> OLLAMA_PLANNER_MODEL;
         };
     }

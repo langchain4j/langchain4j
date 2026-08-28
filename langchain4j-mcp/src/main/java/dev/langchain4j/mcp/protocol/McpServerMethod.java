@@ -16,7 +16,9 @@ public enum McpServerMethod {
     NOTIFICATION_RESOURCES_LIST_CHANGED("notifications/resources/list_changed"),
     NOTIFICATION_PROMPTS_LIST_CHANGED("notifications/prompts/list_changed"),
     NOTIFICATION_RESOURCES_UPDATED("notifications/resources/updated"),
-    NOTIFICATION_PROGRESS("notifications/progress");
+    NOTIFICATION_PROGRESS("notifications/progress"),
+    NOTIFICATION_CANCELLED("notifications/cancelled"),
+    NOTIFICATION_SUBSCRIPTIONS_ACKNOWLEDGED("notifications/subscriptions/acknowledged");
 
     private final String value;
 

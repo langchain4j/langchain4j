@@ -82,6 +82,18 @@ Or, you can use BOM to manage dependencies consistently:
 | readTimeout    | OKHttp timeout config for request                                                                                                                                                                                                                                            |                           |
 | logRequests    | Whether to log request or not                                                                                                                                                                                                                                                | false                     |
 | logResponses   | Whether to log response or not                                                                                                                                                                                                                                               | false                     |
+| doSample       | Whether to use sampling. When set to `false`, the model will use greedy decoding                                                                                                                                                                                             |                           |
+| toolStream     | Whether to enable partial tool streaming. When set to `true`, tool calls can be streamed incrementally                                                                                                                                                                       | false                     |
+
+### `ZhipuAiChatRequestParameters`
+
+`ZhipuAiChatRequestParameters` can be used to configure additional parameters when sending a chat request:
+
+| Property   | Description                                                                                                                                                   | Default Value |
+|------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------|
+| doSample   | Whether to use sampling. When set to `false`, the model will use greedy decoding                                                                              |               |
+| toolStream | Whether to enable partial tool streaming. When set to `true`, tool calls can be streamed incrementally                                                        | false         |
+| thinking   | Configuration for reasoning mode. `type` specifies the reasoning type, `clearThinking` controls whether to show the internal thinking process in the response |               |
 
 ### `ZhipuAiStreamingChatModel`
 
@@ -94,29 +106,92 @@ Same as `ZhipuAiChatModel`, except `maxRetries`.
 You can initialize `ZhipuAiChatModel` by using following code:
 
 ```java
-ChatModel qwenModel = ZhipuAiChatModel.builder()
-                    .apiKey("You API key here")
-                    .callTimeout(Duration.ofSeconds(60))
-                    .connectTimeout(Duration.ofSeconds(60))
-                    .writeTimeout(Duration.ofSeconds(60))
-                    .readTimeout(Duration.ofSeconds(60))
-                    .build();
+ChatModel model = ZhipuAiChatModel.builder()
+        .apiKey("You API key here")
+        .callTimeout(Duration.ofSeconds(60))
+        .connectTimeout(Duration.ofSeconds(60))
+        .writeTimeout(Duration.ofSeconds(60))
+        .readTimeout(Duration.ofSeconds(60))
+        .build();
 ```
 
 Or more custom for other parameters:
 
 ```java
-ChatModel qwenModel = ZhipuAiChatModel.builder()
-                    .apiKey("You API key here")
-                    .model("glm-4")
-                    .temperature(0.6)
-                    .maxToken(1024)
-                    .maxRetries(2)
-                    .callTimeout(Duration.ofSeconds(60))
-                    .connectTimeout(Duration.ofSeconds(60))
-                    .writeTimeout(Duration.ofSeconds(60))
-                    .readTimeout(Duration.ofSeconds(60))
-                    .build();
+ChatModel model = ZhipuAiChatModel.builder()
+        .apiKey("You API key here")
+        .model("glm-4")
+        .temperature(0.6)
+        .maxToken(1024)
+        .maxRetries(2)
+        .callTimeout(Duration.ofSeconds(60))
+        .connectTimeout(Duration.ofSeconds(60))
+        .writeTimeout(Duration.ofSeconds(60))
+        .readTimeout(Duration.ofSeconds(60))
+        .build();
+```
+
+### Reasoning
+
+You can enable reasoning mode to get the model's internal thinking process:
+
+```java
+ChatModel model = ZhipuAiChatModel.builder()
+        .apiKey("You API key here")
+        .model(ChatCompletionModel.GLM_4_7)  // Use GLM-4-5 or upper model for reasoning support
+        .build();
+
+ChatResponse response = model.chat(
+        ChatRequest.builder()
+                .messages(UserMessage.from("What is the capital of Germany?"))
+                .parameters(ZhipuAiChatRequestParameters.builder()
+                        .thinking(Thinking.builder()
+                                .type("reasoning")
+                                .clearThinking(true)
+                                .build())
+                        .build())
+                .build());
+
+AiMessage aiMessage = response.aiMessage();
+System.out.println("Answer: "+aiMessage.text());
+System.out.println("Thinking: "+aiMessage.thinking());
+```
+
+### Partial Tool Call (Streaming)
+
+You can stream partial tool calls incrementally using `toolStream`:
+
+```java
+ZhipuAiStreamingChatModel model = ZhipuAiStreamingChatModel.builder()
+        .apiKey("You API key here")
+        .model(ChatCompletionModel.GLM_4_7)
+        .build();
+
+ToolSpecification calculator = ToolSpecification.builder()
+        .name("calculator")
+        .description("returns a sum of two numbers")
+        .parameters(JsonObjectSchema.builder()
+                .addIntegerProperty("first")
+                .addIntegerProperty("second")
+                .build())
+        .build();
+
+TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler() {
+    @Override
+    public void onPartialToolCall(ToolExecutionRequest partialToolCall) {
+        System.out.println("Partial tool call: " + partialToolCall.name() + " - " + partialToolCall.arguments());
+    }
+};
+
+model.chat(
+        ChatRequest.builder()
+                .messages(UserMessage.from("2+2=?"))
+                .parameters(ZhipuAiChatRequestParameters.builder()
+                        .toolSpecifications(calculator)
+                        .toolStream(true)
+                        .build())
+                .build(),
+        handler);
 ```
 
 ### More Examples
@@ -125,3 +200,6 @@ You can check more examples in:
 
 - [ZhipuAiChatModelIT](https://github.com/langchain4j/langchain4j-community/blob/main/models/langchain4j-community-zhipu-ai/src/test/java/dev/langchain4j/community/model/zhipu/ZhipuAiChatModelIT.java)
 - [ZhipuAiStreamingChatModelIT](https://github.com/langchain4j/langchain4j-community/blob/main/models/langchain4j-community-zhipu-ai/src/test/java/dev/langchain4j/community/model/zhipu/ZhipuAiStreamingChatModelIT.java)
+- [ZhipuAiChatModelReasoningIT](https://github.com/langchain4j/langchain4j-community/blob/main/models/langchain4j-community-zhipu-ai/src/test/java/dev/langchain4j/community/model/zhipu/ZhipuAiChatModelReasoningIT.java)
+- [ZhipuAiStreamingChatModelReasoningIT](https://github.com/langchain4j/langchain4j-community/blob/main/models/langchain4j-community-zhipu-ai/src/test/java/dev/langchain4j/community/model/zhipu/ZhipuAiStreamingChatModelReasoningIT.java)
+- [ZhipuAiStreamingPartialToolCallIT](https://github.com/langchain4j/langchain4j-community/blob/main/models/langchain4j-community-zhipu-ai/src/test/java/dev/langchain4j/community/model/zhipu/ZhipuAiStreamingPartialToolCallIT.java)

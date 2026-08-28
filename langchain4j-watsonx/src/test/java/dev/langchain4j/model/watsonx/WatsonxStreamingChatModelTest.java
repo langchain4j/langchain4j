@@ -1,5 +1,6 @@
 package dev.langchain4j.model.watsonx;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -13,14 +14,19 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
+import com.ibm.watsonx.ai.CloudRegion;
 import com.ibm.watsonx.ai.chat.ChatHandler;
 import com.ibm.watsonx.ai.chat.ChatResponse;
 import com.ibm.watsonx.ai.chat.ChatService;
+import com.ibm.watsonx.ai.chat.EmptyChatResponseException;
+import com.ibm.watsonx.ai.chat.TextChatResponse;
 import com.ibm.watsonx.ai.chat.model.AssistantMessage;
 import com.ibm.watsonx.ai.chat.model.ChatMessage;
 import com.ibm.watsonx.ai.chat.model.ChatUsage;
 import com.ibm.watsonx.ai.chat.model.CompletedToolCall;
 import com.ibm.watsonx.ai.chat.model.ExtractionTags;
+import com.ibm.watsonx.ai.chat.model.ExtractionTags.Response;
+import com.ibm.watsonx.ai.chat.model.ExtractionTags.Think;
 import com.ibm.watsonx.ai.chat.model.FunctionCall;
 import com.ibm.watsonx.ai.chat.model.ResultMessage;
 import com.ibm.watsonx.ai.chat.model.ToolCall;
@@ -71,7 +77,7 @@ public class WatsonxStreamingChatModelTest {
     @Captor
     ArgumentCaptor<com.ibm.watsonx.ai.chat.ChatRequest> chatRequestCaptor;
 
-    static ChatResponse.Builder chatResponse;
+    static TextChatResponse.Builder<?> chatResponse;
 
     @BeforeEach
     void setUp() {
@@ -91,7 +97,7 @@ public class WatsonxStreamingChatModelTest {
         when(mockChatServiceBuilder.build()).thenReturn(mockChatService);
 
         var chatUsage = new ChatUsage(10, 10, 20);
-        chatResponse = ChatResponse.build()
+        chatResponse = TextChatResponse.builder()
                 .id("id")
                 .modelId("modelId")
                 .model("model")
@@ -103,7 +109,55 @@ public class WatsonxStreamingChatModelTest {
     }
 
     @Test
-    public void testDoChat() throws Exception {
+    void should_create_create_a_watsonx_chat_model_from_a_chat_service() {
+
+        var streamingChatModel = assertDoesNotThrow(() -> WatsonxStreamingChatModel.builder()
+                .baseUrl(CloudRegion.FRANKFURT)
+                .modelName("model-name")
+                .apiKey("api-key-test")
+                .projectId("project-id")
+                .spaceId("space-id")
+                .version("my-version")
+                .logRequests(true)
+                .logResponses(true)
+                .build());
+
+        var defaultRequestParameters =
+                assertInstanceOf(WatsonxChatRequestParameters.class, streamingChatModel.defaultRequestParameters());
+
+        var chatServiceField = assertDoesNotThrow(
+                () -> streamingChatModel.getClass().getSuperclass().getDeclaredField("chatService"));
+        var chatService = assertDoesNotThrow(() -> chatServiceField.get(streamingChatModel));
+
+        assertInstanceOf(ChatService.class, chatService);
+        assertNull(defaultRequestParameters.frequencyPenalty());
+        assertNull(defaultRequestParameters.logitBias());
+        assertNull(defaultRequestParameters.logprobs());
+        assertNull(defaultRequestParameters.maxOutputTokens());
+        assertEquals("model-name", defaultRequestParameters.modelName());
+        assertNull(defaultRequestParameters.presencePenalty());
+        assertEquals("project-id", defaultRequestParameters.projectId());
+        assertNull(defaultRequestParameters.responseFormat());
+        assertNull(defaultRequestParameters.seed());
+        assertEquals("space-id", defaultRequestParameters.spaceId());
+        assertEquals(List.of(), defaultRequestParameters.stopSequences());
+        assertNull(defaultRequestParameters.temperature());
+        assertNull(defaultRequestParameters.timeout());
+        assertNull(defaultRequestParameters.toolChoice());
+        assertNull(defaultRequestParameters.toolChoiceName());
+        assertEquals(List.of(), defaultRequestParameters.toolSpecifications());
+        assertNull(defaultRequestParameters.topK());
+        assertNull(defaultRequestParameters.topLogprobs());
+        assertNull(defaultRequestParameters.topP());
+        assertNull(defaultRequestParameters.guidedChoice());
+        assertNull(defaultRequestParameters.guidedGrammar());
+        assertNull(defaultRequestParameters.guidedRegex());
+        assertNull(defaultRequestParameters.repetitionPenalty());
+        assertNull(defaultRequestParameters.lengthPenalty());
+    }
+
+    @Test
+    public void should_do_chat() throws Exception {
 
         var messages = List.<ChatMessage>of(com.ibm.watsonx.ai.chat.model.UserMessage.text("Hello"));
         doAnswer(invocation -> {
@@ -174,7 +228,7 @@ public class WatsonxStreamingChatModelTest {
                 assertNull(parameters.responseFormat());
                 assertNull(parameters.seed());
                 assertEquals("spaceId", parameters.spaceId());
-                assertEquals(List.of(), parameters.stop());
+                assertNull(parameters.stop());
                 assertNull(parameters.temperature());
                 assertNull(parameters.timeLimit());
                 assertNull(parameters.toolChoice());
@@ -186,6 +240,7 @@ public class WatsonxStreamingChatModelTest {
                 assertNull(parameters.guidedRegex());
                 assertNull(parameters.repetitionPenalty());
                 assertNull(parameters.lengthPenalty());
+
             } catch (Exception e) {
                 fail(e);
             }
@@ -193,14 +248,15 @@ public class WatsonxStreamingChatModelTest {
     }
 
     @Test
-    void shouldExtractThinkingWhenConfiguredInModelBuilder() throws Exception {
+    void should_extract_thinking_when_configured_in_model_builder() throws Exception {
 
-        var extractionTags = ExtractionTags.of("think", "response");
+        var extractionTags =
+                ExtractionTags.of(new Think("<think>", "</think>"), new Response("<response>", "</response>"));
 
         var resultMessage = new ResultMessage(
                 AssistantMessage.ROLE,
                 "<think>I'm thinking</think><response>This is the response</response>",
-                "I'm thinking",
+                null,
                 null,
                 null);
         var resultChoice = new ChatResponse.ResultChoice(0, resultMessage, "stop");
@@ -276,13 +332,14 @@ public class WatsonxStreamingChatModelTest {
     }
 
     @Test
-    void shouldExtractThinkingWhenConfiguredInRequestParameters() throws Exception {
+    void should_extract_thinking_when_configured_in_request_parameters() throws Exception {
 
-        var extractionTags = ExtractionTags.of("think", "response");
+        var extractionTags =
+                ExtractionTags.of(new Think("<think>", "</think>"), new Response("<response>", "</response>"));
         var resultMessage = new ResultMessage(
                 AssistantMessage.ROLE,
                 "<think>I'm thinking</think><response>This is the response</response>",
-                "I'm thinking",
+                null,
                 null,
                 null);
 
@@ -316,7 +373,8 @@ public class WatsonxStreamingChatModelTest {
             ChatRequest chatRequest = ChatRequest.builder()
                     .messages(UserMessage.from("Hello"))
                     .parameters(WatsonxChatRequestParameters.builder()
-                            .thinking(ExtractionTags.of("think", "response"))
+                            .thinking(ExtractionTags.of(
+                                    new Think("<think>", "</think>"), new Response("<response>", "</response>")))
                             .build())
                     .build();
 
@@ -362,7 +420,80 @@ public class WatsonxStreamingChatModelTest {
     }
 
     @Test
-    void testDoChatWithRefusal() {
+    void should_return_text_and_thinking_when_response_contains_reasoning_content() {
+
+        var resultMessage =
+                new ResultMessage(AssistantMessage.ROLE, "This is the response", "I'm thinking", null, null);
+
+        var resultChoice = new ChatResponse.ResultChoice(0, resultMessage, "stop");
+        chatResponse.choices(List.of(resultChoice));
+        var cr = chatResponse.build();
+
+        doAnswer(invocation -> {
+                    ChatHandler handler = invocation.getArgument(1);
+                    handler.onPartialThinking("I'm thinking", null);
+                    handler.onPartialResponse("This is", null);
+                    handler.onPartialResponse("the response", null);
+                    handler.onCompleteResponse(cr);
+                    return CompletableFuture.completedFuture(null);
+                })
+                .when(mockChatService)
+                .chatStreaming(chatRequestCaptor.capture(), any());
+
+        withChatServiceMock(() -> {
+            StreamingChatModel streamingChatModel = WatsonxStreamingChatModel.builder()
+                    .baseUrl("https://test.com")
+                    .modelName("modelId")
+                    .projectId("projectId")
+                    .spaceId("spaceId")
+                    .apiKey("api-key")
+                    .build();
+
+            ChatRequest chatRequest =
+                    ChatRequest.builder().messages(UserMessage.from("Hello")).build();
+
+            CountDownLatch latch = new CountDownLatch(1);
+            StreamingChatResponseHandler streamingHandler = new StreamingChatResponseHandler() {
+                @Override
+                public void onPartialResponse(String partialResponse) {
+                    assertTrue(partialResponse.equals("This is") || partialResponse.equals("the response"));
+                }
+
+                @Override
+                public void onCompleteResponse(dev.langchain4j.model.chat.response.ChatResponse completeResponse) {
+                    assertEquals("I'm thinking", completeResponse.aiMessage().thinking());
+                    assertEquals(
+                            "This is the response", completeResponse.aiMessage().text());
+                    latch.countDown();
+                }
+
+                @Override
+                public void onPartialThinking(PartialThinking partialThinking) {
+                    assertEquals("I'm thinking", partialThinking.text());
+                }
+
+                @Override
+                public void onError(Throwable error) {
+                    fail("Unexpected error: " + error);
+                }
+            };
+
+            streamingChatModel.chat(chatRequest, streamingHandler);
+
+            try {
+                boolean completed = latch.await(2, TimeUnit.SECONDS);
+                assertTrue(completed, "Handler did not complete in time");
+                assertEquals(
+                        com.ibm.watsonx.ai.chat.model.UserMessage.text("Hello"),
+                        chatRequestCaptor.getValue().messages().get(0));
+            } catch (Exception e) {
+                fail(e);
+            }
+        });
+    }
+
+    @Test
+    void should_do_chat_with_refusal() {
 
         var messages = List.<ChatMessage>of(com.ibm.watsonx.ai.chat.model.UserMessage.text("Hello"));
         doAnswer(invocation -> {
@@ -393,7 +524,7 @@ public class WatsonxStreamingChatModelTest {
                     ChatRequest.builder().messages(UserMessage.from("Hello")).build();
 
             var receivedResponses = new ArrayList<>();
-            var latch = new CountDownLatch(2);
+            var latch = new CountDownLatch(1);
 
             var streamingHandler = new StreamingChatResponseHandler() {
                 @Override
@@ -403,8 +534,7 @@ public class WatsonxStreamingChatModelTest {
 
                 @Override
                 public void onCompleteResponse(dev.langchain4j.model.chat.response.ChatResponse completeResponse) {
-                    assertEquals("Hello World", completeResponse.aiMessage().text());
-                    latch.countDown();
+                    fail("onCompleteResponse must not be called after a refusal");
                 }
 
                 @Override
@@ -435,7 +565,7 @@ public class WatsonxStreamingChatModelTest {
                 assertNull(parameters.responseFormat());
                 assertNull(parameters.seed());
                 assertEquals("spaceId", parameters.spaceId());
-                assertEquals(List.of(), parameters.stop());
+                assertNull(parameters.stop());
                 assertNull(parameters.temperature());
                 assertNull(parameters.timeLimit());
                 assertNull(parameters.toolChoice());
@@ -449,7 +579,62 @@ public class WatsonxStreamingChatModelTest {
     }
 
     @Test
-    public void testDoChatWithTool() throws Exception {
+    void should_report_empty_response_to_onError() {
+
+        doAnswer(invocation -> {
+                    ChatHandler handler = invocation.getArgument(1);
+
+                    var resultMessage = new ResultMessage(AssistantMessage.ROLE, null, null, null, null);
+                    var resultChoice = new ChatResponse.ResultChoice(0, resultMessage, "length");
+                    chatResponse.choices(List.of(resultChoice));
+                    handler.onCompleteResponse(chatResponse.build());
+
+                    return CompletableFuture.completedFuture(null);
+                })
+                .when(mockChatService)
+                .chatStreaming(chatRequestCaptor.capture(), any());
+
+        withChatServiceMock(() -> {
+            var streamingChatModel = WatsonxStreamingChatModel.builder()
+                    .baseUrl("https://test.com")
+                    .modelName("modelId")
+                    .projectId("projectId")
+                    .apiKey("api-key")
+                    .build();
+
+            var chatRequest =
+                    ChatRequest.builder().messages(UserMessage.from("Hello")).build();
+
+            var latch = new CountDownLatch(1);
+
+            var streamingHandler = new StreamingChatResponseHandler() {
+                @Override
+                public void onPartialResponse(String partialResponse) {}
+
+                @Override
+                public void onCompleteResponse(dev.langchain4j.model.chat.response.ChatResponse completeResponse) {
+                    fail("onCompleteResponse must not be called for an empty response");
+                }
+
+                @Override
+                public void onError(Throwable error) {
+                    assertInstanceOf(EmptyChatResponseException.class, error);
+                    latch.countDown();
+                }
+            };
+
+            streamingChatModel.chat(chatRequest, streamingHandler);
+
+            try {
+                assertTrue(latch.await(2, TimeUnit.SECONDS), "Handler did not complete in time");
+            } catch (Exception e) {
+                fail(e);
+            }
+        });
+    }
+
+    @Test
+    public void should_do_chat_with_tool() throws Exception {
 
         var toolCall = new ToolCall(0, "id", "function", new FunctionCall("name", "{}"));
         var resultMessage = new ResultMessage(AssistantMessage.ROLE, null, null, null, List.of(toolCall));
@@ -578,7 +763,7 @@ public class WatsonxStreamingChatModelTest {
     }
 
     @Test
-    void testJsonSchema() throws Exception {
+    void should_handle_json_schema() throws Exception {
 
         var resultMessage = new ResultMessage(AssistantMessage.ROLE, "Hello", null, null, null);
         var resultChoice = new ChatResponse.ResultChoice(0, resultMessage, "stop");
@@ -646,7 +831,7 @@ public class WatsonxStreamingChatModelTest {
     }
 
     @Test
-    void testChatRequestWithTopK() {
+    void should_throw_exception_for_chat_request_with_top_k() {
 
         var streamingChatModel = WatsonxStreamingChatModel.builder()
                 .baseUrl("https://test.com")
@@ -682,19 +867,21 @@ public class WatsonxStreamingChatModelTest {
                             }
                         }));
 
-        assertThrows(UnsupportedFeatureException.class, () -> WatsonxStreamingChatModel.builder()
-                .baseUrl("https://test.com")
-                .modelName("modelId")
-                .projectId("project-id")
-                .spaceId("space-id")
-                .apiKey("api-key")
-                .defaultRequestParameters(
-                        ChatRequestParameters.builder().topK(10).build())
-                .build());
+        assertThrows(
+                UnsupportedFeatureException.class,
+                () -> WatsonxStreamingChatModel.builder()
+                        .baseUrl("https://test.com")
+                        .modelName("modelId")
+                        .projectId("project-id")
+                        .spaceId("space-id")
+                        .apiKey("api-key")
+                        .defaultRequestParameters(
+                                ChatRequestParameters.builder().topK(10).build())
+                        .build());
     }
 
     @Test
-    void testSupportCapabilities() {
+    void should_support_capabilities() {
 
         var chatModel = WatsonxStreamingChatModel.builder()
                 .baseUrl("https://test.com")

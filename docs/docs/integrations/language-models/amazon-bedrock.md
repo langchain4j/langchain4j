@@ -10,7 +10,7 @@ sidebar_position: 1
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-bedrock</artifactId>
-    <version>1.13.0</version>
+    <version>1.19.0</version>
 </dependency>
 ```
 
@@ -52,6 +52,7 @@ ChatModel model = BedrockChatModel.builder()
                 .additionalModelRequestField(...)
                 .enableReasoning(...)
                 .promptCaching(...)
+                .requestMetadata(Map.of("team", "platform"))
                 .build())
         .build();
 ```
@@ -94,6 +95,7 @@ StreamingChatModel model = BedrockStreamingChatModel.builder()
                 .additionalModelRequestField(...)
                 .enableReasoning(...)
                 .promptCaching(...)
+                .requestMetadata(Map.of("team", "platform"))
                 .build())
         .build();
 ```
@@ -107,7 +109,24 @@ StreamingChatModel model = BedrockStreamingChatModel.builder()
 
 The field `additionalModelRequestFields` in the `BedrockChatRequestParameters` is a `Map<String, Object>`.
 As explained [here](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_Converse.html#bedrock-runtime_Converse-request-additionalModelRequestFields)
-it allows to add inference parameters for a specific model that is not covered by common `InferenceConfiguration`.
+it allows you to add inference parameters for a specific model that is not covered by common `InferenceConfiguration`.
+
+
+## Request Metadata
+
+Use `requestMetadata` on `BedrockChatRequestParameters` to add key-value pairs to Converse and ConverseStream requests.
+The metadata can be used to filter Amazon Bedrock model invocation logs. It can be configured as part of the model's
+default request parameters or supplied for an individual request.
+
+```java
+BedrockChatRequestParameters parameters = BedrockChatRequestParameters.builder()
+        .requestMetadata(Map.of("team", "platform"))
+        .build();
+```
+
+Do not include personally identifiable information, credentials, or other sensitive data in request metadata.
+See [Per-request metadata tagging](https://docs.aws.amazon.com/bedrock/latest/userguide/cost-mgmt-request-metadata.html)
+for more information.
 
 
 ## Thinking / Reasoning
@@ -197,7 +216,7 @@ BedrockChatRequestParameters params = BedrockChatRequestParameters.builder()
         .build();
 
 ChatModel model = BedrockChatModel.builder()
-        .modelId("us.anthropic.claude-3-7-sonnet-20250219-v1:0")
+        .modelId("us.anthropic.claude-sonnet-4-6")
         .defaultRequestParameters(params)
         .build();
 
@@ -235,7 +254,7 @@ BedrockChatRequestParameters params = BedrockChatRequestParameters.builder()
         .build();
 
 ChatModel model = BedrockChatModel.builder()
-        .modelId("us.anthropic.claude-3-7-sonnet-20250219-v1:0")
+        .modelId("us.anthropic.claude-sonnet-4-6")
         .defaultRequestParameters(params)
         .build();
 ```

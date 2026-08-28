@@ -2,7 +2,6 @@ package dev.langchain4j.agentic.scope;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.agentic.observability.AgentListener;
-import org.jspecify.annotations.NonNull;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 

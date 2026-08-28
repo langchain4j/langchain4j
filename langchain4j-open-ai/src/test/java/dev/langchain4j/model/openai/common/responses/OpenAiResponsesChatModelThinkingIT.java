@@ -1,5 +1,7 @@
 package dev.langchain4j.model.openai.common.responses;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
@@ -15,12 +17,9 @@ import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.openai.OpenAiResponsesChatModel;
 import dev.langchain4j.model.openai.OpenAiTokenUsage;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
-
-import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 class OpenAiResponsesChatModelThinkingIT {
@@ -49,27 +48,32 @@ class OpenAiResponsesChatModelThinkingIT {
     void should_return_reasoning_summary() {
 
         // given
-        String reasoningSummary = "auto";
+        String reasoningSummary = "detailed";
 
         ChatModel model = OpenAiResponsesChatModel.builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                 .modelName("gpt-5-mini")
-                .reasoningEffort("low")
+                .reasoningEffort("high")
                 .reasoningSummary(reasoningSummary)
                 .logRequests(true)
                 .logResponses(true)
                 .build();
 
-        UserMessage userMessage = UserMessage.from("What is the capital of Germany?");
+        UserMessage userMessage = UserMessage.from(
+                "Alice, Bob and Carol shared a holiday rental for 9 nights and agreed to split every cost equally. "
+                        + "Alice paid the 1260 EUR rent. Bob paid 315 EUR for groceries but 45 EUR of that was a gift "
+                        + "he bought only for himself. Carol paid 210 EUR for fuel and is still owed 60 EUR by Alice "
+                        + "from an earlier trip. Work out the single set of transfers that settles everything, "
+                        + "and state exactly who pays whom and how much.");
 
         // when
         ChatResponse chatResponse = model.chat(userMessage);
 
         // then
         AiMessage aiMessage = chatResponse.aiMessage();
-        assertThat(aiMessage.text()).containsIgnoringCase("Berlin");
+        assertThat(aiMessage.text()).isNotBlank();
         assertThat(aiMessage.thinking()).isNotBlank();
 
         OpenAiTokenUsage tokenUsage = (OpenAiTokenUsage) chatResponse.tokenUsage();
@@ -85,7 +89,7 @@ class OpenAiResponsesChatModelThinkingIT {
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                 .modelName("gpt-5-mini")
-                .reasoningEffort("low")
+                .reasoningEffort("medium")
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -107,7 +111,8 @@ class OpenAiResponsesChatModelThinkingIT {
         // given
         List<String> include = List.of("reasoning.encrypted_content");
 
-        SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder().build());
+        SpyingHttpClient spyingHttpClient =
+                new SpyingHttpClient(JdkHttpClient.builder().build());
 
         ChatModel model = OpenAiResponsesChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
@@ -145,7 +150,8 @@ class OpenAiResponsesChatModelThinkingIT {
                 .messages(
                         userMessage,
                         aiMessage1,
-                        ToolExecutionResultMessage.from(aiMessage1.toolExecutionRequests().get(0), "sunny, 22°C"))
+                        ToolExecutionResultMessage.from(
+                                aiMessage1.toolExecutionRequests().get(0), "sunny, 22°C"))
                 .parameters(ChatRequestParameters.builder()
                         .toolSpecifications(WEATHER_TOOL)
                         .build())
@@ -161,9 +167,7 @@ class OpenAiResponsesChatModelThinkingIT {
         // verify encrypted_content was sent back in turn 2
         List<HttpRequest> httpRequests = spyingHttpClient.requests();
         assertThat(httpRequests).hasSize(2);
-        assertThat(httpRequests.get(1).body())
-                .contains("encrypted_content")
-                .contains(encryptedContent1);
+        assertThat(httpRequests.get(1).body()).contains("encrypted_content").contains(encryptedContent1);
     }
 
     @Test
@@ -172,7 +176,8 @@ class OpenAiResponsesChatModelThinkingIT {
         // given
         List<String> include = List.of("reasoning.encrypted_content");
 
-        SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder().build());
+        SpyingHttpClient spyingHttpClient =
+                new SpyingHttpClient(JdkHttpClient.builder().build());
 
         ChatModel model = OpenAiResponsesChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
@@ -210,8 +215,10 @@ class OpenAiResponsesChatModelThinkingIT {
                 .messages(
                         userMessage,
                         aiMessage1,
-                        ToolExecutionResultMessage.from(aiMessage1.toolExecutionRequests().get(0), "sunny, 22°C"),
-                        ToolExecutionResultMessage.from(aiMessage1.toolExecutionRequests().get(1), "14:35"))
+                        ToolExecutionResultMessage.from(
+                                aiMessage1.toolExecutionRequests().get(0), "sunny, 22°C"),
+                        ToolExecutionResultMessage.from(
+                                aiMessage1.toolExecutionRequests().get(1), "14:35"))
                 .parameters(ChatRequestParameters.builder()
                         .toolSpecifications(WEATHER_TOOL, TIME_TOOL)
                         .build())
@@ -225,8 +232,6 @@ class OpenAiResponsesChatModelThinkingIT {
         // verify encrypted_content was sent back in turn 2
         List<HttpRequest> httpRequests = spyingHttpClient.requests();
         assertThat(httpRequests).hasSize(2);
-        assertThat(httpRequests.get(1).body())
-                .contains("encrypted_content")
-                .contains(encryptedContent1);
+        assertThat(httpRequests.get(1).body()).contains("encrypted_content").contains(encryptedContent1);
     }
 }

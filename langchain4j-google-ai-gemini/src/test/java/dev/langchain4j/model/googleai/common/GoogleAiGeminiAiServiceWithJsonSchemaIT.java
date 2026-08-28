@@ -23,7 +23,7 @@ class GoogleAiGeminiAiServiceWithJsonSchemaIT extends AbstractAiServiceWithJsonS
                 .modelName("gemini-2.5-flash")
                 .responseFormat(JSON)
                 .temperature(0.0)
-                .logRequests(true)
+                .logRequests(false)
                 .logResponses(true)
                 .build());
     }

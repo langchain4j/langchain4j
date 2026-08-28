@@ -24,7 +24,6 @@ import java.lang.reflect.Type;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -218,7 +217,7 @@ public class DefaultMcpClientBuilder<T> implements McpClientBuilder<T>, Internal
 
     @Override
     public Class<?> type() {
-        return null;
+        return agentServiceClass;
     }
 
     @Override

@@ -4,26 +4,32 @@ import java.io.BufferedReader;
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 class ProcessStderrHandler implements Runnable, Closeable {
 
     private final Process process;
-    private static final Logger log = LoggerFactory.getLogger(ProcessStderrHandler.class);
+    // Resolved per instance (in the constructor) rather than in a static initializer so that the
+    // logger reflects any LoggerFactory configuration in effect when the handler is created, and is
+    // not fixed at class-load time (which also makes this class testable in isolation).
+    private final Logger log;
     private volatile boolean closed = false;
 
     public ProcessStderrHandler(final Process process) {
         this.process = process;
+        this.log = LoggerFactory.getLogger(ProcessStderrHandler.class);
     }
 
     @Override
     public void run() {
-        try (InputStreamReader inputStreamReader = new InputStreamReader(process.getErrorStream())) {
+        try (InputStreamReader inputStreamReader =
+                new InputStreamReader(process.getErrorStream(), StandardCharsets.UTF_8)) {
             try (BufferedReader reader = new BufferedReader(inputStreamReader)) {
                 String line;
                 while ((line = reader.readLine()) != null) {
-                    log.debug("[ERROR] {}", line);
+                    log.debug("[STDERR] {}", line);
                 }
             } catch (IOException e) {
                 // If this handler was closed, it means the MCP server process is shutting down,

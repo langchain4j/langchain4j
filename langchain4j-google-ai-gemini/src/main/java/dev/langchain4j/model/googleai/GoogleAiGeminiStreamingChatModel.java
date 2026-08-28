@@ -6,7 +6,6 @@ import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import java.util.List;
 
@@ -25,7 +24,7 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
     }
 
     @Override
-    public ChatRequestParameters defaultRequestParameters() {
+    public GoogleAiGeminiChatRequestParameters defaultRequestParameters() {
         return defaultRequestParameters;
     }
 

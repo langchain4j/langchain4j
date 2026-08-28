@@ -13,7 +13,7 @@ https://mariadb.com/kb/en/vector-overview
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-mariadb</artifactId>
-    <version>1.13.0-beta23</version>
+    <version>1.19.0-beta29</version>
 </dependency>
 ```
 

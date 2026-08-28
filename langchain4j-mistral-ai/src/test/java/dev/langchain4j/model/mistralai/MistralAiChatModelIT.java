@@ -4,15 +4,16 @@ import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.model.mistralai.MistralAiChatModelName.CODESTRAL_LATEST;
 import static dev.langchain4j.model.mistralai.MistralAiChatModelName.MISTRAL_SMALL_LATEST;
 import static dev.langchain4j.model.mistralai.MistralAiChatModelName.OPEN_MISTRAL_7B;
-import static dev.langchain4j.model.mistralai.MistralAiChatModelName.VOXTRAL_MINI_LATEST;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.AudioContent;
+import dev.langchain4j.data.message.PdfFileContent;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.data.pdf.PdfFile;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
@@ -33,6 +34,8 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 @EnabledIfEnvironmentVariable(named = "MISTRAL_AI_API_KEY", matches = ".+")
 class MistralAiChatModelIT {
+
+    private static final String VOXTRAL_SMALL = "voxtral-small-2507";
 
     // https://docs.mistral.ai/platform/guardrailing/
     @Test
@@ -202,7 +205,7 @@ class MistralAiChatModelIT {
         // given
         ChatModel chatModel = MistralAiChatModel.builder()
                 .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
-                .modelName(VOXTRAL_MINI_LATEST)
+                .modelName(VOXTRAL_SMALL)
                 .temperature(0.0)
                 .logRequests(true)
                 .logResponses(true)
@@ -228,7 +231,7 @@ class MistralAiChatModelIT {
         // given
         ChatModel chatModel = MistralAiChatModel.builder()
                 .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
-                .modelName(VOXTRAL_MINI_LATEST)
+                .modelName(VOXTRAL_SMALL)
                 .temperature(0.0)
                 .logRequests(true)
                 .logResponses(true)
@@ -236,12 +239,64 @@ class MistralAiChatModelIT {
 
         UserMessage userMessage = UserMessage.from(
                 TextContent.from("What's the language of the audio?"),
-                AudioContent.from("https://upload.wikimedia.org/wikipedia/commons/2/28/Lorca_la_luna_asoma.ogg"));
+                AudioContent.from("https://storage.googleapis.com/cloud-samples-data/generative-ai/audio/pixel.mp3"));
 
         // when
         ChatResponse chatResponse = chatModel.chat(userMessage);
 
         // then
-        assertThat(chatResponse.aiMessage().text()).contains("Spanish");
+        assertThat(chatResponse.aiMessage().text()).containsIgnoringCase("English");
+    }
+
+    @Test
+    void should_accept_pdf_content_from_base64_data() throws Exception {
+
+        // given
+        ChatModel chatModel = MistralAiChatModel.builder()
+                .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
+                .modelName(MISTRAL_SMALL_LATEST)
+                .temperature(0.0)
+                .logRequests(false) // PDFs are huge in logs
+                .logResponses(true)
+                .build();
+
+        Path file =
+                Paths.get(getClass().getClassLoader().getResource("test.pdf").toURI());
+        String base64Content = Base64.getEncoder().encodeToString(Files.readAllBytes(file));
+
+        UserMessage userMessage = UserMessage.from(
+                TextContent.from("What's the language in this PDF?"),
+                PdfFileContent.from(base64Content, PdfFile.DEFAULT_MIME_TYPE));
+
+        // when
+        ChatResponse chatResponse = chatModel.chat(userMessage);
+
+        // then
+        assertThat(chatResponse.aiMessage().text()).containsIgnoringCase("French");
+    }
+
+    @Test
+    void should_accept_pdf_content_from_url() {
+
+        // given
+        ChatModel chatModel = MistralAiChatModel.builder()
+                .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
+                .modelName(MISTRAL_SMALL_LATEST)
+                .temperature(0.0)
+                .logRequests(false) // PDFs are huge in logs
+                .logResponses(true)
+                .build();
+
+        String pdfUrl = "https://upload.wikimedia.org/wikipedia/commons/f/f9/"
+                + "Entwicklung_der_t%C3%A4glichen_Neuinfektionen_mit_dem_Corona-Virus_in_Deutschland.pdf";
+
+        UserMessage userMessage =
+                UserMessage.from(TextContent.from("What's the language in this PDF?"), PdfFileContent.from(pdfUrl));
+
+        // when
+        ChatResponse chatResponse = chatModel.chat(userMessage);
+
+        // then
+        assertThat(chatResponse.aiMessage().text()).containsIgnoringCase("German");
     }
 }

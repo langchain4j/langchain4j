@@ -1,11 +1,10 @@
 package dev.langchain4j.skills;
 
-import dev.langchain4j.Experimental;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
+import dev.langchain4j.Experimental;
 import java.nio.file.Path;
 import java.util.Objects;
-
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 @Experimental
 public class DefaultFileSystemSkill extends AbstractSkill implements FileSystemSkill {
@@ -42,8 +41,20 @@ public class DefaultFileSystemSkill extends AbstractSkill implements FileSystemS
                 + ", description = " + description()
                 + ", content = " + content()
                 + ", resources = " + resources()
+                + ", toolProviders = " + toolProviders()
                 + ", basePath = " + basePath
                 + " }";
+    }
+
+    /**
+     * Returns a new builder pre-populated with the values from this skill.
+     * Useful for creating a modified copy, e.g. adding tools to a filesystem-loaded skill:
+     * <pre>{@code
+     * FileSystemSkill skillWithTools = skill.toBuilder().tools(new MyTools()).build();
+     * }</pre>
+     */
+    public Builder toBuilder() {
+        return builder().copyFrom(this).basePath(basePath());
     }
 
     public static Builder builder() {

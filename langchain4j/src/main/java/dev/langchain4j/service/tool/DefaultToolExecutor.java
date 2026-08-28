@@ -1,6 +1,7 @@
 package dev.langchain4j.service.tool;
 
 import static dev.langchain4j.internal.Exceptions.unwrapRuntimeException;
+import static dev.langchain4j.internal.Utils.allConcreteMethods;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
@@ -27,6 +28,7 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.Collection;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -65,10 +67,14 @@ public class DefaultToolExecutor implements ToolExecutor {
         this.propagateToolExecutionExceptions = false;
     }
 
+    public Method originalMethod() {
+        return originalMethod;
+    }
+
     private Method findMethod(Object object, ToolExecutionRequest toolExecutionRequest) {
         String requestedMethodName = toolExecutionRequest.name();
 
-        for (Method method : object.getClass().getDeclaredMethods()) {
+        for (Method method : allConcreteMethods(object.getClass())) {
             if (method.getName().equals(requestedMethodName)) {
                 return method;
             }
@@ -114,7 +120,7 @@ public class DefaultToolExecutor implements ToolExecutor {
                 } else {
                     return ToolExecutionResult.builder()
                             .isError(true)
-                            .resultText(e2.getCause().getMessage())
+                            .resultText(errorMessage(e2.getCause()))
                             .build();
                 }
             }
@@ -124,7 +130,7 @@ public class DefaultToolExecutor implements ToolExecutor {
             } else {
                 return ToolExecutionResult.builder()
                         .isError(true)
-                        .resultText(e.getCause().getMessage())
+                        .resultText(errorMessage(e.getCause()))
                         .build();
             }
         }
@@ -143,7 +149,7 @@ public class DefaultToolExecutor implements ToolExecutor {
     private Object[] prepareArguments(ToolExecutionRequest toolExecutionRequest, InvocationContext context) {
         try {
             Map<String, Object> argumentsMap = argumentsAsMap(toolExecutionRequest.arguments());
-            return prepareArguments(originalMethod, argumentsMap, context);
+            return prepareArguments(originalMethod, toolExecutionRequest.name(), argumentsMap, context);
         } catch (Exception e) {
             if (wrapToolArgumentsExceptions) {
                 throw new ToolArgumentsException(unwrapRuntimeException(e));
@@ -171,11 +177,15 @@ public class DefaultToolExecutor implements ToolExecutor {
     }
 
     private List<Content> toContents(Object result) {
+        if (result == null) {
+            return null;
+        }
         if (result instanceof Image image) {
             return List.of(ImageContent.from(image));
         } else if (result instanceof Content content) {
             return List.of(content);
-        } else if (result instanceof Collection<?> collection && !collection.isEmpty()
+        } else if (result instanceof Collection<?> collection
+                && !collection.isEmpty()
                 && collection.iterator().next() instanceof Content) {
             return collection.stream().map(Content.class::cast).toList();
         } else if (result instanceof Content[] array) {
@@ -189,13 +199,17 @@ public class DefaultToolExecutor implements ToolExecutor {
         if (returnType == void.class) {
             return "Success";
         } else if (returnType == String.class) {
+            if (result == null) {
+                return "null";
+            }
             return (String) result;
         } else {
             return Json.toJson(result);
         }
     }
 
-    static Object[] prepareArguments(Method method, Map<String, Object> argumentsMap, InvocationContext context) {
+    static Object[] prepareArguments(
+            Method method, String toolName, Map<String, Object> argumentsMap, InvocationContext context) {
         Parameter[] parameters = method.getParameters();
         Object[] arguments = new Object[parameters.length];
 
@@ -232,10 +246,24 @@ public class DefaultToolExecutor implements ToolExecutor {
                 arguments[i] = createOptional(argument, parameterName, parameterType);
             } else if (argument != null) {
                 arguments[i] = coerceArgument(argument, parameterName, parameterClass, parameterType);
+            } else {
+                P pAnnotation = parameter.getAnnotation(P.class);
+                if (pAnnotation != null && !P.NO_DEFAULT.equals(pAnnotation.defaultValue())) {
+                    arguments[i] =
+                            parseDefaultValue(pAnnotation.defaultValue(), parameterName, parameterClass, parameterType);
+                } else if (parameterClass.isPrimitive()) {
+                    throw new IllegalArgumentException(String.format(
+                            "Required parameter \"%s\" of tool \"%s\" is missing", parameterName, toolName));
+                }
             }
         }
 
         return arguments;
+    }
+
+    private static String errorMessage(Throwable cause) {
+        String message = cause.getMessage();
+        return message != null ? message : cause.getClass().getName();
     }
 
     private static String getName(Parameter parameter) {
@@ -267,6 +295,29 @@ public class DefaultToolExecutor implements ToolExecutor {
         return Optional.of(coercedValue);
     }
 
+    static Object parseDefaultValue(
+            String defaultValue, String parameterName, Class<?> parameterClass, Type parameterType) {
+        if (parameterClass == String.class || parameterClass.isEnum() || parameterClass == UUID.class) {
+            return coerceArgument(defaultValue, parameterName, parameterClass, parameterType);
+        }
+        Object jsonParsed;
+        try {
+            jsonParsed = Json.fromJson(defaultValue, Object.class);
+        } catch (Exception e) {
+            throw new IllegalArgumentException(
+                    String.format(
+                            "Cannot parse @P(defaultValue = \"%s\") for parameter \"%s\" of type %s: %s",
+                            defaultValue, parameterName, parameterClass.getName(), e.getMessage()),
+                    e);
+        }
+        if (jsonParsed == null) {
+            throw new IllegalArgumentException(String.format(
+                    "@P(defaultValue = \"%s\") parses to null for parameter \"%s\" of type %s",
+                    defaultValue, parameterName, parameterClass.getName()));
+        }
+        return coerceArgument(jsonParsed, parameterName, parameterClass, parameterType);
+    }
+
     static Object coerceArgument(Object argument, String parameterName, Class<?> parameterClass, Type parameterType) {
         if (parameterClass == String.class) {
             return argument.toString();
@@ -283,7 +334,7 @@ public class DefaultToolExecutor implements ToolExecutor {
                     // try to convert to uppercase as a last resort
                     return Enum.valueOf(
                             enumClass,
-                            Objects.requireNonNull(argument).toString().toUpperCase());
+                            Objects.requireNonNull(argument).toString().toUpperCase(Locale.ROOT));
                 }
             } catch (Exception | Error e) {
                 throw new IllegalArgumentException(
@@ -314,7 +365,7 @@ public class DefaultToolExecutor implements ToolExecutor {
         }
 
         if (parameterClass == BigDecimal.class) {
-            return BigDecimal.valueOf(getDoubleValue(argument, parameterName, parameterClass));
+            return getBigDecimalValue(argument, parameterName, parameterClass);
         }
 
         if (parameterClass == Integer.class || parameterClass == int.class) {
@@ -336,8 +387,7 @@ public class DefaultToolExecutor implements ToolExecutor {
         }
 
         if (parameterClass == BigInteger.class) {
-            return BigDecimal.valueOf(getNonFractionalDoubleValue(argument, parameterName, parameterClass))
-                    .toBigInteger();
+            return getBigIntegerValue(argument, parameterName, parameterClass);
         }
 
         if (Collection.class.isAssignableFrom(parameterClass) || Map.class.isAssignableFrom(parameterClass)) {
@@ -373,16 +423,6 @@ public class DefaultToolExecutor implements ToolExecutor {
         return ((Number) argument).doubleValue();
     }
 
-    private static double getNonFractionalDoubleValue(Object argument, String parameterName, Class<?> parameterType) {
-        double doubleValue = getDoubleValue(argument, parameterName, parameterType);
-        if (!hasNoFractionalPart(doubleValue)) {
-            throw new IllegalArgumentException(String.format(
-                    "Argument \"%s\" has non-integer value for %s: <%s>",
-                    parameterName, parameterType.getName(), argument));
-        }
-        return doubleValue;
-    }
-
     private static void checkBounds(
             double doubleValue, String parameterName, Class<?> parameterType, double minValue, double maxValue) {
         if (doubleValue < minValue || doubleValue > maxValue) {
@@ -394,13 +434,63 @@ public class DefaultToolExecutor implements ToolExecutor {
 
     public static long getBoundedLongValue(
             Object argument, String parameterName, Class<?> parameterType, long minValue, long maxValue) {
-        double doubleValue = getNonFractionalDoubleValue(argument, parameterName, parameterType);
-        checkBounds(doubleValue, parameterName, parameterType, minValue, maxValue);
-        return (long) doubleValue;
+        BigInteger bigIntegerValue = getBigIntegerValue(argument, parameterName, parameterType);
+        if (bigIntegerValue.compareTo(BigInteger.valueOf(minValue)) < 0
+                || bigIntegerValue.compareTo(BigInteger.valueOf(maxValue)) > 0) {
+            throw new IllegalArgumentException(String.format(
+                    "Argument \"%s\" is out of range for %s: <%s>", parameterName, parameterType.getName(), argument));
+        }
+        return bigIntegerValue.longValue();
     }
 
-    static boolean hasNoFractionalPart(Double doubleValue) {
-        return doubleValue.equals(Math.floor(doubleValue));
+    /**
+     * Converts the argument to a {@link BigInteger} preserving its exact value.
+     * Going through {@code double} would silently lose precision for magnitudes above 2^53
+     * (e.g. a long 9007199254740993 would become 9007199254740992).
+     */
+    private static BigInteger getBigIntegerValue(Object argument, String parameterName, Class<?> parameterType) {
+        BigDecimal bigDecimalValue = getBigDecimalValue(argument, parameterName, parameterType);
+        try {
+            return bigDecimalValue.toBigIntegerExact();
+        } catch (ArithmeticException e) {
+            throw new IllegalArgumentException(String.format(
+                    "Argument \"%s\" has non-integer value for %s: <%s>",
+                    parameterName, parameterType.getName(), argument));
+        }
+    }
+
+    /**
+     * Converts the argument to a {@link BigDecimal} preserving its exact value.
+     * Unlike converting through {@code double}, this does not lose precision for large integers
+     * or introduce floating-point representation error.
+     */
+    private static BigDecimal getBigDecimalValue(Object argument, String parameterName, Class<?> parameterType) {
+        if (argument instanceof BigDecimal bigDecimal) {
+            return bigDecimal;
+        }
+        if (argument instanceof BigInteger bigInteger) {
+            return new BigDecimal(bigInteger);
+        }
+        // Long/Integer/Short/Byte have exact string representations; Double/Float are rendered via
+        // Number.toString() (matching the behavior of IsEqualTo's numeric comparison).
+        if (argument instanceof Number number) {
+            return new BigDecimal(number.toString());
+        }
+        if (argument instanceof String) {
+            try {
+                // Trim to tolerate surrounding whitespace, matching the leniency of Double.parseDouble
+                // that the previous double-based conversion relied on.
+                return new BigDecimal(argument.toString().trim());
+            } catch (NumberFormatException e) {
+                // fall through to the error below
+            }
+        }
+        throw new IllegalArgumentException(String.format(
+                "Argument \"%s\" is not convertable to %s, got %s: <%s>",
+                parameterName,
+                parameterType.getName(),
+                argument == null ? "null" : argument.getClass().getName(),
+                argument));
     }
 
     public static Builder builder() {

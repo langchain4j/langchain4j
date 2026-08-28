@@ -1,25 +1,23 @@
 package dev.langchain4j.agentic.patterns.goap.writer;
 
-import dev.langchain4j.agentic.observability.AgentRequest;
-import dev.langchain4j.agentic.observability.AgentResponse;
-import dev.langchain4j.agentic.observability.AgentListener;
-import dev.langchain4j.agentic.patterns.goap.GoalOrientedPlanner;
-import dev.langchain4j.agentic.patterns.goap.writer.WriterAgents.StoryGenerator;
-import dev.langchain4j.agentic.patterns.goap.writer.WriterAgents.StyleEditor;
-import dev.langchain4j.agentic.patterns.goap.writer.WriterAgents.StyleScorer;
-import dev.langchain4j.agentic.patterns.goap.writer.WriterAgents.AudienceEditor;
-import dev.langchain4j.agentic.patterns.goap.writer.WriterAgents.StyleReviewLoop;
-import dev.langchain4j.agentic.patterns.goap.writer.WriterAgents.Writer;
-
-import dev.langchain4j.agentic.AgenticServices;
-import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
-
-import java.util.concurrent.atomic.AtomicBoolean;
-
 import static dev.langchain4j.agentic.patterns.Models.baseModel;
 import static org.assertj.core.api.Assertions.assertThat;
+
+import dev.langchain4j.agentic.AgenticServices;
+import dev.langchain4j.agentic.observability.AgentListener;
+import dev.langchain4j.agentic.observability.AgentRequest;
+import dev.langchain4j.agentic.observability.AgentResponse;
+import dev.langchain4j.agentic.patterns.goap.GoalOrientedPlanner;
+import dev.langchain4j.agentic.patterns.goap.writer.WriterAgents.AudienceEditor;
+import dev.langchain4j.agentic.patterns.goap.writer.WriterAgents.StoryGenerator;
+import dev.langchain4j.agentic.patterns.goap.writer.WriterAgents.StyleEditor;
+import dev.langchain4j.agentic.patterns.goap.writer.WriterAgents.StyleReviewLoop;
+import dev.langchain4j.agentic.patterns.goap.writer.WriterAgents.StyleScorer;
+import dev.langchain4j.agentic.patterns.goap.writer.WriterAgents.Writer;
+import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
+import java.util.concurrent.atomic.AtomicBoolean;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 public class GoapWriterIT {
@@ -31,6 +29,9 @@ public class GoapWriterIT {
 
             @Override
             public void beforeAgentInvocation(AgentRequest request) {
+                // Manually add additional variables to the agentic scope to verify that GOAP is able to handle them
+                request.agenticScope().writeState("additionalKey", "additionalValue");
+
                 // Ensure StyleEditor was called before AudienceEditor
                 if (request.agentName().equals("audienceEditor")) {
                     assertThat(styleEditorCalled.get()).isTrue();

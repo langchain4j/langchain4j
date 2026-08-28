@@ -267,7 +267,6 @@ class OpenAiStreamingChatModelIT {
                 "O1_2024_12_17", // don't have access
                 "O3", // don't have access
                 "O3_2025_04_16", // don't have access
-                "GPT_4_TURBO_PREVIEW" // flaky
             })
     void should_support_all_model_names(OpenAiChatModelName modelName) {
 

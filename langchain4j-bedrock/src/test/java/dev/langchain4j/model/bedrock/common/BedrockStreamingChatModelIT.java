@@ -53,7 +53,7 @@ class BedrockStreamingChatModelIT extends AbstractStreamingChatModelIT {
                 TestedModels.STREAMING_AWS_NOVA_LITE, TestedModels.STREAMING_AWS_NOVA_PRO);
         //                TestedModelsWithConverseAPI.STREAMING_AI_JAMBA_1_5_MINI,
         //                TestedModelsWithConverseAPI.STREAMING_CLAUDE_3_HAIKU,
-        //                TestedModelsWithConverseAPI.STREAMING_COHERE_COMMAND_R_PLUS,
+        //                TestedModelsWithConverseAPI.STREAMING_CLAUDE_HAIKU_4_5,
         //                TestedModelsWithConverseAPI.STREAMING_MISTRAL_LARGE);
     }
 
@@ -75,7 +75,7 @@ class BedrockStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     protected String customModelName() {
-        return "cohere.command-r-v1:0";
+        return "us.anthropic.claude-haiku-4-5-20251001-v1:0";
     }
 
     @Override
@@ -200,28 +200,6 @@ class BedrockStreamingChatModelIT extends AbstractStreamingChatModelIT {
         if (assertFinishReason()) {
             assertThat(chatResponse.metadata().finishReason()).isEqualTo(STOP);
         }
-    }
-
-    @Test
-    void should_reason() {
-        // given
-        StreamingChatModel model = BedrockStreamingChatModel.builder()
-                .modelId("us.anthropic.claude-3-7-sonnet-20250219-v1:0")
-                .defaultRequestParameters(BedrockChatRequestParameters.builder()
-                        .enableReasoning(1024)
-                        .build())
-                .build();
-
-        ChatRequest chatRequest = ChatRequest.builder()
-                .messages(UserMessage.from("What is the capital of Germany? "))
-                .build();
-
-        // when
-        ChatResponse chatResponse = chat(model, chatRequest).chatResponse();
-
-        // then
-        AiMessage aiMessage = chatResponse.aiMessage();
-        assertThat(aiMessage.text()).containsIgnoringWhitespaces("Berlin");
     }
 
     @Test

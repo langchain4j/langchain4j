@@ -1,5 +1,10 @@
 package dev.langchain4j.mcp;
 
+import static dev.langchain4j.agent.tool.SearchBehavior.ALWAYS_VISIBLE;
+import static dev.langchain4j.internal.Utils.copy;
+import static dev.langchain4j.internal.Utils.merge;
+import static java.util.Arrays.asList;
+
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.internal.Utils;
 import dev.langchain4j.mcp.client.McpClient;
@@ -21,15 +26,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-
-import static dev.langchain4j.agent.tool.SearchBehavior.ALWAYS_VISIBLE;
-import static dev.langchain4j.internal.Utils.copy;
-import static dev.langchain4j.internal.Utils.merge;
-import static java.util.Arrays.asList;
 
 /**
  * A tool provider backed by one or more MCP clients.
@@ -48,6 +46,7 @@ public class McpToolProvider implements ToolProvider {
     private final AtomicReference<BiFunction<McpClient, ToolSpecification, String>> toolNameMapper;
     private final AtomicReference<BiFunction<McpClient, ToolSpecification, ToolSpecification>> toolSpecificationMapper;
     private final Set<String> alwaysVisibleToolNames;
+    private final boolean returnToolResultAttributes;
 
     private McpToolProvider(Builder builder) {
         this.mcpClients = new CopyOnWriteArrayList<>(builder.mcpClients);
@@ -58,6 +57,7 @@ public class McpToolProvider implements ToolProvider {
         this.toolNameMapper = new AtomicReference<>(builder.toolNameMapper);
         this.toolSpecificationMapper = new AtomicReference<>(builder.toolSpecificationMapper);
         this.alwaysVisibleToolNames = copy(builder.alwaysVisibleToolNames);
+        this.returnToolResultAttributes = Utils.getOrDefault(builder.returnToolResultAttributes, false);
     }
 
     protected McpToolProvider(
@@ -76,6 +76,7 @@ public class McpToolProvider implements ToolProvider {
         this.toolNameMapper = new AtomicReference<>(toolNameMapper);
         this.toolSpecificationMapper = new AtomicReference<>(toolSpecificationMapper);
         this.alwaysVisibleToolNames = Set.of();
+        this.returnToolResultAttributes = false;
     }
 
     /**
@@ -154,8 +155,19 @@ public class McpToolProvider implements ToolProvider {
 
     protected ToolProviderResult provideTools(
             ToolProviderRequest request, BiPredicate<McpClient, ToolSpecification> mcpToolsFilter) {
+        return provideTools(request, mcpToolsFilter, mcpClients);
+    }
+
+    protected ToolProviderResult provideTools(ToolProviderRequest request, List<McpClient> consideredMcpClients) {
+        return provideTools(request, mcpToolsFilter.get(), consideredMcpClients);
+    }
+
+    protected ToolProviderResult provideTools(
+            ToolProviderRequest request,
+            BiPredicate<McpClient, ToolSpecification> mcpToolsFilter,
+            List<McpClient> consideredMcpClients) {
         ToolProviderResult.Builder builder = ToolProviderResult.builder();
-        for (McpClient mcpClient : mcpClients) {
+        for (McpClient mcpClient : consideredMcpClients) {
             try {
                 for (ToolSpecification originalSpec : mcpClient.listTools()) {
                     if (mcpToolsFilter.test(mcpClient, originalSpec)) {
@@ -178,7 +190,8 @@ public class McpToolProvider implements ToolProvider {
                             newSpec = addSearchBehaviorMetadata(newSpec);
                         }
                         // lock down the created McpToolExecutor to the original 'real' tool name, not the mapped one
-                        ToolExecutor defaultToolExecutor = new McpToolExecutor(mcpClient, originalSpec.name());
+                        ToolExecutor defaultToolExecutor =
+                                new McpToolExecutor(mcpClient, originalSpec.name(), returnToolResultAttributes);
                         builder.add(newSpec, toolWrapper.apply(defaultToolExecutor));
                     }
                 }
@@ -232,6 +245,7 @@ public class McpToolProvider implements ToolProvider {
         private BiFunction<McpClient, ToolSpecification, String> toolNameMapper;
         private BiFunction<McpClient, ToolSpecification, ToolSpecification> toolSpecificationMapper;
         private Set<String> alwaysVisibleToolNames;
+        private Boolean returnToolResultAttributes;
 
         /**
          * The list of MCP clients to use for retrieving tools.
@@ -368,6 +382,21 @@ public class McpToolProvider implements ToolProvider {
          */
         public McpToolProvider.Builder alwaysVisibleToolNames(String... alwaysVisibleToolNames) {
             return alwaysVisibleToolNames(new HashSet<>(asList(alwaysVisibleToolNames)));
+        }
+
+        /**
+         * Controls whether the attributes of an MCP tool result, which for MCP tools originate from the
+         * {@code _meta} field of the tool call response, are returned to the AI service.
+         * Default: {@code false}.
+         * <p>
+         * Attributes are never sent to the LLM, but they are propagated into
+         * {@code ToolExecutionResultMessage.attributes()} and are therefore stored in the chat memory.
+         * Because their size and contents are controlled by the MCP server, they are dropped
+         * unless this option is enabled.
+         */
+        public McpToolProvider.Builder returnToolResultAttributes(Boolean returnToolResultAttributes) {
+            this.returnToolResultAttributes = returnToolResultAttributes;
+            return this;
         }
 
         public McpToolProvider build() {

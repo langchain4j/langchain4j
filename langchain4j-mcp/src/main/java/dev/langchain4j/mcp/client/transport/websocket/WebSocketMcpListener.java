@@ -1,7 +1,5 @@
 package dev.langchain4j.mcp.client.transport.websocket;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
 import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -9,7 +7,6 @@ import java.net.http.WebSocket;
 import java.nio.ByteBuffer;
 import java.util.concurrent.CompletionStage;
 
-import static dev.langchain4j.mcp.client.transport.websocket.WebSocketMcpTransport.OBJECT_MAPPER;
 
 public class WebSocketMcpListener implements WebSocket.Listener {
 
@@ -51,9 +48,8 @@ public class WebSocketMcpListener implements WebSocket.Listener {
                 trafficLogger.info("< " + completeMessage);
             }
             try {
-                JsonNode jsonNode = OBJECT_MAPPER.readTree(completeMessage);
-                operationHandler.handle(jsonNode);
-            } catch (JsonProcessingException e) {
+                operationHandler.onMessage(completeMessage);
+            } catch (RuntimeException e) {
                 logger.warn("Failed to parse JSON message: {}", completeMessage, e);
             }
         }

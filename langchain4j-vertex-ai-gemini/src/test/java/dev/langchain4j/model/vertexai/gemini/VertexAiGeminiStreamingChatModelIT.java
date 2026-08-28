@@ -116,7 +116,7 @@ class VertexAiGeminiStreamingChatModelIT {
         VertexAiGeminiStreamingChatModel modelWithSearch = VertexAiGeminiStreamingChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
-                .modelName("gemini-2.0-flash-lite")
+                .modelName("gemini-2.5-flash-lite")
                 .useGoogleSearch(true)
                 .build();
 
@@ -136,7 +136,7 @@ class VertexAiGeminiStreamingChatModelIT {
         VertexAiGeminiStreamingChatModel modelWithResponseMimeType = VertexAiGeminiStreamingChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
-                .modelName("gemini-2.0-flash-lite")
+                .modelName("gemini-2.5-flash-lite")
                 .responseMimeType("application/json")
                 .build();
 
@@ -155,7 +155,7 @@ class VertexAiGeminiStreamingChatModelIT {
 
         // then
         ChatResponse chatResponse = handler2.get();
-        assertThat(chatResponse.aiMessage().text()).isEqualToIgnoringWhitespace("[" + expectedJson + "]");
+        assertThat(chatResponse.aiMessage().text()).isEqualToIgnoringWhitespace(expectedJson);
     }
 
     @Disabled("TODO fix")
@@ -170,7 +170,7 @@ class VertexAiGeminiStreamingChatModelIT {
         VertexAiGeminiStreamingChatModel model = VertexAiGeminiStreamingChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
-                .modelName("gemini-2.0-flash-lite")
+                .modelName("gemini-2.5-flash-lite")
                 .safetySettings(safetySettings)
                 .logRequests(true)
                 .logResponses(true)

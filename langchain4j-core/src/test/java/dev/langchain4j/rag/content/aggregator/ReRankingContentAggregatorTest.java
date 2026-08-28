@@ -25,6 +25,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -263,6 +264,88 @@ class ReRankingContentAggregatorTest {
                 .add(Arguments.of(singletonMap(Query.from("query"), singletonList(emptyList()))))
                 .add(Arguments.of(singletonMap(Query.from("query"), asList(emptyList(), emptyList()))))
                 .build();
+    }
+
+    @Test
+    void should_preserve_original_content_metadata_when_reranking() {
+
+        Query query = Query.from("query");
+
+        Content content1 = Content.from(
+                TextSegment.from("content 1"),
+                Map.of(ContentMetadata.SCORE, 0.82, ContentMetadata.EMBEDDING_ID, "doc-1"));
+        Content content2 = Content.from(
+                TextSegment.from("content 2"),
+                Map.of(ContentMetadata.SCORE, 0.41, ContentMetadata.EMBEDDING_ID, "doc-2"));
+
+        Map<Query, Collection<List<Content>>> queryToContents =
+                singletonMap(query, singletonList(asList(content1, content2)));
+
+        ScoringModel scoringModel = mock(ScoringModel.class);
+        when(scoringModel.scoreAll(any(), any())).thenReturn(Response.from(asList(0.5, 0.7)));
+        ContentAggregator aggregator = new ReRankingContentAggregator(scoringModel);
+
+        List<Content> aggregated = aggregator.aggregate(queryToContents);
+
+        assertThat(aggregated).hasSize(2);
+        assertReRankedContentOrder(aggregated, content2, content1);
+        assertReRankedContentScore(aggregated, 0.7, 0.5);
+        assertThat(aggregated.get(0).metadata())
+                .containsEntry(ContentMetadata.SCORE, 0.41)
+                .containsEntry(ContentMetadata.EMBEDDING_ID, "doc-2");
+        assertThat(aggregated.get(1).metadata())
+                .containsEntry(ContentMetadata.SCORE, 0.82)
+                .containsEntry(ContentMetadata.EMBEDDING_ID, "doc-1");
+    }
+
+    @Test
+    void should_preserve_original_content_metadata_after_min_score_filter() {
+
+        Query query = Query.from("query");
+
+        Content content1 = Content.from(
+                TextSegment.from("content 1"),
+                Map.of(ContentMetadata.SCORE, 0.82, ContentMetadata.EMBEDDING_ID, "doc-1"));
+        Content content2 = Content.from(
+                TextSegment.from("content 2"),
+                Map.of(ContentMetadata.SCORE, 0.41, ContentMetadata.EMBEDDING_ID, "doc-2"));
+
+        Map<Query, Collection<List<Content>>> queryToContents =
+                singletonMap(query, singletonList(asList(content1, content2)));
+
+        ScoringModel scoringModel = mock(ScoringModel.class);
+        when(scoringModel.scoreAll(any(), any())).thenReturn(Response.from(asList(0.3, 0.7)));
+        ContentAggregator aggregator = new ReRankingContentAggregator(scoringModel, null, 0.4);
+
+        List<Content> aggregated = aggregator.aggregate(queryToContents);
+
+        assertThat(aggregated).hasSize(1);
+        assertReRankedContentOrder(aggregated, content2);
+        assertReRankedContentScore(aggregated, 0.7);
+        assertThat(aggregated.get(0).metadata())
+                .containsEntry(ContentMetadata.SCORE, 0.41)
+                .containsEntry(ContentMetadata.EMBEDDING_ID, "doc-2");
+    }
+
+    @Test
+    void should_keep_fused_order_when_reranked_scores_are_equal() {
+
+        Query query = Query.from("query");
+
+        List<Content> contents = IntStream.range(0, 20)
+                .mapToObj(i -> Content.from("content " + i))
+                .toList();
+        List<Double> equalScores = contents.stream().map(content -> 0.5).toList();
+
+        Map<Query, Collection<List<Content>>> queryToContents = singletonMap(query, singletonList(contents));
+
+        ScoringModel scoringModel = mock(ScoringModel.class);
+        when(scoringModel.scoreAll(any(), any())).thenReturn(Response.from(equalScores));
+        ContentAggregator aggregator = new ReRankingContentAggregator(scoringModel);
+
+        List<Content> aggregated = aggregator.aggregate(queryToContents);
+
+        assertReRankedContentOrder(aggregated, contents.toArray(new Content[0]));
     }
 
     private void assertReRankedContentOrder(List<Content> actual, Content... expectedContents) {

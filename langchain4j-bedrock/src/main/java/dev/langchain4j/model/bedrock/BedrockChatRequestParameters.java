@@ -7,6 +7,7 @@ import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import software.amazon.awssdk.services.bedrockruntime.model.CacheTTL;
 
 public class BedrockChatRequestParameters extends DefaultChatRequestParameters {
@@ -19,6 +20,7 @@ public class BedrockChatRequestParameters extends DefaultChatRequestParameters {
     private final CacheTTL cacheTtl;
     private final BedrockGuardrailConfiguration bedrockGuardrailConfiguration;
     private final BedrockServiceTier serviceTier;
+    private final Map<String, String> requestMetadata;
 
     private BedrockChatRequestParameters(Builder builder) {
         super(builder);
@@ -27,6 +29,7 @@ public class BedrockChatRequestParameters extends DefaultChatRequestParameters {
         this.cacheTtl = builder.cacheTtl;
         this.bedrockGuardrailConfiguration = builder.bedrockGuardrailConfiguration;
         this.serviceTier = builder.serviceTier;
+        this.requestMetadata = copy(builder.requestMetadata);
     }
 
     @Override
@@ -69,6 +72,58 @@ public class BedrockChatRequestParameters extends DefaultChatRequestParameters {
         return serviceTier;
     }
 
+    public Map<String, String> requestMetadata() {
+        return requestMetadata;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        if (!super.equals(o)) return false;
+        BedrockChatRequestParameters that = (BedrockChatRequestParameters) o;
+        return Objects.equals(additionalModelRequestFields, that.additionalModelRequestFields)
+                && Objects.equals(cachePointPlacement, that.cachePointPlacement)
+                && Objects.equals(cacheTtl, that.cacheTtl)
+                && Objects.equals(bedrockGuardrailConfiguration, that.bedrockGuardrailConfiguration)
+                && Objects.equals(serviceTier, that.serviceTier)
+                && Objects.equals(requestMetadata, that.requestMetadata);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(
+                super.hashCode(),
+                additionalModelRequestFields,
+                cachePointPlacement,
+                cacheTtl,
+                bedrockGuardrailConfiguration,
+                serviceTier,
+                requestMetadata);
+    }
+
+    @Override
+    public String toString() {
+        return "BedrockChatRequestParameters{" + "modelName="
+                + modelName() + ", temperature="
+                + temperature() + ", topP="
+                + topP() + ", topK="
+                + topK() + ", frequencyPenalty="
+                + frequencyPenalty() + ", presencePenalty="
+                + presencePenalty() + ", maxOutputTokens="
+                + maxOutputTokens() + ", stopSequences="
+                + stopSequences() + ", toolSpecifications="
+                + toolSpecifications() + ", toolChoice="
+                + toolChoice() + ", responseFormat="
+                + responseFormat() + ", additionalModelRequestFields="
+                + additionalModelRequestFields + ", cachePointPlacement="
+                + cachePointPlacement + ", cacheTtl="
+                + cacheTtl + ", bedrockGuardrailConfiguration="
+                + bedrockGuardrailConfiguration + ", serviceTier="
+                + serviceTier + ", requestMetadata="
+                + (requestMetadata.isEmpty() ? "{}" : "[REDACTED]") + '}';
+    }
+
     public static class Builder extends DefaultChatRequestParameters.Builder<Builder> {
 
         private Map<String, Object> additionalModelRequestFields;
@@ -76,6 +131,7 @@ public class BedrockChatRequestParameters extends DefaultChatRequestParameters {
         private CacheTTL cacheTtl;
         private BedrockGuardrailConfiguration bedrockGuardrailConfiguration;
         private BedrockServiceTier serviceTier;
+        private Map<String, String> requestMetadata;
 
         @Override
         public Builder overrideWith(ChatRequestParameters parameters) {
@@ -95,6 +151,7 @@ public class BedrockChatRequestParameters extends DefaultChatRequestParameters {
                 this.bedrockGuardrailConfiguration = getOrDefault(
                         bedrockRequestParameters.bedrockGuardrailConfiguration, bedrockGuardrailConfiguration);
                 this.serviceTier = getOrDefault(bedrockRequestParameters.serviceTier, serviceTier);
+                this.requestMetadata = getOrDefault(bedrockRequestParameters.requestMetadata, requestMetadata);
             }
             return this;
         }
@@ -113,6 +170,17 @@ public class BedrockChatRequestParameters extends DefaultChatRequestParameters {
         }
 
         /**
+         * Sets key-value pairs that can be used to filter Amazon Bedrock model invocation logs.
+         * Do not include personally identifiable information, credentials, or other sensitive data.
+         *
+         * @see <a href="https://docs.aws.amazon.com/bedrock/latest/userguide/cost-mgmt-request-metadata.html">Per-request metadata tagging</a>
+         */
+        public Builder requestMetadata(Map<String, String> requestMetadata) {
+            this.requestMetadata = requestMetadata;
+            return this;
+        }
+
+        /**
          * Enables <a href="https://docs.aws.amazon.com/bedrock/latest/userguide/inference-reasoning.html">reasoning</a>.
          *
          * @see BedrockChatModel.Builder#returnThinking(Boolean)
@@ -126,6 +194,31 @@ public class BedrockChatRequestParameters extends DefaultChatRequestParameters {
                 Map<?, ?> reasoningConfig =
                         Map.ofEntries(Map.entry("type", "enabled"), Map.entry("budget_tokens", tokenBudget));
                 additionalModelRequestFields.put("reasoning_config", reasoningConfig);
+            }
+            return this;
+        }
+
+        /**
+         * Enables <a href="https://docs.aws.amazon.com/bedrock/latest/userguide/inference-reasoning.html">adaptive reasoning</a>,
+         * required for Claude Opus 4.7+ where the legacy {@code budget_tokens} reasoning configuration is no longer accepted.
+         * Older models (e.g. Claude Opus 4.6, Sonnet 4.6) continue to work with {@link #enableReasoning(Integer)}.
+         *
+         * @param effort controls reasoning intensity, serialized to Bedrock's {@code output_config.effort} field.
+         *               Accepted values: {@code "low"}, {@code "medium"}, {@code "high"}.
+         *               If {@code null}, only {@code reasoning_config.type = "adaptive"} is set and Bedrock applies its default.
+         * @see BedrockChatModel.Builder#returnThinking(Boolean)
+         * @see BedrockChatModel.Builder#sendThinking(Boolean)
+         */
+        public Builder enableAdaptiveReasoning(String effort) {
+            if (additionalModelRequestFields == null) {
+                additionalModelRequestFields = new HashMap<>();
+            }
+            Map<?, ?> reasoningConfig = Map.ofEntries(Map.entry("type", "adaptive"));
+            additionalModelRequestFields.put("reasoning_config", reasoningConfig);
+
+            if (effort != null) {
+                Map<?, ?> outputConfig = Map.ofEntries(Map.entry("effort", effort));
+                additionalModelRequestFields.put("output_config", outputConfig);
             }
             return this;
         }

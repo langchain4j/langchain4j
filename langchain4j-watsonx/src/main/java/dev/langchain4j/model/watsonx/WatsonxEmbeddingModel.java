@@ -77,8 +77,8 @@ public class WatsonxEmbeddingModel implements EmbeddingModel {
 
         List<String> inputs = textSegments.stream().map(TextSegment::text).toList();
 
-        EmbeddingResponse response = WatsonxExceptionMapper.INSTANCE.withExceptionMapper(
-                () -> embeddingService.embedding(inputs, parameters));
+        EmbeddingResponse response =
+                WatsonxExceptionMapper.INSTANCE.withExceptionMapper(() -> embeddingService.embed(inputs, parameters));
 
         return Response.from(response.results().stream()
                 .map(Result::embedding)
@@ -114,6 +114,12 @@ public class WatsonxEmbeddingModel implements EmbeddingModel {
 
         private Builder() {}
 
+        /**
+         * Sets the watsonx.ai embedding model ID, e.g. {@code "ibm/slate-125m-english-rtrvr"}.
+         *
+         * @param modelName the model ID
+         * @return {@code this}
+         */
         public Builder modelName(String modelName) {
             this.modelName = modelName;
             return this;

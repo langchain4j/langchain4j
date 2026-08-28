@@ -46,7 +46,7 @@ public class LoopPlanner implements Planner {
     public Action nextAction(PlanningContext planningContext) {
         agentCursor = (agentCursor+1) % agents.size();
         if (agentCursor == 0) {
-            if (iterationsCounter > maxIterations || exitCondition.test(planningContext.agenticScope(), iterationsCounter)) {
+            if (iterationsCounter >= maxIterations || exitCondition.test(planningContext.agenticScope(), iterationsCounter)) {
                 return done();
             }
             iterationsCounter++;

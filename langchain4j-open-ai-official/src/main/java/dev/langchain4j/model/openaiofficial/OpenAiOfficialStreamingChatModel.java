@@ -1,8 +1,12 @@
 package dev.langchain4j.model.openaiofficial;
 
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteResponse;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolCall;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialToolCall;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onUnmappedRawEvent;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
+import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
 import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.finishReasonFrom;
 import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.toOpenAiChatCompletionCreateParams;
@@ -17,7 +21,9 @@ import com.openai.models.chat.completions.ChatCompletionChunk;
 import com.openai.models.chat.completions.ChatCompletionCreateParams;
 import com.openai.models.chat.completions.ChatCompletionStreamOptions;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.exception.ContentFilteredException;
 import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.internal.MappingTrackingStreamingChatResponseHandler;
 import dev.langchain4j.internal.ToolCallBuilder;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.TokenCountEstimator;
@@ -42,45 +48,42 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
 
     public OpenAiOfficialStreamingChatModel(Builder builder) {
 
-        if (builder.openAIClientAsync != null) {
-            this.asyncClient = builder.openAIClientAsync;
-        } else {
-            init(
-                    builder.baseUrl,
-                    builder.apiKey,
-                    builder.credential,
-                    builder.microsoftFoundryDeploymentName,
-                    builder.azureOpenAIServiceVersion,
-                    builder.organizationId,
-                    builder.isMicrosoftFoundry,
-                    builder.isGitHubModels,
-                    builder.defaultRequestParameters,
-                    builder.modelName,
-                    builder.temperature,
-                    builder.topP,
-                    builder.stop,
-                    builder.maxCompletionTokens,
-                    builder.presencePenalty,
-                    builder.frequencyPenalty,
-                    builder.logitBias,
-                    builder.responseFormat,
-                    builder.strictJsonSchema,
-                    builder.seed,
-                    builder.user,
-                    builder.strictTools,
-                    builder.parallelToolCalls,
-                    builder.store,
-                    builder.metadata,
-                    builder.serviceTier,
-                    builder.timeout,
-                    builder.maxRetries,
-                    builder.proxy,
-                    builder.tokenCountEstimator,
-                    builder.customHeaders,
-                    builder.listeners,
-                    builder.capabilities,
-                    true);
-        }
+        this.asyncClient = builder.openAIClientAsync;
+        init(
+                builder.baseUrl,
+                builder.apiKey,
+                builder.credential,
+                builder.microsoftFoundryDeploymentName,
+                builder.azureOpenAIServiceVersion,
+                builder.organizationId,
+                builder.isMicrosoftFoundry,
+                builder.isGitHubModels,
+                builder.defaultRequestParameters,
+                builder.modelName,
+                builder.temperature,
+                builder.topP,
+                builder.stop,
+                builder.maxCompletionTokens,
+                builder.presencePenalty,
+                builder.frequencyPenalty,
+                builder.logitBias,
+                builder.responseFormat,
+                builder.strictJsonSchema,
+                builder.seed,
+                builder.user,
+                builder.strictTools,
+                builder.parallelToolCalls,
+                builder.store,
+                builder.metadata,
+                builder.serviceTier,
+                builder.timeout,
+                builder.maxRetries,
+                builder.proxy,
+                builder.tokenCountEstimator,
+                builder.customHeaders,
+                builder.listeners,
+                builder.capabilities,
+                true);
         this.modelName = builder.modelName;
     }
 
@@ -109,8 +112,12 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
                     OpenAiOfficialChatResponseMetadata.builder();
 
             StringBuffer textBuilder = new StringBuffer();
+            StringBuffer refusalBuilder = new StringBuffer();
             ToolCallBuilder toolCallBuilder = new ToolCallBuilder();
             AtomicReference<StreamingHandle> streamingHandle = new AtomicReference<>();
+
+            MappingTrackingStreamingChatResponseHandler trackingHandler =
+                    new MappingTrackingStreamingChatResponseHandler(handler);
 
             AsyncStreamResponse<ChatCompletionChunk> asyncStreamResponse = asyncClient
                     .chat()
@@ -120,13 +127,19 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
 
                         @Override
                         public void onNext(ChatCompletionChunk completion) {
+                            trackingHandler.resetMappingTracking();
                             manageChatCompletionChunks(
                                     completion,
-                                    handler,
+                                    trackingHandler,
                                     streamingHandle.get(),
                                     responseMetadataBuilder,
                                     textBuilder,
+                                    refusalBuilder,
                                     toolCallBuilder);
+
+                            if (!trackingHandler.wasMapped()) {
+                                onUnmappedRawEvent(trackingHandler, completion);
+                            }
                         }
 
                         @Override
@@ -136,10 +149,17 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
                             }
 
                             if (error.isPresent()) {
-                                handler.onError(error.get());
+                                withLoggingExceptions(() -> trackingHandler.onError(error.get()));
                             } else {
+                                String refusal = refusalBuilder.toString();
+                                if (isNotNullOrBlank(refusal)) {
+                                    withLoggingExceptions(
+                                            () -> trackingHandler.onError(new ContentFilteredException(refusal)));
+                                    return;
+                                }
+
                                 if (toolCallBuilder.hasRequests()) {
-                                    onCompleteToolCall(handler, toolCallBuilder.buildAndReset());
+                                    onCompleteToolCall(trackingHandler, toolCallBuilder.buildAndReset());
                                 }
 
                                 String text = textBuilder.toString();
@@ -154,14 +174,14 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
                                         .metadata(responseMetadataBuilder.build())
                                         .build();
 
-                                handler.onCompleteResponse(chatResponse);
+                                onCompleteResponse(trackingHandler, chatResponse);
                             }
                         }
                     });
 
             streamingHandle.set(new OpenAiOfficialStreamingHandle(asyncStreamResponse));
         } catch (Exception e) {
-            handler.onError(e);
+            withLoggingExceptions(() -> handler.onError(e));
         }
     }
 
@@ -171,6 +191,7 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
             StreamingHandle streamingHandle,
             OpenAiOfficialChatResponseMetadata.Builder responseMetadataBuilder,
             StringBuffer text,
+            StringBuffer refusal,
             ToolCallBuilder toolCallBuilder) {
 
         responseMetadataBuilder.id(chatCompletionChunk.id());
@@ -194,6 +215,9 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
                 String partialResponse = choice.delta().content().get();
                 text.append(partialResponse);
                 onPartialResponse(handler, partialResponse, streamingHandle);
+            }
+            if (choice.delta().refusal().isPresent()) {
+                refusal.append(choice.delta().refusal().get());
             }
             if (choice.delta().toolCalls().isPresent()) {
                 for (ChatCompletionChunk.Choice.Delta.ToolCall toolCall :

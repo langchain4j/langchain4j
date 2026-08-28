@@ -67,7 +67,6 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
-
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -341,7 +340,8 @@ class StreamingAiServicesWithToolsIT {
 
         assertThat(aiServiceHooks.beforeHookThreads).hasSize(2);
         assertThat(aiServiceHooks.beforeHookThreads.get("getCurrentTime")).isEqualTo(getCurrentTimeThread);
-        assertThat(aiServiceHooks.beforeHookThreads.get("getCurrentTemperature")).isEqualTo(getCurrentTemperatureThread);
+        assertThat(aiServiceHooks.beforeHookThreads.get("getCurrentTemperature"))
+                .isEqualTo(getCurrentTemperatureThread);
 
         assertThat(aiServiceHooks.afterHookThreads).hasSize(2);
         assertThat(aiServiceHooks.afterHookThreads.get("getCurrentTime")).isEqualTo(getCurrentTimeThread);
@@ -349,7 +349,8 @@ class StreamingAiServicesWithToolsIT {
 
         assertThat(handler.beforeToolExecutionThreads).hasSize(2);
         assertThat(handler.beforeToolExecutionThreads.get("getCurrentTime")).hasSize(1);
-        assertThat(handler.beforeToolExecutionThreads.get("getCurrentTemperature")).hasSize(1);
+        assertThat(handler.beforeToolExecutionThreads.get("getCurrentTemperature"))
+                .hasSize(1);
 
         assertThat(handler.onToolExecutedThreads).hasSize(2);
         assertThat(handler.onToolExecutedThreads.get("getCurrentTime")).hasSize(1);
@@ -691,7 +692,8 @@ class StreamingAiServicesWithToolsIT {
         CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
 
         // when
-        assistant.chat(userMessage)
+        assistant
+                .chat(userMessage)
                 .onPartialResponse(handler::onPartialResponse)
                 .onPartialToolCall(handler::onPartialToolCall)
                 .beforeToolExecution(handler::beforeToolExecution)
@@ -723,9 +725,12 @@ class StreamingAiServicesWithToolsIT {
         // then - verify callback order
         InOrder inOrder = inOrder(handler);
 
-        inOrder.verify(handler, atLeastOnce()).onPartialToolCall(argThat(ptc -> ptc.name().equals("currentTemperature")));
-        inOrder.verify(handler).beforeToolExecution(argThat(bte -> bte.request().name().equals("currentTemperature")));
-        inOrder.verify(handler).onToolExecuted(argThat(te -> te.result().equals(String.valueOf(WeatherService.TEMPERATURE))));
+        inOrder.verify(handler, atLeastOnce())
+                .onPartialToolCall(argThat(ptc -> ptc.name().equals("currentTemperature")));
+        inOrder.verify(handler)
+                .beforeToolExecution(argThat(bte -> bte.request().name().equals("currentTemperature")));
+        inOrder.verify(handler)
+                .onToolExecuted(argThat(te -> te.result().equals(String.valueOf(WeatherService.TEMPERATURE))));
 
         inOrder.verify(handler, atLeastOnce()).onPartialResponse(any());
         inOrder.verify(handler).onCompleteResponse(any());
@@ -1411,12 +1416,12 @@ class StreamingAiServicesWithToolsIT {
             StreamingChatModel model) throws Exception {
 
         // given
-        int maxSequentialToolsInvocations = 1; // only one sequential tool call allowed, the test makes 3
+        int maxToolCallingRoundTrips = 1; // only one round trip allowed, the test makes 3
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .streamingChatModel(model)
                 .tools(new TransactionService())
-                .maxSequentialToolsInvocations(maxSequentialToolsInvocations)
+                .maxToolCallingRoundTrips(maxToolCallingRoundTrips)
                 .build();
 
         AtomicInteger n = new AtomicInteger(0);
@@ -1427,11 +1432,11 @@ class StreamingAiServicesWithToolsIT {
                 .chat("What are the amounts of transactions T001 and T002?")
                 .beforeToolExecution(toolExecutionRequest -> {
                     final int index = n.incrementAndGet();
-                    assertThat(index).isLessThanOrEqualTo(maxSequentialToolsInvocations);
+                    assertThat(index).isLessThanOrEqualTo(maxToolCallingRoundTrips);
                 })
                 .onToolExecuted(toolExecutionResult -> {
                     final int index = n.get();
-                    assertThat(index).isLessThanOrEqualTo(maxSequentialToolsInvocations);
+                    assertThat(index).isLessThanOrEqualTo(maxToolCallingRoundTrips);
                 })
                 .onError(future::complete)
                 .onCompleteResponse(ignored -> {
@@ -1442,11 +1447,12 @@ class StreamingAiServicesWithToolsIT {
         // then
         assertThat(future.get(30, SECONDS))
                 .isExactlyInstanceOf(RuntimeException.class)
-                .hasMessage("Something is wrong, exceeded 1 sequential tool invocations");
+                .hasMessage("Something is wrong, exceeded 1 tool calling round trips (maxToolCallingRoundTrips)");
     }
 
     @Test
-    void should_call_static_tool_provider_once_and_dynamic_tool_provider_before_each_chat_model_request() throws Exception {
+    void should_call_static_tool_provider_once_and_dynamic_tool_provider_before_each_chat_model_request()
+            throws Exception {
 
         // given
         ToolProvider spyStaticProvider = spy(new ToolProvider() {
@@ -1486,8 +1492,7 @@ class StreamingAiServicesWithToolsIT {
                         .name("getWeather")
                         .arguments("{\"city\":\"London\"}")
                         .build()),
-                AiMessage.from("It is sunny in London")
-        ));
+                AiMessage.from("It is sunny in London")));
         StreamingChatModel spyModel = spy(streamingModel);
 
         Assistant assistant = AiServices.builder(Assistant.class)
@@ -1511,10 +1516,11 @@ class StreamingAiServicesWithToolsIT {
         verify(spyStaticProvider, times(1)).provideTools(any());
         verify(spyDynamicProvider, times(2)).provideTools(any());
 
-        verify(spyModel, times(2)).chat(argThat((ChatRequest request) ->
-                containsTool(request, "getWeather")
-                        && containsTool(request, "getTime")
-        ), any());
+        verify(spyModel, times(2))
+                .chat(
+                        argThat((ChatRequest request) ->
+                                containsTool(request, "getWeather") && containsTool(request, "getTime")),
+                        any());
 
         verifyNoMoreInteractionsFor(spyModel);
     }
@@ -1531,14 +1537,18 @@ class StreamingAiServicesWithToolsIT {
                 int call = callCount.incrementAndGet();
                 ToolProviderResult.Builder builder = ToolProviderResult.builder();
                 builder.add(
-                        ToolSpecification.builder().name("getWeather").description("Gets the weather").build(),
-                        (req, memoryId) -> "sunny"
-                );
+                        ToolSpecification.builder()
+                                .name("getWeather")
+                                .description("Gets the weather")
+                                .build(),
+                        (req, memoryId) -> "sunny");
                 if (call >= 2) {
                     builder.add(
-                            ToolSpecification.builder().name("getTime").description("Gets the time").build(),
-                            (req, memoryId) -> "12:00"
-                    );
+                            ToolSpecification.builder()
+                                    .name("getTime")
+                                    .description("Gets the time")
+                                    .build(),
+                            (req, memoryId) -> "12:00");
                 }
                 return builder.build();
             }
@@ -1555,8 +1565,7 @@ class StreamingAiServicesWithToolsIT {
                         .name("getWeather")
                         .arguments("{}")
                         .build()),
-                AiMessage.from("It is sunny and the time is 12:00")
-        );
+                AiMessage.from("It is sunny and the time is 12:00"));
         StreamingChatModel spyModel = spy(streamingModel);
 
         Assistant assistant = AiServices.builder(Assistant.class)
@@ -1579,15 +1588,17 @@ class StreamingAiServicesWithToolsIT {
 
         InOrder inOrder = inOrder(spyModel);
 
-        verify(spyModel).chat(argThat((ChatRequest request) ->
-                containsTool(request, "getWeather")
-                        && !containsTool(request, "getTime")
-        ), any());
+        verify(spyModel)
+                .chat(
+                        argThat((ChatRequest request) ->
+                                containsTool(request, "getWeather") && !containsTool(request, "getTime")),
+                        any());
 
-        verify(spyModel).chat(argThat((ChatRequest request) ->
-                containsTool(request, "getWeather")
-                        && containsTool(request, "getTime")
-        ), any());
+        verify(spyModel)
+                .chat(
+                        argThat((ChatRequest request) ->
+                                containsTool(request, "getWeather") && containsTool(request, "getTime")),
+                        any());
 
         verifyNoMoreInteractionsFor(spyModel);
     }
@@ -1604,15 +1615,19 @@ class StreamingAiServicesWithToolsIT {
                 int call = callCount.incrementAndGet();
                 ToolProviderResult.Builder builder = ToolProviderResult.builder();
                 builder.add(
-                        ToolSpecification.builder().name("getWeather").description("Gets the weather").build(),
-                        (req, memoryId) -> "sunny"
-                );
+                        ToolSpecification.builder()
+                                .name("getWeather")
+                                .description("Gets the weather")
+                                .build(),
+                        (req, memoryId) -> "sunny");
                 if (call == 1) {
                     // Only returned on first call
                     builder.add(
-                            ToolSpecification.builder().name("getTime").description("Gets the time").build(),
-                            (req, memoryId) -> "12:00"
-                    );
+                            ToolSpecification.builder()
+                                    .name("getTime")
+                                    .description("Gets the time")
+                                    .build(),
+                            (req, memoryId) -> "12:00");
                 }
                 return builder.build();
             }
@@ -1629,8 +1644,7 @@ class StreamingAiServicesWithToolsIT {
                         .name("getWeather")
                         .arguments("{}")
                         .build()),
-                AiMessage.from("It is sunny and the time is 12:00")
-        );
+                AiMessage.from("It is sunny and the time is 12:00"));
         StreamingChatModel spyModel = spy(streamingModel);
 
         Assistant assistant = AiServices.builder(Assistant.class)
@@ -1651,10 +1665,11 @@ class StreamingAiServicesWithToolsIT {
         // then
         assertThat(response.aiMessage().text()).contains("sunny");
 
-        verify(spyModel, times(2)).chat(argThat((ChatRequest request) ->
-                containsTool(request, "getWeather")
-                        && containsTool(request, "getTime")
-        ), any());
+        verify(spyModel, times(2))
+                .chat(
+                        argThat((ChatRequest request) ->
+                                containsTool(request, "getWeather") && containsTool(request, "getTime")),
+                        any());
 
         verifyNoMoreInteractionsFor(spyModel);
     }
@@ -1667,10 +1682,7 @@ class StreamingAiServicesWithToolsIT {
 
             @Tool("Takes a photo")
             Image takePhoto() {
-                return Image.builder()
-                        .base64Data("iVBOR")
-                        .mimeType("image/png")
-                        .build();
+                return Image.builder().base64Data("iVBOR").mimeType("image/png").build();
             }
         }
 
@@ -1682,8 +1694,7 @@ class StreamingAiServicesWithToolsIT {
                         .name("takePhoto")
                         .arguments("{}")
                         .build()),
-                AiMessage.from("I see a cat")
-        ));
+                AiMessage.from("I see a cat")));
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .streamingChatModel(streamingModel)
@@ -1693,7 +1704,8 @@ class StreamingAiServicesWithToolsIT {
         CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
 
         // when
-        assistant.chat("Take a photo")
+        assistant
+                .chat("Take a photo")
                 .onCompleteResponse(futureResponse::complete)
                 .onError(futureResponse::completeExceptionally)
                 .start();
@@ -1703,27 +1715,32 @@ class StreamingAiServicesWithToolsIT {
         assertThat(response.aiMessage().text()).contains("cat");
         verify(tools).takePhoto();
 
-        verify(streamingModel, times(2)).chat(argThat((ChatRequest request) -> {
-            if (request.messages().size() < 3) {
-                return true; // first call
-            }
-            // second call should have ToolExecutionResultMessage with ImageContent
-            ToolExecutionResultMessage toolResult = request.messages().stream()
-                    .filter(ToolExecutionResultMessage.class::isInstance)
-                    .map(ToolExecutionResultMessage.class::cast)
-                    .findFirst()
-                    .orElse(null);
-            return toolResult != null
-                    && toolResult.contents().size() == 1
-                    && toolResult.contents().get(0) instanceof dev.langchain4j.data.message.ImageContent;
-        }), any());
+        verify(streamingModel, times(2))
+                .chat(
+                        argThat((ChatRequest request) -> {
+                            if (request.messages().size() < 3) {
+                                return true; // first call
+                            }
+                            // second call should have ToolExecutionResultMessage with ImageContent
+                            ToolExecutionResultMessage toolResult = request.messages().stream()
+                                    .filter(ToolExecutionResultMessage.class::isInstance)
+                                    .map(ToolExecutionResultMessage.class::cast)
+                                    .findFirst()
+                                    .orElse(null);
+                            return toolResult != null
+                                    && toolResult.contents().size() == 1
+                                    && toolResult.contents().get(0)
+                                            instanceof dev.langchain4j.data.message.ImageContent;
+                        }),
+                        any());
     }
 
     // TODO all other tests from sync version
 
     // TODO rename verifyNoMoreImportantInteractions
     private static void verifyNoMoreInteractionsFor(StreamingChatModel model) {
-        ignoreInteractions(model).chat(any(ChatRequest.class), any(ChatRequestOptions.class), any(StreamingChatResponseHandler.class));
+        ignoreInteractions(model)
+                .chat(any(ChatRequest.class), any(ChatRequestOptions.class), any(StreamingChatResponseHandler.class));
         ignoreInteractions(model).doChat(any(), any());
         ignoreInteractions(model).defaultRequestParameters();
         ignoreInteractions(model).supportedCapabilities();

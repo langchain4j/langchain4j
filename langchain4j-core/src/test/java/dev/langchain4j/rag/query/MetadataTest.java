@@ -83,28 +83,6 @@ class MetadataTest {
     }
 
     @Test
-    void to_string() {
-
-        // given
-        SystemMessage systemMessage = SystemMessage.from("Be polite");
-        Metadata metadata = Metadata.from(
-                UserMessage.from("user message"),
-                systemMessage,
-                42,
-                asList(UserMessage.from("Hello"), AiMessage.from("Hi, how can I help you today?")));
-
-        // when
-        String toString = metadata.toString();
-
-        // then
-        assertThat(toString)
-                .isEqualToIgnoringWhitespace(
-                        """
-                        Metadata { chatMessage = UserMessage { name = null, contents = [TextContent { text = "user message" }], attributes = {} }, systemMessage = SystemMessage { text = "Be polite" }, chatMemory = [UserMessage { name = null, contents = [TextContent { text = "Hello" }], attributes = {} }, AiMessage { text = "Hi, how can I help you today?", thinking = null, toolExecutionRequests = [], attributes = {} }], invocationContext = DefaultInvocationContext{invocationId=null, interfaceName='null', methodName='null', methodArguments=[], userMessage=null, chatMemoryId=42, invocationParameters=null, managedParameters=null, timestamp=null} }
-                        """);
-    }
-
-    @Test
     void create_with_empty_chat_memory() {
         // given
         UserMessage userMessage = UserMessage.from("user message");

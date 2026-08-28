@@ -8,6 +8,7 @@ import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialThinking;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialToolCall;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onUnmappedRawEvent;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
@@ -19,6 +20,7 @@ import static dev.langchain4j.model.anthropic.internal.client.Json.toJson;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.REDACTED_THINKING_KEY;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.SERVER_TOOL_RESULTS_KEY;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.THINKING_SIGNATURE_KEY;
+import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toCacheDiagnostics;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toFinishReason;
 import static java.util.Collections.synchronizedList;
 import static java.util.stream.Collectors.joining;
@@ -37,14 +39,20 @@ import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventContext;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.internal.ExceptionMapper;
+import dev.langchain4j.internal.MappingTrackingStreamingChatResponseHandler;
 import dev.langchain4j.internal.ToolCallBuilder;
 import dev.langchain4j.model.anthropic.AnthropicChatResponseMetadata;
 import dev.langchain4j.model.anthropic.AnthropicServerToolResult;
 import dev.langchain4j.model.anthropic.AnthropicTokenUsage;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicBatch;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicBatchResult;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCountTokensRequest;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateBatchRequest;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRequest;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageResponse;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicDelta;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicDiagnostics;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicListBatchesResponse;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicModelsListResponse;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicResponseMessage;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicStreamingData;
@@ -60,6 +68,7 @@ import dev.langchain4j.model.chat.response.StreamingHandle;
 import dev.langchain4j.model.output.FinishReason;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -68,6 +77,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
 
 /**
  * Default implementation of {@link AnthropicClient} that provides methods to interact with the
@@ -130,6 +140,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
     private final String apiKey;
     private final String version;
     private final String beta;
+    private final Supplier<Map<String, String>> customHeadersSupplier;
 
     /**
      * Creates a new builder for constructing a {@link DefaultAnthropicClient} instance.
@@ -189,6 +200,8 @@ public class DefaultAnthropicClient extends AnthropicClient {
         this.apiKey = ensureNotBlank(builder.apiKey, "apiKey");
         this.version = ensureNotBlank(builder.version, "version");
         this.beta = builder.beta;
+        this.customHeadersSupplier =
+                builder.customHeadersSupplier != null ? builder.customHeadersSupplier : Collections::emptyMap;
     }
 
     /**
@@ -262,7 +275,12 @@ public class DefaultAnthropicClient extends AnthropicClient {
             AnthropicCreateMessageOptions options,
             StreamingChatResponseHandler handler) {
 
+        StreamingChatResponseHandler targetHandler = handler;
+
         ServerSentEventListener eventListener = new ServerSentEventListener() {
+
+            final MappingTrackingStreamingChatResponseHandler handler =
+                    new MappingTrackingStreamingChatResponseHandler(targetHandler);
 
             final List<String> contents = synchronizedList(new ArrayList<>());
             final StringBuffer contentBuilder = new StringBuffer();
@@ -287,6 +305,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
 
             final AtomicReference<String> responseId = new AtomicReference<>();
             final AtomicReference<String> responseModel = new AtomicReference<>();
+            final AtomicReference<AnthropicDiagnostics> responseDiagnostics = new AtomicReference<>();
 
             volatile String stopReason;
             volatile StreamingHandle streamingHandle;
@@ -310,25 +329,59 @@ public class DefaultAnthropicClient extends AnthropicClient {
                     streamingHandle = toStreamingHandle(context.parsingHandle());
                 }
 
-                AnthropicStreamingData data = fromJson(event.data(), AnthropicStreamingData.class);
+                handler.resetMappingTracking();
 
-                if ("message_start".equals(event.event())) {
+                String eventName = event.event();
+                String eventData = event.data();
+
+                // OpenAI-compatible gateways in front of Claude may emit a trailing
+                // "data: [DONE]" sentinel or frames with an unknown/missing event name.
+                // Skip them gracefully instead of attempting to deserialize as
+                // AnthropicStreamingData, which would throw MismatchedInputException.
+                if (isSkippableSseFrame(eventName, eventData)) {
+                    rawServerSentEvents.add(event);
+                    return;
+                }
+
+                AnthropicStreamingData data = fromJson(eventData, AnthropicStreamingData.class);
+
+                if ("message_start".equals(eventName)) {
                     handleMessageStart(data);
-                } else if ("content_block_start".equals(event.event())) {
+                } else if ("content_block_start".equals(eventName)) {
                     handleContentBlockStart(data, streamingHandle);
-                } else if ("content_block_delta".equals(event.event())) {
+                } else if ("content_block_delta".equals(eventName)) {
                     handleContentBlockDelta(data, streamingHandle);
-                } else if ("content_block_stop".equals(event.event())) {
+                } else if ("content_block_stop".equals(eventName)) {
                     handleContentBlockStop(data, streamingHandle);
-                } else if ("message_delta".equals(event.event())) {
+                } else if ("message_delta".equals(eventName)) {
                     handleMessageDelta(data);
-                } else if ("message_stop".equals(event.event())) {
+                } else if ("message_stop".equals(eventName)) {
                     handleMessageStop();
-                } else if ("error".equals(event.event())) {
+                } else if ("error".equals(eventName)) {
                     handleError(data);
                 }
 
                 rawServerSentEvents.add(event);
+
+                if (!handler.wasMapped()) {
+                    onUnmappedRawEvent(handler, event);
+                }
+            }
+
+            private static boolean isSkippableSseFrame(String eventName, String eventData) {
+                if (eventName == null) {
+                    return true;
+                }
+                if (eventData == null) {
+                    return true;
+                }
+                String trimmed = eventData.trim();
+                if (trimmed.isEmpty() || "[DONE]".equals(trimmed)) {
+                    return true;
+                }
+                // Anthropic SSE payloads are JSON objects; anything else (arrays, scalars)
+                // cannot be deserialized into AnthropicStreamingData.
+                return !trimmed.startsWith("{");
             }
 
             private void handleMessageStart(AnthropicStreamingData data) {
@@ -342,6 +395,9 @@ public class DefaultAnthropicClient extends AnthropicClient {
                     }
                     if (message.model != null) {
                         responseModel.set(message.model);
+                    }
+                    if (message.diagnostics != null) {
+                        responseDiagnostics.set(message.diagnostics);
                     }
                 }
             }
@@ -385,8 +441,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
                     if (isNotNullOrEmpty(signature)) {
                         thinkingSignatures.add(signature);
                     }
-                } else if (CONTENT_BLOCK_REDACTED_THINKING.equals(blockType)
-                        && options.returnThinking()) {
+                } else if (CONTENT_BLOCK_REDACTED_THINKING.equals(blockType) && options.returnThinking()) {
                     String redactedThinking = data.contentBlock.data;
                     if (isNotNullOrEmpty(redactedThinking)) {
                         redactedThinkings.add(redactedThinking);
@@ -433,8 +488,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
                     if (isNotNullOrEmpty(signature)) {
                         thinkingSignatures.add(signature);
                     }
-                } else if (CONTENT_BLOCK_REDACTED_THINKING.equals(blockType)
-                        && options.returnThinking()) {
+                } else if (CONTENT_BLOCK_REDACTED_THINKING.equals(blockType) && options.returnThinking()) {
                     String redactedThinking = data.delta.data;
                     if (isNotNullOrEmpty(redactedThinking)) {
                         redactedThinkings.add(redactedThinking);
@@ -570,6 +624,9 @@ public class DefaultAnthropicClient extends AnthropicClient {
                 if (!rawServerSentEvents.isEmpty()) {
                     metadataBuilder.rawServerSentEvents(new ArrayList<>(rawServerSentEvents));
                 }
+                if (responseDiagnostics.get() != null) {
+                    metadataBuilder.cacheDiagnostics(toCacheDiagnostics(responseDiagnostics.get()));
+                }
                 return metadataBuilder.build();
             }
 
@@ -623,9 +680,78 @@ public class DefaultAnthropicClient extends AnthropicClient {
                 .url(baseUrl, "models")
                 .addHeader("x-api-key", apiKey)
                 .addHeader("anthropic-version", version)
+                .addHeaders(customHeadersSupplier.get())
                 .build();
         SuccessfulHttpResponse successfulHttpResponse = httpClient.execute(httpRequest);
         return fromJson(successfulHttpResponse.body(), AnthropicModelsListResponse.class);
+    }
+
+    @Override
+    public AnthropicBatch createBatch(AnthropicCreateBatchRequest request) {
+        HttpRequest httpRequest = toHttpRequest(toJson(request), "messages/batches");
+        SuccessfulHttpResponse rawResponse = httpClient.execute(httpRequest);
+        return fromJson(rawResponse.body(), AnthropicBatch.class);
+    }
+
+    @Override
+    public AnthropicBatch retrieveBatch(String batchId) {
+        SuccessfulHttpResponse rawResponse = httpClient.execute(toBatchGetRequest("messages/batches/" + batchId));
+        return fromJson(rawResponse.body(), AnthropicBatch.class);
+    }
+
+    @Override
+    public List<AnthropicBatchResult> retrieveBatchResults(String batchId) {
+        SuccessfulHttpResponse rawResponse =
+                httpClient.execute(toBatchGetRequest("messages/batches/" + batchId + "/results"));
+        String body = rawResponse.body();
+        List<AnthropicBatchResult> results = new ArrayList<>();
+        if (body != null) {
+            body.lines()
+                    .map(String::trim)
+                    .filter(line -> !line.isEmpty())
+                    .forEach(line -> results.add(fromJson(line, AnthropicBatchResult.class)));
+        }
+        return results;
+    }
+
+    @Override
+    public AnthropicBatch cancelBatch(String batchId) {
+        HttpRequest httpRequest = HttpRequest.builder()
+                .method(POST)
+                .url(baseUrl, "messages/batches/" + batchId + "/cancel")
+                .addHeader("x-api-key", apiKey)
+                .addHeader("anthropic-version", version)
+                .addHeaders(customHeadersSupplier.get())
+                .build();
+        SuccessfulHttpResponse rawResponse = httpClient.execute(httpRequest);
+        return fromJson(rawResponse.body(), AnthropicBatch.class);
+    }
+
+    @Override
+    public AnthropicListBatchesResponse listBatches(Integer limit, String afterId) {
+        StringBuilder path = new StringBuilder("messages/batches");
+        List<String> queryParams = new ArrayList<>();
+        if (limit != null) {
+            queryParams.add("limit=" + limit);
+        }
+        if (isNotNullOrBlank(afterId)) {
+            queryParams.add("after_id=" + afterId);
+        }
+        if (!queryParams.isEmpty()) {
+            path.append('?').append(String.join("&", queryParams));
+        }
+        SuccessfulHttpResponse rawResponse = httpClient.execute(toBatchGetRequest(path.toString()));
+        return fromJson(rawResponse.body(), AnthropicListBatchesResponse.class);
+    }
+
+    private HttpRequest toBatchGetRequest(String path) {
+        return HttpRequest.builder()
+                .method(GET)
+                .url(baseUrl, path)
+                .addHeader("x-api-key", apiKey)
+                .addHeader("anthropic-version", version)
+                .addHeaders(customHeadersSupplier.get())
+                .build();
     }
 
     /**
@@ -664,6 +790,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
                 .addHeader("Content-Type", "application/json")
                 .addHeader("x-api-key", apiKey)
                 .addHeader("anthropic-version", version)
+                .addHeaders(customHeadersSupplier.get())
                 .body(jsonRequest);
 
         if (this.beta != null) {

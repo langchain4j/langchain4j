@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.exception.InternalServerException;
 import dev.langchain4j.model.moderation.Moderation;
 import dev.langchain4j.model.openai.internal.chat.AssistantMessage;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionChoice;
@@ -99,7 +100,9 @@ class AiServicesModerationTest {
                 .build();
 
         // when/then
-        assertThatThrownBy(() -> aiMessageFrom(response)).isInstanceOf(IndexOutOfBoundsException.class);
+        assertThatThrownBy(() -> aiMessageFrom(response))
+                .isExactlyInstanceOf(InternalServerException.class)
+                .hasMessage("Chat completion failed: no choices returned in response");
     }
 
     @Test

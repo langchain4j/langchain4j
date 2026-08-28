@@ -26,8 +26,7 @@ class BedrockChatModelThinkingIT {
 
     @ParameterizedTest
     @ValueSource(strings = {
-            "us.anthropic.claude-sonnet-4-20250514-v1:0",
-            "us.anthropic.claude-3-7-sonnet-20250219-v1:0",
+            "us.anthropic.claude-sonnet-4-6"
     })
     void should_return_and_send_thinking(String modelId) {
 
@@ -76,8 +75,7 @@ class BedrockChatModelThinkingIT {
 
     @ParameterizedTest
     @ValueSource(strings = {
-            "us.anthropic.claude-sonnet-4-20250514-v1:0",
-            "us.anthropic.claude-3-7-sonnet-20250219-v1:0",
+            "us.anthropic.claude-sonnet-4-6",
             "us.deepseek.r1-v1:0"
     })
     void should_return_and_NOT_send_thinking(String modelId) {
@@ -135,8 +133,7 @@ class BedrockChatModelThinkingIT {
 
     @ParameterizedTest
     @ValueSource(strings = {
-            "us.anthropic.claude-sonnet-4-20250514-v1:0",
-            "us.anthropic.claude-3-7-sonnet-20250219-v1:0",
+            "us.anthropic.claude-sonnet-4-6"
     })
     void should_return_and_send_thinking_with_tools(String modelId) {
 
@@ -231,7 +228,7 @@ class BedrockChatModelThinkingIT {
 
         // given
         String beta = "interleaved-thinking-2025-05-14";
-        String modelId = "us.anthropic.claude-opus-4-20250514-v1:0";
+        String modelId = "us.anthropic.claude-sonnet-4-6";
 
         boolean returnThinking = true;
         // sendThinking = true by default
@@ -329,8 +326,7 @@ class BedrockChatModelThinkingIT {
 
     @ParameterizedTest
     @ValueSource(strings = {
-            "us.anthropic.claude-sonnet-4-20250514-v1:0",
-            "us.anthropic.claude-3-7-sonnet-20250219-v1:0",
+            "us.anthropic.claude-sonnet-4-6",
             "us.deepseek.r1-v1:0"
     })
     void should_NOT_return_thinking(String modelId) {
@@ -369,8 +365,7 @@ class BedrockChatModelThinkingIT {
 
     @ParameterizedTest
     @ValueSource(strings = {
-            "us.anthropic.claude-sonnet-4-20250514-v1:0",
-            "us.anthropic.claude-3-7-sonnet-20250219-v1:0",
+            "us.anthropic.claude-sonnet-4-6",
             "us.deepseek.r1-v1:0"
     })
     void should_NOT_return_thinking_when_returnThinking_is_not_set(String modelId) {

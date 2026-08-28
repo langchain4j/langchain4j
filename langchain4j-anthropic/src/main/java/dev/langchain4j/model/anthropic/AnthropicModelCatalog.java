@@ -103,41 +103,98 @@ public class AnthropicModelCatalog implements ModelCatalog {
         private Boolean logResponses;
         private Logger logger;
 
+        /**
+         * Sets a custom {@link HttpClientBuilder} for the underlying HTTP client.
+         * Use this to configure timeouts, proxies, or other HTTP-level settings.
+         *
+         * @param httpClientBuilder the HTTP client builder
+         * @return {@code this}
+         */
         public Builder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
             this.httpClientBuilder = httpClientBuilder;
             return this;
         }
 
+        /**
+         * Sets the base URL of the Anthropic API.
+         * <p>
+         * Defaults to {@code https://api.anthropic.com/v1/}.
+         *
+         * @param baseUrl the base URL
+         * @return {@code this}
+         */
         public Builder baseUrl(String baseUrl) {
             this.baseUrl = baseUrl;
             return this;
         }
 
+        /**
+         * Sets the Anthropic API key used to authenticate requests.
+         * <p>
+         * Alternatively, set the {@code ANTHROPIC_API_KEY} environment variable.
+         *
+         * @param apiKey the API key
+         * @return {@code this}
+         */
         public Builder apiKey(String apiKey) {
             this.apiKey = apiKey;
             return this;
         }
 
+        /**
+         * Sets the value of the {@code anthropic-version} request header.
+         * <p>
+         * Defaults to {@code 2023-06-01}.
+         * See the <a href="https://docs.anthropic.com/en/api/versioning">Anthropic API versioning docs</a>.
+         *
+         * @param version the API version string
+         * @return {@code this}
+         */
         public Builder version(String version) {
             this.version = version;
             return this;
         }
 
+        /**
+         * Sets the HTTP request timeout for calls to the Anthropic API.
+         *
+         * @param timeout the request timeout
+         * @return {@code this}
+         */
         public Builder timeout(Duration timeout) {
             this.timeout = timeout;
             return this;
         }
 
+        /**
+         * Enables debug logging of HTTP request bodies sent to the Anthropic API.
+         *
+         * @param logRequests whether to log requests
+         * @return {@code this}
+         */
         public Builder logRequests(Boolean logRequests) {
             this.logRequests = logRequests;
             return this;
         }
 
+        /**
+         * Enables debug logging of HTTP response bodies received from the Anthropic API.
+         *
+         * @param logResponses whether to log responses
+         * @return {@code this}
+         */
         public Builder logResponses(Boolean logResponses) {
             this.logResponses = logResponses;
             return this;
         }
 
+        /**
+         * Sets an alternate {@link Logger} to be used instead of the default one
+         * provided by LangChain4j for logging requests and responses.
+         *
+         * @param logger the logger to use
+         * @return {@code this}
+         */
         public Builder logger(Logger logger) {
             this.logger = logger;
             return this;

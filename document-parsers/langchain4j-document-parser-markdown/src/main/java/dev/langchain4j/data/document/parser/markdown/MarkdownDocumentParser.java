@@ -1,6 +1,7 @@
 package dev.langchain4j.data.document.parser.markdown;
 
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 import dev.langchain4j.data.document.BlankDocumentException;
 import dev.langchain4j.data.document.Document;
@@ -22,7 +23,7 @@ public class MarkdownDocumentParser implements DocumentParser {
     public Document parse(final InputStream inputStream) {
         try {
             Parser parser = Parser.builder().build();
-            final Node node = parser.parseReader(new InputStreamReader(inputStream));
+            final Node node = parser.parseReader(new InputStreamReader(inputStream, UTF_8));
 
             // Renders nodes to plain text
             final TextContentRenderer renderer = TextContentRenderer.builder().build();

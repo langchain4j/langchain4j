@@ -1,8 +1,9 @@
 package dev.langchain4j.store.embedding.chroma;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.randomUUID;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
+import static dev.langchain4j.internal.ValidationUtils.ensureConsistentSizes;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.store.embedding.chroma.ChromaApiVersion.*;
 import static java.time.Duration.ofSeconds;
@@ -12,26 +13,35 @@ import static java.util.stream.Collectors.toList;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.internal.Utils;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
+import dev.langchain4j.store.embedding.RelevanceScore;
 import dev.langchain4j.store.embedding.filter.Filter;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 
 /**
  * Represents a store for embeddings using the Chroma backend.
- * Always uses cosine distance as the distance metric.
+ * <p>
+ * Collections created by this store use cosine distance. When an already existing collection is used, the
+ * distance metric it was created with is detected and {@link EmbeddingMatch#score()} is derived from it.
  */
 public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
 
+    private static final String COSINE_DISTANCE = "cosine";
+    private static final String L2_DISTANCE = "l2";
+
     private final ChromaClient chromaClient;
     private String collectionId;
+    private String distanceFunction;
     private final String collectionName;
 
     /**
@@ -47,6 +57,8 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
             this.chromaClient = new ChromaClientV1.Builder()
                     .baseUrl(builder.baseUrl)
                     .timeout(getOrDefault(builder.timeout, ofSeconds(5)))
+                    .httpClientBuilder(builder.httpClientBuilder)
+                    .customHeaders(builder.customHeadersSupplier)
                     .logRequests(builder.logRequests)
                     .logResponses(builder.logResponses)
                     .build();
@@ -57,6 +69,8 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
                     .tenantName(builder.tenantName)
                     .databaseName(builder.databaseName)
                     .timeout(getOrDefault(builder.timeout, ofSeconds(5)))
+                    .httpClientBuilder(builder.httpClientBuilder)
+                    .customHeaders(builder.customHeadersSupplier)
                     .logRequests(builder.logRequests)
                     .logResponses(builder.logResponses)
                     .build();
@@ -69,6 +83,7 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
             createCollection();
         } else {
             collectionId = collection.getId();
+            distanceFunction = collection.distanceFunction();
         }
     }
 
@@ -106,6 +121,8 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
         private String databaseName;
         private String collectionName;
         private Duration timeout;
+        private HttpClientBuilder httpClientBuilder;
+        private Supplier<Map<String, String>> customHeadersSupplier;
         private boolean logRequests;
         private boolean logResponses;
 
@@ -162,6 +179,44 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
             return this;
         }
 
+        /**
+         * Sets the {@link HttpClientBuilder} that will be used to create the HTTP client
+         * that will be used to communicate with Chroma.
+         * <p>
+         * NOTE: {@link #timeout(Duration)} overrides timeouts set on the {@link HttpClientBuilder}.
+         *
+         * @param httpClientBuilder The HTTP client builder.
+         * @return builder
+         */
+        public Builder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
+            this.httpClientBuilder = httpClientBuilder;
+            return this;
+        }
+
+        /**
+         * Sets custom HTTP headers.
+         *
+         * @param customHeaders The custom HTTP headers.
+         * @return builder
+         */
+        public Builder customHeaders(Map<String, String> customHeaders) {
+            this.customHeadersSupplier = () -> customHeaders;
+            return this;
+        }
+
+        /**
+         * Sets a supplier for custom HTTP headers.
+         * The supplier is called before each request, allowing dynamic header values.
+         * For example, this is useful for OAuth2 tokens that expire and need refreshing.
+         *
+         * @param customHeadersSupplier The custom HTTP headers supplier.
+         * @return builder
+         */
+        public Builder customHeaders(Supplier<Map<String, String>> customHeadersSupplier) {
+            this.customHeadersSupplier = customHeadersSupplier;
+            return this;
+        }
+
         public Builder logRequests(boolean logRequests) {
             this.logRequests = logRequests;
             return this;
@@ -211,6 +266,11 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     @Override
     public void addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> textSegments) {
+        ensureConsistentSizes(ids, embeddings, textSegments);
+        if (isNullOrEmpty(embeddings)) {
+            return;
+        }
+
         int size = embeddings.size();
 
         List<Map<String, Object>> metadatas;
@@ -250,7 +310,9 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     @Override
     public void removeAll(java.util.Collection<String> ids) {
-        ensureNotEmpty(ids, "ids");
+        if (isNullOrEmpty(ids)) {
+            return;
+        }
         chromaClient.deleteEmbeddings(
                 collectionId,
                 DeleteEmbeddingsRequest.builder().ids(new ArrayList<>(ids)).build());
@@ -278,7 +340,7 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
         return matches.stream().filter(match -> match.score() >= minScore).collect(toList());
     }
 
-    private static List<EmbeddingMatch<TextSegment>> toEmbeddingMatches(QueryResponse queryResponse) {
+    private List<EmbeddingMatch<TextSegment>> toEmbeddingMatches(QueryResponse queryResponse) {
         List<EmbeddingMatch<TextSegment>> embeddingMatches = new ArrayList<>();
 
         for (int i = 0; i < queryResponse.getIds().get(0).size(); i++) {
@@ -294,14 +356,20 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     /**
-     * By default, cosine distance will be used. For details: <a href="https://docs.trychroma.com/usage-guide"></a>
-     * Converts a cosine distance in the range [0, 2] to a score in the range [0, 1].
+     * Converts a distance reported by Chroma into a relevance score in the range [0, 1],
+     * according to the distance metric of the collection.
+     * For details see <a href="https://docs.trychroma.com/docs/collections/configure">Chroma documentation</a>.
      *
      * @param distance The distance value.
      * @return The converted score.
      */
-    private static double distanceToScore(double distance) {
-        return 1 - (distance / 2);
+    private double distanceToScore(double distance) {
+        if (L2_DISTANCE.equalsIgnoreCase(distanceFunction)) {
+            // "l2" is the squared euclidean distance, which is unbounded
+            return 1 / (1 + distance);
+        }
+        // "cosine" distance is in the range [0, 2], "ip" distance is 1 minus the inner product
+        return RelevanceScore.fromCosineSimilarity(1 - distance);
     }
 
     private static TextSegment toTextSegment(QueryResponse queryResponse, int i) {
@@ -314,6 +382,7 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
         collectionId = chromaClient
                 .createCollection(new CreateCollectionRequest(this.collectionName))
                 .getId();
+        distanceFunction = COSINE_DISTANCE;
     }
 
     private void createTenantAndDbIfNotExists(ChromaClientV2 chromaClient) {

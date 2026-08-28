@@ -85,12 +85,14 @@ class AwsDocumentConverter {
 
     private static Document getDocument(JsonNode value) {
         Document doc;
-        if (value.isBoolean()) {
+        if (value.isNull()) {
+            doc = Document.fromNull();
+        } else if (value.isBoolean()) {
             doc = Document.fromBoolean(value.asBoolean());
         } else if (value.isDouble() || value.isFloat() || value.isBigDecimal()) {
             doc = Document.fromNumber(value.asDouble());
         } else if (value.isInt() || value.isLong() || value.isShort() || value.isBigInteger()) {
-            doc = Document.fromNumber(value.asInt());
+            doc = Document.fromNumber(value.bigIntegerValue());
         } else if (value.isArray()) {
             List<Document> list = new ArrayList<>();
             for (JsonNode node : value) {

@@ -16,11 +16,11 @@ import javax.sql.DataSource;
  *     <li>{@link JSONIndexBuilder}</li>
  *   </ul>
  * <p>
- *   {@link IVFIndexBuilder} allows to configure an Inverted File Flat (IVF) index
+ *   {@link IVFIndexBuilder} allows you to configure an Inverted File Flat (IVF) index
  *   on the embedding column of the {@link EmbeddingTable}.
  * </p>
  * <p>
- *   {@link JSONIndexBuilder} allows to configure a function-based index on one or
+ *   {@link JSONIndexBuilder} allows you to configure a function-based index on one or
  *   several keys of the metadata column of the {@link EmbeddingTable}. The function
  *   used to index a key is the same as the function used for searching on the store.
  * </p>
@@ -48,7 +48,7 @@ public class Index {
     /**
      * Creates a builder to configure an IVF index on the embedding column of
      * the {@link EmbeddingTable}.
-     * @return A builder that allows to configure an IVF index.
+     * @return A builder that allows you to configure an IVF index.
      */
     public static IVFIndexBuilder ivfIndexBuilder() {
         return new IVFIndexBuilder();
@@ -57,7 +57,7 @@ public class Index {
     /**
      * Creates a builder to configure a function-based index on one or several
      * keys of the metadata column of the {@link EmbeddingTable}.
-     * @return A builder that allows to configure an index on the metadata
+     * @return A builder that allows you to configure an index on the metadata
      * column.
      */
     public static JSONIndexBuilder jsonIndexBuilder() {

@@ -181,6 +181,22 @@ public class ToolExecutionResultMessage implements ChatMessage {
         return new Builder();
     }
 
+    /**
+     * Creates a new {@link Builder} initialized with the values of this message.
+     * Useful for creating a modified copy of an existing message.
+     *
+     * @return a new builder populated with this message's values.
+     * @since 1.17.0
+     */
+    public Builder toBuilder() {
+        return builder()
+                .id(id)
+                .toolName(toolName)
+                .contents(contents)
+                .isError(isError)
+                .attributes(attributes);
+    }
+
     public static class Builder {
 
         private String id;

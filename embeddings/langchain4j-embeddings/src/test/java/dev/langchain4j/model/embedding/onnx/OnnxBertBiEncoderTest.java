@@ -6,8 +6,10 @@ import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 
 class OnnxBertBiEncoderTest {
 
@@ -106,5 +108,29 @@ class OnnxBertBiEncoderTest {
 
         // then - should return empty list (no content tokens between CLS and SEP)
         assertThat(partitions).isEqualTo(emptyList());
+    }
+
+    @Test
+    @Timeout(5)
+    public void testSingleWordSubwordRunLongerThanPartitionSize() {
+
+        // given - a single word whose subword run is longer than partitionSize.
+        // Previously the back-off loop that avoids splitting "##" continuations had no lower
+        // bound, so "to" descended to "from", producing an empty subList and never advancing
+        // "from" -> infinite loop / empty partitions.
+        List<String> tokens = asList("[CLS]", "super", "##cali", "##fragi", "##listic", "[SEP]");
+        int partitionSize = 1;
+
+        // when
+        List<List<String>> partitions = partition(tokens, partitionSize);
+
+        // then - terminates, no empty partition, every partition has at least one token
+        assertThat(partitions).isNotEmpty();
+        assertThat(partitions).allSatisfy(partition -> assertThat(partition).isNotEmpty());
+
+        // and - partitions cover all content tokens in order, with no loss or duplication
+        List<String> flattened = new ArrayList<>();
+        partitions.forEach(flattened::addAll);
+        assertThat(flattened).containsExactly("super", "##cali", "##fragi", "##listic");
     }
 }

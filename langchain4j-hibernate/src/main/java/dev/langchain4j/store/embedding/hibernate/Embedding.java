@@ -24,8 +24,10 @@ import org.hibernate.type.SqlTypes;
  * @see SqlTypes#SPARSE_VECTOR_INT8
  * @see SqlTypes#SPARSE_VECTOR_FLOAT32
  * @see SqlTypes#SPARSE_VECTOR_FLOAT64
+ * @deprecated In favor of {@link EmbeddingVector} to avoid naming collisions
  */
 @Target({METHOD, FIELD})
 @Retention(RUNTIME)
 @JdbcTypeCode(SqlTypes.VECTOR)
+@Deprecated(forRemoval = true)
 public @interface Embedding {}

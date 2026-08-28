@@ -130,7 +130,6 @@ public class InternalMicrosoftFoundryTestHelper {
                     .baseUrl(endpoint)
                     .apiKey(apiKey)
                     .modelName(IMAGE_MODEL_NAME)
-                    .responseFormat(ImageGenerateParams.ResponseFormat.B64_JSON)
                     .build();
 
         } else {

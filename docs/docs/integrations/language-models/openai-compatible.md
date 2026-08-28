@@ -44,11 +44,13 @@ StreamingChatModel model = OpenAiStreamingChatModel.builder()
         .modelName("deepseek-chat")
         .accumulateToolCallId(false) // Set to false for DeepSeek, Qwen, etc.
         .build();
-```
-Below we provide specific examples for popular OpenAI-compatible APIs, including Groq, Docker Model Runner, GPT4All, Ollama, and LM Studio.
+    ```
+Below we provide specific examples for popular OpenAI-compatible APIs, including OrcaRouter, Tuning Engines, Groq, Docker Model Runner, GPT4All, Ollama, and LM Studio.
 
 ### Contents:
 - [Prerequisites for Using OpenAI-Compatible Language Models](#prerequisites-for-using-openai-compatible-language-models)
+- [OrcaRouter](#orcarouter)
+- [Tuning Engines](#tuning-engines)
 - [Groq](#groq)
 - [Docker Model Runner](#docker-model-runner)
 - [GPT4All](#gpt4all)
@@ -66,7 +68,7 @@ First, make sure you have the OpenAI module in your `pom.xml` or Gradle build fi
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai</artifactId>
-    <version>1.13.0</version>
+    <version>1.19.0</version>
 </dependency>
 ```
 
@@ -75,8 +77,41 @@ First, make sure you have the OpenAI module in your `pom.xml` or Gradle build fi
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai-spring-boot-starter</artifactId>
-    <version>1.13.0-beta23</version>
+    <version>1.19.0-beta29</version>
 </dependency>
+```
+
+## OrcaRouter
+
+**Deployment:** SaaS (key required)
+
+**Description:** [OrcaRouter](https://www.orcarouter.ai) is an OpenAI-compatible AI gateway built for both models and agents. Like OpenRouter, it exposes a provider/model namespace across many models — but it also combines adaptive routing, automatic failover, zero-markup inference, observability, guardrails, and agent-tool governance behind the same endpoint. Adding OrcaRouter as a first-class provider means this project's users can use that stack directly, without treating OrcaRouter as an anonymous custom base URL. It also runs gateway-level, zero-trust security for AI agents on the same endpoint — screening every prompt/response and governing every tool call on a default-deny basis, with no application code changes.
+
+**Setup:**
+To use OrcaRouter, you'll need an API key from [OrcaRouter](https://www.orcarouter.ai) (keys start with `sk-orca-`).
+
+Configure LangChain4j's `OpenAiChatModel` or `OpenAiStreamingChatModel`:
+```java
+ChatModel model = OpenAiChatModel.builder()
+        .baseUrl("https://api.orcarouter.ai/v1")
+        .apiKey(System.getenv("ORCAROUTER_API_KEY")) // Your actual key, e.g. "sk-orca-..."
+        .modelName("deepseek/deepseek-v4-flash-0731") // Or any other model offered by OrcaRouter
+        .build();
+```
+You can find available model names on the [OrcaRouter models page](https://www.orcarouter.ai).
+
+## Tuning Engines
+
+**Deployment:** SaaS (key required)
+
+**Description:** [Tuning Engines](https://www.tuningengines.com/) exposes an OpenAI-compatible endpoint that can sit in front of your model providers. LangChain4j keeps the application and agent logic, while the endpoint can centralize routing, policy controls, audit logs, traces, approvals, and cost visibility.
+
+```java
+ChatModel model = OpenAiChatModel.builder()
+        .baseUrl("https://api.tuningengines.com/v1")
+        .apiKey(System.getenv("TUNING_ENGINES_API_KEY"))
+        .modelName("gpt-4o-mini")
+        .build();
 ```
 
 ## Groq
@@ -182,7 +217,7 @@ ChatModel model = OpenAiChatModel.builder()
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-http-client-jdk</artifactId>
-    <version>1.13.0</version>
+    <version>1.19.0</version>
 </dependency>
 ```
 6. Configure LangChain4j and specify the `httpClientBuilder`
@@ -205,4 +240,3 @@ ChatModel model = OpenAiChatModel.builder()
         .httpClientBuilder(jdkHttpClientBuilder)
         .build();
 ```
-

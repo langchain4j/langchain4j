@@ -5,24 +5,29 @@ import java.util.Objects;
 
 public class GuardrailAssessmentSummary {
     private final List<GuardrailAssessment> inputAssessments;
-    private final List<GuardrailAssessment> ouputAssessments;
+    private final List<GuardrailAssessment> outputAssessments;
 
     public GuardrailAssessmentSummary(Builder builder) {
         this.inputAssessments = builder.inputAssessments;
-        this.ouputAssessments = builder.ouputAssessments;
+        this.outputAssessments = builder.outputAssessments;
     }
 
     public List<GuardrailAssessment> inputAssessments() {
         return inputAssessments;
     }
 
+    public List<GuardrailAssessment> outputAssessments() {
+        return outputAssessments;
+    }
+
+    @Deprecated
     public List<GuardrailAssessment> ouputAssessments() {
-        return ouputAssessments;
+        return outputAssessments();
     }
 
     public boolean hasAssessments() {
         return (inputAssessments != null && !inputAssessments.isEmpty())
-                || (ouputAssessments != null && !ouputAssessments.isEmpty());
+                || (outputAssessments != null && !outputAssessments.isEmpty());
     }
 
     public static Builder builder() {
@@ -36,32 +41,37 @@ public class GuardrailAssessmentSummary {
         }
         GuardrailAssessmentSummary that = (GuardrailAssessmentSummary) o;
         return Objects.equals(inputAssessments, that.inputAssessments)
-                && Objects.equals(ouputAssessments, that.ouputAssessments);
+                && Objects.equals(outputAssessments, that.outputAssessments);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(inputAssessments, ouputAssessments);
+        return Objects.hash(inputAssessments, outputAssessments);
     }
 
     @Override
     public String toString() {
-        return "GuardrailAssessmentSummary{" + "inputAssessments=" + inputAssessments + ", ouputAssessments="
-                + ouputAssessments + '}';
+        return "GuardrailAssessmentSummary{" + "inputAssessments=" + inputAssessments + ", outputAssessments="
+                + outputAssessments + '}';
     }
 
     public static class Builder {
         private List<GuardrailAssessment> inputAssessments;
-        private List<GuardrailAssessment> ouputAssessments;
+        private List<GuardrailAssessment> outputAssessments;
 
         public Builder inputAssessments(List<GuardrailAssessment> inputAssessments) {
             this.inputAssessments = inputAssessments;
             return this;
         }
 
-        public Builder ouputAssessments(List<GuardrailAssessment> ouputAssessments) {
-            this.ouputAssessments = ouputAssessments;
+        public Builder outputAssessments(List<GuardrailAssessment> outputAssessments) {
+            this.outputAssessments = outputAssessments;
             return this;
+        }
+
+        @Deprecated
+        public Builder ouputAssessments(List<GuardrailAssessment> ouputAssessments) {
+            return outputAssessments(ouputAssessments);
         }
 
         public GuardrailAssessmentSummary build() {

@@ -3,6 +3,7 @@ package dev.langchain4j.model.googleai;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.audio.Audio;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.AiMessage;
@@ -10,6 +11,8 @@ import dev.langchain4j.data.message.AudioContent;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.PdfFileContent;
 import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.TextContent;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.message.VideoContent;
 import dev.langchain4j.data.pdf.PdfFile;
@@ -108,6 +111,182 @@ class PartsAndContentsMapperTest {
     }
 
     @Test
+    void fromGPartsToAiMessage_preservesFunctionCallId() {
+        // Given
+        String json = """
+                {
+                  "candidates": [
+                    {
+                      "content": {
+                        "role": "model",
+                        "parts": [
+                          {
+                            "functionCall": {
+                              "id": "call-1",
+                              "name": "stringLength",
+                              "args": {
+                                "s": "hello"
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+                """;
+        GeminiGenerateContentResponse response = Json.fromJson(json, GeminiGenerateContentResponse.class);
+        List<GeminiContent.GeminiPart> parts =
+                response.candidates().get(0).content().parts();
+
+        // When
+        AiMessage result = PartsAndContentsMapper.fromGPartsToAiMessage(parts, false, null);
+
+        // Then
+        assertThat(result.toolExecutionRequests()).hasSize(1);
+        ToolExecutionRequest toolExecutionRequest =
+                result.toolExecutionRequests().get(0);
+        assertThat(toolExecutionRequest.id()).isEqualTo("call-1");
+        assertThat(toolExecutionRequest.name()).isEqualTo("stringLength");
+        assertThat(toolExecutionRequest.arguments()).isEqualTo("{\"s\":\"hello\"}");
+    }
+
+    @Test
+    void fromGPartsToAiMessage_doesNotGenerateFunctionCallIdWhenMissing() {
+        // Given
+        String json = """
+                {
+                  "candidates": [
+                    {
+                      "content": {
+                        "role": "model",
+                        "parts": [
+                          {
+                            "functionCall": {
+                              "name": "stringLength",
+                              "args": {
+                                "s": "hello"
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+                """;
+        GeminiGenerateContentResponse response = Json.fromJson(json, GeminiGenerateContentResponse.class);
+        List<GeminiContent.GeminiPart> parts =
+                response.candidates().get(0).content().parts();
+
+        // When
+        AiMessage result = PartsAndContentsMapper.fromGPartsToAiMessage(parts, false, null);
+
+        // Then
+        assertThat(result.toolExecutionRequests()).hasSize(1);
+        ToolExecutionRequest toolExecutionRequest =
+                result.toolExecutionRequests().get(0);
+        assertThat(toolExecutionRequest.id()).isNull();
+        assertThat(toolExecutionRequest.name()).isEqualTo("stringLength");
+        assertThat(toolExecutionRequest.arguments()).isEqualTo("{\"s\":\"hello\"}");
+    }
+
+    @Test
+    void fromMessageToGContent_preservesToolExecutionRequestId() {
+        // Given
+        ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
+                .id("call-1")
+                .name("stringLength")
+                .arguments("{\"s\":\"hello\"}")
+                .build();
+        AiMessage aiMessage = AiMessage.from(toolExecutionRequest);
+
+        // When
+        List<GeminiContent> result = PartsAndContentsMapper.fromMessageToGContent(List.of(aiMessage), null, false);
+
+        // Then
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).parts()).hasSize(1);
+        assertThat(result.get(0).parts().get(0).functionCall().id()).isEqualTo("call-1");
+        assertThat(result.get(0).parts().get(0).functionCall().name()).isEqualTo("stringLength");
+    }
+
+    @Test
+    void fromMessageToGContent_omitsToolExecutionRequestIdWhenNull() {
+        // Given
+        ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
+                .name("stringLength")
+                .arguments("{\"s\":\"hello\"}")
+                .build();
+        AiMessage aiMessage = AiMessage.from(toolExecutionRequest);
+
+        // When
+        List<GeminiContent> result = PartsAndContentsMapper.fromMessageToGContent(List.of(aiMessage), null, false);
+
+        // Then
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).parts()).hasSize(1);
+        assertThat(result.get(0).parts().get(0).functionCall().id()).isNull();
+        assertThat(Json.toJson(result.get(0))).doesNotContain("\"id\"");
+    }
+
+    @Test
+    void fromMessageToGContent_preservesToolExecutionResultId() {
+        // Given
+        ToolExecutionResultMessage toolExecutionResultMessage =
+                ToolExecutionResultMessage.from("call-1", "stringLength", "5");
+
+        // When
+        List<GeminiContent> result =
+                PartsAndContentsMapper.fromMessageToGContent(List.of(toolExecutionResultMessage), null, false);
+
+        // Then
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).parts()).hasSize(1);
+        assertThat(result.get(0).parts().get(0).functionResponse().id()).isEqualTo("call-1");
+        assertThat(result.get(0).parts().get(0).functionResponse().name()).isEqualTo("stringLength");
+    }
+
+    @Test
+    void fromMessageToGContent_omitsToolExecutionResultIdWhenNull() {
+        // Given
+        ToolExecutionResultMessage toolExecutionResultMessage = ToolExecutionResultMessage.builder()
+                .toolName("stringLength")
+                .text("5")
+                .build();
+
+        // When
+        List<GeminiContent> result =
+                PartsAndContentsMapper.fromMessageToGContent(List.of(toolExecutionResultMessage), null, false);
+
+        // Then
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).parts()).hasSize(1);
+        assertThat(result.get(0).parts().get(0).functionResponse().id()).isNull();
+        assertThat(Json.toJson(result.get(0))).doesNotContain("\"id\"");
+    }
+
+    @Test
+    void fromMessageToGContent_preservesToolExecutionResultIdWithMultipleContents() {
+        // Given
+        ToolExecutionResultMessage toolExecutionResultMessage = ToolExecutionResultMessage.builder()
+                .id("call-1")
+                .toolName("stringLength")
+                .contents(TextContent.from("5"), TextContent.from("6"))
+                .build();
+
+        // When
+        List<GeminiContent> result =
+                PartsAndContentsMapper.fromMessageToGContent(List.of(toolExecutionResultMessage), null, false);
+
+        // Then
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).parts()).hasSize(1);
+        assertThat(result.get(0).parts().get(0).functionResponse().id()).isEqualTo("call-1");
+        assertThat(result.get(0).parts().get(0).functionResponse().name()).isEqualTo("stringLength");
+    }
+
+    @Test
     void fromMessageToGContent_systemMessageWithText() {
         SystemMessage msg = new SystemMessage("system text");
         List<GeminiContent> result = PartsAndContentsMapper.fromMessageToGContent(List.of(msg), null, false);
@@ -175,6 +354,25 @@ class PartsAndContentsMapperTest {
         assertThat(generatedImages).hasSize(1);
         assertThat(generatedImages.get(0).base64Data()).isEqualTo(imageBlob.data());
         assertThat(generatedImages.get(0).mimeType()).isEqualTo("image/png");
+    }
+
+    @Test
+    void fromGPartsToAiMessage_rendersExecutableCodeAsFencedBlock() {
+        // Given
+        GeminiContent.GeminiPart.GeminiExecutableCode executableCode =
+                new GeminiContent.GeminiPart.GeminiExecutableCode(
+                        GeminiContent.GeminiPart.GeminiExecutableCode.GeminiLanguage.PYTHON, "print(1)");
+        GeminiContent.GeminiPart part = GeminiContent.GeminiPart.builder()
+                .executableCode(executableCode)
+                .build();
+        List<GeminiContent.GeminiPart> parts = List.of(part);
+
+        // When
+        AiMessage result = PartsAndContentsMapper.fromGPartsToAiMessage(parts, true, null);
+
+        // Then
+        assertThat(result).isNotNull();
+        assertThat(result.text()).isEqualTo("Code executed:\n```python\nprint(1)\n```\n");
     }
 
     @Test

@@ -7,13 +7,14 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.langchain4j.mcp.client.transport.McpJson;
 import dev.langchain4j.service.tool.ToolExecutionResult;
+import java.math.BigInteger;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 public class StructuredContentParsingTest {
 
-    ObjectMapper objectMapper = new ObjectMapper();
 
     @Test
     public void testComplexObject() throws JsonProcessingException {
@@ -36,9 +37,10 @@ public class StructuredContentParsingTest {
                   }
                 }
                 """;
-        JsonNode responseNode = objectMapper.readTree(response);
+        JsonNode responseNode = McpJson.parse(response);
         McpToolResultExtractor extractor = mock(McpToolResultExtractor.class);
-        ToolExecutionResult toolExecutionResult = ToolExecutionHelper.extractResult(responseNode, false, extractor);
+        ToolExecutionResult toolExecutionResult =
+                ToolExecutionHelper.extractResult(responseNode, false, new LegacyToolResultConverterAdapter(extractor));
         assertThat(toolExecutionResult.result()).isInstanceOf(Map.class);
         Map<String, Object> map = (Map<String, Object>) toolExecutionResult.result();
         assertThat(map).hasSize(4);
@@ -71,16 +73,72 @@ public class StructuredContentParsingTest {
                 }
                 """;
 
-        JsonNode responseNode = objectMapper.readTree(response);
+        JsonNode responseNode = McpJson.parse(response);
         McpToolResultExtractor extractor = mock(McpToolResultExtractor.class);
 
-        ToolExecutionResult toolExecutionResult = ToolExecutionHelper.extractResult(responseNode, false, extractor);
+        ToolExecutionResult toolExecutionResult =
+                ToolExecutionHelper.extractResult(responseNode, false, new LegacyToolResultConverterAdapter(extractor));
 
         assertThat(toolExecutionResult.result()).isInstanceOf(Map.class);
         Map<String, Object> map = (Map<String, Object>) toolExecutionResult.result();
         assertThat(map.get("items")).isEqualTo(java.util.List.of(1, 2, 3));
         assertThat(map.get("nested")).isInstanceOf(Map.class);
         assertThat(((Map<String, Object>) map.get("nested")).get("labels")).isEqualTo(java.util.List.of("a", "b"));
+        verifyNoInteractions(extractor);
+    }
+
+    @Test
+    public void should_preserve_integer_larger_than_long_max_value() throws JsonProcessingException {
+        // 9223372036854775808 = Long.MAX_VALUE + 1, parsed by Jackson as a BigIntegerNode.
+        // Converting it via asLong() silently truncates to Long.MIN_VALUE, so the value must be kept as BigInteger.
+        String response = """
+                {
+                  "jsonrpc": "2.0",
+                  "id": 5,
+                  "result": {
+                    "structuredContent": {
+                      "bigValue": 9223372036854775808
+                    }
+                  }
+                }
+                """;
+
+        JsonNode responseNode = McpJson.parse(response);
+        McpToolResultExtractor extractor = mock(McpToolResultExtractor.class);
+
+        ToolExecutionResult toolExecutionResult =
+                ToolExecutionHelper.extractResult(responseNode, false, new LegacyToolResultConverterAdapter(extractor));
+
+        assertThat(toolExecutionResult.result()).isInstanceOf(Map.class);
+        Map<String, Object> map = (Map<String, Object>) toolExecutionResult.result();
+        assertThat(map.get("bigValue")).isEqualTo(new BigInteger("9223372036854775808"));
+        verifyNoInteractions(extractor);
+    }
+
+    @Test
+    public void should_preserve_long_max_value_as_long() throws JsonProcessingException {
+        // Long.MAX_VALUE must still be parsed as a Long (no regression for INT/LONG number types).
+        String response = """
+                {
+                  "jsonrpc": "2.0",
+                  "id": 6,
+                  "result": {
+                    "structuredContent": {
+                      "longValue": 9223372036854775807
+                    }
+                  }
+                }
+                """;
+
+        JsonNode responseNode = McpJson.parse(response);
+        McpToolResultExtractor extractor = mock(McpToolResultExtractor.class);
+
+        ToolExecutionResult toolExecutionResult =
+                ToolExecutionHelper.extractResult(responseNode, false, new LegacyToolResultConverterAdapter(extractor));
+
+        assertThat(toolExecutionResult.result()).isInstanceOf(Map.class);
+        Map<String, Object> map = (Map<String, Object>) toolExecutionResult.result();
+        assertThat(map.get("longValue")).isEqualTo(Long.MAX_VALUE);
         verifyNoInteractions(extractor);
     }
 
@@ -104,10 +162,11 @@ public class StructuredContentParsingTest {
                 }
                 """;
 
-        JsonNode responseNode = objectMapper.readTree(response);
+        JsonNode responseNode = McpJson.parse(response);
         McpToolResultExtractor extractor = mock(McpToolResultExtractor.class);
 
-        ToolExecutionResult toolExecutionResult = ToolExecutionHelper.extractResult(responseNode, false, extractor);
+        ToolExecutionResult toolExecutionResult =
+                ToolExecutionHelper.extractResult(responseNode, false, new LegacyToolResultConverterAdapter(extractor));
 
         assertThat(toolExecutionResult.result()).isEqualTo(Map.of("source", "structured"));
         assertThat(toolExecutionResult.resultText()).isEqualTo("{\"source\":\"structured\"}");

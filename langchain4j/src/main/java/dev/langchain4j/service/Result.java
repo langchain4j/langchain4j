@@ -1,5 +1,7 @@
 package dev.langchain4j.service;
 
+import static dev.langchain4j.internal.Utils.copy;
+
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -8,9 +10,6 @@ import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.service.tool.ToolExecution;
 import java.util.List;
-
-import static dev.langchain4j.internal.Utils.copy;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
  * Represents the result of an AI Service invocation.
@@ -51,11 +50,12 @@ public class Result<T> {
         this.finalResponse = builder.finalResponse;
     }
 
-    public Result(T content,
-                  TokenUsage tokenUsage,
-                  List<Content> sources,
-                  FinishReason finishReason,
-                  List<ToolExecution> toolExecutions) {
+    public Result(
+            T content,
+            TokenUsage tokenUsage,
+            List<Content> sources,
+            FinishReason finishReason,
+            List<ToolExecution> toolExecutions) {
         this.content = content;
         this.tokenUsage = tokenUsage;
         this.sources = copy(sources);
@@ -131,8 +131,7 @@ public class Result<T> {
         private List<ChatResponse> intermediateResponses;
         private ChatResponse finalResponse;
 
-        ResultBuilder() {
-        }
+        ResultBuilder() {}
 
         public ResultBuilder<T> content(T content) {
             this.content = content;

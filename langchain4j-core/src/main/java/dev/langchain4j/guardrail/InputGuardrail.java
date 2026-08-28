@@ -31,7 +31,7 @@ public interface InputGuardrail extends Guardrail<InputGuardrailRequest, InputGu
     /**
      * Validates the input that will be sent to the LLM.
      * <p>
-     * Unlike {@link #validate(UserMessage)}, this method allows to access the memory and the augmentation result (in
+     * Unlike {@link #validate(UserMessage)}, this method allows you to access the memory and the augmentation result (in
      * the case of a RAG).
      * <p>
      * Implementation must not attempt to write to the memory or the augmentation result.

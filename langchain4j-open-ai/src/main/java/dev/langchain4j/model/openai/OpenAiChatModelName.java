@@ -10,9 +10,6 @@ public enum OpenAiChatModelName {
     GPT_4("gpt-4"), // alias
     GPT_4_0613("gpt-4-0613"),
 
-    GPT_4_TURBO_PREVIEW("gpt-4-turbo-preview"), // alias
-    GPT_4_1106_PREVIEW("gpt-4-1106-preview"),
-    GPT_4_0125_PREVIEW("gpt-4-0125-preview"),
     GPT_4_TURBO("gpt-4-turbo"), // alias
     GPT_4_TURBO_2024_04_09("gpt-4-turbo-2024-04-09"),
 

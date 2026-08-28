@@ -11,6 +11,9 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.HitCountChatMemoryStore.HitCounts;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.function.Function;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
@@ -634,5 +637,37 @@ class MessageWindowChatMemoryTest implements WithAssertions {
             chatMemory.set(userMessage("world"), aiMessage("hi"));
         });
         assertThat(counts).isEqualTo(new HitCounts(0, 1, 0));
+    }
+
+    @Test
+    void set_with_varargs_should_not_throw_when_eviction_is_needed() {
+
+        // given
+        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(2);
+
+        // when-then: must not throw UnsupportedOperationException (Arrays.asList is fixed-size)
+        chatMemory.set(userMessage("m1"), userMessage("m2"), userMessage("m3"));
+
+        assertThat(chatMemory.messages()).containsExactly(userMessage("m2"), userMessage("m3"));
+    }
+
+    @Test
+    void set_with_list_should_not_mutate_or_alias_the_caller_provided_list() {
+
+        // given
+        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(2);
+        List<dev.langchain4j.data.message.ChatMessage> callerList =
+                new ArrayList<>(Arrays.asList(userMessage("a1"), userMessage("a2"), userMessage("a3")));
+
+        // when
+        chatMemory.set(callerList);
+
+        // then: the caller's list must remain untouched
+        assertThat(callerList).containsExactly(userMessage("a1"), userMessage("a2"), userMessage("a3"));
+        assertThat(chatMemory.messages()).containsExactly(userMessage("a2"), userMessage("a3"));
+
+        // and further mutation of the caller's list must not affect stored memory
+        callerList.add(userMessage("a4-injected"));
+        assertThat(chatMemory.messages()).containsExactly(userMessage("a2"), userMessage("a3"));
     }
 }

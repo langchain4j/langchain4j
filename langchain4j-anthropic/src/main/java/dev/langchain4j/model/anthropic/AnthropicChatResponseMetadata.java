@@ -1,13 +1,12 @@
 package dev.langchain4j.model.anthropic;
 
+import static dev.langchain4j.internal.Utils.copy;
+
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
-
 import java.util.List;
 import java.util.Objects;
-
-import static dev.langchain4j.internal.Utils.copy;
 
 /**
  * @since 1.10.0
@@ -16,11 +15,13 @@ public class AnthropicChatResponseMetadata extends ChatResponseMetadata {
 
     private final SuccessfulHttpResponse rawHttpResponse;
     private final List<ServerSentEvent> rawServerSentEvents;
+    private final AnthropicCacheDiagnostics cacheDiagnostics;
 
     private AnthropicChatResponseMetadata(Builder builder) {
         super(builder);
         this.rawHttpResponse = builder.rawHttpResponse;
         this.rawServerSentEvents = copy(builder.rawServerSentEvents);
+        this.cacheDiagnostics = builder.cacheDiagnostics;
     }
 
     @Override
@@ -36,11 +37,21 @@ public class AnthropicChatResponseMetadata extends ChatResponseMetadata {
         return rawServerSentEvents;
     }
 
+    /**
+     * Result of Anthropic's (beta) cache diagnostics comparison, or {@code null} when it was not
+     * requested (see {@code returnCacheDiagnostics} on {@link AnthropicChatRequestParameters}) or
+     * no divergence was found.
+     */
+    public AnthropicCacheDiagnostics cacheDiagnostics() {
+        return cacheDiagnostics;
+    }
+
     @Override
     public Builder toBuilder() {
         return ((Builder) super.toBuilder(builder()))
                 .rawHttpResponse(rawHttpResponse)
-                .rawServerSentEvents(rawServerSentEvents);
+                .rawServerSentEvents(rawServerSentEvents)
+                .cacheDiagnostics(cacheDiagnostics);
     }
 
     @Override
@@ -50,12 +61,13 @@ public class AnthropicChatResponseMetadata extends ChatResponseMetadata {
         if (!super.equals(o)) return false;
         AnthropicChatResponseMetadata that = (AnthropicChatResponseMetadata) o;
         return Objects.equals(rawHttpResponse, that.rawHttpResponse)
-                && Objects.equals(rawServerSentEvents, that.rawServerSentEvents);
+                && Objects.equals(rawServerSentEvents, that.rawServerSentEvents)
+                && Objects.equals(cacheDiagnostics, that.cacheDiagnostics);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(super.hashCode(), rawHttpResponse, rawServerSentEvents);
+        return Objects.hash(super.hashCode(), rawHttpResponse, rawServerSentEvents, cacheDiagnostics);
     }
 
     @Override
@@ -66,7 +78,8 @@ public class AnthropicChatResponseMetadata extends ChatResponseMetadata {
                 + tokenUsage() + ", finishReason="
                 + finishReason() + ", created="
                 + rawHttpResponse + ", rawServerSentEvents="
-                + rawServerSentEvents + '}';
+                + rawServerSentEvents + ", cacheDiagnostics="
+                + cacheDiagnostics + '}';
     }
 
     public static Builder builder() {
@@ -77,6 +90,7 @@ public class AnthropicChatResponseMetadata extends ChatResponseMetadata {
 
         private SuccessfulHttpResponse rawHttpResponse;
         private List<ServerSentEvent> rawServerSentEvents;
+        private AnthropicCacheDiagnostics cacheDiagnostics;
 
         public Builder rawHttpResponse(SuccessfulHttpResponse rawHttpResponse) {
             this.rawHttpResponse = rawHttpResponse;
@@ -85,6 +99,11 @@ public class AnthropicChatResponseMetadata extends ChatResponseMetadata {
 
         public Builder rawServerSentEvents(List<ServerSentEvent> rawServerSentEvents) {
             this.rawServerSentEvents = rawServerSentEvents;
+            return this;
+        }
+
+        public Builder cacheDiagnostics(AnthropicCacheDiagnostics cacheDiagnostics) {
+            this.cacheDiagnostics = cacheDiagnostics;
             return this;
         }
 

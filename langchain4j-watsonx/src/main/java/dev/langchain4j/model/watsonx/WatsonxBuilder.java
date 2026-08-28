@@ -1,86 +1,40 @@
 package dev.langchain4j.model.watsonx;
 
-import com.ibm.watsonx.ai.CloudRegion;
-import com.ibm.watsonx.ai.core.auth.Authenticator;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.time.Duration;
+import dev.langchain4j.Internal;
 
+/**
+ * Abstract builder for the watsonx.ai services that operate inside a project or a deployment space.
+ *
+ * @param <T> the concrete builder subclass
+ */
+@Internal
 @SuppressWarnings("unchecked")
-abstract class WatsonxBuilder<T extends WatsonxBuilder<T>> {
+abstract class WatsonxBuilder<T extends WatsonxBuilder<T>> extends WatsonxConnectionBuilder<T> {
 
-    protected URI baseUrl;
-    protected String version;
-    protected String apiKey;
     protected String projectId;
     protected String spaceId;
-    protected Boolean logRequests;
-    protected Boolean logResponses;
-    protected Duration timeout;
-    protected Authenticator authenticator;
-    protected HttpClient httpClient;
-    protected boolean verifySsl = true;
 
-    public T baseUrl(CloudRegion baseUrl) {
-        return baseUrl(baseUrl.mlEndpoint());
-    }
-
-    public T baseUrl(String url) {
-        return baseUrl(URI.create(url));
-    }
-
-    public T baseUrl(URI url) {
-        this.baseUrl = url;
-        return (T) this;
-    }
-
-    public T version(String version) {
-        this.version = version;
-        return (T) this;
-    }
-
+    /**
+     * Sets the IBM Cloud project ID that owns the watsonx.ai resources.
+     * Exactly one of {@code projectId} or {@code spaceId} must be set.
+     *
+     * @param projectId the IBM Cloud project ID
+     * @return {@code this}
+     */
     public T projectId(String projectId) {
         this.projectId = projectId;
         return (T) this;
     }
 
+    /**
+     * Sets the IBM Cloud deployment space ID.
+     * Exactly one of {@code projectId} or {@code spaceId} must be set.
+     *
+     * @param spaceId the IBM Cloud deployment space ID
+     * @return {@code this}
+     */
     public T spaceId(String spaceId) {
         this.spaceId = spaceId;
-        return (T) this;
-    }
-
-    public T apiKey(String apiKey) {
-        this.apiKey = apiKey;
-        return (T) this;
-    }
-
-    public T logRequests(Boolean logRequests) {
-        this.logRequests = logRequests;
-        return (T) this;
-    }
-
-    public T logResponses(Boolean logResponses) {
-        this.logResponses = logResponses;
-        return (T) this;
-    }
-
-    public T timeout(Duration timeout) {
-        this.timeout = timeout;
-        return (T) this;
-    }
-
-    public T authenticator(Authenticator authenticator) {
-        this.authenticator = authenticator;
-        return (T) this;
-    }
-
-    public T httpClient(HttpClient httpClient) {
-        this.httpClient = httpClient;
-        return (T) this;
-    }
-
-    public T verifySsl(boolean verifySsl) {
-        this.verifySsl = verifySsl;
         return (T) this;
     }
 }

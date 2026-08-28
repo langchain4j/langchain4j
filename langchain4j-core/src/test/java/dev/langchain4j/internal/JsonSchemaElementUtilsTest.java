@@ -187,9 +187,7 @@ class JsonSchemaElementUtilsTest {
         Map<String, Object> map = toMap(person, false);
 
         // then
-        assertThat(new ObjectMapper().writeValueAsString(map))
-                .isEqualToIgnoringWhitespace(
-                        """
+        assertThat(new ObjectMapper().writeValueAsString(map)).isEqualToIgnoringWhitespace("""
                 {
                    "type":"object",
                    "properties":{
@@ -221,9 +219,7 @@ class JsonSchemaElementUtilsTest {
         Map<String, Object> map = toMap(person, true);
 
         // then
-        assertThat(new ObjectMapper().writeValueAsString(map))
-                .isEqualToIgnoringWhitespace(
-                        """
+        assertThat(new ObjectMapper().writeValueAsString(map)).isEqualToIgnoringWhitespace("""
                 {
                    "type":"object",
                    "properties":{
@@ -245,8 +241,7 @@ class JsonSchemaElementUtilsTest {
     @Test
     void nativeSchemaToMap() throws JsonProcessingException {
         ObjectMapper mapper = new ObjectMapper();
-        String rawJsonSchema =
-                """
+        String rawJsonSchema = """
         {
             "additionalProperties": false,
             "type" : "object",
@@ -292,21 +287,138 @@ class JsonSchemaElementUtilsTest {
         assertThat(isJsonArray(Iterable.class)).isTrue();
     }
 
+    static class GenericBox<T> {
+
+        T value;
+    }
+
+    static class HolderOfBoxedStrings {
+
+        List<GenericBox<String>> items;
+    }
+
+    @Test
+    void should_create_schema_when_collection_element_type_is_parameterized() {
+
+        // given
+        Class<HolderOfBoxedStrings> clazz = HolderOfBoxedStrings.class;
+
+        // when
+        JsonSchemaElement schema = jsonSchemaElementFrom(clazz, null, null, true, new LinkedHashMap<>());
+
+        // then — element class is the raw GenericBox; its T-typed `value` field erases to Object,
+        // which has no schema-relevant fields, so the box becomes an empty object.
+        assertThat(schema)
+                .isEqualTo(JsonObjectSchema.builder()
+                        .addProperty(
+                                "items",
+                                JsonArraySchema.builder()
+                                        .items(JsonObjectSchema.builder()
+                                                .addProperty(
+                                                        "value",
+                                                        JsonObjectSchema.builder()
+                                                                .build())
+                                                .required("value")
+                                                .build())
+                                        .build())
+                        .required("items")
+                        .build());
+    }
+
+    static class CombinedGenericsHolder<T extends CharSequence> {
+
+        List<? extends GenericBox<String>> wildcards;
+
+        List<T> typeVariables;
+
+        List<T[]> genericArrays;
+    }
+
+    @Test
+    void should_resolve_wildcard_type_variable_and_generic_array_collection_elements() {
+
+        // given
+        Class<CombinedGenericsHolder> clazz = CombinedGenericsHolder.class;
+
+        // when
+        JsonSchemaElement schema = jsonSchemaElementFrom(clazz, null, null, true, new LinkedHashMap<>());
+
+        // then — every Collection element resolves through its respective rawClassOf branch.
+        assertThat(schema)
+                .isEqualTo(JsonObjectSchema.builder()
+                        .addProperty(
+                                "wildcards",
+                                JsonArraySchema.builder()
+                                        .items(JsonObjectSchema.builder()
+                                                .addProperty(
+                                                        "value",
+                                                        JsonObjectSchema.builder()
+                                                                .build())
+                                                .required("value")
+                                                .build())
+                                        .build())
+                        .addProperty(
+                                "typeVariables",
+                                JsonArraySchema.builder()
+                                        .items(JsonStringSchema.builder().build())
+                                        .build())
+                        .addProperty(
+                                "genericArrays",
+                                JsonArraySchema.builder()
+                                        .items(JsonArraySchema.builder()
+                                                .items(JsonStringSchema.builder()
+                                                        .build())
+                                                .build())
+                                        .build())
+                        .required("wildcards", "typeVariables", "genericArrays")
+                        .build());
+    }
+
+    static class HolderOfNestedCollection {
+
+        List<List<String>> nested;
+    }
+
+    @Test
+    void should_create_nested_array_schema_for_collection_of_collections() {
+
+        // given
+        Class<HolderOfNestedCollection> clazz = HolderOfNestedCollection.class;
+
+        // when
+        JsonSchemaElement schema = jsonSchemaElementFrom(clazz, null, null, true, new LinkedHashMap<>());
+
+        // then — array-of-array-of-string
+        assertThat(schema)
+                .isEqualTo(JsonObjectSchema.builder()
+                        .addProperty(
+                                "nested",
+                                JsonArraySchema.builder()
+                                        .items(JsonArraySchema.builder()
+                                                .items(JsonStringSchema.builder()
+                                                        .build())
+                                                .build())
+                                        .build())
+                        .required("nested")
+                        .build());
+    }
+
     @Test
     void should_create_schema_for_enum() {
 
         // given
         enum MyEnum {
-            A, B, C;
+            A,
+            B,
+            C;
         }
 
         // when
         JsonSchemaElement schema = jsonSchemaElementFrom(MyEnum.class);
 
         // then
-        assertThat(schema).isEqualTo(JsonEnumSchema.builder()
-                .enumValues("A", "B", "C")
-                .build());
+        assertThat(schema)
+                .isEqualTo(JsonEnumSchema.builder().enumValues("A", "B", "C").build());
     }
 
     @Test
@@ -314,7 +426,9 @@ class JsonSchemaElementUtilsTest {
 
         // given
         enum MyEnumWithToString {
-            A, B, C;
+            A,
+            B,
+            C;
 
             @Override
             public String toString() {
@@ -328,61 +442,48 @@ class JsonSchemaElementUtilsTest {
         JsonSchemaElement schema = jsonSchemaElementFrom(MyEnumWithToString.class);
 
         // then
-        assertThat(schema).isEqualTo(JsonEnumSchema.builder()
-                .enumValues("A", "B", "C")
-                .build());
+        assertThat(schema)
+                .isEqualTo(JsonEnumSchema.builder().enumValues("A", "B", "C").build());
     }
 
     @Test
     void shouldConvertJsonStringSchemaToMap() {
-        JsonStringSchema schema = JsonStringSchema.builder()
-                .description("string description")
-                .build();
+        JsonStringSchema schema =
+                JsonStringSchema.builder().description("string description").build();
 
         Map<String, Object> map = JsonSchemaElementUtils.toMap(schema);
 
-        assertThat(map)
-                .containsEntry("type", "string")
-                .containsEntry("description", "string description");
+        assertThat(map).containsEntry("type", "string").containsEntry("description", "string description");
     }
 
     @Test
     void shouldConvertJsonIntegerSchemaToMap() {
-        JsonIntegerSchema schema = JsonIntegerSchema.builder()
-                .description("integer description")
-                .build();
+        JsonIntegerSchema schema =
+                JsonIntegerSchema.builder().description("integer description").build();
 
         Map<String, Object> map = JsonSchemaElementUtils.toMap(schema);
 
-        assertThat(map)
-                .containsEntry("type", "integer")
-                .containsEntry("description", "integer description");
+        assertThat(map).containsEntry("type", "integer").containsEntry("description", "integer description");
     }
 
     @Test
     void shouldConvertJsonNumberSchemaToMap() {
-        JsonNumberSchema schema = JsonNumberSchema.builder()
-                .description("number description")
-                .build();
+        JsonNumberSchema schema =
+                JsonNumberSchema.builder().description("number description").build();
 
         Map<String, Object> map = JsonSchemaElementUtils.toMap(schema);
 
-        assertThat(map)
-                .containsEntry("type", "number")
-                .containsEntry("description", "number description");
+        assertThat(map).containsEntry("type", "number").containsEntry("description", "number description");
     }
 
     @Test
     void shouldConvertJsonBooleanSchemaToMap() {
-        JsonBooleanSchema schema = JsonBooleanSchema.builder()
-                .description("boolean description")
-                .build();
+        JsonBooleanSchema schema =
+                JsonBooleanSchema.builder().description("boolean description").build();
 
         Map<String, Object> map = JsonSchemaElementUtils.toMap(schema);
 
-        assertThat(map)
-                .containsEntry("type", "boolean")
-                .containsEntry("description", "boolean description");
+        assertThat(map).containsEntry("type", "boolean").containsEntry("description", "boolean description");
     }
 
     @Test
@@ -439,9 +540,8 @@ class JsonSchemaElementUtilsTest {
 
     @Test
     void shouldConvertJsonReferenceSchemaToMap() {
-        JsonReferenceSchema schema = JsonReferenceSchema.builder()
-                .reference("my-ref")
-                .build();
+        JsonReferenceSchema schema =
+                JsonReferenceSchema.builder().reference("my-ref").build();
 
         Map<String, Object> map = JsonSchemaElementUtils.toMap(schema);
 
@@ -453,8 +553,7 @@ class JsonSchemaElementUtilsTest {
         JsonAnyOfSchema schema = JsonAnyOfSchema.builder()
                 .anyOf(Arrays.asList(
                         JsonSchemaElementUtils.jsonSchemaElementFrom(String.class),
-                        JsonSchemaElementUtils.jsonSchemaElementFrom(Integer.class)
-                ))
+                        JsonSchemaElementUtils.jsonSchemaElementFrom(Integer.class)))
                 .description("anyOf description")
                 .build();
 
@@ -481,7 +580,8 @@ class JsonSchemaElementUtilsTest {
     @Test
     void shouldConvertJsonRawSchemaToMap() {
         Map<String, Object> rawMap = Map.of("foo", "bar");
-        JsonRawSchema schema = JsonRawSchema.builder().schema(Json.toJson(rawMap)).build();
+        JsonRawSchema schema =
+                JsonRawSchema.builder().schema(Json.toJson(rawMap)).build();
 
         Map<String, Object> map = JsonSchemaElementUtils.toMap(schema);
 

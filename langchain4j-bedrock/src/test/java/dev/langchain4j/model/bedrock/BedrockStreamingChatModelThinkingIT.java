@@ -1,5 +1,6 @@
 package dev.langchain4j.model.bedrock;
 
+import static dev.langchain4j.MockitoUtils.ignoreInteractions;
 import static dev.langchain4j.model.bedrock.BedrockChatModelThinkingIT.SLEEPING_TIME_MULTIPLIER;
 import static dev.langchain4j.model.bedrock.BedrockChatModelThinkingIT.THINKING_BUDGET_TOKENS;
 import static dev.langchain4j.model.bedrock.common.BedrockAiServicesIT.sleepIfNeeded;
@@ -32,8 +33,7 @@ class BedrockStreamingChatModelThinkingIT {
 
     @ParameterizedTest
     @ValueSource(strings = {
-            "us.anthropic.claude-sonnet-4-20250514-v1:0",
-            "us.anthropic.claude-3-7-sonnet-20250219-v1:0",
+            "us.anthropic.claude-sonnet-4-6"
     })
     void should_return_and_send_thinking(String modelId) {
 
@@ -72,6 +72,7 @@ class BedrockStreamingChatModelThinkingIT {
         inOrder1.verify(spyHandler1, atLeastOnce()).onPartialThinking(any(), any());
         inOrder1.verify(spyHandler1, atLeastOnce()).onPartialResponse(any(), any());
         inOrder1.verify(spyHandler1).onCompleteResponse(any());
+        ignoreInteractions(spyHandler1).onUnmappedRawEvent(any());
         inOrder1.verifyNoMoreInteractions();
         verifyNoMoreInteractions(spyHandler1);
 
@@ -94,14 +95,14 @@ class BedrockStreamingChatModelThinkingIT {
         inOrder2.verify(spyHandler2, atLeastOnce()).onPartialThinking(any(), any());
         inOrder2.verify(spyHandler2, atLeastOnce()).onPartialResponse(any(), any());
         inOrder2.verify(spyHandler2).onCompleteResponse(any());
+        ignoreInteractions(spyHandler2).onUnmappedRawEvent(any());
         inOrder2.verifyNoMoreInteractions();
         verifyNoMoreInteractions(spyHandler2);
     }
 
     @ParameterizedTest
     @ValueSource(strings = {
-            "us.anthropic.claude-sonnet-4-20250514-v1:0",
-            "us.anthropic.claude-3-7-sonnet-20250219-v1:0",
+            "us.anthropic.claude-sonnet-4-6",
             "us.deepseek.r1-v1:0"
     })
     void should_return_and_NOT_send_thinking(String modelId) {
@@ -150,6 +151,7 @@ class BedrockStreamingChatModelThinkingIT {
         inOrder1.verify(spyHandler1, atLeastOnce()).onPartialResponse(any(), any());
         inOrder1.verify(spyHandler1).onCompleteResponse(any());
         inOrder1.verify(spyHandler1).getThinking();
+        ignoreInteractions(spyHandler1).onUnmappedRawEvent(any());
         inOrder1.verifyNoMoreInteractions();
         verifyNoMoreInteractions(spyHandler1);
 
@@ -174,14 +176,14 @@ class BedrockStreamingChatModelThinkingIT {
         inOrder2.verify(spyHandler2, atLeastOnce()).onPartialThinking(any(), any());
         inOrder2.verify(spyHandler2, atLeastOnce()).onPartialResponse(any(), any());
         inOrder2.verify(spyHandler2).onCompleteResponse(any());
+        ignoreInteractions(spyHandler2).onUnmappedRawEvent(any());
         inOrder2.verifyNoMoreInteractions();
         verifyNoMoreInteractions(spyHandler2);
     }
 
     @ParameterizedTest
     @ValueSource(strings = {
-            "us.anthropic.claude-sonnet-4-20250514-v1:0",
-            "us.anthropic.claude-3-7-sonnet-20250219-v1:0",
+            "us.anthropic.claude-sonnet-4-6"
     })
     void should_return_and_send_thinking_with_tools(String modelId) {
 
@@ -233,6 +235,7 @@ class BedrockStreamingChatModelThinkingIT {
         inOrder1.verify(spyHandler1, atLeast(0)).onPartialResponse(any(), any()); // do not care if onPartialResponse was called
         inOrder1.verify(spyHandler1).onCompleteToolCall(any());
         inOrder1.verify(spyHandler1).onCompleteResponse(any());
+        ignoreInteractions(spyHandler1).onUnmappedRawEvent(any());
         inOrder1.verifyNoMoreInteractions();
         verifyNoMoreInteractions(spyHandler1);
 
@@ -255,6 +258,7 @@ class BedrockStreamingChatModelThinkingIT {
         inOrder2.verify(spyHandler2).get();
         inOrder2.verify(spyHandler2, atLeastOnce()).onPartialResponse(any(), any());
         inOrder2.verify(spyHandler2).onCompleteResponse(any());
+        ignoreInteractions(spyHandler2).onUnmappedRawEvent(any());
         inOrder2.verifyNoMoreInteractions();
         verifyNoMoreInteractions(spyHandler2);
 
@@ -281,6 +285,7 @@ class BedrockStreamingChatModelThinkingIT {
         inOrder3.verify(spyHandler3, atLeast(0)).onPartialResponse(any(), any()); // do not care if onPartialResponse was called
         inOrder3.verify(spyHandler3).onCompleteToolCall(any());
         inOrder3.verify(spyHandler3).onCompleteResponse(any());
+        ignoreInteractions(spyHandler3).onUnmappedRawEvent(any());
         inOrder3.verifyNoMoreInteractions();
         verifyNoMoreInteractions(spyHandler3);
 
@@ -303,6 +308,7 @@ class BedrockStreamingChatModelThinkingIT {
         inOrder4.verify(spyHandler4).get();
         inOrder4.verify(spyHandler4, atLeastOnce()).onPartialResponse(any(), any());
         inOrder4.verify(spyHandler4).onCompleteResponse(any());
+        ignoreInteractions(spyHandler4).onUnmappedRawEvent(any());
         inOrder4.verifyNoMoreInteractions();
         verifyNoMoreInteractions(spyHandler4);
     }
@@ -312,7 +318,7 @@ class BedrockStreamingChatModelThinkingIT {
 
         // given
         String beta = "interleaved-thinking-2025-05-14";
-        String modelId = "us.anthropic.claude-opus-4-20250514-v1:0";
+        String modelId = "us.anthropic.claude-sonnet-4-6";
 
         boolean returnThinking = true;
         // sendThinking = true by default
@@ -364,6 +370,7 @@ class BedrockStreamingChatModelThinkingIT {
         inOrder1.verify(spyHandler1, atLeastOnce()).onPartialResponse(any(), any());
         inOrder1.verify(spyHandler1).onCompleteToolCall(any());
         inOrder1.verify(spyHandler1).onCompleteResponse(any());
+        ignoreInteractions(spyHandler1).onUnmappedRawEvent(any());
         inOrder1.verifyNoMoreInteractions();
         verifyNoMoreInteractions(spyHandler1);
 
@@ -389,6 +396,7 @@ class BedrockStreamingChatModelThinkingIT {
         inOrder2.verify(spyHandler2, atLeastOnce()).onPartialThinking(any(), any());
         inOrder2.verify(spyHandler2, atLeastOnce()).onPartialResponse(any(), any());
         inOrder2.verify(spyHandler2).onCompleteResponse(any());
+        ignoreInteractions(spyHandler2).onUnmappedRawEvent(any());
         inOrder2.verifyNoMoreInteractions();
         verifyNoMoreInteractions(spyHandler2);
 
@@ -417,6 +425,7 @@ class BedrockStreamingChatModelThinkingIT {
         inOrder3.verify(spyHandler3, atLeastOnce()).onPartialResponse(any(), any());
         inOrder3.verify(spyHandler3).onCompleteToolCall(any());
         inOrder3.verify(spyHandler3).onCompleteResponse(any());
+        ignoreInteractions(spyHandler3).onUnmappedRawEvent(any());
         inOrder3.verifyNoMoreInteractions();
         verifyNoMoreInteractions(spyHandler3);
 
@@ -442,14 +451,14 @@ class BedrockStreamingChatModelThinkingIT {
         inOrder4.verify(spyHandler4, atLeastOnce()).onPartialThinking(any(), any());
         inOrder4.verify(spyHandler4, atLeastOnce()).onPartialResponse(any(), any());
         inOrder4.verify(spyHandler4).onCompleteResponse(any());
+        ignoreInteractions(spyHandler4).onUnmappedRawEvent(any());
         inOrder4.verifyNoMoreInteractions();
         verifyNoMoreInteractions(spyHandler4);
     }
 
     @ParameterizedTest
     @ValueSource(strings = {
-            "us.anthropic.claude-sonnet-4-20250514-v1:0",
-            "us.anthropic.claude-3-7-sonnet-20250219-v1:0",
+            "us.anthropic.claude-sonnet-4-6",
             "us.deepseek.r1-v1:0"
     })
     void should_NOT_return_thinking(String modelId) {
@@ -489,8 +498,7 @@ class BedrockStreamingChatModelThinkingIT {
 
     @ParameterizedTest
     @ValueSource(strings = {
-            "us.anthropic.claude-sonnet-4-20250514-v1:0",
-            "us.anthropic.claude-3-7-sonnet-20250219-v1:0",
+            "us.anthropic.claude-sonnet-4-6",
             "us.deepseek.r1-v1:0"
     })
     void should_NOT_return_thinking_when_returnThinking_is_not_set(String modelId) {

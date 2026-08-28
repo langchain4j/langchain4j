@@ -105,7 +105,8 @@ public class GoogleAiGeminiImageModel implements ImageModel {
                 getOrDefault(builder.logRequests, false),
                 getOrDefault(builder.logResponses, false),
                 builder.logger,
-                builder.timeout);
+                builder.timeout,
+                null);
 
         this.modelName = ensureNotNull(builder.modelName, "modelName");
         this.maxRetries = getOrDefault(builder.maxRetries, 2);

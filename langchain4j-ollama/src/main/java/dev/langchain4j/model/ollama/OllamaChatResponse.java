@@ -19,6 +19,7 @@ class OllamaChatResponse {
     private Boolean done;
     private Integer promptEvalCount;
     private Integer evalCount;
+    private String error;
 
     OllamaChatResponse() {}
 
@@ -29,7 +30,8 @@ class OllamaChatResponse {
             String doneReason,
             Boolean done,
             Integer promptEvalCount,
-            Integer evalCount) {
+            Integer evalCount,
+            String error) {
         this.model = model;
         this.createdAt = createdAt;
         this.message = message;
@@ -37,6 +39,7 @@ class OllamaChatResponse {
         this.done = done;
         this.promptEvalCount = promptEvalCount;
         this.evalCount = evalCount;
+        this.error = error;
     }
 
     static Builder builder() {
@@ -99,6 +102,14 @@ class OllamaChatResponse {
         this.evalCount = evalCount;
     }
 
+    public String getError() {
+        return error;
+    }
+
+    public void setError(String error) {
+        this.error = error;
+    }
+
     static class Builder {
 
         private String model;
@@ -108,6 +119,7 @@ class OllamaChatResponse {
         private Boolean done;
         private Integer promptEvalCount;
         private Integer evalCount;
+        private String error;
 
         Builder model(String model) {
             this.model = model;
@@ -144,8 +156,14 @@ class OllamaChatResponse {
             return this;
         }
 
+        Builder error(String error) {
+            this.error = error;
+            return this;
+        }
+
         OllamaChatResponse build() {
-            return new OllamaChatResponse(model, createdAt, message, doneReason, done, promptEvalCount, evalCount);
+            return new OllamaChatResponse(
+                    model, createdAt, message, doneReason, done, promptEvalCount, evalCount, error);
         }
     }
 }
