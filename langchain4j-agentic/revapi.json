@@ -159,6 +159,7 @@
           "code": "java.method.addedToInterface",
           "new": "method dev.langchain4j.agentic.supervisor.SupervisorAgentService<T> dev.langchain4j.agentic.supervisor.SupervisorAgentService<T>::compensateOnError(boolean)",
           "justification": "Add tool actions compensation at agentic system level for supervisor agents"
+
         }
       ]
     }
