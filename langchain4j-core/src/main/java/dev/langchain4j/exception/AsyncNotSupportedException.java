@@ -14,13 +14,15 @@ import dev.langchain4j.Experimental;
  * thrown from deep inside a genuinely asynchronous component (e.g. {@code List.of(...).add(x)}, or an unsupported
  * store filter) for a "not async" signal.
  * <p>
- * It is a {@link NonRetriableException}: a method that does not implement its asynchronous counterpart will not
- * begin to implement it on a retry, so retrying (with back-off) would only waste time before failing.
+ * It is an {@link UnsupportedFeatureException} - "this component does not support being called asynchronously" -
+ * and therefore also a {@link NonRetriableException}: a method that does not implement its asynchronous counterpart
+ * will not begin to implement it on a retry, so retrying (with back-off) would only waste time before failing.
+ * Catching {@link UnsupportedFeatureException} catches this too.
  *
  * @since 1.20.0
  */
 @Experimental
-public class AsyncNotSupportedException extends NonRetriableException {
+public class AsyncNotSupportedException extends UnsupportedFeatureException {
 
     public AsyncNotSupportedException(String message) {
         super(message);

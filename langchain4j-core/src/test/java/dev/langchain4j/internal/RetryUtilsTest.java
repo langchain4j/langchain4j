@@ -9,9 +9,11 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
+import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.exception.AuthenticationException;
 import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.exception.InternalServerException;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -260,6 +262,44 @@ class RetryUtilsTest {
         // a 401 maps to AuthenticationException (a NonRetriableException) - it is not retried
         assertThatThrownBy(() -> result.get(5, SECONDS)).hasCauseInstanceOf(AuthenticationException.class);
         assertThat(attempts).hasValue(1);
+    }
+
+    @Test
+    void does_not_retry_an_unsupported_feature() {
+        AtomicInteger attempts = new AtomicInteger();
+
+        assertThatThrownBy(() -> fastPolicy().withRetry(() -> {
+                    attempts.incrementAndGet();
+                    throw new UnsupportedFeatureException("'topK' is not supported");
+                }, 5))
+                .isExactlyInstanceOf(UnsupportedFeatureException.class);
+
+        // a provider does not begin to support a feature on a retry
+        assertThat(attempts).hasValue(1);
+    }
+
+    @Test
+    void withRetryAsync_does_not_retry_a_component_that_is_not_asynchronous() {
+        AtomicInteger attempts = new AtomicInteger();
+
+        CompletableFuture<String> result = fastPolicy()
+                .withRetryAsync(
+                        () -> {
+                            attempts.incrementAndGet();
+                            return CompletableFuture.failedFuture(
+                                    new AsyncNotSupportedException("SomeModel does not implement doChatAsync"));
+                        },
+                        5,
+                        ExceptionMapper.DEFAULT);
+
+        assertThatThrownBy(() -> result.get(5, SECONDS)).hasCauseInstanceOf(AsyncNotSupportedException.class);
+        assertThat(attempts).hasValue(1);
+    }
+
+    @Test
+    void an_unsupported_async_component_is_an_unsupported_feature() {
+        // catching UnsupportedFeatureException also catches the async flavour
+        assertThat(new AsyncNotSupportedException("not async")).isInstanceOf(UnsupportedFeatureException.class);
     }
 
     @Test

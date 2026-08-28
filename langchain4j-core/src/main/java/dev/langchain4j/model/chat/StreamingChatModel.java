@@ -171,7 +171,7 @@ public interface StreamingChatModel {
      * @since 1.20.0
      */
     @Experimental
-    default Publisher<ChatModelStreamingEvent> chat(ChatRequest request) {
+    default Publisher<ChatModelStreamingEvent> chat(ChatRequest request) { // TODO chatAsync?
 
         ChatRequest finalChatRequest = ChatRequest.builder()
                 .messages(request.messages())
