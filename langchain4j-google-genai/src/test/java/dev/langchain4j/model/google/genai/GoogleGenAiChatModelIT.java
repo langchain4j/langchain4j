@@ -45,7 +45,7 @@ class GoogleGenAiChatModelIT extends AbstractChatModelIT {
 
     @Override
     protected String customModelName() {
-        return "gemini-2.5-pro";
+        return "gemini-3.8-flash";
     }
 
     @Override
@@ -153,5 +153,10 @@ class GoogleGenAiChatModelIT extends AbstractChatModelIT {
         String response = model.chat("Respond with exactly one word: Hello.");
 
         assertThat(response).isNotBlank();
+    }
+
+    @Override
+    protected Class<? extends TokenUsage> tokenUsageType(ChatModel model) {
+        return GoogleGenAiTokenUsage.class;
     }
 }

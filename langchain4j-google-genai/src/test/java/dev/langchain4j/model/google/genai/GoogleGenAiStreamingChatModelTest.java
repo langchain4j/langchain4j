@@ -31,6 +31,7 @@ import java.lang.reflect.Field;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -397,6 +398,34 @@ class GoogleGenAiStreamingChatModelTest {
 
         assertThat(configCaptor.getValue().cachedContent())
                 .contains("projects/123/locations/us-central1/cachedContents/per-request");
+    }
+
+    private static Client clientStreamingNothing() throws Exception {
+        Client client = mock(Client.class);
+        Models models = mock(Models.class);
+        Field modelsField = Client.class.getDeclaredField("models");
+        modelsField.setAccessible(true);
+        modelsField.set(client, models);
+
+        @SuppressWarnings("unchecked")
+        ResponseStream<GenerateContentResponse> stream = mock(ResponseStream.class);
+        when(models.generateContentStream(any(String.class), any(List.class), any()))
+                .thenReturn(stream);
+        when(stream.iterator())
+                .thenReturn(Collections.<GenerateContentResponse>emptyList().iterator());
+        return client;
+    }
+
+    @Test
+    void should_report_google_gen_ai_token_usage_when_the_stream_is_empty() throws Exception {
+        GoogleGenAiStreamingChatModel model = GoogleGenAiStreamingChatModel.builder()
+                .client(clientStreamingNothing())
+                .modelName("gemini-3.5-flash")
+                .build();
+
+        ChatResponse response = stream(model, new ArrayList<>(), new ArrayList<>());
+
+        assertThat(response.metadata().tokenUsage()).isInstanceOf(GoogleGenAiTokenUsage.class);
     }
 
     private static Client clientStreamingThoughtAndAnswer() throws Exception {
