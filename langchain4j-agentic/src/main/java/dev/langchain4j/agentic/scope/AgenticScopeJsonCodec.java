@@ -45,4 +45,15 @@ public interface AgenticScopeJsonCodec {
     default boolean allowType(Class<?> type) {
         return false;
     }
+
+    /**
+     * Sets the {@link ClassLoader} used to resolve the types named in a serialized
+     * {@link AgenticScope}, for applications whose domain types are not visible to the class
+     * loader that loaded LangChain4j.
+     *
+     * @return whether this codec applied the class loader.
+     */
+    default boolean withClassLoader(ClassLoader classLoader) {
+        return false;
+    }
 }

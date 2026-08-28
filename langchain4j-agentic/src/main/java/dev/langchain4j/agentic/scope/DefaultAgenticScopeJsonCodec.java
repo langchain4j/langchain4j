@@ -25,7 +25,12 @@ class DefaultAgenticScopeJsonCodec implements AgenticScopeJsonCodec {
      */
     private static final TypeAllowlist ALLOWLIST = agenticScopeAllowlist();
 
-    private static final Json.JsonCodec CODEC = PolymorphicJson.codec(ALLOWLIST);
+    /**
+     * Replaced rather than reconfigured when the class loader changes: a codec that is already
+     * serving other threads must not be mutated, and a Jackson 3 mapper cannot be reconfigured
+     * once built.
+     */
+    private static volatile Json.JsonCodec codec = PolymorphicJson.codec(ALLOWLIST);
 
     private static TypeAllowlist agenticScopeAllowlist() {
         TypeAllowlist allowlist = new TypeAllowlist();
@@ -39,7 +44,7 @@ class DefaultAgenticScopeJsonCodec implements AgenticScopeJsonCodec {
     @Override
     public DefaultAgenticScope fromJson(String json) {
         try {
-            return CODEC.fromJson(json, DefaultAgenticScope.class);
+            return codec.fromJson(json, DefaultAgenticScope.class);
         } catch (JsonTypeNotAllowedException e) {
             throw new UnserializableAgenticScopeException(e.typeId(), e);
         } catch (RuntimeException e) {
@@ -52,10 +57,16 @@ class DefaultAgenticScopeJsonCodec implements AgenticScopeJsonCodec {
     @Override
     public String toJson(DefaultAgenticScope agenticScope) {
         try {
-            return CODEC.toJson(agenticScope.serializableCopy());
+            return codec.toJson(agenticScope.serializableCopy());
         } catch (RuntimeException e) {
             throw new RuntimeException("Failed to serialize AgenticScope to JSON", e);
         }
+    }
+
+    @Override
+    public boolean withClassLoader(ClassLoader classLoader) {
+        codec = PolymorphicJson.codec(ALLOWLIST, classLoader);
+        return true;
     }
 
     @Override

@@ -19,7 +19,10 @@ import dev.langchain4j.spi.ServiceHelper;
 public interface PolymorphicJsonCodecFactory {
 
     /**
-     * @param allowlist decides which types the returned codec may instantiate while reading.
+     * @param allowlist   decides which types the returned codec may instantiate while reading.
+     * @param classLoader resolves the type names found in the document, or null to leave that to
+     *                    the JSON library. An application whose domain types are not visible to the
+     *                    class loader that loaded LangChain4j has to say which one is.
      */
-    Json.JsonCodec create(TypeAllowlist allowlist);
+    Json.JsonCodec create(TypeAllowlist allowlist, ClassLoader classLoader);
 }

@@ -7,7 +7,7 @@ import dev.langchain4j.spi.json.PolymorphicJsonCodecFactory;
 public class Jackson3PolymorphicJsonCodecFactory implements PolymorphicJsonCodecFactory {
 
     @Override
-    public Json.JsonCodec create(TypeAllowlist allowlist) {
-        return new Jackson3PolymorphicJsonCodec(allowlist);
+    public Json.JsonCodec create(TypeAllowlist allowlist, ClassLoader classLoader) {
+        return new Jackson3PolymorphicJsonCodec(allowlist, classLoader);
     }
 }

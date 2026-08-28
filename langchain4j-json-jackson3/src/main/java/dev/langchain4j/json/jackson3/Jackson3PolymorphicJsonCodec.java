@@ -11,6 +11,7 @@ import tools.jackson.databind.DatabindContext;
 import tools.jackson.databind.JavaType;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.exc.InvalidTypeIdException;
+import tools.jackson.databind.json.JsonMapper;
 import tools.jackson.databind.jsontype.PolymorphicTypeValidator;
 
 /**
@@ -23,12 +24,15 @@ public class Jackson3PolymorphicJsonCodec implements Json.JsonCodec {
 
     private final ObjectMapper objectMapper;
 
-    public Jackson3PolymorphicJsonCodec(TypeAllowlist allowlist) {
+    public Jackson3PolymorphicJsonCodec(TypeAllowlist allowlist, ClassLoader classLoader) {
         // Built on the chat-message mapper because the values being written can include chat
         // messages, which need the same handling here as anywhere else.
-        this.objectMapper = Jackson3ChatMessageJsonCodec.chatMessageJsonMapperBuilder()
-                .activateDefaultTyping(new AllowlistTypeValidator(allowlist))
-                .build();
+        JsonMapper.Builder builder = Jackson3ChatMessageJsonCodec.chatMessageJsonMapperBuilder()
+                .activateDefaultTyping(new AllowlistTypeValidator(allowlist));
+        if (classLoader != null) {
+            builder.typeFactory(builder.typeFactory().withClassLoader(classLoader));
+        }
+        this.objectMapper = builder.build();
     }
 
     @Override

@@ -24,9 +24,19 @@ public final class PolymorphicJson {
      * a caller registering a type expects that to apply to the codec it holds.
      */
     public static Json.JsonCodec codec(TypeAllowlist allowlist) {
+        return codec(allowlist, null);
+    }
+
+    /**
+     * @param classLoader resolves the type names found in the document, or null to leave that to
+     *                    the JSON library. A codec cannot be told this after it is built - one of
+     *                    the two Jackson versions has no way to reconfigure a mapper - so changing
+     *                    it means asking for another codec.
+     */
+    public static Json.JsonCodec codec(TypeAllowlist allowlist, ClassLoader classLoader) {
         for (PolymorphicJsonCodecFactory factory : loadFactories(PolymorphicJsonCodecFactory.class)) {
-            return factory.create(allowlist);
+            return factory.create(allowlist, classLoader);
         }
-        return new JacksonPolymorphicJsonCodec(allowlist);
+        return new JacksonPolymorphicJsonCodec(allowlist, classLoader);
     }
 }

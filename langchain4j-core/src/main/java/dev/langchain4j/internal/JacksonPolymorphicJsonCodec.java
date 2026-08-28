@@ -5,7 +5,9 @@ import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.cfg.MapperConfig;
 import com.fasterxml.jackson.databind.exc.InvalidTypeIdException;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.databind.jsontype.PolymorphicTypeValidator;
+import com.fasterxml.jackson.databind.type.TypeFactory;
 import dev.langchain4j.Internal;
 import dev.langchain4j.data.message.JacksonChatMessageJsonCodec;
 import dev.langchain4j.exception.JsonTypeNotAllowedException;
@@ -19,10 +21,14 @@ class JacksonPolymorphicJsonCodec implements Json.JsonCodec {
 
     private final ObjectMapper mapper;
 
-    JacksonPolymorphicJsonCodec(TypeAllowlist allowlist) {
+    JacksonPolymorphicJsonCodec(TypeAllowlist allowlist, ClassLoader classLoader) {
         // Built on the chat-message mapper because the values being written can include chat
         // messages, which need the same handling here as anywhere else.
-        this.mapper = JacksonChatMessageJsonCodec.chatMessageJsonMapperBuilder().build();
+        JsonMapper.Builder builder = JacksonChatMessageJsonCodec.chatMessageJsonMapperBuilder();
+        if (classLoader != null) {
+            builder.typeFactory(TypeFactory.defaultInstance().withClassLoader(classLoader));
+        }
+        this.mapper = builder.build();
         this.mapper.activateDefaultTyping(new AllowlistTypeValidator(allowlist));
     }
 
