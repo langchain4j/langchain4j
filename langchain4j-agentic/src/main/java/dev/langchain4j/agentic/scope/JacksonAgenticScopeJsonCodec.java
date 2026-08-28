@@ -7,6 +7,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.exc.InvalidTypeIdException;
 import com.fasterxml.jackson.databind.json.JsonMapper;
+import com.fasterxml.jackson.databind.type.TypeFactory;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope.AgentMessage;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope.Kind;
@@ -18,11 +19,16 @@ import java.util.Map;
 import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
 @Internal
-class JacksonAgenticScopeJsonCodec implements ConfigurableAgenticScopeJsonCodec {
+class JacksonAgenticScopeJsonCodec implements AgenticScopeJsonCodec {
 
     private static final ConfigurablePolymorphicTypeValidator PTV = new ConfigurablePolymorphicTypeValidator();
 
-    private static final ObjectMapper MAPPER = agenticScopeJsonSerializer();
+    /**
+     * Rebuilt rather than reconfigured when the class loader changes: a mapper that is already
+     * serving other threads must not be mutated, and the successor to this codec will be built on
+     * a Jackson version whose mapper cannot be mutated at all.
+     */
+    private static volatile ObjectMapper mapper = agenticScopeJsonSerializer();
 
     static JsonMapper.Builder agenticScopeJsonMapperBuilder() {
         return JacksonChatMessageJsonCodec.chatMessageJsonMapperBuilder()
@@ -33,42 +39,41 @@ class JacksonAgenticScopeJsonCodec implements ConfigurableAgenticScopeJsonCodec 
 
 
     static ObjectMapper agenticScopeJsonSerializer() {
-        ObjectMapper mapper = agenticScopeJsonMapperBuilder().build();
-        mapper.activateDefaultTyping(PTV);
-        return mapper;
+        return agenticScopeJsonSerializer(null);
+    }
+
+    private static ObjectMapper agenticScopeJsonSerializer(ClassLoader classLoader) {
+        JsonMapper.Builder builder = agenticScopeJsonMapperBuilder();
+        if (classLoader != null) {
+            builder.typeFactory(TypeFactory.defaultInstance().withClassLoader(classLoader));
+        }
+        ObjectMapper newMapper = builder.build();
+        newMapper.activateDefaultTyping(PTV);
+        return newMapper;
     }
 
     @Override
-    public void allowDeserializationPackagePrefix(final String packagePrefix) {
+    public boolean allowPackagePrefix(final String packagePrefix) {
         PTV.addAllowedPrefix(packagePrefix);
+        return true;
     }
 
     @Override
-    public void allowDeserializationType(final Class<?> type) {
+    public boolean allowType(final Class<?> type) {
         PTV.addAllowedClass(type.getName());
+        return true;
     }
 
     @Override
-    public void withClassLoader(ClassLoader classloader) {
-        MAPPER.setTypeFactory(MAPPER.getTypeFactory().withClassLoader(classloader));
-    }
-
-    @Override
-    public void registerForDeserializationPackageOf(final Class<?> type) {
-        String packageName = type.getPackageName();
-        allowDeserializationPackagePrefix(packageName + ".");
-        withClassLoader(type.getClassLoader());
-    }
-
-    @Override
-    public ObjectMapper objectMapper() {
-        return MAPPER;
+    public boolean withClassLoader(ClassLoader classLoader) {
+        mapper = agenticScopeJsonSerializer(classLoader);
+        return true;
     }
 
     @Override
     public DefaultAgenticScope fromJson(String json) {
         try {
-            return MAPPER.readValue(json, DefaultAgenticScope.class);
+            return mapper.readValue(json, DefaultAgenticScope.class);
         } catch (InvalidTypeIdException e) {
             throw new UnserializableAgenticScopeException(e.getTypeId(), e);
         } catch (JsonProcessingException e) {
@@ -79,7 +84,7 @@ class JacksonAgenticScopeJsonCodec implements ConfigurableAgenticScopeJsonCodec 
     @Override
     public String toJson(DefaultAgenticScope agenticScope) {
         try {
-            return MAPPER.writeValueAsString(agenticScope.serializableCopy());
+            return mapper.writeValueAsString(agenticScope.serializableCopy());
         } catch (JsonProcessingException e) {
             throw new RuntimeException("Failed to serialize AgenticScope to JSON", e);
         }

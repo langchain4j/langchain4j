@@ -1,6 +1,5 @@
 package dev.langchain4j.agentic.scope;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -72,9 +71,7 @@ public class AgenticScopeSerializer {
      * @see #allowDeserializationType(Class)
      */
     public static void allowDeserializationPackagePrefix(String packagePrefix) {
-        if (CODEC instanceof ConfigurableAgenticScopeJsonCodec agenticCodec) {
-            agenticCodec.allowDeserializationPackagePrefix(packagePrefix);
-        } else {
+        if (!CODEC.allowPackagePrefix(packagePrefix)) {
             LOG.warn("allowDeserializationPackagePrefix has no effect: the active codec ({}) does not support type allowlisting", CODEC.getClass().getName());
         }
     }
@@ -95,9 +92,7 @@ public class AgenticScopeSerializer {
      * @see #allowDeserializationPackagePrefix(String)
      */
     public static void allowDeserializationType(Class<?> type) {
-        if (CODEC instanceof ConfigurableAgenticScopeJsonCodec agenticCodec) {
-            agenticCodec.allowDeserializationType(type);
-        } else {
+        if (!CODEC.allowType(type)) {
             LOG.warn("allowDeserializationType has no effect: the active codec ({}) does not support type allowlisting", CODEC.getClass().getName());
         }
     }
@@ -118,9 +113,7 @@ public class AgenticScopeSerializer {
      * @see #registerForDeserializationPackageOf(Class)
      */
     public static void withClassLoader(ClassLoader classloader) {
-        if (CODEC instanceof ConfigurableAgenticScopeJsonCodec agenticCodec) {
-            agenticCodec.withClassLoader(classloader);
-        } else {
+        if (!CODEC.withClassLoader(classloader)) {
             LOG.warn("withClassLoader has no effect: the active codec ({}) does not support setting the classloader", CODEC.getClass().getName());
         }
     }
@@ -151,29 +144,8 @@ public class AgenticScopeSerializer {
      * @see #withClassLoader(ClassLoader)
      */
     public static void registerForDeserializationPackageOf(Class<?> type) {
-        if (CODEC instanceof ConfigurableAgenticScopeJsonCodec agenticCodec) {
-            agenticCodec.registerForDeserializationPackageOf(type);
-        } else {
-            LOG.warn("registerForDeserializationPackageOf has no effect: the active codec ({}) does not support setting the classloader", CODEC.getClass().getName());
-        }
+        allowDeserializationPackagePrefix(type.getPackageName() + ".");
+        withClassLoader(type.getClassLoader());
     }
 
-    /**
-     * Returns the {@link ObjectMapper} used for serialization and deserialization
-     * of {@link AgenticScope} state.
-     * <p>
-     * This allows advanced users to customize the {@link ObjectMapper} (e.g. to
-     * register additional modules) before calling {@link #fromJson(String)} or
-     * {@link #toJson(DefaultAgenticScope)}.
-     *
-     * @return the {@link ObjectMapper} used for serialization and deserialization
-     */
-    public static ObjectMapper objectMapper() {
-        if (CODEC instanceof ConfigurableAgenticScopeJsonCodec agenticCodec) {
-            return agenticCodec.objectMapper();
-        } else {
-            LOG.warn("objectMapper has no effect: the active codec ({}) does not support setting the classloader", CODEC.getClass().getName());
-            return null;
-        }
-    }
 }
