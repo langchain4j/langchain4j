@@ -5,6 +5,7 @@ import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
+import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.TestInstance.Lifecycle.PER_CLASS;
@@ -876,10 +877,7 @@ public abstract class AbstractBaseChatModelIT<M> {
         return partial.index() == expected.index()
                 && Objects.equals(partial.id(), expected.id())
                 && partial.name().equals(expected.name())
-                // tools with empty "{}" arguments may stream blank-but-non-null partial arguments TODO sure?
-                && (expected.arguments().equals("{}")
-                        ? partial.partialArguments() != null
-                        : !partial.partialArguments().isBlank());
+                && isNotNullOrBlank(partial.partialArguments());
     }
 
     private static boolean matches(CompleteToolCall complete, ExpectedToolCall expected) {
