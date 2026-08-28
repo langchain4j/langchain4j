@@ -89,6 +89,14 @@ public interface ChatModel {
      * <p>
      * Registered {@link ChatModelListener}s are invoked: {@code onRequest} when the request is initiated,
      * then {@code onResponse} once the response is available, or {@code onError} on failure.
+     * <p>
+     * <b>Threading.</b> The returned future is completed on the model's own thread - for HTTP models, the
+     * transport's I/O worker that reads the response (the JDK HTTP client's {@code HttpClient-*} workers). A
+     * continuation attached without an explicit executor ({@code thenApply}, {@code thenAccept}, ...) therefore
+     * runs on that thread, where blocking is as harmful as blocking in a {@link ChatModelListener} callback: it
+     * stalls the worker and, under concurrency, degrades throughput for every in-flight call. Keep continuations
+     * non-blocking, or hand blocking work to your own {@link java.util.concurrent.Executor} via the
+     * {@code *Async} variants ({@code thenApplyAsync(fn, executor)}).
      *
      * @param chatRequest a {@link ChatRequest}, containing all the inputs to the LLM
      * @return a {@link CompletableFuture} of the {@link ChatResponse}

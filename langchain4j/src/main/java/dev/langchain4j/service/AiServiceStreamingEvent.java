@@ -29,6 +29,14 @@ import java.util.List;
  * <p>
  * Every event carries the {@link InvocationContext} of the AI Service invocation that produced it.
  * <p>
+ * <b>Threading — do not block in {@code onNext}.</b> Events are delivered on whichever thread produced them:
+ * the model's transport I/O worker for the token-level events, or the thread that completed a tool call for the
+ * tool-execution events. None of those belong to the subscriber, and blocking or doing heavy work in
+ * {@code onNext} stalls the interaction and, under concurrency, degrades throughput for every in-flight call —
+ * offload such work to your own {@link java.util.concurrent.Executor}. The stream relays events through a
+ * bounded buffer, so a subscriber that falls far enough behind terminates with an {@link IllegalStateException}
+ * rather than buffering without limit; the size is configurable via {@code AiServices.streamingBufferSize(int)}.
+ * <p>
  * The set is intentionally <b>not sealed</b>: new event types may be introduced over time. Consumers must
  * therefore handle unrecognized subtypes gracefully (e.g. a {@code default} branch in a type switch) rather
  * than assume the listing below is exhaustive. Each event is a nested class (so it stays discoverable from this

@@ -168,6 +168,11 @@ public interface StreamingChatModel {
      * buffering and, once the buffer is exhausted, a terminal error. Subscribers should request liberally
      * (e.g. {@code Long.MAX_VALUE}) and must <b>not</b> block or perform heavy work in {@code onNext} — offload
      * it to another thread.
+     * <p>
+     * <b>Threading.</b> Events are delivered on the model's own thread — for HTTP models, the transport's I/O
+     * worker that reads the response (the JDK HTTP client's {@code HttpClient-*} workers), the same scarce,
+     * shared threads a {@link dev.langchain4j.model.chat.listener.ChatModelListener} callback runs on. Blocking
+     * there stalls this stream and, under concurrency, degrades throughput for every in-flight call.
      *
      * @since 1.20.0
      */
