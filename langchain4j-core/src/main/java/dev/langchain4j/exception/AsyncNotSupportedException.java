@@ -1,5 +1,6 @@
 package dev.langchain4j.exception;
 
+import dev.langchain4j.Experimental;
 /**
  * Signals that an asynchronous SPI method (an {@code *Async} method, or a reactive {@code Publisher}-returning
  * method) is not implemented by a component, and is therefore the internal "this component is not genuinely
@@ -18,6 +19,7 @@ package dev.langchain4j.exception;
  *
  * @since 1.19.0
  */
+@Experimental
 public class AsyncNotSupportedException extends NonRetriableException {
 
     public AsyncNotSupportedException(String message) {

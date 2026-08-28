@@ -1,5 +1,6 @@
 package dev.langchain4j.http.client.sse;
 
+import dev.langchain4j.Experimental;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.util.List;
@@ -36,6 +37,7 @@ public interface ServerSentEventParser {
      *
      * @since 1.15.0
      */
+    @Experimental
     default Incremental incremental() {
         throw new UnsupportedOperationException(
                 "Incremental parsing not supported by " + getClass().getName()

@@ -1,5 +1,6 @@
 package dev.langchain4j.rag;
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
@@ -134,6 +135,7 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
         this(queryTransformer, queryRouter, contentAggregator, contentInjector, executor, false);
     }
 
+    @Experimental
     public DefaultRetrievalAugmentor(QueryTransformer queryTransformer,
                                      QueryRouter queryRouter,
                                      ContentAggregator contentAggregator,
@@ -403,6 +405,7 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
          * {@link dev.langchain4j.spi.ExecutorProvider} default) - not the synchronous fan-out
          * {@link #executor(Executor) executor}. Has no effect on the synchronous {@link #augment(AugmentationRequest)}.
          */
+        @Experimental
         public DefaultRetrievalAugmentorBuilder offloadBlocking(boolean offloadBlocking) {
             this.offloadBlocking = offloadBlocking;
             return this;

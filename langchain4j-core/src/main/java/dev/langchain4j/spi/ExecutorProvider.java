@@ -1,5 +1,6 @@
 package dev.langchain4j.spi;
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.internal.DefaultExecutorProvider;
 import java.util.concurrent.Executor;
 
@@ -52,6 +53,7 @@ import java.util.concurrent.Executor;
  *
  * @since 1.19.0
  */
+@Experimental
 public interface ExecutorProvider {
 
     /**

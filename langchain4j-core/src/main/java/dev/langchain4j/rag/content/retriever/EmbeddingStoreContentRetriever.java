@@ -1,5 +1,6 @@
 package dev.langchain4j.rag.content.retriever;
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.exception.AsyncNotSupportedException;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
@@ -271,6 +272,7 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
          * path. A deliberate opt-in to blocking-on-a-(virtual)-thread; has no effect on the synchronous
          * {@link #retrieve(Query)}.
          */
+        @Experimental
         public EmbeddingStoreContentRetrieverBuilder offloadBlocking(boolean offloadBlocking) {
             this.offloadBlocking = offloadBlocking;
             return this;

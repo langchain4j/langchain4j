@@ -12,6 +12,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static dev.langchain4j.model.ModelProvider.AMAZON_BEDROCK;
 import static java.util.Objects.isNull;
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.internal.MappingTrackingStreamingChatResponseHandler;
 import dev.langchain4j.internal.ToolCallBuilder;
 import dev.langchain4j.reactive.streaming.ReactiveStreamingDefaults;
@@ -323,6 +324,7 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
          * @param streamingBufferSize the buffer size (must be greater than zero)
          * @return {@code this}
          */
+        @Experimental
         public Builder streamingBufferSize(Integer streamingBufferSize) {
             this.streamingBufferSize = streamingBufferSize;
             return this;

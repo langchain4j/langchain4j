@@ -1,6 +1,7 @@
 package dev.langchain4j.model.openai.internal;
 
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.chat.response.ChatModelStreamingEvent;
 import dev.langchain4j.model.openai.internal.audio.texttospeech.OpenAiTextToSpeechRequest;
@@ -41,6 +42,7 @@ public abstract class OpenAiClient {
 
     public abstract SyncOrAsyncOrStreaming<ChatCompletionResponse> chatCompletion(ChatCompletionRequest request);
 
+    @Experimental
     public Publisher<ChatModelStreamingEvent> chatCompletionPublisher(
             ChatCompletionRequest request, ChatCompletionOptions options) {
         throw new UnsupportedOperationException("Not implemented");
@@ -219,6 +221,7 @@ public abstract class OpenAiClient {
          * @param streamingBufferSize the buffer size; must be greater than zero
          * @return builder
          */
+        @Experimental
         public B streamingBufferSize(Integer streamingBufferSize) {
             this.streamingBufferSize = streamingBufferSize;
             return (B) this;

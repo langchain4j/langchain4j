@@ -1,5 +1,6 @@
 package dev.langchain4j.model.chat;
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.internal.AsyncNotSupported;
 import dev.langchain4j.data.message.ChatMessage;
@@ -169,6 +170,7 @@ public interface StreamingChatModel {
      *
      * @since 1.19.0
      */
+    @Experimental
     default Publisher<ChatModelStreamingEvent> chat(ChatRequest request) {
 
         ChatRequest finalChatRequest = ChatRequest.builder()
@@ -246,6 +248,7 @@ public interface StreamingChatModel {
      *
      * @since 1.19.0
      */
+    @Experimental
     default Publisher<ChatModelStreamingEvent> doChat(ChatRequest chatRequest) {
         return AsyncNotSupported.failingPublisher(getClass(), "doChat");
     }
@@ -288,6 +291,7 @@ public interface StreamingChatModel {
      *
      * @since 1.19.0
      */
+    @Experimental
     default Publisher<String> chat(String userMessage) {
 
         ChatRequest chatRequest =
@@ -330,6 +334,7 @@ public interface StreamingChatModel {
      *
      * @since 1.19.0
      */
+    @Experimental
     default Publisher<ChatModelStreamingEvent> chat(ChatMessage... messages) {
 
         ChatRequest chatRequest = ChatRequest.builder().messages(messages).build();
@@ -343,6 +348,7 @@ public interface StreamingChatModel {
      *
      * @since 1.19.0
      */
+    @Experimental
     default Publisher<ChatModelStreamingEvent> chat(List<ChatMessage> messages) {
 
         ChatRequest chatRequest = ChatRequest.builder().messages(messages).build();

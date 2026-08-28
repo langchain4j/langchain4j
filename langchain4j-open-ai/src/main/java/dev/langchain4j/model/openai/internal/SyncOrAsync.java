@@ -1,5 +1,6 @@
 package dev.langchain4j.model.openai.internal;
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
@@ -14,6 +15,7 @@ public interface SyncOrAsync<ResponseContent> {
         return new ParsedAndRawResponse<>(parsedResponse, rawHttpResponse);
     }
 
+    @Experimental
     default CompletableFuture<ParsedAndRawResponse<ResponseContent>> executeRawAsync() {
         throw new UnsupportedOperationException("Not implemented");
     }

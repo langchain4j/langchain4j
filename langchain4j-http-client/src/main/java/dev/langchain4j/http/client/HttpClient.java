@@ -1,5 +1,6 @@
 package dev.langchain4j.http.client;
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.internal.AsyncNotSupported;
 import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.http.client.sse.DefaultServerSentEventParser;
@@ -38,6 +39,7 @@ public interface HttpClient {
      * @return a {@link CompletableFuture} of the {@link SuccessfulHttpResponse}.
      * @since 1.19.0
      */
+    @Experimental
     default CompletableFuture<SuccessfulHttpResponse> executeAsync(HttpRequest request) {
         return AsyncNotSupported.failedFuture(getClass(), "executeAsync");
     }
@@ -98,6 +100,7 @@ public interface HttpClient {
      *
      * @since 1.19.0
      */
+    @Experimental
     default Publisher<HttpStreamingEvent> stream(HttpRequest request) {
         return stream(request, new DefaultServerSentEventParser());
     }
@@ -107,6 +110,7 @@ public interface HttpClient {
      *
      * @since 1.19.0
      */
+    @Experimental
     default Publisher<HttpStreamingEvent> stream(HttpRequest request, ServerSentEventParser parser) {
         return AsyncNotSupported.failingPublisher(getClass(), "stream");
     }

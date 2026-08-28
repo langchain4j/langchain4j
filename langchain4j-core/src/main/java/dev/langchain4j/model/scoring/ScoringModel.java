@@ -1,5 +1,6 @@
 package dev.langchain4j.model.scoring;
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.internal.AsyncNotSupported;
 import dev.langchain4j.data.segment.TextSegment;
@@ -70,6 +71,7 @@ public interface ScoringModel {
      * @return a {@link CompletableFuture} of the scores, in the order of {@link ScoringRequest#documents()}.
      * @since 1.19.0
      */
+    @Experimental
     default CompletableFuture<ScoringResponse> scoreAsync(ScoringRequest request) {
         ScoringRequest finalRequest = ScoringRequest.builder()
                 .documents(request.documents())
@@ -90,6 +92,7 @@ public interface ScoringModel {
      * @return a {@link CompletableFuture} of the scores, in the order of {@link ScoringRequest#documents()}.
      * @since 1.19.0
      */
+    @Experimental
     default CompletableFuture<ScoringResponse> doScoreAsync(ScoringRequest request) {
         return AsyncNotSupported.failedFuture(getClass(), "doScoreAsync");
     }
@@ -100,6 +103,7 @@ public interface ScoringModel {
      *
      * @since 1.19.0
      */
+    @Experimental
     default ScoringRequestParameters defaultRequestParameters() {
         return ScoringRequestParameters.EMPTY;
     }

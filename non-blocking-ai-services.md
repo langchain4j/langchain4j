@@ -1,5 +1,11 @@
 # Non-blocking / reactive AI Services (`publisher-poc`, milestone 2.0)
 
+:::note
+Asynchronous and reactive support is experimental. Every API described on this page is annotated
+`@Experimental`; APIs and behavior may still change in future releases. The synchronous and `TokenStream`
+APIs are unaffected.
+:::
+
 ## 1. Goal
 
 Today an AI Service method blocks the calling thread for the entire interaction (model HTTP call, tool

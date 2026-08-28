@@ -17,6 +17,7 @@ import java.util.List;
  *
  * @since 1.19.0
  */
+@Experimental
 public interface ToolCompensatedEvent extends AiServiceEvent {
 
     /**

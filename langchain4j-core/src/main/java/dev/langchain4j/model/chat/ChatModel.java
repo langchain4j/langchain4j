@@ -1,5 +1,6 @@
 package dev.langchain4j.model.chat;
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.internal.AsyncNotSupported;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
@@ -93,6 +94,7 @@ public interface ChatModel {
      * @return a {@link CompletableFuture} of the {@link ChatResponse}
      * @since 1.19.0
      */
+    @Experimental
     default CompletableFuture<ChatResponse> chatAsync(ChatRequest chatRequest) {
         return chatAsync(chatRequest, ChatRequestOptions.EMPTY);
     }
@@ -106,6 +108,7 @@ public interface ChatModel {
      * @see #chatAsync(ChatRequest)
      * @since 1.19.0
      */
+    @Experimental
     default CompletableFuture<ChatResponse> chatAsync(ChatRequest chatRequest, ChatRequestOptions options) {
 
         ChatRequestOptions effectiveOptions = getOrDefault(options, ChatRequestOptions.EMPTY);
@@ -155,6 +158,7 @@ public interface ChatModel {
      * @return a {@link CompletableFuture} of the {@link ChatResponse}
      * @since 1.19.0
      */
+    @Experimental
     default CompletableFuture<ChatResponse> doChatAsync(ChatRequest chatRequest) {
         return AsyncNotSupported.failedFuture(getClass(), "doChatAsync");
     }
@@ -200,6 +204,7 @@ public interface ChatModel {
      *
      * @since 1.19.0
      */
+    @Experimental
     default CompletableFuture<String> chatAsync(String userMessage) {
 
         ChatRequest chatRequest =
@@ -213,6 +218,7 @@ public interface ChatModel {
      *
      * @since 1.19.0
      */
+    @Experimental
     default CompletableFuture<ChatResponse> chatAsync(ChatMessage... messages) {
 
         ChatRequest chatRequest = ChatRequest.builder().messages(messages).build();
@@ -225,6 +231,7 @@ public interface ChatModel {
      *
      * @since 1.19.0
      */
+    @Experimental
     default CompletableFuture<ChatResponse> chatAsync(List<ChatMessage> messages) {
 
         ChatRequest chatRequest = ChatRequest.builder().messages(messages).build();

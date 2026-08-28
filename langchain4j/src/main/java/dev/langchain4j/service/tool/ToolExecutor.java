@@ -1,5 +1,6 @@
 package dev.langchain4j.service.tool;
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.internal.AsyncNotSupported;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -71,6 +72,7 @@ public interface ToolExecutor {
      * @return a {@link CompletableFuture} of the result of the tool execution that will be sent to the LLM
      * @since 1.19.0
      */
+    @Experimental
     default CompletableFuture<ToolExecutionResult> executeAsync(
             ToolExecutionRequest request, InvocationContext context) {
         return AsyncNotSupported.failedFuture(getClass().getName()

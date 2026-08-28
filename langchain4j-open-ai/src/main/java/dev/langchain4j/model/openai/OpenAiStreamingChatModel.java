@@ -17,6 +17,7 @@ import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
 import static java.util.Arrays.asList;
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.internal.ExceptionMapper;
@@ -554,6 +555,7 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
          * model produces and the buffer overflows, the stream terminates with an {@link IllegalStateException}.
          * Defaults to {@value dev.langchain4j.model.openai.internal.OpenAiClient#DEFAULT_STREAMING_BUFFER_SIZE}.
          */
+        @Experimental
         public OpenAiStreamingChatModelBuilder streamingBufferSize(Integer streamingBufferSize) {
             this.streamingBufferSize = streamingBufferSize;
             return this;

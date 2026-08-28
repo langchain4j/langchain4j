@@ -2,6 +2,7 @@ package dev.langchain4j.service.guardrail;
 
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.internal.AsyncNotSupported;
 import dev.langchain4j.data.message.UserMessage;
@@ -55,6 +56,7 @@ public interface GuardrailService {
      * @param <MethodKey> The type of the method key, representing a unique identifier for methods.
      * @since 1.19.0
      */
+    @Experimental
     default <MethodKey> CompletableFuture<InputGuardrailResult> executeInputGuardrailsAsync(
             MethodKey method, InputGuardrailRequest request) {
         return AsyncNotSupported.failedFuture(getClass(), "executeInputGuardrailsAsync");
@@ -82,6 +84,7 @@ public interface GuardrailService {
      *
      * @since 1.19.0
      */
+    @Experimental
     default <MethodKey> CompletableFuture<UserMessage> executeGuardrailsAsync(
             MethodKey method, InputGuardrailRequest request) {
         CompletableFuture<InputGuardrailResult> guardrailFuture = executeInputGuardrailsAsync(method, request);
@@ -114,6 +117,7 @@ public interface GuardrailService {
      * @param <MethodKey> The type of the method key, representing a unique identifier for methods.
      * @since 1.19.0
      */
+    @Experimental
     default <MethodKey> CompletableFuture<OutputGuardrailResult> executeOutputGuardrailsAsync(
             MethodKey method, OutputGuardrailRequest request) {
         return AsyncNotSupported.failedFuture(getClass(), "executeOutputGuardrailsAsync");
@@ -157,6 +161,7 @@ public interface GuardrailService {
      *
      * @since 1.19.0
      */
+    @Experimental
     default <MethodKey, T> CompletableFuture<T> executeGuardrailsAsync(MethodKey method, OutputGuardrailRequest request) {
         CompletableFuture<OutputGuardrailResult> guardrailFuture = executeOutputGuardrailsAsync(method, request);
         CompletableFuture<T> result = guardrailFuture.thenApply(r -> r.response(request));

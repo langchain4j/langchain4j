@@ -1,5 +1,6 @@
 package dev.langchain4j.model.chat.response;
 
+import dev.langchain4j.Experimental;
 /**
  * Base type for the events emitted by the reactive stream of a {@link dev.langchain4j.model.chat.StreamingChatModel} —
  * the {@code Flow.Publisher<ChatModelStreamingEvent>} returned by
@@ -17,4 +18,5 @@ package dev.langchain4j.model.chat.response;
  *
  * @since 1.19.0
  */
+@Experimental
 public interface ChatModelStreamingEvent {}

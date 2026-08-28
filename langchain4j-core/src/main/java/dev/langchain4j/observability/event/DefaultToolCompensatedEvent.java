@@ -15,6 +15,7 @@ import java.util.List;
 /**
  * Default implementation of {@link ToolCompensatedEvent}.
  */
+@Experimental
 public class DefaultToolCompensatedEvent extends AbstractAiServiceEvent implements ToolCompensatedEvent {
 
     private final ToolExecutionRequest request;

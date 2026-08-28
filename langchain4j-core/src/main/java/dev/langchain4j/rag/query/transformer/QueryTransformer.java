@@ -1,5 +1,6 @@
 package dev.langchain4j.rag.query.transformer;
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.internal.AsyncNotSupported;
 import dev.langchain4j.rag.query.Query;
@@ -50,6 +51,7 @@ public interface QueryTransformer {
      * @return A {@link CompletableFuture} of one or more {@link Query}s derived from the original {@link Query}.
      * @since 1.19.0
      */
+    @Experimental
     default CompletableFuture<Collection<Query>> transformAsync(Query query) {
         return AsyncNotSupported.failedFuture(getClass(), "transformAsync");
     }

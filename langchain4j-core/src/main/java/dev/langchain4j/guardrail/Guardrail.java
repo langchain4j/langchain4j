@@ -1,5 +1,6 @@
 package dev.langchain4j.guardrail;
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.internal.AsyncNotSupported;
 import java.util.concurrent.CompletableFuture;
@@ -61,6 +62,7 @@ public interface Guardrail<P extends GuardrailRequest, R extends GuardrailResult
      * @return A {@link CompletableFuture} that completes with the result of the validation
      * @since 1.19.0
      */
+    @Experimental
     default CompletableFuture<R> validateAsync(P request) {
         return AsyncNotSupported.failedFuture(getClass().getName()
                 + " does not implement validateAsync(). To use this guardrail with an asynchronous"

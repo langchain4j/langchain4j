@@ -1,5 +1,6 @@
 package dev.langchain4j.store.memory.chat;
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.internal.AsyncNotSupported;
 import dev.langchain4j.data.message.ChatMessage;
@@ -63,6 +64,7 @@ public interface ChatMemoryStore {
      * @return A future that completes with the list of messages for the specified chat memory. Must not be null.
      * @since 1.19.0
      */
+    @Experimental
     default CompletableFuture<List<ChatMessage>> getMessagesAsync(Object memoryId) {
         return AsyncNotSupported.failedFuture(getClass(), "getMessagesAsync");
     }
@@ -81,6 +83,7 @@ public interface ChatMemoryStore {
      * @return A future that completes when the messages have been stored.
      * @since 1.19.0
      */
+    @Experimental
     default CompletableFuture<Void> updateMessagesAsync(Object memoryId, List<ChatMessage> messages) {
         return AsyncNotSupported.failedFuture(getClass(), "updateMessagesAsync");
     }
@@ -97,6 +100,7 @@ public interface ChatMemoryStore {
      * @return A future that completes when the messages have been deleted.
      * @since 1.19.0
      */
+    @Experimental
     default CompletableFuture<Void> deleteMessagesAsync(Object memoryId) {
         return AsyncNotSupported.failedFuture(getClass(), "deleteMessagesAsync");
     }

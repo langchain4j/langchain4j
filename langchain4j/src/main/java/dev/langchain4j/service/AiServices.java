@@ -6,6 +6,7 @@ import static dev.langchain4j.spi.ServiceHelper.loadFactory;
 import static java.util.Arrays.asList;
 import static java.util.stream.Collectors.toList;
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ReturnBehavior;
 import dev.langchain4j.agent.tool.Tool;
@@ -153,6 +154,14 @@ import java.util.function.UnaryOperator;
  * </pre>
  * <p>
  * See more examples <a href="https://github.com/langchain4j/langchain4j-examples/tree/main/other-examples/src/main/java">here</a>.
+ * <p>
+ * <b>Asynchronous and reactive return types are experimental.</b> Alongside the synchronous return types and
+ * {@link TokenStream}, an AI Service method can return a {@link java.util.concurrent.CompletableFuture} (one
+ * response, produced without blocking the calling thread) or a {@link java.util.concurrent.Flow.Publisher}
+ * (a stream of {@link AiServiceStreamingEvent}s, or of {@link String} text chunks). These two modes, and the
+ * asynchronous counterparts they build on across the stack - chat models, chat memory, guardrails, tools and
+ * RAG - are annotated {@link dev.langchain4j.Experimental}: their APIs and behavior may still change in a
+ * future release. The synchronous and {@link TokenStream} APIs are unaffected.
  *
  * @param <T> The interface for which AiServices will provide an implementation.
  */
@@ -705,6 +714,7 @@ public abstract class AiServices<T> {
      * @return the builder instance
      * @since 1.19.0
      */
+    @Experimental
     public AiServices<T> streamingBufferSize(int streamingBufferSize) {
         context.streamingBufferSize = streamingBufferSize;
         return this;

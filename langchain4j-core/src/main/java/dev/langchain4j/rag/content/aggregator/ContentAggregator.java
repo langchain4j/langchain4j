@@ -1,5 +1,6 @@
 package dev.langchain4j.rag.content.aggregator;
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.internal.AsyncNotSupported;
 import dev.langchain4j.rag.content.Content;
@@ -54,6 +55,7 @@ public interface ContentAggregator {
      * @return A {@link CompletableFuture} of the list of aggregated {@link Content}s.
      * @since 1.19.0
      */
+    @Experimental
     default CompletableFuture<List<Content>> aggregateAsync(Map<Query, Collection<List<Content>>> queryToContents) {
         return AsyncNotSupported.failedFuture(getClass(), "aggregateAsync");
     }

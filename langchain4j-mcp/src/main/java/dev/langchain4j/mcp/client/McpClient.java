@@ -1,5 +1,6 @@
 package dev.langchain4j.mcp.client;
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.exception.AsyncNotSupportedException;
@@ -59,6 +60,7 @@ public interface McpClient extends AutoCloseable {
      *
      * @since 1.19.0
      */
+    @Experimental
     default CompletableFuture<ToolExecutionResult> executeToolAsync(
             ToolExecutionRequest executionRequest, InvocationContext invocationContext) {
         return AsyncNotSupported.failedFuture(getClass(), "executeToolAsync");

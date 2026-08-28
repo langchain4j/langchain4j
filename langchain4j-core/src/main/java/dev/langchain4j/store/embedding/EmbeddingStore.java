@@ -178,6 +178,7 @@ public interface EmbeddingStore<Embedded> {
      * @return a {@link CompletableFuture} of the {@link EmbeddingSearchResult}.
      * @since 1.19.0
      */
+    @Experimental
     default CompletableFuture<EmbeddingSearchResult<Embedded>> searchAsync(EmbeddingSearchRequest request) {
         return AsyncNotSupported.failedFuture(getClass(), "searchAsync");
     }

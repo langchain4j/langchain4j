@@ -1,5 +1,6 @@
 package dev.langchain4j.web.search;
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.internal.AsyncNotSupported;
 import java.util.concurrent.CompletableFuture;
@@ -43,6 +44,7 @@ public interface WebSearchEngine {
      * @return a {@link CompletableFuture} of the web search results
      * @since 1.19.0
      */
+    @Experimental
     default CompletableFuture<WebSearchResults> searchAsync(WebSearchRequest webSearchRequest) {
         return AsyncNotSupported.failedFuture(getClass(), "searchAsync");
     }

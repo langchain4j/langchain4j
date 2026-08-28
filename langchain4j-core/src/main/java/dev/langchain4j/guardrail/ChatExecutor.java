@@ -1,5 +1,6 @@
 package dev.langchain4j.guardrail;
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.internal.AsyncNotSupported;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
@@ -47,6 +48,7 @@ public interface ChatExecutor {
      * @return a {@link CompletableFuture} that completes with the response
      * @since 1.19.0
      */
+    @Experimental
     default CompletableFuture<ChatResponse> executeAsync() {
         return AsyncNotSupported.failedFuture(getClass(), "executeAsync");
     }
@@ -63,6 +65,7 @@ public interface ChatExecutor {
      * @return a {@link CompletableFuture} that completes with the response
      * @since 1.19.0
      */
+    @Experimental
     default CompletableFuture<ChatResponse> executeAsync(List<ChatMessage> chatMessages) {
         return AsyncNotSupported.failedFuture(getClass(), "executeAsync");
     }

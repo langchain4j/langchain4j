@@ -1,5 +1,6 @@
 package dev.langchain4j.http.client.sse;
 
+import dev.langchain4j.Experimental;
 /**
  * An event emitted while consuming a streaming HTTP response via
  * {@link dev.langchain4j.http.client.HttpClient#stream(dev.langchain4j.http.client.HttpRequest)}. This is the
@@ -10,5 +11,6 @@ package dev.langchain4j.http.client.sse;
  * This is an open interface on purpose — additional event kinds may be introduced over time — so consumers
  * must be prepared to receive event types they do not recognize and ignore them.
  */
+@Experimental
 public interface HttpStreamingEvent {
 }

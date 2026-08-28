@@ -7,6 +7,7 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.ModelProvider.AMAZON_BEDROCK;
 import static java.util.Objects.isNull;
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.ChatModel;
@@ -197,6 +198,7 @@ public class BedrockChatModel extends AbstractBedrockChatModel implements ChatMo
         /**
          * Sets the async Bedrock client used by {@code chatAsync}. If not set, one is created lazily on first use.
          */
+        @Experimental
         public Builder asyncClient(BedrockRuntimeAsyncClient asyncClient) {
             this.asyncClient = asyncClient;
             return this;

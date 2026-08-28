@@ -2,6 +2,7 @@ package dev.langchain4j.http.client.sse;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import java.util.Objects;
 
@@ -9,6 +10,7 @@ import java.util.Objects;
  * {@link HttpStreamingEvent} signalling that the HTTP response head (status and headers) was received and the
  * stream opened successfully. Emitted once, before any {@link ServerSentEvent}.
  */
+@Experimental
 public class HttpResponseReceived implements HttpStreamingEvent {
 
     private final SuccessfulHttpResponse response;

@@ -1,5 +1,6 @@
 package dev.langchain4j.http.client.jdk;
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.http.client.HttpClientBuilder;
 
 import java.time.Duration;
@@ -42,6 +43,7 @@ public class JdkHttpClientBuilder implements HttpClientBuilder {
         return this;
     }
 
+    @Experimental
     public Integer streamingBufferSize() {
         return streamingBufferSize;
     }
@@ -56,6 +58,7 @@ public class JdkHttpClientBuilder implements HttpClientBuilder {
      * @param streamingBufferSize the buffer size; must be greater than zero
      * @return the builder instance
      */
+    @Experimental
     public JdkHttpClientBuilder streamingBufferSize(Integer streamingBufferSize) {
         this.streamingBufferSize = streamingBufferSize;
         return this;

@@ -1,5 +1,6 @@
 package dev.langchain4j.observability.api.listener;
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.observability.api.event.ToolCompensatedEvent;
 
 /**
@@ -13,6 +14,7 @@ import dev.langchain4j.observability.api.event.ToolCompensatedEvent;
  * @since 1.19.0
  */
 @FunctionalInterface
+@Experimental
 public interface ToolCompensatedEventListener extends AiServiceListener<ToolCompensatedEvent> {
     @Override
     default Class<ToolCompensatedEvent> getEventClass() {

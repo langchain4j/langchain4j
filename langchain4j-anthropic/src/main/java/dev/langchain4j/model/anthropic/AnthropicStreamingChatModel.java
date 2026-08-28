@@ -12,6 +12,7 @@ import static dev.langchain4j.model.anthropic.internal.api.AnthropicCacheType.EP
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicCacheType.NO_CACHE;
 import static java.util.Arrays.asList;
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.AiMessage;
@@ -223,6 +224,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
          * @param streamingBufferSize the buffer size (must be greater than zero)
          * @return {@code this}
          */
+        @Experimental
         public AnthropicStreamingChatModelBuilder streamingBufferSize(Integer streamingBufferSize) {
             this.streamingBufferSize = streamingBufferSize;
             return this;

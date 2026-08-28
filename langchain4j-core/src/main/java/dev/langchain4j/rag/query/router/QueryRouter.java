@@ -1,5 +1,6 @@
 package dev.langchain4j.rag.query.router;
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.internal.AsyncNotSupported;
 import dev.langchain4j.model.embedding.EmbeddingModel;
@@ -50,6 +51,7 @@ public interface QueryRouter {
      * @return A {@link CompletableFuture} of one or more {@link ContentRetriever}s to route the {@link Query} to.
      * @since 1.19.0
      */
+    @Experimental
     default CompletableFuture<Collection<ContentRetriever>> routeAsync(Query query) {
         return AsyncNotSupported.failedFuture(getClass(), "routeAsync");
     }
