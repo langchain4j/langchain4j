@@ -37,7 +37,7 @@ import java.util.List;
  * overloaded constructor that keeps the old one) — deliberately classes rather than records, whose canonical
  * constructor and deconstruction patterns could not evolve without breaking callers.
  *
- * @since 1.19.0
+ * @since 1.20.0
  */
 @Experimental
 public interface AiServiceStreamingEvent {

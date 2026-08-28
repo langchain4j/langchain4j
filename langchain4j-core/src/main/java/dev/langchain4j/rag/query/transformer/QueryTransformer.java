@@ -49,7 +49,7 @@ public interface QueryTransformer {
      *
      * @param query The {@link Query} to be transformed.
      * @return A {@link CompletableFuture} of one or more {@link Query}s derived from the original {@link Query}.
-     * @since 1.19.0
+     * @since 1.20.0
      */
     @Experimental
     default CompletableFuture<Collection<Query>> transformAsync(Query query) {

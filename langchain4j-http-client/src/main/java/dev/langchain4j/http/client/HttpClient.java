@@ -37,7 +37,7 @@ public interface HttpClient {
      *
      * @param request the HTTP request to be executed.
      * @return a {@link CompletableFuture} of the {@link SuccessfulHttpResponse}.
-     * @since 1.19.0
+     * @since 1.20.0
      */
     @Experimental
     default CompletableFuture<SuccessfulHttpResponse> executeAsync(HttpRequest request) {
@@ -98,7 +98,7 @@ public interface HttpClient {
      * <p>
      * Uses {@link DefaultServerSentEventParser} for SSE parsing.
      *
-     * @since 1.19.0
+     * @since 1.20.0
      */
     @Experimental
     default Publisher<HttpStreamingEvent> stream(HttpRequest request) {
@@ -108,7 +108,7 @@ public interface HttpClient {
     /**
      * Like {@link #stream(HttpRequest)}, but with a caller-supplied {@link ServerSentEventParser}.
      *
-     * @since 1.19.0
+     * @since 1.20.0
      */
     @Experimental
     default Publisher<HttpStreamingEvent> stream(HttpRequest request, ServerSentEventParser parser) {

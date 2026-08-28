@@ -9,7 +9,7 @@ import java.util.Objects;
  * {@link #tokenUsage()} (or provider billing units) the call consumed. Provider integrations extend this class
  * (and its self-typed {@link Builder}) to add provider-specific metadata.
  *
- * @since 1.19.0
+ * @since 1.20.0
  */
 @Experimental
 public class ScoringResponseMetadata {

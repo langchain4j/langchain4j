@@ -20,7 +20,7 @@ import java.util.concurrent.Flow;
  * This does not change genuine implementations, nor the public entry points ({@code chatAsync}, {@code embedAsync},
  * the AI-Service dispatch), which still convert their own synchronous {@code validate(request)} failures.
  *
- * @since 1.19.0
+ * @since 1.20.0
  */
 @Internal
 public final class AsyncNotSupported {

@@ -11,7 +11,7 @@ import dev.langchain4j.observability.api.event.ToolCompensatedEvent;
  * These events may occur multiple times within a single invocation, and they include the compensated tool's
  * request, its original result, and the reason it was rolled back.
  *
- * @since 1.19.0
+ * @since 1.20.0
  */
 @FunctionalInterface
 @Experimental

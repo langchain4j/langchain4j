@@ -210,6 +210,7 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
         /**
          * Sets the size of the bounded back-pressure buffer for the reactive streaming path. Defaults to
          * {@value dev.langchain4j.model.openai.internal.OpenAiClient#DEFAULT_STREAMING_BUFFER_SIZE}.
+         * @since 1.20.0
          */
         @Experimental
         public Builder streamingBufferSize(Integer streamingBufferSize) {

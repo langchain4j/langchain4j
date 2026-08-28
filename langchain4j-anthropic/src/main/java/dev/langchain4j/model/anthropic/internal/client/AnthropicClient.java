@@ -41,7 +41,7 @@ public abstract class AnthropicClient {
      * request without holding a thread while the response is in flight. The default returns a failed future carrying
      * {@link AsyncNotSupportedException} to signal that this client has no native asynchronous path.
      *
-     * @since 1.19.0
+     * @since 1.20.0
      */
     public CompletableFuture<ParsedAndRawResponse> createMessageWithRawResponseAsync(
             AnthropicCreateMessageRequest request) {
@@ -67,7 +67,7 @@ public abstract class AnthropicClient {
      * {@code bufferSize} bounds the back-pressure buffer, and cancelling the subscription aborts the in-flight HTTP
      * request. The default returns a failing {@code Publisher} carrying {@link AsyncNotSupportedException}.
      *
-     * @since 1.19.0
+     * @since 1.20.0
      */
     public Publisher<ChatModelStreamingEvent> createMessagePublisher(
             AnthropicCreateMessageRequest request, AnthropicCreateMessageOptions options, int bufferSize) {

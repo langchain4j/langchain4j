@@ -92,7 +92,7 @@ public interface ChatModel {
      *
      * @param chatRequest a {@link ChatRequest}, containing all the inputs to the LLM
      * @return a {@link CompletableFuture} of the {@link ChatResponse}
-     * @since 1.19.0
+     * @since 1.20.0
      */
     @Experimental
     default CompletableFuture<ChatResponse> chatAsync(ChatRequest chatRequest) {
@@ -106,7 +106,7 @@ public interface ChatModel {
      * @param options     a {@link ChatRequestOptions} carrying listener attributes and other per-call metadata
      * @return a {@link CompletableFuture} of the {@link ChatResponse}
      * @see #chatAsync(ChatRequest)
-     * @since 1.19.0
+     * @since 1.20.0
      */
     @Experimental
     default CompletableFuture<ChatResponse> chatAsync(ChatRequest chatRequest, ChatRequestOptions options) {
@@ -156,7 +156,7 @@ public interface ChatModel {
      *
      * @param chatRequest a {@link ChatRequest}, containing all the inputs to the LLM
      * @return a {@link CompletableFuture} of the {@link ChatResponse}
-     * @since 1.19.0
+     * @since 1.20.0
      */
     @Experimental
     default CompletableFuture<ChatResponse> doChatAsync(ChatRequest chatRequest) {
@@ -202,7 +202,7 @@ public interface ChatModel {
     /**
      * Non-blocking convenience counterpart of {@link #chat(String)}: completes with the text of the model's response.
      *
-     * @since 1.19.0
+     * @since 1.20.0
      */
     @Experimental
     default CompletableFuture<String> chatAsync(String userMessage) {
@@ -216,7 +216,7 @@ public interface ChatModel {
     /**
      * Non-blocking convenience counterpart of {@link #chat(ChatMessage...)}.
      *
-     * @since 1.19.0
+     * @since 1.20.0
      */
     @Experimental
     default CompletableFuture<ChatResponse> chatAsync(ChatMessage... messages) {
@@ -229,7 +229,7 @@ public interface ChatModel {
     /**
      * Non-blocking convenience counterpart of {@link #chat(List)}.
      *
-     * @since 1.19.0
+     * @since 1.20.0
      */
     @Experimental
     default CompletableFuture<ChatResponse> chatAsync(List<ChatMessage> messages) {

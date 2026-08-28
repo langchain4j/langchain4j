@@ -271,6 +271,7 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
          * store search - to a shared virtual-thread executor, while any async component keeps running on its native
          * path. A deliberate opt-in to blocking-on-a-(virtual)-thread; has no effect on the synchronous
          * {@link #retrieve(Query)}.
+         * @since 1.20.0
          */
         @Experimental
         public EmbeddingStoreContentRetrieverBuilder offloadBlocking(boolean offloadBlocking) {

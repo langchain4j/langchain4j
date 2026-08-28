@@ -42,7 +42,7 @@ public interface WebSearchEngine {
      *
      * @param webSearchRequest the search request
      * @return a {@link CompletableFuture} of the web search results
-     * @since 1.19.0
+     * @since 1.20.0
      */
     @Experimental
     default CompletableFuture<WebSearchResults> searchAsync(WebSearchRequest webSearchRequest) {

@@ -15,7 +15,7 @@ import java.util.List;
  * (successful) result, and the {@link CompensationReason}. Like {@link ToolExecutedEvent}, it can be invoked
  * multiple times within a single AI Service invocation.
  *
- * @since 1.19.0
+ * @since 1.20.0
  */
 @Experimental
 public interface ToolCompensatedEvent extends AiServiceEvent {
@@ -38,6 +38,7 @@ public interface ToolCompensatedEvent extends AiServiceEvent {
      * Returns the contents of the compensated tool's original (successful) result.
      *
      * @return the list of {@link Content} elements, never {@code null}.
+     * @since 1.20.0
      */
     @Experimental
     List<Content> resultContents();
@@ -103,6 +104,7 @@ public interface ToolCompensatedEvent extends AiServiceEvent {
         /**
          * Sets the compensated tool's result contents.
          * Mutually exclusive with {@link #resultText(String)}.
+         * @since 1.20.0
          */
         @Experimental
         public ToolCompensatedEventBuilder resultContents(List<Content> resultContents) {

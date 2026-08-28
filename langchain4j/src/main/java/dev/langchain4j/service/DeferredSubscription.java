@@ -21,7 +21,7 @@ import java.util.concurrent.Flow;
  * Signals are computed under a lock but delivered to the delegate / cancel action outside it, so no downstream
  * callback runs while the monitor is held.
  *
- * @since 1.19.0
+ * @since 1.20.0
  */
 @Internal
 final class DeferredSubscription implements Flow.Subscription {

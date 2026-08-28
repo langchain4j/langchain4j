@@ -8,7 +8,7 @@ import dev.langchain4j.Experimental;
  * to add provider-specific parameters.
  *
  * @see DefaultScoringRequestParameters
- * @since 1.19.0
+ * @since 1.20.0
  */
 @Experimental
 public interface ScoringRequestParameters {

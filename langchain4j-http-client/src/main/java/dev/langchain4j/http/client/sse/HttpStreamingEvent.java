@@ -10,6 +10,7 @@ import dev.langchain4j.Experimental;
  * <p>
  * This is an open interface on purpose — additional event kinds may be introduced over time — so consumers
  * must be prepared to receive event types they do not recognize and ignore them.
+ * @since 1.20.0
  */
 @Experimental
 public interface HttpStreamingEvent {

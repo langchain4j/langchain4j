@@ -69,7 +69,7 @@ public interface ScoringModel {
      *
      * @param request the documents to score, the query, and the per-call parameters.
      * @return a {@link CompletableFuture} of the scores, in the order of {@link ScoringRequest#documents()}.
-     * @since 1.19.0
+     * @since 1.20.0
      */
     @Experimental
     default CompletableFuture<ScoringResponse> scoreAsync(ScoringRequest request) {
@@ -90,7 +90,7 @@ public interface ScoringModel {
      *
      * @param request the (already defaults-applied) request to score.
      * @return a {@link CompletableFuture} of the scores, in the order of {@link ScoringRequest#documents()}.
-     * @since 1.19.0
+     * @since 1.20.0
      */
     @Experimental
     default CompletableFuture<ScoringResponse> doScoreAsync(ScoringRequest request) {
@@ -101,7 +101,7 @@ public interface ScoringModel {
      * The model's default per-call parameters, applied by {@link #scoreAsync(ScoringRequest)} to every request and
      * overridden by any parameters set on the request itself. The default is {@link ScoringRequestParameters#EMPTY}.
      *
-     * @since 1.19.0
+     * @since 1.20.0
      */
     @Experimental
     default ScoringRequestParameters defaultRequestParameters() {

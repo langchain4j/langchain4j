@@ -17,7 +17,7 @@ import dev.langchain4j.Experimental;
  * It is a {@link NonRetriableException}: a method that does not implement its asynchronous counterpart will not
  * begin to implement it on a retry, so retrying (with back-off) would only waste time before failing.
  *
- * @since 1.19.0
+ * @since 1.20.0
  */
 @Experimental
 public class AsyncNotSupportedException extends NonRetriableException {

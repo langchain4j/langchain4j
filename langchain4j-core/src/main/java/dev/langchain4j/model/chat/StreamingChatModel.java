@@ -168,7 +168,7 @@ public interface StreamingChatModel {
      * (e.g. {@code Long.MAX_VALUE}) and must <b>not</b> block or perform heavy work in {@code onNext} — offload
      * it to another thread.
      *
-     * @since 1.19.0
+     * @since 1.20.0
      */
     @Experimental
     default Publisher<ChatModelStreamingEvent> chat(ChatRequest request) {
@@ -246,7 +246,7 @@ public interface StreamingChatModel {
      * native reactive-streaming implementation; a provider that does not support reactive streaming leaves it
      * unimplemented (consistent with {@code ChatModel#doChatAsync} and the other async defaults).
      *
-     * @since 1.19.0
+     * @since 1.20.0
      */
     @Experimental
     default Publisher<ChatModelStreamingEvent> doChat(ChatRequest chatRequest) {
@@ -289,7 +289,7 @@ public interface StreamingChatModel {
      * {@link ChatModelStreamingEvent}s of the underlying {@link #chat(ChatRequest)} stream. For the full event stream,
      * use {@link #chat(ChatMessage...)} / {@link #chat(List)} / {@link #chat(ChatRequest)}.
      *
-     * @since 1.19.0
+     * @since 1.20.0
      */
     @Experimental
     default Publisher<String> chat(String userMessage) {
@@ -332,7 +332,7 @@ public interface StreamingChatModel {
      * Reactive convenience overload accepting the messages directly: returns a cold {@code Publisher} that streams
      * the response to {@code messages}.
      *
-     * @since 1.19.0
+     * @since 1.20.0
      */
     @Experimental
     default Publisher<ChatModelStreamingEvent> chat(ChatMessage... messages) {
@@ -346,7 +346,7 @@ public interface StreamingChatModel {
      * Reactive convenience counterpart of {@link #chat(List, StreamingChatResponseHandler)}: returns a cold
      * {@code Publisher} that streams the response to {@code messages}.
      *
-     * @since 1.19.0
+     * @since 1.20.0
      */
     @Experimental
     default Publisher<ChatModelStreamingEvent> chat(List<ChatMessage> messages) {

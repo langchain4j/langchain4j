@@ -323,6 +323,7 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
          *
          * @param streamingBufferSize the buffer size (must be greater than zero)
          * @return {@code this}
+         * @since 1.20.0
          */
         @Experimental
         public Builder streamingBufferSize(Integer streamingBufferSize) {

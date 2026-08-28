@@ -15,7 +15,7 @@ import java.util.Objects;
  * scores in the same order as {@code documents}. Optional per-call {@link ScoringRequestParameters parameters}
  * (such as the model name) are carried alongside.
  *
- * @since 1.19.0
+ * @since 1.20.0
  */
 @Experimental
 public class ScoringRequest {

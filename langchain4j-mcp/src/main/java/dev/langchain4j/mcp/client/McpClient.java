@@ -58,7 +58,7 @@ public interface McpClient extends AutoCloseable {
      * <p>
      * The default implementation returns a failed future carrying {@link AsyncNotSupportedException}.
      *
-     * @since 1.19.0
+     * @since 1.20.0
      */
     @Experimental
     default CompletableFuture<ToolExecutionResult> executeToolAsync(

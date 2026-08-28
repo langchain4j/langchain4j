@@ -197,6 +197,7 @@ public class BedrockChatModel extends AbstractBedrockChatModel implements ChatMo
 
         /**
          * Sets the async Bedrock client used by {@code chatAsync}. If not set, one is created lazily on first use.
+         * @since 1.20.0
          */
         @Experimental
         public Builder asyncClient(BedrockRuntimeAsyncClient asyncClient) {

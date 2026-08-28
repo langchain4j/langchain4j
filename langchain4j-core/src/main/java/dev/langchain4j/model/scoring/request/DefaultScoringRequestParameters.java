@@ -9,7 +9,7 @@ import java.util.Objects;
  * The default implementation of {@link ScoringRequestParameters}. Provider integrations extend this class (and its
  * self-typed {@link Builder}) to add provider-specific parameters.
  *
- * @since 1.19.0
+ * @since 1.20.0
  */
 @Experimental
 public class DefaultScoringRequestParameters implements ScoringRequestParameters {

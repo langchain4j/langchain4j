@@ -176,7 +176,7 @@ public interface EmbeddingStore<Embedded> {
      *
      * @param request A request to search in an {@link EmbeddingStore}. Contains all search criteria.
      * @return a {@link CompletableFuture} of the {@link EmbeddingSearchResult}.
-     * @since 1.19.0
+     * @since 1.20.0
      */
     @Experimental
     default CompletableFuture<EmbeddingSearchResult<Embedded>> searchAsync(EmbeddingSearchRequest request) {

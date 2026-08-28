@@ -554,6 +554,7 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
          * path. Events from the model are relayed through this buffer; if a subscriber consumes slower than the
          * model produces and the buffer overflows, the stream terminates with an {@link IllegalStateException}.
          * Defaults to {@value dev.langchain4j.model.openai.internal.OpenAiClient#DEFAULT_STREAMING_BUFFER_SIZE}.
+         * @since 1.20.0
          */
         @Experimental
         public OpenAiStreamingChatModelBuilder streamingBufferSize(Integer streamingBufferSize) {

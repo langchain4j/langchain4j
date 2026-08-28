@@ -223,6 +223,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
          *
          * @param streamingBufferSize the buffer size (must be greater than zero)
          * @return {@code this}
+         * @since 1.20.0
          */
         @Experimental
         public AnthropicStreamingChatModelBuilder streamingBufferSize(Integer streamingBufferSize) {

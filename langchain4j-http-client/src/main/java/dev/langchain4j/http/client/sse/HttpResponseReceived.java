@@ -9,6 +9,7 @@ import java.util.Objects;
 /**
  * {@link HttpStreamingEvent} signalling that the HTTP response head (status and headers) was received and the
  * stream opened successfully. Emitted once, before any {@link ServerSentEvent}.
+ * @since 1.20.0
  */
 @Experimental
 public class HttpResponseReceived implements HttpStreamingEvent {

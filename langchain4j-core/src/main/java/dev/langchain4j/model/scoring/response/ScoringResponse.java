@@ -11,7 +11,7 @@ import java.util.Objects;
  * The result of scoring a {@code ScoringRequest}: one relevance score per request document, in the same order,
  * together with the {@link ScoringResponseMetadata} (model name, token/billing usage).
  *
- * @since 1.19.0
+ * @since 1.20.0
  */
 @Experimental
 public class ScoringResponse {

@@ -62,7 +62,7 @@ public interface ChatMemoryStore {
      *
      * @param memoryId The ID of the chat memory.
      * @return A future that completes with the list of messages for the specified chat memory. Must not be null.
-     * @since 1.19.0
+     * @since 1.20.0
      */
     @Experimental
     default CompletableFuture<List<ChatMessage>> getMessagesAsync(Object memoryId) {
@@ -81,7 +81,7 @@ public interface ChatMemoryStore {
      * @param messages List of messages for the specified chat memory, that represent the current state of the
      *                 {@link ChatMemory}.
      * @return A future that completes when the messages have been stored.
-     * @since 1.19.0
+     * @since 1.20.0
      */
     @Experimental
     default CompletableFuture<Void> updateMessagesAsync(Object memoryId, List<ChatMessage> messages) {
@@ -98,7 +98,7 @@ public interface ChatMemoryStore {
      *
      * @param memoryId The ID of the chat memory.
      * @return A future that completes when the messages have been deleted.
-     * @since 1.19.0
+     * @since 1.20.0
      */
     @Experimental
     default CompletableFuture<Void> deleteMessagesAsync(Object memoryId) {

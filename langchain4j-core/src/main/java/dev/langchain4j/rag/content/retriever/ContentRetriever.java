@@ -61,7 +61,7 @@ public interface ContentRetriever {
      *
      * @param query The {@link Query} to use for retrieval.
      * @return A {@link CompletableFuture} of the retrieved {@link Content}s, sorted by relevance.
-     * @since 1.19.0
+     * @since 1.20.0
      */
     @Experimental
     default CompletableFuture<List<Content>> retrieveAsync(Query query) {

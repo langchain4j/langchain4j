@@ -135,6 +135,11 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
         this(queryTransformer, queryRouter, contentAggregator, contentInjector, executor, false);
     }
 
+    /**
+     * @param offloadBlocking whether a blocking stage of the retrieval graph may be offloaded to {@code executor}
+     *                        when the augmentor is used asynchronously; see {@link #augmentAsync(AugmentationRequest)}.
+     * @since 1.20.0
+     */
     @Experimental
     public DefaultRetrievalAugmentor(QueryTransformer queryTransformer,
                                      QueryRouter queryRouter,
@@ -404,6 +409,7 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
          * instead offload the blocking stage to the shared virtual-thread executor (the
          * {@link dev.langchain4j.spi.ExecutorProvider} default) - not the synchronous fan-out
          * {@link #executor(Executor) executor}. Has no effect on the synchronous {@link #augment(AugmentationRequest)}.
+         * @since 1.20.0
          */
         @Experimental
         public DefaultRetrievalAugmentorBuilder offloadBlocking(boolean offloadBlocking) {

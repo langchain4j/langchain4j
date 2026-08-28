@@ -46,7 +46,7 @@ public interface ChatExecutor {
      * blocking executor is not silently run on the calling thread.
      *
      * @return a {@link CompletableFuture} that completes with the response
-     * @since 1.19.0
+     * @since 1.20.0
      */
     @Experimental
     default CompletableFuture<ChatResponse> executeAsync() {
@@ -63,7 +63,7 @@ public interface ChatExecutor {
      *
      * @param chatMessages The chat messages containing the context of the conversation.
      * @return a {@link CompletableFuture} that completes with the response
-     * @since 1.19.0
+     * @since 1.20.0
      */
     @Experimental
     default CompletableFuture<ChatResponse> executeAsync(List<ChatMessage> chatMessages) {

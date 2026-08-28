@@ -127,7 +127,7 @@ public interface ChatMemory {
      *
      * @param messages The {@link ChatMessage}s to add.
      * @return A future that completes when the messages have been added.
-     * @since 1.19.0
+     * @since 1.20.0
      */
     @Experimental
     default CompletableFuture<Void> addAsync(List<ChatMessage> messages) {
@@ -146,7 +146,7 @@ public interface ChatMemory {
      *
      * @param messages The {@link ChatMessage}s to set.
      * @return A future that completes when the messages have been set.
-     * @since 1.19.0
+     * @since 1.20.0
      */
     @Experimental
     default CompletableFuture<Void> setAsync(List<ChatMessage> messages) {
@@ -162,7 +162,7 @@ public interface ChatMemory {
      * for the rationale.
      *
      * @return A future that completes with the current state of the chat memory.
-     * @since 1.19.0
+     * @since 1.20.0
      */
     @Experimental
     default CompletableFuture<List<ChatMessage>> messagesAsync() {

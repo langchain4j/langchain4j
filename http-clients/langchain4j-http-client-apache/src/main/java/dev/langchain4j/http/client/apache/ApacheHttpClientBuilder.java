@@ -54,6 +54,10 @@ public class ApacheHttpClientBuilder implements HttpClientBuilder {
         return this;
     }
 
+    /**
+     * @return the bounded back-pressure buffer size used by {@code stream(...)}, or {@code null} for the default.
+     * @since 1.20.0
+     */
     @Experimental
     public Integer streamingBufferSize() {
         return streamingBufferSize;
@@ -68,6 +72,7 @@ public class ApacheHttpClientBuilder implements HttpClientBuilder {
      *
      * @param streamingBufferSize the buffer size; must be greater than zero
      * @return the builder instance
+     * @since 1.20.0
      */
     @Experimental
     public ApacheHttpClientBuilder streamingBufferSize(Integer streamingBufferSize) {

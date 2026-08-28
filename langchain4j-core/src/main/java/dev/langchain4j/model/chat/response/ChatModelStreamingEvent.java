@@ -16,7 +16,7 @@ import dev.langchain4j.Experimental;
  * The set is intentionally <b>not sealed</b>: new event types may be added over time, so consumers must handle
  * unrecognized subtypes gracefully (e.g. a {@code default} branch in a type switch) rather than assume it is exhaustive.
  *
- * @since 1.19.0
+ * @since 1.20.0
  */
 @Experimental
 public interface ChatModelStreamingEvent {}

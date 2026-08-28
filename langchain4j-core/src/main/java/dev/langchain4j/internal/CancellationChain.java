@@ -26,7 +26,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
  * Not thread-safe to construct, but {@link #track(CompletableFuture)} and {@link #cancelled()} may be called from any
  * thread once constructed; they only read the root and register a completion callback on it.
  *
- * @since 1.19.0
+ * @since 1.20.0
  */
 @Internal
 public final class CancellationChain {

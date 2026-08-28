@@ -15,6 +15,10 @@ public interface SyncOrAsync<ResponseContent> {
         return new ParsedAndRawResponse<>(parsedResponse, rawHttpResponse);
     }
 
+    /**
+     * @return a {@link CompletableFuture} of the parsed and raw response, completed without blocking the caller.
+     * @since 1.20.0
+     */
     @Experimental
     default CompletableFuture<ParsedAndRawResponse<ResponseContent>> executeRawAsync() {
         throw new UnsupportedOperationException("Not implemented");

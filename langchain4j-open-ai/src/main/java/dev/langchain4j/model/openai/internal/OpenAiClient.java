@@ -42,6 +42,10 @@ public abstract class OpenAiClient {
 
     public abstract SyncOrAsyncOrStreaming<ChatCompletionResponse> chatCompletion(ChatCompletionRequest request);
 
+    /**
+     * @return a cold {@link Publisher} that streams the chat completion as {@link ChatModelStreamingEvent}s.
+     * @since 1.20.0
+     */
     @Experimental
     public Publisher<ChatModelStreamingEvent> chatCompletionPublisher(
             ChatCompletionRequest request, ChatCompletionOptions options) {
@@ -220,6 +224,7 @@ public abstract class OpenAiClient {
          *
          * @param streamingBufferSize the buffer size; must be greater than zero
          * @return builder
+         * @since 1.20.0
          */
         @Experimental
         public B streamingBufferSize(Integer streamingBufferSize) {
