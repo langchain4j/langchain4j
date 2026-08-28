@@ -205,6 +205,23 @@ In order to allow applications to connect or disconnect from MCP servers at
 runtime, it is also possible to dynamically add and remove clients and filters 
 to an existing `McpToolProvider` instance.
 
+By default, the provider is evaluated once per AI Service invocation. If an MCP
+tool changes the provider's filters and newly enabled tools must be available to
+the LLM during the same tool execution loop, enable dynamic mode:
+
+```java
+McpToolProvider toolProvider = McpToolProvider.builder()
+    .mcpClients(mcpClient)
+    .filter((client, tool) -> isToolEnabled(tool.name()))
+    .dynamic(true)
+    .build();
+```
+
+In dynamic mode, the provider is evaluated before every LLM call in the tool
+execution loop. Newly enabled tools are added to the available tools. Tools that
+were already exposed remain available for the rest of that AI Service invocation.
+Dynamic mode can therefore result in additional `listTools()` calls to MCP servers.
+
 To bind a tool provider to an AI service, simply use the `toolProvider` method
 of an AI service builder:
 
