@@ -3,12 +3,10 @@ package dev.langchain4j.store.embedding.oracle.vecdb.mapper;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import dev.langchain4j.exception.UnsupportedFeatureException;
-import dev.langchain4j.store.embedding.oracle.vecdb.OracleVecDbEmbeddingStore;
 import dev.langchain4j.store.embedding.oracle.vecdb.enums.VecDbApiVersion;
 import dev.langchain4j.store.embedding.oracle.vecdb.enums.VecDbDistanceMetric;
 import java.util.Locale;
@@ -17,7 +15,6 @@ import java.util.Map;
 public final class VecDbEmbeddingTableJsonMapper {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-    private static final TypeReference<Map<String, Object>> ANNOTATIONS_TYPE = new TypeReference<>() {};
 
     private VecDbEmbeddingTableJsonMapper() {}
 
@@ -37,27 +34,6 @@ public final class VecDbEmbeddingTableJsonMapper {
         } catch (JsonProcessingException exception) {
             throw new IllegalArgumentException("Unable to serialize VecDB table annotations", exception);
         }
-    }
-
-    public static OracleVecDbEmbeddingStore.VectorTableDescription descriptionFromJson(String responseJson) {
-        JsonNode response = readDescription(responseJson);
-
-        String tableName = requiredText(response, "table_name");
-        String comment = optionalText(response, "comment");
-        if (comment == null) {
-            comment = optionalText(response, "description");
-        }
-
-        JsonNode annotationsNode = field(response, "annotations");
-        Map<String, Object> annotations = Map.of();
-        if (annotationsNode != null && !annotationsNode.isNull()) {
-            if (!annotationsNode.isObject()) {
-                throw invalidResponse("'annotations' must be a JSON object", null);
-            }
-            annotations = OBJECT_MAPPER.convertValue(annotationsNode, ANNOTATIONS_TYPE);
-        }
-
-        return new OracleVecDbEmbeddingStore.VectorTableDescription(tableName, comment, annotations);
     }
 
     public static IndexStatus indexStatusFromJson(String responseJson, VecDbApiVersion apiVersion) {
@@ -150,25 +126,6 @@ public final class VecDbEmbeddingTableJsonMapper {
         } catch (JsonProcessingException exception) {
             throw invalidResponse("response is not valid JSON", exception);
         }
-    }
-
-    private static String requiredText(JsonNode object, String fieldName) {
-        String value = optionalText(object, fieldName);
-        if (value == null || value.isBlank()) {
-            throw invalidResponse("'" + fieldName + "' is missing or blank", null);
-        }
-        return value;
-    }
-
-    private static String optionalText(JsonNode object, String fieldName) {
-        JsonNode value = field(object, fieldName);
-        if (value == null || value.isNull()) {
-            return null;
-        }
-        if (!value.isTextual()) {
-            throw invalidResponse("'" + fieldName + "' must be a string", null);
-        }
-        return value.textValue();
     }
 
     private static JsonNode field(JsonNode object, String fieldName) {

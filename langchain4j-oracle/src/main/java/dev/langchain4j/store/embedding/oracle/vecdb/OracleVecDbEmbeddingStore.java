@@ -27,7 +27,6 @@ import java.sql.SQLException;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import javax.sql.DataSource;
 
 /**
@@ -74,22 +73,6 @@ public final class OracleVecDbEmbeddingStore implements EmbeddingStore<TextSegme
     /** Returns a builder for an Oracle VecDB embedding store. */
     public static Builder builder() {
         return new Builder();
-    }
-
-    /**
-     * Describes the VecDB vector table configured for this store.
-     *
-     * @return the table name, optional comment, and annotations reported by
-     *     {@code DBMS_VECTOR_DATABASE.DESCRIBE_VECTOR_TABLE}
-     */
-    public VectorTableDescription describeVectorTable() {
-        try (Connection connection = dataSource.getConnection()) {
-            VecDbApiVersion apiVersion = VecDbSupport.requireSupported(connection);
-            String responseJson = queryExecutor.describeVectorTable(connection, embeddingTable.name(), apiVersion);
-            return VecDbEmbeddingTableJsonMapper.descriptionFromJson(responseJson);
-        } catch (SQLException exception) {
-            throw unchecked(exception);
-        }
     }
 
     @Override
@@ -219,15 +202,6 @@ public final class OracleVecDbEmbeddingStore implements EmbeddingStore<TextSegme
 
     private static RuntimeException unchecked(SQLException exception) {
         return new RuntimeException(exception);
-    }
-
-    /** Selected fields returned when describing a VecDB vector table. */
-    public record VectorTableDescription(String tableName, String comment, Map<String, Object> annotations) {
-
-        public VectorTableDescription {
-            tableName = ensureNotBlank(tableName, "tableName");
-            annotations = annotations == null ? Map.of() : Map.copyOf(annotations);
-        }
     }
 
     /** Builder for {@link OracleVecDbEmbeddingStore}. */

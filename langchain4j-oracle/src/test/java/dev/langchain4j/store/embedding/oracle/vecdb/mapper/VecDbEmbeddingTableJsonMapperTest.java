@@ -7,14 +7,13 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.exception.UnsupportedFeatureException;
-import dev.langchain4j.store.embedding.oracle.vecdb.OracleVecDbEmbeddingStore;
 import dev.langchain4j.store.embedding.oracle.vecdb.enums.VecDbApiVersion;
 import dev.langchain4j.store.embedding.oracle.vecdb.enums.VecDbDistanceMetric;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
-/** Verifies table JSON, description mapping, index discovery, and effective metric resolution. */
+/** Verifies table JSON, index discovery, and effective metric resolution. */
 class VecDbEmbeddingTableJsonMapperTest {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
@@ -50,69 +49,6 @@ class VecDbEmbeddingTableJsonMapperTest {
                   "production": true
                 }
                 """);
-    }
-
-    /** Verifies case-insensitive mapping of the earlier API table-description response. */
-    @Test
-    void testMapsEarlierTableDescriptionCaseInsensitively() {
-        String response = """
-                {
-                  "TABLE_NAME": "EARLIER_VECTORS",
-                  "DESCRIPTION": "Earlier table",
-                  "ANNOTATIONS": {
-                    "application": "chatbot"
-                  }
-                }
-                """;
-
-        OracleVecDbEmbeddingStore.VectorTableDescription description =
-                VecDbEmbeddingTableJsonMapper.descriptionFromJson(response);
-
-        assertThat(description.tableName()).isEqualTo("EARLIER_VECTORS");
-        assertThat(description.comment()).isEqualTo("Earlier table");
-        assertThat(description.annotations()).containsExactly(entry("application", "chatbot"));
-    }
-
-    /** Verifies mapping of the newer API table-description response. */
-    @Test
-    void testMapsNewerTableDescription() {
-        String response = """
-                {
-                  "table_name": "NEWER_VECTORS",
-                  "comment": "Newer table",
-                  "annotations": {
-                    "application": "search",
-                    "revision": 3
-                  }
-                }
-                """;
-
-        OracleVecDbEmbeddingStore.VectorTableDescription description =
-                VecDbEmbeddingTableJsonMapper.descriptionFromJson(response);
-
-        assertThat(description.tableName()).isEqualTo("NEWER_VECTORS");
-        assertThat(description.comment()).isEqualTo("Newer table");
-        assertThat(description.annotations())
-                .containsExactlyInAnyOrderEntriesOf(Map.of("application", "search", "revision", 3));
-    }
-
-    /** Verifies that missing annotations become an empty immutable public map. */
-    @Test
-    void testReturnsEmptyImmutableAnnotationsWhenTheyAreMissing() {
-        String response = """
-                {
-                  "table_name": "VECTORS",
-                  "comment": null
-                }
-                """;
-
-        OracleVecDbEmbeddingStore.VectorTableDescription description =
-                VecDbEmbeddingTableJsonMapper.descriptionFromJson(response);
-
-        assertThat(description.comment()).isNull();
-        assertThat(description.annotations()).isEmpty();
-        assertThatThrownBy(() -> description.annotations().put("application", "search"))
-                .isInstanceOf(UnsupportedOperationException.class);
     }
 
     /** Verifies that the earlier response's dense-index name identifies a physical vector index. */
@@ -304,27 +240,6 @@ class VecDbEmbeddingTableJsonMapperTest {
                 .isInstanceOf(UnsupportedFeatureException.class)
                 .hasMessageContaining("HAMMING")
                 .hasMessageContaining("LangChain4j scores");
-    }
-
-    /** Verifies that malformed table-description JSON is rejected. */
-    @Test
-    void testRejectsMalformedDescriptionResponse() {
-        assertThatThrownBy(() -> VecDbEmbeddingTableJsonMapper.descriptionFromJson("not-json"))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("response is not valid JSON");
-    }
-
-    /** Verifies that a description without a table name cannot become a public description. */
-    @Test
-    void testRejectsDescriptionWithoutTableName() {
-        assertThatThrownBy(() -> VecDbEmbeddingTableJsonMapper.descriptionFromJson("{\"comment\":\"missing name\"}"))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("table_name")
-                .hasMessageContaining("missing or blank");
-    }
-
-    private static Map.Entry<String, Object> entry(String key, Object value) {
-        return Map.entry(key, value);
     }
 
     private static void assertJsonEquals(String actual, String expected) throws JsonProcessingException {
