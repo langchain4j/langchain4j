@@ -1,5 +1,8 @@
 package dev.langchain4j.model.anthropic;
 
+import static dev.langchain4j.reactive.streaming.ReactiveStreamingTestSupport.TCK_PUBLISHER_REFERENCE_CLEANUP_TIMEOUT_MILLIS;
+import static dev.langchain4j.reactive.streaming.ReactiveStreamingTestSupport.tckTestEnvironment;
+import static dev.langchain4j.reactive.streaming.ReactiveStreamingTestSupport.partialResponsesOnly;
 import static org.reactivestreams.FlowAdapters.toPublisher;
 
 import com.sun.net.httpserver.HttpServer;
@@ -37,15 +40,6 @@ import org.testng.annotations.BeforeClass;
  */
 public class AnthropicStreamingChatModelPublisherTckTest extends PublisherVerification<ChatModelStreamingEvent> {
 
-    // Every subscription performs a real HTTP round-trip to the loopback server before the first item can be
-    // emitted, so the budget for *expected* signals must accommodate connection setup and cold-start latency on a
-    // loaded CI runner. This timeout only adds slack: fast signals return immediately, so passing tests are
-    // unaffected and only genuinely-stuck publishers ever wait this long.
-    private static final long DEFAULT_TIMEOUT_MILLIS = 10_000L;
-    // Kept tight, independent of the receive timeout, so the "no signal must arrive" assertions stay fast.
-    private static final long DEFAULT_NO_SIGNALS_TIMEOUT_MILLIS = 2_000L;
-    private static final long DEFAULT_POLL_TIMEOUT_MILLIS = 50L;
-    private static final long PUBLISHER_REFERENCE_CLEANUP_TIMEOUT_MILLIS = 300L;
     private static final long MAX_ELEMENTS = 100L;
 
     private static HttpServer server;
@@ -56,9 +50,7 @@ public class AnthropicStreamingChatModelPublisherTckTest extends PublisherVerifi
 
     public AnthropicStreamingChatModelPublisherTckTest() {
         super(
-                new TestEnvironment(
-                        DEFAULT_TIMEOUT_MILLIS, DEFAULT_NO_SIGNALS_TIMEOUT_MILLIS, DEFAULT_POLL_TIMEOUT_MILLIS),
-                PUBLISHER_REFERENCE_CLEANUP_TIMEOUT_MILLIS);
+                tckTestEnvironment(), TCK_PUBLISHER_REFERENCE_CLEANUP_TIMEOUT_MILLIS);
     }
 
     @BeforeClass
@@ -134,42 +126,6 @@ public class AnthropicStreamingChatModelPublisherTckTest extends PublisherVerifi
         return toPublisher(partialResponsesOnly(stream));
     }
 
-    /**
-     * A demand-preserving filter that forwards only {@link PartialResponse} events (dropping the provider framing
-     * {@code RawStreamingEvent}s and the terminal aggregated response). It hands the real upstream subscription
-     * straight to the downstream subscriber, so demand and cancellation reach the model publisher directly.
-     */
-    private static Flow.Publisher<ChatModelStreamingEvent> partialResponsesOnly(
-            Flow.Publisher<ChatModelStreamingEvent> source) {
-        return downstream -> source.subscribe(new Flow.Subscriber<>() {
-            private Flow.Subscription subscription;
-
-            @Override
-            public void onSubscribe(Flow.Subscription s) {
-                this.subscription = s;
-                downstream.onSubscribe(s);
-            }
-
-            @Override
-            public void onNext(ChatModelStreamingEvent event) {
-                if (event instanceof PartialResponse) {
-                    downstream.onNext(event);
-                } else {
-                    subscription.request(1); // dropped a non-text event; top up demand
-                }
-            }
-
-            @Override
-            public void onError(Throwable error) {
-                downstream.onError(error);
-            }
-
-            @Override
-            public void onComplete() {
-                downstream.onComplete();
-            }
-        });
-    }
 
     private static StreamingChatModel newModel(String baseUrl) {
         return AnthropicStreamingChatModel.builder()

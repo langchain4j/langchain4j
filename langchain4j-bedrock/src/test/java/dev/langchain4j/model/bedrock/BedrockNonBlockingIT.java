@@ -21,6 +21,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import dev.langchain4j.reactive.streaming.ReactiveStreamingTestSupport;
 import reactor.blockhound.BlockHound;
 import reactor.blockhound.BlockingOperationError;
 
@@ -72,24 +73,11 @@ class BedrockNonBlockingIT {
 
     @BeforeAll
     static void installBlockHound() {
-        BlockHound.builder()
-                // Our pipeline runs on two SDK pools: chatAsync's parse completes on the async-response executor, and
-                // each streamed event's parse/dispatch runs on the Netty event loop. Blocking either collapses
-                // throughput under concurrency, so both are policed. (The event loop's own NIO reads are native and not
-                // flagged by BlockHound.)
-                .nonBlockingThreadPredicate(prev -> prev.or(t -> t.getName().startsWith(ASYNC_RESPONSE_THREAD_PREFIX)
-                        || t.getName().startsWith(EVENT_LOOP_THREAD_PREFIX)))
-                // Pool bookkeeping, not application blocking: idle workers park on the work queue (getTask), exiting
-                // workers coordinate shutdown (processWorkerExit).
-                .allowBlockingCallsInside("java.util.concurrent.ThreadPoolExecutor", "getTask")
-                .allowBlockingCallsInside("java.util.concurrent.ThreadPoolExecutor", "processWorkerExit")
-                // Async test logging (logging=true): tinylog hands each entry to its writer thread under a monitor
-                // (WritingThread.add -> Object.notify()); the worker can briefly park on that handoff - the logging
-                // backend's internals, not our pipeline. Tolerate it so logging=true doesn't flake.
-                .allowBlockingCallsInside("org.tinylog.core.WritingThread", "add")
-                // Record (don't throw): a thrown error on a worker thread kills the thread but never reaches our
-                // future/subscriber, so the test could pass despite the violation. Recording lets us assert on it.
-                .blockingMethodCallback(method -> violations.add(new BlockingOperationError(method)))
+        // chatAsync's parse completes on the async-response executor and each streamed event's
+        // parse/dispatch runs on the Netty event loop, so both pools are policed. (The event loop's
+        // own NIO reads are native and not flagged by BlockHound.)
+        ReactiveStreamingTestSupport.blockHoundBuilder(
+                        violations, ASYNC_RESPONSE_THREAD_PREFIX, EVENT_LOOP_THREAD_PREFIX)
                 .install();
     }
 

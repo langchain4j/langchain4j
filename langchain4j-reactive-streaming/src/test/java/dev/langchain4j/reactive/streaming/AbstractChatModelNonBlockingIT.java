@@ -83,19 +83,7 @@ public abstract class AbstractChatModelNonBlockingIT {
 
     @BeforeAll
     void installBlockHound() {
-        BlockHound.builder()
-                .nonBlockingThreadPredicate(prev -> prev.or(t -> t.getName().startsWith(policedThreadNamePrefix())))
-                // Pool bookkeeping, not application blocking: idle workers park on the work queue (getTask), exiting
-                // workers acquire the pool's lock to coordinate shutdown (processWorkerExit).
-                .allowBlockingCallsInside("java.util.concurrent.ThreadPoolExecutor", "getTask")
-                .allowBlockingCallsInside("java.util.concurrent.ThreadPoolExecutor", "processWorkerExit")
-                // Async test logging (logging=true): tinylog hands each entry to its writer thread under a monitor
-                // (WritingThread.add → Object.notify()); the worker can briefly park on that handoff — the logging
-                // backend's internals, not our pipeline. Tolerate it so logging=true doesn't flake.
-                .allowBlockingCallsInside("org.tinylog.core.WritingThread", "add")
-                // Record (don't throw): a thrown error on a worker thread kills the thread but never reaches our
-                // subscriber/future, so the test would pass despite the violation. Recording lets us assert on it.
-                .blockingMethodCallback(method -> violations.add(new BlockingOperationError(method)))
+        ReactiveStreamingTestSupport.blockHoundBuilder(violations, policedThreadNamePrefix())
                 .install();
     }
 

@@ -35,6 +35,11 @@
             <artifactId>mutiny-zero</artifactId>
         </dependency>
 
+        <dependency>
+            <groupId>org.reactivestreams</groupId>
+            <artifactId>reactive-streams-tck</artifactId>
+        </dependency>
+
         <!-- test: the shared non-blocking TCKs use BlockHound; AbstractChatModelNonBlockingIT also uses WireMock -->
         <dependency>
             <groupId>io.projectreactor.tools</groupId>

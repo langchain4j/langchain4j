@@ -1,6 +1,9 @@
 package dev.langchain4j.model.bedrock;
 
+import static dev.langchain4j.reactive.streaming.ReactiveStreamingTestSupport.TCK_PUBLISHER_REFERENCE_CLEANUP_TIMEOUT_MILLIS;
+import static dev.langchain4j.reactive.streaming.ReactiveStreamingTestSupport.tckTestEnvironment;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
+import static dev.langchain4j.reactive.streaming.ReactiveStreamingTestSupport.partialResponsesOnly;
 import static org.reactivestreams.FlowAdapters.toPublisher;
 
 import dev.langchain4j.data.message.UserMessage;
@@ -54,24 +57,13 @@ import software.amazon.awssdk.services.bedrockruntime.model.TokenUsage;
  */
 public class BedrockStreamingChatModelPublisherTckTest extends PublisherVerification<ChatModelStreamingEvent> {
 
-    // Events are replayed from a scheduled executor rather than the network, but the budget for *expected* signals
-    // must still absorb scheduler contention and cold-start latency on a loaded CI runner. This timeout only adds
-    // slack: fast signals return immediately, so passing tests are unaffected and only genuinely-stuck publishers
-    // ever wait this long.
-    private static final long DEFAULT_TIMEOUT_MILLIS = 10_000L;
-    // Kept tight, independent of the receive timeout, so the "no signal must arrive" assertions stay fast.
-    private static final long DEFAULT_NO_SIGNALS_TIMEOUT_MILLIS = 2_000L;
-    private static final long DEFAULT_POLL_TIMEOUT_MILLIS = 50L;
-    private static final long PUBLISHER_REFERENCE_CLEANUP_TIMEOUT_MILLIS = 300L;
     private static final long MAX_ELEMENTS = 64L;
 
     private static ScheduledExecutorService scheduler;
 
     public BedrockStreamingChatModelPublisherTckTest() {
         super(
-                new TestEnvironment(
-                        DEFAULT_TIMEOUT_MILLIS, DEFAULT_NO_SIGNALS_TIMEOUT_MILLIS, DEFAULT_POLL_TIMEOUT_MILLIS),
-                PUBLISHER_REFERENCE_CLEANUP_TIMEOUT_MILLIS);
+                tckTestEnvironment(), TCK_PUBLISHER_REFERENCE_CLEANUP_TIMEOUT_MILLIS);
     }
 
     @BeforeClass
@@ -108,14 +100,14 @@ public class BedrockStreamingChatModelPublisherTckTest extends PublisherVerifica
                 .usage(TokenUsage.builder().inputTokens(5).outputTokens(2).totalTokens(7).build())
                 .metrics(ConverseStreamMetrics.builder().latencyMs(1L).build())
                 .build());
-        return partialResponsesOnly(newModel(clientReplaying(events)).chat(request()));
+        return toPublisher(partialResponsesOnly(newModel(clientReplaying(events)).chat(request())));
     }
 
     @Override
     public Publisher<ChatModelStreamingEvent> createFailedPublisher() {
         BedrockRuntimeAsyncClient asyncClient =
                 client(handler -> CompletableFuture.failedFuture(new RuntimeException("boom")));
-        return partialResponsesOnly(newModel(asyncClient).chat(request()));
+        return toPublisher(partialResponsesOnly(newModel(asyncClient).chat(request())));
     }
 
     private static BedrockRuntimeAsyncClient clientReplaying(List<ConverseStreamOutput> events) {
@@ -175,37 +167,6 @@ public class BedrockStreamingChatModelPublisherTckTest extends PublisherVerifica
                 .build();
     }
 
-    private static Publisher<ChatModelStreamingEvent> partialResponsesOnly(Flow.Publisher<ChatModelStreamingEvent> src) {
-        Flow.Publisher<ChatModelStreamingEvent> filtered = downstream -> src.subscribe(new Flow.Subscriber<>() {
-            private Flow.Subscription subscription;
-
-            @Override
-            public void onSubscribe(Flow.Subscription s) {
-                this.subscription = s;
-                downstream.onSubscribe(s);
-            }
-
-            @Override
-            public void onNext(ChatModelStreamingEvent event) {
-                if (event instanceof PartialResponse) {
-                    downstream.onNext(event);
-                } else {
-                    subscription.request(1);
-                }
-            }
-
-            @Override
-            public void onError(Throwable error) {
-                downstream.onError(error);
-            }
-
-            @Override
-            public void onComplete() {
-                downstream.onComplete();
-            }
-        });
-        return toPublisher(filtered);
-    }
 
     /** Replays the given events one per {@code request(1)}, mimicking the AWS SDK's demand-driven event stream. */
     private static final class ReplayingEventPublisher implements SdkPublisher<ConverseStreamOutput> {

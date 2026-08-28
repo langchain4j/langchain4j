@@ -1,5 +1,7 @@
 package dev.langchain4j.model.openai;
 
+import static dev.langchain4j.reactive.streaming.ReactiveStreamingTestSupport.TCK_PUBLISHER_REFERENCE_CLEANUP_TIMEOUT_MILLIS;
+import static dev.langchain4j.reactive.streaming.ReactiveStreamingTestSupport.tckTestEnvironment;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 import dev.langchain4j.data.message.UserMessage;
@@ -22,15 +24,6 @@ import static org.reactivestreams.FlowAdapters.toPublisher;
  */
 public class OpenAiStreamingChatModelPublisherTckTest extends PublisherVerification<ChatModelStreamingEvent> {
 
-    // Every subscription performs a real HTTP round-trip to WireMock before the first item can be emitted, so the
-    // budget for *expected* signals must accommodate connection setup and cold-start latency on a loaded CI runner.
-    // This timeout only adds slack: fast signals return immediately, so passing tests are unaffected and only
-    // genuinely-stuck publishers ever wait this long.
-    private static final long DEFAULT_TIMEOUT_MILLIS = 10_000L;
-    // Kept tight, independent of the receive timeout, so the "no signal must arrive" assertions stay fast.
-    private static final long DEFAULT_NO_SIGNALS_TIMEOUT_MILLIS = 2_000L;
-    private static final long DEFAULT_POLL_TIMEOUT_MILLIS = 50L;
-    private static final long PUBLISHER_REFERENCE_CLEANUP_TIMEOUT_MILLIS = 300L;
 
     private static final long MAX_ELEMENTS = 100L;
 
@@ -41,8 +34,7 @@ public class OpenAiStreamingChatModelPublisherTckTest extends PublisherVerificat
 
     public OpenAiStreamingChatModelPublisherTckTest() {
         super(
-                new TestEnvironment(DEFAULT_TIMEOUT_MILLIS, DEFAULT_NO_SIGNALS_TIMEOUT_MILLIS, DEFAULT_POLL_TIMEOUT_MILLIS),
-                PUBLISHER_REFERENCE_CLEANUP_TIMEOUT_MILLIS);
+                tckTestEnvironment(), TCK_PUBLISHER_REFERENCE_CLEANUP_TIMEOUT_MILLIS);
     }
 
     @BeforeClass
