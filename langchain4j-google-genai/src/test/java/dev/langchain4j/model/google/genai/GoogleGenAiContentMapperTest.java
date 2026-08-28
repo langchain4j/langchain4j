@@ -782,4 +782,106 @@ class GoogleGenAiContentMapperTest {
         assertThat(parts.get(0).text()).hasValue("");
         assertThat(parts.get(0).thought()).isEmpty();
     }
+
+    @Test
+    void should_capture_thought_signature_from_a_text_part() {
+        byte[] signature = "text-signature".getBytes();
+        GenerateContentResponse response = GenerateContentResponse.builder()
+                .candidates(List.of(Candidate.builder()
+                        .content(Content.builder()
+                                .parts(List.of(
+                                        Part.builder()
+                                                .text("Working it out.")
+                                                .thought(true)
+                                                .build(),
+                                        Part.builder()
+                                                .text("42")
+                                                .thoughtSignature(signature)
+                                                .build()))
+                                .build())
+                        .build()))
+                .build();
+
+        ChatResponse result = GoogleGenAiContentMapper.toChatResponse(response, "test-model");
+
+        assertThat(result.aiMessage().attribute("thought_signature", String.class))
+                .isEqualTo(Base64.getEncoder().encodeToString(signature));
+    }
+
+    @Test
+    void should_send_back_the_thought_signature_on_the_text_part() {
+        byte[] signature = "text-signature".getBytes();
+        AiMessage message = AiMessage.builder()
+                .text("42")
+                .attributes(Map.of("thought_signature", Base64.getEncoder().encodeToString(signature)))
+                .build();
+
+        Content result = GoogleGenAiContentMapper.toContent(message, false);
+
+        List<Part> parts = result.parts().orElseThrow();
+        assertThat(parts).hasSize(1);
+        assertThat(parts.get(0).text()).hasValue("42");
+        assertThat(parts.get(0).thoughtSignature()).hasValue(signature);
+    }
+
+    @Test
+    void should_round_trip_the_thought_signature_of_a_text_part() {
+        byte[] signature = "text-signature".getBytes();
+        GenerateContentResponse response = GenerateContentResponse.builder()
+                .candidates(List.of(Candidate.builder()
+                        .content(Content.builder()
+                                .parts(Part.builder()
+                                        .text("42")
+                                        .thoughtSignature(signature)
+                                        .build())
+                                .build())
+                        .build()))
+                .build();
+
+        AiMessage aiMessage =
+                GoogleGenAiContentMapper.toChatResponse(response, "test-model").aiMessage();
+        Content result = GoogleGenAiContentMapper.toContent(aiMessage, false);
+
+        assertThat(result.parts().orElseThrow().get(0).thoughtSignature()).hasValue(signature);
+    }
+
+    @Test
+    void should_not_capture_a_thought_signature_when_the_part_has_none() {
+        GenerateContentResponse response = GenerateContentResponse.builder()
+                .candidates(List.of(Candidate.builder()
+                        .content(Content.builder()
+                                .parts(Part.builder().text("42").build())
+                                .build())
+                        .build()))
+                .build();
+
+        ChatResponse result = GoogleGenAiContentMapper.toChatResponse(response, "test-model");
+
+        assertThat(result.aiMessage().attributes()).doesNotContainKey("thought_signature");
+    }
+
+    @Test
+    void should_keep_the_function_call_thought_signature_keyed_by_tool_call_id() {
+        byte[] signature = "call-signature".getBytes();
+        GenerateContentResponse response = GenerateContentResponse.builder()
+                .candidates(List.of(Candidate.builder()
+                        .content(Content.builder()
+                                .parts(Part.builder()
+                                        .functionCall(FunctionCall.builder()
+                                                .id("call-1")
+                                                .name("getWeather")
+                                                .args(Map.of())
+                                                .build())
+                                        .thoughtSignature(signature)
+                                        .build())
+                                .build())
+                        .build()))
+                .build();
+
+        ChatResponse result = GoogleGenAiContentMapper.toChatResponse(response, "test-model");
+
+        assertThat(result.aiMessage().attribute("thought_signature_call-1", String.class))
+                .isEqualTo(Base64.getEncoder().encodeToString(signature));
+        assertThat(result.aiMessage().attributes()).doesNotContainKey("thought_signature");
+    }
 }
