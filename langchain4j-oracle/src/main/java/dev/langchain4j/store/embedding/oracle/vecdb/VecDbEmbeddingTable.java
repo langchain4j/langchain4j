@@ -17,7 +17,6 @@ import oracle.jdbc.OracleType;
  */
 public final class VecDbEmbeddingTable {
 
-    private static final String METADATA_COLUMN = "CONTENT_METADATA";
     private static final Pattern ORACLE_IDENTIFIER = Pattern.compile("^[A-Za-z][A-Za-z0-9_$#]{0,127}$");
 
     private final String name;
@@ -77,14 +76,15 @@ public final class VecDbEmbeddingTable {
         return createOption;
     }
 
-    /** Maps a flat LangChain4j metadata key to the physical VecDB JSON column for a SQL predicate. */
-    String mapMetadataKey(String key, OracleType type) {
+    /** Maps a flat LangChain4j metadata key to a version-specific VecDB JSON column for a SQL predicate. */
+    String mapMetadataKey(String metadataColumn, String key, OracleType type) {
         String typeName = type == OracleType.BINARY_FLOAT
                 ? "BINARY_FLOAT"
                 : type == OracleType.BINARY_DOUBLE ? "BINARY_DOUBLE" : type.getName();
         String pathKey = key.replace("\\", "\\\\").replace("\"", "\\\"").replace("'", "''");
 
-        return "JSON_VALUE(" + METADATA_COLUMN + ", '$.\"" + pathKey + "\"' RETURNING " + typeName + " NULL ON ERROR)";
+        return "JSON_VALUE(" + metadataColumn + ", '$.\"" + pathKey + "\"' RETURNING " + typeName
+                + " NULL ON ERROR)";
     }
 
     /**

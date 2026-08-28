@@ -45,6 +45,11 @@ final class VecDbApiDialectNew implements VecDbApiDialect {
     }
 
     @Override
+    public String metadataColumn() {
+        return VecDbTableLayout.CONTENT_METADATA;
+    }
+
+    @Override
     public String indexParametersToJson(
             VecDbVectorIndex vectorIndex, VecDbMetadataIndex metadataIndex, Integer parallelCreation) {
         return VecDbIndexJsonMapper.toJson(vectorIndex, metadataIndex, parallelCreation);

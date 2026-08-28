@@ -22,6 +22,8 @@ interface VecDbApiDialect {
 
     String dropVectorTableCall();
 
+    String metadataColumn();
+
     String indexParametersToJson(
             VecDbVectorIndex vectorIndex, VecDbMetadataIndex metadataIndex, Integer parallelCreation);
 
