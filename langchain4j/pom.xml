@@ -16,6 +16,7 @@
 
     <properties>
         <opennlp-tools.version>2.5.11</opennlp-tools.version>
+        <commonmark.version>0.28.0</commonmark.version>
     </properties>
 
     <dependencies>
@@ -50,6 +51,24 @@
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.commonmark</groupId>
+            <artifactId>commonmark</artifactId>
+            <version>${commonmark.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.commonmark</groupId>
+            <artifactId>commonmark-ext-gfm-tables</artifactId>
+            <version>${commonmark.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.commonmark</groupId>
+            <artifactId>commonmark-ext-yaml-front-matter</artifactId>
+            <version>${commonmark.version}</version>
         </dependency>
 
         <!-- test dependencies -->
@@ -157,6 +176,12 @@
                         <!-- This was manually built  -->
                         <exclude>dev.langchain4j:langchain4j-classpath-test-lib</exclude>
                     </excludes>
+                    <acceptableLicenses combine.children="append">
+                        <license>
+                            <name>BSD-2-Clause</name>
+                            <url>https://opensource.org/licenses/BSD-2-Clause</url>
+                        </license>
+                    </acceptableLicenses>
                 </configuration>
             </plugin>
 
