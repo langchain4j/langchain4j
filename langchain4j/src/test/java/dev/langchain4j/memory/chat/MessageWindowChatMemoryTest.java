@@ -628,7 +628,7 @@ class MessageWindowChatMemoryTest implements WithAssertions {
         var counts = store.measureHitCounts(() -> {
             chatMemory.add(userMessage("first"), aiMessage("second"), aiMessage("3rd"));
         });
-        assertThat(counts).isEqualTo(new HitCounts(3, 3, 0));
+        assertThat(counts).isEqualTo(new HitCounts(1, 3, 0));  // Cache reduces getMessages calls
 
         counts = store.measureHitCounts(chatMemory::messages);
         assertThat(counts).isEqualTo(new HitCounts(1, 0, 0));
