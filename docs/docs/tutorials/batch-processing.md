@@ -316,10 +316,3 @@ batchChatModel.deleteBatchJob(batchId);
   current page and a `nextPageToken()` to fetch the next page (null when there are no more).
 - **`BatchPagination`** configures a `list(...)` call with a `pageSize` and an optional
   `pageToken` for fetching a specific page.
-
-## Summary
-
-Batch processing trades a bit of latency for large cost savings and throughput, making it perfect
-for bulk, non-interactive workloads. LangChain4j abstracts it behind the generic
-`BatchChatModel`, `BatchEmbeddingModel`, and `BatchImageModel` interfaces, supported by OpenAI,
-OpenAI Official, Anthropic, Mistral, and both Gemini integrations (Google AI Gemini and Google Gen AI).
