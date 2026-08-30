@@ -44,9 +44,7 @@ class ExpandingQueryTransformerTest {
                         Query.from("query 1", metadata),
                         Query.from("query 2", metadata),
                         Query.from("query 3", metadata));
-        assertThat(model.userMessageText())
-                .isEqualTo(
-                        """
+        assertThat(model.userMessageText()).isEqualTo("""
                 Generate 3 different versions of a provided user query. \
                 Each version should be worded differently, using synonyms or alternative sentence structures, \
                 but they should all retain the original meaning. \
@@ -115,5 +113,40 @@ class ExpandingQueryTransformerTest {
 
         // then
         assertThat(model.userMessageText()).isEqualTo("Generate 7 variations of query");
+    }
+
+    @Test
+    void should_not_return_more_queries_than_n_when_llm_returns_extra_queries() {
+
+        // given - LLM sometimes prepends an introductory line and/or returns more queries than requested
+        ChatModelMock model = ChatModelMock.thatAlwaysResponds(
+                "Here are 3 different versions of the query:\nquery 1\nquery 2\nquery 3\nquery 4");
+
+        QueryTransformer transformer = new ExpandingQueryTransformer(model, 3);
+
+        Query query = Query.from("query");
+
+        // when
+        Collection<Query> queries = transformer.transform(query);
+
+        // then - only the first n parsed queries are returned
+        assertThat(queries).hasSize(3);
+    }
+
+    @Test
+    void should_return_all_queries_when_llm_returns_fewer_than_n() {
+
+        // given
+        ChatModelMock model = ChatModelMock.thatAlwaysResponds("query 1\nquery 2");
+
+        QueryTransformer transformer = new ExpandingQueryTransformer(model, 5);
+
+        Query query = Query.from("query");
+
+        // when
+        Collection<Query> queries = transformer.transform(query);
+
+        // then
+        assertThat(queries).containsExactly(Query.from("query 1"), Query.from("query 2"));
     }
 }
