@@ -3,9 +3,9 @@ package dev.langchain4j.store.embedding.weaviate;
 import static dev.langchain4j.internal.Utils.generateUUIDFrom;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.randomUUID;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static io.weaviate.client.v1.data.replication.model.ConsistencyLevel.QUORUM;
 import static java.util.Arrays.stream;
@@ -36,6 +36,7 @@ import io.weaviate.client.v1.graphql.model.GraphQLError;
 import io.weaviate.client.v1.graphql.model.GraphQLResponse;
 import io.weaviate.client.v1.graphql.query.argument.NearVectorArgument;
 import io.weaviate.client.v1.graphql.query.fields.Field;
+import io.weaviate.client.v1.schema.model.WeaviateClass;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -55,6 +56,9 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     private static final String ADDITIONALS = "_additional";
     private static final String NULL_VALUE = "<null>";
+    private static final String VECTOR = "vector";
+    private static final String VECTORS = "vectors";
+    private static final String DEFAULT_VECTOR_NAME = "default";
 
     private final WeaviateClient client;
     private final String objectClass;
@@ -63,6 +67,9 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
     private final String metadataFieldName;
     private final Collection<String> metadataKeys;
     private final String textFieldName;
+
+    private volatile String vectorName;
+    private volatile boolean vectorNameResolved;
 
     /**
      * Creates a new WeaviateEmbeddingStore instance.
@@ -168,7 +175,9 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     @Override
     public void removeAll(Collection<String> ids) {
-        ensureNotEmpty(ids, "ids");
+        if (isNullOrEmpty(ids)) {
+            return;
+        }
         client.batch()
                 .objectsBatchDeleter()
                 .withClassName(objectClass)
@@ -266,6 +275,10 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
     @Override
     public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest request) {
 
+        if (!collectionExists()) {
+            return new EmbeddingSearchResult<>(emptyList());
+        }
+
         List<Field> fields = new ArrayList<>();
         fields.add(Field.builder().name(textFieldName).build());
         fields.add(Field.builder()
@@ -273,7 +286,7 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
                 .fields(
                         Field.builder().name("id").build(),
                         Field.builder().name("certainty").build(),
-                        Field.builder().name("vector").build())
+                        vectorField())
                 .build());
         if (!metadataKeys.isEmpty()) {
             List<Field> metadataFields = new ArrayList<>();
@@ -437,10 +450,57 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
         return new Metadata(metadataMap);
     }
 
-    private static Embedding toEmbedding(Map<String, ?> additional) {
-        List<Float> vector = ((List<Double>) additional.get("vector"))
-                .stream().map(Double::floatValue).collect(toList());
-        return Embedding.from(vector);
+    private Embedding toEmbedding(Map<String, ?> additional) {
+        List<Double> vector;
+        if (vectorName == null) {
+            vector = (List<Double>) additional.get(VECTOR);
+        } else {
+            Map<String, List<Double>> vectors = (Map<String, List<Double>>) additional.get(VECTORS);
+            vector = vectors.get(vectorName);
+        }
+        return Embedding.from(vector.stream().map(Double::floatValue).collect(toList()));
+    }
+
+    private Field vectorField() {
+        return vectorName == null
+                ? Field.builder().name(VECTOR).build()
+                : Field.builder()
+                        .name(VECTORS)
+                        .fields(Field.builder().name(vectorName).build())
+                        .build();
+    }
+
+    /**
+     * Returns {@code false} when the collection does not exist yet, which is the case until the first
+     * embedding is added. As a side effect, resolves how the collection stores vectors: Weaviate 1.39
+     * started creating collections with a named vector ("default") instead of the deprecated single
+     * (unnamed) vector, and the two are returned in different fields of the GraphQL response.
+     */
+    private boolean collectionExists() {
+        if (vectorNameResolved) {
+            return true;
+        }
+
+        Result<WeaviateClass> result = client.schema().classGetter().withClassName(objectClass).run();
+        if (result.hasErrors()) {
+            throw new IllegalArgumentException(result.getError().getMessages().stream()
+                    .map(WeaviateErrorMessage::getMessage)
+                    .collect(joining("\n")));
+        }
+
+        WeaviateClass collection = result.getResult();
+        if (collection == null) {
+            return false;
+        }
+
+        Map<String, WeaviateClass.VectorConfig> vectorConfig = collection.getVectorConfig();
+        if (!isNullOrEmpty(vectorConfig)) {
+            vectorName = vectorConfig.containsKey(DEFAULT_VECTOR_NAME)
+                    ? DEFAULT_VECTOR_NAME
+                    : vectorConfig.keySet().iterator().next();
+        }
+        vectorNameResolved = true;
+        return true;
     }
 
     public static class WeaviateEmbeddingStoreBuilder {

@@ -53,7 +53,7 @@ class BedrockStreamingChatModelIT extends AbstractStreamingChatModelIT {
                 TestedModels.STREAMING_AWS_NOVA_LITE, TestedModels.STREAMING_AWS_NOVA_PRO);
         //                TestedModelsWithConverseAPI.STREAMING_AI_JAMBA_1_5_MINI,
         //                TestedModelsWithConverseAPI.STREAMING_CLAUDE_3_HAIKU,
-        //                TestedModelsWithConverseAPI.STREAMING_COHERE_COMMAND_R_PLUS,
+        //                TestedModelsWithConverseAPI.STREAMING_CLAUDE_HAIKU_4_5,
         //                TestedModelsWithConverseAPI.STREAMING_MISTRAL_LARGE);
     }
 
@@ -75,7 +75,7 @@ class BedrockStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     protected String customModelName() {
-        return "cohere.command-r-v1:0";
+        return "us.anthropic.claude-haiku-4-5-20251001-v1:0";
     }
 
     @Override

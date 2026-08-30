@@ -194,7 +194,8 @@ public class SqlFilterParser implements FilterParser {
         String key = getKey(between.getLeftExpression());
         Comparable<?> from = getValue(between.getBetweenExpressionStart());
         Comparable<?> to = getValue(between.getBetweenExpressionEnd());
-        return new IsGreaterThanOrEqualTo(key, from).and(new IsLessThanOrEqualTo(key, to));
+        Filter range = new IsGreaterThanOrEqualTo(key, from).and(new IsLessThanOrEqualTo(key, to));
+        return between.isNot() ? new Not(range) : range;
     }
 
     private String getKey(BinaryExpression binaryExpression) {

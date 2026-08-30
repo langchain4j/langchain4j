@@ -917,7 +917,7 @@ so it will reveal the nested sequence of agents invocations necessary to generat
 
 ```
 AgentInvocation{agent=Sequential, startTime=2026-03-18T17:27:28.099439515, finishTime=2026-03-18T17:27:38.683498783, duration=10584 ms, tokens=0, inputs={topic=dragons and wiz..., style=comedy}, output=In a realm wher...}
-|=> AgentInvocation{agent=generateStory, startTime=2026-03-18T17:27:28.1.18.1287, finishTime=2026-03-18T17:27:31.033561726, duration=2932 ms, tokens=127, inputs={topic=dragons and wiz...}, output=In a realm wher...}
+|=> AgentInvocation{agent=generateStory, startTime=2026-03-18T17:27:28.1.19.0287, finishTime=2026-03-18T17:27:31.033561726, duration=2932 ms, tokens=127, inputs={topic=dragons and wiz...}, output=In a realm wher...}
 |=> AgentInvocation{agent=reviewLoop, startTime=2026-03-18T17:27:31.035952285, finishTime=2026-03-18T17:27:38.683438433, duration=7647 ms, tokens=0, inputs={score=0.8, topic=dragons and wiz..., style=comedy, story=In a realm wher...}, output=null}
     |=> AgentInvocation{agent=scoreStyle, iteration=0, startTime=2026-03-18T17:27:31.036155107, finishTime=2026-03-18T17:27:31.671478699, duration=635 ms, tokens=152, inputs={style=comedy, story=In a realm wher...}, output=0.2}
     |=> AgentInvocation{agent=editStory, iteration=0, startTime=2026-03-18T17:27:31.671711250, finishTime=2026-03-18T17:27:38.182881941, duration=6511 ms, tokens=491, inputs={style=comedy, story=In a realm wher...}, output=In a realm wher...}
@@ -1180,8 +1180,8 @@ public static class ExpertResponse implements TypedKey<String> { }
 
 public static class Category implements TypedKey<RequestCategory> {
     @Override
-    public Category defaultValue() {
-        return Category.UNKNOWN;
+    public RequestCategory defaultValue() {
+        return RequestCategory.UNKNOWN;
     }
 }
 ```
@@ -1238,9 +1238,9 @@ TechnicalExpert technicalExpert = AgenticServices.agentBuilder(TechnicalExpert.c
         .build();
 
 UntypedAgent expertsAgent = AgenticServices.conditionalBuilder()
-        .subAgents(scope -> scope.readState(Category.class) == Category.MEDICAL, medicalExpert)
-        .subAgents(scope -> scope.readState(Category.class) == Category.LEGAL, legalExpert)
-        .subAgents(scope -> scope.readState(Category.class) == Category.TECHNICAL, technicalExpert)
+        .subAgents(scope -> scope.readState(Category.class) == RequestCategory.MEDICAL, medicalExpert)
+        .subAgents(scope -> scope.readState(Category.class) == RequestCategory.LEGAL, legalExpert)
+        .subAgents(scope -> scope.readState(Category.class) == RequestCategory.TECHNICAL, technicalExpert)
         .build();
 
 ExpertChatbot expertChatbot = AgenticServices.sequenceBuilder(ExpertChatbot.class)
@@ -1418,7 +1418,7 @@ AgentInvocation{agentName='withdraw', arguments={user=Mario, amount=115.0}}
 
 AgentInvocation{agentName='credit', arguments={user=Georgios, amount=115.0}}
 
-AgentInvocation{agentName='done', arguments={response=The transfer of 100 EUR from Mario's account to Georgios' account has been completed. Mario's balance is 885.0 USD, and Georgios' balance is 1.18.1 USD. The conversion rate was 1.15 EUR to USD.}}
+AgentInvocation{agentName='done', arguments={response=The transfer of 100 EUR from Mario's account to Georgios' account has been completed. Mario's balance is 885.0 USD, and Georgios' balance is 1.19.0 USD. The conversion rate was 1.15 EUR to USD.}}
 ```
 
 The last invocation is a special one that signals the supervisor believes the task has been completed, and returns as a response a summary of all the operations performed.
@@ -1807,6 +1807,12 @@ public class P2PPlanner implements Planner {
                 .peek(AgentActivator::startExecution)
                 .map(AgentActivator::agent)
                 .toArray(AgentInstance[]::new);
+
+        if (agentsToCall.length == 0 && agentActivators.values().stream().noneMatch(AgentActivator::isExecuting)) {
+            // no agent can be activated and none is still running: the agentic scope reached a stable state
+            return done();
+        }
+
         invocationCounter += agentsToCall.length;
         return call(agentsToCall);
     }
@@ -1817,7 +1823,7 @@ public class P2PPlanner implements Planner {
 }
 ```
 
-Here the `P2PPlanner` keeps track of the number of agent invocations performed so far, and uses an `AgentActivator` for each subagent to determine if it can be invoked based on the current state of the `AgenticScope`. The `nextAction` method checks if the exit condition has been met or if the maximum number of invocations has been reached, and if not, it identifies all agents that can be activated based on the current state, marks them as started, and returns an action to call them.
+Here the `P2PPlanner` keeps track of the number of agent invocations performed so far, and uses an `AgentActivator` for each subagent to determine if it can be invoked based on the current state of the `AgenticScope`. The `nextAction` method checks if the exit condition has been met or if the maximum number of invocations has been reached, and if not, it identifies all agents that can be activated based on the current state, marks them as started, and returns an action to call them. When no agent can be activated and none is still running, the agentic scope has reached a stable state and the planner terminates the loop by returning a `done` action.
 
 To give a practical example of how this works let's try to build a peer-to-peer agentic system that can perform a scientific research and formulate new hypothesis on a given topic, so that the API of this service could be something like:
 

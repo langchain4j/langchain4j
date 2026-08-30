@@ -219,6 +219,7 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
                 .guardrailConfig(guardrailStreamConfigFrom(bedrockGuardrailConfiguration))
                 .outputConfig(outputConfigFrom(chatRequest.responseFormat()))
                 .serviceTier(serviceTierFor(bedrockServiceTier))
+                .requestMetadata(requestMetadataFrom(parameters))
                 .build();
     }
 
