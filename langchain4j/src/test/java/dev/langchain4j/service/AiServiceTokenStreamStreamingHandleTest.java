@@ -4,6 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
 
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.guardrail.OutputGuardrail;
+import dev.langchain4j.guardrail.OutputGuardrailRequest;
+import dev.langchain4j.guardrail.OutputGuardrailResult;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -51,6 +54,34 @@ class AiServiceTokenStreamStreamingHandleTest {
                 .isNotNull()
                 .extracting(response -> response.aiMessage().text())
                 .isEqualTo("hello!");
+    }
+
+    @Test
+    void should_observe_streaming_handle_before_output_guardrails_run() {
+        TestStreamingHandle streamingHandle = new TestStreamingHandle();
+        AtomicReference<StreamingHandle> observedStreamingHandle = new AtomicReference<>();
+        AtomicReference<StreamingHandle> streamingHandleSeenByGuardrail = new AtomicReference<>();
+        OutputGuardrail outputGuardrail = new OutputGuardrail() {
+            @Override
+            public OutputGuardrailResult validate(OutputGuardrailRequest request) {
+                streamingHandleSeenByGuardrail.set(observedStreamingHandle.get());
+                return OutputGuardrailResult.success();
+            }
+        };
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .streamingChatModel(new TestStreamingChatModel(streamingHandle))
+                .outputGuardrails(outputGuardrail)
+                .build();
+
+        assistant
+                .chat("Hello")
+                .onStreamingHandle(observedStreamingHandle::set)
+                .onPartialResponse(ignored -> {})
+                .onCompleteResponse(ignored -> {})
+                .onError(error -> fail(error.getMessage()))
+                .start();
+
+        assertThat(streamingHandleSeenByGuardrail).hasValue(streamingHandle);
     }
 
     @Test

@@ -136,7 +136,7 @@ public interface TokenStream {
      *
      * @param handler lambda that consumes the streaming handle
      * @return token stream instance used to configure or start stream processing
-     * @since 1.16.0
+     * @since 1.20.0
      */
     @Experimental
     default TokenStream onStreamingHandle(Consumer<StreamingHandle> handler) {
