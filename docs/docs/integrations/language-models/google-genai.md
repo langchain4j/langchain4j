@@ -530,6 +530,9 @@ Response<Image> response = imageModel.generate("A futuristic city at sunset");
 
 ## Batch API
 
+> For a general introduction to batching (pros and cons, provider support, and full text,
+> embedding, and image examples), see the [Batch Processing tutorial](/tutorials/batch-processing).
+
 The Google Gen AI integration provides support for the Batch API, allowing you to run operations asynchronously in the background. The following batch models are supported:
 - `GoogleGenAiBatchChatModel`
 - `GoogleGenAiBatchEmbeddingModel`

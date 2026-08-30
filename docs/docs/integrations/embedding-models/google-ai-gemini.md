@@ -141,6 +141,9 @@ The model automatically batches requests when embedding multiple segments, with 
 
 ## Batch Embedding Processing
 
+> For a general introduction to batching (pros and cons, provider support, and full text,
+> embedding, and image examples), see the [Batch Processing tutorial](/tutorials/batch-processing).
+
 The `GoogleAiGeminiBatchEmbeddingModel` provides an interface for processing large volumes of embedding requests asynchronously at a reduced cost (50% of standard pricing). It is ideal for non-urgent, large-scale embedding tasks with a 24-hour turnaround SLO.
 
 ### Creating Batch Embedding Jobs
