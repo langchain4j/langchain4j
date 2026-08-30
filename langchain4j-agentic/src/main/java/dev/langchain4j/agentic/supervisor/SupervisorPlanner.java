@@ -19,6 +19,9 @@ import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.ParameterNameResolver;
 import dev.langchain4j.service.memory.ChatMemoryAccess;
+import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -118,7 +121,7 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
         return argumentDescription(arg.rawType(), arg.name());
     }
 
-    private static String argumentDescription(Class<?> type, String name) {
+    static String argumentDescription(Class<?> type, String name) {
         if (name == null) {
             return "";
         }
@@ -135,11 +138,31 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
                 ? Stream.of(type.getDeclaredConstructors()[0].getParameters())
                         .map(p -> argumentDescription(p.getType(), ParameterNameResolver.name(p)))
                         .collect(Collectors.joining(", "))
-                : Stream.of(type.getDeclaredFields())
+                : fieldsIncludingInherited(type).stream()
                         .map(f -> argumentDescription(f.getType(), f.getName()))
                         .collect(Collectors.joining(", "));
 
         return name + ": {" + fieldsDescription + "}";
+    }
+
+    /**
+     * Declared fields of {@code type} followed by the fields of its superclasses
+     * (up to, excluding, {@code Object}), so the supervisor's request context
+     * describes the whole state of an output POJO that extends a base class.
+     * A field redeclared in a subclass shadows the inherited one.
+     */
+    private static List<Field> fieldsIncludingInherited(Class<?> type) {
+        List<Class<?>> hierarchy = new ArrayList<>();
+        for (Class<?> current = type; current != null && current != Object.class; current = current.getSuperclass()) {
+            hierarchy.add(current);
+        }
+        Map<String, Field> fields = new LinkedHashMap<>();
+        for (int i = hierarchy.size() - 1; i >= 0; i--) {
+            for (Field field : hierarchy.get(i).getDeclaredFields()) {
+                fields.put(field.getName(), field);
+            }
+        }
+        return List.copyOf(fields.values());
     }
 
     private Action nextSubagent(AgenticScope agenticScope, String lastResponse) {
