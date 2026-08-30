@@ -13,7 +13,7 @@ https://www.elastic.co/
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-elasticsearch</artifactId>
-    <version>1.18.1-beta28</version>
+    <version>1.19.0-beta29</version>
 </dependency>
 ```
 
@@ -245,9 +245,9 @@ public class MyElasticsearchConfiguration implements ElasticsearchConfiguration 
 
     @Override
     SearchResponse<Document> fullTextSearch(
-            ElasticsearchClient client, 
-            String indexName, 
-            String textQuery) {
+            ElasticsearchClient client,
+            String indexName,
+            FullTextSearchRequest request) {
         // Your optional custom full text search implementation here
     }
 
@@ -267,6 +267,15 @@ Please note that you can implement only the methods relevant to your use case:
 * `vectorSearch` for vector similarity search (used by both `ElasticsearchEmbeddingStore` and `ElasticsearchContentRetriever`).
 * `fullTextSearch` for full text search (used by `ElasticsearchContentRetriever` only).
 * `hybridSearch` for hybrid search (used by `ElasticsearchContentRetriever` only).
+
+The `FullTextSearchRequest` carries the `textQuery` to search for, together with the `maxResults`, `minScore` and
+`filter` configured on the `ElasticsearchContentRetriever`. Your implementation is responsible for applying them,
+otherwise documents which do not match the filter can be returned.
+
+> **Note:**
+> There is also a deprecated `fullTextSearch(ElasticsearchClient client, String indexName, String textQuery)` method.
+> Configurations which only implement that one keep working, but the `maxResults`, `minScore` and `filter` of the
+> retriever are ignored, and a warning is logged. Please implement the method taking a `FullTextSearchRequest` instead.
 
 ## Examples
 

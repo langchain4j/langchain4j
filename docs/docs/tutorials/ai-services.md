@@ -128,6 +128,22 @@ This will be converted into a `SystemMessage` behind the scenes and sent to the 
 `@SystemMessage` can also load a prompt template from resources:
 `@SystemMessage(fromResource = "my-prompt-template.txt")`
 
+`@SystemMessage` can also be declared on the AI Service interface,
+in which case it applies to all methods exposed by that AI Service, including inherited ones:
+
+```java
+@SystemMessage("You are a good friend of mine. Answer using slang.")
+interface Friend {
+
+    String chat(String userMessage);
+
+    String chatAgain(String userMessage);
+}
+```
+
+A `@SystemMessage` declared on a method takes precedence over one declared on the interface.
+A `@SystemMessage` declared only on a parent interface is not inherited by a child AI Service interface.
+
 ### System Message Provider
 System messages can also be defined dynamically with the system message provider:
 ```java
@@ -239,7 +255,6 @@ interface AssistantWithChatParams {
 
 Build the AI Service:
 
-java
 ```java
 AssistantWithChatParams assistant = AiServices.builder(AssistantWithChatParams.class)
     .chatModel(openAiChatModel)  // or whichever model
@@ -407,6 +422,18 @@ List<Content> sources = result.sources();
 List<ToolExecution> toolExecutions = result.toolExecutions();
 FinishReason finishReason = result.finishReason();
 ```
+
+:::note
+`T` in `Result<T>` is the content the LLM produces, so it has to be a type the LLM can actually generate:
+a `String`, an enum, a POJO, a collection of those, etc.
+LangChain4j's own types, such as `ChatResponse`, `ChatMessage`, `TextSegment`, `Embedding` or `TokenUsage`,
+cannot be used as `T` (nor as an element of a `List<T>`/`Set<T>` return type):
+the AI Service will fail with an `IllegalConfigurationException` when it is created.
+Everything the final `ChatResponse` carries is already available on `Result<T>` itself, for example:
+```java
+ChatResponse chatResponse = result.finalResponse();
+```
+:::
 
 ## Structured Outputs
 
@@ -633,7 +660,6 @@ prompt engineering is your best bet. Also, try lowering the `temperature` for mo
 The AI Service can [stream response](/tutorials/response-streaming) token-by-token
 when using the `TokenStream` return type:
 ```java
-
 interface Assistant {
 
     TokenStream chat(String message);
@@ -700,7 +726,7 @@ For this, please import `langchain4j-reactor` module:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-reactor</artifactId>
-    <version>1.18.1-beta28</version>
+    <version>1.19.0-beta29</version>
 </dependency>
 ```
 ```java
@@ -728,7 +754,6 @@ as each user would require their own instance of `ChatMemory` to maintain their 
 
 The solution to this issue is to use `ChatMemoryProvider`:
 ```java
-
 interface Assistant  {
     String chat(@MemoryId int memoryId, @UserMessage String message);
 }
@@ -745,13 +770,12 @@ In this scenario, two distinct instances of `ChatMemory` will be provided by `Ch
 
 When using `ChatMemory` in this way it's also important to evict the memory of a no longer needed conversations in order to avoid memory leaks. To make the chat memories internally used by an AI service accessible it's enough that the interface defining it extends the `ChatMemoryAccess` one.
 ```java
-
 interface Assistant extends ChatMemoryAccess {
     String chat(@MemoryId int memoryId, @UserMessage String message);
 }
 ```
-This makes it possible to both access the `ChatMemory` instance of a single conversation and to get rid of it when the conversation is terminated.
 
+This makes it possible to both access the `ChatMemory` instance of a single conversation and to get rid of it when the conversation is terminated.
 ```java
 String answerToKlaus = assistant.chat(1, "Hello, my name is Klaus");
 String answerToFrancine = assistant.chat(2, "Hello, my name is Francine");
@@ -780,9 +804,7 @@ Currently, AI Service does not implement any mechanism to prevent concurrent cal
 ## Tools (Function Calling)
 
 AI Service can be configured with tools that LLM can use:
-
 ```java
-
 class Tools {
     
     @Tool
@@ -814,7 +836,6 @@ More details about tools can be found [here](/tutorials/tools#high-level-tool-ap
 
 AI Service can be configured with a `ContentRetriever` in order to enable [naive RAG](/tutorials/rag#naive-rag):
 ```java
-
 EmbeddingStore embeddingStore  = ...
 EmbeddingModel embeddingModel = ...
 

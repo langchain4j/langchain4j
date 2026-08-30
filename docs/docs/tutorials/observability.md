@@ -668,7 +668,9 @@ Details on how to integrate the Micrometer Observation API library with SpringBo
 
 ## Third-party Integrations
 
-- [Arize Phoenix](https://github.com/Arize-ai/phoenix)
+- [Arize Phoenix](https://github.com/Arize-ai/phoenix) is the open-source, self-hosted option from Arize AI for local trace inspection and experimentation.
+- [Arize AX](https://arize.com/docs/ax/integrations/java/langchain4j/langchain4j-tracing) supports managed cloud and enterprise self-hosted observability for production LangChain4j applications.
+- For evaluation workflows that build on traces, see Arize's [agent evaluation guide](https://arize.com/guides/ai-agent-handbook/agent-evaluation/) and [LLM evaluation guide](https://arize.com/resources/llm-evaluation/).
 
 ### OpenTelemetry GenAI instrumentation
 

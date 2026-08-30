@@ -25,6 +25,7 @@ https://ai.google.dev/gemini-api/docs
     - [Uploading Files](#uploading-files)
     - [Managing Files](#managing-files)
     - [File States](#file-states)
+- [Context Caching](#context-caching)
 - [Batch Processing](#batch-processing)
     - [GoogleAiBatchChatModel](#googleaibatchchatmodel)
     - [Creating Batch Jobs](#creating-batch-jobs)
@@ -39,7 +40,7 @@ https://ai.google.dev/gemini-api/docs
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-google-ai-gemini</artifactId>
-    <version>1.18.1</version>
+    <version>1.19.0</version>
 </dependency>
 ```
 
@@ -256,6 +257,51 @@ System.out.println("Gemini> " + tokyoWeather);
 //         with a temperature of 32 degrees.
 ```
 
+### Tool Parameters Using `$ref`, `$defs` Or Raw JSON Schema
+
+Tool parameters are usually described with the Gemini `parameters` field, which understands a fixed set of
+schema keywords. Standard JSON Schema goes further than that: it can point one part of a document at another
+with `$ref` and `$defs`, and it has keywords such as `minimum` and `maximum` that `parameters` has no place for.
+
+When the tool parameters contain anything of that kind, LangChain4j sends them through `parametersJsonSchema`
+instead, the Gemini field that takes plain JSON Schema, and the schema reaches the API unchanged. There is
+nothing to configure and nothing to switch on:
+
+```java
+JsonObjectSchema priceRange = JsonObjectSchema.builder()
+        .addNumberProperty("min")
+        .addNumberProperty("max")
+        .build();
+
+ToolSpecification searchProducts = ToolSpecification.builder()
+        .name("search_products")
+        .description("Search the catalog")
+        .parameters(JsonObjectSchema.builder()
+                .definitions(Map.of("PriceRange", priceRange))
+                .addStringProperty("query")
+                // a reference to the definition above, resolved by Gemini
+                .addProperty("retail_price", JsonReferenceSchema.builder()
+                        .reference("PriceRange")
+                        .build())
+                // a fragment of JSON Schema, sent exactly as written
+                .addProperty("max_results", JsonRawSchema.from(
+                        "{\"type\":\"integer\",\"minimum\":1,\"maximum\":50}"))
+                .required("query")
+                .build())
+        .build();
+```
+
+This is not limited to schemas you write by hand. It also covers tools LangChain4j builds for you: a `@Tool`
+method whose parameter type refers to itself, and MCP tools whose schema uses `$ref`.
+
+Response schemas are treated the same way, see [Raw Response Schema](#raw-response-schema).
+
+:::note
+Gemini rejects the `$schema` keyword. Documents coming out of a schema generator usually start with
+`"$schema": "https://json-schema.org/draft/2020-12/schema"`, so drop that line before passing the document
+to `JsonRawSchema`, otherwise the request fails with a `400`.
+:::
+
 ## Structured Outputs
 
 See more info on Structured Outputs [here](/tutorials/structured-outputs).
@@ -379,6 +425,7 @@ System.out.println(chatResponse.aiMessage().text());
 #### Raw Response Schema
 Another example shows how we can use the `responseJsonSchema` of the Gemini API to provide a raw JSON schema using `JsonRawSchema` class.  
 Please be cautious to use only the [supported types](https://ai.google.dev/gemini-api/docs/structured-output?example=recipe#json_schema_support) of the Gemini API.
+The same field is used whenever a response schema contains a `JsonRawSchema` or a `JsonReferenceSchema` anywhere inside it, so `$ref` and `$defs` work here too.
 ```
 String rawSchema = """
 {
@@ -809,6 +856,44 @@ if (file.isActive()) {
     System.out.println("File processing failed");
 }
 ```
+
+## Context Caching
+
+The [context caching API](https://ai.google.dev/gemini-api/docs/generate-content/caching) stores large, frequently reused context (a system instruction, long documents) on Google's servers once, so subsequent requests reference it by name instead of resending it, reducing input-token cost and latency.
+
+`GeminiCaches` manages the cache lifecycle (create / get / list / delete). The messages are cached using the same message mapping the chat models use, so you stay in the LangChain4j `ChatMessage` domain:
+
+```java
+GeminiCaches caches = GeminiCaches.builder()
+    .apiKey(System.getenv("GEMINI_AI_KEY"))
+    .build();
+
+// Cache a large, reusable context (a system instruction plus a long document)
+GeminiCachedContent cache = caches.createCache(
+    "gemini-2.5-flash",
+    List.of(
+        SystemMessage.from("You are a precise assistant answering questions about the attached document."),
+        UserMessage.from(longDocumentText)),
+    Duration.ofHours(1));
+
+// Reuse it across many requests via cachedContentName
+ChatModel gemini = GoogleAiGeminiChatModel.builder()
+    .apiKey(System.getenv("GEMINI_AI_KEY"))
+    .modelName("gemini-2.5-flash")
+    .cachedContentName(cache.name())
+    .build();
+
+String answer = gemini.chat("Summarize the cached document in 3 bullet points.");
+
+// Manage the cache lifecycle
+caches.getCache(cache.name());
+caches.listCaches();
+caches.deleteCache(cache.name());
+```
+
+`createCache` has three forms for expiration: with no expiration argument it uses the API default (currently 1 hour); with a `Duration` it sets a relative time-to-live; and with an `Instant` it sets an absolute expiry time.
+
+> Note: explicit context caching requires a paid tier; it is not available on the free tier.
 
 ## Batch Processing
 

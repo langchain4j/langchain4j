@@ -85,7 +85,8 @@ class AwsDocumentConverterTest {
                     "string": "test",
                     "integer": 42,
                     "double": 42.5,
-                    "boolean": true
+                    "boolean": true,
+                    "null": null
                 }
                 """;
 
@@ -97,6 +98,29 @@ class AwsDocumentConverterTest {
         assertThat(document.asMap().get("integer").asNumber().intValue()).isEqualTo(42);
         assertThat(document.asMap().get("double").asNumber().doubleValue()).isEqualTo(42.5);
         assertThat(document.asMap().get("boolean").asBoolean()).isTrue();
+        assertThat(document.asMap().get("null").isNull()).isTrue();
+    }
+
+    @Test
+    void convert_json_null_to_document_null_in_nested_structures() {
+        // Given
+        String json = """
+                {
+                    "top": null,
+                    "list": [1, null, 2],
+                    "nested": {
+                        "inner": null
+                    }
+                }
+                """;
+
+        // When
+        Document document = AwsDocumentConverter.documentFromJson(json);
+
+        // Then
+        assertThat(document.asMap().get("top").isNull()).isTrue();
+        assertThat(document.asMap().get("list").asList().get(1).isNull()).isTrue();
+        assertThat(document.asMap().get("nested").asMap().get("inner").isNull()).isTrue();
     }
 
     @Test
