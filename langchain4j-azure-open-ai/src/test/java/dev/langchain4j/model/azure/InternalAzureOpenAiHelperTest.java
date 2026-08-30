@@ -30,7 +30,9 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.ImageContent.DetailLevel;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.output.FinishReason;
 import java.io.IOException;
 import java.time.Duration;
@@ -297,6 +299,91 @@ class InternalAzureOpenAiHelperTest {
                 .contains("url")
                 .doesNotContain("data:image")
                 .doesNotContain("base64");
+    }
+
+    @Test
+    void toOpenAiMessages_shouldForwardImageDetailLevelLow() {
+        // Given
+        ImageContent imageContent = ImageContent.from("https://example.com/low-res.png", DetailLevel.LOW);
+        UserMessage userMessage = UserMessage.from("Describe this image", imageContent);
+        List<ChatMessage> messages = List.of(userMessage);
+
+        // When
+        List<ChatRequestMessage> openAiMessages = InternalAzureOpenAiHelper.toOpenAiMessages(messages);
+
+        // Then - the detail level must not be silently dropped
+        assertThat(openAiMessages).hasSize(1);
+        ChatRequestUserMessage requestMessage = (ChatRequestUserMessage) openAiMessages.get(0);
+        assertThat(requestMessage.getContent().toString())
+                .containsIgnoringCase("\"detail\"")
+                .containsIgnoringCase("low");
+    }
+
+    @Test
+    void toOpenAiMessages_shouldForwardImageDetailLevelHigh() {
+        // Given
+        ImageContent imageContent = ImageContent.from("https://example.com/image.png", DetailLevel.HIGH);
+        UserMessage userMessage = UserMessage.from("Describe this image", imageContent);
+        List<ChatMessage> messages = List.of(userMessage);
+
+        // When
+        List<ChatRequestMessage> openAiMessages = InternalAzureOpenAiHelper.toOpenAiMessages(messages);
+
+        // Then - the detail level must not be silently dropped
+        assertThat(openAiMessages).hasSize(1);
+        ChatRequestUserMessage requestMessage = (ChatRequestUserMessage) openAiMessages.get(0);
+        assertThat(requestMessage.getContent().toString())
+                .containsIgnoringCase("\"detail\"")
+                .containsIgnoringCase("high");
+    }
+
+    @Test
+    void toOpenAiMessages_shouldForwardImageDetailLevelAuto() {
+        // Given
+        ImageContent imageContent = ImageContent.from("https://example.com/image.png", DetailLevel.AUTO);
+        UserMessage userMessage = UserMessage.from("Describe this image", imageContent);
+        List<ChatMessage> messages = List.of(userMessage);
+
+        // When
+        List<ChatRequestMessage> openAiMessages = InternalAzureOpenAiHelper.toOpenAiMessages(messages);
+
+        // Then - the detail level must not be silently dropped
+        assertThat(openAiMessages).hasSize(1);
+        ChatRequestUserMessage requestMessage = (ChatRequestUserMessage) openAiMessages.get(0);
+        assertThat(requestMessage.getContent().toString())
+                .containsIgnoringCase("\"detail\"")
+                .containsIgnoringCase("auto");
+    }
+
+    @Test
+    void toOpenAiMessages_shouldForwardDefaultImageDetailLevel() {
+        // Given - ImageContent.from(url) defaults to DetailLevel.LOW
+        ImageContent imageContent = ImageContent.from("https://example.com/image.png");
+        UserMessage userMessage = UserMessage.from("Describe this image", imageContent);
+        List<ChatMessage> messages = List.of(userMessage);
+
+        // When
+        List<ChatRequestMessage> openAiMessages = InternalAzureOpenAiHelper.toOpenAiMessages(messages);
+
+        // Then - even the implicit LOW detail must not be silently dropped
+        assertThat(openAiMessages).hasSize(1);
+        ChatRequestUserMessage requestMessage = (ChatRequestUserMessage) openAiMessages.get(0);
+        assertThat(requestMessage.getContent().toString())
+                .containsIgnoringCase("\"detail\"")
+                .containsIgnoringCase("low");
+    }
+
+    @Test
+    void toOpenAiMessages_shouldThrowOnUnsupportedImageDetailLevel() {
+        // Given
+        ImageContent imageContent = ImageContent.from("https://example.com/image.png", DetailLevel.MEDIUM);
+        UserMessage userMessage = UserMessage.from("Describe this image", imageContent);
+        List<ChatMessage> messages = List.of(userMessage);
+
+        // When + Then - fail loudly instead of silently dropping the value
+        assertThatThrownBy(() -> InternalAzureOpenAiHelper.toOpenAiMessages(messages))
+                .isInstanceOf(UnsupportedFeatureException.class)
+                .hasMessageContaining("Unsupported detail level");
     }
 
     @Test
