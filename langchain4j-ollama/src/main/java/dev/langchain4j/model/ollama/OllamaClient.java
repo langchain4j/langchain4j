@@ -228,10 +228,12 @@ class OllamaClient {
 
                 List<ToolCall> toolCalls = message.getToolCalls();
                 if (toolCalls != null) {
-                    for (ToolCall toolCall : toolCalls) {
+                    for (int i = 0; i < toolCalls.size(); i++) {
+                        ToolCall toolCall = toolCalls.get(i);
 
                         int index = getOrDefault(toolCall.getFunction().getIndex(), 0);
-                        if (toolCallBuilder.index() != index) {
+                        boolean startsAnotherToolCallInThisMessage = i > 0;
+                        if (startsAnotherToolCallInThisMessage || toolCallBuilder.index() != index) {
                             onCompleteToolCall(handler, toolCallBuilder.buildAndReset());
                             toolCallBuilder.updateIndex(index);
                         }
