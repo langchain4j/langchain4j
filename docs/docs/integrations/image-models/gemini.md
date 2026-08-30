@@ -210,8 +210,7 @@ Response<Image> edited = imageModel.edit(
 
 ## Batch Image Generation
 
-> For a general introduction to batching (pros and cons, provider support, and full text,
-> embedding, and image examples), see the [Batch Processing tutorial](/tutorials/batch-processing).
+> For an in-depth description of batching see the [batching tutorial](/tutorials/batch-processing).
 
 For generating multiple images at scale with 50% cost reduction:
 
