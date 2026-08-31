@@ -207,6 +207,10 @@ public class AgentUtil {
     }
 
     private static String parameterName(Parameter p) {
+        P annotation = p.getAnnotation(P.class);
+        if (annotation != null && !annotation.name().isBlank()) {
+            return annotation.name();
+        }
         if (p.getAnnotation(MemoryId.class) != null) {
             return MEMORY_ID_ARG_NAME;
         }

@@ -1,5 +1,9 @@
 package dev.langchain4j.agentic.mcp;
 
+import static dev.langchain4j.agentic.observability.ComposedAgentListener.composeWithInherited;
+
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.internal.AgentInvoker;
 import dev.langchain4j.agentic.internal.InternalAgent;
@@ -10,8 +14,6 @@ import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticSystemConfigurationException;
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.planner.Planner;
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.internal.Json;
 import dev.langchain4j.mcp.client.McpClient;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
@@ -26,8 +28,6 @@ import java.util.List;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import static dev.langchain4j.agentic.observability.ComposedAgentListener.composeWithInherited;
 
 public class DefaultMcpClientBuilder<T> implements McpClientBuilder<T>, InternalAgent, InvocationHandler {
 
@@ -97,7 +97,9 @@ public class DefaultMcpClientBuilder<T> implements McpClientBuilder<T>, Internal
         if (params != null && params.properties() != null) {
             Map<String, String> descriptions = new HashMap<>();
             params.properties().forEach((key, schema) -> {
-                if (schema != null && schema.description() != null && !schema.description().isBlank()) {
+                if (schema != null
+                        && schema.description() != null
+                        && !schema.description().isBlank()) {
                     descriptions.put(key, schema.description());
                 }
             });
@@ -113,8 +115,7 @@ public class DefaultMcpClientBuilder<T> implements McpClientBuilder<T>, Internal
         }
 
         Object agent = Proxy.newProxyInstance(
-                agentServiceClass.getClassLoader(),
-                new Class<?>[] {agentServiceClass, McpClientInstance.class}, this);
+                agentServiceClass.getClassLoader(), new Class<?>[] {agentServiceClass, McpClientInstance.class}, this);
 
         return (T) agent;
     }
@@ -126,16 +127,16 @@ public class DefaultMcpClientBuilder<T> implements McpClientBuilder<T>, Internal
                 return tools.get(0);
             }
             throw new AgenticSystemConfigurationException(
-                    "Tool name is required when there is more than one tool available: " +
-                            tools.stream().map(ToolSpecification::name).toList());
+                    "Tool name is required when there is more than one tool available: "
+                            + tools.stream().map(ToolSpecification::name).toList());
         }
 
         return tools.stream()
                 .filter(t -> toolName == null || t.name().equals(toolName))
                 .findFirst()
-                .orElseThrow(() -> new AgenticSystemConfigurationException(
-                        "Tool '" + toolName + "' not found. Available tools: " +
-                                tools.stream().map(ToolSpecification::name).toList()));
+                .orElseThrow(() ->
+                        new AgenticSystemConfigurationException("Tool '" + toolName + "' not found. Available tools: "
+                                + tools.stream().map(ToolSpecification::name).toList()));
     }
 
     @Override
@@ -151,8 +152,8 @@ public class DefaultMcpClientBuilder<T> implements McpClientBuilder<T>, Internal
                 case "inputKeys" -> inputKeys;
                 case "inputDescriptions" -> inputDescriptions;
                 default ->
-                        throw new UnsupportedOperationException(
-                                "Unknown method on McpClientInstance class: " + method.getName());
+                    throw new UnsupportedOperationException(
+                            "Unknown method on McpClientInstance class: " + method.getName());
             };
         }
 

@@ -3,9 +3,9 @@ package dev.langchain4j.agentic.internal;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope;
-import dev.langchain4j.agent.tool.P;
 import java.lang.reflect.Method;
 import java.util.List;
 import org.junit.jupiter.api.Test;
