@@ -6,6 +6,7 @@ import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils
 import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
 import static dev.langchain4j.internal.ToolSpecificationUtils.isEffectivelyStrict;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -63,6 +64,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Flow.Publisher;
 import java.util.function.Supplier;
 import mutiny.zero.Tube;
@@ -215,6 +217,33 @@ class OpenAiResponsesClient {
         } catch (Exception e) {
             throw ExceptionMapper.DEFAULT.mapException(e);
         }
+    }
+
+    /**
+     * Non-blocking counterpart of {@link #chat(ChatRequest, OpenAiResponsesChatRequestParameters)}. Like the
+     * blocking one it does not retry - the Responses models expose no {@code maxRetries} - so the only difference
+     * is that no thread waits for the response.
+     */
+    CompletableFuture<ChatResponse> chatAsync(
+            ChatRequest chatRequest, OpenAiResponsesChatRequestParameters parameters) {
+
+        CompletableFuture<SuccessfulHttpResponse> httpFuture;
+        try {
+            Map<String, Object> payload = buildRequestPayload(chatRequest, parameters, false);
+            httpFuture = httpClient.executeAsync(buildHttpRequest(payload, false));
+        } catch (Exception e) {
+            return CompletableFuture.failedFuture(ExceptionMapper.DEFAULT.mapException(e));
+        }
+
+        CompletableFuture<ChatResponse> result = httpFuture.thenApply(rawHttpResponse -> {
+            try {
+                return parseChatResponse(rawHttpResponse);
+            } catch (Exception e) {
+                throw ExceptionMapper.DEFAULT.mapException(e);
+            }
+        });
+        propagateCancellation(result, httpFuture);
+        return result;
     }
 
     void streamingChat(

@@ -53,6 +53,12 @@ import reactor.blockhound.BlockingOperationError;
  * BlockHound test classes sharing a fork would leave the second one's violation tracking wired to the first's
  * callback. A single install here keeps that tracking correct — the self-test proves it.
  * <p>
+ * Several subclasses <i>may</i> run in the same fork (a module can bind more than one provider pipeline, as the
+ * OpenAI module does for Chat Completions and the Responses API): the recorded violations live in one static list
+ * on this class, so whichever subclass installs first wires up tracking for all of them. That is only sound while
+ * they police the same thread-name prefix. The self-test runs in every subclass precisely so a subclass whose
+ * threads are <b>not</b> covered by the installed predicate fails loudly instead of passing vacuously.
+ * <p>
  * This TCK requires the JDK {@code HttpClient} transport (the default for HTTP-based providers). A provider on a
  * different transport that cannot be driven by a plain-HTTP mock (e.g. Bedrock over the AWS SDK) cannot use it.
  */
