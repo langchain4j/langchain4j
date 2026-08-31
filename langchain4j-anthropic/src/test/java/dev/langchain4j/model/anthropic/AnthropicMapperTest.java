@@ -4,6 +4,7 @@ import static dev.langchain4j.model.anthropic.internal.api.AnthropicRole.ASSISTA
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicRole.SYSTEM;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicRole.USER;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.SERVER_TOOL_RESULTS_KEY;
+import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.THINKING_SIGNATURE_KEY;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.retainKeys;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAiMessage;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicMessages;
@@ -41,6 +42,7 @@ import dev.langchain4j.model.anthropic.internal.api.AnthropicMessage;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicMessageContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicPdfContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicTextContent;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicThinkingContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicTool;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicToolResultContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicToolSchema;
@@ -1052,6 +1054,73 @@ class AnthropicMapperTest {
                           "source": {"type": "base64", "media_type": "application/pdf", "data": "%s"}
                         }
                         """.formatted(BASE64_PDF_DATA));
+    }
+
+    @Test
+    void should_send_thinking_block_that_has_only_a_signature() {
+        // Given an assistant turn whose thinking text is empty and whose content lives entirely in the
+        // (encrypted) signature — what adaptive-thinking models return.
+        AiMessage aiMessage = AiMessage.builder()
+                .thinking("")
+                .attributes(singletonMap(THINKING_SIGNATURE_KEY, "EoAECpABCBEYAipARsBWFsXRge7q"))
+                .toolExecutionRequests(singletonList(ToolExecutionRequest.builder()
+                        .id("tool-1")
+                        .name("getWeather")
+                        .arguments("{}")
+                        .build()))
+                .build();
+
+        // When
+        List<AnthropicMessage> anthropicMessages = toAnthropicMessages(singletonList(aiMessage), true);
+
+        // Then the block must still be echoed back: Anthropic requires it for the next request of the turn.
+        assertThat(anthropicMessages).hasSize(1);
+        AnthropicMessageContent content = anthropicMessages.get(0).content.get(0);
+        assertThat(content).isInstanceOf(AnthropicThinkingContent.class);
+
+        AnthropicThinkingContent thinkingContent = (AnthropicThinkingContent) content;
+        // "" and not null: the field is required by the API and the class is @JsonInclude(NON_NULL).
+        assertThat(thinkingContent.thinking).isEmpty();
+        assertThat(thinkingContent.signature).isEqualTo("EoAECpABCBEYAipARsBWFsXRge7q");
+    }
+
+    @Test
+    void should_send_thinking_block_with_both_text_and_signature() {
+        AiMessage aiMessage = AiMessage.builder()
+                .text("Hello")
+                .thinking("Let me think about this")
+                .attributes(singletonMap(THINKING_SIGNATURE_KEY, "sig-abc"))
+                .build();
+
+        List<AnthropicMessage> anthropicMessages = toAnthropicMessages(singletonList(aiMessage), true);
+
+        AnthropicMessageContent content = anthropicMessages.get(0).content.get(0);
+        assertThat(content).isInstanceOf(AnthropicThinkingContent.class);
+        AnthropicThinkingContent thinkingContent = (AnthropicThinkingContent) content;
+        assertThat(thinkingContent.thinking).isEqualTo("Let me think about this");
+        assertThat(thinkingContent.signature).isEqualTo("sig-abc");
+    }
+
+    @Test
+    void should_not_send_thinking_block_when_there_is_neither_text_nor_signature() {
+        AiMessage aiMessage = AiMessage.builder().text("Hello").thinking("").build();
+
+        List<AnthropicMessage> anthropicMessages = toAnthropicMessages(singletonList(aiMessage), true);
+
+        assertThat(anthropicMessages.get(0).content).noneMatch(AnthropicThinkingContent.class::isInstance);
+    }
+
+    @Test
+    void should_not_send_thinking_block_when_sendThinking_is_false() {
+        AiMessage aiMessage = AiMessage.builder()
+                .text("Hello")
+                .thinking("")
+                .attributes(singletonMap(THINKING_SIGNATURE_KEY, "sig-abc"))
+                .build();
+
+        List<AnthropicMessage> anthropicMessages = toAnthropicMessages(singletonList(aiMessage), false);
+
+        assertThat(anthropicMessages.get(0).content).noneMatch(AnthropicThinkingContent.class::isInstance);
     }
 
     @SafeVarargs
