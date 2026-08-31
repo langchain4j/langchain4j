@@ -24,6 +24,8 @@ import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import dev.langchain4j.mcp.client.transport.McpTransport;
+import dev.langchain4j.mcp.protocol.McpCancellationNotification;
+import dev.langchain4j.mcp.protocol.McpCancellationParams;
 import dev.langchain4j.mcp.protocol.McpClientMessage;
 import dev.langchain4j.mcp.protocol.McpClientRequest;
 import dev.langchain4j.mcp.protocol.McpListToolsParams;
@@ -697,6 +699,54 @@ public class DefaultMcpClientTest {
 
         // 4 calls: discover, first tool call, retry
         verify(transport, times(3)).executeOperationWithResponse(any(McpCallContext.class));
+    }
+
+    @Test
+    public void mrtr_retry_timeout_cancels_retry_request_and_notifies_server() throws Exception {
+        McpTransport transport = getModernStdioTransportMock();
+        AtomicReference<McpOperationHandler> handlerRef = captureMessageHandler(transport);
+        CompletableFuture<String> retryNeverCompletes = new CompletableFuture<>();
+
+        when(transport.sendRequest(any(McpCallContext.class)))
+                .thenReturn(
+                        CompletableFuture.completedFuture(getDiscoverResult().toString()))
+                .thenReturn(CompletableFuture.completedFuture(
+                        buildInputRequiredResponse(true, false).toString()))
+                .thenAnswer(invocation -> {
+                    McpCallContext retryContext = invocation.getArgument(0);
+                    Long retryRequestId = retryContext.message().getId();
+                    handlerRef.get().expectResponse(retryRequestId, retryNeverCompletes);
+                    return retryNeverCompletes;
+                });
+
+        DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion("2026-07-28")
+                .toolExecutionTimeout(java.time.Duration.ofMillis(100))
+                .subscribeToToolListChanges(false)
+                .subscribeToPromptListChanges(false)
+                .subscribeToResourceListChanges(false)
+                .build();
+
+        client.executeTool(
+                ToolExecutionRequest.builder().name("test").arguments("{}").build());
+
+        ArgumentCaptor<McpCallContext> requestCaptor = ArgumentCaptor.forClass(McpCallContext.class);
+        verify(transport, times(3)).sendRequest(requestCaptor.capture());
+        Long retryRequestId =
+                ((McpClientRequest) requestCaptor.getAllValues().get(2).message()).getId();
+
+        java.lang.reflect.Field pendingOperationsField = DefaultMcpClient.class.getDeclaredField("pendingOperations");
+        pendingOperationsField.setAccessible(true);
+        Map<?, ?> pendingOperations = (Map<?, ?>) pendingOperationsField.get(client);
+        assertThat(pendingOperations.containsKey(retryRequestId)).isFalse();
+        assertThat(retryNeverCompletes.isCancelled()).isTrue();
+
+        ArgumentCaptor<McpClientMessage> cancellationCaptor = ArgumentCaptor.forClass(McpClientMessage.class);
+        verify(transport).sendMessage(cancellationCaptor.capture());
+        McpCancellationNotification cancellation = (McpCancellationNotification) cancellationCaptor.getValue();
+        McpCancellationParams params = (McpCancellationParams) cancellation.getParams();
+        assertThat(params.getRequestId()).isEqualTo(retryRequestId);
     }
 
     @Test
