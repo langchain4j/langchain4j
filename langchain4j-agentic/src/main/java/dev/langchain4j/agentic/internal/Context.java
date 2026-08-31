@@ -1,16 +1,14 @@
 package dev.langchain4j.agentic.internal;
 
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
+
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.UserMessage;
 import java.util.function.Function;
 
-import static dev.langchain4j.internal.Utils.isNullOrBlank;
-
 public class Context {
-
-    private static ContextSummarizer SUMMARIZER_INSTANCE;
 
     public interface ContextSummarizer {
 
@@ -35,13 +33,8 @@ public class Context {
         }
     }
 
-    private static ContextSummarizer initSummarizer(ChatModel chatModel) {
-        if (SUMMARIZER_INSTANCE == null) {
-            SUMMARIZER_INSTANCE = AiServices.builder(ContextSummarizer.class)
-                    .chatModel(chatModel)
-                    .build();
-        }
-        return SUMMARIZER_INSTANCE;
+    private static ContextSummarizer createSummarizer(ChatModel chatModel) {
+        return AiServices.builder(ContextSummarizer.class).chatModel(chatModel).build();
     }
 
     public static class AgenticScopeContextGenerator implements UserMessageTransformer {
@@ -68,9 +61,15 @@ public class Context {
 
     public static class Summarizer extends AgenticScopeContextGenerator {
         public Summarizer(AgenticScope agenticScope, ChatModel chatModel, String... agentNames) {
+            this(agenticScope, createSummarizer(chatModel), agentNames);
+        }
+
+        private Summarizer(AgenticScope agenticScope, ContextSummarizer summarizer, String... agentNames) {
             super(agenticScope, c -> {
                 String context = c.contextAsConversation(agentNames);
-                return context.isBlank() ? context : initSummarizer(chatModel).summarize(context).getSummary();
+                return context.isBlank()
+                        ? context
+                        : summarizer.summarize(context).getSummary();
             });
         }
     }
