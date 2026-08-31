@@ -20,6 +20,7 @@ import dev.langchain4j.agentic.planner.AgenticSystemConfigurationException;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.scope.AgenticScopeAccess;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
+import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.internal.Json;
@@ -199,8 +200,10 @@ public class AgentUtil {
             Parameter parameter, Map<String, Object> defaultValues, Set<String> optionalArgs) {
         String argName = parameterName(parameter);
         Object defaultValue = defaultValues.getOrDefault(argName, parameterDefaultValue(parameter));
+        P p = parameter.getAnnotation(P.class);
+        String description = p == null ? null : (isNullOrBlank(p.description()) ? p.value() : p.description());
         return new AgentArgument(
-                parameter.getParameterizedType(), argName, defaultValue, optionalArgs.contains(argName));
+                parameter.getParameterizedType(), argName, defaultValue, optionalArgs.contains(argName), description);
     }
 
     private static String parameterName(Parameter p) {
