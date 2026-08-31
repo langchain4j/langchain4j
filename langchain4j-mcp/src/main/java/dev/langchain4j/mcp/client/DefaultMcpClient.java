@@ -823,7 +823,7 @@ public class DefaultMcpClient implements McpClient {
             notifyListeners(l -> l.onResourceGetError(context, e));
             throw new RuntimeException(e);
         } catch (InterruptedException e) {
-            Thread.interrupted();
+            Thread.currentThread().interrupt();
             throw new RuntimeException(e);
         } catch (McpException e) {
             notifyListeners(l -> l.onResourceGetError(context, e));
@@ -886,7 +886,7 @@ public class DefaultMcpClient implements McpClient {
             notifyListeners(l -> l.onPromptGetError(context, e));
             throw new RuntimeException(e);
         } catch (InterruptedException e) {
-            Thread.interrupted();
+            Thread.currentThread().interrupt();
             throw new RuntimeException(e);
         } catch (McpException e) {
             notifyListeners(l -> l.onPromptGetError(context, e));
