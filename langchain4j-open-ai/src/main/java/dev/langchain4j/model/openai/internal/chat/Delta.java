@@ -29,6 +29,8 @@ public final class Delta {
     private final String reasoningContent;
 
     @JsonProperty
+    private final String refusal;
+    @JsonProperty
     private final List<ToolCall> toolCalls;
 
     @JsonProperty
@@ -39,6 +41,7 @@ public final class Delta {
         this.role = builder.role;
         this.content = builder.content;
         this.reasoningContent = builder.reasoningContent;
+        this.refusal = builder.refusal;
         this.toolCalls = builder.toolCalls;
         this.functionCall = builder.functionCall;
     }
@@ -53,6 +56,10 @@ public final class Delta {
 
     public String reasoningContent() {
         return reasoningContent;
+    }
+
+    public String refusal() {
+        return refusal;
     }
 
     public List<ToolCall> toolCalls() {
@@ -76,6 +83,7 @@ public final class Delta {
         return Objects.equals(role, another.role)
                 && Objects.equals(content, another.content)
                 && Objects.equals(reasoningContent, another.reasoningContent)
+                && Objects.equals(refusal, another.refusal)
                 && Objects.equals(toolCalls, another.toolCalls)
                 && Objects.equals(functionCall, another.functionCall);
     }
@@ -87,6 +95,7 @@ public final class Delta {
         h += (h << 5) + Objects.hashCode(role);
         h += (h << 5) + Objects.hashCode(content);
         h += (h << 5) + Objects.hashCode(reasoningContent);
+        h += (h << 5) + Objects.hashCode(refusal);
         h += (h << 5) + Objects.hashCode(toolCalls);
         h += (h << 5) + Objects.hashCode(functionCall);
         return h;
@@ -99,6 +108,7 @@ public final class Delta {
                 + "role=" + role
                 + ", content=" + content
                 + ", reasoningContent=" + reasoningContent
+                + ", refusal=" + refusal
                 + ", toolCalls=" + toolCalls
                 + ", functionCall=" + functionCall
                 + "}";
@@ -116,6 +126,7 @@ public final class Delta {
         private String role;
         private String content;
         private String reasoningContent;
+        private String refusal;
         private List<ToolCall> toolCalls;
 
         @Deprecated
@@ -134,6 +145,11 @@ public final class Delta {
         @JsonAlias("reasoning")
         public Builder reasoningContent(String reasoningContent) {
             this.reasoningContent = reasoningContent;
+            return this;
+        }
+
+        public Builder refusal(String refusal) {
+            this.refusal = refusal;
             return this;
         }
 
