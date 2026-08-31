@@ -38,6 +38,8 @@ class GeminiStreamingResponseBuilder {
     private final AtomicReference<String> modelName = new AtomicReference<>();
     private final AtomicReference<TokenUsage> tokenUsage = new AtomicReference<>();
     private final AtomicReference<FinishReason> finishReason = new AtomicReference<>();
+    private final AtomicReference<List<GeminiSafetyRating>> safetyRatings = new AtomicReference<>();
+    private final AtomicReference<String> blockReason = new AtomicReference<>();
 
     GeminiStreamingResponseBuilder(boolean includeCodeExecutionOutput, Boolean returnThinking) {
         this.includeCodeExecutionOutput = includeCodeExecutionOutput;
@@ -71,6 +73,7 @@ class GeminiStreamingResponseBuilder {
         updateModelName(partialResponse);
         updateFinishReason(firstCandidate);
         updateTokenUsage(partialResponse.usageMetadata());
+        updateSafetyData(partialResponse, firstCandidate);
 
         GeminiContent content = firstCandidate.content();
         if (content == null || content.parts() == null) {
@@ -100,6 +103,8 @@ class GeminiStreamingResponseBuilder {
                         .modelName(modelName.get())
                         .tokenUsage(tokenUsage.get())
                         .finishReason(aiMessage.hasToolExecutionRequests() ? TOOL_EXECUTION : finishReason.get())
+                        .safetyRatings(safetyRatings.get() != null ? safetyRatings.get() : List.of())
+                        .blockReason(blockReason.get())
                         .build())
                 .build();
     }
@@ -132,6 +137,15 @@ class GeminiStreamingResponseBuilder {
     private void updateFinishReason(GeminiCandidate candidate) {
         if (candidate.finishReason() != null) {
             this.finishReason.set(fromGFinishReasonToFinishReason(candidate.finishReason()));
+        }
+    }
+
+    private void updateSafetyData(GeminiGenerateContentResponse response, GeminiCandidate candidate) {
+        if (candidate.safetyRatings() != null) {
+            safetyRatings.set(candidate.safetyRatings());
+        }
+        if (response.promptFeedback() != null && response.promptFeedback().blockReason() != null) {
+            blockReason.set(response.promptFeedback().blockReason());
         }
     }
 
