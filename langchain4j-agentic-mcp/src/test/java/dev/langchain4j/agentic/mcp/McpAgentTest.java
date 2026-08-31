@@ -7,6 +7,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.agentic.Agent;
@@ -15,14 +16,28 @@ import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.observability.AgentRequest;
+import dev.langchain4j.agentic.planner.AgentArgument;
+import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.scope.AgentInvocation;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
+import dev.langchain4j.agentic.supervisor.SupervisorPlanner;
 import dev.langchain4j.mcp.client.McpClient;
+import dev.langchain4j.model.chat.request.json.JsonAnyOfSchema;
+import dev.langchain4j.model.chat.request.json.JsonArraySchema;
+import dev.langchain4j.model.chat.request.json.JsonBooleanSchema;
+import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
+import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
+import dev.langchain4j.model.chat.request.json.JsonNullSchema;
+import dev.langchain4j.model.chat.request.json.JsonNumberSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonRawSchema;
+import dev.langchain4j.model.chat.request.json.JsonReferenceSchema;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.service.V;
 import dev.langchain4j.service.tool.ToolExecutionResult;
+import java.lang.reflect.Method;
+import java.lang.reflect.ParameterizedType;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -87,6 +102,307 @@ class McpAgentTest {
     }
 
     @Test
+    void untyped_mcp_agent_preserves_argument_types_from_schema() {
+        McpClient mcpClient = mock(McpClient.class);
+        ToolSpecification toolSpec = ToolSpecification.builder()
+                .name("search_records")
+                .description("Search records")
+                .parameters(JsonObjectSchema.builder()
+                        .addProperty("recordType", new JsonStringSchema())
+                        .addProperty(
+                                "fields",
+                                JsonArraySchema.builder()
+                                        .description("Fields to include in the search")
+                                        .items(new JsonStringSchema())
+                                        .build())
+                        .addProperty("limit", new JsonIntegerSchema())
+                        .addProperty(
+                                "filters",
+                                JsonObjectSchema.builder()
+                                        .addStringProperty("status")
+                                        .build())
+                        .build())
+                .build();
+        when(mcpClient.listTools()).thenReturn(List.of(toolSpec));
+
+        UntypedAgent agent = McpAgent.builder(mcpClient).build();
+
+        List<AgentArgument> arguments = ((McpClientInstance) agent).arguments();
+        assertThat(arguments)
+                .extracting(AgentArgument::name)
+                .containsExactly("recordType", "fields", "limit", "filters");
+        assertThat(arguments.get(0).type()).isEqualTo(String.class);
+        assertThat(arguments.get(2).type()).isEqualTo(Integer.class);
+        assertThat(arguments.get(1).description()).isEqualTo("Fields to include in the search");
+        assertThat(((McpClientInstance) agent).inputDescriptions())
+                .containsEntry("fields", "Fields to include in the search");
+
+        ParameterizedType fieldsType = (ParameterizedType) arguments.get(1).type();
+        assertThat(fieldsType.getRawType()).isEqualTo(List.class);
+        assertThat(fieldsType.getActualTypeArguments()).containsExactly(String.class);
+
+        ParameterizedType filtersType = (ParameterizedType) arguments.get(3).type();
+        assertThat(filtersType.getRawType()).isEqualTo(Map.class);
+        assertThat(filtersType.getActualTypeArguments()).containsExactly(String.class, Object.class);
+    }
+
+    @Test
+    void untyped_mcp_agent_maps_scalar_schema_types() {
+        McpClient mcpClient = mock(McpClient.class);
+        ToolSpecification toolSpec = ToolSpecification.builder()
+                .name("typed_search")
+                .parameters(JsonObjectSchema.builder()
+                        .addProperty("text", new JsonStringSchema())
+                        .addProperty("limit", new JsonIntegerSchema())
+                        .addProperty("score", new JsonNumberSchema())
+                        .addProperty("exact", new JsonBooleanSchema())
+                        .addProperty(
+                                "order",
+                                JsonEnumSchema.builder()
+                                        .enumValues("asc", "desc")
+                                        .build())
+                        .build())
+                .build();
+        when(mcpClient.listTools()).thenReturn(List.of(toolSpec));
+
+        UntypedAgent agent = McpAgent.builder(mcpClient).build();
+
+        assertThat(((McpClientInstance) agent).arguments())
+                .extracting(AgentArgument::rawType)
+                .containsExactly(String.class, Integer.class, Double.class, Boolean.class, String.class);
+    }
+
+    @Test
+    void untyped_mcp_agent_preserves_types_for_explicit_input_keys() {
+        McpClient mcpClient = mock(McpClient.class);
+        ToolSpecification toolSpec = ToolSpecification.builder()
+                .name("search_records")
+                .parameters(JsonObjectSchema.builder()
+                        .addProperty(
+                                "fields",
+                                JsonArraySchema.builder()
+                                        .items(new JsonStringSchema())
+                                        .build())
+                        .addProperty("query", new JsonStringSchema())
+                        .addProperty("unused", new JsonBooleanSchema())
+                        .build())
+                .build();
+        when(mcpClient.listTools()).thenReturn(List.of(toolSpec));
+
+        UntypedAgent agent =
+                McpAgent.builder(mcpClient).inputKeys("fields", "query").build();
+        McpClientInstance mcpAgent = (McpClientInstance) agent;
+        List<AgentArgument> arguments = mcpAgent.arguments();
+
+        assertThat(arguments).extracting(AgentArgument::name).containsExactly("fields", "query");
+        ParameterizedType fieldsType = (ParameterizedType) arguments.get(0).type();
+        assertThat(fieldsType.getRawType()).isEqualTo(List.class);
+        assertThat(fieldsType.getActualTypeArguments()).containsExactly(String.class);
+        assertThat(arguments.get(1).type()).isEqualTo(String.class);
+    }
+
+    @Test
+    void untyped_mcp_agent_falls_back_to_object_for_unknown_schema_properties() {
+        McpClient mcpClient = mock(McpClient.class);
+        ToolSpecification toolSpec = ToolSpecification.builder()
+                .name("search_records")
+                .parameters(JsonObjectSchema.builder()
+                        .addProperty("known", new JsonStringSchema())
+                        .build())
+                .build();
+        when(mcpClient.listTools()).thenReturn(List.of(toolSpec));
+
+        UntypedAgent agent =
+                McpAgent.builder(mcpClient).inputKeys("known", "missing").build();
+        List<AgentArgument> arguments = ((McpClientInstance) agent).arguments();
+
+        assertThat(arguments.get(0).type()).isEqualTo(String.class);
+        assertThat(arguments.get(1).type()).isEqualTo(Object.class);
+    }
+
+    @Test
+    void untyped_mcp_agent_falls_back_to_object_for_unresolved_references() {
+        McpClient mcpClient = mock(McpClient.class);
+        ToolSpecification toolSpec = ToolSpecification.builder()
+                .name("reference_tool")
+                .parameters(JsonObjectSchema.builder()
+                        .addProperty(
+                                "value",
+                                JsonReferenceSchema.builder()
+                                        .reference("MissingDefinition")
+                                        .build())
+                        .build())
+                .build();
+        when(mcpClient.listTools()).thenReturn(List.of(toolSpec));
+
+        UntypedAgent agent = McpAgent.builder(mcpClient).build();
+
+        assertThat(((McpClientInstance) agent).arguments().get(0).type()).isEqualTo(Object.class);
+    }
+
+    @Test
+    void untyped_mcp_agent_resolves_dollar_defs_references() {
+        JsonObjectSchema address =
+                JsonObjectSchema.builder().addStringProperty("city").build();
+        ToolSpecification toolSpec = ToolSpecification.builder()
+                .name("dollar_defs_tool")
+                .parameters(JsonObjectSchema.builder()
+                        .addProperty(
+                                "address",
+                                JsonReferenceSchema.builder()
+                                        .reference("#/$defs/Address")
+                                        .build())
+                        .definitions(Map.of("Address", address))
+                        .build())
+                .build();
+
+        McpClient mcpClient = mock(McpClient.class);
+        when(mcpClient.listTools()).thenReturn(List.of(toolSpec));
+
+        UntypedAgent agent = McpAgent.builder(mcpClient).build();
+
+        ParameterizedType addressType = (ParameterizedType)
+                ((McpClientInstance) agent).arguments().get(0).type();
+        assertThat(addressType.getRawType()).isEqualTo(Map.class);
+        assertThat(addressType.getActualTypeArguments()).containsExactly(String.class, Object.class);
+    }
+
+    @Test
+    void untyped_mcp_agent_maps_raw_schema_to_object() {
+        McpClient mcpClient = mock(McpClient.class);
+        ToolSpecification toolSpec = ToolSpecification.builder()
+                .name("raw_tool")
+                .parameters(JsonObjectSchema.builder()
+                        .addProperty("value", JsonRawSchema.from("{\"type\":\"string\"}"))
+                        .build())
+                .build();
+        when(mcpClient.listTools()).thenReturn(List.of(toolSpec));
+
+        UntypedAgent agent = McpAgent.builder(mcpClient).build();
+
+        assertThat(((McpClientInstance) agent).arguments().get(0).type()).isEqualTo(Object.class);
+    }
+
+    @Test
+    void untyped_mcp_agent_preserves_nested_array_types() {
+        McpClient mcpClient = mock(McpClient.class);
+        ToolSpecification toolSpec = ToolSpecification.builder()
+                .name("nested_search")
+                .parameters(JsonObjectSchema.builder()
+                        .addProperty(
+                                "values",
+                                JsonArraySchema.builder()
+                                        .items(JsonArraySchema.builder()
+                                                .items(new JsonIntegerSchema())
+                                                .build())
+                                        .build())
+                        .build())
+                .build();
+        when(mcpClient.listTools()).thenReturn(List.of(toolSpec));
+
+        UntypedAgent agent = McpAgent.builder(mcpClient).build();
+        ParameterizedType outerType = (ParameterizedType)
+                ((McpClientInstance) agent).arguments().get(0).type();
+        ParameterizedType innerType = (ParameterizedType) outerType.getActualTypeArguments()[0];
+
+        assertThat(outerType.getRawType()).isEqualTo(List.class);
+        assertThat(innerType.getRawType()).isEqualTo(List.class);
+        assertThat(innerType.getActualTypeArguments()).containsExactly(Integer.class);
+    }
+
+    @Test
+    void untyped_mcp_agent_resolves_references_and_unions() {
+        JsonObjectSchema address =
+                JsonObjectSchema.builder().addStringProperty("city").build();
+        JsonObjectSchema parameters = JsonObjectSchema.builder()
+                .addProperty(
+                        "name",
+                        JsonAnyOfSchema.builder()
+                                .anyOf(new JsonStringSchema(), new JsonNullSchema())
+                                .build())
+                .addProperty(
+                        "sameType",
+                        JsonAnyOfSchema.builder()
+                                .anyOf(
+                                        new JsonStringSchema(),
+                                        JsonEnumSchema.builder()
+                                                .enumValues("a", "b")
+                                                .build())
+                                .build())
+                .addProperty(
+                        "differentTypes",
+                        JsonAnyOfSchema.builder()
+                                .anyOf(new JsonStringSchema(), new JsonIntegerSchema())
+                                .build())
+                .addProperty(
+                        "address",
+                        JsonReferenceSchema.builder()
+                                .reference("#/definitions/Address")
+                                .build())
+                .addProperty(
+                        "addresses",
+                        JsonArraySchema.builder()
+                                .items(JsonReferenceSchema.builder()
+                                        .reference("Address")
+                                        .build())
+                                .build())
+                .required("sameType", "differentTypes", "address", "addresses")
+                .definitions(Map.of("Address", address))
+                .build();
+
+        McpClient mcpClient = mock(McpClient.class);
+        when(mcpClient.listTools())
+                .thenReturn(List.of(ToolSpecification.builder()
+                        .name("schema_tool")
+                        .parameters(parameters)
+                        .build()));
+
+        UntypedAgent agent = McpAgent.builder(mcpClient).build();
+        List<AgentArgument> arguments = ((McpClientInstance) agent).arguments();
+
+        assertThat(arguments)
+                .extracting(AgentArgument::name)
+                .containsExactly("name", "sameType", "differentTypes", "address", "addresses");
+        assertThat(arguments.get(0).type()).isEqualTo(String.class);
+        assertThat(arguments.get(0).isOptional()).isTrue();
+        assertThat(arguments.get(1).type()).isEqualTo(String.class);
+        assertThat(arguments.get(1).isOptional()).isFalse();
+        assertThat(arguments.get(2).type()).isEqualTo(Object.class);
+        assertThat(arguments.get(3).type()).isNotEqualTo(Object.class);
+        assertThat(arguments.get(3).isOptional()).isFalse();
+
+        ParameterizedType addressType = (ParameterizedType) arguments.get(3).type();
+        assertThat(addressType.getRawType()).isEqualTo(Map.class);
+        assertThat(addressType.getActualTypeArguments()).containsExactly(String.class, Object.class);
+
+        ParameterizedType addressesType = (ParameterizedType) arguments.get(4).type();
+        assertThat(addressesType.getRawType()).isEqualTo(List.class);
+        assertThat(addressesType.getActualTypeArguments()).containsExactly(addressType);
+    }
+
+    @Test
+    void untyped_mcp_agent_validates_required_schema_arguments() {
+        McpClient mcpClient = mock(McpClient.class);
+        ToolSpecification toolSpec = ToolSpecification.builder()
+                .name("required_tool")
+                .parameters(JsonObjectSchema.builder()
+                        .addStringProperty("required")
+                        .addStringProperty("optional")
+                        .required("required")
+                        .build())
+                .build();
+        when(mcpClient.listTools()).thenReturn(List.of(toolSpec));
+
+        UntypedAgent agent = McpAgent.builder(mcpClient).build();
+        UntypedAgent pipeline =
+                AgenticServices.sequenceBuilder().subAgents(agent).build();
+
+        assertThatThrownBy(() -> pipeline.invoke(Map.of("optional", "value")))
+                .isInstanceOf(MissingArgumentException.class)
+                .hasMessageContaining("required");
+    }
+
+    @Test
     void untyped_mcp_agent_with_explicit_input_keys() {
         McpClient mcpClient = mockMcpClient("greet", "Generate a greeting", "name", "language");
         mockToolResult(mcpClient, "Hello, Mario!");
@@ -105,6 +421,86 @@ class McpAgentTest {
 
         @Agent(description = "Translate text")
         String translate(@V("text") String text, @V("language") String language);
+    }
+
+    public interface TypedCollectionAgent {
+
+        @Agent(description = "Search records")
+        String search(@V("fields") List<String> fields, @V("recordIds") String[] recordIds);
+    }
+
+    public interface TypedDescribedCollectionAgent {
+
+        @Agent(description = "Search records")
+        String search(
+                @V("fields") @P(name = "fields") List<String> fields,
+                @V("recordIds") @P(name = "recordIds", description = "IDs selected by the caller") String[] recordIds);
+    }
+
+    @Test
+    void typed_mcp_agent_preserves_generic_argument_types() throws Exception {
+        McpClient mcpClient = mockMcpClient("search_records", "Search records", "fields", "recordIds");
+        TypedCollectionAgent agent =
+                McpAgent.builder(mcpClient, TypedCollectionAgent.class).build();
+
+        Method method = TypedCollectionAgent.class.getMethod("search", List.class, String[].class);
+        List<AgentArgument> clientArguments = ((McpClientInstance) agent).arguments();
+        assertThat(clientArguments).extracting(AgentArgument::name).containsExactly("fields", "recordIds");
+        assertThat(clientArguments.get(0).type()).isEqualTo(method.getGenericParameterTypes()[0]);
+        assertThat(clientArguments.get(1).type()).isEqualTo(method.getGenericParameterTypes()[1]);
+
+        List<AgentArgument> arguments = new McpClientAgentInvoker((McpClientInstance) agent, method).arguments();
+
+        assertThat(arguments.get(0).type()).isEqualTo(method.getGenericParameterTypes()[0]);
+        assertThat(arguments.get(1).type()).isEqualTo(method.getGenericParameterTypes()[1]);
+    }
+
+    @Test
+    void typed_mcp_agent_combines_method_types_and_schema_descriptions() throws Exception {
+        McpClient mcpClient = mock(McpClient.class);
+        ToolSpecification toolSpec = ToolSpecification.builder()
+                .name("search_records")
+                .description("Search records")
+                .parameters(JsonObjectSchema.builder()
+                        .addProperty(
+                                "fields",
+                                JsonArraySchema.builder()
+                                        .description("Fields to include in the search")
+                                        .items(new JsonStringSchema())
+                                        .build())
+                        .addProperty(
+                                "recordIds",
+                                JsonArraySchema.builder()
+                                        .description("MCP record identifiers")
+                                        .items(new JsonStringSchema())
+                                        .build())
+                        .build())
+                .build();
+        when(mcpClient.listTools()).thenReturn(List.of(toolSpec));
+
+        TypedDescribedCollectionAgent agent =
+                McpAgent.builder(mcpClient, TypedDescribedCollectionAgent.class).build();
+        Method method = TypedDescribedCollectionAgent.class.getMethod("search", List.class, String[].class);
+
+        List<AgentArgument> clientArguments = ((McpClientInstance) agent).arguments();
+        assertThat(clientArguments).extracting(AgentArgument::type).containsExactly(
+                method.getGenericParameterTypes()[0], method.getGenericParameterTypes()[1]);
+        assertThat(clientArguments)
+                .extracting(AgentArgument::description)
+                .containsExactly("Fields to include in the search", "IDs selected by the caller");
+
+        List<AgentArgument> invokerArguments =
+                new McpClientAgentInvoker((McpClientInstance) agent, method).arguments();
+        assertThat(invokerArguments)
+                .extracting(AgentArgument::description)
+                .containsExactly("Fields to include in the search", "IDs selected by the caller");
+
+        Method cardBuilder = SupervisorPlanner.class.getDeclaredMethod("toCard", AgentInstance.class);
+        cardBuilder.setAccessible(true);
+        assertThat(cardBuilder.invoke(null, new McpClientAgentInvoker((McpClientInstance) agent, method)))
+                .isEqualTo(
+                        "{'search_records', 'Search records', [fields: List<String> - Fields to include in the search, "
+                                + "recordIds: String[] - IDs selected by the caller]}");
     }
 
     @Test
@@ -346,6 +742,7 @@ class McpAgentTest {
 
         UntypedAgent agent = McpAgent.builder(mcpClient).outputKey("time").build();
 
+        assertThat(((McpClientInstance) agent).arguments()).isEmpty();
         Object result = agent.invoke(Map.of());
         assertThat(result).isEqualTo("2024-01-01T00:00:00Z");
     }
