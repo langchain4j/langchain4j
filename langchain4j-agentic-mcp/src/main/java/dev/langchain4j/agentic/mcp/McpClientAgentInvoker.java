@@ -24,6 +24,7 @@ public class McpClientAgentInvoker implements AgentInvoker {
 
     private String agentId;
     private final String[] inputKeys;
+    private final Map<String, String> inputDescriptions;
 
     private final McpClientInstance mcpClientInstance;
 
@@ -40,6 +41,7 @@ public class McpClientAgentInvoker implements AgentInvoker {
         this.toolDescription = mcpClientInstance.toolDescription();
         this.agentId = name();
         this.inputKeys = inputKeys(mcpClientInstance);
+        this.inputDescriptions = mcpClientInstance.inputDescriptions();
     }
 
     private String[] inputKeys(McpClientInstance mcpClientInstance) {
@@ -98,7 +100,7 @@ public class McpClientAgentInvoker implements AgentInvoker {
     @Override
     public List<AgentArgument> arguments() {
         return Stream.of(inputKeys)
-                .map(input -> new AgentArgument(Object.class, input))
+                .map(input -> new AgentArgument(Object.class, input, null, false, inputDescriptions.get(input)))
                 .toList();
     }
 

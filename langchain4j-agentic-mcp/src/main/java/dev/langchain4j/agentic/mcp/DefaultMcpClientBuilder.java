@@ -45,6 +45,7 @@ public class DefaultMcpClientBuilder<T> implements McpClientBuilder<T>, Internal
     private InternalAgent parent;
 
     private String[] inputKeys;
+    private Map<String, String> inputDescriptions = Map.of();
     private String outputKey;
     private boolean async;
 
@@ -92,9 +93,18 @@ public class DefaultMcpClientBuilder<T> implements McpClientBuilder<T>, Internal
         this.name = toolSpec.name();
         this.agentId = this.name;
         this.description = toolSpec.description();
+        JsonObjectSchema params = toolSpec.parameters();
+        if (params != null && params.properties() != null) {
+            Map<String, String> descriptions = new HashMap<>();
+            params.properties().forEach((key, schema) -> {
+                if (schema != null && schema.description() != null && !schema.description().isBlank()) {
+                    descriptions.put(key, schema.description());
+                }
+            });
+            this.inputDescriptions = Map.copyOf(descriptions);
+        }
 
         if (agentServiceClass == UntypedAgent.class && inputKeys == null) {
-            JsonObjectSchema params = toolSpec.parameters();
             if (params != null && params.properties() != null) {
                 this.inputKeys = params.properties().keySet().toArray(new String[0]);
             } else {
@@ -139,6 +149,7 @@ public class DefaultMcpClientBuilder<T> implements McpClientBuilder<T>, Internal
                 case "toolName" -> name;
                 case "toolDescription" -> description;
                 case "inputKeys" -> inputKeys;
+                case "inputDescriptions" -> inputDescriptions;
                 default ->
                         throw new UnsupportedOperationException(
                                 "Unknown method on McpClientInstance class: " + method.getName());
