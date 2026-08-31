@@ -1629,6 +1629,92 @@ public class DefaultMcpClientTest {
         verify(transport, times(1)).sendMessage(any(McpClientMessage.class));
     }
 
+    @Test
+    public void resource_read_timeout_cancels_pending_request_and_sends_cancellation_notification() {
+        McpTransport transport = getModernStdioTransportMock();
+
+        CompletableFuture<JsonNode> neverCompletes = new CompletableFuture<>();
+        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
+                .thenReturn(CompletableFuture.completedFuture(getDiscoverResult()))
+                .thenReturn(neverCompletes);
+
+        DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion("2026-07-28")
+                .resourcesTimeout(java.time.Duration.ofMillis(100))
+                .subscribeToToolListChanges(false)
+                .subscribeToPromptListChanges(false)
+                .subscribeToResourceListChanges(false)
+                .build();
+
+        assertThatThrownBy(() -> client.readResource("test://resource")).isInstanceOf(RuntimeException.class);
+
+        assertThat(neverCompletes.isCancelled()).isTrue();
+        verify(transport, times(1)).sendMessage(any(McpClientMessage.class));
+    }
+
+    @Test
+    public void resource_read_timeout_over_http_cancels_without_cancellation_notification() {
+        McpTransport transport = getModernHttpTransportMock();
+
+        CompletableFuture<JsonNode> neverCompletes = new CompletableFuture<>();
+        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
+                .thenReturn(CompletableFuture.completedFuture(getDiscoverResult()))
+                .thenReturn(neverCompletes);
+
+        DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion("2026-07-28")
+                .resourcesTimeout(java.time.Duration.ofMillis(100))
+                .subscribeToToolListChanges(false)
+                .subscribeToPromptListChanges(false)
+                .subscribeToResourceListChanges(false)
+                .build();
+
+        assertThatThrownBy(() -> client.readResource("test://resource")).isInstanceOf(RuntimeException.class);
+
+        assertThat(neverCompletes.isCancelled()).isTrue();
+        verify(transport, never()).sendMessage(any(McpClientMessage.class));
+    }
+
+    @Test
+    public void prompt_get_timeout_cancels_pending_request_and_sends_cancellation_notification() {
+        McpTransport transport = getLegacyHttpTransportMock();
+
+        CompletableFuture<JsonNode> neverCompletes = new CompletableFuture<>();
+        when(transport.executeOperationWithResponse(any(McpCallContext.class))).thenReturn(neverCompletes);
+
+        DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion("2025-11-25")
+                .promptsTimeout(java.time.Duration.ofMillis(100))
+                .build();
+
+        assertThatThrownBy(() -> client.getPrompt("test", Map.of())).isInstanceOf(RuntimeException.class);
+
+        assertThat(neverCompletes.isCancelled()).isTrue();
+        verify(transport, times(1)).sendMessage(any(McpClientMessage.class));
+    }
+
+    @Test
+    public void resource_subscribe_timeout_cancels_pending_request_and_sends_cancellation_notification() {
+        McpTransport transport = getLegacyHttpTransportMock();
+
+        CompletableFuture<JsonNode> neverCompletes = new CompletableFuture<>();
+        when(transport.executeOperationWithResponse(any(McpCallContext.class))).thenReturn(neverCompletes);
+
+        DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion("2025-11-25")
+                .resourcesTimeout(java.time.Duration.ofMillis(100))
+                .build();
+
+        assertThatThrownBy(() -> client.subscribeToResource("test://resource")).isInstanceOf(RuntimeException.class);
+
+        assertThat(neverCompletes.isCancelled()).isTrue();
+        verify(transport, times(1)).sendMessage(any(McpClientMessage.class));
+    }
+
     @SuppressWarnings("unchecked")
     private static Map<Long, ?> getActiveSubscriptions(DefaultMcpClient client) throws Exception {
         java.lang.reflect.Field field = DefaultMcpClient.class.getDeclaredField("activeSubscriptions");
