@@ -71,4 +71,14 @@ public @interface SystemMessage {
      * interface-level annotation, or the interface declaring the method for a method-level one.
      */
     String fromResource() default "";
+
+    /**
+     * When {@code true}, unresolved template variables (e.g. {@code {{name}}}) are left as-is instead of throwing an exception.
+     * <p>
+     * This is useful when the message is not intended as a template but happens to contain
+     * text that uses the same {@code {{...}}} syntax (e.g. code examples).
+     * <p>
+     * Defaults to {@code false}, which preserves the current behavior of throwing when a variable is missing.
+     */
+    boolean lenient() default false;
 }

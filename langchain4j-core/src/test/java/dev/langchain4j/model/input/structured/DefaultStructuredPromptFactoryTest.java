@@ -24,6 +24,9 @@ class DefaultStructuredPromptFactoryTest implements WithAssertions {
         }
     }
 
+    @StructuredPrompt(value = "Hello, my name is {{name}}. Unresolved: {{unknown}}", lenient = true)
+    record LenientGreeting(String name) {}
+
     @Test
     void test() {
         DefaultStructuredPromptFactory factory = new DefaultStructuredPromptFactory();
@@ -51,5 +54,12 @@ class DefaultStructuredPromptFactoryTest implements WithAssertions {
         assertThatExceptionOfType(IllegalArgumentException.class)
                 .isThrownBy(() -> factory.toPrompt(new BrokenPrompt("Klaus")))
                 .withMessage("Value for the variable 'broken' is missing");
+    }
+
+    @Test
+    void lenient_true_should_keep_unresolved_variables() {
+        DefaultStructuredPromptFactory factory = new DefaultStructuredPromptFactory();
+        Prompt p = factory.toPrompt(new LenientGreeting("Klaus"));
+        assertThat(p.text()).isEqualTo("Hello, my name is Klaus. Unresolved: {{unknown}}");
     }
 }
