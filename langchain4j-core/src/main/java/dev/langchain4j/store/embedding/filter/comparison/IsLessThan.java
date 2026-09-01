@@ -8,15 +8,15 @@ import java.util.UUID;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static dev.langchain4j.store.embedding.filter.comparison.NumberComparator.isGreaterThanOrEqualTo;
+import static dev.langchain4j.store.embedding.filter.comparison.NumberComparator.isLessThan;
 import static dev.langchain4j.store.embedding.filter.comparison.TypeChecker.ensureTypesAreCompatible;
 
-public class IsGreaterThanOrEqualTo implements Filter {
+public class IsLessThan implements Filter {
 
     private final String key;
     private final Comparable<?> comparisonValue;
 
-    public IsGreaterThanOrEqualTo(String key, Comparable<?> comparisonValue) {
+    public IsLessThan(String key, Comparable<?> comparisonValue) {
         this.key = ensureNotBlank(key, "key");
         this.comparisonValue = ensureNotNull(comparisonValue, "comparisonValue with key '" + key + "'");
     }
@@ -43,21 +43,21 @@ public class IsGreaterThanOrEqualTo implements Filter {
         ensureTypesAreCompatible(actualValue, comparisonValue, key);
 
         if (actualValue instanceof Number) {
-            return isGreaterThanOrEqualTo(actualValue, comparisonValue);
+            return isLessThan(actualValue, comparisonValue);
         }
 
         if (comparisonValue instanceof UUID && actualValue instanceof String) {
             UUID actualUUID = UUID.fromString((String) actualValue);
             UUID comparisonUUID = (UUID) comparisonValue;
-            return actualUUID.compareTo(comparisonUUID) >= 0;
+            return actualUUID.compareTo(comparisonUUID) < 0;
         }
 
-        return ((Comparable) actualValue).compareTo(comparisonValue) >= 0;
+        return ((Comparable) actualValue).compareTo(comparisonValue) < 0;
     }
 
     public boolean equals(final Object o) {
         if (o == this) return true;
-        if (!(o instanceof IsGreaterThanOrEqualTo other)) return false;
+        if (!(o instanceof IsLessThan other)) return false;
 
         return Objects.equals(this.key, other.key)
                 && Objects.equals(this.comparisonValue, other.comparisonValue);
@@ -68,6 +68,6 @@ public class IsGreaterThanOrEqualTo implements Filter {
     }
 
     public String toString() {
-        return "IsGreaterThanOrEqualTo(key=" + this.key + ", comparisonValue=" + this.comparisonValue + ")";
+        return "IsLessThan(key=" + this.key + ", comparisonValue=" + this.comparisonValue + ")";
     }
 }
