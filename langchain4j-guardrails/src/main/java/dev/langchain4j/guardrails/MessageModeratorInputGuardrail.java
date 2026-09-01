@@ -2,6 +2,7 @@ package dev.langchain4j.guardrails;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
+import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.guardrail.InputGuardrail;
 import dev.langchain4j.guardrail.InputGuardrailResult;
@@ -9,6 +10,7 @@ import dev.langchain4j.model.moderation.Moderation;
 import dev.langchain4j.model.moderation.ModerationModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.service.ModerationException;
+import java.util.stream.Collectors;
 
 /**
  * An {@link InputGuardrail} that validates user messages using a {@link ModerationModel} to detect
@@ -25,7 +27,6 @@ import dev.langchain4j.service.ModerationException;
  * </p>
  */
 public class MessageModeratorInputGuardrail implements InputGuardrail {
-
 
     private final ModerationModel moderationModel;
 
@@ -46,6 +47,12 @@ public class MessageModeratorInputGuardrail implements InputGuardrail {
      * this method returns a fatal result with a {@link ModerationException}.
      * Otherwise, it returns a successful validation result.
      * </p>
+     * <p>
+     * The text of all {@link TextContent} parts is extracted and moderated, so multimodal
+     * messages (e.g. text combined with an image) are supported. A message with no text
+     * content (e.g. an image-only message) has nothing for the moderation model to evaluate
+     * and therefore passes.
+     * </p>
      *
      * @param userMessage the {@link UserMessage} to validate. Must not be null.
      * @return an {@link InputGuardrailResult} indicating success if the message passes moderation,
@@ -53,10 +60,23 @@ public class MessageModeratorInputGuardrail implements InputGuardrail {
      */
     @Override
     public InputGuardrailResult validate(UserMessage userMessage) {
-        Response<Moderation> response = moderationModel.moderate(userMessage);
+        String text = userMessage.contents().stream()
+                .filter(TextContent.class::isInstance)
+                .map(content -> ((TextContent) content).text())
+                .collect(Collectors.joining("\n"));
+
+        if (text.isEmpty()) {
+            // No text to moderate (e.g. an image-only message); nothing for a text
+            // moderation model to evaluate, so the message passes.
+            return success();
+        }
+
+        Response<Moderation> response = moderationModel.moderate(text);
 
         if (response.content().flagged()) {
-            return fatal("User message has been flagged", new ModerationException("User message has been flagged", response.content()));
+            return fatal(
+                    "User message has been flagged",
+                    new ModerationException("User message has been flagged", response.content()));
         } else {
             return success();
         }
