@@ -728,25 +728,29 @@ public class DefaultMcpClientTest {
                 .subscribeToResourceListChanges(false)
                 .build();
 
-        client.executeTool(
-                ToolExecutionRequest.builder().name("test").arguments("{}").build());
+        try {
+            client.executeTool(
+                    ToolExecutionRequest.builder().name("test").arguments("{}").build());
 
-        ArgumentCaptor<McpCallContext> requestCaptor = ArgumentCaptor.forClass(McpCallContext.class);
-        verify(transport, times(3)).sendRequest(requestCaptor.capture());
-        Long retryRequestId =
-                ((McpClientRequest) requestCaptor.getAllValues().get(2).message()).getId();
+            ArgumentCaptor<McpCallContext> requestCaptor = ArgumentCaptor.forClass(McpCallContext.class);
+            verify(transport, times(3)).sendRequest(requestCaptor.capture());
+            Long retryRequestId =
+                    ((McpClientRequest) requestCaptor.getAllValues().get(2).message()).getId();
 
-        java.lang.reflect.Field pendingOperationsField = DefaultMcpClient.class.getDeclaredField("pendingOperations");
-        pendingOperationsField.setAccessible(true);
-        Map<?, ?> pendingOperations = (Map<?, ?>) pendingOperationsField.get(client);
-        assertThat(pendingOperations.containsKey(retryRequestId)).isFalse();
-        assertThat(retryNeverCompletes.isCancelled()).isTrue();
+            java.lang.reflect.Field pendingOperationsField = DefaultMcpClient.class.getDeclaredField("pendingOperations");
+            pendingOperationsField.setAccessible(true);
+            Map<?, ?> pendingOperations = (Map<?, ?>) pendingOperationsField.get(client);
+            assertThat(pendingOperations.containsKey(retryRequestId)).isFalse();
+            assertThat(retryNeverCompletes.isCancelled()).isTrue();
 
-        ArgumentCaptor<McpClientMessage> cancellationCaptor = ArgumentCaptor.forClass(McpClientMessage.class);
-        verify(transport).sendMessage(cancellationCaptor.capture());
-        McpCancellationNotification cancellation = (McpCancellationNotification) cancellationCaptor.getValue();
-        McpCancellationParams params = (McpCancellationParams) cancellation.getParams();
-        assertThat(params.getRequestId()).isEqualTo(retryRequestId);
+            ArgumentCaptor<McpClientMessage> cancellationCaptor = ArgumentCaptor.forClass(McpClientMessage.class);
+            verify(transport).sendMessage(cancellationCaptor.capture());
+            McpCancellationNotification cancellation = (McpCancellationNotification) cancellationCaptor.getValue();
+            McpCancellationParams params = (McpCancellationParams) cancellation.getParams();
+            assertThat(params.getRequestId()).isEqualTo(retryRequestId);
+        } finally {
+            client.close();
+        }
     }
 
     @Test
