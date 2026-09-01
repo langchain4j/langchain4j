@@ -11,6 +11,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static java.util.Collections.emptyList;
+import static java.util.Collections.singletonList;
+
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
@@ -77,6 +80,10 @@ public class ExpandingQueryTransformer implements QueryTransformer {
         Prompt prompt = createPrompt(query);
         String response = chatModel.chat(prompt.text());
         List<String> queries = parse(response);
+        if (queries.isEmpty()) {
+            // a blank or empty LLM response would silently skip retrieval; fall back to the original query
+            return singletonList(query);
+        }
         return queries.stream()
                 .map(queryText -> query.metadata() == null
                         ? Query.from(queryText)
@@ -92,6 +99,9 @@ public class ExpandingQueryTransformer implements QueryTransformer {
     }
 
     protected List<String> parse(String queries) {
+        if (queries == null) {
+            return emptyList();
+        }
         return stream(queries.split("\n"))
                 .filter(Utils::isNotNullOrBlank)
                 .collect(toList());

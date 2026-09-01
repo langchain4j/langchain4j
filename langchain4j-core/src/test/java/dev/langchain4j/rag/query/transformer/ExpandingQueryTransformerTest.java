@@ -2,11 +2,15 @@ package dev.langchain4j.rag.query.transformer;
 
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.rag.query.Metadata;
@@ -54,6 +58,43 @@ class ExpandingQueryTransformerTest {
                 It is very important to provide each query version on a separate line, \
                 without enumerations, hyphens, or any additional formatting!
                 User query: query""");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"", "   "})
+    void should_fall_back_to_original_query_when_llm_returns_no_query(String llmResponse) {
+
+        // given
+        Query query = Query.from("query");
+
+        ChatModel chatModel = mock(ChatModel.class);
+        when(chatModel.chat(anyString())).thenReturn(llmResponse);
+
+        QueryTransformer transformer = new ExpandingQueryTransformer(chatModel);
+
+        // when
+        Collection<Query> queries = transformer.transform(query);
+
+        // then
+        assertThat(queries).containsExactly(query);
+    }
+
+    @Test
+    void should_fall_back_to_original_query_when_llm_returns_null() {
+
+        // given
+        Query query = Query.from("query");
+
+        ChatModel chatModel = mock(ChatModel.class);
+        when(chatModel.chat(anyString())).thenReturn(null);
+
+        QueryTransformer transformer = new ExpandingQueryTransformer(chatModel);
+
+        // when
+        Collection<Query> queries = transformer.transform(query);
+
+        // then
+        assertThat(queries).containsExactly(query);
     }
 
     @Test
