@@ -232,7 +232,7 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
             for (ToolCall toolCall : toolCalls) {
 
                 int index;
-                if (toolCall.index() != null) {
+                if (OpenAiStreamingResponseBuilder.hasValidIndex(toolCall)) {
                     index = toolCall.index();
                 } else {
                     index = toolCallBuilder.index();

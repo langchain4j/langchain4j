@@ -178,13 +178,13 @@ public class OpenAiStreamingResponseBuilder {
                     continue;
                 }
 
-                int toolCallIndex = toolCall.index() != null ? toolCall.index() : fallbackToolCallIndex.get();
+                int toolCallIndex = hasValidIndex(toolCall) ? toolCall.index() : fallbackToolCallIndex.get();
 
                 ToolExecutionRequestBuilder builder = this.indexToToolExecutionRequestBuilder.computeIfAbsent(
                         toolCallIndex, idx -> new ToolExecutionRequestBuilder());
 
-                // When index is null and a different tool call id appears, increment the fallback index
-                if (toolCall.index() == null
+                // When index is missing or invalid and a different tool call id appears, increment the fallback index
+                if (!hasValidIndex(toolCall)
                         && toolCall.id() != null
                         && !builder.idBuilder.isEmpty()
                         && !builder.idBuilder.toString().equals(toolCall.id())) {
@@ -313,6 +313,10 @@ public class OpenAiStreamingResponseBuilder {
                                         .content(new ArrayList<>(logProbs))
                                         .build()))
                 .build();
+    }
+
+    static boolean hasValidIndex(ToolCall toolCall) {
+        return toolCall.index() != null && toolCall.index() >= 0;
     }
 
     private static boolean isSentinel(ToolCall toolCall) {

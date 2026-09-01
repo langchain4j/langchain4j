@@ -116,4 +116,46 @@ class OpenAiStreamingChatModelRawEventTest {
         assertThat(response.aiMessage().toolExecutionRequests().get(0).id()).isEqualTo("call_x");
         assertThat(response.aiMessage().toolExecutionRequests().get(0).name()).isEqualTo("getWeather");
     }
+
+    @Test
+    void should_not_crash_on_negative_tool_call_index() throws Exception {
+        // Given: an OpenAI-compatible proxy translating from Anthropic sends index: -1
+        ServerSentEvent toolCallChunk = new ServerSentEvent(
+                null,
+                "{\"choices\":[{\"index\":0,\"delta\":{\"tool_calls\":"
+                        + "[{\"index\":-1,\"id\":\"call_abc\",\"type\":\"function\","
+                        + "\"function\":{\"name\":\"getWeather\",\"arguments\":\"{\\\"city\\\":\\\"Berlin\\\"}\"}}]}}]}");
+        ServerSentEvent doneEvent = new ServerSentEvent(null, "[DONE]");
+        MockHttpClient mockHttpClient = MockHttpClient.thatAlwaysResponds(List.of(toolCallChunk, doneEvent));
+
+        StreamingChatModel model = OpenAiStreamingChatModel.builder()
+                .httpClientBuilder(new MockHttpClientBuilder(mockHttpClient))
+                .apiKey("test-key")
+                .modelName("gpt-4o-mini")
+                .build();
+
+        CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
+
+        model.chat("What is the weather?", new StreamingChatResponseHandler() {
+            @Override
+            public void onPartialResponse(String partialResponse) {}
+
+            @Override
+            public void onCompleteResponse(ChatResponse completeResponse) {
+                futureResponse.complete(completeResponse);
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                futureResponse.completeExceptionally(error);
+            }
+        });
+
+        ChatResponse response = futureResponse.get(5, TimeUnit.SECONDS);
+        assertThat(response.aiMessage().toolExecutionRequests()).hasSize(1);
+        assertThat(response.aiMessage().toolExecutionRequests().get(0).id()).isEqualTo("call_abc");
+        assertThat(response.aiMessage().toolExecutionRequests().get(0).name()).isEqualTo("getWeather");
+        assertThat(response.aiMessage().toolExecutionRequests().get(0).arguments())
+                .isEqualTo("{\"city\":\"Berlin\"}");
+    }
 }
