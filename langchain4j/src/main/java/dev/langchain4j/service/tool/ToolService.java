@@ -344,8 +344,10 @@ public class ToolService {
                             .methodToInvoke(method)
                             .propagateToolExecutionExceptions(true)
                             .build();
-                    compensatingActions.put(toolName, toolExecution ->
-                            executor.executeWithContext(toolExecution.request(), toolExecution.invocationContext()));
+                    compensatingActions.put(
+                            toolName,
+                            toolExecution -> executor.executeWithContext(
+                                    toolExecution.request(), toolExecution.invocationContext()));
                 }
             }
         }
@@ -418,7 +420,8 @@ public class ToolService {
         return afterToolExecution;
     }
 
-    public void onCompensableToolExecution(BiConsumer<ToolExecution, Consumer<ToolExecution>> onCompensableToolExecution) {
+    public void onCompensableToolExecution(
+            BiConsumer<ToolExecution, Consumer<ToolExecution>> onCompensableToolExecution) {
         if (compensatingToolMisconfiguration != null) {
             throw compensatingToolMisconfiguration;
         }
