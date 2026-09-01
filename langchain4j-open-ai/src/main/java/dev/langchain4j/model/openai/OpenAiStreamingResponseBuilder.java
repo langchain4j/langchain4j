@@ -315,6 +315,13 @@ public class OpenAiStreamingResponseBuilder {
                 .build();
     }
 
+    /**
+     * Returns true if the tool call has a valid index (not null and >= 0).
+     * This is used to determine if the tool call can be associated with a specific tool execution request.
+     *
+     * @param toolCall the tool call to check
+     * @return true if the tool call has a valid index, false otherwise
+     */
     static boolean hasValidIndex(ToolCall toolCall) {
         return toolCall.index() != null && toolCall.index() >= 0;
     }
