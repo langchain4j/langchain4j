@@ -1,5 +1,7 @@
 package dev.langchain4j.model.openai.internal.chat;
 
+import static dev.langchain4j.model.openai.internal.chat.Role.SYSTEM;
+
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -8,10 +10,8 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
-
+import java.util.List;
 import java.util.Objects;
-
-import static dev.langchain4j.model.openai.internal.chat.Role.SYSTEM;
 
 @JsonDeserialize(builder = SystemMessage.Builder.class)
 @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -20,13 +20,15 @@ public final class SystemMessage implements Message {
 
     @JsonProperty
     private final Role role = SYSTEM;
+
     @JsonProperty
-    private final String content;
+    private final Object content;
+
     @JsonProperty
     private final String name;
 
     public SystemMessage(Builder builder) {
-        this.content = builder.content;
+        this.content = builder.stringContent != null ? builder.stringContent : builder.contents;
         this.name = builder.name;
     }
 
@@ -34,8 +36,22 @@ public final class SystemMessage implements Message {
         return role;
     }
 
+    /**
+     * Returns the content when it was set as a plain string, {@code null} when it was set as a list of
+     * content blocks (see {@link #contents()}).
+     */
     public String content() {
-        return content;
+        return content instanceof String stringContent ? stringContent : null;
+    }
+
+    /**
+     * Returns the content when it was set as a list of content blocks, {@code null} when it was set as a
+     * plain string (see {@link #content()}). The list form is required to attach a
+     * {@code prompt_cache_breakpoint} to the message.
+     */
+    @SuppressWarnings("unchecked")
+    public List<Content> contents() {
+        return content instanceof List<?> contents ? (List<Content>) contents : null;
     }
 
     public String name() {
@@ -46,8 +62,7 @@ public final class SystemMessage implements Message {
     @JacocoIgnoreCoverageGenerated
     public boolean equals(Object another) {
         if (this == another) return true;
-        return another instanceof SystemMessage
-                && equalTo((SystemMessage) another);
+        return another instanceof SystemMessage && equalTo((SystemMessage) another);
     }
 
     @JacocoIgnoreCoverageGenerated
@@ -70,17 +85,11 @@ public final class SystemMessage implements Message {
     @Override
     @JacocoIgnoreCoverageGenerated
     public String toString() {
-        return "SystemMessage{"
-                + "role=" + role
-                + ", content=" + content
-                + ", name=" + name
-                + "}";
+        return "SystemMessage{" + "role=" + role + ", content=" + content + ", name=" + name + "}";
     }
 
     public static SystemMessage from(String content) {
-        return SystemMessage.builder()
-                .content(content)
-                .build();
+        return SystemMessage.builder().content(content).build();
     }
 
     public static Builder builder() {
@@ -92,11 +101,17 @@ public final class SystemMessage implements Message {
     @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
     public static final class Builder {
 
-        private String content;
+        private String stringContent;
+        private List<Content> contents;
         private String name;
 
         public Builder content(String content) {
-            this.content = content;
+            this.stringContent = content;
+            return this;
+        }
+
+        public Builder content(List<Content> content) {
+            this.contents = content;
             return this;
         }
 

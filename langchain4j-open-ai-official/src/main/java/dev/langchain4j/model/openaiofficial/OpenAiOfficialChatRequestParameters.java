@@ -24,6 +24,8 @@ public class OpenAiOfficialChatRequestParameters extends DefaultChatRequestParam
     private final Boolean store;
     private final Map<String, String> metadata;
     private final String serviceTier;
+    private final String promptCacheKey;
+    private final OpenAiOfficialPromptCacheOptions promptCacheOptions;
     private final String reasoningEffort;
 
     private OpenAiOfficialChatRequestParameters(Builder builder) {
@@ -36,6 +38,8 @@ public class OpenAiOfficialChatRequestParameters extends DefaultChatRequestParam
         this.store = builder.store;
         this.metadata = copy(builder.metadata);
         this.serviceTier = builder.serviceTier;
+        this.promptCacheKey = builder.promptCacheKey;
+        this.promptCacheOptions = builder.promptCacheOptions;
         this.reasoningEffort = builder.reasoningEffort;
     }
 
@@ -69,6 +73,25 @@ public class OpenAiOfficialChatRequestParameters extends DefaultChatRequestParam
 
     public String serviceTier() {
         return serviceTier;
+    }
+
+    /**
+     * Returns {@code prompt_cache_key}, an optional string that steers routing so that related requests
+     * are more likely to hit a machine holding the cache entry.
+     *
+     * @since 1.20.0
+     */
+    public String promptCacheKey() {
+        return promptCacheKey;
+    }
+
+    /**
+     * Returns {@code prompt_cache_options}, supported by {@code gpt-5.6} and later.
+     *
+     * @since 1.20.0
+     */
+    public OpenAiOfficialPromptCacheOptions promptCacheOptions() {
+        return promptCacheOptions;
     }
 
     public String reasoningEffort() {
@@ -105,6 +128,8 @@ public class OpenAiOfficialChatRequestParameters extends DefaultChatRequestParam
                 && Objects.equals(store, that.store)
                 && Objects.equals(metadata, that.metadata)
                 && Objects.equals(serviceTier, that.serviceTier)
+                && Objects.equals(promptCacheKey, that.promptCacheKey)
+                && Objects.equals(promptCacheOptions, that.promptCacheOptions)
                 && Objects.equals(reasoningEffort, that.reasoningEffort);
     }
 
@@ -120,6 +145,8 @@ public class OpenAiOfficialChatRequestParameters extends DefaultChatRequestParam
                 store,
                 metadata,
                 serviceTier,
+                promptCacheKey,
+                promptCacheOptions,
                 reasoningEffort);
     }
 
@@ -137,6 +164,8 @@ public class OpenAiOfficialChatRequestParameters extends DefaultChatRequestParam
         private Boolean store;
         private Map<String, String> metadata;
         private String serviceTier;
+        private String promptCacheKey;
+        private OpenAiOfficialPromptCacheOptions promptCacheOptions;
         private String reasoningEffort;
 
         @Override
@@ -151,6 +180,8 @@ public class OpenAiOfficialChatRequestParameters extends DefaultChatRequestParam
                 store(getOrDefault(openAiParameters.store(), store));
                 metadata(getOrDefault(openAiParameters.metadata(), metadata));
                 serviceTier(getOrDefault(openAiParameters.serviceTier(), serviceTier));
+                promptCacheKey(getOrDefault(openAiParameters.promptCacheKey(), promptCacheKey));
+                promptCacheOptions(getOrDefault(openAiParameters.promptCacheOptions(), promptCacheOptions));
                 reasoningEffort(getOrDefault(openAiParameters.reasoningEffort(), reasoningEffort));
             }
             return this;
@@ -192,6 +223,22 @@ public class OpenAiOfficialChatRequestParameters extends DefaultChatRequestParam
 
         public Builder metadata(Map<String, String> metadata) {
             this.metadata = metadata;
+            return this;
+        }
+
+        /**
+         * @since 1.20.0
+         */
+        public Builder promptCacheKey(String promptCacheKey) {
+            this.promptCacheKey = promptCacheKey;
+            return this;
+        }
+
+        /**
+         * @since 1.20.0
+         */
+        public Builder promptCacheOptions(OpenAiOfficialPromptCacheOptions promptCacheOptions) {
+            this.promptCacheOptions = promptCacheOptions;
             return this;
         }
 

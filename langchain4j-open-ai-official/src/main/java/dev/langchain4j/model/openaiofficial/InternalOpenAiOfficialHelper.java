@@ -74,17 +74,29 @@ class InternalOpenAiOfficialHelper {
 
     static ChatCompletionMessageParam toOpenAiMessage(ChatMessage message) {
         if (message instanceof SystemMessage systemMessage) {
-            return ChatCompletionMessageParam.ofSystem(ChatCompletionSystemMessageParam.builder()
-                    .content(systemMessage.text())
-                    .build());
+            ChatCompletionSystemMessageParam.Builder builder = ChatCompletionSystemMessageParam.builder();
+            if (OpenAiOfficialPromptCacheBreakpoint.isMarked(systemMessage.attributes())) {
+                // the string form of "content" cannot carry a "prompt_cache_breakpoint",
+                // so the block form is used
+                builder.contentOfArrayOfContentParts(List.of(ChatCompletionContentPartText.builder()
+                        .text(systemMessage.text())
+                        .promptCacheBreakpoint(PROMPT_CACHE_BREAKPOINT_TEXT)
+                        .build()));
+            } else {
+                builder.content(systemMessage.text());
+            }
+            return ChatCompletionMessageParam.ofSystem(builder.build());
         }
 
         if (message instanceof UserMessage userMessage) {
             final ChatCompletionUserMessageParam.Builder builder = ChatCompletionUserMessageParam.builder();
-            if (userMessage.hasSingleText()) {
+            boolean promptCacheBreakpoint = OpenAiOfficialPromptCacheBreakpoint.isMarked(userMessage.attributes());
+            if (userMessage.hasSingleText() && !promptCacheBreakpoint) {
                 builder.content(userMessage.singleText());
             } else {
-                builder.contentOfArrayOfContentParts(toOpenAiContent(userMessage.contents()));
+                List<ChatCompletionContentPart> parts = toOpenAiContent(userMessage.contents());
+                builder.contentOfArrayOfContentParts(
+                        promptCacheBreakpoint ? withPromptCacheBreakpointOnLast(parts) : parts);
             }
             if (userMessage.name() != null) {
                 builder.name(userMessage.name());
@@ -93,6 +105,13 @@ class InternalOpenAiOfficialHelper {
         }
 
         if (message instanceof AiMessage aiMessage) {
+
+            if (OpenAiOfficialPromptCacheBreakpoint.isMarked(aiMessage.attributes())) {
+                throw new UnsupportedFeatureException("OpenAI does not support a \""
+                        + OpenAiOfficialPromptCacheBreakpoint.ATTRIBUTE_KEY
+                        + "\" on an AiMessage. Mark a SystemMessage, a UserMessage "
+                        + "or a ToolExecutionResultMessage instead.");
+            }
 
             if (!aiMessage.hasToolExecutionRequests()) {
                 return ChatCompletionMessageParam.ofAssistant(ChatCompletionAssistantMessageParam.builder()
@@ -122,13 +141,84 @@ class InternalOpenAiOfficialHelper {
                         "OpenAI Chat Completions API does not support non-text content in tool results. "
                                 + "Only text content is supported.");
             }
-            return ChatCompletionMessageParam.ofTool(ChatCompletionToolMessageParam.builder()
-                    .toolCallId(toolExecutionResultMessage.id())
-                    .content(toolExecutionResultMessage.text())
-                    .build());
+            ChatCompletionToolMessageParam.Builder builder =
+                    ChatCompletionToolMessageParam.builder().toolCallId(toolExecutionResultMessage.id());
+            if (OpenAiOfficialPromptCacheBreakpoint.isMarked(toolExecutionResultMessage.attributes())) {
+                // the string form of "content" cannot carry a "prompt_cache_breakpoint",
+                // so the block form is used
+                builder.contentOfArrayOfContentParts(List.of(ChatCompletionContentPartText.builder()
+                        .text(toolExecutionResultMessage.text())
+                        .promptCacheBreakpoint(PROMPT_CACHE_BREAKPOINT_TEXT)
+                        .build()));
+            } else {
+                builder.content(toolExecutionResultMessage.text());
+            }
+            return ChatCompletionMessageParam.ofTool(builder.build());
         }
 
         throw illegalArgument("Unknown message type: " + message.type());
+    }
+
+    private static ChatCompletionCreateParams.PromptCacheOptions toOpenAiPromptCacheOptions(
+            OpenAiOfficialPromptCacheOptions promptCacheOptions) {
+        ChatCompletionCreateParams.PromptCacheOptions.Builder builder =
+                ChatCompletionCreateParams.PromptCacheOptions.builder();
+        if (promptCacheOptions.mode() != null) {
+            builder.mode(ChatCompletionCreateParams.PromptCacheOptions.Mode.of(promptCacheOptions.mode()));
+        }
+        if (promptCacheOptions.ttl() != null) {
+            builder.ttl(ChatCompletionCreateParams.PromptCacheOptions.Ttl.of(promptCacheOptions.ttl()));
+        }
+        return builder.build();
+    }
+
+    private static final ChatCompletionContentPartText.PromptCacheBreakpoint PROMPT_CACHE_BREAKPOINT_TEXT =
+            ChatCompletionContentPartText.PromptCacheBreakpoint.builder()
+                    .mode(JsonValue.from(OpenAiOfficialPromptCacheBreakpoint.MODE_EXPLICIT))
+                    .build();
+
+    /**
+     * Prompt caching is prefix-based, so the breakpoint goes on the last content block of the marked
+     * message: that makes the whole message part of the cached prefix.
+     */
+    private static List<ChatCompletionContentPart> withPromptCacheBreakpointOnLast(
+            List<ChatCompletionContentPart> parts) {
+        List<ChatCompletionContentPart> result = new ArrayList<>(parts);
+        int lastIndex = result.size() - 1;
+        result.set(lastIndex, withPromptCacheBreakpoint(result.get(lastIndex)));
+        return result;
+    }
+
+    private static ChatCompletionContentPart withPromptCacheBreakpoint(ChatCompletionContentPart part) {
+        if (part.isText()) {
+            return ChatCompletionContentPart.ofText(part.asText().toBuilder()
+                    .promptCacheBreakpoint(PROMPT_CACHE_BREAKPOINT_TEXT)
+                    .build());
+        }
+        if (part.isImageUrl()) {
+            return ChatCompletionContentPart.ofImageUrl(part.asImageUrl().toBuilder()
+                    .promptCacheBreakpoint(ChatCompletionContentPartImage.PromptCacheBreakpoint.builder()
+                            .mode(JsonValue.from(OpenAiOfficialPromptCacheBreakpoint.MODE_EXPLICIT))
+                            .build())
+                    .build());
+        }
+        if (part.isInputAudio()) {
+            return ChatCompletionContentPart.ofInputAudio(part.asInputAudio().toBuilder()
+                    .promptCacheBreakpoint(ChatCompletionContentPartInputAudio.PromptCacheBreakpoint.builder()
+                            .mode(JsonValue.from(OpenAiOfficialPromptCacheBreakpoint.MODE_EXPLICIT))
+                            .build())
+                    .build());
+        }
+        if (part.isFile()) {
+            return ChatCompletionContentPart.ofFile(part.asFile().toBuilder()
+                    .promptCacheBreakpoint(ChatCompletionContentPart.File.PromptCacheBreakpoint.builder()
+                            .mode(JsonValue.from(OpenAiOfficialPromptCacheBreakpoint.MODE_EXPLICIT))
+                            .build())
+                    .build());
+        }
+        throw new UnsupportedFeatureException("OpenAI does not support a \""
+                + OpenAiOfficialPromptCacheBreakpoint.ATTRIBUTE_KEY + "\" on a " + part
+                + " content block. Supported content blocks: text, image_url, input_audio and file.");
     }
 
     private static List<ChatCompletionContentPart> toOpenAiContent(List<Content> contents) {
@@ -322,9 +412,12 @@ class InternalOpenAiOfficialHelper {
         Optional<CompletionUsage.PromptTokensDetails> promptTokensDetails = openAiUsage.promptTokensDetails();
         OpenAiOfficialTokenUsage.InputTokensDetails inputTokensDetails = null;
         if (promptTokensDetails.isPresent()
-                && promptTokensDetails.get().cachedTokens().isPresent()) {
+                && (promptTokensDetails.get().cachedTokens().isPresent()
+                        || promptTokensDetails.get().cacheWriteTokens().isPresent())) {
             inputTokensDetails = OpenAiOfficialTokenUsage.InputTokensDetails.builder()
-                    .cachedTokens(promptTokensDetails.get().cachedTokens().get())
+                    .cachedTokens(promptTokensDetails.get().cachedTokens().orElse(null))
+                    .cacheWriteTokens(
+                            promptTokensDetails.get().cacheWriteTokens().orElse(null))
                     .build();
         }
 
@@ -488,6 +581,12 @@ class InternalOpenAiOfficialHelper {
                     .build());
         }
 
+        if (parameters.promptCacheKey() != null) {
+            builder.promptCacheKey(parameters.promptCacheKey());
+        }
+        if (parameters.promptCacheOptions() != null) {
+            builder.promptCacheOptions(toOpenAiPromptCacheOptions(parameters.promptCacheOptions()));
+        }
         if (parameters.serviceTier() != null) {
             builder.serviceTier(ChatCompletionCreateParams.ServiceTier.of(parameters.serviceTier()));
         }

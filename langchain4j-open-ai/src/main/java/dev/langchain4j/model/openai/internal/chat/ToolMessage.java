@@ -1,5 +1,7 @@
 package dev.langchain4j.model.openai.internal.chat;
 
+import static dev.langchain4j.model.openai.internal.chat.Role.TOOL;
+
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -8,10 +10,8 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
-
+import java.util.List;
 import java.util.Objects;
-
-import static dev.langchain4j.model.openai.internal.chat.Role.TOOL;
 
 @JsonDeserialize(builder = ToolMessage.Builder.class)
 @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -20,14 +20,16 @@ public final class ToolMessage implements Message {
 
     @JsonProperty
     private final Role role = TOOL;
+
     @JsonProperty
     private final String toolCallId;
+
     @JsonProperty
-    private final String content;
+    private final Object content;
 
     public ToolMessage(Builder builder) {
         this.toolCallId = builder.toolCallId;
-        this.content = builder.content;
+        this.content = builder.stringContent != null ? builder.stringContent : builder.contents;
     }
 
     public Role role() {
@@ -38,16 +40,29 @@ public final class ToolMessage implements Message {
         return toolCallId;
     }
 
+    /**
+     * Returns the content when it was set as a plain string, {@code null} when it was set as a list of
+     * content blocks (see {@link #contents()}).
+     */
     public String content() {
-        return content;
+        return content instanceof String stringContent ? stringContent : null;
+    }
+
+    /**
+     * Returns the content when it was set as a list of content blocks, {@code null} when it was set as a
+     * plain string (see {@link #content()}). The list form is required to attach a
+     * {@code prompt_cache_breakpoint} to the message.
+     */
+    @SuppressWarnings("unchecked")
+    public List<Content> contents() {
+        return content instanceof List<?> contents ? (List<Content>) contents : null;
     }
 
     @Override
     @JacocoIgnoreCoverageGenerated
     public boolean equals(Object another) {
         if (this == another) return true;
-        return another instanceof ToolMessage
-                && equalTo((ToolMessage) another);
+        return another instanceof ToolMessage && equalTo((ToolMessage) another);
     }
 
     @JacocoIgnoreCoverageGenerated
@@ -70,18 +85,11 @@ public final class ToolMessage implements Message {
     @Override
     @JacocoIgnoreCoverageGenerated
     public String toString() {
-        return "ToolMessage{"
-                + "role=" + role
-                + ", toolCallId=" + toolCallId
-                + ", content=" + content
-                + "}";
+        return "ToolMessage{" + "role=" + role + ", toolCallId=" + toolCallId + ", content=" + content + "}";
     }
 
     public static ToolMessage from(String toolCallId, String content) {
-        return ToolMessage.builder()
-                .toolCallId(toolCallId)
-                .content(content)
-                .build();
+        return ToolMessage.builder().toolCallId(toolCallId).content(content).build();
     }
 
     public static Builder builder() {
@@ -94,7 +102,8 @@ public final class ToolMessage implements Message {
     public static final class Builder {
 
         private String toolCallId;
-        private String content;
+        private String stringContent;
+        private List<Content> contents;
 
         public Builder toolCallId(String toolCallId) {
             this.toolCallId = toolCallId;
@@ -102,7 +111,12 @@ public final class ToolMessage implements Message {
         }
 
         public Builder content(String content) {
-            this.content = content;
+            this.stringContent = content;
+            return this;
+        }
+
+        public Builder content(List<Content> content) {
+            this.contents = content;
             return this;
         }
 

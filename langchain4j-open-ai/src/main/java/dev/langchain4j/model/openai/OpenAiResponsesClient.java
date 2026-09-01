@@ -109,6 +109,7 @@ class OpenAiResponsesClient {
     private static final String FIELD_TOTAL_TOKENS = "total_tokens";
     private static final String FIELD_INPUT_TOKENS_DETAILS = "input_tokens_details";
     private static final String FIELD_CACHED_TOKENS = "cached_tokens";
+    private static final String FIELD_CACHE_WRITE_TOKENS = "cache_write_tokens";
     private static final String FIELD_OUTPUT_TOKENS_DETAILS = "output_tokens_details";
     private static final String FIELD_REASONING_TOKENS = "reasoning_tokens";
     private static final String FIELD_MODEL = "model";
@@ -130,6 +131,10 @@ class OpenAiResponsesClient {
     private static final String FIELD_SAFETY_IDENTIFIER = "safety_identifier";
     private static final String FIELD_PROMPT_CACHE_KEY = "prompt_cache_key";
     private static final String FIELD_PROMPT_CACHE_RETENTION = "prompt_cache_retention";
+    private static final String FIELD_PROMPT_CACHE_OPTIONS = "prompt_cache_options";
+    private static final String FIELD_MODE = "mode";
+    private static final String FIELD_TTL = "ttl";
+    private static final String FIELD_PROMPT_CACHE_BREAKPOINT = "prompt_cache_breakpoint";
     private static final String FIELD_REASONING = "reasoning";
     private static final String FIELD_EFFORT = "effort";
     private static final String FIELD_SUMMARY = "summary";
@@ -284,6 +289,20 @@ class OpenAiResponsesClient {
 
         if (parameters.promptCacheRetention() != null) {
             payload.put(FIELD_PROMPT_CACHE_RETENTION, parameters.promptCacheRetention());
+        }
+
+        OpenAiPromptCacheOptions promptCacheOptions = parameters.promptCacheOptions();
+        if (promptCacheOptions != null) {
+            Map<String, Object> promptCacheOptionsPayload = new LinkedHashMap<>();
+            if (promptCacheOptions.mode() != null) {
+                promptCacheOptionsPayload.put(FIELD_MODE, promptCacheOptions.mode());
+            }
+            if (promptCacheOptions.ttl() != null) {
+                promptCacheOptionsPayload.put(FIELD_TTL, promptCacheOptions.ttl());
+            }
+            if (!promptCacheOptionsPayload.isEmpty()) {
+                payload.put(FIELD_PROMPT_CACHE_OPTIONS, promptCacheOptionsPayload);
+            }
         }
 
         if (parameters.reasoningEffort() != null || parameters.reasoningSummary() != null) {
@@ -482,9 +501,17 @@ class OpenAiResponsesClient {
 
         JsonNode inputDetailsNode = usageNode.path(FIELD_INPUT_TOKENS_DETAILS);
         if (!inputDetailsNode.isMissingNode()) {
-            usageBuilder.inputTokensDetails(OpenAiTokenUsage.InputTokensDetails.builder()
-                    .cachedTokens(inputDetailsNode.path(FIELD_CACHED_TOKENS).asInt())
-                    .build());
+            OpenAiTokenUsage.InputTokensDetails.Builder inputTokensDetailsBuilder =
+                    OpenAiTokenUsage.InputTokensDetails.builder()
+                            .cachedTokens(
+                                    inputDetailsNode.path(FIELD_CACHED_TOKENS).asInt());
+            // unlike "cached_tokens", "cache_write_tokens" is left null when not reported,
+            // so that "not reported" stays distinct from a reported zero
+            if (inputDetailsNode.hasNonNull(FIELD_CACHE_WRITE_TOKENS)) {
+                inputTokensDetailsBuilder.cacheWriteTokens(
+                        inputDetailsNode.path(FIELD_CACHE_WRITE_TOKENS).asInt());
+            }
+            usageBuilder.inputTokensDetails(inputTokensDetailsBuilder.build());
         }
 
         JsonNode outputDetailsNode = usageNode.path(FIELD_OUTPUT_TOKENS_DETAILS);
@@ -570,7 +597,11 @@ class OpenAiResponsesClient {
 
     private static List<Map<String, Object>> toResponsesMessages(ChatMessage msg) {
         if (msg instanceof SystemMessage systemMessage) {
-            return List.of(createMessageEntry(ROLE_SYSTEM, List.of(createInputTextContent(systemMessage.text()))));
+            Map<String, Object> content = createInputTextContent(systemMessage.text());
+            if (OpenAiPromptCacheBreakpoint.isMarked(systemMessage.attributes())) {
+                addPromptCacheBreakpoint(content);
+            }
+            return List.of(createMessageEntry(ROLE_SYSTEM, List.of(content)));
         } else if (msg instanceof UserMessage userMessage) {
             List<Map<String, Object>> contentEntries = new ArrayList<>();
             for (Content content : userMessage.contents()) {
@@ -586,8 +617,18 @@ class OpenAiResponsesClient {
                             + ". Only TextContent, ImageContent, and PdfFileContent are supported.");
                 }
             }
+            if (OpenAiPromptCacheBreakpoint.isMarked(userMessage.attributes())) {
+                addPromptCacheBreakpointToLast(contentEntries);
+            }
             return List.of(createMessageEntry(ROLE_USER, contentEntries));
         } else if (msg instanceof AiMessage aiMessage) {
+            if (OpenAiPromptCacheBreakpoint.isMarked(aiMessage.attributes())) {
+                throw new UnsupportedFeatureException("OpenAI does not support a \""
+                        + OpenAiPromptCacheBreakpoint.ATTRIBUTE_KEY
+                        + "\" on an AiMessage. Mark a SystemMessage, a UserMessage "
+                        + "or a ToolExecutionResultMessage instead.");
+            }
+
             List<Map<String, Object>> items = new ArrayList<>();
 
             String encryptedContent = aiMessage.attribute(ENCRYPTED_REASONING_KEY, String.class);
@@ -631,7 +672,10 @@ class OpenAiResponsesClient {
             outputEntry.put(FIELD_TYPE, TYPE_FUNCTION_CALL_OUTPUT);
             outputEntry.put(FIELD_CALL_ID, toolExecutionResultMessage.id());
 
-            if (toolExecutionResultMessage.hasSingleText()) {
+            boolean promptCacheBreakpoint =
+                    OpenAiPromptCacheBreakpoint.isMarked(toolExecutionResultMessage.attributes());
+
+            if (toolExecutionResultMessage.hasSingleText() && !promptCacheBreakpoint) {
                 outputEntry.put(FIELD_OUTPUT, toolExecutionResultMessage.text());
             } else {
                 List<Map<String, Object>> outputContents = new ArrayList<>();
@@ -645,6 +689,11 @@ class OpenAiResponsesClient {
                                 + content.getClass().getName()
                                 + ". Only TextContent and ImageContent are supported.");
                     }
+                }
+                if (promptCacheBreakpoint) {
+                    // the string form of "output" cannot carry a "prompt_cache_breakpoint",
+                    // so the block form is used
+                    addPromptCacheBreakpointToLast(outputContents);
                 }
                 outputEntry.put(FIELD_OUTPUT, outputContents);
             }
@@ -663,6 +712,31 @@ class OpenAiResponsesClient {
         entry.put(FIELD_ROLE, role);
         entry.put(FIELD_CONTENT, contentEntries);
         return entry;
+    }
+
+    /**
+     * Content block types that OpenAI accepts a {@code prompt_cache_breakpoint} on
+     * in the Responses API.
+     */
+    private static final Set<String> PROMPT_CACHE_BREAKPOINT_TYPES =
+            Set.of(TYPE_INPUT_TEXT, TYPE_INPUT_IMAGE, TYPE_INPUT_FILE);
+
+    private static void addPromptCacheBreakpoint(Map<String, Object> content) {
+        Object type = content.get(FIELD_TYPE);
+        if (!PROMPT_CACHE_BREAKPOINT_TYPES.contains(type)) {
+            throw new UnsupportedFeatureException("OpenAI does not support a \""
+                    + OpenAiPromptCacheBreakpoint.ATTRIBUTE_KEY + "\" on a \"" + type
+                    + "\" content block. Supported content blocks: " + PROMPT_CACHE_BREAKPOINT_TYPES + ".");
+        }
+        content.put(FIELD_PROMPT_CACHE_BREAKPOINT, Map.of(FIELD_MODE, OpenAiPromptCacheBreakpoint.MODE_EXPLICIT));
+    }
+
+    /**
+     * Prompt caching is prefix-based, so the breakpoint goes on the last content block of the marked
+     * message: that makes the whole message part of the cached prefix.
+     */
+    private static void addPromptCacheBreakpointToLast(List<Map<String, Object>> contents) {
+        addPromptCacheBreakpoint(contents.get(contents.size() - 1));
     }
 
     private static Map<String, Object> createInputTextContent(String text) {
