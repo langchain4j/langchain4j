@@ -3,6 +3,13 @@ package dev.langchain4j.store.embedding.azure.cosmos.mongo.vcore;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * @deprecated Replaced by
+ * {@code dev.langchain4j.store.embedding.azure.documentdb.AzureDocumentDbMatchedDocument}
+ * in the {@code langchain4j-azure-documentdb} module. See
+ * {@link AzureCosmosDbMongoVCoreEmbeddingStore} for migration details.
+ */
+@Deprecated(forRemoval = true)
 public class AzureCosmosDbMongoVCoreMatchedDocument {
 
     private String id;
@@ -11,7 +18,8 @@ public class AzureCosmosDbMongoVCoreMatchedDocument {
     private Map<String, String> metadata;
     private Double score;
 
-    public AzureCosmosDbMongoVCoreMatchedDocument(String id, List<Float> embedding, String text, Map<String, String> metadata, Double score) {
+    public AzureCosmosDbMongoVCoreMatchedDocument(
+            String id, List<Float> embedding, String text, Map<String, String> metadata, Double score) {
         this.id = id;
         this.embedding = embedding;
         this.text = text;
@@ -19,8 +27,7 @@ public class AzureCosmosDbMongoVCoreMatchedDocument {
         this.score = score;
     }
 
-    public AzureCosmosDbMongoVCoreMatchedDocument() {
-    }
+    public AzureCosmosDbMongoVCoreMatchedDocument() {}
 
     public String getId() {
         return this.id;
@@ -106,6 +113,7 @@ public class AzureCosmosDbMongoVCoreMatchedDocument {
     }
 
     public String toString() {
-        return "AzureCosmosDbMongoVCoreMatchedDocument(id=" + this.getId() + ", embedding=" + this.getEmbedding() + ", text=" + this.getText() + ", metadata=" + this.getMetadata() + ", score=" + this.getScore() + ")";
+        return "AzureCosmosDbMongoVCoreMatchedDocument(id=" + this.getId() + ", embedding=" + this.getEmbedding()
+                + ", text=" + this.getText() + ", metadata=" + this.getMetadata() + ", score=" + this.getScore() + ")";
     }
 }
