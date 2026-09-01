@@ -67,17 +67,6 @@ public class OnnxBertBiEncoder {
         }
     }
 
-    static class EmbeddingAndTokenCount {
-
-        float[] embedding;
-        int tokenCount;
-
-        EmbeddingAndTokenCount(float[] embedding, int tokenCount) {
-            this.embedding = embedding;
-            this.tokenCount = tokenCount;
-        }
-    }
-
     EmbeddingAndTokenCount embed(String text) {
 
         List<String> tokens = tokenizer.tokenize(text);
@@ -101,7 +90,9 @@ public class OnnxBertBiEncoder {
 
         float[] embedding = normalize(weightedAverage(embeddings, weights));
 
-        return new EmbeddingAndTokenCount(embedding, tokens.size());
+        // Subtract 2 to exclude [CLS] and [SEP] special tokens from the reported count.
+        // Each Encoder is responsible for reporting its own "content-only" token count.
+        return new EmbeddingAndTokenCount(embedding, Math.max(0, tokens.size() - 2));
     }
 
     static List<List<String>> partition(List<String> tokens, int partitionSize) {
