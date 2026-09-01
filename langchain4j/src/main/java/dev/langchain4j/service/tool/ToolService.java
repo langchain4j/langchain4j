@@ -285,7 +285,8 @@ public class ToolService {
         }
 
         for (Method candidateMethod : allConcreteMethods(objectWithTools.getClass())) {
-            Method method = getAnnotatedMethod(candidateMethod, CompensateFor.class).orElse(null);
+            Method method =
+                    getAnnotatedMethod(candidateMethod, CompensateFor.class).orElse(null);
             if (method != null) {
                 CompensateFor compensateFor = method.getAnnotation(CompensateFor.class);
                 String toolName = compensateFor.value();

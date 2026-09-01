@@ -920,18 +920,22 @@ class ToolSpecificationsTest implements WithAssertions {
 
     @Test
     void should_not_warn_when_parameter_name_is_available() {
-        Parameter parameter = RecordWithNamedParameters.class.getDeclaredConstructors()[0].getParameters()[0];
+        Parameter parameter =
+                RecordWithNamedParameters.class.getDeclaredConstructors()[0].getParameters()[0];
         assertThat(parameter.isNamePresent()).isTrue();
 
-        assertThat(ToolSpecifications.unavailableParameterNameWarning(parameter)).isNull();
+        assertThat(ToolSpecifications.unavailableParameterNameWarning(parameter))
+                .isNull();
     }
 
     @Test
     void should_warn_only_once_per_declaring_class() throws NoSuchMethodException {
         Parameter parameter = firstParameterOf(MoreUnnamedParameters.class, String.class);
 
-        assertThat(ToolSpecifications.unavailableParameterNameWarning(parameter)).isNotNull();
-        assertThat(ToolSpecifications.unavailableParameterNameWarning(parameter)).isNull();
+        assertThat(ToolSpecifications.unavailableParameterNameWarning(parameter))
+                .isNotNull();
+        assertThat(ToolSpecifications.unavailableParameterNameWarning(parameter))
+                .isNull();
     }
 
     @SuppressWarnings("unused")

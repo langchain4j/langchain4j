@@ -80,9 +80,14 @@ class ToolServiceTest {
     void findTools_should_execute_tool_through_overriding_method() {
         InterceptedDateTool objectWithTools = new InterceptedDateTool();
 
-        ToolExecutor toolExecutor = ToolService.findTools(objectWithTools).get(0).toolExecutor();
+        ToolExecutor toolExecutor =
+                ToolService.findTools(objectWithTools).get(0).toolExecutor();
         String result = toolExecutor.execute(
-                ToolExecutionRequest.builder().name("getCurrentDate").arguments("{}").build(), null);
+                ToolExecutionRequest.builder()
+                        .name("getCurrentDate")
+                        .arguments("{}")
+                        .build(),
+                null);
 
         assertThat(result).isEqualTo("2024-04-29");
         assertThat(objectWithTools.intercepted).isTrue();
