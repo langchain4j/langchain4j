@@ -8,8 +8,8 @@
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
-    <artifactId>langchain4j-mongodb-atlas</artifactId>
-    <name>LangChain4j :: Integration :: MongoDB Atlas</name>
+    <artifactId>langchain4j-mongodb</artifactId>
+    <name>LangChain4j :: Integration :: MongoDB</name>
 
     <dependencies>
 
