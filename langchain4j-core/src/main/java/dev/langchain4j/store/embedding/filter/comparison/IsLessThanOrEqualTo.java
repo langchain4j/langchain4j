@@ -4,6 +4,7 @@ import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.store.embedding.filter.Filter;
 
 import java.util.Objects;
+import java.util.UUID;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
@@ -45,9 +46,14 @@ public class IsLessThanOrEqualTo implements Filter {
             return isLessThanOrEqualTo(actualValue, comparisonValue);
         }
 
+        if (comparisonValue instanceof UUID && actualValue instanceof String) {
+            UUID actualUUID = UUID.fromString((String) actualValue);
+            UUID comparisonUUID = (UUID) comparisonValue;
+            return actualUUID.compareTo(comparisonUUID) <= 0;
+        }
+
         return ((Comparable) actualValue).compareTo(comparisonValue) <= 0;
     }
-
 
     public boolean equals(final Object o) {
         if (o == this) return true;
