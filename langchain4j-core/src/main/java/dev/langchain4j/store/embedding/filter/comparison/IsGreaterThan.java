@@ -1,15 +1,14 @@
 package dev.langchain4j.store.embedding.filter.comparison;
 
-import dev.langchain4j.data.document.Metadata;
-import dev.langchain4j.store.embedding.filter.Filter;
-
-import java.util.Objects;
-import java.util.UUID;
-
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.store.embedding.filter.comparison.NumberComparator.isGreaterThan;
 import static dev.langchain4j.store.embedding.filter.comparison.TypeChecker.ensureTypesAreCompatible;
+
+import dev.langchain4j.data.document.Metadata;
+import dev.langchain4j.store.embedding.filter.Filter;
+import java.util.Objects;
+import java.util.UUID;
 
 public class IsGreaterThan implements Filter {
 
@@ -59,8 +58,7 @@ public class IsGreaterThan implements Filter {
         if (o == this) return true;
         if (!(o instanceof IsGreaterThan other)) return false;
 
-        return Objects.equals(this.key, other.key)
-                && Objects.equals(this.comparisonValue, other.comparisonValue);
+        return Objects.equals(this.key, other.key) && Objects.equals(this.comparisonValue, other.comparisonValue);
     }
 
     public int hashCode() {
