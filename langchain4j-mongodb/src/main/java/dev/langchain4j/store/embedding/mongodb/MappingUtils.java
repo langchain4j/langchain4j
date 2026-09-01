@@ -4,11 +4,10 @@ import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
-import org.bson.Document;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import org.bson.Document;
 
 class MappingUtils {
 
@@ -33,7 +32,11 @@ class MappingUtils {
                     ? TextSegment.from(matchedDocument.getText())
                     : TextSegment.from(matchedDocument.getText(), Metadata.from(matchedDocument.getMetadata()));
         }
-        return new EmbeddingMatch<>(matchedDocument.getScore(), matchedDocument.getId(), Embedding.from(matchedDocument.getEmbedding()), textSegment);
+        return new EmbeddingMatch<>(
+                matchedDocument.getScore(),
+                matchedDocument.getId(),
+                Embedding.from(matchedDocument.getEmbedding()),
+                textSegment);
     }
 
     static Document fromIndexMapping(IndexMapping indexMapping) {
@@ -42,15 +45,11 @@ class MappingUtils {
                 .append("type", "vector")
                 .append("path", "embedding")
                 .append("numDimensions", indexMapping.getDimension())
-                .append("similarity", "cosine")
-        );
+                .append("similarity", "cosine"));
         Set<String> metadataFields = indexMapping.getMetadataFieldNames();
         if (metadataFields != null && !metadataFields.isEmpty()) {
             metadataFields.forEach(field -> {
-                list.add(new Document()
-                        .append("type", "filter")
-                        .append("path", "metadata." + field));
-
+                list.add(new Document().append("type", "filter").append("path", "metadata." + field));
             });
         }
         return new Document("fields", list);
