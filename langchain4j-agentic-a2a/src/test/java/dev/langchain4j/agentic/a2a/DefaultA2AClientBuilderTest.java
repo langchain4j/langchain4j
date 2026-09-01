@@ -3,7 +3,12 @@ package dev.langchain4j.agentic.a2a;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import dev.langchain4j.agentic.internal.SuspendedResponse;
+import dev.langchain4j.agentic.scope.AgenticSystemSuspendedException;
+import dev.langchain4j.agentic.scope.DefaultAgenticScope;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import org.a2aproject.sdk.spec.Artifact;
 import org.a2aproject.sdk.spec.Message;
@@ -80,6 +85,7 @@ class DefaultA2AClientBuilderTest {
                 .hasMessageContaining("What is your email address?");
         A2ATaskInterruptedException cause = (A2ATaskInterruptedException) getCause(future);
         assertThat(cause.taskId()).isEqualTo("task-111");
+        assertThat(cause.contextId()).isEqualTo("ctx-5");
         assertThat(cause.state()).isEqualTo(TaskState.TASK_STATE_INPUT_REQUIRED);
         assertThat(cause.reason()).isEqualTo("What is your email address?");
     }
@@ -148,6 +154,75 @@ class DefaultA2AClientBuilderTest {
         // Even though artifacts are present, an interrupted task must not be treated as complete.
         assertThat(future).isCompletedExceptionally();
         assertThatThrownBy(future::get).hasCauseInstanceOf(A2ATaskInterruptedException.class);
+    }
+
+    @Test
+    void continuationMessage_reusesInterruptedTaskAndContext() {
+        A2ATaskInterruptedException interruption = new A2ATaskInterruptedException(
+                "task-111", "ctx-5", TaskState.TASK_STATE_INPUT_REQUIRED, "What is your email address?");
+
+        Message message = DefaultA2AClientBuilder.continuationMessage(interruption, "alice@example.com");
+
+        assertThat(message.role()).isEqualTo(Message.Role.ROLE_USER);
+        assertThat(message.contextId()).isEqualTo("ctx-5");
+        assertThat(message.taskId()).isEqualTo("task-111");
+        assertThat(message.parts()).containsExactly(new TextPart("alice@example.com"));
+    }
+
+    @Test
+    void continuationMessage_rejectsNullInput() {
+        A2ATaskInterruptedException interruption = new A2ATaskInterruptedException(
+                "task-111", "ctx-5", TaskState.TASK_STATE_INPUT_REQUIRED, "What is your email address?");
+
+        assertThatThrownBy(() -> DefaultA2AClientBuilder.continuationMessage(interruption, null))
+                .isInstanceOf(NullPointerException.class)
+                .hasMessage("A2A response must not be null");
+    }
+
+    @Test
+    void interruption_canBeRecoveredFromSuspendedScope() {
+        DefaultAgenticScope scope = DefaultAgenticScope.ephemeralAgenticScope();
+        String responseId = "approval-agent:task-111";
+        Map<String, String> metadata = new HashMap<>();
+        metadata.put("responseId", responseId);
+        metadata.put("taskId", "task-111");
+        metadata.put("contextId", "ctx-5");
+        metadata.put("state", TaskState.TASK_STATE_INPUT_REQUIRED.name());
+        metadata.put("reason", "What is your email address?");
+        scope.writeState(DefaultA2AClientBuilder.INTERRUPTION_STATE_PREFIX + "approval-agent", metadata);
+        scope.writeState("a2a.response.approval-agent", new SuspendedResponse<>(responseId));
+
+        A2ATaskInterruptedException interruption = A2ATaskInterruptedException.from(scope, responseId);
+
+        assertThat(interruption.taskId()).isEqualTo("task-111");
+        assertThat(interruption.contextId()).isEqualTo("ctx-5");
+        assertThat(interruption.state()).isEqualTo(TaskState.TASK_STATE_INPUT_REQUIRED);
+        assertThat(interruption.reason()).isEqualTo("What is your email address?");
+    }
+
+    @Test
+    void interruptedTask_suspendsAgenticScope() {
+        DefaultAgenticScope scope = DefaultAgenticScope.ephemeralAgenticScope();
+        A2ATaskInterruptedException interruption = new A2ATaskInterruptedException(
+                "task-111", "ctx-5", TaskState.TASK_STATE_INPUT_REQUIRED, "What is your email address?");
+
+        assertThatThrownBy(() -> DefaultA2AClientBuilder.suspend(scope, "approval-agent", interruption))
+                .isInstanceOf(AgenticSystemSuspendedException.class);
+
+        assertThat(scope.pendingResponseIds()).containsExactly("approval-agent:task-111");
+        A2ATaskInterruptedException recovered = A2ATaskInterruptedException.from(scope, "approval-agent:task-111");
+        assertThat(recovered.taskId()).isEqualTo("task-111");
+        assertThat(recovered.contextId()).isEqualTo("ctx-5");
+        assertThat(recovered.reason()).isEqualTo("What is your email address?");
+    }
+
+    @Test
+    void interruption_rejectsUnknownPendingResponse() {
+        DefaultAgenticScope scope = DefaultAgenticScope.ephemeralAgenticScope();
+
+        assertThatThrownBy(() -> A2ATaskInterruptedException.from(scope, "unknown"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("No interrupted A2A task found for pending response unknown");
     }
 
     @Test
