@@ -737,7 +737,8 @@ public class DefaultMcpClientTest {
             Long retryRequestId =
                     ((McpClientRequest) requestCaptor.getAllValues().get(2).message()).getId();
 
-            java.lang.reflect.Field pendingOperationsField = DefaultMcpClient.class.getDeclaredField("pendingOperations");
+            java.lang.reflect.Field pendingOperationsField =
+                    DefaultMcpClient.class.getDeclaredField("pendingOperations");
             pendingOperationsField.setAccessible(true);
             Map<?, ?> pendingOperations = (Map<?, ?>) pendingOperationsField.get(client);
             assertThat(pendingOperations.containsKey(retryRequestId)).isFalse();
