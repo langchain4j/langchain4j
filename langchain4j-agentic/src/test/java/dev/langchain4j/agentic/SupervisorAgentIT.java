@@ -101,7 +101,7 @@ public class SupervisorAgentIT {
             """)
         @Agent("An agent that categorizes the user request")
         String categorizeRequest(
-                @P(name = "request", description = "The complete end-user request to categorize") String request);
+                @V("request") @P("The complete end-user request to categorize") String request);
     }
 
     @Test
@@ -183,7 +183,8 @@ public class SupervisorAgentIT {
             Withdraw {{amountInUSD}} USD from {{withdrawUser}}'s account and return the new balance.
             """)
         @Agent("A banker that withdraw USD from an account")
-        String withdraw(@V("withdrawUser") String withdrawUser, @V("amountInUSD") Double amountInUSD);
+        String withdraw(@V("withdrawUser") @P("The user to withdraw from") String withdrawUser,
+                        @V("amountInUSD") @P("The amount to withdraw") Double amountInUSD);
     }
 
     public interface CreditAgent {
@@ -194,7 +195,8 @@ public class SupervisorAgentIT {
             Credit {{amountInUSD}} USD to {{creditUser}}'s account and return the new balance.
             """)
         @Agent("A banker that credit USD to an account")
-        String credit(@V("creditUser") String creditUser, @V("amountInUSD") Double amountInUSD);
+        String credit(@V("creditUser") @P("The user to credit") String creditUser,
+                      @V("amountInUSD") @P("The amount to credit") Double amountInUSD);
     }
 
     static class BankTool {
