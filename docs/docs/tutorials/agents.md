@@ -3170,10 +3170,7 @@ In this sequence, the first agent sends a message with no `contextId`/`taskId` (
 
 ### Human-in-the-loop A2A agents
 
-An A2A server can pause a task in the `input-required` or `auth-required` state. When this happens
-inside an agentic system, the A2A client stores a `SuspendedResponse` in the `AgenticScope`,
-checkpoints the workflow, and releases the calling thread. The interruption contains the task and
-context IDs required to continue the same remote task.
+An A2A server can pause a task in the `input-required` or `auth-required` state. When this happens inside an agentic system, the A2A client stores a `SuspendedResponse` in the `AgenticScope`, checkpoints the workflow, and releases the calling thread. The interruption contains the task and context IDs required to continue the same remote task.
 
 The caller can publish those details to an external system, such as a Kafka topic:
 
@@ -3191,9 +3188,7 @@ try {
 }
 ```
 
-When the human response arrives later, complete the pending response and invoke the workflow again.
-The planner resumes from its checkpoint, and the A2A client sends the response with the stored
-`contextId` and `taskId` instead of starting a new task:
+When the human response arrives later, complete the pending response and invoke the workflow again. The planner resumes from its checkpoint, and the A2A client sends the response with the stored `contextId` and `taskId` instead of starting a new task:
 
 ```java
 void onInputResponse(InputResponse response) {
@@ -3203,14 +3198,9 @@ void onInputResponse(InputResponse response) {
 }
 ```
 
-`completePendingResponse(...)` records the human's answer in the suspended scope, but does not
-restart the workflow by itself. The following call is to the same `workflow.invoke(...)` method used
-for the original request, with the same memory ID and original arguments. The memory ID restores the
-saved planner checkpoint; when execution reaches the A2A client, it sends the completed response
-with the stored `contextId` and `taskId`, continuing the existing remote task.
+`completePendingResponse(...)` records the human's answer in the suspended scope, but does not restart the workflow by itself. The following call is to the same `workflow.invoke(...)` method used for the original request, with the same memory ID and original arguments. The memory ID restores the saved planner checkpoint; when execution reaches the A2A client, it sends the completed response with the stored `contextId` and `taskId`, continuing the existing remote task.
 
-If an A2A client is invoked outside an agentic system, there is no scope to suspend. In that case it
-throws `A2ATaskInterruptedException` directly so the caller can handle the interruption manually.
+If an A2A client is invoked outside an agentic system, there is no scope to suspend. In that case it throws `A2ATaskInterruptedException` directly so the caller can handle the interruption manually.
 
 ### Customizing the A2A client
 
