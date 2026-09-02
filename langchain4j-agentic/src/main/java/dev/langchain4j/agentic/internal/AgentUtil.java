@@ -7,6 +7,7 @@ import static dev.langchain4j.internal.Utils.getAnnotatedMethod;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.service.TypeUtils.isImageType;
 
+import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.UntypedAgent;
@@ -199,11 +200,17 @@ public class AgentUtil {
             Parameter parameter, Map<String, Object> defaultValues, Set<String> optionalArgs) {
         String argName = parameterName(parameter);
         Object defaultValue = defaultValues.getOrDefault(argName, parameterDefaultValue(parameter));
+        P p = parameter.getAnnotation(P.class);
+        String description = p == null ? null : (isNullOrBlank(p.description()) ? p.value() : p.description());
         return new AgentArgument(
-                parameter.getParameterizedType(), argName, defaultValue, optionalArgs.contains(argName));
+                parameter.getParameterizedType(), argName, defaultValue, optionalArgs.contains(argName), description);
     }
 
     private static String parameterName(Parameter p) {
+        P annotation = p.getAnnotation(P.class);
+        if (annotation != null && !annotation.name().isBlank()) {
+            return annotation.name();
+        }
         if (p.getAnnotation(MemoryId.class) != null) {
             return MEMORY_ID_ARG_NAME;
         }

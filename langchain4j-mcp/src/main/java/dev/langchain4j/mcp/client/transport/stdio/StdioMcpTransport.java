@@ -4,11 +4,11 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import dev.langchain4j.exception.JsonException;
 import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.mcp.client.McpCallContext;
-import dev.langchain4j.mcp.client.transport.McpOperationHandler;
-import dev.langchain4j.exception.JsonException;
 import dev.langchain4j.mcp.client.transport.McpJson;
+import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import dev.langchain4j.mcp.client.transport.McpTransport;
 import dev.langchain4j.mcp.protocol.McpClientMessage;
 import dev.langchain4j.mcp.protocol.McpInitializationNotification;
@@ -61,21 +61,33 @@ public class StdioMcpTransport implements McpTransport {
         log.debug("Starting process: {}", command);
         ProcessBuilder processBuilder = new ProcessBuilder(command);
         processBuilder.environment().putAll(environment);
+        Process startedProcess;
         try {
-            process = processBuilder.start();
-            log.debug("PID of the started process: {}", process.pid());
-            process.onExit().thenRun(() -> {
-                if (messageHandler != null) {
-                    messageHandler.cancelAllPendingOperations("Process has exited");
+            startedProcess = processBuilder.start();
+            synchronized (this) {
+                process = startedProcess;
+            }
+            log.debug("PID of the started process: {}", startedProcess.pid());
+            startedProcess.onExit().thenRun(() -> {
+                McpOperationHandler handlerToCancel;
+                synchronized (this) {
+                    handlerToCancel = process == startedProcess ? messageHandler : null;
                 }
-                log.debug("Subprocess has exited with code: {}", process.exitValue());
+                if (handlerToCancel != null) {
+                    handlerToCancel.cancelAllPendingOperations("Process has exited");
+                }
+                log.debug("Subprocess has exited with code: {}", startedProcess.exitValue());
             });
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
         jsonRpcIoHandler = new JsonRpcIoHandler(
-                process.getInputStream(), process.getOutputStream(), messageHandler::onMessage, logEvents, logger);
-        stderrHandler = new ProcessStderrHandler(process);
+                startedProcess.getInputStream(),
+                startedProcess.getOutputStream(),
+                messageHandler::onMessage,
+                logEvents,
+                logger);
+        stderrHandler = new ProcessStderrHandler(startedProcess);
         executorService.submit(jsonRpcIoHandler);
         executorService.submit(stderrHandler);
     }
@@ -142,6 +154,16 @@ public class StdioMcpTransport implements McpTransport {
      * before starting a replacement process during reconnection.
      */
     private void stopCurrentProcess() {
+        Process processToStop;
+        McpOperationHandler handlerToCancel;
+        synchronized (this) {
+            processToStop = process;
+            process = null;
+            handlerToCancel = processToStop != null ? messageHandler : null;
+        }
+        if (handlerToCancel != null) {
+            handlerToCancel.cancelAllPendingOperations("Process has exited");
+        }
         if (stderrHandler != null) {
             try {
                 stderrHandler.close();
@@ -156,9 +178,8 @@ public class StdioMcpTransport implements McpTransport {
             }
             jsonRpcIoHandler = null;
         }
-        if (process != null) {
-            process.destroy();
-            process = null;
+        if (processToStop != null) {
+            processToStop.destroy();
         }
     }
 
@@ -308,5 +329,4 @@ public class StdioMcpTransport implements McpTransport {
     public void executeOperationWithoutResponse(McpCallContext context) {
         sendMessage(context);
     }
-
 }

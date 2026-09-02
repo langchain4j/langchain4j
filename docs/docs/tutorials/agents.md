@@ -3168,6 +3168,40 @@ ResultWithAgenticScope<String> result = workflow.converse("hello");
 
 In this sequence, the first agent sends a message with no `contextId`/`taskId` (they are `null` in the scope). The server creates a new task and context. The response IDs are written to the scope. When the second agent runs, it reads the now-populated `contextId` and `taskId` from the scope and sends them on the message envelope, continuing the same conversation.
 
+### Human-in-the-loop A2A agents
+
+An A2A server can pause a task in the `input-required` or `auth-required` state. When this happens inside an agentic system, the A2A client stores a `SuspendedResponse` in the `AgenticScope`, checkpoints the workflow, and releases the calling thread. The interruption contains the task and context IDs required to continue the same remote task.
+
+The caller can publish those details to an external system, such as a Kafka topic:
+
+```java
+try {
+    workflow.invoke("request-123", "Book the trip");
+} catch (AgenticSystemSuspendedException e) {
+    AgenticScope scope = e.scope();
+    String responseId = scope.pendingResponseIds().iterator().next();
+    A2ATaskInterruptedException interruption = A2ATaskInterruptedException.from(scope, responseId);
+
+    inputRequests.publish(new InputRequest(
+            scope.memoryId(), responseId, interruption.taskId(),
+            interruption.contextId(), interruption.reason()));
+}
+```
+
+When the human response arrives later, complete the pending response and invoke the workflow again. The planner resumes from its checkpoint, and the A2A client sends the response with the stored `contextId` and `taskId` instead of starting a new task:
+
+```java
+void onInputResponse(InputResponse response) {
+    AgenticScope scope = workflow.getAgenticScope(response.memoryId());
+    scope.completePendingResponse(response.responseId(), response.text());
+    workflow.invoke(response.memoryId(), "Book the trip");
+}
+```
+
+`completePendingResponse(...)` records the human's answer in the suspended scope, but does not restart the workflow by itself. The following call is to the same `workflow.invoke(...)` method used for the original request, with the same memory ID and original arguments. The memory ID restores the saved planner checkpoint; when execution reaches the A2A client, it sends the completed response with the stored `contextId` and `taskId`, continuing the existing remote task.
+
+If an A2A client is invoked outside an agentic system, there is no scope to suspend. In that case it throws `A2ATaskInterruptedException` directly so the caller can handle the interruption manually.
+
 ### Customizing the A2A client
 
 By default, A2A agents use a JSONRPC transport with a default configuration. The `clientCustomizer` method exposes the underlying a2a-java SDK `ClientBuilder`, allowing you to configure a different transport, set a custom HTTP client, add interceptors, or change any other client setting.
