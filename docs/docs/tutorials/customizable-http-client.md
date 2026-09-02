@@ -36,6 +36,13 @@ OpenAiChatModel model = OpenAiChatModel.builder()
         .build();
 ```
 
+:::note
+An `HttpClient` implementation can also provide non-blocking counterparts: `executeAsync(...)` for a single
+response and `stream(...)` for a cold `Flow.Publisher` of parsed server-sent events. The bundled JDK, OkHttp and
+Apache clients implement both.
+See [Non-blocking and Reactive](/tutorials/non-blocking).
+:::
+
 ## Customizing Spring's `RestClient`
 
 ```java

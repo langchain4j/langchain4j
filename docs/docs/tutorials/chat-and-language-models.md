@@ -219,6 +219,30 @@ See more details [here](https://platform.openai.com/docs/guides/vision#low-or-hi
 #### PDF File Content
 `PdfFileContent` is similar to the `ImageContent`, but represents binary contents of a PDF file.
 
+### Non-blocking calls
+
+:::note
+Experimental. The API is annotated `@Experimental` and may change in future releases.
+:::
+
+`ChatModel` can also answer without blocking the calling thread:
+
+```java
+CompletableFuture<ChatResponse> future = model.chatAsync(chatRequest);
+```
+
+There are the same convenience overloads as for `chat(...)`, for example
+`CompletableFuture<String> chatAsync(String userMessage)`.
+
+Cancelling the future releases the caller and makes a best-effort attempt to abort the in-flight HTTP call.
+The future is completed on the model's transport thread, so a continuation attached without an explicit executor
+runs there - keep it non-blocking, or use `thenApplyAsync(fn, executor)`.
+
+A provider that has not implemented the non-blocking path fails loudly with an `AsyncNotSupportedException`
+carried by the returned future, rather than silently blocking a thread.
+
+See [Non-blocking and Reactive](/tutorials/non-blocking) for the full picture, including streaming and AI Services.
+
 ### Kotlin Extensions
 
 The `ChatModel` [Kotlin extensions](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-kotlin/src/main/kotlin/dev/langchain4j/kotlin/model/chat/ChatModelExtensions.kt) provide asynchronous methods for handling chat interactions with a language model, utilizing Kotlin's [coroutine](https://kotlinlang.org/docs/coroutines-guide.html) capabilities. The `chatAsync` methods allow non-blocking processing of `ChatRequest` or `ChatRequest.Builder` configurations, returning `ChatResponse` with the model's reply. Similarly, `generateAsync` handles the asynchronous generation of responses from chat messages. These extensions simplify building chat requests and handling conversations efficiently in Kotlin applications. Note that these methods are marked as experimental and may evolve over time.

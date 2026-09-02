@@ -658,6 +658,17 @@ gen_ai_client_token_usage_tokens_max{gen_ai_operation_name="chat",gen_ai_provide
 gen_ai_client_token_usage_tokens_max{gen_ai_operation_name="chat",gen_ai_provider_name="OPEN_AI",gen_ai_request_model="gpt-4o-mini",gen_ai_response_model="gpt-4o-mini-2024-07-18",gen_ai_token_type="output"} 27.0
 ```
 
+:::note
+**Listener callbacks must not block.** `ChatModelListener` and `EmbeddingModelListener` callbacks are invoked
+synchronously on the model's own threads and are never offloaded. On the synchronous API that is the caller's
+thread; on the asynchronous and reactive APIs, `onResponse`/`onError` run on the transport's I/O worker that reads
+the response. A callback that performs blocking I/O there - a synchronous database write, a synchronous HTTP call
+to an observability backend - stalls that worker and, under concurrency, degrades throughput for every in-flight
+call. Record metrics or start/stop spans (the bundled Micrometer and Observation listeners are non-blocking by
+design); if a callback genuinely must block, offload it to your own executor from inside the callback.
+See [Non-blocking and Reactive](/tutorials/non-blocking).
+:::
+
 ## Observability in Spring Boot Application
 
 See more details [here](/tutorials/spring-boot-integration#observability).
