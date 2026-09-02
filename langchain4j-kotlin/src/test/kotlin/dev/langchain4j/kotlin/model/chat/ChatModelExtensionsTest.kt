@@ -64,7 +64,7 @@ internal class ChatModelExtensionsTest {
 
         val response = chatModel.chatAsync(chatRequest)
 
-        assertThat(response.get()).isEqualTo(chatResponse) // TODO check with kpavlov
+        assertThat(response.get()).isEqualTo(chatResponse)
     }
 
     @Test
