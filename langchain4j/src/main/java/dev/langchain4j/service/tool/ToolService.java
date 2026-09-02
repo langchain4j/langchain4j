@@ -105,6 +105,8 @@ public class ToolService {
 
     private Consumer<BeforeToolExecution> beforeToolExecution = null;
     private Consumer<ToolExecution> afterToolExecution = null;
+    private Consumer<BeforeAllToolExecutions> beforeAllToolExecutions = null;
+    private Consumer<List<ToolExecution>> afterAllToolExecutions = null;
     private BiConsumer<ToolExecution, Consumer<ToolExecution>> onCompensableToolExecution = null;
     private Consumer<InvocationContext> onToolExecutionError = null;
 
@@ -276,7 +278,8 @@ public class ToolService {
         }
 
         for (Method candidateMethod : allConcreteMethods(objectWithTools.getClass())) {
-            Method method = getAnnotatedMethod(candidateMethod, CompensateFor.class).orElse(null);
+            Method method =
+                    getAnnotatedMethod(candidateMethod, CompensateFor.class).orElse(null);
             if (method != null) {
                 CompensateFor compensateFor = method.getAnnotation(CompensateFor.class);
                 String toolName = compensateFor.value();
@@ -335,8 +338,10 @@ public class ToolService {
                             .methodToInvoke(method)
                             .propagateToolExecutionExceptions(true)
                             .build();
-                    compensatingActions.put(toolName, toolExecution ->
-                            executor.executeWithContext(toolExecution.request(), toolExecution.invocationContext()));
+                    compensatingActions.put(
+                            toolName,
+                            toolExecution -> executor.executeWithContext(
+                                    toolExecution.request(), toolExecution.invocationContext()));
                 }
             }
         }
@@ -409,7 +414,36 @@ public class ToolService {
         return afterToolExecution;
     }
 
-    public void onCompensableToolExecution(BiConsumer<ToolExecution, Consumer<ToolExecution>> onCompensableToolExecution) {
+    /**
+     * @since 1.19.0
+     */
+    public void beforeAllToolExecutions(Consumer<BeforeAllToolExecutions> beforeAllToolExecutions) {
+        this.beforeAllToolExecutions = beforeAllToolExecutions;
+    }
+
+    /**
+     * @since 1.19.0
+     */
+    public Consumer<BeforeAllToolExecutions> beforeAllToolExecutions() {
+        return beforeAllToolExecutions;
+    }
+
+    /**
+     * @since 1.19.0
+     */
+    public void afterAllToolExecutions(Consumer<List<ToolExecution>> afterAllToolExecutions) {
+        this.afterAllToolExecutions = afterAllToolExecutions;
+    }
+
+    /**
+     * @since 1.19.0
+     */
+    public Consumer<List<ToolExecution>> afterAllToolExecutions() {
+        return afterAllToolExecutions;
+    }
+
+    public void onCompensableToolExecution(
+            BiConsumer<ToolExecution, Consumer<ToolExecution>> onCompensableToolExecution) {
         if (compensatingToolMisconfiguration != null) {
             throw compensatingToolMisconfiguration;
         }
@@ -586,6 +620,14 @@ public class ToolService {
             intermediateResponses.add(chatResponse);
 
             List<ToolExecutionRequest> toolExecutionRequests = aiMessage.toolExecutionRequests();
+
+            if (beforeAllToolExecutions != null) {
+                beforeAllToolExecutions.accept(BeforeAllToolExecutions.builder()
+                        .requests(toolExecutionRequests)
+                        .invocationContext(invocationContext)
+                        .build());
+            }
+
             Map<ToolExecutionRequest, ToolExecutionResult> toolResults =
                     execute(toolExecutionRequests, toolServiceContext.toolExecutors(), invocationContext);
 
@@ -593,6 +635,7 @@ public class ToolService {
             String failedToolName = null;
             List<ReturnBehavior> returnBehaviors = new ArrayList<>(toolExecutionRequests.size());
             List<ToolExecutionResultMessage> resultMessages = new ArrayList<>(toolExecutionRequests.size());
+            List<ToolExecution> roundToolExecutions = new ArrayList<>(toolExecutionRequests.size());
 
             for (ToolExecutionRequest request : toolExecutionRequests) {
                 ToolExecutionResult result = toolResults.get(request);
@@ -604,7 +647,7 @@ public class ToolService {
                         .result(result)
                         .invocationContext(invocationContext)
                         .build();
-                toolExecutions.add(toolExecution);
+                roundToolExecutions.add(toolExecution);
 
                 fireToolExecutedEvent(invocationContext, request, toolExecution, context.eventListenerRegistrar);
 
@@ -622,6 +665,12 @@ public class ToolService {
                 }
                 anyToolErrored = anyToolErrored || result.isError();
                 returnBehaviors.add(toolServiceContext.returnBehavior(request.name()));
+            }
+
+            toolExecutions.addAll(roundToolExecutions);
+
+            if (afterAllToolExecutions != null) {
+                afterAllToolExecutions.accept(copy(roundToolExecutions));
             }
 
             if (anyToolErrored && compensableExecutions != null && !compensableExecutions.isEmpty()) {

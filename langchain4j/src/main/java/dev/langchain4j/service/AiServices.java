@@ -42,6 +42,7 @@ import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
 import dev.langchain4j.service.tool.AiServiceTool;
+import dev.langchain4j.service.tool.BeforeAllToolExecutions;
 import dev.langchain4j.service.tool.BeforeToolExecution;
 import dev.langchain4j.service.tool.DefaultToolExecutor;
 import dev.langchain4j.service.tool.ToolArgumentsErrorHandler;
@@ -713,6 +714,46 @@ public abstract class AiServices<T> {
      */
     public AiServices<T> afterToolExecution(Consumer<ToolExecution> afterToolExecution) {
         context.toolService.afterToolExecution(afterToolExecution);
+        return this;
+    }
+
+    /**
+     * Configures a callback to be invoked once per tool-calling round, before any of the requested tools is executed.
+     * <p>
+     * When the LLM requests multiple tool executions at once, this callback receives all of them together,
+     * before the first tool starts executing, regardless of whether the tools are executed sequentially
+     * or {@linkplain #executeToolsConcurrently() concurrently}.
+     * It complements {@link #beforeToolExecution(Consumer)}, which is invoked for each tool execution individually.
+     * <p>
+     * This callback is invoked only for synchronous AI Services.
+     *
+     * @param beforeAllToolExecutions A {@link Consumer} that accepts a {@link BeforeAllToolExecutions}
+     *                                containing all tool execution requests of the current tool-calling round.
+     * @return builder
+     * @since 1.19.0
+     */
+    public AiServices<T> beforeAllToolExecutions(Consumer<BeforeAllToolExecutions> beforeAllToolExecutions) {
+        context.toolService.beforeAllToolExecutions(beforeAllToolExecutions);
+        return this;
+    }
+
+    /**
+     * Configures a callback to be invoked once per tool-calling round, after all requested tools have been executed.
+     * <p>
+     * When the LLM requests multiple tool executions at once, this callback receives all of them together,
+     * after the last tool has finished executing, regardless of whether the tools are executed sequentially
+     * or {@linkplain #executeToolsConcurrently() concurrently}.
+     * It complements {@link #afterToolExecution(Consumer)}, which is invoked for each tool execution individually.
+     * <p>
+     * This callback is invoked only for synchronous AI Services.
+     *
+     * @param afterAllToolExecutions A {@link Consumer} that accepts all {@link ToolExecution}s
+     *                               of the current tool-calling round, in the order they were requested by the LLM.
+     * @return builder
+     * @since 1.19.0
+     */
+    public AiServices<T> afterAllToolExecutions(Consumer<List<ToolExecution>> afterAllToolExecutions) {
+        context.toolService.afterAllToolExecutions(afterAllToolExecutions);
         return this;
     }
 
