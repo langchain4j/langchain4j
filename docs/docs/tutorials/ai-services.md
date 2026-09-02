@@ -396,6 +396,9 @@ AI Service method can return one of the following types:
 - `String` - in this case LLM-generated output is returned without any processing/parsing
 - Any type supported by [Structured Outputs](/tutorials/structured-outputs#supported-types) - in this case
 AI service will parse LLM-generated output into a desired type before returning
+- `TokenStream` - to receive the response [as it is generated](/tutorials/ai-services#streaming)
+- `CompletableFuture<T>` / `CompletionStage<T>` or `Flow.Publisher<...>` - to run the interaction
+[without blocking the calling thread](/tutorials/non-blocking) (experimental)
 
 Any type can be additionally wrapped into a `Result<T>` to get extra metadata about AI Service invocation:
 - `TokenUsage` - total number of tokens used during AI service invocation. If AI service did multiple calls to
@@ -658,7 +661,10 @@ prompt engineering is your best bet. Also, try lowering the `temperature` for mo
 ## Streaming
 
 The AI Service can [stream response](/tutorials/response-streaming) token-by-token
-when using the `TokenStream` return type:
+when using the `TokenStream` return type.
+A `Flow.Publisher` return type streams the same interaction without blocking the calling thread -
+see [Non-blocking and Reactive](/tutorials/non-blocking).
+
 ```java
 interface Assistant {
 
@@ -721,6 +727,8 @@ Once `StreamingHandle.cancel()` has been called, `TokenStream` will not receive 
 
 ### Flux
 You can also use `Flux<String>` instead of `TokenStream`.
+(`Flow.Publisher<String>` gives you the same stream without an extra module -
+see [Non-blocking and Reactive](/tutorials/non-blocking).)
 For this, please import `langchain4j-reactor` module:
 ```xml
 <dependency>

@@ -52,7 +52,7 @@ class OpenAiOfficialResponsesChatModelThinkingIT {
     void should_return_reasoning_summary() {
 
         // given
-        Reasoning.Summary reasoningSummary = Reasoning.Summary.AUTO;
+        Reasoning.Summary reasoningSummary = Reasoning.Summary.DETAILED;
 
         ChatModel model = OpenAiOfficialResponsesChatModel.builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
