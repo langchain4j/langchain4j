@@ -103,9 +103,7 @@ class DefaultRetrievalAugmentorTest {
 
         // then
         UserMessage augmented = (UserMessage) result.chatMessage();
-        assertThat(augmented.singleText())
-                .isEqualTo(
-                        """
+        assertThat(augmented.singleText()).isEqualTo("""
                 query
                 content 1
                 content 2
@@ -151,6 +149,48 @@ class DefaultRetrievalAugmentorTest {
     }
 
     @Test
+    void should_preserve_transformed_query_order() {
+        Query firstQuery = Query.from("z");
+        Query secondQuery = Query.from("a");
+        QueryTransformer queryTransformer = new TestQueryTransformer(firstQuery, secondQuery);
+        ContentRetriever contentRetriever = query -> singletonList(Content.from(query.text()));
+
+        RetrievalAugmentor retrievalAugmentor = DefaultRetrievalAugmentor.builder()
+                .queryTransformer(queryTransformer)
+                .queryRouter(new DefaultQueryRouter(contentRetriever))
+                .executor(Runnable::run)
+                .build();
+
+        UserMessage userMessage = UserMessage.from("query");
+        Metadata metadata = Metadata.from(userMessage, SystemMessage.from("system"), null, null);
+        AugmentationResult result = retrievalAugmentor.augment(new AugmentationRequest(userMessage, metadata));
+
+        assertThat(result.contents())
+                .extracting(content -> content.textSegment().text())
+                .containsExactly(firstQuery.text(), secondQuery.text());
+    }
+
+    @Test
+    void should_retrieve_only_once_for_duplicate_transformed_queries() {
+        Query query = Query.from("duplicate");
+        QueryTransformer queryTransformer = new TestQueryTransformer(query, query);
+        ContentRetriever contentRetriever = mock(ContentRetriever.class);
+        when(contentRetriever.retrieve(query)).thenReturn(emptyList());
+
+        RetrievalAugmentor retrievalAugmentor = DefaultRetrievalAugmentor.builder()
+                .queryTransformer(queryTransformer)
+                .queryRouter(new DefaultQueryRouter(contentRetriever))
+                .executor(Runnable::run)
+                .build();
+
+        UserMessage userMessage = UserMessage.from("query");
+        Metadata metadata = Metadata.from(userMessage, SystemMessage.from("system"), null, null);
+        retrievalAugmentor.augment(new AugmentationRequest(userMessage, metadata));
+
+        verify(contentRetriever).retrieve(query);
+    }
+
+    @Test
     void should_augment_user_message__single_query_multiple_retrievers() {
 
         // given
@@ -190,9 +230,7 @@ class DefaultRetrievalAugmentorTest {
 
         // then
         UserMessage augmented = (UserMessage) result.chatMessage();
-        assertThat(augmented.singleText())
-                .isEqualTo(
-                        """
+        assertThat(augmented.singleText()).isEqualTo("""
                 query
                 content 1
                 content 2
@@ -269,8 +307,7 @@ class DefaultRetrievalAugmentorTest {
 
         // then
         UserMessage augmented = (UserMessage) result.chatMessage();
-        assertThat(augmented.singleText())
-                .isEqualTo("""
+        assertThat(augmented.singleText()).isEqualTo("""
                 query
                 content 1
                 content 2""");
