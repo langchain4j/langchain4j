@@ -52,8 +52,7 @@ final class McpSchemaToType {
                 .toList();
     }
 
-    static List<AgentArgument> mergeDescriptions(
-            List<AgentArgument> arguments, Map<String, String> inputDescriptions) {
+    static List<AgentArgument> mergeDescriptions(List<AgentArgument> arguments, Map<String, String> inputDescriptions) {
         if (inputDescriptions.isEmpty()) {
             return arguments;
         }
@@ -70,12 +69,7 @@ final class McpSchemaToType {
                         return argument;
                     }
 
-                    return new AgentArgument(
-                            argument.type(),
-                            argument.name(),
-                            argument.defaultValue(),
-                            argument.isOptional(),
-                            schemaDescription);
+                    return argument.withDescription(schemaDescription);
                 })
                 .toList();
     }

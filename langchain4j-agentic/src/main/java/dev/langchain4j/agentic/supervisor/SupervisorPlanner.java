@@ -19,10 +19,6 @@ import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.ParameterNameResolver;
 import dev.langchain4j.service.memory.ChatMemoryAccess;
-import java.lang.reflect.GenericArrayType;
-import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -119,88 +115,35 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
     }
 
     private static String argumentDescription(AgentArgument arg) {
-        String argument = argumentDescription(arg.type(), arg.name());
         String description = arg.description();
         if (description != null && !description.isBlank()) {
-            return argument + " - " + description;
+            return argumentDescription(arg.rawType(), arg.name()) + " - " + description;
         }
-        return argument;
+        return argumentDescription(arg.rawType(), arg.name());
     }
 
-    private static String argumentDescription(Type type, String name) {
+    private static String argumentDescription(Class<?> type, String name) {
         if (name == null) {
             return "";
         }
 
-        return name + ": " + typeDescription(type);
-    }
-
-    private static String typeDescription(Type type) {
-        if (type instanceof GenericArrayType genericArrayType) {
-            return typeDescription(genericArrayType.getGenericComponentType()) + "[]";
-        }
-
-        if (type instanceof ParameterizedType parameterizedType) {
-            Class<?> rawType = (Class<?>) parameterizedType.getRawType();
-            if (Collection.class.isAssignableFrom(rawType) || Map.class.isAssignableFrom(rawType)) {
-                return typeName(parameterizedType);
-            }
-            return objectDescription(rawType);
-        }
-
-        if (!(type instanceof Class<?> clazz)) {
-            return type.getTypeName();
-        }
-
-        if (clazz.isArray()) {
-            return typeDescription(clazz.getComponentType()) + "[]";
-        }
-
-        if (isSimpleType(clazz)
-                || clazz == Object.class
-                || Collection.class.isAssignableFrom(clazz)
-                || Map.class.isAssignableFrom(clazz)) {
-            return clazz.getSimpleName();
-        }
-
-        return objectDescription(clazz);
-    }
-
-    private static boolean isSimpleType(Class<?> type) {
-        return type.isPrimitive()
+        if (type.isPrimitive()
                 || type.isEnum()
                 || type == String.class
                 || type == Boolean.class
-                || Number.class.isAssignableFrom(type);
-    }
+                || Number.class.isAssignableFrom(type)) {
+            return name + ": " + type.getSimpleName();
+        }
 
-    private static String objectDescription(Class<?> type) {
         String fieldsDescription = type.isRecord()
                 ? Stream.of(type.getDeclaredConstructors()[0].getParameters())
-                        .map(p -> argumentDescription(p.getParameterizedType(), ParameterNameResolver.name(p)))
+                        .map(p -> argumentDescription(p.getType(), ParameterNameResolver.name(p)))
                         .collect(Collectors.joining(", "))
                 : Stream.of(type.getDeclaredFields())
-                        .map(f -> argumentDescription(f.getGenericType(), f.getName()))
+                        .map(f -> argumentDescription(f.getType(), f.getName()))
                         .collect(Collectors.joining(", "));
 
-        return "{" + fieldsDescription + "}";
-    }
-
-    private static String typeName(Type type) {
-        if (type instanceof Class<?> clazz) {
-            return clazz.isArray() ? typeName(clazz.getComponentType()) + "[]" : clazz.getSimpleName();
-        }
-        if (type instanceof GenericArrayType genericArrayType) {
-            return typeName(genericArrayType.getGenericComponentType()) + "[]";
-        }
-        if (type instanceof ParameterizedType parameterizedType) {
-            return typeName(parameterizedType.getRawType()) + "<"
-                    + Stream.of(parameterizedType.getActualTypeArguments())
-                            .map(SupervisorPlanner::typeName)
-                            .collect(Collectors.joining(", "))
-                    + ">";
-        }
-        return type.getTypeName();
+        return name + ": {" + fieldsDescription + "}";
     }
 
     private Action nextSubagent(AgenticScope agenticScope, String lastResponse) {

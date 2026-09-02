@@ -17,11 +17,9 @@ import dev.langchain4j.agentic.agent.MissingArgumentException;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.observability.AgentRequest;
 import dev.langchain4j.agentic.planner.AgentArgument;
-import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.scope.AgentInvocation;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
-import dev.langchain4j.agentic.supervisor.SupervisorPlanner;
 import dev.langchain4j.mcp.client.McpClient;
 import dev.langchain4j.model.chat.request.json.JsonAnyOfSchema;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
@@ -483,24 +481,17 @@ class McpAgentTest {
         Method method = TypedDescribedCollectionAgent.class.getMethod("search", List.class, String[].class);
 
         List<AgentArgument> clientArguments = ((McpClientInstance) agent).arguments();
-        assertThat(clientArguments).extracting(AgentArgument::type).containsExactly(
-                method.getGenericParameterTypes()[0], method.getGenericParameterTypes()[1]);
+        assertThat(clientArguments)
+                .extracting(AgentArgument::type)
+                .containsExactly(method.getGenericParameterTypes()[0], method.getGenericParameterTypes()[1]);
         assertThat(clientArguments)
                 .extracting(AgentArgument::description)
                 .containsExactly("Fields to include in the search", "IDs selected by the caller");
 
-        List<AgentArgument> invokerArguments =
-                new McpClientAgentInvoker((McpClientInstance) agent, method).arguments();
+        List<AgentArgument> invokerArguments = new McpClientAgentInvoker((McpClientInstance) agent, method).arguments();
         assertThat(invokerArguments)
                 .extracting(AgentArgument::description)
                 .containsExactly("Fields to include in the search", "IDs selected by the caller");
-
-        Method cardBuilder = SupervisorPlanner.class.getDeclaredMethod("toCard", AgentInstance.class);
-        cardBuilder.setAccessible(true);
-        assertThat(cardBuilder.invoke(null, new McpClientAgentInvoker((McpClientInstance) agent, method)))
-                .isEqualTo(
-                        "{'search_records', 'Search records', [fields: List<String> - Fields to include in the search, "
-                                + "recordIds: String[] - IDs selected by the caller]}");
     }
 
     @Test
