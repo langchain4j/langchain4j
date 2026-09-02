@@ -15,6 +15,7 @@
     <properties>
         <hibernate.version>7.4.5.Final</hibernate.version>
         <hibernate-nosql.version>1.0.0.Alpha1</hibernate-nosql.version>
+        <milvus-sdk-java.version>2.6.22</milvus-sdk-java.version>
         <!-- TODO: remove enforcer.skipRules -->
         <enforcer.skipRules>dependencyConvergence,requireUpperBoundDeps</enforcer.skipRules>
     </properties>
@@ -37,6 +38,24 @@
             <groupId>org.hibernate.nosql</groupId>
             <artifactId>hibernate-milvus</artifactId>
             <version>${hibernate-nosql.version}</version>
+            <exclusions>
+                <!--
+                    hibernate-milvus depends on milvus-sdk-java-bulkwriter, which drags in Hadoop, Parquet,
+                    the AWS SDK v1, the Azure SDK and MinIO. The Milvus dialect only uses the plain SDK,
+                    so the bulk writer is excluded and milvus-sdk-java is declared directly below.
+                -->
+                <exclusion>
+                    <groupId>io.milvus</groupId>
+                    <artifactId>milvus-sdk-java-bulkwriter</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <dependency>
+            <groupId>io.milvus</groupId>
+            <artifactId>milvus-sdk-java</artifactId>
+            <version>${milvus-sdk-java.version}</version>
+            <scope>runtime</scope>
         </dependency>
 
         <!-- test dependencies -->
