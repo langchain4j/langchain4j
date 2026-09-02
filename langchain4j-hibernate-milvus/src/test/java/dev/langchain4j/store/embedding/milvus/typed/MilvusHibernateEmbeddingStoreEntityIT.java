@@ -60,11 +60,11 @@ class MilvusHibernateEmbeddingStoreEntityIT extends EmbeddingStoreWithFilteringI
 
     @BeforeAll
     static void setup() {
+        // The test container runs Milvus without authentication, so no credentials are configured
         sessionFactory = new Configuration()
                 .addAnnotatedClass(GenericEmbeddingEntity.class)
                 .setJdbcUrl("jdbc:milvus://" + databaseContainer.getHost() + ":"
                         + databaseContainer.getMappedPort(19530) + "/default")
-                .setCredentials("sa", "")
                 .setSchemaExportAction(Action.CREATE_DROP)
                 .buildSessionFactory();
     }

@@ -14,9 +14,6 @@ public final class MilvusDatabaseKind implements DatabaseKind {
 
     private MilvusDatabaseKind() {}
 
-    /**
-     * Always returns {@code null}, since we can't reasonably add indexes after creating a collection.
-     */
     @Override
     public String createIndexDDL(
             final DistanceFunction distanceFunction,
@@ -24,12 +21,14 @@ public final class MilvusDatabaseKind implements DatabaseKind {
             final String table,
             final String embeddingColumn,
             final String indexOptions) {
+        // Milvus creates the vector index together with the collection, so there is no index DDL to run
+        // afterwards, and the createIndex(), indexType() and indexOptions() settings have no effect
         return null;
     }
 
     @Override
     public String getSetupSql() {
-        return null;
+        return null; // Milvus needs no extension or feature flag to be enabled before vectors can be used
     }
 
     @Override
