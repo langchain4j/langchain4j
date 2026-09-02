@@ -162,6 +162,10 @@ public class DefaultToolExecutor implements ToolExecutor {
     private ToolExecutionResult execute(Object[] arguments) throws IllegalAccessException, InvocationTargetException {
         Object result = methodToInvoke.invoke(object, arguments);
 
+        if (result instanceof ToolExecutionResult toolExecutionResult) {
+            return toolExecutionResult;
+        }
+
         List<Content> resultContents = toContents(result);
         if (resultContents != null) {
             return ToolExecutionResult.builder()
