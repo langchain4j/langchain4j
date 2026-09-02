@@ -121,11 +121,13 @@ public final class ToolMessage implements Message {
 
         public Builder content(String content) {
             this.stringContent = content;
+            this.contents = null;
             return this;
         }
 
         public Builder content(List<Content> content) {
             this.contents = content;
+            this.stringContent = null;
             return this;
         }
 
