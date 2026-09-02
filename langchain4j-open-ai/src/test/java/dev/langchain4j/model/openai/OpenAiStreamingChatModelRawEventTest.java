@@ -138,9 +138,6 @@ class OpenAiStreamingChatModelRawEventTest {
 
         model.chat("What is the weather?", new StreamingChatResponseHandler() {
             @Override
-            public void onPartialResponse(String partialResponse) {}
-
-            @Override
             public void onCompleteResponse(ChatResponse completeResponse) {
                 futureResponse.complete(completeResponse);
             }
