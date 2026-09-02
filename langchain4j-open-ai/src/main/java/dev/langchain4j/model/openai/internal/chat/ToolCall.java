@@ -103,13 +103,21 @@ public class ToolCall {
         private ToolType type;
         private FunctionCall function;
 
+        private static Integer normalizeIndex(Integer index) {
+            if (index != null && index < 0) {
+                // Some OpenAI-compatible proxies emit -1; null activates fallback indexing.
+                return null;
+            }
+            return index;
+        }
+
         public Builder id(String id) {
             this.id = id;
             return this;
         }
 
         public Builder index(Integer index) {
-            this.index = index != null && index < 0 ? null : index;
+            this.index = normalizeIndex(index);
             return this;
         }
 
