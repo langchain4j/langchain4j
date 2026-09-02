@@ -1,5 +1,6 @@
 package dev.langchain4j.mcp.client;
 
+import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
@@ -710,22 +711,7 @@ public class DefaultMcpClient implements McpClient {
     @Override
     public ToolExecutionResult executeTool(ToolExecutionRequest executionRequest, InvocationContext invocationContext) {
         assertNotClosed();
-        Map<String, Object> arguments;
-        try {
-            String args = executionRequest.arguments();
-            if (isNullOrBlank(args)) {
-                args = "{}";
-            }
-            arguments = McpJson.toMap(args);
-        } catch (JsonException e) {
-            // Reported by a codec that uses the typed exceptions; its type is the information, so
-            // it is handed over as-is.
-            throw new ToolArgumentsException(e);
-        } catch (IllegalArgumentException e) {
-            // The Jackson 2 path, where the cause is the JSON library's own exception - which is
-            // what ToolArgumentsErrorHandler has always been given for a Java tool too.
-            throw new ToolArgumentsException(e.getCause() != null ? e.getCause() : e);
-        }
+        Map<String, Object> arguments = parseToolArguments(executionRequest);
         long operationId = idGenerator.getAndIncrement();
         String progressToken = progressHandler != null ? String.valueOf(operationId) : null;
         McpCallToolRequest operation =
@@ -755,12 +741,7 @@ public class DefaultMcpClient implements McpClient {
                     },
                     "tools/call");
         } catch (TimeoutException timeout) {
-            notifyListeners(l -> l.onExecuteToolError(context, timeout));
-            cancelTimedOutOperation(timeout, operationId, resultFuture);
-            // built on demand, not once at construction: a custom converter must not be invoked
-            // for a tool call that never happened
-            return toolResultConverter.convert(
-                    List.of(Map.of("type", "text", "text", toolExecutionTimeoutErrorMessage)), false);
+            return handleToolTimeout(context, operationId, resultFuture, timeout);
         } catch (ExecutionException e) {
             notifyListeners(l -> l.onExecuteToolError(context, e));
             throw new ToolExecutionException(e.getCause());
@@ -770,7 +751,87 @@ public class DefaultMcpClient implements McpClient {
         } finally {
             pendingOperations.remove(operationId);
         }
-        final String finalResult = result;
+        return extractResultAndNotifyListeners(context, result);
+    }
+
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Non-blocking: the MCP transport is asynchronous, so this composes the transport's response
+     * future — no thread is held while the tool executes on the server. Timeout (including the cancellation
+     * notification sent to the server), error mapping and listener notifications mirror
+     * {@link #executeTool(ToolExecutionRequest, InvocationContext)}.
+     */
+    @Override
+    public CompletableFuture<ToolExecutionResult> executeToolAsync(
+            ToolExecutionRequest executionRequest, InvocationContext invocationContext) {
+        assertNotClosed();
+        Map<String, Object> arguments;
+        try {
+            arguments = parseToolArguments(executionRequest);
+        } catch (Exception e) {
+            return CompletableFuture.failedFuture(e);
+        }
+        long operationId = idGenerator.getAndIncrement();
+        String progressToken = progressHandler != null ? String.valueOf(operationId) : null;
+        McpCallToolRequest operation =
+                new McpCallToolRequest(operationId, executionRequest.name(), arguments, progressToken);
+        long timeoutMillis = toolExecutionTimeout.toMillis() == 0 ? Integer.MAX_VALUE : toolExecutionTimeout.toMillis();
+        McpCallContext context = new McpCallContext(invocationContext, operation);
+
+        CompletableFuture<String> resultFuture;
+        try {
+            notifyListeners(l -> l.beforeExecuteTool(context));
+            applyMeta(operation, context);
+            resultFuture = executeViaTransport(context);
+        } catch (Exception e) {
+            pendingOperations.remove(operationId);
+            return CompletableFuture.failedFuture(e);
+        }
+
+        return resultFuture.orTimeout(timeoutMillis, TimeUnit.MILLISECONDS).handle((result, error) -> {
+            pendingOperations.remove(operationId);
+            if (error != null) {
+                Throwable cause = unwrapCompletionException(error);
+                if (cause instanceof TimeoutException timeout) {
+                    return handleToolTimeout(context, operationId, resultFuture, timeout);
+                }
+                notifyListeners(l -> l.onExecuteToolError(context, cause));
+                throw new ToolExecutionException(cause);
+            }
+            return extractResultAndNotifyListeners(context, result);
+        });
+    }
+
+    private static Map<String, Object> parseToolArguments(ToolExecutionRequest executionRequest) {
+        try {
+            String args = executionRequest.arguments();
+            if (isNullOrBlank(args)) {
+                args = "{}";
+            }
+            return McpJson.toMap(args);
+        } catch (JsonException e) {
+            // Reported by a codec that uses the typed exceptions; its type is the information, so
+            // it is handed over as-is.
+            throw new ToolArgumentsException(e);
+        } catch (IllegalArgumentException e) {
+            // The Jackson 2 path, where the cause is the JSON library's own exception - which is
+            // what ToolArgumentsErrorHandler has always been given for a Java tool too.
+            throw new ToolArgumentsException(e.getCause() != null ? e.getCause() : e);
+        }
+    }
+
+    private ToolExecutionResult handleToolTimeout(
+            McpCallContext context, long operationId, CompletableFuture<?> resultFuture, TimeoutException timeout) {
+        notifyListeners(l -> l.onExecuteToolError(context, timeout));
+        cancelTimedOutOperation(timeout, operationId, resultFuture);
+        // built on demand, not once at construction: a custom converter must not be invoked
+        // for a tool call that never happened
+        return toolResultConverter.convert(
+                List.of(Map.of("type", "text", "text", toolExecutionTimeoutErrorMessage)), false);
+    }
+
+    private ToolExecutionResult extractResultAndNotifyListeners(McpCallContext context, String finalResult) {
         try {
             ToolExecutionResult toolResult = ToolExecutionHelper.extractResult(
                     finalResult, false, toolResultConverter);
@@ -1429,10 +1490,14 @@ public class DefaultMcpClient implements McpClient {
             McpCallContext context = new McpCallContext(invocationContext, operation);
             applyMeta(operation, context);
             String result;
+            CompletableFuture<String> resultFuture = null;
             try {
-                CompletableFuture<String> resultFuture = executeViaTransport(context);
+                resultFuture = executeViaTransport(context);
                 result = resultFuture.get(timeoutMillis, TimeUnit.MILLISECONDS);
-            } catch (ExecutionException | InterruptedException | TimeoutException e) {
+            } catch (TimeoutException e) {
+                cancelTimedOutOperation(e, operation.getId(), resultFuture);
+                throw new RuntimeException(e);
+            } catch (ExecutionException | InterruptedException e) {
                 throw new RuntimeException(e);
             } finally {
                 pendingOperations.remove(operation.getId());

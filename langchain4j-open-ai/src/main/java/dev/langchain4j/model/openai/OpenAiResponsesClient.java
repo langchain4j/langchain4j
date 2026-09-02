@@ -1,10 +1,12 @@
 package dev.langchain4j.model.openai;
 
 import static dev.langchain4j.http.client.sse.ServerSentEventParsingHandleUtils.toStreamingHandle;
-import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.*;
 import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
 import static dev.langchain4j.internal.ToolSpecificationUtils.isEffectivelyStrict;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
+import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -28,6 +30,8 @@ import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.http.client.log.LoggingHttpClient;
 import dev.langchain4j.http.client.sse.CancellationUnsupportedHandle;
 import dev.langchain4j.http.client.sse.DefaultServerSentEventParser;
+import dev.langchain4j.http.client.sse.HttpResponseReceived;
+import dev.langchain4j.http.client.sse.HttpStreamingEvent;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventContext;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
@@ -48,7 +52,11 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.chat.response.ChatModelStreamingEvent;
 import dev.langchain4j.model.chat.response.StreamingHandle;
+import dev.langchain4j.model.openai.internal.OpenAiClient;
+import dev.langchain4j.reactive.streaming.HttpStreamingChatPublisher;
+import dev.langchain4j.reactive.streaming.TubeBackedStreamingChatResponseHandler;
 import dev.langchain4j.model.output.FinishReason;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -56,7 +64,10 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Flow.Publisher;
 import java.util.function.Supplier;
+import mutiny.zero.Tube;
 
 class OpenAiResponsesClient {
 
@@ -179,6 +190,7 @@ class OpenAiResponsesClient {
     private final String baseUrl;
     private final String apiKey;
     private final String organizationId;
+    private final int streamingBufferSize;
     private final Supplier<Map<String, String>> customHeadersSupplier;
 
     OpenAiResponsesClient(Builder builder) {
@@ -193,6 +205,8 @@ class OpenAiResponsesClient {
         this.baseUrl = getOrDefault(builder.baseUrl, DEFAULT_BASE_URL);
         this.apiKey = builder.apiKey;
         this.organizationId = builder.organizationId;
+        this.streamingBufferSize = ensureGreaterThanZero(
+                getOrDefault(builder.streamingBufferSize, OpenAiClient.DEFAULT_STREAMING_BUFFER_SIZE), "streamingBufferSize");
         this.customHeadersSupplier = getOrDefault(builder.customHeadersSupplier, () -> Map::of);
     }
 
@@ -211,6 +225,33 @@ class OpenAiResponsesClient {
         }
     }
 
+    /**
+     * Non-blocking counterpart of {@link #chat(ChatRequest, OpenAiResponsesChatRequestParameters)}. Like the
+     * blocking one it does not retry - the Responses models expose no {@code maxRetries} - so the only difference
+     * is that no thread waits for the response.
+     */
+    CompletableFuture<ChatResponse> chatAsync(
+            ChatRequest chatRequest, OpenAiResponsesChatRequestParameters parameters) {
+
+        CompletableFuture<SuccessfulHttpResponse> httpFuture;
+        try {
+            Map<String, Object> payload = buildRequestPayload(chatRequest, parameters, false);
+            httpFuture = httpClient.executeAsync(buildHttpRequest(payload, false));
+        } catch (Exception e) {
+            return CompletableFuture.failedFuture(ExceptionMapper.DEFAULT.mapException(e));
+        }
+
+        CompletableFuture<ChatResponse> result = httpFuture.thenApply(rawHttpResponse -> {
+            try {
+                return parseChatResponse(rawHttpResponse);
+            } catch (Exception e) {
+                throw ExceptionMapper.DEFAULT.mapException(e);
+            }
+        });
+        propagateCancellation(result, httpFuture);
+        return result;
+    }
+
     void streamingChat(
             ChatRequest chatRequest,
             OpenAiResponsesChatRequestParameters parameters,
@@ -223,6 +264,65 @@ class OpenAiResponsesClient {
 
         } catch (Exception e) {
             withLoggingExceptions(() -> handler.onError(ExceptionMapper.DEFAULT.mapException(e)));
+        }
+    }
+
+    Publisher<ChatModelStreamingEvent> streamingChatPublisher(
+            ChatRequest chatRequest, OpenAiResponsesChatRequestParameters parameters) {
+
+        return HttpStreamingChatPublisher.create(
+                streamingBufferSize,
+                () -> {
+                    try {
+                        Map<String, Object> payload = buildRequestPayload(chatRequest, parameters, true);
+                        return httpClient.stream(buildHttpRequest(payload, true));
+                    } catch (Exception e) {
+                        throw ExceptionMapper.DEFAULT.mapException(e);
+                    }
+                },
+                ResponsesEventSink::new);
+    }
+
+    private static final class ResponsesEventSink implements HttpStreamingChatPublisher.Sink {
+
+        private final Tube<ChatModelStreamingEvent> tube;
+        private final ResponsesApiEventListener listener;
+
+        ResponsesEventSink(Tube<ChatModelStreamingEvent> tube) {
+            this.tube = tube;
+            this.listener = new ResponsesApiEventListener(new TubeBackedStreamingChatResponseHandler(tube));
+        }
+
+        @Override
+        public void onEvent(HttpStreamingEvent item) {
+            if (tube.cancelled()) {
+                return;
+            }
+            try {
+                if (item instanceof HttpResponseReceived responseReceived) {
+                    listener.onOpen(responseReceived.response());
+                } else if (item instanceof ServerSentEvent sse) {
+                    listener.onEvent(sse);
+                }
+            } catch (Exception e) {
+                if (!tube.cancelled()) {
+                    tube.fail(e);
+                }
+            }
+        }
+
+        @Override
+        public void onError(Throwable throwable) {
+            if (!tube.cancelled()) {
+                listener.onError(throwable);
+            }
+        }
+
+        @Override
+        public void onComplete() {
+            if (!tube.cancelled()) {
+                tube.complete();
+            }
         }
     }
 
@@ -832,6 +932,7 @@ class OpenAiResponsesClient {
         private String organizationId;
         private boolean logRequests;
         private boolean logResponses;
+        private Integer streamingBufferSize;
         private Supplier<Map<String, String>> customHeadersSupplier;
 
         Builder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
@@ -865,6 +966,11 @@ class OpenAiResponsesClient {
             if (logResponses != null) {
                 this.logResponses = logResponses;
             }
+            return this;
+        }
+
+        Builder streamingBufferSize(Integer streamingBufferSize) {
+            this.streamingBufferSize = streamingBufferSize;
             return this;
         }
 
@@ -920,8 +1026,10 @@ class OpenAiResponsesClient {
             if (isCancelled()) {
                 return;
             }
+
             rawServerSentEvents.add(event);
-            var data = event.data();
+
+            String data = event.data();
 
             if (data == null || data.isEmpty()) {
                 return;
@@ -933,9 +1041,8 @@ class OpenAiResponsesClient {
 
             handler.resetMappingTracking();
             handleDelta(data);
-
             if (!handler.wasMapped()) {
-                InternalStreamingChatResponseHandlerUtils.onUnmappedRawEvent(handler, event);
+                onUnmappedRawEvent(handler, event);
             }
         }
 
@@ -945,7 +1052,7 @@ class OpenAiResponsesClient {
         }
 
         private void handleDelta(String data) {
-            if (!data.trim().startsWith("{") && !data.trim().startsWith("[")) {
+            if (data == null || (!data.trim().startsWith("{") && !data.trim().startsWith("["))) {
                 return;
             }
 
@@ -956,12 +1063,12 @@ class OpenAiResponsesClient {
                 if (EVENT_OUTPUT_TEXT_DELTA.equals(type)) {
                     var text = str(at(node, FIELD_DELTA));
                     if (!text.isEmpty()) {
-                        InternalStreamingChatResponseHandlerUtils.onPartialResponse(handler, text, streamingHandle);
+                        onPartialResponse(handler, text, streamingHandle);
                     }
                 } else if (EVENT_REASONING_TEXT_DELTA.equals(type) || EVENT_REASONING_SUMMARY_TEXT_DELTA.equals(type)) {
                     var thinking = str(at(node, FIELD_DELTA));
                     if (!thinking.isEmpty()) {
-                        InternalStreamingChatResponseHandlerUtils.onPartialThinking(handler, thinking, streamingHandle);
+                        onPartialThinking(handler, thinking, streamingHandle);
                     }
                 } else if (EVENT_OUTPUT_ITEM_ADDED.equals(type)) {
                     var item = at(node, FIELD_ITEM);
@@ -991,8 +1098,7 @@ class OpenAiResponsesClient {
                                     .name(builder.build().name())
                                     .partialArguments(delta)
                                     .build();
-                            InternalStreamingChatResponseHandlerUtils.onPartialToolCall(
-                                    handler, partialToolCall, streamingHandle);
+                            onPartialToolCall(handler, partialToolCall, streamingHandle);
                         }
                     }
                 } else if (EVENT_FUNCTION_CALL_ARGUMENTS_DONE.equals(type)) {
@@ -1014,29 +1120,30 @@ class OpenAiResponsesClient {
             }
         }
 
-        private void handleOutputItemDone(Object node) {
+        private boolean handleOutputItemDone(Object node) {
             var item = at(node, FIELD_ITEM);
-            if (TYPE_FUNCTION_CALL.equals(str(at(item, FIELD_TYPE)))) {
-                var itemId = str(at(item, FIELD_ID));
-                int outputIndex = intOf(at(node, FIELD_OUTPUT_INDEX));
-                var builder = toolCallBuilders.computeIfAbsent(itemId, ignored -> ToolExecutionRequest.builder());
-                assignIndexIfAbsent(itemId, outputIndex);
-
-                var callIdNode = at(item, FIELD_CALL_ID);
-                if (callIdNode != null) {
-                    builder.id(str(callIdNode));
-                }
-                var nameNode = at(item, FIELD_NAME);
-                if (nameNode != null) {
-                    builder.name(str(nameNode));
-                }
-                var argumentsNode = at(item, FIELD_ARGUMENTS);
-                if (argumentsNode != null) {
-                    builder.arguments(str(argumentsNode));
-                }
-
-                completeToolCall(itemId, builder);
+            if (!TYPE_FUNCTION_CALL.equals(str(at(item, FIELD_TYPE)))) {
+                return false;
             }
+            var itemId = str(at(item, FIELD_ID));
+            int outputIndex = intOf(at(node, FIELD_OUTPUT_INDEX));
+            var builder = toolCallBuilders.computeIfAbsent(itemId, ignored -> ToolExecutionRequest.builder());
+            assignIndexIfAbsent(itemId, outputIndex);
+
+            var callIdNode = at(item, FIELD_CALL_ID);
+            if (callIdNode != null) {
+                builder.id(str(callIdNode));
+            }
+            var nameNode = at(item, FIELD_NAME);
+            if (nameNode != null) {
+                builder.name(str(nameNode));
+            }
+            var argumentsNode = at(item, FIELD_ARGUMENTS);
+            if (argumentsNode != null) {
+                builder.arguments(str(argumentsNode));
+            }
+
+            return completeToolCall(itemId, builder);
         }
 
         private void handleResponseCompleted(Object node) {
@@ -1120,9 +1227,10 @@ class OpenAiResponsesClient {
             return "Response failed: " + message;
         }
 
-        private void completeToolCall(String itemId, ToolExecutionRequest.Builder builder) {
+        /** @return whether a {@code CompleteToolCall} typed event was emitted. */
+        private boolean completeToolCall(String itemId, ToolExecutionRequest.Builder builder) {
             if (builder == null || completedToolCallItemIds.contains(itemId)) {
-                return;
+                return false;
             }
             ToolExecutionRequest toolExecutionRequest = builder.build();
             completedToolCalls.add(toolExecutionRequest);
@@ -1130,10 +1238,11 @@ class OpenAiResponsesClient {
             toolCallBuilders.remove(itemId);
             Integer index = toolCallIndices.remove(itemId);
             int safeIndex = index != null ? index : completedToolCalls.size() - 1;
-            if (!isCancelled()) {
-                InternalStreamingChatResponseHandlerUtils.onCompleteToolCall(
-                        handler, new CompleteToolCall(safeIndex, toolExecutionRequest));
+            if (isCancelled()) {
+                return false;
             }
+            onCompleteToolCall(handler, new CompleteToolCall(safeIndex, toolExecutionRequest));
+            return true;
         }
     }
 }
