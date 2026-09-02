@@ -16,9 +16,13 @@ import dev.langchain4j.model.moderation.ModerationRequest;
 import dev.langchain4j.model.moderation.ModerationResponse;
 import dev.langchain4j.model.moderation.listener.ModerationModelListener;
 import dev.langchain4j.model.openai.internal.OpenAiClient;
+import dev.langchain4j.model.openai.internal.moderation.Categories;
+import dev.langchain4j.model.openai.internal.moderation.CategoryScores;
 import dev.langchain4j.model.openai.internal.moderation.ModerationResult;
 import dev.langchain4j.model.openai.spi.OpenAiModerationModelBuilderFactory;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
@@ -88,8 +92,13 @@ public class OpenAiModerationModel implements ModerationModel {
 
         Moderation moderation =
                 flaggedIndex >= 0 ? Moderation.flagged(texts.get(flaggedIndex)) : Moderation.notFlagged();
+        OpenAiModerationResponseMetadata metadata = createMetadata(response.id(), response.model(), texts, results);
 
-        return ModerationResponse.builder().moderation(moderation).build();
+        return ModerationResponse.builder()
+                .moderation(moderation)
+                .metadata(metadata.toMap())
+                .typedMetadata(metadata)
+                .build();
     }
 
     private static int findFirstFlaggedIndex(List<ModerationResult> results) {
@@ -99,6 +108,93 @@ public class OpenAiModerationModel implements ModerationModel {
             }
         }
         return -1;
+    }
+
+    private static OpenAiModerationResponseMetadata createMetadata(
+            String id, String model, List<String> texts, List<ModerationResult> results) {
+        List<OpenAiModerationResultMetadata> resultMetadata = new ArrayList<>(results.size());
+
+        for (int i = 0; i < results.size(); i++) {
+            ModerationResult result = results.get(i);
+            resultMetadata.add(OpenAiModerationResultMetadata.builder()
+                    .text(i < texts.size() ? texts.get(i) : null)
+                    .categories(toMap(result.categories()))
+                    .categoryScores(toMap(result.categoryScores()))
+                    .categoryAppliedInputTypes(toMap(result.categoryAppliedInputTypes()))
+                    .build());
+        }
+
+        return OpenAiModerationResponseMetadata.builder()
+                .id(id)
+                .model(model)
+                .results(resultMetadata)
+                .build();
+    }
+
+    private static Map<String, Boolean> toMap(Categories categories) {
+        Map<String, Boolean> map = new LinkedHashMap<>();
+
+        if (categories == null) {
+            return map;
+        }
+
+        putIfNotNull(map, "harassment", categories.harassment());
+        putIfNotNull(map, "harassment/threatening", categories.harassmentThreatening());
+        putIfNotNull(map, "hate", categories.hate());
+        putIfNotNull(map, "hate/threatening", categories.hateThreatening());
+        putIfNotNull(map, "illicit", categories.illicit());
+        putIfNotNull(map, "illicit/violent", categories.illicitViolent());
+        putIfNotNull(map, "self-harm", categories.selfHarm());
+        putIfNotNull(map, "self-harm/intent", categories.selfHarmIntent());
+        putIfNotNull(map, "self-harm/instructions", categories.selfHarmInstructions());
+        putIfNotNull(map, "sexual", categories.sexual());
+        putIfNotNull(map, "sexual/minors", categories.sexualMinors());
+        putIfNotNull(map, "violence", categories.violence());
+        putIfNotNull(map, "violence/graphic", categories.violenceGraphic());
+
+        return map;
+    }
+
+    private static Map<String, Double> toMap(CategoryScores categoryScores) {
+        Map<String, Double> map = new LinkedHashMap<>();
+
+        if (categoryScores == null) {
+            return map;
+        }
+
+        putIfNotNull(map, "harassment", categoryScores.harassment());
+        putIfNotNull(map, "harassment/threatening", categoryScores.harassmentThreatening());
+        putIfNotNull(map, "hate", categoryScores.hate());
+        putIfNotNull(map, "hate/threatening", categoryScores.hateThreatening());
+        putIfNotNull(map, "illicit", categoryScores.illicit());
+        putIfNotNull(map, "illicit/violent", categoryScores.illicitViolent());
+        putIfNotNull(map, "self-harm", categoryScores.selfHarm());
+        putIfNotNull(map, "self-harm/intent", categoryScores.selfHarmIntent());
+        putIfNotNull(map, "self-harm/instructions", categoryScores.selfHarmInstructions());
+        putIfNotNull(map, "sexual", categoryScores.sexual());
+        putIfNotNull(map, "sexual/minors", categoryScores.sexualMinors());
+        putIfNotNull(map, "violence", categoryScores.violence());
+        putIfNotNull(map, "violence/graphic", categoryScores.violenceGraphic());
+
+        return map;
+    }
+
+    private static Map<String, List<String>> toMap(Map<String, List<String>> categoryAppliedInputTypes) {
+        Map<String, List<String>> map = new LinkedHashMap<>();
+
+        if (categoryAppliedInputTypes == null) {
+            return map;
+        }
+
+        categoryAppliedInputTypes.forEach((key, value) -> putIfNotNull(map, key, value));
+
+        return map;
+    }
+
+    private static <T> void putIfNotNull(Map<String, T> map, String key, T value) {
+        if (value != null) {
+            map.put(key, value);
+        }
     }
 
     public static OpenAiModerationModelBuilder builder() {
