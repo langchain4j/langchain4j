@@ -6,9 +6,14 @@ import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.UserMessage;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
 public class Context {
+
+    // Reuse a stateless summarizer for each ChatModel.
+    private static final Map<ChatModel, ContextSummarizer> SUMMARIZERS = new ConcurrentHashMap<>();
 
     public interface ContextSummarizer {
 
@@ -33,8 +38,16 @@ public class Context {
         }
     }
 
-    private static ContextSummarizer createSummarizer(ChatModel chatModel) {
-        return AiServices.builder(ContextSummarizer.class).chatModel(chatModel).build();
+    static ContextSummarizer createSummarizer(ChatModel chatModel) {
+        if (chatModel == null) {
+            // Preserve AiServices' fail-fast validation for a missing model.
+            return AiServices.builder(ContextSummarizer.class).build();
+        }
+        return SUMMARIZERS.computeIfAbsent(
+                chatModel,
+                model -> AiServices.builder(ContextSummarizer.class)
+                        .chatModel(model)
+                        .build());
     }
 
     public static class AgenticScopeContextGenerator implements UserMessageTransformer {
