@@ -1,5 +1,6 @@
 package dev.langchain4j.http.client.sse;
 
+import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.Experimental;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
@@ -31,15 +32,18 @@ public interface ServerSentEventParser {
      * instead of a blocking {@link InputStream}. Used by the publisher-based HTTP client API
      * to avoid pinning a thread per active stream.
      * <p>
-     * Default implementation throws {@link UnsupportedOperationException}; subclasses that want
-     * to support the publisher path must override this method. Existing parsers that only
-     * support {@link #parse(InputStream, ServerSentEventListener)} continue to work unchanged.
+     * A parser opts into the publisher path by overriding this method. One that has not opted in throws
+     * {@link AsyncNotSupportedException}, the same "this component is not asynchronous" marker the rest of the
+     * non-blocking API reports through its return type - this method returns a plain value, so it has nowhere to
+     * carry a failure and must throw. Existing parsers that only support
+     * {@link #parse(InputStream, ServerSentEventListener)} continue to work unchanged.
      *
+     * @throws AsyncNotSupportedException if this parser does not support incremental parsing
      * @since 1.20.0
      */
     @Experimental
     default Incremental incremental() {
-        throw new UnsupportedOperationException(
+        throw new AsyncNotSupportedException(
                 "Incremental parsing not supported by " + getClass().getName()
                         + ". Override ServerSentEventParser.incremental() to enable the publisher-based HTTP API.");
     }

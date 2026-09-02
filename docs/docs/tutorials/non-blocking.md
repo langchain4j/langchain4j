@@ -165,8 +165,7 @@ has an asynchronous counterpart alongside its existing blocking method:
 A component that has not implemented its counterpart **fails loudly** rather than silently blocking: the returned
 future or publisher fails with an `AsyncNotSupportedException` naming the component and the missing method.
 `AsyncNotSupportedException` is an `UnsupportedFeatureException`, so one catch clause covers both flavours of
-"not supported", and it is never retried. (One exception: a `ServerSentEventParser` that does not implement
-`incremental()` throws a plain `UnsupportedOperationException`.)
+"not supported", and it is never retried.
 
 ## Blocking code you cannot avoid
 

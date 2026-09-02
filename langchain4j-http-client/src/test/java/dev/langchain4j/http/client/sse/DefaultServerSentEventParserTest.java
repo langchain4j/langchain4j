@@ -1,5 +1,7 @@
 package dev.langchain4j.http.client.sse;
 
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import dev.langchain4j.exception.AsyncNotSupportedException;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -250,6 +252,15 @@ class DefaultServerSentEventParserTest {
 
         assertThat(incremental.feed(buf("event:   spaced-event   \ndata:   spaced value   \n\n")))
                 .containsExactly(new ServerSentEvent("spaced-event", "  spaced value   "));
+    }
+
+    @Test
+    void a_parser_that_does_not_support_incremental_parsing_reports_it_as_not_async() {
+        ServerSentEventParser blockingOnly = (body, listener) -> {};
+
+        assertThatThrownBy(blockingOnly::incremental)
+                .isExactlyInstanceOf(AsyncNotSupportedException.class)
+                .hasMessageContaining("Incremental parsing not supported");
     }
 
     @Test
