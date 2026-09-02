@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import org.slf4j.Logger;
@@ -366,7 +367,7 @@ class ToolSpecificationHelper {
             errors.add("x-mcp-header value '" + headerName + "' is not a valid HTTP token (property '" + propertyPath
                     + "')");
         }
-        if (!seenHeaderNamesLower.add(headerName.toLowerCase())) {
+        if (!seenHeaderNamesLower.add(headerName.toLowerCase(Locale.ROOT))) {
             errors.add("duplicate x-mcp-header value '" + headerName + "' (case-insensitive, property '" + propertyPath
                     + "')");
         }
