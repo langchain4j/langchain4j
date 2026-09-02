@@ -21,6 +21,7 @@ import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.Set;
 import java.util.function.Supplier;
 
@@ -97,6 +98,18 @@ public class OpenAiResponsesChatModel implements ChatModel {
         OpenAiResponsesChatRequestParameters parameters =
                 (OpenAiResponsesChatRequestParameters) chatRequest.parameters();
         return client.chat(chatRequest, parameters);
+    }
+
+    /**
+     * @since 1.20.0
+     */
+    @Experimental
+    @Override
+    public CompletableFuture<ChatResponse> doChatAsync(ChatRequest chatRequest) {
+        validate(chatRequest.parameters());
+        OpenAiResponsesChatRequestParameters parameters =
+                (OpenAiResponsesChatRequestParameters) chatRequest.parameters();
+        return client.chatAsync(chatRequest, parameters);
     }
 
     private static void validate(final ChatRequestParameters parameters) {
