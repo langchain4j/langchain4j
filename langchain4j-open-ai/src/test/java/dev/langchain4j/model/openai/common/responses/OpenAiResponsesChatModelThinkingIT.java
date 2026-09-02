@@ -55,15 +55,18 @@ class OpenAiResponsesChatModelThinkingIT {
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                 .modelName("gpt-5-mini")
-                .reasoningEffort("medium")
+                .reasoningEffort("high")
                 .reasoningSummary(reasoningSummary)
                 .logRequests(true)
                 .logResponses(true)
                 .build();
 
-        UserMessage userMessage =
-                UserMessage.from("A bat and ball cost $1.10 in total. The bat costs $1.00 more than the ball. "
-                        + "How much does the ball cost? Think carefully step by step.");
+        UserMessage userMessage = UserMessage.from(
+                "Alice, Bob and Carol shared a holiday rental for 9 nights and agreed to split every cost equally. "
+                        + "Alice paid the 1260 EUR rent. Bob paid 315 EUR for groceries but 45 EUR of that was a gift "
+                        + "he bought only for himself. Carol paid 210 EUR for fuel and is still owed 60 EUR by Alice "
+                        + "from an earlier trip. Work out the single set of transfers that settles everything, "
+                        + "and state exactly who pays whom and how much.");
 
         // when
         ChatResponse chatResponse = model.chat(userMessage);

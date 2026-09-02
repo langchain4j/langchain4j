@@ -32,7 +32,7 @@ class BedrockChatModelWithVisionIT extends AbstractChatModelIT {
 
     @Override
     protected String customModelName() {
-        return "cohere.command-r-v1:0";
+        return "us.amazon.nova-micro-v1:0";
     }
 
     @Override
@@ -42,11 +42,12 @@ class BedrockChatModelWithVisionIT extends AbstractChatModelIT {
 
     @Override
     protected ChatModel createModelWith(ChatRequestParameters parameters) {
-        return BedrockChatModel.builder()
-                .defaultRequestParameters(parameters)
-                // force a working model with stopSequence parameter for @Tests
-                .modelId("cohere.command-r-v1:0")
-                .build();
+        BedrockChatModel.Builder builder = BedrockChatModel.builder().defaultRequestParameters(parameters);
+        if (parameters.modelName() == null) {
+            // Claude excludes the stop sequence from the response, as should_respect_stopSequences_* expects
+            builder.modelId("us.anthropic.claude-haiku-4-5-20251001-v1:0");
+        }
+        return builder.build();
     }
 
     @Override

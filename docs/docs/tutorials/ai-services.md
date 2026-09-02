@@ -423,6 +423,18 @@ List<ToolExecution> toolExecutions = result.toolExecutions();
 FinishReason finishReason = result.finishReason();
 ```
 
+:::note
+`T` in `Result<T>` is the content the LLM produces, so it has to be a type the LLM can actually generate:
+a `String`, an enum, a POJO, a collection of those, etc.
+LangChain4j's own types, such as `ChatResponse`, `ChatMessage`, `TextSegment`, `Embedding` or `TokenUsage`,
+cannot be used as `T` (nor as an element of a `List<T>`/`Set<T>` return type):
+the AI Service will fail with an `IllegalConfigurationException` when it is created.
+Everything the final `ChatResponse` carries is already available on `Result<T>` itself, for example:
+```java
+ChatResponse chatResponse = result.finalResponse();
+```
+:::
+
 ## Structured Outputs
 
 If you want to receive a structured output (e.g., a complex Java object,

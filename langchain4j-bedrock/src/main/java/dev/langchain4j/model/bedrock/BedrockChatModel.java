@@ -124,6 +124,7 @@ public class BedrockChatModel extends AbstractBedrockChatModel implements ChatMo
                 .guardrailConfig(guardrailConfigFrom(bedrockGuardrailConfiguration))
                 .outputConfig(outputConfigFrom(chatRequest.responseFormat()))
                 .serviceTier(serviceTierFor(bedrockServiceTier))
+                .requestMetadata(requestMetadataFrom(parameters))
                 .build();
     }
 

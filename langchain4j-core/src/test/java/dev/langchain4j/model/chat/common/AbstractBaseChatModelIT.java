@@ -778,8 +778,8 @@ public abstract class AbstractBaseChatModelIT<M> {
 
         // then
         AiMessage aiMessage2 = chatResponse2.aiMessage();
-        assertThat(aiMessage2.text()).containsIgnoringCase("sun");
         assertThat(aiMessage2.toolExecutionRequests()).isEmpty();
+        assertThat(aiMessage2.text()).containsIgnoringCase("sun");
 
         if (assertTokenUsage()) {
             assertTokenUsage(chatResponse2.metadata(), model);
@@ -1181,8 +1181,8 @@ public abstract class AbstractBaseChatModelIT<M> {
 
         // then
         AiMessage aiMessage2 = chatResponse2.aiMessage();
-        assertThat(aiMessage2.text()).containsIgnoringCase("sun").contains("14", "35");
         assertThat(aiMessage2.toolExecutionRequests()).isEmpty();
+        assertThat(aiMessage2.text()).containsIgnoringCase("sun").contains("14", "35");
 
         if (assertTokenUsage()) {
             assertTokenUsage(chatResponse2.metadata(), model);

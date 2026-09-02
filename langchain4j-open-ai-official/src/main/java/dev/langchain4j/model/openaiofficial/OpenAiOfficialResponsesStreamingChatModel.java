@@ -10,6 +10,7 @@ import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.model.openaiofficial.setup.OpenAiOfficialSetup.detectModelProvider;
 import static dev.langchain4j.model.openaiofficial.setup.OpenAiOfficialSetup.setupSyncClient;
 import static java.util.Arrays.asList;
 
@@ -129,6 +130,7 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
     private final Executor executor;
     private final OpenAiOfficialResponsesChatRequestParameters defaultRequestParameters;
     private final List<ChatModelListener> listeners;
+    private final ModelProvider modelProvider;
 
     private OpenAiOfficialResponsesStreamingChatModel(Builder builder) {
         this.client = builder.client != null
@@ -193,6 +195,12 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                 .build();
 
         this.listeners = copy(builder.listeners);
+        this.modelProvider = detectModelProvider(
+                builder.isMicrosoftFoundry,
+                builder.isGitHubModels,
+                builder.baseUrl,
+                builder.microsoftFoundryDeploymentName,
+                builder.azureOpenAIServiceVersion);
     }
 
     public static Builder builder() {
@@ -264,7 +272,7 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
 
     @Override
     public ModelProvider provider() {
-        return ModelProvider.OPEN_AI;
+        return modelProvider;
     }
 
     @Override
@@ -583,7 +591,9 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
 
             return List.of(ResponseInputItem.ofFunctionCallOutput(outputBuilder.build()));
         } else {
-            return List.of(createTextMessage(EasyInputMessage.Role.USER, msg.toString()));
+            throw new UnsupportedFeatureException(
+                    "Unsupported message type: " + msg.getClass().getName()
+                            + ". Only SystemMessage, UserMessage, AiMessage, and ToolExecutionResultMessage are supported.");
         }
     }
 
@@ -635,6 +645,10 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                     throw new IllegalArgumentException("PDF must have either url or base64Data");
                 }
                 contentList.add(ResponseInputContent.ofInputFile(pdfInput.build()));
+            } else {
+                throw new UnsupportedFeatureException("Unsupported content type: "
+                        + content.getClass().getName()
+                        + ". Only TextContent, ImageContent, and PdfFileContent are supported.");
             }
         }
 
@@ -684,11 +698,14 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
             if (toolSpec.parameters() != null) {
                 toMap(toolSpec.parameters(), effectiveStrict)
                         .forEach((key, value) -> parametersBuilder.putAdditionalProperty(key, JsonValue.from(value)));
-            } else if (effectiveStrict) {
+            } else {
                 parametersBuilder
                         .putAdditionalProperty("type", JsonValue.from("object"))
                         .putAdditionalProperty("properties", JsonValue.from(Collections.emptyMap()))
-                        .putAdditionalProperty("additionalProperties", JsonValue.from(false));
+                        .putAdditionalProperty("required", JsonValue.from(Collections.emptyList()));
+                if (effectiveStrict) {
+                    parametersBuilder.putAdditionalProperty("additionalProperties", JsonValue.from(false));
+                }
             }
             return FunctionTool.builder()
                     .name(toolSpec.name())

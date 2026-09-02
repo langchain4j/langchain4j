@@ -19,6 +19,7 @@ class MistralAiChatModelIT extends AbstractChatModelIT {
             .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
             .modelName("mistral-medium-2508")
             .temperature(0.0)
+            .strictJsonSchema(true)
             .logRequests(false) // images are huge in logs
             .logResponses(true)
             .build();
