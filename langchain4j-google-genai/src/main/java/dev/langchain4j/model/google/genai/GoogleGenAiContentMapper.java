@@ -433,6 +433,7 @@ class GoogleGenAiContentMapper {
             case IMAGE_PROHIBITED_CONTENT:
             case IMAGE_RECITATION:
                 return FinishReason.CONTENT_FILTER;
+            case TOO_MANY_TOOL_CALLS:
             default:
                 return FinishReason.OTHER;
         }
