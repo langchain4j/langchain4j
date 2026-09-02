@@ -95,13 +95,22 @@ public class OpenAiResponsesStreamingChatModelPublisherTckTest extends Publisher
 
     private static String responsesStreamBody(long textDeltas) {
         StringBuilder sb = new StringBuilder();
+        StringBuilder assembled = new StringBuilder();
         for (long i = 0; i < textDeltas; i++) {
-            sb.append("data: {\"type\":\"response.output_text.delta\",\"delta\":\"chunk-")
-                    .append(i)
+            String chunk = "chunk-" + i;
+            assembled.append(chunk);
+            sb.append("data: {\"type\":\"response.output_text.delta\",\"delta\":\"")
+                    .append(chunk)
                     .append("\"}\n\n");
         }
+        // The terminal event carries the assembled message, as a real response.completed does: an empty output
+        // array would exercise the "no text, no tool calls" edge case rather than the ordinary streaming path.
         sb.append("data: {\"type\":\"response.completed\",\"response\":{\"id\":\"resp_1\",")
-                .append("\"model\":\"gpt-5-mini\",\"status\":\"completed\",\"output\":[]}}\n\n");
+                .append("\"model\":\"gpt-5-mini\",\"status\":\"completed\",\"output\":[")
+                .append("{\"type\":\"message\",\"id\":\"msg_1\",\"role\":\"assistant\",")
+                .append("\"content\":[{\"type\":\"output_text\",\"text\":\"")
+                .append(assembled)
+                .append("\"}]}]}}\n\n");
         return sb.toString();
     }
 }
