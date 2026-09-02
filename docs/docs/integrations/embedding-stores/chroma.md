@@ -42,6 +42,29 @@ ChromaEmbeddingStore.builder()
     .build();
 ```
 
+## Distance Metric
+
+A Chroma collection is created with a distance metric, which determines how the distance between two embeddings
+is measured. Chroma supports `cosine`, `l2` (squared euclidean) and `ip` (inner product), and uses `l2` unless
+another metric is requested.
+
+When `ChromaEmbeddingStore` creates a collection, it creates it with the `cosine` distance metric.
+When the collection already exists, it is used as is, whichever distance metric it was created with:
+
+```java
+ChromaEmbeddingStore store = ChromaEmbeddingStore.builder()
+    .baseUrl("http://localhost:8000")
+    .collectionName("my-collection")
+    .build();
+```
+
+The relevance score returned by `EmbeddingMatch.score()` is always in the `[0, 1]` range, where 1 means the most
+relevant. It is derived from the distance metric of the collection, so scores obtained from collections with
+different distance metrics are not comparable with each other. The same applies to the `minScore` of an
+`EmbeddingSearchRequest`, which is compared against the score of the collection's own metric.
+
+For `ip`, the score is accurate only if the embeddings are normalized, which is the case for most embedding models.
+
 ## Current Limitations
 
 - Chroma cannot filter by greater and less than of alphanumeric metadata, only int and float are supported

@@ -1,5 +1,7 @@
 package dev.langchain4j.agentic.mcp;
 
+import static dev.langchain4j.agentic.internal.AgentUtil.untypedAgentInvocationArguments;
+
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
 import dev.langchain4j.agentic.internal.AgentInvocationArguments;
@@ -22,6 +24,7 @@ public class McpClientAgentInvoker implements AgentInvoker {
 
     private String agentId;
     private final String[] inputKeys;
+    private final Map<String, String> inputDescriptions;
 
     private final McpClientInstance mcpClientInstance;
 
@@ -38,6 +41,7 @@ public class McpClientAgentInvoker implements AgentInvoker {
         this.toolDescription = mcpClientInstance.toolDescription();
         this.agentId = name();
         this.inputKeys = inputKeys(mcpClientInstance);
+        this.inputDescriptions = mcpClientInstance.inputDescriptions();
     }
 
     private String[] inputKeys(McpClientInstance mcpClientInstance) {
@@ -96,7 +100,7 @@ public class McpClientAgentInvoker implements AgentInvoker {
     @Override
     public List<AgentArgument> arguments() {
         return Stream.of(inputKeys)
-                .map(input -> new AgentArgument(Object.class, input))
+                .map(input -> new AgentArgument(Object.class, input, null, false, inputDescriptions.get(input)))
                 .toList();
     }
 
@@ -107,9 +111,7 @@ public class McpClientAgentInvoker implements AgentInvoker {
 
     @Override
     public AgentInvocationArguments toInvocationArguments(AgenticScope agenticScope) {
-        return isUntyped()
-                ? new AgentInvocationArguments(agenticScope.state(), new Object[] {agenticScope.state()})
-                : agentInvocationArguments(agenticScope);
+        return isUntyped() ? untypedAgentInvocationArguments(agenticScope) : agentInvocationArguments(agenticScope);
     }
 
     private AgentInvocationArguments agentInvocationArguments(AgenticScope agenticScope) {

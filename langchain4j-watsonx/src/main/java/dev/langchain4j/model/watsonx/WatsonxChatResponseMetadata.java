@@ -1,6 +1,7 @@
 package dev.langchain4j.model.watsonx;
 
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
+import java.util.Objects;
 
 public class WatsonxChatResponseMetadata extends ChatResponseMetadata {
 
@@ -37,6 +38,48 @@ public class WatsonxChatResponseMetadata extends ChatResponseMetadata {
 
     public Boolean getCached() {
         return cached;
+    }
+
+    @Override
+    public Builder toBuilder() {
+        return ((Builder) super.toBuilder(builder()))
+                .created(created)
+                .modelVersion(modelVersion)
+                .serviceTier(serviceTier)
+                .systemFingerprint(systemFingerprint)
+                .cached(cached);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        if (!super.equals(o)) return false;
+        WatsonxChatResponseMetadata that = (WatsonxChatResponseMetadata) o;
+        return Objects.equals(created, that.created)
+                && Objects.equals(modelVersion, that.modelVersion)
+                && Objects.equals(serviceTier, that.serviceTier)
+                && Objects.equals(systemFingerprint, that.systemFingerprint)
+                && Objects.equals(cached, that.cached);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(super.hashCode(), created, modelVersion, serviceTier, systemFingerprint, cached);
+    }
+
+    @Override
+    public String toString() {
+        return "WatsonxChatResponseMetadata{" + "id='"
+                + id() + '\'' + ", modelName='"
+                + modelName() + '\'' + ", tokenUsage="
+                + tokenUsage() + ", finishReason="
+                + finishReason() + ", created="
+                + created + ", modelVersion='"
+                + modelVersion + '\'' + ", serviceTier='"
+                + serviceTier + '\'' + ", systemFingerprint='"
+                + systemFingerprint + '\'' + ", cached="
+                + cached + '}';
     }
 
     public static Builder builder() {
@@ -76,7 +119,7 @@ public class WatsonxChatResponseMetadata extends ChatResponseMetadata {
         }
 
         @Override
-        public ChatResponseMetadata build() {
+        public WatsonxChatResponseMetadata build() {
             return new WatsonxChatResponseMetadata(this);
         }
     }
