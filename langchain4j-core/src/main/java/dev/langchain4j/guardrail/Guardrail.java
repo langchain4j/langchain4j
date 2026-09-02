@@ -54,8 +54,8 @@ public interface Guardrail<P extends GuardrailRequest, R extends GuardrailResult
      * that does not perform blocking I/O may simply return
      * {@code CompletableFuture.completedFuture(validate(request))}.
      * <p>
-     * This mirrors {@code ChatMemoryStore} and {@code ToolExecutor}, whose asynchronous counterparts likewise throw
-     * by default.
+     * This mirrors {@code ChatMemoryStore} and {@code ToolExecutor}, whose asynchronous counterparts likewise
+     * report "not implemented" through the returned future rather than throwing.
      *
      * @param request
      *            The parameters of the request or the response to be validated

@@ -245,6 +245,27 @@ See [Non-blocking and Reactive](/tutorials/non-blocking) for the full picture, i
 
 ### Kotlin Extensions
 
+:::warning
+**Breaking change for Kotlin users.** `ChatModel` now declares a Java member
+`chatAsync(ChatRequest): CompletableFuture<ChatResponse>`. In Kotlin a same-signature member wins over an
+extension, so a bare single-argument call that previously resolved to the `suspend` extension (returning
+`ChatResponse`) now resolves to the member (returning `CompletableFuture<ChatResponse>`):
+
+```kotlin
+// Before - resolved to the suspend extension, returned ChatResponse:
+val response: ChatResponse = model.chatAsync(request)
+
+// After - the bare single-arg call resolves to the Java member (a CompletableFuture):
+val future: CompletableFuture<ChatResponse> = model.chatAsync(request)
+
+// Migration - await the future...
+val response: ChatResponse = model.chatAsync(request).await()
+// ...or supply a coroutineContext, which still selects the suspend extension:
+val response: ChatResponse = model.chatAsync(request, Dispatchers.IO)
+```
+:::
+
+
 The `ChatModel` [Kotlin extensions](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-kotlin/src/main/kotlin/dev/langchain4j/kotlin/model/chat/ChatModelExtensions.kt) provide asynchronous methods for handling chat interactions with a language model, utilizing Kotlin's [coroutine](https://kotlinlang.org/docs/coroutines-guide.html) capabilities. The `chatAsync` methods allow non-blocking processing of `ChatRequest` or `ChatRequest.Builder` configurations, returning `ChatResponse` with the model's reply. Similarly, `generateAsync` handles the asynchronous generation of responses from chat messages. These extensions simplify building chat requests and handling conversations efficiently in Kotlin applications. Note that these methods are marked as experimental and may evolve over time.
 
 **`ChatModel.chatAsync(request: ChatRequest)`**: Designed for Kotlin coroutines, this *asynchronous* extension function wraps the synchronous `chat` method within a coroutine scope using `Dispatchers.IO`. This enables non-blocking operations, crucial for maintaining application responsiveness.  It's named `chatAsync` specifically to avoid conflicts with the existing synchronous `chat`. Its function signature is: `suspend fun ChatModel.chatAsync(request: ChatRequest): ChatResponse`. The keyword `suspend` designates it as a coroutine function.

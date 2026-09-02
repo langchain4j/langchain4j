@@ -38,7 +38,8 @@ import java.util.concurrent.Executor;
  * <ol>
  *   <li>a provider set programmatically via {@link #set(ExecutorProvider)};</li>
  *   <li>the first {@code ExecutorProvider} found on the classpath via {@code ServiceLoader};</li>
- *   <li>a built-in virtual-thread-based default.</li>
+ *   <li>a built-in default: a virtual-thread-per-task executor on Java 21 or later, falling back to an
+ *       unbounded platform-thread pool on Java 17-20.</li>
  * </ol>
  * Component-level executors (a retriever's, an AI Service's concurrent-tool executor, a transport's own
  * {@code executor(...)} builder option, …) take precedence over this global default when explicitly set.

@@ -17,7 +17,7 @@ import java.util.Objects;
  * {@code ChatModel#chatAsync} — free of the streaming-event marker.
  *
  * @see PartialResponse
- * @since 1.13.0
+ * @since 1.20.0
  */
 @Experimental
 @JacocoIgnoreCoverageGenerated

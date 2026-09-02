@@ -35,7 +35,7 @@ public interface ServerSentEventParser {
      * to support the publisher path must override this method. Existing parsers that only
      * support {@link #parse(InputStream, ServerSentEventListener)} continue to work unchanged.
      *
-     * @since 1.15.0
+     * @since 1.20.0
      */
     @Experimental
     default Incremental incremental() {

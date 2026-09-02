@@ -5,7 +5,8 @@ sidebar_position: 36
 # Non-blocking and Reactive
 
 :::note
-Asynchronous and reactive support is experimental. Every API on this page is annotated `@Experimental`;
+Asynchronous and reactive support is experimental. The asynchronous and reactive APIs on this page are
+annotated `@Experimental`;
 APIs and behavior may still change in future releases. The synchronous and `TokenStream` APIs are unaffected.
 :::
 
@@ -84,6 +85,8 @@ information the callback-based `TokenStream` gives you:
 | `BeforeToolExecutionEvent`, `AfterToolExecutionEvent` | a tool about to run, and its result |
 | `IntermediateResponseEvent` | the response that closed one tool-calling round |
 | `RetrievedContentsEvent` | content retrieved by RAG |
+| `ToolCompensatedEvent` | a completed tool was compensated after the interaction was cancelled or failed |
+| `RawEvent` | a provider-specific event LangChain4j does not map |
 | `FinalResponseEvent` | the final answer |
 
 ```java
@@ -96,6 +99,8 @@ assistant.chatEvents("What is the weather in Munich?").subscribe(new Flow.Subscr
 
     @Override
     public void onNext(AiServiceStreamingEvent event) {
+        // the event types are nested in AiServiceStreamingEvent:
+        // import dev.langchain4j.service.AiServiceStreamingEvent.PartialResponseEvent;
         if (event instanceof PartialResponseEvent partial) {
             System.out.print(partial.partialResponse().text());
         }
@@ -116,15 +121,25 @@ switch without a default branch.
 Do not block in `onNext`. Events are delivered on whichever thread produced them: the model's transport I/O worker
 for the token-level events, or the thread that completed a tool call for the tool-execution events. Offload heavy
 per-event work to your own `Executor`. Events are relayed through a bounded buffer, so a subscriber that falls far
-enough behind terminates with an `IllegalStateException` instead of buffering without limit; the size is
+enough behind terminates with an `IllegalStateException` instead of buffering without limit; the size defaults to 16384 events and is
 configurable with `AiServices.builder(...).streamingBufferSize(int)`.
 :::
 
-## Mutiny and Reactor types
+## Third-party reactive types
 
-`Uni`/`Multi` and `Mono`/`Flux` are supported through the `CompletableFutureAdapter` and `PublisherAdapter` SPIs,
-discovered via `ServiceLoader`, so LangChain4j core does not depend on any reactive library. For `Flux<String>`,
-add the `langchain4j-reactor` module — see [AI Services](/tutorials/ai-services#flux).
+AI Service methods return JDK types — `CompletableFuture` and `Flow.Publisher` — so the API does not tie you to
+any particular reactive programming library.
+
+:::warning
+Returning a library's own type (`Uni`/`Multi`, `Mono`/`Flux`) from a non-blocking AI Service method is **not
+supported yet**. The seam exists — the `CompletableFutureAdapter` and `PublisherAdapter` SPIs, discovered via
+`ServiceLoader` — but both are internal, and no adapter ships with LangChain4j today. Declaring such a return type
+currently fails. Use `CompletableFuture` or `Flow.Publisher` and adapt at the call site.
+:::
+
+`Flux<String>` is available through the separate `langchain4j-reactor` module — see
+[AI Services](/tutorials/ai-services#flux). That is an adapter over `TokenStream` and predates this feature; it is
+not part of the non-blocking path described here.
 
 ## What has to be non-blocking
 
@@ -140,19 +155,33 @@ has an asynchronous counterpart alongside its existing blocking method:
 | Chat memory store | `getMessages`, `updateMessages`, `deleteMessages` | `getMessagesAsync`, `updateMessagesAsync`, `deleteMessagesAsync` |
 | Guardrails | `validate(...)` | `validateAsync(...)` |
 | Tools | `ToolExecutor.execute(...)` | `ToolExecutor.executeAsync(...)` |
-| RAG | `RetrievalAugmentor.augment(...)`, retrievers, routers, aggregators | `augmentAsync(...)`, `retrieveAsync(...)`, `routeAsync(...)`, `aggregateAsync(...)` |
+| RAG | `RetrievalAugmentor.augment(...)`, retrievers, routers, aggregators, query transformers | `augmentAsync(...)`, `retrieveAsync(...)`, `routeAsync(...)`, `aggregateAsync(...)`, `transformAsync(...)` |
+| Embedding store | `search(...)` | `searchAsync(...)` |
+| Web search | `search(...)` | `searchAsync(...)` |
+| MCP | `McpClient.executeTool(...)` | `executeToolAsync(...)` |
+| Guardrail execution | `ChatExecutor.execute(...)` | `ChatExecutor.executeAsync(...)` |
 | HTTP client | `execute(...)` | `executeAsync(...)`, `stream(...)` |
 
 A component that has not implemented its counterpart **fails loudly** rather than silently blocking: the returned
 future or publisher fails with an `AsyncNotSupportedException` naming the component and the missing method.
 `AsyncNotSupportedException` is an `UnsupportedFeatureException`, so one catch clause covers both flavours of
-"not supported", and it is never retried.
+"not supported", and it is never retried. (One exception: a `ServerSentEventParser` that does not implement
+`incremental()` throws a plain `UnsupportedOperationException`.)
 
 ## Blocking code you cannot avoid
 
 Tools are the common case: a tool that calls a database or a blocking HTTP API cannot be made non-blocking. Such
-tools are offloaded to a virtual-thread executor, so they block a *virtual* thread, which unmounts from its
-carrier instead of occupying it.
+tools are offloaded so they never block the model's own thread.
+
+:::note
+On Java 21 and later the offload executor creates virtual threads, so a blocking tool parks a *virtual* thread,
+which unmounts from its carrier instead of occupying it. LangChain4j targets Java 17, and on Java 17-20 the same
+executor is an **unbounded pool of platform threads** — a very different resource profile under load. Supply your
+own bounded `Executor` (see below) if that matters to you.
+:::
+
+This applies to `@Tool`-annotated methods. A hand-written `ToolExecutor` that does not override `executeAsync`
+fails loudly with an `AsyncNotSupportedException` instead, like any other component that has not opted in.
 
 Tools run **concurrently** by default in the asynchronous and reactive modes. To run them one at a time, pass a
 single-threaded executor:
@@ -186,7 +215,8 @@ Register one via `ServiceLoader`, or programmatically for tests and non-DI appli
 ExecutorProvider.set(() -> myExecutor);
 ```
 
-Without one, a virtual-thread-per-task executor is used.
+Without one, LangChain4j uses a virtual-thread-per-task executor on Java 21 or later, and an unbounded
+platform-thread pool on Java 17-20.
 
 :::note
 A single invocation now crosses several threads, so ambient `ThreadLocal` state — MDC logging context, tracing

@@ -1848,6 +1848,15 @@ in future releases.
 You can also import [tools from MCP server](https://modelcontextprotocol.io/docs/concepts/tools).
 More information on this can be found [here](/tutorials/mcp/#creating-an-mcp-tool-provider).
 
+:::note
+In the asynchronous and reactive AI Service modes, tools behave differently: they always run on an `Executor`
+and therefore **execute concurrently by default** (pass a single-threaded `Executor` to
+`executeToolsConcurrently(Executor)` to serialize them), a tool **execution** error fails the invocation while a
+tool **argument-parse** error is sent back to the LLM, and a hand-written `ToolExecutor` should implement
+`executeAsync(...)` or it will fail loudly rather than block a thread.
+See [Non-blocking and Reactive](/tutorials/non-blocking).
+:::
+
 ## Related Tutorials
 
 - [Great guide on Tools](https://www.youtube.com/watch?v=cjI_6Siry-s)

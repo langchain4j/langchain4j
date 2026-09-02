@@ -110,7 +110,7 @@ import static java.util.stream.Collectors.toMap;
  * is used, but you can provide a custom {@link Executor} instance.
  * <br>
  * On the asynchronous {@code augmentAsync} path, a blocking stage that is offloaded (see {@code offloadBlocking})
- * runs on the shared virtual-thread executor (non-pinning for I/O; the {@link dev.langchain4j.spi.ExecutorProvider}
+ * runs on the shared default executor (virtual threads on Java 21+, platform threads on 17-20) (non-pinning for I/O; the {@link dev.langchain4j.spi.ExecutorProvider}
  * default), independently of the synchronous fan-out {@link Executor} above.
  *
  * @see DefaultQueryTransformer
@@ -270,7 +270,7 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
     /**
      * Runs a stage on its component's native async method. A stage that is not genuinely async (its {@code *Async}
      * method reports being unimplemented via an {@link AsyncNotSupportedException}) is either offloaded - its
-     * blocking counterpart runs on the async offload executor (the shared virtual-thread executor by default) - when
+     * blocking counterpart runs on the async offload executor (the shared default executor (virtual threads on Java 21+, platform threads on 17-20) by default) - when
      * {@code offloadBlocking}, or fails with an actionable message. Any other error propagates unchanged. No
      * reflection: async availability is discovered by calling it.
      */
@@ -406,7 +406,7 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
          * <p>
          * By default ({@code false}), {@code augmentAsync} fails with an actionable error naming the blocking stage,
          * so a not-truly-async pipeline is never silently made "async" by parking a thread. Set to {@code true} to
-         * instead offload the blocking stage to the shared virtual-thread executor (the
+         * instead offload the blocking stage to the shared default executor (virtual threads on Java 21+, platform threads on 17-20) (the
          * {@link dev.langchain4j.spi.ExecutorProvider} default) - not the synchronous fan-out
          * {@link #executor(Executor) executor}. Has no effect on the synchronous {@link #augment(AugmentationRequest)}.
          * @since 1.20.0

@@ -22,7 +22,7 @@ import dev.langchain4j.Experimental;
  * both audiences: code that matched {@code instanceof RawStreamingEvent} and inspected {@link #rawEvent()}
  * keeps working, while new code can match the typed event and use its typed accessors.
  *
- * @since 1.13.0
+ * @since 1.20.0
  */
 @Experimental
 public interface RawStreamingEvent extends ChatModelStreamingEvent {

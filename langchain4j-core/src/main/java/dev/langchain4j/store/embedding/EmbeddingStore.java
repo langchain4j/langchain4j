@@ -167,7 +167,9 @@ public interface EmbeddingStore<Embedded> {
      * The default returns a failed future carrying {@link AsyncNotSupportedException}: a store that is not genuinely asynchronous does not
      * pretend to be. A store backed by remote/DB I/O opts in by overriding this with a genuinely async query (no
      * thread parked); an in-memory store may override it to complete synchronously on the calling thread. A store
-     * that has not opted in is still usable from the non-blocking RAG path:
+     * that has not opted in is usable from the non-blocking RAG path only when the retriever opts into
+     * offloading ({@code offloadBlocking(true)}); otherwise the returned future fails rather than a thread being
+     * silently blocked. With offloading enabled:
      * {@code EmbeddingStoreContentRetriever.retrieveAsync} offloads its blocking {@link #search(EmbeddingSearchRequest)}
      * for it, rather than the store being silently offloaded to a thread on every call.
      * <p>

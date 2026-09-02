@@ -91,6 +91,8 @@ import java.util.function.UnaryOperator;
  * - Tools, configured via {@link #tools(Collection)}, {@link #tools(Object...)}, {@link #tools(Map)} or {@link #toolProvider(ToolProvider)} and methods annotated with @{@link Tool}
  * - Various method return types (output parsers), see more details below
  * - Streaming (use {@link TokenStream} as a return type)
+ * - Non-blocking invocation (use {@link java.util.concurrent.CompletableFuture} or
+ *   {@link java.util.concurrent.Flow.Publisher} as a return type; experimental)
  * - Structured prompts as method arguments (see @{@link StructuredPrompt})
  * - Auto-moderation, configured via @{@link Moderate} annotation
  * </pre>
@@ -118,6 +120,9 @@ import java.util.function.UnaryOperator;
  * - many default Java types: {@code Date}, {@code LocalDateTime}, {@code BigDecimal}, etc., if you want to use the LLM for data extraction
  * - any custom POJO, if you want to use the LLM for data extraction.
  * - Result&lt;T&gt; if you want to access {@link TokenUsage} or sources ({@link Content}s retrieved during RAG), aside from T, which can be of any type listed above. For example: Result&lt;String&gt;, Result&lt;MyCustomPojo&gt;
+ * - {@link TokenStream}, if you want to receive the answer token by token via callbacks
+ * - {@link java.util.concurrent.CompletableFuture}&lt;T&gt; or {@link java.util.concurrent.CompletionStage}&lt;T&gt;, if you want one answer without blocking the calling thread (experimental)
+ * - {@link java.util.concurrent.Flow.Publisher}&lt;{@link AiServiceStreamingEvent}&gt; or {@link java.util.concurrent.Flow.Publisher}&lt;{@link String}&gt;, if you want the interaction streamed without blocking the calling thread (experimental)
  * For POJOs, it is advisable to use the "json mode" feature if the LLM provider supports it. For OpenAI, this can be enabled by calling {@code responseFormat("json_object")} during model construction.
  *
  * </pre>
@@ -621,7 +626,10 @@ public abstract class AiServices<T> {
     }
 
     /**
-     * By default, when the LLM calls multiple tools, the AI Service executes them sequentially.
+     * By default, when the LLM calls multiple tools, the synchronous and {@link TokenStream} modes execute them
+     * sequentially. (The asynchronous and reactive modes always run tools on an {@link Executor} and therefore
+     * execute them concurrently by default; pass a single-threaded {@link Executor} to
+     * {@link #executeToolsConcurrently(Executor)} to serialize them there.)
      * If you enable this option, tools will be executed concurrently (with one exception - see below),
      * using the default {@link Executor}.
      * You can also specify your own {@link Executor}, see {@link #executeToolsConcurrently(Executor)}.

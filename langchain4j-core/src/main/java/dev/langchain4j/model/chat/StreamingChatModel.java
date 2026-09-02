@@ -131,7 +131,8 @@ public interface StreamingChatModel {
      * <p>
      * The publisher is cold: nothing happens until you subscribe, and each {@code subscribe()} call
      * initiates a new LLM request.
-     * It emits events in this order:
+     * It emits, in this order (each {@link dev.langchain4j.model.chat.response.CompleteToolCall} arriving as soon
+     * as that tool call finishes assembling, so it interleaves with the next call's chunks):
      * <ul>
      *     <li>0..N {@link dev.langchain4j.model.chat.response.PartialThinking} (thinking/reasoning chunks),</li>
      *     <li>0..N {@link dev.langchain4j.model.chat.response.PartialResponse} (text chunks),</li>

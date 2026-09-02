@@ -135,7 +135,8 @@ Flow.Publisher<ChatModelStreamingEvent> publisher = model.chat(chatRequest);
 ```
 
 The stream emits `PartialThinking`, `PartialResponse`, `PartialToolCall` and `CompleteToolCall` events as they
-arrive, then a single terminal `CompleteResponse` carrying the assembled `ChatResponse`. A convenience overload
+arrive, interleaved with any `RawStreamingEvent`s (see [Unmapped Raw Events](#unmapped-raw-events) below), then a
+single terminal `CompleteResponse` carrying the assembled `ChatResponse`. A convenience overload
 emits just the text:
 
 ```java

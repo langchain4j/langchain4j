@@ -290,8 +290,10 @@ public interface EmbeddingModel {
      * pretend to be. It must opt in by overriding this method, so it can choose an execution strategy appropriate to
      * how it works - real async I/O for a network model, a bounded compute pool (or nothing) for a CPU-bound
      * in-process model - rather than being silently offloaded to a (possibly wrong) thread. A model that has not
-     * opted in is still usable from the non-blocking RAG path: {@code EmbeddingStoreContentRetriever.retrieveAsync}
-     * offloads its blocking {@link #embed(EmbeddingRequest)} for it.
+     * opted in is usable from the non-blocking RAG path only when the retriever opts into offloading
+     * ({@code offloadBlocking(true)}), in which case {@code EmbeddingStoreContentRetriever.retrieveAsync} offloads
+     * its blocking {@link #embed(EmbeddingRequest)} for it; otherwise the returned future fails rather than a
+     * thread being silently blocked.
      *
      * @param request the request, with parameters already merged and validated.
      * @return a {@link CompletableFuture} of the response.
