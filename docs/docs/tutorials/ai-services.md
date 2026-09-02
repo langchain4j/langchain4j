@@ -744,6 +744,10 @@ interface Assistant {
 }
 ```
 
+`Flux<String>` is backed by `TokenStream`, so it works with every provider. The same module also carries the
+Reactor bindings for the [non-blocking modes](/tutorials/non-blocking) — `Mono<T>` and
+`Flux<AiServiceStreamingEvent>` — which work only with providers that have implemented them.
+
 [Streaming example](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithStreamingExample.java)
 
 
