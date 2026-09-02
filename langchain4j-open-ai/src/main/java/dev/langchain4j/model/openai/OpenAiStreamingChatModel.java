@@ -31,10 +31,10 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
+import dev.langchain4j.model.chat.response.ChatModelStreamingEvent;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
-import dev.langchain4j.model.chat.response.ChatModelStreamingEvent;
 import dev.langchain4j.model.openai.internal.ChatCompletionOptions;
 import dev.langchain4j.model.openai.internal.OpenAiClient;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionRequest;
@@ -44,9 +44,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Flow.Publisher;
-
 import java.util.function.Supplier;
-
 import org.slf4j.Logger;
 
 /**
@@ -191,10 +189,15 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
         return client.chatCompletionPublisher(openAiRequest, options);
     }
 
-    private ChatCompletionRequest createOpenAiRequest(ChatRequest request,
-                                                      OpenAiChatRequestParameters parameters) {
+    private ChatCompletionRequest createOpenAiRequest(ChatRequest request, OpenAiChatRequestParameters parameters) {
         return toOpenAiChatRequest(
-                        request, parameters, sendThinking, thinkingFieldName, strictTools, strictJsonSchema, useInputImageFormat)
+                        request,
+                        parameters,
+                        sendThinking,
+                        thinkingFieldName,
+                        strictTools,
+                        strictJsonSchema,
+                        useInputImageFormat)
                 .stream(true)
                 .streamOptions(StreamOptions.builder().includeUsage(true).build())
                 .build();

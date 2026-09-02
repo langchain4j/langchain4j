@@ -21,14 +21,16 @@ public final class SystemMessage implements Message {
     @JsonProperty
     private final Role role = SYSTEM;
 
-    @JsonProperty
-    private final Object content;
+    private final String content;
+
+    private final List<Content> contents;
 
     @JsonProperty
     private final String name;
 
     public SystemMessage(Builder builder) {
-        this.content = builder.stringContent != null ? builder.stringContent : builder.contents;
+        this.content = builder.stringContent;
+        this.contents = builder.contents;
         this.name = builder.name;
     }
 
@@ -37,21 +39,25 @@ public final class SystemMessage implements Message {
     }
 
     /**
-     * Returns the content when it was set as a plain string, {@code null} when it was set as a list of
-     * content blocks (see {@link #contents()}).
+     * Returns the content set as a plain string, or {@code null} when it was set as a list of content
+     * blocks instead (see {@link #contents()}).
      */
     public String content() {
-        return content instanceof String stringContent ? stringContent : null;
+        return content;
     }
 
     /**
-     * Returns the content when it was set as a list of content blocks, {@code null} when it was set as a
-     * plain string (see {@link #content()}). The list form is required to attach a
+     * Returns the content set as a list of content blocks, or {@code null} when it was set as a plain
+     * string instead (see {@link #content()}). The list form is required to attach a
      * {@code prompt_cache_breakpoint} to the message.
      */
-    @SuppressWarnings("unchecked")
     public List<Content> contents() {
-        return content instanceof List<?> contents ? (List<Content>) contents : null;
+        return contents;
+    }
+
+    @JsonProperty("content")
+    private Object contentForSerialization() {
+        return contents != null ? contents : content;
     }
 
     public String name() {
@@ -69,6 +75,7 @@ public final class SystemMessage implements Message {
     private boolean equalTo(SystemMessage another) {
         return Objects.equals(role, another.role)
                 && Objects.equals(content, another.content)
+                && Objects.equals(contents, another.contents)
                 && Objects.equals(name, another.name);
     }
 
@@ -78,6 +85,7 @@ public final class SystemMessage implements Message {
         int h = 5381;
         h += (h << 5) + Objects.hashCode(role);
         h += (h << 5) + Objects.hashCode(content);
+        h += (h << 5) + Objects.hashCode(contents);
         h += (h << 5) + Objects.hashCode(name);
         return h;
     }
@@ -85,7 +93,7 @@ public final class SystemMessage implements Message {
     @Override
     @JacocoIgnoreCoverageGenerated
     public String toString() {
-        return "SystemMessage{" + "role=" + role + ", content=" + content + ", name=" + name + "}";
+        return "SystemMessage{" + "role=" + role + ", content=" + contentForSerialization() + ", name=" + name + "}";
     }
 
     public static SystemMessage from(String content) {

@@ -24,12 +24,14 @@ public final class ToolMessage implements Message {
     @JsonProperty
     private final String toolCallId;
 
-    @JsonProperty
-    private final Object content;
+    private final String content;
+
+    private final List<Content> contents;
 
     public ToolMessage(Builder builder) {
         this.toolCallId = builder.toolCallId;
-        this.content = builder.stringContent != null ? builder.stringContent : builder.contents;
+        this.content = builder.stringContent;
+        this.contents = builder.contents;
     }
 
     public Role role() {
@@ -41,21 +43,25 @@ public final class ToolMessage implements Message {
     }
 
     /**
-     * Returns the content when it was set as a plain string, {@code null} when it was set as a list of
-     * content blocks (see {@link #contents()}).
+     * Returns the content set as a plain string, or {@code null} when it was set as a list of content
+     * blocks instead (see {@link #contents()}).
      */
     public String content() {
-        return content instanceof String stringContent ? stringContent : null;
+        return content;
     }
 
     /**
-     * Returns the content when it was set as a list of content blocks, {@code null} when it was set as a
-     * plain string (see {@link #content()}). The list form is required to attach a
+     * Returns the content set as a list of content blocks, or {@code null} when it was set as a plain
+     * string instead (see {@link #content()}). The list form is required to attach a
      * {@code prompt_cache_breakpoint} to the message.
      */
-    @SuppressWarnings("unchecked")
     public List<Content> contents() {
-        return content instanceof List<?> contents ? (List<Content>) contents : null;
+        return contents;
+    }
+
+    @JsonProperty("content")
+    private Object contentForSerialization() {
+        return contents != null ? contents : content;
     }
 
     @Override
@@ -69,7 +75,8 @@ public final class ToolMessage implements Message {
     private boolean equalTo(ToolMessage another) {
         return Objects.equals(role, another.role)
                 && Objects.equals(toolCallId, another.toolCallId)
-                && Objects.equals(content, another.content);
+                && Objects.equals(content, another.content)
+                && Objects.equals(contents, another.contents);
     }
 
     @Override
@@ -79,13 +86,15 @@ public final class ToolMessage implements Message {
         h += (h << 5) + Objects.hashCode(role);
         h += (h << 5) + Objects.hashCode(toolCallId);
         h += (h << 5) + Objects.hashCode(content);
+        h += (h << 5) + Objects.hashCode(contents);
         return h;
     }
 
     @Override
     @JacocoIgnoreCoverageGenerated
     public String toString() {
-        return "ToolMessage{" + "role=" + role + ", toolCallId=" + toolCallId + ", content=" + content + "}";
+        return "ToolMessage{" + "role=" + role + ", toolCallId=" + toolCallId + ", content=" + contentForSerialization()
+                + "}";
     }
 
     public static ToolMessage from(String toolCallId, String content) {
