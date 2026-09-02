@@ -11,6 +11,7 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.embedding.EmbeddingModelListenerUtils;
 import dev.langchain4j.model.embedding.listener.EmbeddingModelListener;
 import dev.langchain4j.model.embedding.request.EmbeddingInput;
 import dev.langchain4j.model.embedding.request.EmbeddingRequest;
@@ -86,6 +87,9 @@ public class WatsonxEmbeddingModel implements EmbeddingModel {
     /**
      * Embeds the text content of a list of TextSegment using the specified {@link EmbeddingParameters}.
      *
+     * <p>The registered {@link EmbeddingModelListener}s are notified around the call, as they are for every other
+     * embedding method.
+     *
      * @param textSegments the text segments to embed.
      * @param parameters the embedding parameters to use.
      * @return the embeddings.
@@ -94,10 +98,11 @@ public class WatsonxEmbeddingModel implements EmbeddingModel {
 
         if (isNull(textSegments) || textSegments.isEmpty()) return Response.from(List.of());
 
-        List<String> inputs = textSegments.stream().map(TextSegment::text).toList();
-        EmbeddingResponse response = embed(inputs, parameters);
-
-        return Response.from(response.embeddings(), response.metadata().tokenUsage());
+        return EmbeddingModelListenerUtils.withListeners(this, textSegments, () -> {
+            List<String> inputs = textSegments.stream().map(TextSegment::text).toList();
+            EmbeddingResponse response = embed(inputs, parameters);
+            return Response.from(response.embeddings(), response.metadata().tokenUsage());
+        });
     }
 
     private EmbeddingResponse embed(List<String> inputs, EmbeddingParameters parameters) {

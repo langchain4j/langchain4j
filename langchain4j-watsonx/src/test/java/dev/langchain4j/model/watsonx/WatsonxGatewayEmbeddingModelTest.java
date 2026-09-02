@@ -321,6 +321,60 @@ public class WatsonxGatewayEmbeddingModelTest {
     }
 
     @Test
+    void should_notify_the_listeners_when_embedding_with_the_gateway_parameters() {
+
+        var data = List.of(new ModelGatewayEmbeddingResponse.Embedding("embedding", 0, List.of(0f, 1f), null));
+        var parameters = ModelGatewayEmbeddingParameters.builder().dimensions(256).build();
+
+        when(mockModelGatewayEmbeddingService.embed(any(), parametersCaptor.capture()))
+                .thenReturn(
+                        new ModelGatewayEmbeddingResponse("list", "text-embedding-3-small", data, new Usage(10, 10)));
+
+        var requestContext = new AtomicReference<EmbeddingModelRequestContext>();
+        var responseContext = new AtomicReference<EmbeddingModelResponseContext>();
+
+        EmbeddingModelListener listener = new EmbeddingModelListener() {
+            @Override
+            public void onRequest(EmbeddingModelRequestContext context) {
+                requestContext.set(context);
+            }
+
+            @Override
+            public void onResponse(EmbeddingModelResponseContext context) {
+                responseContext.set(context);
+            }
+        };
+
+        withModelGatewayEmbeddingServiceMock(() -> {
+            var embeddingModel = WatsonxGatewayEmbeddingModel.builder()
+                    .baseUrl("https://test.com")
+                    .modelName("text-embedding-3-small")
+                    .apiKey("api-key")
+                    .dimensions(512)
+                    .listeners(List.of(listener))
+                    .build();
+
+            var response = embeddingModel.embedAll(List.of(TextSegment.from("test1")), parameters);
+
+            assertEquals(256, parametersCaptor.getValue().dimensions());
+            assertEquals(1, response.content().size());
+
+            assertNotNull(requestContext.get());
+            assertEquals(WATSONX, requestContext.get().modelProvider());
+            assertEquals(
+                    List.of("test1"),
+                    requestContext.get().textSegments().stream()
+                            .map(TextSegment::text)
+                            .toList());
+
+            assertNotNull(responseContext.get());
+            assertEquals(
+                    1, responseContext.get().embeddingResponse().embeddings().size());
+            assertEquals(10, responseContext.get().response().tokenUsage().inputTokenCount());
+        });
+    }
+
+    @Test
     void should_notify_the_listeners() {
 
         var data = List.of(new ModelGatewayEmbeddingResponse.Embedding("embedding", 0, List.of(0f, 1f), null));

@@ -205,6 +205,53 @@ public class WatsonxEmbeddingModelTest {
     }
 
     @Test
+    void should_notify_the_listeners_when_embedding_with_the_watsonx_parameters() {
+
+        var parameters = EmbeddingParameters.builder().truncateInputTokens(10).build();
+        List<EmbeddingResponse.Result> results = List.of(new EmbeddingResponse.Result(List.of(0f, 1f), "test1"));
+
+        when(mockEmbeddingService.embed(List.of("test1"), parameters))
+                .thenReturn(new EmbeddingResponse("modelId", "createdAt", results, 10));
+
+        var requestContext = new AtomicReference<EmbeddingModelRequestContext>();
+        var responseContext = new AtomicReference<EmbeddingModelResponseContext>();
+
+        EmbeddingModelListener listener = new EmbeddingModelListener() {
+            @Override
+            public void onRequest(EmbeddingModelRequestContext context) {
+                requestContext.set(context);
+            }
+
+            @Override
+            public void onResponse(EmbeddingModelResponseContext context) {
+                responseContext.set(context);
+            }
+        };
+
+        withEmbeddingServiceMock(() -> {
+            WatsonxEmbeddingModel embeddingModel =
+                    createEmbeddingModel().listeners(List.of(listener)).build();
+
+            var response = embeddingModel.embedAll(List.of(TextSegment.from("test1")), parameters);
+
+            assertEquals(1, response.content().size());
+
+            assertNotNull(requestContext.get());
+            assertEquals(WATSONX, requestContext.get().modelProvider());
+            assertEquals(
+                    List.of("test1"),
+                    requestContext.get().textSegments().stream()
+                            .map(TextSegment::text)
+                            .toList());
+
+            assertNotNull(responseContext.get());
+            assertEquals(
+                    1, responseContext.get().embeddingResponse().embeddings().size());
+            assertEquals(10, responseContext.get().response().tokenUsage().inputTokenCount());
+        });
+    }
+
+    @Test
     void should_notify_the_listeners() {
 
         List<EmbeddingResponse.Result> results = List.of(new EmbeddingResponse.Result(List.of(0f, 1f), "test1"));

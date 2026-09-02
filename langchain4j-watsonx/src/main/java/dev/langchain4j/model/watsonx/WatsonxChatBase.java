@@ -12,7 +12,6 @@ import com.ibm.watsonx.ai.chat.BaseChatRequest;
 import com.ibm.watsonx.ai.chat.ChatHandler;
 import com.ibm.watsonx.ai.chat.ChatProvider;
 import com.ibm.watsonx.ai.chat.TextChatResponse;
-import com.ibm.watsonx.ai.chat.exception.ModerationException;
 import com.ibm.watsonx.ai.chat.model.ChatMessage;
 import com.ibm.watsonx.ai.chat.model.CompletedToolCall;
 import com.ibm.watsonx.ai.chat.model.PartialChatResponse;
@@ -81,13 +80,8 @@ abstract class WatsonxChatBase<R extends BaseChatRequest> {
         TextChatResponse chatResponse = WatsonxExceptionMapper.INSTANCE.withExceptionMapper(
                 () -> chatProvider().chat(watsonxChatRequest));
 
-        String refusal;
-
-        try {
-            refusal = chatResponse.toAssistantMessage().refusal();
-        } catch (ModerationException e) {
-            throw WatsonxExceptionMapper.INSTANCE.mapException(e);
-        }
+        String refusal = WatsonxExceptionMapper.INSTANCE.withExceptionMapper(
+                () -> chatResponse.toAssistantMessage().refusal());
 
         if (isNotNullOrBlank(refusal)) throw new ContentFilteredException(refusal);
 

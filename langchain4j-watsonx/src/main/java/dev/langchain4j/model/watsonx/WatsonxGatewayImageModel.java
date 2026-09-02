@@ -40,6 +40,15 @@ public class WatsonxGatewayImageModel implements ImageModel {
     private final ModelGatewayImageService modelGatewayImageService;
     private final ModelGatewayImageParameters defaultParameters;
     private final String modelName;
+    private final String background;
+    private final String moderation;
+    private final Integer outputCompression;
+    private final String outputFormat;
+    private final String quality;
+    private final String responseFormat;
+    private final String size;
+    private final String style;
+    private final String user;
 
     private WatsonxGatewayImageModel(Builder builder) {
 
@@ -58,19 +67,18 @@ public class WatsonxGatewayImageModel implements ImageModel {
                 .verifySsl(builder.verifySsl)
                 .build();
 
-        defaultParameters = ModelGatewayImageParameters.builder()
-                .background(builder.background)
-                .moderation(builder.moderation)
-                .outputCompression(builder.outputCompression)
-                .outputFormat(builder.outputFormat)
-                .quality(builder.quality)
-                .responseFormat(builder.responseFormat)
-                .size(builder.size)
-                .style(builder.style)
-                .user(builder.user)
-                .build();
-
         modelName = builder.modelName;
+        background = builder.background;
+        moderation = builder.moderation;
+        outputCompression = builder.outputCompression;
+        outputFormat = builder.outputFormat;
+        quality = builder.quality;
+        responseFormat = builder.responseFormat;
+        size = builder.size;
+        style = builder.style;
+        user = builder.user;
+
+        defaultParameters = parameters(null);
     }
 
     /**
@@ -103,7 +111,7 @@ public class WatsonxGatewayImageModel implements ImageModel {
      */
     @Override
     public Response<List<Image>> generate(String prompt, int n) {
-        return generate(prompt, withNumberOfImages(n));
+        return generate(prompt, parameters(n));
     }
 
     /**
@@ -123,18 +131,18 @@ public class WatsonxGatewayImageModel implements ImageModel {
         return Converter.toImageResponse(response);
     }
 
-    private ModelGatewayImageParameters withNumberOfImages(int n) {
+    private ModelGatewayImageParameters parameters(Integer n) {
         return ModelGatewayImageParameters.builder()
-                .background(defaultParameters.background())
-                .moderation(defaultParameters.moderation())
+                .background(background)
+                .moderation(moderation)
                 .n(n)
-                .outputCompression(defaultParameters.outputCompression())
-                .outputFormat(defaultParameters.outputFormat())
-                .quality(defaultParameters.quality())
-                .responseFormat(defaultParameters.responseFormat())
-                .size(defaultParameters.size())
-                .style(defaultParameters.style())
-                .user(defaultParameters.user())
+                .outputCompression(outputCompression)
+                .outputFormat(outputFormat)
+                .quality(quality)
+                .responseFormat(responseFormat)
+                .size(size)
+                .style(style)
+                .user(user)
                 .build();
     }
 

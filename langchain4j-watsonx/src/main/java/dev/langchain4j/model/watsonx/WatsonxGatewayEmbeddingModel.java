@@ -14,6 +14,7 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.embedding.EmbeddingModelListenerUtils;
 import dev.langchain4j.model.embedding.listener.EmbeddingModelListener;
 import dev.langchain4j.model.embedding.request.EmbeddingInput;
 import dev.langchain4j.model.embedding.request.EmbeddingParameter;
@@ -126,6 +127,9 @@ public class WatsonxGatewayEmbeddingModel implements EmbeddingModel {
      *
      * <p>The given parameters replace the ones set on the builder, they are not merged with them.
      *
+     * <p>The registered {@link EmbeddingModelListener}s are notified around the call, as they are for every other
+     * embedding method.
+     *
      * @param textSegments the text segments to embed.
      * @param parameters the embedding parameters to use, or {@code null} to use the ones set on the builder.
      * @return the embeddings.
@@ -135,10 +139,11 @@ public class WatsonxGatewayEmbeddingModel implements EmbeddingModel {
 
         if (isNull(textSegments) || textSegments.isEmpty()) return Response.from(List.of());
 
-        List<String> inputs = textSegments.stream().map(TextSegment::text).toList();
-        EmbeddingResponse response = embed(inputs, getOrDefault(parameters, defaultParameters));
-
-        return Response.from(response.embeddings(), response.metadata().tokenUsage());
+        return EmbeddingModelListenerUtils.withListeners(this, textSegments, () -> {
+            List<String> inputs = textSegments.stream().map(TextSegment::text).toList();
+            EmbeddingResponse response = embed(inputs, getOrDefault(parameters, defaultParameters));
+            return Response.from(response.embeddings(), response.metadata().tokenUsage());
+        });
     }
 
     private EmbeddingResponse embed(List<String> inputs, ModelGatewayEmbeddingParameters parameters) {

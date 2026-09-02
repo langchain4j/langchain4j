@@ -11,6 +11,7 @@ import dev.langchain4j.model.catalog.ModelCatalog;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.image.ImageModel;
 import dev.langchain4j.model.moderation.ModerationModel;
 import dev.langchain4j.model.scoring.ScoringModel;
 import java.net.http.HttpClient;
@@ -498,6 +499,58 @@ public class WatsonxCustomHttpClientTest {
 
                 Object modelGatewayEmbeddingService = getFieldValue(embeddingModel, "modelGatewayEmbeddingService");
                 Object restclient = getFieldValue(modelGatewayEmbeddingService, "client");
+                assertNotEquals(customClient, getFieldValue(restclient, "httpClient"));
+                assertEquals(HttpClientProvider.httpClient(verifySsl), getFieldValue(restclient, "httpClient"));
+
+                Object syncHttpClient = getFieldValue(restclient, "syncHttpClient");
+                assertNotEquals(customClient, getFieldValue(syncHttpClient, "delegate"));
+                assertEquals(HttpClientProvider.httpClient(verifySsl), getFieldValue(syncHttpClient, "delegate"));
+
+            } catch (Exception e) {
+                fail(e);
+            }
+        });
+    }
+
+    @Test
+    void should_use_custom_http_client_for_gateway_image_model() throws Exception {
+
+        HttpClient customClient = HttpClient.newHttpClient();
+        ImageModel imageModel = WatsonxGatewayImageModel.builder()
+                .baseUrl("https://localhost")
+                .modelName("gpt-image-1")
+                .apiKey("apiKey")
+                .httpClient(customClient)
+                .build();
+
+        Object modelGatewayImageService = getFieldValue(imageModel, "modelGatewayImageService");
+        Object restclient = getFieldValue(modelGatewayImageService, "client");
+        assertEquals(customClient, getFieldValue(restclient, "httpClient"));
+        assertNotEquals(HttpClientProvider.httpClient(true), getFieldValue(restclient, "httpClient"));
+        assertNotEquals(HttpClientProvider.httpClient(false), getFieldValue(restclient, "httpClient"));
+
+        Object syncHttpClient = getFieldValue(restclient, "syncHttpClient");
+        assertEquals(customClient, getFieldValue(syncHttpClient, "delegate"));
+        assertNotEquals(HttpClientProvider.httpClient(true), getFieldValue(syncHttpClient, "delegate"));
+        assertNotEquals(HttpClientProvider.httpClient(false), getFieldValue(syncHttpClient, "delegate"));
+    }
+
+    @Test
+    void should_use_default_http_client_for_gateway_image_model() {
+
+        Stream.of(true, false).forEach(verifySsl -> {
+            try {
+
+                HttpClient customClient = HttpClient.newHttpClient();
+                ImageModel imageModel = WatsonxGatewayImageModel.builder()
+                        .baseUrl("https://localhost")
+                        .modelName("gpt-image-1")
+                        .apiKey("apiKey")
+                        .verifySsl(verifySsl)
+                        .build();
+
+                Object modelGatewayImageService = getFieldValue(imageModel, "modelGatewayImageService");
+                Object restclient = getFieldValue(modelGatewayImageService, "client");
                 assertNotEquals(customClient, getFieldValue(restclient, "httpClient"));
                 assertEquals(HttpClientProvider.httpClient(verifySsl), getFieldValue(restclient, "httpClient"));
 
