@@ -7,11 +7,18 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.ChatModelStreamingEvent;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
+import dev.langchain4j.model.chat.response.CompleteResponse;
+import dev.langchain4j.model.chat.response.PartialResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.TokenUsage;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Flow;
+import mutiny.zero.BackpressureStrategy;
+import mutiny.zero.TubeConfiguration;
+import mutiny.zero.ZeroPublisher;
 import org.junit.jupiter.api.Test;
 
 class AiServiceStreamingTokenUsageTest {
@@ -19,6 +26,11 @@ class AiServiceStreamingTokenUsageTest {
     interface Assistant {
 
         TokenStream chat(String userMessage);
+    }
+
+    interface ReactiveAssistant {
+
+        Flow.Publisher<AiServiceStreamingEvent> chat(String userMessage);
     }
 
     @Test
@@ -46,6 +58,57 @@ class AiServiceStreamingTokenUsageTest {
         assertThat(response.tokenUsage()).isSameAs(tokenUsage);
     }
 
+    @Test
+    void should_not_fail_on_the_reactive_path_when_the_model_reports_no_token_usage() throws Exception {
+
+        ReactiveAssistant assistant = AiServices.create(ReactiveAssistant.class, modelReturning(null));
+
+        ChatResponse response = complete(assistant.chat("Hello"));
+
+        assertThat(response.metadata()).isInstanceOf(TestChatResponseMetadata.class);
+        assertThatCode(response::tokenUsage).doesNotThrowAnyException();
+        assertThat(response.tokenUsage()).isNull();
+    }
+
+    @Test
+    void should_keep_the_token_usage_reported_by_the_model_on_the_reactive_path() throws Exception {
+
+        TestTokenUsage tokenUsage = new TestTokenUsage(1, 2);
+
+        ReactiveAssistant assistant = AiServices.create(ReactiveAssistant.class, modelReturning(tokenUsage));
+
+        ChatResponse response = complete(assistant.chat("Hello"));
+
+        assertThat(response.tokenUsage()).isSameAs(tokenUsage);
+    }
+
+    private static ChatResponse complete(Flow.Publisher<AiServiceStreamingEvent> publisher) throws Exception {
+        CompletableFuture<ChatResponse> future = new CompletableFuture<>();
+        publisher.subscribe(new Flow.Subscriber<>() {
+
+            @Override
+            public void onSubscribe(Flow.Subscription subscription) {
+                subscription.request(Long.MAX_VALUE);
+            }
+
+            @Override
+            public void onNext(AiServiceStreamingEvent event) {
+                if (event instanceof AiServiceStreamingEvent.FinalResponseEvent finalResponse) {
+                    future.complete(finalResponse.chatResponse());
+                }
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                future.completeExceptionally(error);
+            }
+
+            @Override
+            public void onComplete() {}
+        });
+        return future.get(10, SECONDS);
+    }
+
     private static ChatResponse complete(TokenStream tokenStream) throws Exception {
         CompletableFuture<ChatResponse> future = new CompletableFuture<>();
         tokenStream
@@ -62,16 +125,33 @@ class AiServiceStreamingTokenUsageTest {
             @Override
             public void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
                 handler.onPartialResponse("Hi");
-                handler.onCompleteResponse(ChatResponse.builder()
-                        .aiMessage(AiMessage.from("Hi"))
-                        .metadata(TestChatResponseMetadata.builder()
-                                .id("id")
-                                .modelName("model")
-                                .tokenUsage(tokenUsage)
-                                .build())
-                        .build());
+                handler.onCompleteResponse(chatResponse(tokenUsage));
+            }
+
+            @Override
+            public Flow.Publisher<ChatModelStreamingEvent> doChat(ChatRequest chatRequest) {
+                TubeConfiguration config = new TubeConfiguration()
+                        .withBackpressureStrategy(BackpressureStrategy.BUFFER)
+                        .withBufferSize(256);
+
+                return ZeroPublisher.create(config, tube -> {
+                    tube.send(new PartialResponse("Hi"));
+                    tube.send(new CompleteResponse(chatResponse(tokenUsage)));
+                    tube.complete();
+                });
             }
         };
+    }
+
+    private static ChatResponse chatResponse(TokenUsage tokenUsage) {
+        return ChatResponse.builder()
+                .aiMessage(AiMessage.from("Hi"))
+                .metadata(TestChatResponseMetadata.builder()
+                        .id("id")
+                        .modelName("model")
+                        .tokenUsage(tokenUsage)
+                        .build())
+                .build();
     }
 
     /**
