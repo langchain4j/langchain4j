@@ -1566,6 +1566,14 @@ Like `IMMEDIATE`, `IMMEDIATE_IF_LAST` is only allowed on AI services with a `Res
 
 ### Error Handling
 
+:::note
+The defaults below apply to the synchronous and `TokenStream` modes. In the asynchronous and reactive modes they
+are **reversed**: a tool *execution* error fails the invocation instead of being sent to the LLM, and a tool
+*argument-parse* error is sent to the LLM instead of failing the invocation. A handler you configure explicitly is
+used by every mode. See [Non-blocking and Reactive](/tutorials/non-blocking#tool-errors).
+:::
+
+
 #### Handling Tool Name Errors
 
 It may happen that an LLM hallucinates on tools invocation,

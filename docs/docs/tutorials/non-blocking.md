@@ -198,6 +198,52 @@ For RAG, a retriever that has not implemented `retrieveAsync` fails by default r
 in to offloading it instead with `offloadBlocking(true)` on `DefaultRetrievalAugmentor` or
 `EmbeddingStoreContentRetriever`.
 
+## Defaults that differ from the synchronous modes
+
+The asynchronous and reactive modes are not just the same interaction on another thread — a few defaults are
+deliberately different. If you are migrating an existing method, these are the ones to check.
+
+| | Synchronous / `TokenStream` | `CompletableFuture` / `Flow.Publisher` |
+|---|---|---|
+| Multiple tool calls | executed **sequentially** | executed **concurrently** |
+| Tool **execution** error | sent back to the LLM | **fails the invocation** |
+| Tool **argument-parse** error | **fails the invocation** | sent back to the LLM |
+| `@Moderate` | supported | rejected at AI Service creation |
+
+### Tool errors
+
+The two tool error defaults are reversed on purpose. Sending an *execution* failure to the LLM hides a bug in your
+tool from you and invites the model to invent an answer around it, so the asynchronous modes fail the invocation
+instead. A malformed *argument* string, on the other hand, is something the model produced and can usually fix
+when told, so it is sent back rather than failing the call.
+
+Both remain configurable, and an explicitly configured handler is used by every mode:
+
+```java
+AiServices.builder(Assistant.class)
+        .chatModel(model)
+        .tools(new MyTools())
+        .toolExecutionErrorHandler(myExecutionErrorHandler)
+        .toolArgumentsErrorHandler(myArgumentsErrorHandler)
+        .build();
+```
+
+See [Error Handling](/tutorials/tools#error-handling) for what those handlers can do.
+
+### Tool concurrency
+
+Because tools always run on an `Executor` in these modes, several tool calls in one LLM response run at the same
+time. If your tools are not safe to run concurrently, pass a single-threaded executor:
+`executeToolsConcurrently(Executors.newSingleThreadExecutor())`.
+
+### Event ordering
+
+On the reactive path a tool starts as soon as its `CompleteToolCallEvent` is emitted, so it overlaps the rest of
+the round. A round's `BeforeToolExecutionEvent` / `AfterToolExecutionEvent` may therefore arrive **before** that
+round's `IntermediateResponseEvent`. Treat `IntermediateResponseEvent` as a per-round marker, not as a barrier
+that all of the round's tool events precede. The callback-based `TokenStream` always reports the intermediate
+response first.
+
 ## Controlling the executor and propagating context
 
 Everywhere LangChain4j runs work off the caller thread — concurrent tool calls, offloaded retrieval, retry backoff

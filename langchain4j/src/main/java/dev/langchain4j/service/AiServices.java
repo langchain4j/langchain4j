@@ -805,6 +805,12 @@ public abstract class AiServices<T> {
      * For {@link DefaultToolExecutor}, you can enable this by setting
      * {@link DefaultToolExecutor.Builder#wrapToolArgumentsExceptions(Boolean)} to {@code true}.
      *
+     * <p>
+     * <b>Defaults differ by mode.</b> Without an explicit handler, the synchronous and {@link TokenStream}
+     * modes fail the invocation on a tool argument-parse error, while the asynchronous and reactive modes
+     * ({@link java.util.concurrent.CompletableFuture}, {@link java.util.concurrent.Flow.Publisher}) send the error to the LLM so it can retry with corrected arguments.
+     * A handler set here is used by every mode.
+     *
      * @param handler The handler responsible for processing tool argument errors
      * @return builder
      * @see #hallucinatedToolNameStrategy(Function)
@@ -845,6 +851,12 @@ public abstract class AiServices<T> {
      * ensure that a {@link ToolExecutionException} is thrown by {@link ToolExecutor} in such cases.
      * For {@link DefaultToolExecutor}, you can enable this by setting
      * {@link DefaultToolExecutor.Builder#propagateToolExecutionExceptions(Boolean)} to {@code true}.
+     *
+     * <p>
+     * <b>Defaults differ by mode.</b> Without an explicit handler, the synchronous and {@link TokenStream}
+     * modes send a tool execution error to the LLM, while the asynchronous and reactive modes
+     * ({@link java.util.concurrent.CompletableFuture}, {@link java.util.concurrent.Flow.Publisher}) fail the invocation, rather than hiding the error from you.
+     * A handler set here is used by every mode.
      *
      * @param handler The handler responsible for processing tool execution errors
      * @return builder
