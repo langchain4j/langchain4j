@@ -17,9 +17,15 @@ import kotlin.coroutines.CoroutineContext
  *
  * Example usage:
  * ```kotlin
- * val response = model.chatAsync(ChatRequest(messages))
- * val response2 = model.chatAsync(request = chatRequest, coroutineContext = Dispatchers.IO)
+ * val response = model.chatAsync(request = chatRequest, coroutineContext = Dispatchers.IO)
  * ```
+ *
+ * Note: [dev.langchain4j.model.chat.ChatModel] declares a member
+ * `chatAsync(ChatRequest): CompletableFuture<ChatResponse>`. Because a same-signature member always wins over an
+ * extension in Kotlin overload resolution, a bare single-argument call (`model.chatAsync(request)`) resolves to that
+ * member and returns a [java.util.concurrent.CompletableFuture]. This suspend wrapper is selected when a
+ * [coroutineContext] argument is supplied (or via the builder/lambda overloads below); to suspend on the member's
+ * future instead, call `model.chatAsync(request).await()`.
  *
  * @param request The chat request containing messages and optional parameters
  *    for the model.

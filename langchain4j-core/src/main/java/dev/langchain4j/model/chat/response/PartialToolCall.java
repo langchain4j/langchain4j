@@ -19,7 +19,7 @@ import java.util.Objects;
  */
 @Experimental
 @JacocoIgnoreCoverageGenerated
-public class PartialToolCall {
+public class PartialToolCall implements ChatModelStreamingEvent {
 
     private final int index;
     private final String id;

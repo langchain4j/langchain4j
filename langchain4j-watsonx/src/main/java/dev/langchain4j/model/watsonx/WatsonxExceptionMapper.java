@@ -1,9 +1,11 @@
 package dev.langchain4j.model.watsonx;
 
+import com.ibm.watsonx.ai.chat.exception.ModerationException;
 import com.ibm.watsonx.ai.core.exception.WatsonxException;
 import com.ibm.watsonx.ai.core.exception.model.WatsonxError;
 import dev.langchain4j.Internal;
 import dev.langchain4j.exception.AuthenticationException;
+import dev.langchain4j.exception.ContentFilteredException;
 import dev.langchain4j.exception.InternalServerException;
 import dev.langchain4j.exception.InvalidRequestException;
 import dev.langchain4j.exception.LangChain4jException;
@@ -46,6 +48,8 @@ class WatsonxExceptionMapper extends ExceptionMapper.DefaultExceptionMapper {
 
         } else if (t instanceof HttpTimeoutException || t instanceof java.util.concurrent.TimeoutException) {
             return new TimeoutException(t);
+        } else if (t instanceof ModerationException moderationException) {
+            return new ContentFilteredException(moderationException.getMessage(), moderationException);
         }
 
         return t instanceof RuntimeException re ? re : new LangChain4jException(t);
