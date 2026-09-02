@@ -1421,10 +1421,14 @@ public class DefaultMcpClient implements McpClient {
             McpCallContext context = new McpCallContext(invocationContext, operation);
             applyMeta(operation, context);
             JsonNode result;
+            CompletableFuture<JsonNode> resultFuture = null;
             try {
-                CompletableFuture<JsonNode> resultFuture = executeViaTransport(context);
+                resultFuture = executeViaTransport(context);
                 result = resultFuture.get(timeoutMillis, TimeUnit.MILLISECONDS);
-            } catch (ExecutionException | InterruptedException | TimeoutException e) {
+            } catch (TimeoutException e) {
+                cancelTimedOutOperation(e, operation.getId(), resultFuture);
+                throw new RuntimeException(e);
+            } catch (ExecutionException | InterruptedException e) {
                 throw new RuntimeException(e);
             } finally {
                 pendingOperations.remove(operation.getId());
