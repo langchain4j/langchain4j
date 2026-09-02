@@ -36,7 +36,6 @@ import dev.langchain4j.agentic.workflow.impl.ParallelMapperServiceImpl;
 import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.invocation.InvocationParameters;
 import dev.langchain4j.service.MemoryId;
-import dev.langchain4j.service.ParameterNameResolver;
 import dev.langchain4j.service.TokenStream;
 import dev.langchain4j.service.memory.ChatMemoryAccess;
 import java.lang.reflect.InvocationHandler;
@@ -260,7 +259,10 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
         }
         Map<String, Object> namedArgs = new HashMap<>();
         for (int i = 0; i < args.length; i++) {
-            namedArgs.put(ParameterNameResolver.name(method.getParameters()[i]), args[i]);
+            namedArgs.put(
+                    AgentInvoker.optionalParameterName(method.getParameters()[i])
+                            .orElse(null),
+                    args[i]);
         }
         return namedArgs;
     }
