@@ -131,7 +131,7 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
                             } else if (currentContentType.get() == ContentBlockDelta.Type.REASONING_CONTENT) {
                                 ReasoningContentBlockDelta reasoningContent = delta.reasoningContent();
                                 String thinking = reasoningContent.text();
-                                if (isNotNullOrEmpty(thinking)) {
+                                if (returnThinking && isNotNullOrEmpty(thinking)) {
                                     onPartialThinking(handler, thinking, streamingHandle.get());
                                 }
                             } else if (currentContentType.get() == ContentBlockDelta.Type.TOOL_USE) {
@@ -219,6 +219,7 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
                 .guardrailConfig(guardrailStreamConfigFrom(bedrockGuardrailConfiguration))
                 .outputConfig(outputConfigFrom(chatRequest.responseFormat()))
                 .serviceTier(serviceTierFor(bedrockServiceTier))
+                .requestMetadata(requestMetadataFrom(parameters))
                 .build();
     }
 

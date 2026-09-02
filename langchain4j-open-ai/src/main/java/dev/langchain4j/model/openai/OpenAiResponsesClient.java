@@ -35,8 +35,8 @@ import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventContext;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.internal.ExceptionMapper;
-import dev.langchain4j.internal.MappingTrackingStreamingChatResponseHandler;
 import dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils;
+import dev.langchain4j.internal.MappingTrackingStreamingChatResponseHandler;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
@@ -56,6 +56,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Supplier;
 
 class OpenAiResponsesClient {
 
@@ -84,6 +85,7 @@ class OpenAiResponsesClient {
     private static final String FIELD_DESCRIPTION = "description";
     private static final String FIELD_PARAMETERS = "parameters";
     private static final String FIELD_PROPERTIES = "properties";
+    private static final String FIELD_REQUIRED = "required";
     private static final String FIELD_ARGUMENTS = "arguments";
     private static final String FIELD_DELTA = "delta";
     private static final String FIELD_TEXT = "text";
@@ -141,6 +143,8 @@ class OpenAiResponsesClient {
     private static final String FIELD_SCHEMA = "schema";
     private static final String FIELD_ADDITIONAL_PROPERTIES = "additionalProperties";
     private static final String FIELD_STATUS = "status";
+    private static final String FIELD_INCOMPLETE_DETAILS = "incomplete_details";
+    private static final String FIELD_REASON = "reason";
     private static final String FIELD_CREATED_AT = "created_at";
     private static final String FIELD_COMPLETED_AT = "completed_at";
     private static final String DEFAULT_IMAGE_MIME_TYPE = "image/jpeg";
@@ -170,6 +174,7 @@ class OpenAiResponsesClient {
     private final String baseUrl;
     private final String apiKey;
     private final String organizationId;
+    private final Supplier<Map<String, String>> customHeadersSupplier;
 
     OpenAiResponsesClient(Builder builder) {
         HttpClientBuilder httpClientBuilder =
@@ -183,6 +188,7 @@ class OpenAiResponsesClient {
         this.baseUrl = getOrDefault(builder.baseUrl, DEFAULT_BASE_URL);
         this.apiKey = builder.apiKey;
         this.organizationId = builder.organizationId;
+        this.customHeadersSupplier = getOrDefault(builder.customHeadersSupplier, () -> Map::of);
     }
 
     static Builder builder() {
@@ -311,23 +317,22 @@ class OpenAiResponsesClient {
                     tool.put(FIELD_DESCRIPTION, toolSpec.description());
                 }
 
-                Map<String, Object> functionParameters = null;
+                Map<String, Object> functionParameters;
                 if (toolSpec.parameters() != null) {
                     functionParameters = toMap(toolSpec.parameters(), effectiveStrict);
-                } else if (effectiveStrict) {
+                } else {
                     functionParameters = new LinkedHashMap<>();
                     functionParameters.put(FIELD_TYPE, TYPE_OBJECT);
                     functionParameters.put(FIELD_PROPERTIES, Map.of());
-                    functionParameters.put(FIELD_ADDITIONAL_PROPERTIES, false);
+                    functionParameters.put(FIELD_REQUIRED, List.of());
+                    if (effectiveStrict) {
+                        functionParameters.put(FIELD_ADDITIONAL_PROPERTIES, false);
+                    }
                 }
 
-                if (functionParameters != null) {
-                    tool.put(FIELD_PARAMETERS, functionParameters);
-                }
-
-                if (effectiveStrict) {
-                    tool.put(FIELD_STRICT, true);
-                }
+                tool.put(FIELD_PARAMETERS, functionParameters);
+                // "strict" must be sent explicitly: unlike Chat Completions, the Responses API defaults it to true
+                tool.put(FIELD_STRICT, effectiveStrict);
 
                 tools.add(tool);
             }
@@ -374,6 +379,8 @@ class OpenAiResponsesClient {
         if (organizationId != null) {
             requestBuilder.addHeader(OPENAI_ORGANIZATION_HEADER, organizationId);
         }
+
+        requestBuilder.addHeaders(customHeadersSupplier.get());
 
         return requestBuilder.body(requestBody).build();
     }
@@ -491,16 +498,21 @@ class OpenAiResponsesClient {
         return usageBuilder.build();
     }
 
-    private static FinishReason finishReasonFromStatus(String status, boolean hasToolCalls) {
+    private static FinishReason finishReasonFromStatus(String status, String incompleteReason, boolean hasToolCalls) {
         if (status == null || status.isBlank()) {
             return null;
         }
         return switch (status) {
             case "completed" -> hasToolCalls ? FinishReason.TOOL_EXECUTION : FinishReason.STOP;
-            case "incomplete" -> FinishReason.LENGTH;
+            case "incomplete" ->
+                "content_filter".equals(incompleteReason) ? FinishReason.CONTENT_FILTER : FinishReason.LENGTH;
             case "failed" -> FinishReason.OTHER;
             default -> FinishReason.OTHER;
         };
+    }
+
+    private static String incompleteReasonFrom(JsonNode responseNode) {
+        return responseNode.path(FIELD_INCOMPLETE_DETAILS).path(FIELD_REASON).asText(null);
     }
 
     private ChatResponse parseChatResponse(SuccessfulHttpResponse rawHttpResponse) throws Exception {
@@ -528,8 +540,10 @@ class OpenAiResponsesClient {
             metadataBuilder.tokenUsage(tokenUsage);
         }
 
-        FinishReason finishReason =
-                finishReasonFromStatus(responseNode.path(FIELD_STATUS).asText(null), !toolExecutionRequests.isEmpty());
+        FinishReason finishReason = finishReasonFromStatus(
+                responseNode.path(FIELD_STATUS).asText(null),
+                incompleteReasonFrom(responseNode),
+                !toolExecutionRequests.isEmpty());
         if (finishReason != null) {
             metadataBuilder.finishReason(finishReason);
         }
@@ -778,6 +792,7 @@ class OpenAiResponsesClient {
         private String organizationId;
         private boolean logRequests;
         private boolean logResponses;
+        private Supplier<Map<String, String>> customHeadersSupplier;
 
         Builder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
             this.httpClientBuilder = httpClientBuilder;
@@ -810,6 +825,11 @@ class OpenAiResponsesClient {
             if (logResponses != null) {
                 this.logResponses = logResponses;
             }
+            return this;
+        }
+
+        Builder customHeaders(Supplier<Map<String, String>> customHeadersSupplier) {
+            this.customHeadersSupplier = customHeadersSupplier;
             return this;
         }
 
@@ -1003,8 +1023,10 @@ class OpenAiResponsesClient {
                 metadataBuilder.tokenUsage(tokenUsage);
             }
 
-            FinishReason finishReason =
-                    finishReasonFromStatus(responseNode.path(FIELD_STATUS).asText(null), !completedToolCalls.isEmpty());
+            FinishReason finishReason = finishReasonFromStatus(
+                    responseNode.path(FIELD_STATUS).asText(null),
+                    incompleteReasonFrom(responseNode),
+                    !completedToolCalls.isEmpty());
             if (finishReason != null) {
                 metadataBuilder.finishReason(finishReason);
             }

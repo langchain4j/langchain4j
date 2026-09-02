@@ -9,6 +9,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.http.client.HttpRequest;
+import dev.langchain4j.store.embedding.EmbeddingMatch;
+import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -97,6 +99,91 @@ class ChromaEmbeddingStoreTest {
 
         // then
         assertThat(httpClient.requests()).hasSize(requestsAfterInit);
+    }
+
+    @Test
+    void should_convert_cosine_distance_to_score() {
+        // given
+        CapturingHttpClient httpClient = new CapturingHttpClient()
+                .withCollection(collection("\"configuration_json\":{\"hnsw\":{\"space\":\"cosine\"}}"))
+                .withDistances(0.0, 1.0, 2.0);
+
+        // when
+        List<EmbeddingMatch<TextSegment>> matches = search(httpClient);
+
+        // then
+        assertThat(matches).extracting(EmbeddingMatch::score).containsExactly(1.0, 0.5, 0.0);
+    }
+
+    @Test
+    void should_convert_l2_distance_to_score() {
+        // given
+        CapturingHttpClient httpClient = new CapturingHttpClient()
+                .withCollection(collection("\"configuration_json\":{\"hnsw\":{\"space\":\"l2\"}}"))
+                .withDistances(0.0, 1.0, 101.0);
+
+        // when
+        List<EmbeddingMatch<TextSegment>> matches = search(httpClient);
+
+        // then
+        // "l2" is unbounded, so a distance greater than 2 used to result in a negative score
+        assertThat(matches).extracting(EmbeddingMatch::score).containsExactly(1.0, 0.5, 1.0 / 102);
+    }
+
+    @Test
+    void should_convert_ip_distance_to_score() {
+        // given
+        CapturingHttpClient httpClient = new CapturingHttpClient()
+                .withCollection(collection("\"metadata\":{\"hnsw:space\":\"ip\"}"))
+                .withDistances(0.0, 1.0, 2.0);
+
+        // when
+        List<EmbeddingMatch<TextSegment>> matches = search(httpClient);
+
+        // then
+        assertThat(matches).extracting(EmbeddingMatch::score).containsExactly(1.0, 0.5, 0.0);
+    }
+
+    @Test
+    void should_prefer_the_distance_metric_reported_in_metadata_over_the_configured_one() {
+        // given: this is what Chroma 0.5.x reports for a collection created by this store
+        CapturingHttpClient httpClient = new CapturingHttpClient()
+                .withCollection(
+                        collection(
+                                "\"configuration_json\":{\"hnsw_configuration\":{\"space\":\"l2\"}},\"metadata\":{\"hnsw:space\":\"cosine\"}"))
+                .withDistances(0.5);
+
+        // when
+        List<EmbeddingMatch<TextSegment>> matches = search(httpClient);
+
+        // then
+        assertThat(matches).extracting(EmbeddingMatch::score).containsExactly(0.75);
+    }
+
+    @Test
+    void should_fall_back_to_l2_when_the_existing_collection_does_not_report_a_distance_metric() {
+        // given
+        CapturingHttpClient httpClient = new CapturingHttpClient()
+                .withCollection(collection("\"metadata\":{}"))
+                .withDistances(0.5);
+
+        // when
+        List<EmbeddingMatch<TextSegment>> matches = search(httpClient);
+
+        // then
+        assertThat(matches).extracting(EmbeddingMatch::score).containsExactly(1.0 / 1.5);
+    }
+
+    private static List<EmbeddingMatch<TextSegment>> search(CapturingHttpClient httpClient) {
+        return store(httpClient)
+                .search(EmbeddingSearchRequest.builder()
+                        .queryEmbedding(EMBEDDING_1)
+                        .build())
+                .matches();
+    }
+
+    private static String collection(String distanceMetricField) {
+        return "{\"id\":\"collection-id\",\"name\":\"test\"," + distanceMetricField + "}";
     }
 
     private static ChromaEmbeddingStore store(CapturingHttpClient httpClient) {

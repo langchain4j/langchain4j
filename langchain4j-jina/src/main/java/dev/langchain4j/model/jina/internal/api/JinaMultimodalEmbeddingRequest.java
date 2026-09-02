@@ -19,10 +19,15 @@ import java.util.List;
 public class JinaMultimodalEmbeddingRequest {
 
     public String model;
+    public String task;
+    public Boolean lateChunking;
     public List<JinaMultimodalInput> input;
 
-    public JinaMultimodalEmbeddingRequest(String model, List<JinaMultimodalInput> input) {
+    public JinaMultimodalEmbeddingRequest(
+            String model, String task, Boolean lateChunking, List<JinaMultimodalInput> input) {
         this.model = model;
+        this.task = task;
+        this.lateChunking = lateChunking;
         this.input = input;
     }
 

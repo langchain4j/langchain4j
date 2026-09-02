@@ -4,11 +4,11 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.mcp.client.McpCallContext;
 import dev.langchain4j.mcp.client.McpHeadersSupplier;
 import dev.langchain4j.mcp.client.logging.McpLoggers;
 import dev.langchain4j.mcp.client.transport.McpOperationHandler;
+import dev.langchain4j.mcp.client.transport.McpJson;
 import dev.langchain4j.mcp.client.transport.McpTransport;
 import dev.langchain4j.mcp.protocol.McpClientMessage;
 import dev.langchain4j.mcp.protocol.McpInitializationNotification;
@@ -38,7 +38,6 @@ public class WebSocketMcpTransport implements McpTransport {
     private final boolean logResponses;
     private final boolean logRequests;
     private final Logger trafficLog;
-    static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private volatile McpOperationHandler operationHandler;
     private volatile McpInitializeRequest initializeRequest;
     private final Duration connectTimeout;
@@ -147,9 +146,9 @@ public class WebSocketMcpTransport implements McpTransport {
     }
 
     @Override
-    public CompletableFuture<JsonNode> initialize(McpInitializeRequest operation) {
+    public CompletableFuture<String> sendInitializeRequest(McpInitializeRequest operation) {
         this.initializeRequest = operation;
-        CompletableFuture<JsonNode> completableFuture =
+        CompletableFuture<String> completableFuture =
                 execute(new McpCallContext(null, operation), Optional.empty(), operation.getId());
         return completableFuture
                 .thenCompose(originalResponse -> {
@@ -161,28 +160,33 @@ public class WebSocketMcpTransport implements McpTransport {
     }
 
     @Override
-    public CompletableFuture<JsonNode> executeOperationWithResponse(McpClientMessage request) {
-        return executeOperationWithResponse(new McpCallContext(null, request));
+    public CompletableFuture<String> sendRequest(McpClientMessage request) {
+        return sendRequest(new McpCallContext(null, request));
     }
 
     @Override
-    public CompletableFuture<JsonNode> executeOperationWithResponse(McpCallContext context) {
+    public CompletableFuture<String> sendRequest(McpCallContext context) {
         return execute(context, Optional.empty(), context.message().getId());
     }
 
     @Override
-    public void executeOperationWithoutResponse(McpClientMessage request) {
-        executeOperationWithoutResponse(new McpCallContext(null, request));
+    public void sendMessage(McpClientMessage request) {
+        sendMessage(new McpCallContext(null, request));
     }
 
     @Override
-    public void executeOperationWithoutResponse(McpCallContext context) {
+    public void sendMessage(McpCallContext context) {
         execute(context, Optional.empty(), null);
     }
 
     @Override
     public void checkHealth() {
         // no transport-specific checks right now
+    }
+
+    @Override
+    public boolean requiresCancellationNotification() {
+        return true;
     }
 
     @Override
@@ -221,17 +225,17 @@ public class WebSocketMcpTransport implements McpTransport {
         }
     }
 
-    private CompletableFuture<JsonNode> execute(McpCallContext context, Optional<WebSocket> webSocket, Long id) {
-        CompletableFuture<JsonNode> future = new CompletableFuture<>();
+    private CompletableFuture<String> execute(McpCallContext context, Optional<WebSocket> webSocket, Long id) {
+        CompletableFuture<String> future = new CompletableFuture<>();
         if (closed) {
             future.completeExceptionally(new IllegalStateException("Transport is closed"));
             return future;
         }
         if (id != null) {
-            operationHandler.startOperation(id, future);
+            operationHandler.expectResponse(id, future);
         }
         try {
-            String messageJson = OBJECT_MAPPER.writeValueAsString(context.message());
+            String messageJson = McpJson.serialize(context.message());
             WebSocket wsToUse = webSocket.orElseGet(() -> getWebSocket());
             if (logRequests) {
                 trafficLog.info("> " + messageJson);
@@ -341,4 +345,55 @@ public class WebSocketMcpTransport implements McpTransport {
             return new WebSocketMcpTransport(this);
         }
     }
+
+    /**
+     * @deprecated use {@link #sendInitializeRequest(McpInitializeRequest)} instead, which does not
+     * expose Jackson types.
+     */
+    @Deprecated(since = "1.20.0", forRemoval = true)
+    @Override
+    public CompletableFuture<JsonNode> initialize(McpInitializeRequest request) {
+        return McpJson.map(sendInitializeRequest(request), McpJson::parse);
+    }
+
+    /**
+     * @deprecated use {@link #sendRequest(McpClientMessage)} instead, which does not expose Jackson
+     * types.
+     */
+    @Deprecated(since = "1.20.0", forRemoval = true)
+    @Override
+    public CompletableFuture<JsonNode> executeOperationWithResponse(McpClientMessage request) {
+        return McpJson.map(sendRequest(request), McpJson::parse);
+    }
+
+    /**
+     * @deprecated use {@link #sendRequest(McpCallContext)} instead, which does not expose Jackson
+     * types.
+     */
+    @Deprecated(since = "1.20.0", forRemoval = true)
+    @Override
+    public CompletableFuture<JsonNode> executeOperationWithResponse(McpCallContext context) {
+        return McpJson.map(sendRequest(context), McpJson::parse);
+    }
+
+    /**
+     * @deprecated use {@link #sendMessage(McpClientMessage)} instead, which does not expose Jackson
+     * types.
+     */
+    @Deprecated(since = "1.20.0", forRemoval = true)
+    @Override
+    public void executeOperationWithoutResponse(McpClientMessage request) {
+        sendMessage(request);
+    }
+
+    /**
+     * @deprecated use {@link #sendMessage(McpCallContext)} instead, which does not expose Jackson
+     * types.
+     */
+    @Deprecated(since = "1.20.0", forRemoval = true)
+    @Override
+    public void executeOperationWithoutResponse(McpCallContext context) {
+        sendMessage(context);
+    }
+
 }

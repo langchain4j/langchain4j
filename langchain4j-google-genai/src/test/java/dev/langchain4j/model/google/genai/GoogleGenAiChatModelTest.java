@@ -123,6 +123,9 @@ class GoogleGenAiChatModelTest {
                 .presencePenalty(0.3)
                 .maxOutputTokens(1024)
                 .thinkingBudget(500)
+                .includeThoughts(true)
+                .returnThinking(true)
+                .sendThinking(true)
                 .seed(42)
                 .stopSequences(List.of("STOP"))
                 .maxRetries(5)
@@ -166,6 +169,9 @@ class GoogleGenAiChatModelTest {
         assertThat(builder.presencePenalty(0.3)).isSameAs(builder);
         assertThat(builder.maxOutputTokens(100)).isSameAs(builder);
         assertThat(builder.thinkingBudget(500)).isSameAs(builder);
+        assertThat(builder.includeThoughts(true)).isSameAs(builder);
+        assertThat(builder.returnThinking(true)).isSameAs(builder);
+        assertThat(builder.sendThinking(true)).isSameAs(builder);
         assertThat(builder.seed(42)).isSameAs(builder);
         assertThat(builder.stopSequences(List.of("STOP"))).isSameAs(builder);
         assertThat(builder.maxRetries(3)).isSameAs(builder);

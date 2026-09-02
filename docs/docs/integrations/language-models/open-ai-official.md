@@ -38,7 +38,7 @@ It will also work with models supporting the OpenAI API, such as DeepSeek.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai-official</artifactId>
-    <version>1.18.1-beta28</version>
+    <version>1.19.0-beta29</version>
 </dependency>
 ```
 
@@ -412,7 +412,7 @@ OpenAiOfficialResponsesChatResponseMetadata metadata =
 
 metadata.id();               // Response ID (can be used as previousResponseId)
 metadata.modelName();        // Model name used for the request
-metadata.finishReason();     // Finish reason (STOP, LENGTH, TOOL_EXECUTION, OTHER)
+metadata.finishReason();     // Finish reason (STOP, LENGTH, TOOL_EXECUTION, CONTENT_FILTER, OTHER)
 metadata.tokenUsage();       // Returns OpenAiOfficialTokenUsage with detailed token counts
 metadata.createdAt();        // Timestamp when the response was created
 metadata.completedAt();      // Timestamp when the response was completed
