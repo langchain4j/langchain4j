@@ -1,5 +1,12 @@
 # Model Context Protocol (MCP)
 
+:::note
+An MCP client can execute tools without blocking a thread via `executeToolAsync(...)`, used by the asynchronous
+and reactive AI Service modes.
+See [Non-blocking and Reactive](/tutorials/non-blocking).
+:::
+
+
 LangChain4j supports the Model Context Protocol (MCP) to communicate with
 MCP compliant servers that can provide and execute tools. General
 information about the protocol can be found at the [MCP
