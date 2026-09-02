@@ -1,6 +1,7 @@
 package dev.langchain4j.guardrail;
 
 import static dev.langchain4j.guardrail.OutputGuardrailResult.successWith;
+import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.observability.api.event.OutputGuardrailExecutedEvent.OutputGuardrailExecutedEventBuilder;
 
 import dev.langchain4j.data.message.AiMessage;
@@ -8,6 +9,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.guardrail.OutputGuardrailResult.Failure;
 import dev.langchain4j.guardrail.config.OutputGuardrailsConfig;
+import dev.langchain4j.internal.CancellationChain;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.observability.api.event.OutputGuardrailExecutedEvent;
 import dev.langchain4j.spi.guardrail.OutputGuardrailExecutorBuilderFactory;
@@ -15,6 +17,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.ServiceLoader;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 /**
@@ -71,24 +74,18 @@ public non-sealed class OutputGuardrailExecutor
                 return result;
             }
 
-            // Not successful
             if (!result.isRetry()) {
-                // Not any kind of retry, so just stop here
                 removeViolatingMessageIfRequested(result, request);
                 throw new OutputGuardrailException(result.toString(), result.getFirstFailureException(), result);
             }
 
             if (++attempt < maxAttempts) {
-                // If we get here we know it is some kind of retry
-                // We don't want to add intermediary UserMessages to the memory
                 var chatMessages = Optional.ofNullable(
                                 accumulatedRequest.requestParams().chatMemory())
                         .map(ChatMemory::messages)
                         .orElseGet(ArrayList::new);
                 result.getReprompt().map(UserMessage::from).ifPresent(chatMessages::add);
 
-                // Re-execute the request with the appended message
-                // But don't add it or the resulting message to the memory
                 var response = accumulatedRequest.chatExecutor().execute(chatMessages);
                 accumulatedRequest = OutputGuardrailRequest.builder()
                         .responseFromLLM(response)
@@ -108,6 +105,115 @@ public non-sealed class OutputGuardrailExecutor
         }
 
         return result;
+    }
+
+    /**
+     * Non-blocking counterpart of {@link #execute(OutputGuardrailRequest)}. Runs the same reprompt/retry loop, but
+     * the per-attempt model re-call goes through {@link ChatExecutor#executeAsync(java.util.List)} so the calling
+     * thread is never blocked while the model produces the reprompted response.
+     */
+    @Override
+    public CompletableFuture<OutputGuardrailResult> executeAsync(OutputGuardrailRequest request) {
+        var maxAttempts = config().maxRetries();
+
+        if (maxAttempts == 0) {
+            maxAttempts = 1;
+        } else if (maxAttempts < 0) {
+            maxAttempts = OutputGuardrailsConfig.MAX_RETRIES_DEFAULT;
+        }
+
+        CompletableFuture<OutputGuardrailResult> result = new CompletableFuture<>();
+        CancellationChain chain = new CancellationChain(result);
+        attemptAsync(request, request, 0, maxAttempts, chain).whenComplete((attemptResult, error) -> {
+            if (error != null) {
+                result.completeExceptionally(unwrapCompletionException(error));
+            } else {
+                result.complete(attemptResult);
+            }
+        });
+        return result;
+    }
+
+    private CompletableFuture<OutputGuardrailResult> attemptAsync(
+            OutputGuardrailRequest request,
+            OutputGuardrailRequest accumulatedRequest,
+            int attempt,
+            int maxAttempts,
+            CancellationChain chain) {
+
+        return executeGuardrailsAsync(accumulatedRequest, chain).thenCompose(rawResult -> {
+            var result = rewriteResult(request, accumulatedRequest, rawResult);
+
+            if (result.isSuccess()) {
+                return CompletableFuture.completedFuture(result);
+            }
+
+            if (!result.isRetry()) {
+                return removeViolatingMessageIfRequestedAsync(result, request)
+                        .thenCompose(ignored -> CompletableFuture.<OutputGuardrailResult>failedFuture(
+                                new OutputGuardrailException(
+                                        result.toString(), result.getFirstFailureException(), result)));
+            }
+
+            var nextAttempt = attempt + 1;
+            if (nextAttempt < maxAttempts) {
+                ChatMemory memory = accumulatedRequest.requestParams().chatMemory();
+                CompletableFuture<List<ChatMessage>> memoryMessages = memory != null
+                        ? chain.track(memory.messagesAsync())
+                        : CompletableFuture.completedFuture(new ArrayList<>());
+                return memoryMessages.thenCompose(currentMessages -> {
+                    var chatMessages = new ArrayList<>(currentMessages);
+                    result.getReprompt().map(UserMessage::from).ifPresent(chatMessages::add);
+
+                    return chain.track(accumulatedRequest.chatExecutor().executeAsync(chatMessages))
+                            .thenCompose(response -> {
+                                var nextRequest = OutputGuardrailRequest.builder()
+                                        .responseFromLLM(response)
+                                        .chatExecutor(accumulatedRequest.chatExecutor())
+                                        .requestParams(accumulatedRequest.requestParams())
+                                        .build();
+                                return attemptAsync(request, nextRequest, nextAttempt, maxAttempts, chain);
+                            });
+                });
+            }
+
+            var failureMessages = result.failures().stream()
+                    .map(GuardrailResult.Failure::message)
+                    .collect(Collectors.joining(System.lineSeparator()));
+
+            return removeViolatingMessageIfRequestedAsync(result, request)
+                    .thenCompose(ignored -> CompletableFuture.<OutputGuardrailResult>failedFuture(
+                            new OutputGuardrailException(
+                                    MAX_RETRIES_MESSAGE_TEMPLATE.formatted(failureMessages), null, result)));
+        });
+    }
+
+    /**
+     * Non-blocking counterpart of {@link #removeViolatingMessageIfRequested(OutputGuardrailResult, OutputGuardrailRequest)}:
+     * reads and replaces the chat memory via {@code messagesAsync}/{@code setAsync} instead of the blocking
+     * {@code messages()}/{@code clear()}, so it never blocks the delivery thread on the async/reactive paths.
+     */
+    private CompletableFuture<Void> removeViolatingMessageIfRequestedAsync(
+            OutputGuardrailResult result, OutputGuardrailRequest request) {
+        if (!result.shouldRemoveViolatingMessage()) {
+            return CompletableFuture.completedFuture(null);
+        }
+        ChatMemory memory = request.requestParams().chatMemory();
+        if (memory == null) {
+            return CompletableFuture.completedFuture(null);
+        }
+        return memory.messagesAsync().thenCompose(current -> {
+            var messages = new ArrayList<>(current);
+            var it = messages.listIterator(messages.size());
+            while (it.hasPrevious()) {
+                ChatMessage msg = it.previous();
+                if (msg instanceof AiMessage) {
+                    it.remove();
+                    break;
+                }
+            }
+            return memory.setAsync(messages);
+        });
     }
 
     private void removeViolatingMessageIfRequested(OutputGuardrailResult result, OutputGuardrailRequest request) {

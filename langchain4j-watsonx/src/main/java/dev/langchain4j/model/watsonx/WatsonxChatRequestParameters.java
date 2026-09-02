@@ -3,6 +3,7 @@ package dev.langchain4j.model.watsonx;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static java.util.Objects.nonNull;
 
+import com.ibm.watsonx.ai.chat.ChatModeration;
 import com.ibm.watsonx.ai.chat.model.ExtractionTags;
 import com.ibm.watsonx.ai.chat.model.Thinking;
 import com.ibm.watsonx.ai.chat.model.ThinkingEffort;
@@ -32,6 +33,7 @@ public class WatsonxChatRequestParameters extends DefaultChatRequestParameters {
     private final String guidedGrammar;
     private final Double repetitionPenalty;
     private final Double lengthPenalty;
+    private final ChatModeration moderations;
 
     private WatsonxChatRequestParameters(Builder builder) {
         super(builder);
@@ -49,6 +51,7 @@ public class WatsonxChatRequestParameters extends DefaultChatRequestParameters {
         guidedGrammar = builder.guidedGrammar;
         repetitionPenalty = builder.repetitionPenalty;
         lengthPenalty = builder.lengthPenalty;
+        moderations = builder.moderations;
     }
 
     public Map<String, Integer> logitBias() {
@@ -107,6 +110,10 @@ public class WatsonxChatRequestParameters extends DefaultChatRequestParameters {
         return lengthPenalty;
     }
 
+    public ChatModeration moderations() {
+        return moderations;
+    }
+
     public static Builder builder() {
         return new Builder();
     }
@@ -144,7 +151,8 @@ public class WatsonxChatRequestParameters extends DefaultChatRequestParameters {
                 && Objects.equals(guidedRegex, that.guidedRegex)
                 && Objects.equals(guidedGrammar, that.guidedGrammar)
                 && Objects.equals(repetitionPenalty, that.repetitionPenalty)
-                && Objects.equals(lengthPenalty, that.lengthPenalty);
+                && Objects.equals(lengthPenalty, that.lengthPenalty)
+                && Objects.equals(moderations, that.moderations);
     }
 
     @Override
@@ -164,7 +172,8 @@ public class WatsonxChatRequestParameters extends DefaultChatRequestParameters {
                 guidedRegex,
                 guidedGrammar,
                 repetitionPenalty,
-                lengthPenalty);
+                lengthPenalty,
+                moderations);
     }
 
     @Override
@@ -193,7 +202,8 @@ public class WatsonxChatRequestParameters extends DefaultChatRequestParameters {
                 + guidedRegex + ", guidedGrammar="
                 + guidedGrammar + ", repetitionPenalty="
                 + repetitionPenalty + ", lengthPenalty="
-                + lengthPenalty + ", timeout="
+                + lengthPenalty + ", moderations="
+                + moderations + ", timeout="
                 + timeout + '}';
     }
 
@@ -213,6 +223,7 @@ public class WatsonxChatRequestParameters extends DefaultChatRequestParameters {
         private String guidedGrammar;
         private Double repetitionPenalty;
         private Double lengthPenalty;
+        private ChatModeration moderations;
 
         @Override
         public Builder overrideWith(ChatRequestParameters parameters) {
@@ -232,6 +243,7 @@ public class WatsonxChatRequestParameters extends DefaultChatRequestParameters {
                 guidedGrammar(getOrDefault(watsonxParameters.guidedGrammar(), guidedGrammar));
                 repetitionPenalty(getOrDefault(watsonxParameters.repetitionPenalty(), repetitionPenalty));
                 lengthPenalty(getOrDefault(watsonxParameters.lengthPenalty(), lengthPenalty));
+                moderations(getOrDefault(watsonxParameters.moderations(), moderations));
             }
             return this;
         }
@@ -325,6 +337,11 @@ public class WatsonxChatRequestParameters extends DefaultChatRequestParameters {
 
         public Builder lengthPenalty(Double lengthPenalty) {
             this.lengthPenalty = lengthPenalty;
+            return this;
+        }
+
+        public Builder moderations(ChatModeration moderations) {
+            this.moderations = moderations;
             return this;
         }
 
