@@ -53,6 +53,7 @@ public class TokenWindowChatMemory implements ChatMemory {
     private final TokenCountEstimator tokenCountEstimator;
     private final ChatMemoryStore store;
     private final boolean alwaysKeepSystemMessageFirst;
+    private final boolean autoRecoverOrphanedToolMessages;
 
     private TokenWindowChatMemory(Builder builder) {
         this.id = ensureNotNull(builder.id, "id");
@@ -61,6 +62,7 @@ public class TokenWindowChatMemory implements ChatMemory {
         this.tokenCountEstimator = ensureNotNull(builder.tokenCountEstimator, "tokenCountEstimator");
         this.store = ensureNotNull(builder.store(), "store");
         this.alwaysKeepSystemMessageFirst = getOrDefault(builder.alwaysKeepSystemMessageFirst, false);
+        this.autoRecoverOrphanedToolMessages = getOrDefault(builder.autoRecoverOrphanedToolMessages, false);
     }
 
     @Override
@@ -70,7 +72,9 @@ public class TokenWindowChatMemory implements ChatMemory {
 
     @Override
     public void add(ChatMessage message) {
-        List<ChatMessage> messages = messages();
+        List<ChatMessage> messages = autoRecoverOrphanedToolMessages && message instanceof ToolExecutionResultMessage
+                ? new LinkedList<>(store.getMessages(id))
+                : messages();
 
         if (message instanceof SystemMessage) {
             Optional<SystemMessage> maybeSystemMessage = SystemMessage.findFirst(messages);
@@ -120,6 +124,9 @@ public class TokenWindowChatMemory implements ChatMemory {
         Integer maxTokens = maxTokensProvider.apply(id);
         ensureGreaterThanZero(maxTokens, "maxTokens");
         List<ChatMessage> messages = new LinkedList<>(store.getMessages(id));
+        if (autoRecoverOrphanedToolMessages) {
+            ChatMemoryUtils.removeInterruptedToolExecutions(messages);
+        }
         ensureCapacity(messages, maxTokens, tokenCountEstimator);
         return messages;
     }
@@ -173,6 +180,7 @@ public class TokenWindowChatMemory implements ChatMemory {
         private TokenCountEstimator tokenCountEstimator;
         private ChatMemoryStore store;
         private Boolean alwaysKeepSystemMessageFirst;
+        private Boolean autoRecoverOrphanedToolMessages;
 
         /**
          * @param id The ID of the {@link ChatMemory}.
@@ -232,6 +240,20 @@ public class TokenWindowChatMemory implements ChatMemory {
          */
         public Builder alwaysKeepSystemMessageFirst(Boolean alwaysKeepSystemMessageFirst) {
             this.alwaysKeepSystemMessageFirst = alwaysKeepSystemMessageFirst;
+            return this;
+        }
+
+        /**
+         * Removes interrupted tool calls from the messages returned by {@link ChatMemory#messages()}.
+         * A later non-result message persists the cleanup, while tool result messages preserve an
+         * in-flight tool execution. Disabled by default.
+         *
+         * @param autoRecoverOrphanedToolMessages whether to remove interrupted tool calls
+         * @return builder
+         * @since 1.20.0
+         */
+        public Builder autoRecoverOrphanedToolMessages(Boolean autoRecoverOrphanedToolMessages) {
+            this.autoRecoverOrphanedToolMessages = autoRecoverOrphanedToolMessages;
             return this;
         }
 

@@ -670,4 +670,78 @@ class MessageWindowChatMemoryTest implements WithAssertions {
         callerList.add(userMessage("a4-injected"));
         assertThat(chatMemory.messages()).containsExactly(userMessage("a2"), userMessage("a3"));
     }
+
+    @Test
+    void should_recover_interrupted_tool_execution_when_enabled() {
+
+        // given
+        var store = new HitCountChatMemoryStore();
+        ToolExecutionRequest firstRequest = ToolExecutionRequest.builder()
+                .id("1")
+                .name("tool1")
+                .arguments("{}")
+                .build();
+        ToolExecutionRequest secondRequest = ToolExecutionRequest.builder()
+                .id("2")
+                .name("tool2")
+                .arguments("{}")
+                .build();
+        UserMessage firstUserMessage = userMessage("hello");
+        AiMessage interruptedAiMessage = AiMessage.from(firstRequest, secondRequest);
+        ToolExecutionResultMessage partialResult = ToolExecutionResultMessage.from(firstRequest, "result");
+        UserMessage secondUserMessage = userMessage("world");
+        List<dev.langchain4j.data.message.ChatMessage> interruptedHistory =
+                List.of(firstUserMessage, interruptedAiMessage, partialResult);
+        store.updateMessages("default", interruptedHistory);
+
+        // disabled by default
+        ChatMemory defaultChatMemory = MessageWindowChatMemory.builder()
+                .maxMessages(10)
+                .chatMemoryStore(store)
+                .build();
+        assertThat(defaultChatMemory.messages()).containsExactlyElementsOf(interruptedHistory);
+
+        ChatMemory chatMemory = MessageWindowChatMemory.builder()
+                .maxMessages(10)
+                .chatMemoryStore(store)
+                .autoRecoverOrphanedToolMessages(true)
+                .build();
+
+        // when-then: reading returns a cleaned view without changing the store
+        assertThat(chatMemory.messages()).containsExactly(firstUserMessage);
+        assertThat(store.getMessages("default")).containsExactlyElementsOf(interruptedHistory);
+
+        // when-then: a later user message persists the cleanup
+        chatMemory.add(secondUserMessage);
+        assertThat(chatMemory.messages()).containsExactly(firstUserMessage, secondUserMessage);
+        assertThat(store.getMessages("default")).containsExactly(firstUserMessage, secondUserMessage);
+    }
+
+    @Test
+    void should_not_remove_in_flight_tool_block_during_add_when_auto_recover_is_enabled() {
+
+        var store = new HitCountChatMemoryStore();
+
+        ToolExecutionRequest toolRequest = ToolExecutionRequest.builder()
+                .id("1")
+                .name("tool")
+                .arguments("{}")
+                .build();
+        AiMessage aiMessageWithTools = AiMessage.from(toolRequest);
+        ToolExecutionResultMessage resultMessage = ToolExecutionResultMessage.from(toolRequest, "result");
+
+        ChatMemory chatMemory = MessageWindowChatMemory.builder()
+                .maxMessages(10)
+                .chatMemoryStore(store)
+                .autoRecoverOrphanedToolMessages(true)
+                .build();
+
+        chatMemory.add(userMessage("hello"));
+        chatMemory.add(aiMessageWithTools);
+        chatMemory.add(resultMessage);
+
+        assertThat(store.getMessages("default"))
+                .containsExactly(userMessage("hello"), aiMessageWithTools, resultMessage);
+        assertThat(chatMemory.messages()).containsExactly(userMessage("hello"), aiMessageWithTools, resultMessage);
+    }
 }

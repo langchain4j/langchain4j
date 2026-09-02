@@ -50,6 +50,7 @@ public class MessageWindowChatMemory implements ChatMemory {
     private final Function<Object, Integer> maxMessagesProvider;
     private final ChatMemoryStore store;
     private final boolean alwaysKeepSystemMessageFirst;
+    private final boolean autoRecoverOrphanedToolMessages;
 
     private MessageWindowChatMemory(Builder builder) {
         this.id = ensureNotNull(builder.id, "id");
@@ -57,6 +58,7 @@ public class MessageWindowChatMemory implements ChatMemory {
         ensureGreaterThanZero(this.maxMessagesProvider.apply(this.id), "maxMessages");
         this.store = ensureNotNull(builder.store(), "store");
         this.alwaysKeepSystemMessageFirst = getOrDefault(builder.alwaysKeepSystemMessageFirst, false);
+        this.autoRecoverOrphanedToolMessages = getOrDefault(builder.autoRecoverOrphanedToolMessages, false);
     }
 
     @Override
@@ -66,7 +68,9 @@ public class MessageWindowChatMemory implements ChatMemory {
 
     @Override
     public void add(ChatMessage message) {
-        List<ChatMessage> messages = messages();
+        List<ChatMessage> messages = autoRecoverOrphanedToolMessages && message instanceof ToolExecutionResultMessage
+                ? new LinkedList<>(store.getMessages(id))
+                : messages();
 
         if (message instanceof SystemMessage) {
             Optional<SystemMessage> systemMessage = SystemMessage.findFirst(messages);
@@ -116,6 +120,9 @@ public class MessageWindowChatMemory implements ChatMemory {
         Integer maxMessages = this.maxMessagesProvider.apply(this.id);
         ensureGreaterThanZero(maxMessages, "maxMessages");
         List<ChatMessage> messages = new LinkedList<>(store.getMessages(id));
+        if (autoRecoverOrphanedToolMessages) {
+            ChatMemoryUtils.removeInterruptedToolExecutions(messages);
+        }
         ensureCapacity(messages, maxMessages);
         return messages;
     }
@@ -155,6 +162,7 @@ public class MessageWindowChatMemory implements ChatMemory {
         private Function<Object, Integer> maxMessagesProvider;
         private ChatMemoryStore store;
         private Boolean alwaysKeepSystemMessageFirst;
+        private Boolean autoRecoverOrphanedToolMessages;
 
         /**
          * @param id The ID of the {@link ChatMemory}.
@@ -207,6 +215,20 @@ public class MessageWindowChatMemory implements ChatMemory {
          */
         public Builder alwaysKeepSystemMessageFirst(Boolean alwaysKeepSystemMessageFirst) {
             this.alwaysKeepSystemMessageFirst = alwaysKeepSystemMessageFirst;
+            return this;
+        }
+
+        /**
+         * Removes interrupted tool calls from the messages returned by {@link ChatMemory#messages()}.
+         * A later non-result message persists the cleanup, while tool result messages preserve an
+         * in-flight tool execution. Disabled by default.
+         *
+         * @param autoRecoverOrphanedToolMessages whether to remove interrupted tool calls
+         * @return builder
+         * @since 1.20.0
+         */
+        public Builder autoRecoverOrphanedToolMessages(Boolean autoRecoverOrphanedToolMessages) {
+            this.autoRecoverOrphanedToolMessages = autoRecoverOrphanedToolMessages;
             return this;
         }
 

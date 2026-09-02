@@ -126,6 +126,21 @@ the following orphan `ToolExecutionResultMessage`(s) are also automatically evic
 to avoid problems with some LLM providers (such as OpenAI)
 that prohibit sending orphan `ToolExecutionResultMessage`(s) in the request.
 
+If tool execution is interrupted, chat memory can contain tool calls without all required results.
+Opt-in recovery removes those incomplete tool calls from later model requests:
+
+```java
+ChatMemory chatMemory = MessageWindowChatMemory.builder()
+        .maxMessages(10)
+        .chatMemoryStore(chatMemoryStore)
+        .autoRecoverOrphanedToolMessages(true)
+        .build();
+```
+
+The option is disabled by default and is also available on `TokenWindowChatMemory`. Calling `messages()` returns a
+cleaned view without updating the store. A later non-result message persists the cleanup; tool result messages
+preserve in-flight tool executions.
+
 ## Examples
 - With `AiServices`:
   - [Chat memory](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithMemoryExample.java)
