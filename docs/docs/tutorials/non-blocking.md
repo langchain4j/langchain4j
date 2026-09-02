@@ -130,16 +130,28 @@ configurable with `AiServices.builder(...).streamingBufferSize(int)`.
 AI Service methods return JDK types — `CompletableFuture` and `Flow.Publisher` — so the API does not tie you to
 any particular reactive programming library.
 
-:::warning
-Returning a library's own type (`Uni`/`Multi`, `Mono`/`Flux`) from a non-blocking AI Service method is **not
-supported yet**. The seam exists — the `CompletableFutureAdapter` and `PublisherAdapter` SPIs, discovered via
-`ServiceLoader` — but both are internal, and no adapter ships with LangChain4j today. Declaring such a return type
-currently fails. Use `CompletableFuture` or `Flow.Publisher` and adapt at the call site.
+Reactor types are supported through the `langchain4j-reactor` module — `Mono<T>` for the single-response mode
+and `Flux<AiServiceStreamingEvent>` for the reactive one. Adding the dependency is enough; the adapters register
+themselves via `ServiceLoader`.
+
+```java
+interface Assistant {
+
+    Mono<String> answer(String userMessage);
+
+    Flux<AiServiceStreamingEvent> events(String userMessage);
+}
+```
+
+:::note
+Mutiny's `Uni`/`Multi` are not supported yet. The seam is there — the `CompletableFutureAdapter` and
+`PublisherAdapter` SPIs, discovered via `ServiceLoader` — but no adapter ships for them, so declaring such a
+return type currently fails. Use `CompletableFuture` or `Flow.Publisher` and adapt at the call site.
 :::
 
-`Flux<String>` is available through the separate `langchain4j-reactor` module — see
-[AI Services](/tutorials/ai-services#flux). That is an adapter over `TokenStream` and predates this feature; it is
-not part of the non-blocking path described here.
+`Flux<String>` is served by the older `TokenStream`-based adapter in the same module — see
+[AI Services](/tutorials/ai-services#flux). It predates this feature, is not part of the non-blocking path
+described here, and works with every provider.
 
 ## What has to be non-blocking
 
@@ -334,9 +346,8 @@ public CompletableFuture<InputGuardrailResult> validateAsync(InputGuardrailReque
 `Flux<String>` keeps working with **every** provider, including those in the ❌ row: it is served by the
 `TokenStream`-based adapter in `langchain4j-reactor`, not by the non-blocking path described on this page.
 
-Reactor bindings for the non-blocking modes themselves — `Mono<T>` and `Flux<AiServiceStreamingEvent>` — are not
-available yet; see [Third-party reactive types](#third-party-reactive-types) above. When they ship they will carry
-the same provider constraint as the JDK types.
+`Mono<T>` and `Flux<AiServiceStreamingEvent>` come from the `langchain4j-reactor` module and carry the same
+provider constraint as the JDK types — see [Third-party reactive types](#third-party-reactive-types) above.
 
 To make ambient context follow an asynchronous invocation, let LangChain4j offload to the application's own
 executor rather than its default one:
