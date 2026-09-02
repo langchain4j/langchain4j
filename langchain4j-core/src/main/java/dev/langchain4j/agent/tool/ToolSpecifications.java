@@ -1,12 +1,14 @@
 package dev.langchain4j.agent.tool;
 
+import static dev.langchain4j.agent.tool.SearchBehavior.SEARCHABLE;
+import static dev.langchain4j.agent.tool.ToolSpecification.METADATA_SEARCH_BEHAVIOR;
 import static dev.langchain4j.internal.Utils.allConcreteMethods;
 import static dev.langchain4j.internal.Utils.getAnnotatedMethod;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
-import static java.util.Arrays.stream;
 import static java.util.stream.Collectors.toList;
 
+import dev.langchain4j.Internal;
 import dev.langchain4j.internal.Json;
 import dev.langchain4j.internal.JsonSchemaElementUtils;
 import dev.langchain4j.internal.JsonSchemaElementUtils.VisitedClassMetadata;
@@ -30,9 +32,6 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import static dev.langchain4j.agent.tool.SearchBehavior.SEARCHABLE;
-import static dev.langchain4j.agent.tool.ToolSpecification.METADATA_SEARCH_BEHAVIOR;
 
 /**
  * Utility methods for {@link ToolSpecification}s.
@@ -126,11 +125,23 @@ public class ToolSpecifications {
      * @return the {@link ToolSpecification}.
      */
     public static ToolSpecification toolSpecificationFrom(Method method) {
+        return toolSpecificationFrom(method, false);
+    }
+
+    @Internal
+    public static ToolSpecification toolSpecificationFrom(Method method, boolean includeInheritedFields) {
+        return toolSpecificationFrom(method, includeInheritedFields, false);
+    }
+
+    @Internal
+    public static ToolSpecification toolSpecificationFrom(
+            Method method, boolean includeInheritedFields, boolean respectJsonIgnoreAnnotations) {
         Tool tool = method.getAnnotation(Tool.class);
         return ToolSpecification.builder()
                 .name(getName(tool, method))
                 .description(getDescription(tool))
-                .parameters(parametersFrom(method.getParameters()))
+                .parameters(
+                        parametersFrom(method.getParameters(), includeInheritedFields, respectJsonIgnoreAnnotations))
                 .metadata(getMetadata(tool))
                 .build();
     }
@@ -152,7 +163,8 @@ public class ToolSpecifications {
         return metadata;
     }
 
-    private static JsonObjectSchema parametersFrom(Parameter[] parameters) {
+    private static JsonObjectSchema parametersFrom(
+            Parameter[] parameters, boolean includeInheritedFields, boolean respectJsonIgnoreAnnotations) {
 
         Map<String, JsonSchemaElement> properties = new LinkedHashMap<>();
         List<String> required = new ArrayList<>();
@@ -169,13 +181,10 @@ public class ToolSpecifications {
 
             boolean isOptional = Optional.class.equals(parameter.getType());
             P pAnnotation = parameter.getAnnotation(P.class);
-            boolean hasDefaultValue =
-                    pAnnotation != null && !P.NO_DEFAULT.equals(pAnnotation.defaultValue());
+            boolean hasDefaultValue = pAnnotation != null && !P.NO_DEFAULT.equals(pAnnotation.defaultValue());
             boolean isRequired = !isOptional
                     && !hasDefaultValue
-                    && Optional.ofNullable(pAnnotation)
-                            .map(P::required)
-                            .orElse(true);
+                    && Optional.ofNullable(pAnnotation).map(P::required).orElse(true);
 
             String parameterName = Optional.ofNullable(pAnnotation)
                     .map(P::name)
@@ -188,7 +197,9 @@ public class ToolSpecifications {
                         return parameter.getName();
                     });
 
-            properties.put(parameterName, jsonSchemaElementFrom(parameter, visited));
+            properties.put(
+                    parameterName,
+                    jsonSchemaElementFrom(parameter, visited, includeInheritedFields, respectJsonIgnoreAnnotations));
             if (isRequired) {
                 required.add(parameterName);
             }
@@ -244,7 +255,10 @@ public class ToolSpecifications {
     }
 
     private static JsonSchemaElement jsonSchemaElementFrom(
-            Parameter parameter, Map<Class<?>, VisitedClassMetadata> visited) {
+            Parameter parameter,
+            Map<Class<?>, VisitedClassMetadata> visited,
+            boolean includeInheritedFields,
+            boolean respectJsonIgnoreAnnotations) {
         P annotation = parameter.getAnnotation(P.class);
         String description = null;
 
@@ -275,6 +289,7 @@ public class ToolSpecifications {
             }
         }
 
-        return JsonSchemaElementUtils.jsonSchemaElementFrom(clazz, type, description, true, visited);
+        return JsonSchemaElementUtils.jsonSchemaElementFrom(
+                clazz, type, description, true, visited, includeInheritedFields, respectJsonIgnoreAnnotations);
     }
 }

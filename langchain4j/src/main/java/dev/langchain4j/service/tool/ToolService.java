@@ -95,6 +95,10 @@ public class ToolService {
     private IllegalConfigurationException compensatingToolMisconfiguration;
     private final Set<ToolProvider> toolProviders = new LinkedHashSet<>();
     private boolean compensateOnToolErrors;
+    private final List<Object> objectsWithTools = new ArrayList<>();
+    private int registeredObjectsWithToolsCount;
+    private boolean includeInheritedFields;
+    private boolean respectJsonIgnoreAnnotations;
     private Executor executor;
     private int maxToolCallingRoundTrips = 100;
     private ToolArgumentsErrorHandler argumentsErrorHandler;
@@ -128,6 +132,30 @@ public class ToolService {
         }
     }
 
+    public void addObjectsWithTools(Collection<Object> objectsWithTools) {
+        this.objectsWithTools.addAll(objectsWithTools);
+    }
+
+    public void includeInheritedFields(boolean includeInheritedFields) {
+        this.includeInheritedFields = includeInheritedFields;
+    }
+
+    public void respectJsonIgnoreAnnotations(boolean respectJsonIgnoreAnnotations) {
+        this.respectJsonIgnoreAnnotations = respectJsonIgnoreAnnotations;
+    }
+
+    public void registerObjectsWithTools() {
+        if (registeredObjectsWithToolsCount == objectsWithTools.size()) {
+            return;
+        }
+
+        tools(
+                objectsWithTools.subList(registeredObjectsWithToolsCount, objectsWithTools.size()),
+                includeInheritedFields,
+                respectJsonIgnoreAnnotations);
+        registeredObjectsWithToolsCount = objectsWithTools.size();
+    }
+
     public void tools(Map<ToolSpecification, ToolExecutor> tools) {
         tools.forEach((toolSpecification, toolExecutor) -> {
             toolSpecifications.add(toolSpecification);
@@ -141,8 +169,18 @@ public class ToolService {
     }
 
     public void tools(Collection<Object> objectsWithTools) {
+        tools(objectsWithTools, false, false);
+    }
+
+    public void tools(Collection<Object> objectsWithTools, boolean includeInheritedFields) {
+        tools(objectsWithTools, includeInheritedFields, false);
+    }
+
+    public void tools(
+            Collection<Object> objectsWithTools, boolean includeInheritedFields, boolean respectJsonIgnoreAnnotations) {
         for (Object objectWithTools : objectsWithTools) {
-            List<AiServiceTool> tools = findTools(objectWithTools);
+            List<AiServiceTool> tools =
+                    findTools(objectWithTools, includeInheritedFields, respectJsonIgnoreAnnotations);
             addTools(tools, this.toolExecutors, this.toolSpecifications, this.returnBehaviors);
             this.compensatingExecutors.putAll(findCompensatingActions(objectWithTools));
         }
@@ -231,6 +269,15 @@ public class ToolService {
      * @since 1.13.0
      */
     public static List<AiServiceTool> findTools(Object objectWithTools) {
+        return findTools(objectWithTools, false, false);
+    }
+
+    public static List<AiServiceTool> findTools(Object objectWithTools, boolean includeInheritedFields) {
+        return findTools(objectWithTools, includeInheritedFields, false);
+    }
+
+    public static List<AiServiceTool> findTools(
+            Object objectWithTools, boolean includeInheritedFields, boolean respectJsonIgnoreAnnotations) {
         if (objectWithTools instanceof Class) {
             throw illegalConfiguration("Tool '%s' must be an object, not a class", objectWithTools);
         }
@@ -248,7 +295,8 @@ public class ToolService {
                 Method toolMethod = annotatedMethod.get();
                 validateToolParameters(toolMethod);
                 result.add(AiServiceTool.builder()
-                        .toolSpecification(toolSpecificationFrom(toolMethod))
+                        .toolSpecification(
+                                toolSpecificationFrom(toolMethod, includeInheritedFields, respectJsonIgnoreAnnotations))
                         .toolExecutor(createToolExecutor(objectWithTools, toolMethod))
                         .returnBehavior(toolMethod.getAnnotation(Tool.class).returnBehavior())
                         .build());
@@ -276,7 +324,8 @@ public class ToolService {
         }
 
         for (Method candidateMethod : allConcreteMethods(objectWithTools.getClass())) {
-            Method method = getAnnotatedMethod(candidateMethod, CompensateFor.class).orElse(null);
+            Method method =
+                    getAnnotatedMethod(candidateMethod, CompensateFor.class).orElse(null);
             if (method != null) {
                 CompensateFor compensateFor = method.getAnnotation(CompensateFor.class);
                 String toolName = compensateFor.value();
@@ -335,8 +384,10 @@ public class ToolService {
                             .methodToInvoke(method)
                             .propagateToolExecutionExceptions(true)
                             .build();
-                    compensatingActions.put(toolName, toolExecution ->
-                            executor.executeWithContext(toolExecution.request(), toolExecution.invocationContext()));
+                    compensatingActions.put(
+                            toolName,
+                            toolExecution -> executor.executeWithContext(
+                                    toolExecution.request(), toolExecution.invocationContext()));
                 }
             }
         }
@@ -409,7 +460,8 @@ public class ToolService {
         return afterToolExecution;
     }
 
-    public void onCompensableToolExecution(BiConsumer<ToolExecution, Consumer<ToolExecution>> onCompensableToolExecution) {
+    public void onCompensableToolExecution(
+            BiConsumer<ToolExecution, Consumer<ToolExecution>> onCompensableToolExecution) {
         if (compensatingToolMisconfiguration != null) {
             throw compensatingToolMisconfiguration;
         }
@@ -457,6 +509,7 @@ public class ToolService {
 
     public ToolServiceContext createContext(
             InvocationContext invocationContext, UserMessage userMessage, List<ChatMessage> messages) {
+        registerObjectsWithTools();
         ToolServiceContext context = createContextFromStaticToolsAndProviders(invocationContext, userMessage, messages);
         if (toolSearchService != null) {
             context = toolSearchService.adjust(context, messages, invocationContext);
