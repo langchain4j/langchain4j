@@ -29,4 +29,27 @@ class GoogleGenAiClientFactoryTest {
 
         assertThat(client).isNotNull();
     }
+
+    @Test
+    void should_create_client_with_vertex_project_and_location() {
+        Client client =
+                GoogleGenAiClientFactory.createClient(null, null, "test-project-id", "us-central1", null, null, null);
+
+        assertThat(client).isNotNull();
+        assertThat(client.vertexAI()).isTrue();
+        assertThat(client.project()).isEqualTo("test-project-id");
+        assertThat(client.location()).isEqualTo("us-central1");
+    }
+
+    @Test
+    void should_create_client_with_vertex_and_api_key() {
+        Client client = GoogleGenAiClientFactory.createClient(
+                "test-api-key", null, "test-project-id", "us-central1", null, null, null);
+
+        assertThat(client).isNotNull();
+        assertThat(client.vertexAI()).isTrue();
+        assertThat(client.project()).isEqualTo("test-project-id");
+        assertThat(client.location()).isEqualTo("us-central1");
+        assertThat(client.apiKey()).isEqualTo("test-api-key");
+    }
 }
