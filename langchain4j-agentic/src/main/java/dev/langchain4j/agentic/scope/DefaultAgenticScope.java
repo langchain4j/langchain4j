@@ -9,8 +9,8 @@ import dev.langchain4j.agentic.agent.ChatMessagesAccess;
 import dev.langchain4j.agentic.agent.ErrorContext;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.declarative.TypedKey;
-import dev.langchain4j.agentic.internal.DelayedResponse;
 import dev.langchain4j.agentic.internal.DeferredResponse;
+import dev.langchain4j.agentic.internal.DelayedResponse;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.data.message.AiMessage;
@@ -20,6 +20,7 @@ import dev.langchain4j.internal.Utils;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.service.TokenStream;
 import dev.langchain4j.service.memory.ChatMemoryAccess;
+import dev.langchain4j.service.tool.ToolExecution;
 import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -31,6 +32,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -51,6 +53,8 @@ public class DefaultAgenticScope implements AgenticScope {
 
     private final transient Map<String, Object> agents = new ConcurrentHashMap<>();
     private final transient Map<String, Object> executionContexts = new ConcurrentHashMap<>();
+    private final transient List<CompensableExecution> compensableExecutions =
+            Collections.synchronizedList(new ArrayList<>());
 
     private static final Function<ErrorContext, ErrorRecoveryResult> DEFAULT_ERROR_RECOVERY =
             errorContext -> ErrorRecoveryResult.throwException();
@@ -58,7 +62,8 @@ public class DefaultAgenticScope implements AgenticScope {
     private transient Function<ErrorContext, ErrorRecoveryResult> errorHandler = DEFAULT_ERROR_RECOVERY;
 
     private static Predicate<Object> serializableStateFilter = Predicate.not(DefaultAgenticScope::isProxy)
-            .and(Predicate.not(DefaultAgenticScope::isTokenStream)).and(Predicate.not(DefaultAgenticScope::isFuture));
+            .and(Predicate.not(DefaultAgenticScope::isTokenStream))
+            .and(Predicate.not(DefaultAgenticScope::isFuture));
 
     private static boolean isProxy(Object obj) {
         return Proxy.isProxyClass(obj.getClass());
@@ -223,7 +228,11 @@ public class DefaultAgenticScope implements AgenticScope {
 
     public void rootCallEnded(AgenticScopeRegistry registry, AgentListener agentListener) {
         // ensure that all pending async operations are completed before ending the root call
-        state.replaceAll(this::readStateBlocking);
+        Map.copyOf(state).forEach((key, value) -> {
+            if (value instanceof DelayedResponse<?> pending) {
+                writeState(key, pending.blockingGet());
+            }
+        });
 
         if (kind == Kind.EPHEMERAL) {
             // Ephemeral agenticScope are for single-use and can be evicted immediately
@@ -231,6 +240,8 @@ public class DefaultAgenticScope implements AgenticScope {
         } else if (kind == Kind.PERSISTENT) {
             flush(registry);
         }
+
+        compensableExecutions.clear();
     }
 
     private void flush(AgenticScopeRegistry registry) {
@@ -373,6 +384,37 @@ public class DefaultAgenticScope implements AgenticScope {
 
     public ErrorRecoveryResult handleError(String agentName, AgentInvocationException exception) {
         return errorHandler.apply(new ErrorContext(agentName, this, exception));
+    }
+
+    private record CompensableExecution(ToolExecution toolExecution, Consumer<ToolExecution> compensatingAction) {
+
+        public void compensate() {
+            try {
+                compensatingAction.accept(toolExecution());
+            } catch (Exception e) {
+                LOG.warn(
+                        "Cross-agent compensating action failed for tool '{}': {}",
+                        toolExecution().request().name(),
+                        e.getMessage(),
+                        e);
+            }
+        }
+    }
+
+    public void registerCompensableExecution(ToolExecution toolExecution, Consumer<ToolExecution> compensatingAction) {
+        compensableExecutions.add(new CompensableExecution(toolExecution, compensatingAction));
+    }
+
+    public void compensateAll() {
+        List<CompensableExecution> snapshot;
+        synchronized (compensableExecutions) {
+            snapshot = new ArrayList<>(compensableExecutions);
+            compensableExecutions.clear();
+        }
+
+        for (int i = snapshot.size() - 1; i >= 0; i--) {
+            snapshot.get(i).compensate();
+        }
     }
 
     /**

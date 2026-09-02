@@ -150,7 +150,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
         this.errorHandler = errorHandler;
 
         this.temporaryMemory = temporaryMemory;
-        this.tokenUsage = ensureNotNull(tokenUsage, "tokenUsage");
+        this.tokenUsage = tokenUsage;
         this.commonGuardrailParams = commonGuardrailParams;
 
         this.toolServiceContext = toolServiceContext;
@@ -482,10 +482,12 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     }
 
     private ChatResponse finalResponse(ChatResponse completeResponse, AiMessage aiMessage) {
+        TokenUsage totalTokenUsage =
+                TokenUsage.sum(tokenUsage, completeResponse.metadata().tokenUsage());
         return ChatResponse.builder()
                 .aiMessage(aiMessage)
                 .metadata(completeResponse.metadata().toBuilder()
-                        .tokenUsage(tokenUsage.add(completeResponse.metadata().tokenUsage()))
+                        .tokenUsage(totalTokenUsage)
                         .build())
                 .build();
     }

@@ -1,7 +1,6 @@
 package dev.langchain4j.model.bedrock.common;
 
 import static dev.langchain4j.model.bedrock.TestedModels.AWS_NOVA_MICRO;
-import static dev.langchain4j.model.bedrock.TestedModels.COHERE_COMMAND_R_PLUS;
 import static dev.langchain4j.model.bedrock.TestedModels.MISTRAL_LARGE;
 import static dev.langchain4j.model.bedrock.common.BedrockAiServicesIT.sleepIfNeeded;
 
@@ -28,7 +27,7 @@ class BedrockChatModelWithoutVisionIT extends AbstractChatModelIT {
 
     @Override
     protected List<ChatModel> models() {
-        return List.of(AWS_NOVA_MICRO, COHERE_COMMAND_R_PLUS, MISTRAL_LARGE);
+        return List.of(AWS_NOVA_MICRO, MISTRAL_LARGE);
     }
 
     @Override
@@ -38,7 +37,7 @@ class BedrockChatModelWithoutVisionIT extends AbstractChatModelIT {
 
     @Override
     protected String customModelName() {
-        return "cohere.command-r-v1:0";
+        return "us.amazon.nova-lite-v1:0";
     }
 
     @Override
@@ -50,11 +49,12 @@ class BedrockChatModelWithoutVisionIT extends AbstractChatModelIT {
 
     @Override
     protected ChatModel createModelWith(ChatRequestParameters parameters) {
-        return BedrockChatModel.builder()
-                .defaultRequestParameters(parameters)
-                // force a working model with stopSequence parameter for @Tests
-                .modelId("cohere.command-r-v1:0")
-                .build();
+        BedrockChatModel.Builder builder = BedrockChatModel.builder().defaultRequestParameters(parameters);
+        if (parameters.modelName() == null) {
+            // Claude excludes the stop sequence from the response, as should_respect_stopSequences_* expects
+            builder.modelId("us.anthropic.claude-haiku-4-5-20251001-v1:0");
+        }
+        return builder.build();
     }
 
     @Override
@@ -111,17 +111,15 @@ class BedrockChatModelWithoutVisionIT extends AbstractChatModelIT {
 
     // OVERRIDED TESTS
 
-    // Nova models include support StopSequence but have an incoherent behavior, it includes the stopSequence in the
-    // response
-    // TODO Titan express error : "Malformed input request: 3 schema violations found"
     @Override
     @ParameterizedTest
     @MethodSource("models")
     @EnabledIf("supportsStopSequencesParameter")
     protected void should_respect_stopSequences_in_chat_request(ChatModel model) {
-        if (!model.equals(AWS_NOVA_MICRO)) {
-            super.should_respect_system_message(model);
+        if (model.equals(AWS_NOVA_MICRO)) {
+            return; // Nova models support stopSequences, but include the stop sequence in the response
         }
+        super.should_respect_stopSequences_in_chat_request(model);
     }
 
     // ToolChoice "only supported by Anthropic Claude 3 models and by Mistral AI Mistral Large" from

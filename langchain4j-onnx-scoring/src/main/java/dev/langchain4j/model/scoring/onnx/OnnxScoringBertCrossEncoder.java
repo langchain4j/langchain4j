@@ -138,16 +138,49 @@ class OnnxScoringBertCrossEncoder implements AutoCloseable {
     }
 
     private List<Double> toScore(OrtSession.Result result) throws OrtException {
-        float[][] output = (float[][]) result.get(0).getValue();
+        float[] logits = extractLogits(result.get(0).getValue());
         List<Double> scores = new ArrayList<>();
-        for (float[] floats : output) {
+        for (float logit : logits) {
             if (normalize) {
-                scores.add(sigmoid(floats[0]));
+                scores.add(sigmoid(logit));
             } else {
-                scores.add((double) floats[0]);
+                scores.add((double) logit);
             }
         }
         return scores;
+    }
+
+    /**
+     * Extracts a single logit per scored item from the raw ONNX output.
+     *
+     * <p>Cross-encoder rerankers expose their logits with a leading batch dimension. Depending on how
+     * the model was exported to ONNX (e.g. via Optimum, with or without an extra squeeze), the value
+     * returned by {@link ai.onnxruntime.OnnxTensor#getValue()} can be a 2D array
+     * ({@code float[][]}, shape {@code [batch, k]}) or a 3D array ({@code float[][][]}, shape
+     * {@code [batch, 1, 1]}, as produced for example by {@code BAAI/bge-reranker-base}). Both shapes
+     * are accepted: the first scalar of each item is used as its logit, preserving the historical
+     * behaviour for 2D outputs while avoiding a {@link ClassCastException} for 3D outputs.
+     *
+     * @param value the raw value returned by {@link ai.onnxruntime.OnnxTensor#getValue()}
+     * @return one logit per scored item, preserving the batch order
+     */
+    static float[] extractLogits(Object value) {
+        if (value instanceof float[][] matrix) {
+            float[] logits = new float[matrix.length];
+            for (int i = 0; i < matrix.length; i++) {
+                logits[i] = matrix[i][0];
+            }
+            return logits;
+        }
+        if (value instanceof float[][][] matrix) {
+            float[] logits = new float[matrix.length];
+            for (int i = 0; i < matrix.length; i++) {
+                logits[i] = matrix[i][0][0];
+            }
+            return logits;
+        }
+        throw new IllegalStateException(
+                "Unsupported ONNX scoring output shape: " + value.getClass().getName());
     }
 
     private double sigmoid(float x) {

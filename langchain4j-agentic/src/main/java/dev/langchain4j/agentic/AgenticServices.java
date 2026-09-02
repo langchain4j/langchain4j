@@ -31,19 +31,19 @@ import dev.langchain4j.agentic.declarative.ParallelMapperAgent;
 import dev.langchain4j.agentic.declarative.PlannerAgent;
 import dev.langchain4j.agentic.declarative.RegistryAgent;
 import dev.langchain4j.agentic.declarative.SequenceAgent;
-import dev.langchain4j.agentic.internal.AbstractServiceBuilder;
 import dev.langchain4j.agentic.internal.A2AClientBuilder;
 import dev.langchain4j.agentic.internal.A2AService;
+import dev.langchain4j.agentic.internal.AbstractServiceBuilder;
 import dev.langchain4j.agentic.internal.AgentExecutor;
 import dev.langchain4j.agentic.internal.AgentInvoker;
 import dev.langchain4j.agentic.internal.AgentUtil;
-import dev.langchain4j.agentic.planner.AgentArgument;
-import dev.langchain4j.agentic.planner.AgentInstance;
-import dev.langchain4j.agentic.planner.AgentsRegistry;
 import dev.langchain4j.agentic.internal.InternalAgent;
 import dev.langchain4j.agentic.internal.McpService;
 import dev.langchain4j.agentic.observability.AgentListener;
+import dev.langchain4j.agentic.planner.AgentArgument;
+import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticService;
+import dev.langchain4j.agentic.planner.AgentsRegistry;
 import dev.langchain4j.agentic.planner.PlannerBasedService;
 import dev.langchain4j.agentic.planner.PlannerBasedServiceImpl;
 import dev.langchain4j.agentic.scope.AgenticScope;
@@ -67,6 +67,7 @@ import java.util.Optional;
 import java.util.ServiceLoader;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 /**
@@ -292,9 +293,21 @@ public class AgenticServices {
     public record AgentConfigurator(
             Consumer<DeclarativeAgentCreationContext<?>> configurator,
             Function<Class<?>, Object> subAgentResolver,
-            Function<InternalAgent, Object> agentInstanceFactory) {
+            Function<InternalAgent, Object> agentInstanceFactory,
+            Supplier<Object> defaultMemoryIdSupplier) {
 
-        private static final AgentConfigurator EMPTY = new AgentConfigurator(ctx -> {}, null, null);
+        private static final AgentConfigurator EMPTY = new AgentConfigurator(ctx -> {});
+
+        public AgentConfigurator(Consumer<DeclarativeAgentCreationContext<?>> configurator) {
+            this(configurator, null, null, null);
+        }
+
+        public AgentConfigurator(
+                Consumer<DeclarativeAgentCreationContext<?>> configurator,
+                Function<Class<?>, Object> subAgentResolver,
+                Function<InternalAgent, Object> agentInstanceFactory) {
+            this(configurator, subAgentResolver, agentInstanceFactory, null);
+        }
 
         public static AgentConfigurator empty() {
             return EMPTY;
@@ -415,10 +428,19 @@ public class AgenticServices {
         if (agentConfigurator.agentInstanceFactory() != null) {
             ((AbstractServiceBuilder<?, ?>) builder).agentInstanceFactory(agentConfigurator.agentInstanceFactory());
         }
+        if (agentConfigurator.defaultMemoryIdSupplier() != null) {
+            ((AbstractServiceBuilder<?, ?>) builder)
+                    .defaultMemoryIdSupplier(agentConfigurator.defaultMemoryIdSupplier());
+        }
     }
 
     private static void buildAgentSpecs(
-            Method agentMethod, String name, String description, String outputKey, AgenticService<?, ?> builder) {
+            Method agentMethod,
+            String name,
+            String description,
+            String outputKey,
+            boolean compensateOnError,
+            AgenticService<?, ?> builder) {
         if (!isNullOrBlank(name)) {
             builder.name(name);
         } else {
@@ -429,6 +451,9 @@ public class AgenticServices {
         }
         if (!isNullOrBlank(outputKey)) {
             builder.outputKey(outputKey);
+        }
+        if (compensateOnError) {
+            builder.compensateOnError(true);
         }
     }
 
@@ -445,6 +470,7 @@ public class AgenticServices {
                 annotation.name(),
                 annotation.description(),
                 AgentUtil.outputKey(annotation.outputKey(), annotation.typedOutputKey()),
+                annotation.compensateOnError(),
                 builder);
 
         return builder.build();
@@ -464,6 +490,7 @@ public class AgenticServices {
                 annotation.name(),
                 annotation.description(),
                 AgentUtil.outputKey(annotation.outputKey(), annotation.typedOutputKey()),
+                annotation.compensateOnError(),
                 builder);
 
         return builder.build();
@@ -481,6 +508,7 @@ public class AgenticServices {
                 annotation.name(),
                 annotation.description(),
                 AgentUtil.outputKey(annotation.outputKey(), annotation.typedOutputKey()),
+                annotation.compensateOnError(),
                 builder);
 
         for (Class<?> subagent : annotation.subAgents()) {
@@ -511,6 +539,7 @@ public class AgenticServices {
                 annotation.name(),
                 annotation.description(),
                 AgentUtil.outputKey(annotation.outputKey(), annotation.typedOutputKey()),
+                annotation.compensateOnError(),
                 builder);
 
         return builder.build();
@@ -530,6 +559,7 @@ public class AgenticServices {
                 annotation.name(),
                 annotation.description(),
                 AgentUtil.outputKey(annotation.outputKey(), annotation.typedOutputKey()),
+                annotation.compensateOnError(),
                 builder);
 
         return builder.build();
@@ -548,6 +578,7 @@ public class AgenticServices {
                 annotation.name(),
                 annotation.description(),
                 AgentUtil.outputKey(annotation.outputKey(), annotation.typedOutputKey()),
+                annotation.compensateOnError(),
                 builder);
 
         return builder.build();
@@ -574,6 +605,9 @@ public class AgenticServices {
             builder.description(supervisorAgent.description());
         }
         builder.outputKey(AgentUtil.outputKey(supervisorAgent.outputKey(), supervisorAgent.typedOutputKey()));
+        if (supervisorAgent.compensateOnError()) {
+            builder.compensateOnError(true);
+        }
 
         return builder.build();
     }
@@ -724,12 +758,11 @@ public class AgenticServices {
                 .outputKey(AgentUtil.outputKey(a2aClient.outputKey(), a2aClient.typedOutputKey()))
                 .async(a2aClient.async());
 
-        selectMethod(agentServiceClass,
-                     method ->
-                                method.isAnnotationPresent(A2AClientCustomizer.class)
-                                        && method.getParameterCount() == 1)
-                .ifPresent(method ->
-                        a2aClientBuilder.clientCustomizer( cb -> invokeStatic(method, cb)));
+        selectMethod(
+                        agentServiceClass,
+                        method -> method.isAnnotationPresent(A2AClientCustomizer.class)
+                                && method.getParameterCount() == 1)
+                .ifPresent(method -> a2aClientBuilder.clientCustomizer(cb -> invokeStatic(method, cb)));
 
         getAnnotatedMethodOnClass(agentServiceClass, AgentListenerSupplier.class)
                 .ifPresent(method -> {
@@ -742,7 +775,8 @@ public class AgenticServices {
 
     private static String resolveA2AServerUrl(Class<?> agentServiceClass, A2AClientAgent a2aClient) {
         String annotationUrl = a2aClient.a2aServerUrl();
-        Optional<Method> supplierMethod = selectMethod(agentServiceClass,
+        Optional<Method> supplierMethod = selectMethod(
+                agentServiceClass,
                 method -> method.isAnnotationPresent(A2AServerUrlSupplier.class) && method.getParameterCount() == 0);
 
         if (!isNullOrBlank(annotationUrl) && supplierMethod.isPresent()) {

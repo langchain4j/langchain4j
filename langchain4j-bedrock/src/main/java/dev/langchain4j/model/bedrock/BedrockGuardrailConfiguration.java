@@ -1,5 +1,7 @@
 package dev.langchain4j.model.bedrock;
 
+import java.util.Objects;
+
 /**
  * @see <a href="https://docs.aws.amazon.com/bedrock/latest/userguide/guardrails.html">Amazon Bedrock Guardrails</a>
  */
@@ -30,6 +32,21 @@ public class BedrockGuardrailConfiguration {
 
     public static Builder builder() {
         return new Builder();
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        BedrockGuardrailConfiguration that = (BedrockGuardrailConfiguration) o;
+        return Objects.equals(guardrailIdentifier, that.guardrailIdentifier)
+                && Objects.equals(guardrailVersion, that.guardrailVersion)
+                && Objects.equals(streamProcessingMode, that.streamProcessingMode);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(guardrailIdentifier, guardrailVersion, streamProcessingMode);
     }
 
     @Override

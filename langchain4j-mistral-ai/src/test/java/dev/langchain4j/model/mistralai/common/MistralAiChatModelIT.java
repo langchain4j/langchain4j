@@ -19,6 +19,7 @@ class MistralAiChatModelIT extends AbstractChatModelIT {
             .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
             .modelName("mistral-medium-2508")
             .temperature(0.0)
+            .strictJsonSchema(true)
             .logRequests(false) // images are huge in logs
             .logResponses(true)
             .build();
@@ -56,15 +57,5 @@ class MistralAiChatModelIT extends AbstractChatModelIT {
     @Override
     protected Class<? extends ChatResponseMetadata> chatResponseMetadataType(ChatModel model) {
         return MistralAiChatResponseMetadata.class;
-    }
-
-    @Override
-    protected String catImageUrl() {
-        return "https://images.all-free-download.com/images/graphicwebp/cat_hangover_relax_213869.webp";
-    }
-
-    @Override
-    protected String diceImageUrl() {
-        return "https://images.all-free-download.com/images/graphicwebp/double_six_dice_196084.webp";
     }
 }

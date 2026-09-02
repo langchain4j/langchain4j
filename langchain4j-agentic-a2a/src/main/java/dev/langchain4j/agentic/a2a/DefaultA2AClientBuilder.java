@@ -5,12 +5,14 @@ import static dev.langchain4j.agentic.observability.ComposedAgentListener.compos
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.internal.A2AClientBuilder;
 import dev.langchain4j.agentic.internal.InternalAgent;
+import dev.langchain4j.agentic.internal.SuspendedResponse;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.planner.Planner;
 import dev.langchain4j.agentic.scope.AgenticScope;
+import dev.langchain4j.agentic.scope.AgenticSystemSuspendedException;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.invocation.LangChain4jManaged;
@@ -22,8 +24,10 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Proxy;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicReference;
@@ -51,6 +55,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, InternalAgent, InvocationHandler {
+
+    static final String INTERRUPTION_STATE_PREFIX = "a2a.interruption.";
+    private static final String RESPONSE_STATE_PREFIX = "a2a.response.";
 
     private record A2AInvocationResult(
             Object parsedResult, String contextIdKey, String contextId, String taskIdKey, String taskId) {}
@@ -136,9 +143,9 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
         boolean wrapWithScope = method.getReturnType() == ResultWithAgenticScope.class;
         Type returnType = wrapWithScope ? unwrapResultType(method.getGenericReturnType()) : getReturnType(method);
 
-        A2AInvocationResult result = invokeAgent(method, returnType, args);
-
         AgenticScope scope = LangChain4jManaged.current(AgenticScope.class);
+        A2AInvocationResult result = invokeAgent(method, returnType, args, scope);
+
         if (scope == null) {
             scope = DefaultAgenticScope.ephemeralAgenticScope();
             if (outputKey != null && result.parsedResult != null) {
@@ -170,7 +177,8 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
         return String.class;
     }
 
-    private A2AInvocationResult invokeAgent(Method method, Type returnType, Object[] args) throws A2AClientException {
+    private A2AInvocationResult invokeAgent(Method method, Type returnType, Object[] args, AgenticScope scope)
+            throws A2AClientException {
         List<Part<?>> parts = new ArrayList<>();
         String contextId = null;
         String taskId = null;
@@ -211,6 +219,67 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
         }
         Message message = messageBuilder.build();
 
+        String interruptionKey = INTERRUPTION_STATE_PREFIX + agentId;
+        String responseKey = RESPONSE_STATE_PREFIX + agentId;
+        A2AResponse response;
+        if (scope != null && scope.state().get(responseKey) instanceof String input) {
+            A2ATaskInterruptedException interruption =
+                    A2ATaskInterruptedException.fromMetadata(scope.state().get(interruptionKey));
+            response = sendMessage(continuationMessage(interruption, input));
+        } else {
+            response = sendMessage(message);
+        }
+
+        if (response.interruption != null) {
+            if (scope != null) {
+                suspend(scope, agentId, response.interruption);
+            }
+            throw response.interruption;
+        }
+
+        if (scope != null) {
+            scope.writeState(interruptionKey, null);
+            scope.writeState(responseKey, null);
+        }
+
+        LOG.debug("Response: {}", response.text);
+        Object parsedResult = serviceOutputParser.parseText(returnType, response.text);
+        return new A2AInvocationResult(parsedResult, contextIdKey, response.contextId, taskIdKey, response.taskId);
+    }
+
+    private record A2AResponse(
+            String text, String contextId, String taskId, A2ATaskInterruptedException interruption) {}
+
+    static void suspend(AgenticScope scope, String agentId, A2ATaskInterruptedException interruption) {
+        String responseId = agentId + ":" + interruption.taskId();
+        scope.writeState(INTERRUPTION_STATE_PREFIX + agentId, interruptionMetadata(responseId, interruption));
+        scope.writeState(RESPONSE_STATE_PREFIX + agentId, new SuspendedResponse<>(responseId));
+        throw new AgenticSystemSuspendedException(scope);
+    }
+
+    private static Map<String, String> interruptionMetadata(
+            String responseId, A2ATaskInterruptedException interruption) {
+        Map<String, String> metadata = new HashMap<>();
+        metadata.put("responseId", responseId);
+        metadata.put("taskId", interruption.taskId());
+        metadata.put("contextId", interruption.contextId());
+        metadata.put("state", interruption.state().name());
+        if (interruption.reason() != null) {
+            metadata.put("reason", interruption.reason());
+        }
+        return metadata;
+    }
+
+    static Message continuationMessage(A2ATaskInterruptedException interruption, String input) {
+        return Message.builder()
+                .role(Message.Role.ROLE_USER)
+                .parts(List.of(new TextPart(Objects.requireNonNull(input, "A2A response must not be null"))))
+                .contextId(interruption.contextId())
+                .taskId(interruption.taskId())
+                .build();
+    }
+
+    private A2AResponse sendMessage(Message message) throws A2AClientException {
         final CompletableFuture<String> messageResponse = new CompletableFuture<>();
         AtomicReference<String> responseContextId = new AtomicReference<>();
         AtomicReference<String> responseTaskId = new AtomicReference<>();
@@ -232,30 +301,24 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
                         new IllegalArgumentException("The event expected should be of type " + event.getClass()));
             }
         });
-        Consumer<Throwable> streamingErrorHandler = error -> {
-            if (messageResponse.isDone()) {
-                LOG.debug("SSE stream closed after response received: {}", error.getMessage());
-            } else {
-                LOG.error("Streaming error occurred: {}", error.getMessage(), error);
-                messageResponse.completeExceptionally(error);
-            }
-        };
+        Consumer<Throwable> streamingErrorHandler = error -> handleStreamEnd(error, messageResponse);
         a2aClient.sendMessage(message, consumers, streamingErrorHandler, null);
 
-        String finalContextIdKey = contextIdKey;
-        String finalTaskIdKey = taskIdKey;
         try {
             String responseText = messageResponse.get();
-            LOG.debug("Response: {}", responseText);
-            Object parsedResult = serviceOutputParser.parseText(returnType, responseText);
-            return new A2AInvocationResult(
-                    parsedResult, finalContextIdKey, responseContextId.get(), finalTaskIdKey, responseTaskId.get());
+            return new A2AResponse(responseText, responseContextId.get(), responseTaskId.get(), null);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             LOG.error("Failed to get response: {}", e.getMessage(), e);
             throw new RuntimeException("Failed to get response: " + e.getMessage(), e);
         } catch (ExecutionException e) {
+            if (e.getCause() instanceof A2ATaskInterruptedException interruption) {
+                return new A2AResponse(null, interruption.contextId(), interruption.taskId(), interruption);
+            }
             LOG.error("Failed to get response: {}", e.getMessage(), e);
+            if (e.getCause() instanceof RuntimeException runtimeException) {
+                throw runtimeException;
+            }
             throw new RuntimeException("Failed to get response: " + e.getMessage(), e);
         }
     }
@@ -265,8 +328,35 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
         taskId.set(task.id());
     }
 
+    static void handleStreamEnd(Throwable error, CompletableFuture<String> messageResponse) {
+        if (error == null) {
+            // The A2A SDK reports a normal end of the stream by passing a null error.
+            LOG.debug("SSE stream closed normally");
+            if (!messageResponse.isDone()) {
+                messageResponse.completeExceptionally(
+                        new RuntimeException("A2A stream closed before a result was received"));
+            }
+            return;
+        }
+        if (messageResponse.isDone()) {
+            LOG.debug("SSE stream closed after response received: {}", error.getMessage());
+        } else {
+            LOG.error("Streaming error occurred: {}", error.getMessage(), error);
+            messageResponse.completeExceptionally(error);
+        }
+    }
+
     static void completeFromTask(Task task, CompletableFuture<String> messageResponse) {
         TaskState state = task.status().state();
+        if (state.isInterrupted()) {
+            // The remote agent paused the task (input-required/auth-required) and will not advance it
+            // on its own, so this must complete exceptionally rather than being left pending forever.
+            Message statusMessage = task.status().message();
+            String reason = statusMessage != null ? extractTextFromParts(statusMessage.parts()) : "";
+            messageResponse.completeExceptionally(
+                    new A2ATaskInterruptedException(task.id(), task.contextId(), state, reason));
+            return;
+        }
         if (!isTerminalState(state) && task.artifacts().isEmpty()) {
             return;
         }

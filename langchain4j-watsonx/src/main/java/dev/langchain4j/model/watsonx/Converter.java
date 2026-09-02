@@ -1,12 +1,19 @@
 package dev.langchain4j.model.watsonx;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static java.lang.Math.toIntExact;
+import static java.util.Comparator.comparingInt;
 import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
 import static java.util.Objects.requireNonNull;
 
+import com.ibm.watsonx.ai.chat.ChatResponse.ResultChoice;
+import com.ibm.watsonx.ai.chat.TextChatResponse;
 import com.ibm.watsonx.ai.chat.model.AssistantMessage;
+import com.ibm.watsonx.ai.chat.model.BaseChatParameters;
+import com.ibm.watsonx.ai.chat.model.BaseChatParameters.ToolChoiceOption;
 import com.ibm.watsonx.ai.chat.model.ChatParameters;
-import com.ibm.watsonx.ai.chat.model.ChatParameters.ToolChoiceOption;
+import com.ibm.watsonx.ai.chat.model.ChatUsage;
 import com.ibm.watsonx.ai.chat.model.Image.Detail;
 import com.ibm.watsonx.ai.chat.model.ImageContent;
 import com.ibm.watsonx.ai.chat.model.TextContent;
@@ -14,9 +21,18 @@ import com.ibm.watsonx.ai.chat.model.Tool;
 import com.ibm.watsonx.ai.chat.model.ToolCall;
 import com.ibm.watsonx.ai.chat.model.ToolMessage;
 import com.ibm.watsonx.ai.chat.model.UserContent;
+import com.ibm.watsonx.ai.embedding.EmbeddingResponse.Result;
+import com.ibm.watsonx.ai.gateway.chat.ModelGatewayChatParameters;
+import com.ibm.watsonx.ai.gateway.chat.ModelGatewayChatResponse;
+import com.ibm.watsonx.ai.gateway.embedding.ModelGatewayEmbeddingResponse;
+import com.ibm.watsonx.ai.gateway.image.ModelGatewayImageResponse;
+import com.ibm.watsonx.ai.gateway.image.ModelGatewayImageResponse.ImageData;
+import com.ibm.watsonx.ai.gateway.image.ModelGatewayImageResponse.Usage;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.data.embedding.Embedding;
+import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.Content;
@@ -28,15 +44,22 @@ import dev.langchain4j.internal.JsonSchemaElementUtils;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ToolChoice;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonRawSchema;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.model.chat.response.PartialToolCall;
+import dev.langchain4j.model.embedding.response.EmbeddingResponse;
+import dev.langchain4j.model.embedding.response.EmbeddingResponseMetadata;
 import dev.langchain4j.model.output.FinishReason;
+import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.output.TokenUsage;
 import java.util.List;
 
 @Internal
 class Converter {
 
-    public static com.ibm.watsonx.ai.chat.model.ChatMessage toChatMessage(ChatMessage chatMessage) {
+    static com.ibm.watsonx.ai.chat.model.ChatMessage toChatMessage(ChatMessage chatMessage) {
         return switch (chatMessage.type()) {
             case SYSTEM -> toSystemMessage(SystemMessage.class.cast(chatMessage));
             case AI -> toAssistantMessage(AiMessage.class.cast(chatMessage));
@@ -46,14 +69,14 @@ class Converter {
         };
     }
 
-    public static Tool toTool(ToolSpecification toolSpecification) {
+    static Tool toTool(ToolSpecification toolSpecification) {
         var parameters = nonNull(toolSpecification.parameters())
                 ? JsonSchemaElementUtils.toMap(toolSpecification.parameters())
                 : null;
         return Tool.of(toolSpecification.name(), toolSpecification.description(), parameters);
     }
 
-    public static ToolExecutionRequest toToolExecutionRequest(ToolCall toolCall) {
+    static ToolExecutionRequest toToolExecutionRequest(ToolCall toolCall) {
         return ToolExecutionRequest.builder()
                 .arguments(toolCall.function().arguments())
                 .id(toolCall.id())
@@ -61,7 +84,7 @@ class Converter {
                 .build();
     }
 
-    public static FinishReason toFinishReason(String finishReason) {
+    static FinishReason toFinishReason(String finishReason) {
         if (finishReason == null) return FinishReason.OTHER;
 
         return switch (finishReason) {
@@ -73,11 +96,11 @@ class Converter {
         };
     }
 
-    public static CompleteToolCall toCompleteToolCall(ToolCall toolCall) {
+    static CompleteToolCall toCompleteToolCall(ToolCall toolCall) {
         return new CompleteToolCall(toolCall.index(), toToolExecutionRequest(toolCall));
     }
 
-    public static PartialToolCall toPartialToolCall(com.ibm.watsonx.ai.chat.model.PartialToolCall partialToolCall) {
+    static PartialToolCall toPartialToolCall(com.ibm.watsonx.ai.chat.model.PartialToolCall partialToolCall) {
         return PartialToolCall.builder()
                 .id(partialToolCall.id())
                 .index(partialToolCall.toolIndex())
@@ -86,16 +109,174 @@ class Converter {
                 .build();
     }
 
-    public static ChatParameters toChatParameters(ChatRequestParameters parameters) {
+    static ChatResponse toChatResponse(TextChatResponse textChatResponse) {
 
-        ChatParameters.Builder builder = ChatParameters.builder()
-                .modelId(parameters.modelName())
-                .frequencyPenalty(parameters.frequencyPenalty())
-                .maxCompletionTokens(parameters.maxOutputTokens())
-                .presencePenalty(parameters.presencePenalty())
-                .stop(parameters.stopSequences())
-                .temperature(parameters.temperature())
-                .topP(parameters.topP());
+        AssistantMessage assistantMessage = textChatResponse.toAssistantMessage();
+        ResultChoice choice = textChatResponse.choices().get(0);
+        ChatUsage usage = textChatResponse.usage();
+
+        AiMessage.Builder aiMessage = AiMessage.builder();
+
+        if (nonNull(assistantMessage.toolCalls())
+                && !assistantMessage.toolCalls().isEmpty()) {
+            var toolExecutionRequests = assistantMessage.toolCalls().stream()
+                    .map(Converter::toToolExecutionRequest)
+                    .toList();
+            aiMessage.toolExecutionRequests(toolExecutionRequests);
+        }
+
+        aiMessage.thinking(assistantMessage.thinking());
+        aiMessage.text(assistantMessage.content());
+
+        TokenUsage tokenUsage = nonNull(usage)
+                ? new TokenUsage(usage.promptTokens(), usage.completionTokens(), usage.totalTokens())
+                : null;
+
+        var metadata = WatsonxChatResponseMetadata.builder()
+                .created(textChatResponse.created())
+                .modelVersion(textChatResponse.modelVersion())
+                .finishReason(toFinishReason(choice.finishReason()))
+                .id(textChatResponse.id())
+                .modelName(textChatResponse.modelId())
+                .tokenUsage(tokenUsage)
+                .moderations(textChatResponse.moderations())
+                .detections(textChatResponse.detections());
+
+        if (textChatResponse instanceof ModelGatewayChatResponse gatewayResponse) {
+
+            metadata.modelName(gatewayResponse.model())
+                    .serviceTier(gatewayResponse.serviceTier())
+                    .systemFingerprint(gatewayResponse.systemFingerprint())
+                    .cached(gatewayResponse.cached());
+        }
+
+        return ChatResponse.builder()
+                .aiMessage(aiMessage.build())
+                .metadata(metadata.build())
+                .build();
+    }
+
+    static EmbeddingResponse toEmbeddingResponse(
+            com.ibm.watsonx.ai.embedding.EmbeddingResponse response, String defaultModelName) {
+
+        List<Embedding> embeddings = response.results().stream()
+                .map(Result::embedding)
+                .map(Embedding::from)
+                .toList();
+
+        return toEmbeddingResponse(
+                embeddings, getOrDefault(response.modelId(), defaultModelName), response.inputTokenCount());
+    }
+
+    static EmbeddingResponse toEmbeddingResponse(ModelGatewayEmbeddingResponse response, String defaultModelName) {
+
+        List<Embedding> embeddings = response.data().stream()
+                .sorted(comparingInt(ModelGatewayEmbeddingResponse.Embedding::index))
+                .map(ModelGatewayEmbeddingResponse.Embedding::embedding)
+                .map(Embedding::from)
+                .toList();
+
+        Integer inputTokenCount = nonNull(response.usage()) ? response.usage().promptTokens() : null;
+        return toEmbeddingResponse(embeddings, getOrDefault(response.model(), defaultModelName), inputTokenCount);
+    }
+
+    private static EmbeddingResponse toEmbeddingResponse(
+            List<Embedding> embeddings, String modelName, Integer inputTokenCount) {
+
+        return EmbeddingResponse.builder()
+                .embeddings(embeddings)
+                .metadata(EmbeddingResponseMetadata.builder()
+                        .modelName(modelName)
+                        .tokenUsage(nonNull(inputTokenCount) ? new TokenUsage(inputTokenCount) : null)
+                        .build())
+                .build();
+    }
+
+    static Response<List<Image>> toImageResponse(ModelGatewayImageResponse response) {
+
+        List<Image> images = response.data().stream()
+                .map(imageData -> toImage(imageData, response.outputFormat()))
+                .toList();
+
+        Usage usage = response.usage();
+
+        TokenUsage tokenUsage = nonNull(usage)
+                ? new TokenUsage(
+                        toIntExact(usage.inputTokens()),
+                        toIntExact(usage.outputTokens()),
+                        toIntExact(usage.totalTokens()))
+                : null;
+
+        return Response.from(images, tokenUsage);
+    }
+
+    static ChatParameters toChatParameters(ChatRequestParameters parameters, boolean strictJsonSchema) {
+
+        ChatParameters.Builder builder = ChatParameters.builder();
+        applyBaseParameters(builder, parameters, strictJsonSchema);
+
+        if (parameters instanceof WatsonxChatRequestParameters watsonxParameters) {
+            builder.logitBias(watsonxParameters.logitBias());
+            builder.logprobs(watsonxParameters.logprobs());
+            builder.topLogprobs(watsonxParameters.topLogprobs());
+            builder.seed(watsonxParameters.seed());
+            builder.timeLimit(watsonxParameters.timeout());
+            applyToolChoice(builder, parameters, watsonxParameters.toolChoiceName());
+            builder.projectId(watsonxParameters.projectId());
+            builder.spaceId(watsonxParameters.spaceId());
+            builder.guidedChoice(watsonxParameters.guidedChoice());
+            builder.guidedGrammar(watsonxParameters.guidedGrammar());
+            builder.guidedRegex(watsonxParameters.guidedRegex());
+            builder.repetitionPenalty(watsonxParameters.repetitionPenalty());
+            builder.lengthPenalty(watsonxParameters.lengthPenalty());
+        }
+
+        return builder.build();
+    }
+
+    static ModelGatewayChatParameters toModelGatewayChatParameters(
+            ChatRequestParameters parameters, boolean strictJsonSchema) {
+
+        ModelGatewayChatParameters.Builder builder = ModelGatewayChatParameters.builder();
+        applyBaseParameters(builder, parameters, strictJsonSchema);
+
+        if (parameters instanceof WatsonxGatewayChatRequestParameters gatewayParameters) {
+            builder.logitBias(gatewayParameters.logitBias());
+            builder.logprobs(gatewayParameters.logprobs());
+            builder.topLogprobs(gatewayParameters.topLogprobs());
+            builder.seed(gatewayParameters.seed());
+            builder.timeLimit(gatewayParameters.timeout());
+            applyToolChoice(builder, parameters, gatewayParameters.toolChoiceName());
+            builder.serviceTier(gatewayParameters.serviceTier());
+            builder.reasoningEffort(gatewayParameters.reasoningEffort());
+            builder.router(gatewayParameters.router());
+            builder.modalities(gatewayParameters.modalities());
+            builder.store(gatewayParameters.store());
+            builder.parallelToolCalls(gatewayParameters.parallelToolCalls());
+            builder.user(gatewayParameters.user());
+            builder.metadata(gatewayParameters.metadata());
+        }
+
+        return builder.build();
+    }
+
+    private static void applyBaseParameters(
+            BaseChatParameters.Builder<?> builder, ChatRequestParameters parameters, boolean strictJsonSchema) {
+
+        builder.modelId(parameters.modelName());
+        builder.frequencyPenalty(parameters.frequencyPenalty());
+        builder.maxCompletionTokens(parameters.maxOutputTokens());
+        builder.presencePenalty(parameters.presencePenalty());
+        builder.temperature(parameters.temperature());
+        builder.topP(parameters.topP());
+
+        // DefaultChatRequestParameters returns an empty list when no stop sequence is set, and the Model Gateway
+        // rejects an empty "stop" array, so the field is sent only when there is at least one sequence.
+        List<String> stopSequences = parameters.stopSequences();
+
+        if (nonNull(stopSequences) && !stopSequences.isEmpty()) {
+            builder.stop(stopSequences);
+        }
 
         ResponseFormat responseFormat = parameters.responseFormat();
 
@@ -103,10 +284,17 @@ class Converter {
             switch (responseFormat.type()) {
                 case JSON -> {
                     if (nonNull(responseFormat.jsonSchema())) {
+
                         var name = responseFormat.jsonSchema().name();
-                        var jsonSchema = JsonSchemaElementUtils.toMap(
-                                responseFormat.jsonSchema().rootElement());
-                        builder.responseAsJsonSchema(name, jsonSchema, true);
+                        var rootElement = responseFormat.jsonSchema().rootElement();
+
+                        if (!(rootElement instanceof JsonObjectSchema || rootElement instanceof JsonRawSchema))
+                            throw new IllegalArgumentException(
+                                    "The root element of the JSON Schema must be either a JsonObjectSchema or a JsonRawSchema, but it was: "
+                                            + rootElement.getClass());
+
+                        var jsonSchema = JsonSchemaElementUtils.toMap(rootElement, strictJsonSchema);
+                        builder.responseAsJsonSchema(name, jsonSchema, strictJsonSchema);
                     } else {
                         builder.responseAsJson();
                     }
@@ -116,55 +304,52 @@ class Converter {
                 }
             }
         }
+    }
 
-        if (parameters instanceof WatsonxChatRequestParameters watsonxParameters) {
-            builder.projectId(watsonxParameters.projectId());
-            builder.spaceId(watsonxParameters.spaceId());
-            builder.logitBias(watsonxParameters.logitBias());
-            builder.logprobs(watsonxParameters.logprobs());
-            builder.seed(watsonxParameters.seed());
-            builder.timeLimit(watsonxParameters.timeout());
-            builder.topLogprobs(watsonxParameters.topLogprobs());
-            builder.guidedChoice(watsonxParameters.guidedChoice());
-            builder.guidedGrammar(watsonxParameters.guidedGrammar());
-            builder.guidedRegex(watsonxParameters.guidedRegex());
-            builder.repetitionPenalty(watsonxParameters.repetitionPenalty());
-            builder.lengthPenalty(watsonxParameters.lengthPenalty());
+    private static void applyToolChoice(
+            BaseChatParameters.Builder<?> builder, ChatRequestParameters parameters, String toolChoiceName) {
 
-            List<ToolSpecification> toolSpecifications = parameters.toolSpecifications();
-            ToolChoice toolChoice = parameters.toolChoice();
+        List<ToolSpecification> toolSpecifications = parameters.toolSpecifications();
+        ToolChoice toolChoice = parameters.toolChoice();
 
-            if ((isNull(toolChoice) || toolChoice.equals(ToolChoice.REQUIRED))
-                    && nonNull(watsonxParameters.toolChoiceName())) {
+        if ((isNull(toolChoice) || toolChoice.equals(ToolChoice.REQUIRED)) && nonNull(toolChoiceName)) {
 
-                if (toolSpecifications.isEmpty())
-                    throw new IllegalArgumentException(
-                            "If tool-choice-name is set, at least one tool must be specified.");
+            if (toolSpecifications.isEmpty())
+                throw new IllegalArgumentException("If tool-choice-name is set, at least one tool must be specified.");
 
-                builder.toolChoiceOption(null);
-                builder.toolChoice(toolSpecifications.stream()
-                        .filter(toolSpecification ->
-                                toolSpecification.name().equalsIgnoreCase(watsonxParameters.toolChoiceName()))
-                        .findFirst()
-                        .map(ToolSpecification::name)
-                        .orElseThrow(() -> new IllegalArgumentException(
-                                "The tool with name '%s' is not available in the list of tools sent to the model."
-                                        .formatted(watsonxParameters.toolChoiceName()))));
+            builder.toolChoiceOption(null);
+            builder.toolChoice(toolSpecifications.stream()
+                    .filter(toolSpecification -> toolSpecification.name().equalsIgnoreCase(toolChoiceName))
+                    .findFirst()
+                    .map(ToolSpecification::name)
+                    .orElseThrow(() -> new IllegalArgumentException(
+                            "The tool with name '%s' is not available in the list of tools sent to the model."
+                                    .formatted(toolChoiceName))));
 
-            } else if (nonNull(toolChoice)) {
-                switch (toolChoice) {
-                    case AUTO -> builder.toolChoiceOption(ToolChoiceOption.AUTO);
-                    case REQUIRED -> {
-                        if (toolSpecifications.isEmpty())
-                            throw new IllegalArgumentException(
-                                    "If tool-choice is 'REQUIRED', at least one tool must be specified.");
+        } else if (nonNull(toolChoice)) {
+            switch (toolChoice) {
+                case AUTO -> builder.toolChoiceOption(ToolChoiceOption.AUTO);
+                case REQUIRED -> {
+                    if (toolSpecifications.isEmpty())
+                        throw new IllegalArgumentException(
+                                "If tool-choice is 'REQUIRED', at least one tool must be specified.");
 
-                        builder.toolChoiceOption(ToolChoiceOption.REQUIRED);
-                    }
-                    case NONE -> builder.toolChoiceOption(ToolChoiceOption.NONE);
+                    builder.toolChoiceOption(ToolChoiceOption.REQUIRED);
                 }
+                case NONE -> builder.toolChoiceOption(ToolChoiceOption.NONE);
             }
         }
+    }
+
+    private static Image toImage(ImageData imageData, String outputFormat) {
+
+        Image.Builder builder =
+                Image.builder().base64Data(imageData.b64Json()).revisedPrompt(imageData.revisedPrompt());
+
+        if (nonNull(imageData.url())) builder.url(imageData.url());
+
+        // Only some models report the format of the images they generated, so the mime type can stay unset.
+        if (nonNull(outputFormat)) builder.mimeType("image/" + outputFormat);
 
         return builder.build();
     }
@@ -209,7 +394,9 @@ class Converter {
                             case AUTO -> Detail.AUTO;
                             case HIGH -> Detail.HIGH;
                             case LOW -> Detail.LOW;
-                            default -> throw new UnsupportedFeatureException("Unsupported detail level: " + imageContent.detailLevel());
+                            default ->
+                                throw new UnsupportedFeatureException(
+                                        "Unsupported detail level: " + imageContent.detailLevel());
                         };
                 yield ImageContent.of(mimeType, base64Data, detailLevel);
             }
@@ -223,8 +410,7 @@ class Converter {
     private static ToolMessage toToolMessage(ToolExecutionResultMessage toolExecutionResultMessage) {
         if (!toolExecutionResultMessage.hasSingleText()) {
             throw new UnsupportedFeatureException(
-                    "watsonx does not support non-text content in tool results. "
-                            + "Only text content is supported.");
+                    "watsonx does not support non-text content in tool results. Only text content is supported.");
         }
         return ToolMessage.of(toolExecutionResultMessage.text(), toolExecutionResultMessage.id());
     }

@@ -1,5 +1,6 @@
 package dev.langchain4j.model.googleai;
 
+import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -7,6 +8,7 @@ import static dev.langchain4j.model.googleai.FinishReasonMapper.fromGFinishReaso
 import static dev.langchain4j.model.googleai.FunctionMapper.fromToolSpecsToGTools;
 import static dev.langchain4j.model.googleai.PartsAndContentsMapper.fromGPartsToAiMessage;
 import static dev.langchain4j.model.googleai.PartsAndContentsMapper.fromMessageToGContent;
+import static dev.langchain4j.model.googleai.SchemaMapper.canBeMapped;
 import static dev.langchain4j.model.googleai.SchemaMapper.fromJsonSchemaToGSchema;
 import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 
@@ -20,7 +22,7 @@ import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
-import dev.langchain4j.model.chat.request.json.JsonRawSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.googleai.GeminiGenerateContentRequest.GeminiToolConfig;
 import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiCandidate;
@@ -74,8 +76,8 @@ class BaseGeminiChatModel {
         this.returnThinking = builder.returnThinking;
         this.sendThinking = getOrDefault(builder.sendThinking, false);
         this.seed = builder.seed;
-        this.responseLogprobs = getOrDefault(builder.responseLogprobs, false);
-        this.enableEnhancedCivicAnswers = getOrDefault(builder.enableEnhancedCivicAnswers, false);
+        this.responseLogprobs = builder.responseLogprobs;
+        this.enableEnhancedCivicAnswers = builder.enableEnhancedCivicAnswers;
         this.logprobs = builder.logprobs;
         this.mediaResolution = builder.mediaResolution;
         this.mediaResolutionPerPartEnabled = getOrDefault(builder.mediaResolutionPerPartEnabled, false);
@@ -140,10 +142,11 @@ class BaseGeminiChatModel {
 
         if (responseFormat != null) {
             if (responseFormat.jsonSchema() != null) {
-                if (responseFormat.jsonSchema().rootElement() instanceof JsonRawSchema jsonRawSchema) {
-                    rawSchema = Json.fromJson(jsonRawSchema.schema(), Map.class);
+                JsonSchemaElement rootElement = responseFormat.jsonSchema().rootElement();
+                if (canBeMapped(rootElement)) {
+                    schema = fromJsonSchemaToGSchema(rootElement);
                 } else {
-                    schema = fromJsonSchemaToGSchema(responseFormat.jsonSchema());
+                    rawSchema = toMap(rootElement);
                 }
             }
         }
