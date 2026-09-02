@@ -1,7 +1,5 @@
 package dev.langchain4j.store.embedding.milvus.generic;
 
-import static org.testcontainers.shaded.org.apache.commons.lang3.RandomUtils.nextInt;
-
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
@@ -9,6 +7,7 @@ import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreWithRemovalIT;
 import dev.langchain4j.store.embedding.hibernate.HibernateEmbeddingStore;
 import dev.langchain4j.store.embedding.hibernate.milvus.MilvusDatabaseKind;
+import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.testcontainers.junit.jupiter.Container;
@@ -28,14 +27,13 @@ class MilvusHibernateEmbeddingStoreRemovalIT extends EmbeddingStoreWithRemovalIT
 
     @BeforeEach
     protected void beforeEach() {
+        // The test container runs Milvus without authentication, so no credentials are configured
         embeddingStore = HibernateEmbeddingStore.dynamicBuilder()
                 .databaseKind(MilvusDatabaseKind.INSTANCE)
                 .host(databaseContainer.getHost())
                 .port(databaseContainer.getMappedPort(19530))
                 .database("default")
-                .user(System.getenv("MILVUS_USERNAME"))
-                .password(System.getenv("MILVUS_PASSWORD"))
-                .table("test" + nextInt(2000, 3000))
+                .table("test_" + UUID.randomUUID().toString().replace("-", ""))
                 .dimension(384)
                 .createTable(true)
                 .dropTableFirst(true)

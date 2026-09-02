@@ -709,8 +709,12 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
                 }
             } else if (value instanceof Number numberValue) {
                 metadata.put(key, numberValue.doubleValue());
+            } else if (value instanceof CharSequence charSequence) {
+                metadata.put(key, charSequence.toString());
             } else {
-                metadata.put(key, value.toString());
+                // Let Metadata reject null and unsupported types with its own message,
+                // rather than silently coercing e.g. a JSON boolean or object to its String representation
+                metadata.putAll(Collections.singletonMap(key, value));
             }
         }
         return metadata;
@@ -809,7 +813,6 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
     }
 
     private double scoreToDistance(double score, DistanceFunction distanceFunction) {
-        assert score > 0d;
         return switch (distanceFunction) {
             // Cosine distance is in the range [0..2] with 0 being a perfect match
             // and score is in the range [0..1] with 1 being a perfect match,

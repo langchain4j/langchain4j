@@ -4,7 +4,6 @@ import static dev.langchain4j.store.embedding.TestUtils.awaitUntilAsserted;
 import static dev.langchain4j.store.embedding.filter.MetadataFilterBuilder.metadataKey;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.data.Percentage.withPercentage;
-import static org.testcontainers.shaded.org.apache.commons.lang3.RandomUtils.nextInt;
 
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
@@ -23,6 +22,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.junit.jupiter.Container;
@@ -42,14 +42,13 @@ class MilvusHibernateEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
 
     @Override
     protected void ensureStoreIsReady() {
+        // The test container runs Milvus without authentication, so no credentials are configured
         embeddingStore = HibernateEmbeddingStore.dynamicBuilder()
                 .databaseKind(MilvusDatabaseKind.INSTANCE)
                 .host(databaseContainer.getHost())
                 .port(databaseContainer.getMappedPort(19530))
                 .database("default")
-                .user(System.getenv("MILVUS_USERNAME"))
-                .password(System.getenv("MILVUS_PASSWORD"))
-                .table("test" + nextInt(1, 1000))
+                .table("test_" + UUID.randomUUID().toString().replace("-", ""))
                 .dimension(embeddingModel.dimension())
                 .createTable(true)
                 .dropTableFirst(true)

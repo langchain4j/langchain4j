@@ -44,14 +44,13 @@ class MilvusHibernateEmbeddingStoreEntityRemovalIT extends EmbeddingStoreWithRem
 
     @BeforeAll
     static void setup() {
-        final Configuration configuration = new Configuration()
+        // The test container runs Milvus without authentication, so no credentials are configured
+        sessionFactory = new Configuration()
                 .addAnnotatedClass(GenericEmbeddingEntity.class)
                 .setJdbcUrl("jdbc:milvus://" + databaseContainer.getHost() + ":"
-                        + databaseContainer.getMappedPort(19530) + "/default");
-        if (System.getenv("MILVUS_USERNAME") != null || System.getenv("MILVUS_PASSWORD") != null) {
-            configuration.setCredentials(System.getenv("MILVUS_USERNAME"), System.getenv("MILVUS_PASSWORD"));
-        }
-        sessionFactory = configuration.setSchemaExportAction(Action.CREATE_DROP).buildSessionFactory();
+                        + databaseContainer.getMappedPort(19530) + "/default")
+                .setSchemaExportAction(Action.CREATE_DROP)
+                .buildSessionFactory();
     }
 
     @BeforeEach
