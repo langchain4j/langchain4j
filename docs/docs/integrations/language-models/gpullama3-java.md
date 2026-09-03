@@ -40,7 +40,7 @@ implementation 'dev.langchain4j:langchain4j-gpu-llama3:1.19.0-beta29'
 ## Model Compatibility
 
 Currently, GPULlama3.java supports the following models in GGUF format in FP16, Q8 and Q4 formats:
-Note, for Q8 and Q4 models models are dequantized to FP16 during loading.
+Note, for Q8 and Q4 models are dequantized to FP16 during loading.
 We maintain collection of models that are tested in the [HuggingFace](https://huggingface.co/beehive-lab/collections) repository.
 
 * Llama3
