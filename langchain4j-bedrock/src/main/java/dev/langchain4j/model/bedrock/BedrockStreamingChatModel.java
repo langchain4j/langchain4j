@@ -19,6 +19,7 @@ import dev.langchain4j.reactive.streaming.ReactiveStreamingDefaults;
 import dev.langchain4j.reactive.streaming.TubeBackedStreamingChatResponseHandler;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.Capability;
+import dev.langchain4j.internal.DemandDecouplingPublisher;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -103,11 +104,13 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
                 .withBackpressureStrategy(BackpressureStrategy.BUFFER)
                 .withBufferSize(streamingBufferSize);
 
-        return ZeroPublisher.create(config, tube -> {
+        Publisher<ChatModelStreamingEvent> events = ZeroPublisher.create(config, tube -> {
             TubeBackedStreamingChatResponseHandler bridge = new TubeBackedStreamingChatResponseHandler(tube);
             tube.whenTerminates(bridge::cancelUpstream);
             streamTo(converseStreamRequest, bridge);
         });
+        // Wrapped so that downstream demand never reaches the tube: see DemandDecouplingPublisher.
+        return new DemandDecouplingPublisher<>(events, streamingBufferSize);
     }
 
     private void streamTo(ConverseStreamRequest converseStreamRequest, StreamingChatResponseHandler targetHandler) {

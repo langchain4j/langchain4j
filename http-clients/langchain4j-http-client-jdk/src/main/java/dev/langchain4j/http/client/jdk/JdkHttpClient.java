@@ -11,6 +11,7 @@ import dev.langchain4j.http.client.sse.HttpStreamingEvent;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.http.client.sse.ServerSentEventParser;
+import dev.langchain4j.internal.DemandDecouplingPublisher;
 import mutiny.zero.BackpressureStrategy;
 import mutiny.zero.TubeConfiguration;
 import mutiny.zero.ZeroPublisher;
@@ -356,7 +357,8 @@ public class JdkHttpClient implements HttpClient {
                 });
             });
 
-            publisher.subscribe(subscriber);
+            // Wrapped so that downstream demand never reaches the tube: see DemandDecouplingPublisher.
+            new DemandDecouplingPublisher<>(publisher, bufferSize).subscribe(subscriber);
         }
 
         private static CompletableFuture<String> readErrorBodyAsync(
