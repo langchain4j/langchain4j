@@ -215,11 +215,10 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
             beforeAgentInvocation(agentListener, currentScope, this, namedArgs);
         }
 
-        Planner planner = plannerSupplier.get();
-        planner.init(new InitPlanningContext(currentScope, this, subagents));
-
         Object result;
         try {
+            Planner planner = plannerSupplier.get();
+            planner.init(new InitPlanningContext(currentScope, this, subagents));
             result = new PlannerLoop(planner, currentScope, registry).loop();
         } catch (Exception e) {
             currentScope.compensateAll();
@@ -483,7 +482,7 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
         }
 
         private void parallelExecution(List<AgentExecutor> agents) {
-            Executor exec = executor != null ? executor : DefaultExecutorProvider.getDefaultExecutorService();
+            Executor exec = executor != null ? executor : DefaultExecutorProvider.getDefaultExecutor();
             var tasks = agents.stream()
                     .map(agentExecutor ->
                             CompletableFuture.supplyAsync(() -> agentExecutor.execute(agenticScope, this), exec))

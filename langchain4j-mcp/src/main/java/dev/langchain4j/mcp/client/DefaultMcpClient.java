@@ -1,5 +1,6 @@
 package dev.langchain4j.mcp.client;
 
+import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
@@ -14,8 +15,8 @@ import dev.langchain4j.mcp.client.logging.DefaultMcpLogMessageHandler;
 import dev.langchain4j.mcp.client.logging.McpLogMessageHandler;
 import dev.langchain4j.mcp.client.progress.McpProgressHandler;
 import dev.langchain4j.mcp.client.transport.McpHeaderEncoding;
-import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import dev.langchain4j.mcp.client.transport.McpJson;
+import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import dev.langchain4j.mcp.client.transport.McpTransport;
 import dev.langchain4j.mcp.protocol.McpCallToolParams;
 import dev.langchain4j.mcp.protocol.McpCallToolRequest;
@@ -183,8 +184,8 @@ public class DefaultMcpClient implements McpClient {
             cachePromptList = getOrDefault(builder.cachePromptList, Boolean.TRUE);
             onResourceUpdated = builder.onResourceUpdated;
             if (builder.toolResultConverter != null && builder.toolResultExtractor != null) {
-                throw new IllegalArgumentException("Set either toolResultConverter or the deprecated "
-                        + "toolResultExtractor, not both");
+                throw new IllegalArgumentException(
+                        "Set either toolResultConverter or the deprecated " + "toolResultExtractor, not both");
             }
             toolResultConverter = builder.toolResultExtractor != null
                     ? new LegacyToolResultConverterAdapter(builder.toolResultExtractor)
@@ -425,8 +426,7 @@ public class DefaultMcpClient implements McpClient {
 
         return new McpInitializeResult(
                 discovered.getId(),
-                new McpInitializeResult.Result(
-                        null, result.getCapabilities(), serverInfo, result.getInstructions()));
+                new McpInitializeResult.Result(null, result.getCapabilities(), serverInfo, result.getInstructions()));
     }
 
     private void initializeModern(String versionToAdvertise, boolean isProbe) {
@@ -458,8 +458,8 @@ public class DefaultMcpClient implements McpClient {
                         error.getData() == null ? null : McpJson.serialize(error.getData()));
             }
             log.debug("MCP server discover result: {}", response.get("result"));
-            McpServerDiscoverResponse.Result discovered =
-                    McpJson.deserialize(response, McpServerDiscoverResponse.class).getResult();
+            McpServerDiscoverResponse.Result discovered = McpJson.deserialize(response, McpServerDiscoverResponse.class)
+                    .getResult();
             initializeResult = toInitializeResultFromDiscover(response, discovered);
             modernProtocol = true;
             McpDiscoverResult discoverResult = toDiscoverResult(discovered);
@@ -492,7 +492,8 @@ public class DefaultMcpClient implements McpClient {
         }
 
         McpServerInfo serverInfo = null;
-        Object serverInfoValue = result.getMeta() == null ? null : result.getMeta().get(MCP_SERVER_INFO_META_KEY);
+        Object serverInfoValue =
+                result.getMeta() == null ? null : result.getMeta().get(MCP_SERVER_INFO_META_KEY);
         if (serverInfoValue != null) {
             McpImplementation implementation = McpJson.convert(serverInfoValue, McpImplementation.class);
             serverInfo =
@@ -617,7 +618,11 @@ public class DefaultMcpClient implements McpClient {
             McpCallContext retryContext = new McpCallContext(invocationContext, retryOperation);
             applyMeta(retryOperation, retryContext);
             CompletableFuture<JsonNode> resultFuture = executeViaTransport(retryContext);
-            result = resultFuture.get(timeoutMillis, TimeUnit.MILLISECONDS);
+            try {
+                result = resultFuture.get(timeoutMillis, TimeUnit.MILLISECONDS);
+            } catch (TimeoutException timeout) {
+                throw new McpOperationTimeoutException(retryOperationId, resultFuture, timeout);
+            }
             pendingOperations.remove(retryOperationId);
             parsed = multiRoundTripResult(result);
             retryCount++;
@@ -627,6 +632,39 @@ public class DefaultMcpClient implements McpClient {
             throw new RuntimeException("Unexpected resultType for " + operationName + ": " + resultType);
         }
         return result;
+    }
+
+    private void cancelTimedOutOperation(
+            TimeoutException timeout, long operationId, CompletableFuture<JsonNode> resultFuture) {
+        long timedOutOperationId = operationId;
+        CompletableFuture<JsonNode> timedOutResultFuture = resultFuture;
+        if (timeout instanceof McpOperationTimeoutException operationTimeout) {
+            timedOutOperationId = operationTimeout.operationId;
+            timedOutResultFuture = operationTimeout.resultFuture;
+        }
+        if (timedOutResultFuture != null) {
+            timedOutResultFuture.cancel(true);
+        }
+        pendingOperations.remove(timedOutOperationId);
+        if (shouldSendCancellationNotification()) {
+            McpCancellationNotification cancellation = new McpCancellationNotification(timedOutOperationId, "Timeout");
+            applyMeta(cancellation, null);
+            transport.sendMessage(cancellation);
+        }
+    }
+
+    private static class McpOperationTimeoutException extends TimeoutException {
+
+        private final long operationId;
+        private final CompletableFuture<JsonNode> resultFuture;
+
+        private McpOperationTimeoutException(
+                long operationId, CompletableFuture<JsonNode> resultFuture, TimeoutException cause) {
+            super(cause.getMessage());
+            this.operationId = operationId;
+            this.resultFuture = resultFuture;
+            initCause(cause);
+        }
     }
 
     @Override
@@ -676,16 +714,7 @@ public class DefaultMcpClient implements McpClient {
     @Override
     public ToolExecutionResult executeTool(ToolExecutionRequest executionRequest, InvocationContext invocationContext) {
         assertNotClosed();
-        Map<String, Object> arguments;
-        try {
-            String args = executionRequest.arguments();
-            if (isNullOrBlank(args)) {
-                args = "{}";
-            }
-            arguments = McpJson.toMap(args);
-        } catch (IllegalArgumentException e) {
-            throw new ToolArgumentsException(e.getCause() != null ? e.getCause() : e);
-        }
+        Map<String, Object> arguments = parseToolArguments(executionRequest);
         long operationId = idGenerator.getAndIncrement();
         String progressToken = progressHandler != null ? String.valueOf(operationId) : null;
         McpCallToolRequest operation =
@@ -715,19 +744,7 @@ public class DefaultMcpClient implements McpClient {
                     },
                     "tools/call");
         } catch (TimeoutException timeout) {
-            notifyListeners(l -> l.onExecuteToolError(context, timeout));
-            if (resultFuture != null) {
-                resultFuture.cancel(true);
-            }
-            if (shouldSendCancellationNotification()) {
-                McpCancellationNotification cancellation = new McpCancellationNotification(operationId, "Timeout");
-                applyMeta(cancellation, null);
-                transport.sendMessage(cancellation);
-            }
-            // built on demand, not once at construction: a custom converter must not be invoked
-            // for a tool call that never happened
-            return toolResultConverter.convert(
-                    List.of(Map.of("type", "text", "text", toolExecutionTimeoutErrorMessage)), false);
+            return handleToolTimeout(context, operationId, resultFuture, timeout);
         } catch (ExecutionException e) {
             notifyListeners(l -> l.onExecuteToolError(context, e));
             throw new ToolExecutionException(e.getCause());
@@ -737,12 +754,87 @@ public class DefaultMcpClient implements McpClient {
         } finally {
             pendingOperations.remove(operationId);
         }
-        final JsonNode finalResult = result;
+        return extractResultAndNotifyListeners(context, result);
+    }
+
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Non-blocking: the MCP transport is asynchronous, so this composes the transport's response
+     * future — no thread is held while the tool executes on the server. Timeout (including the cancellation
+     * notification sent to the server), error mapping and listener notifications mirror
+     * {@link #executeTool(ToolExecutionRequest, InvocationContext)}.
+     */
+    @Override
+    public CompletableFuture<ToolExecutionResult> executeToolAsync(
+            ToolExecutionRequest executionRequest, InvocationContext invocationContext) {
+        assertNotClosed();
+        Map<String, Object> arguments;
         try {
-            ToolExecutionResult toolResult = ToolExecutionHelper.extractResult(
-                    finalResult, false, toolResultConverter);
-            notifyListeners(l -> l.afterExecuteTool(
-                    context, toolResult, McpJsonConversions.toMap(finalResult)));
+            arguments = parseToolArguments(executionRequest);
+        } catch (Exception e) {
+            return CompletableFuture.failedFuture(e);
+        }
+        long operationId = idGenerator.getAndIncrement();
+        String progressToken = progressHandler != null ? String.valueOf(operationId) : null;
+        McpCallToolRequest operation =
+                new McpCallToolRequest(operationId, executionRequest.name(), arguments, progressToken);
+        long timeoutMillis = toolExecutionTimeout.toMillis() == 0 ? Integer.MAX_VALUE : toolExecutionTimeout.toMillis();
+        McpCallContext context = new McpCallContext(invocationContext, operation);
+
+        CompletableFuture<JsonNode> resultFuture;
+        try {
+            notifyListeners(l -> l.beforeExecuteTool(context));
+            applyMeta(operation, context);
+            resultFuture = transport.executeOperationWithResponse(context);
+        } catch (Exception e) {
+            pendingOperations.remove(operationId);
+            return CompletableFuture.failedFuture(e);
+        }
+
+        return resultFuture.orTimeout(timeoutMillis, TimeUnit.MILLISECONDS).handle((result, error) -> {
+            pendingOperations.remove(operationId);
+            if (error != null) {
+                Throwable cause = unwrapCompletionException(error);
+                if (cause instanceof TimeoutException timeout) {
+                    return handleToolTimeout(context, operationId, resultFuture, timeout);
+                }
+                notifyListeners(l -> l.onExecuteToolError(context, cause));
+                throw new ToolExecutionException(cause);
+            }
+            return extractResultAndNotifyListeners(context, result);
+        });
+    }
+
+    private static Map<String, Object> parseToolArguments(ToolExecutionRequest executionRequest) {
+        try {
+            String args = executionRequest.arguments();
+            if (isNullOrBlank(args)) {
+                args = "{}";
+            }
+            return McpJson.toMap(args);
+        } catch (IllegalArgumentException e) {
+            throw new ToolArgumentsException(e.getCause() != null ? e.getCause() : e);
+        }
+    }
+
+    private ToolExecutionResult handleToolTimeout(
+            McpCallContext context,
+            long operationId,
+            CompletableFuture<JsonNode> resultFuture,
+            TimeoutException timeout) {
+        notifyListeners(l -> l.onExecuteToolError(context, timeout));
+        cancelTimedOutOperation(timeout, operationId, resultFuture);
+        // built on demand, not once at construction: a custom converter must not be invoked
+        // for a tool call that never happened
+        return toolResultConverter.convert(
+                List.of(Map.of("type", "text", "text", toolExecutionTimeoutErrorMessage)), false);
+    }
+
+    private ToolExecutionResult extractResultAndNotifyListeners(McpCallContext context, JsonNode finalResult) {
+        try {
+            ToolExecutionResult toolResult = ToolExecutionHelper.extractResult(finalResult, false, toolResultConverter);
+            notifyListeners(l -> l.afterExecuteTool(context, toolResult, McpJsonConversions.toMap(finalResult)));
             return toolResult;
         } catch (ToolExecutionException e) {
             if (e.errorCode() != null) {
@@ -753,8 +845,7 @@ public class DefaultMcpClient implements McpClient {
                 // -> we notify the listener with afterExecuteTool
                 notifyListeners(l -> l.afterExecuteTool(
                         context,
-                        ToolExecutionHelper.extractResult(
-                                finalResult, true, toolResultConverter),
+                        ToolExecutionHelper.extractResult(finalResult, true, toolResultConverter),
                         McpJsonConversions.toMap(finalResult)));
             }
             throw e;
@@ -809,14 +900,17 @@ public class DefaultMcpClient implements McpClient {
                     "resources/read");
             McpReadResourceResult resourceResult = ResourcesHelper.parseResourceContents(result);
             final JsonNode finalResult = result;
-            notifyListeners(l -> l.afterResourceGet(
-                    context, resourceResult, McpJsonConversions.toMap(finalResult)));
+            notifyListeners(l -> l.afterResourceGet(context, resourceResult, McpJsonConversions.toMap(finalResult)));
             return resourceResult;
-        } catch (ExecutionException | TimeoutException e) {
+        } catch (TimeoutException timeout) {
+            notifyListeners(l -> l.onResourceGetError(context, timeout));
+            cancelTimedOutOperation(timeout, operationId, resultFuture);
+            throw new RuntimeException(timeout);
+        } catch (ExecutionException e) {
             notifyListeners(l -> l.onResourceGetError(context, e));
             throw new RuntimeException(e);
         } catch (InterruptedException e) {
-            Thread.interrupted();
+            Thread.currentThread().interrupt();
             throw new RuntimeException(e);
         } catch (McpException e) {
             notifyListeners(l -> l.onResourceGetError(context, e));
@@ -862,14 +956,17 @@ public class DefaultMcpClient implements McpClient {
                     "prompts/get");
             McpGetPromptResult promptResult = PromptsHelper.parsePromptContents(result);
             final JsonNode finalResult = result;
-            notifyListeners(l -> l.afterPromptGet(
-                    context, promptResult, McpJsonConversions.toMap(finalResult)));
+            notifyListeners(l -> l.afterPromptGet(context, promptResult, McpJsonConversions.toMap(finalResult)));
             return promptResult;
-        } catch (ExecutionException | TimeoutException e) {
+        } catch (TimeoutException timeout) {
+            notifyListeners(l -> l.onPromptGetError(context, timeout));
+            cancelTimedOutOperation(timeout, operationId, resultFuture);
+            throw new RuntimeException(timeout);
+        } catch (ExecutionException e) {
             notifyListeners(l -> l.onPromptGetError(context, e));
             throw new RuntimeException(e);
         } catch (InterruptedException e) {
-            Thread.interrupted();
+            Thread.currentThread().interrupt();
             throw new RuntimeException(e);
         } catch (McpException e) {
             notifyListeners(l -> l.onPromptGetError(context, e));
@@ -963,12 +1060,25 @@ public class DefaultMcpClient implements McpClient {
         notifyListeners(l -> l.beforeResourceSubscribe(context));
         applyMeta(operation, context);
         long timeoutMillis = resourcesTimeout.toMillis() == 0 ? Integer.MAX_VALUE : resourcesTimeout.toMillis();
+        CompletableFuture<JsonNode> resultFuture = null;
         try {
-            CompletableFuture<JsonNode> resultFuture = executeViaTransport(context);
+            resultFuture = executeViaTransport(context);
             JsonNode result = resultFuture.get(timeoutMillis, TimeUnit.MILLISECONDS);
             McpErrorHelper.checkForErrors(result);
             notifyListeners(l -> l.afterResourceSubscribe(context));
-        } catch (ExecutionException | TimeoutException e) {
+        } catch (TimeoutException timeout) {
+            if (resultFuture != null) {
+                resultFuture.cancel(true);
+            }
+            if (shouldSendCancellationNotification()) {
+                McpCancellationNotification cancellation = new McpCancellationNotification(operationId, "Timeout");
+                applyMeta(cancellation, null);
+                transport.sendMessage(cancellation);
+            }
+            RuntimeException re = new RuntimeException(timeout);
+            notifyListeners(l -> l.onResourceSubscribeError(context, re));
+            throw re;
+        } catch (ExecutionException e) {
             RuntimeException re = new RuntimeException(e);
             notifyListeners(l -> l.onResourceSubscribeError(context, re));
             throw re;
@@ -996,12 +1106,25 @@ public class DefaultMcpClient implements McpClient {
         notifyListeners(l -> l.beforeResourceUnsubscribe(context));
         applyMeta(operation, context);
         long timeoutMillis = resourcesTimeout.toMillis() == 0 ? Integer.MAX_VALUE : resourcesTimeout.toMillis();
+        CompletableFuture<JsonNode> resultFuture = null;
         try {
-            CompletableFuture<JsonNode> resultFuture = executeViaTransport(context);
+            resultFuture = executeViaTransport(context);
             JsonNode result = resultFuture.get(timeoutMillis, TimeUnit.MILLISECONDS);
             McpErrorHelper.checkForErrors(result);
             notifyListeners(l -> l.afterResourceUnsubscribe(context));
-        } catch (ExecutionException | TimeoutException e) {
+        } catch (TimeoutException timeout) {
+            if (resultFuture != null) {
+                resultFuture.cancel(true);
+            }
+            if (shouldSendCancellationNotification()) {
+                McpCancellationNotification cancellation = new McpCancellationNotification(operationId, "Timeout");
+                applyMeta(cancellation, null);
+                transport.sendMessage(cancellation);
+            }
+            RuntimeException re = new RuntimeException(timeout);
+            notifyListeners(l -> l.onResourceUnsubscribeError(context, re));
+            throw re;
+        } catch (ExecutionException e) {
             RuntimeException re = new RuntimeException(e);
             notifyListeners(l -> l.onResourceUnsubscribeError(context, re));
             throw re;
@@ -1131,7 +1254,8 @@ public class DefaultMcpClient implements McpClient {
     private static boolean honoursResourceSubscriptions(Map<String, Object> acknowledgement) {
         Object params = acknowledgement.get("params");
         Object notifications = params instanceof Map ? ((Map<?, ?>) params).get("notifications") : null;
-        Object honoured = notifications instanceof Map ? ((Map<?, ?>) notifications).get("resourceSubscriptions") : null;
+        Object honoured =
+                notifications instanceof Map ? ((Map<?, ?>) notifications).get("resourceSubscriptions") : null;
         return honoured instanceof List<?> list && !list.isEmpty();
     }
 
@@ -1361,10 +1485,14 @@ public class DefaultMcpClient implements McpClient {
             McpCallContext context = new McpCallContext(invocationContext, operation);
             applyMeta(operation, context);
             JsonNode result;
+            CompletableFuture<JsonNode> resultFuture = null;
             try {
-                CompletableFuture<JsonNode> resultFuture = executeViaTransport(context);
+                resultFuture = executeViaTransport(context);
                 result = resultFuture.get(timeoutMillis, TimeUnit.MILLISECONDS);
-            } catch (ExecutionException | InterruptedException | TimeoutException e) {
+            } catch (TimeoutException e) {
+                cancelTimedOutOperation(e, operation.getId(), resultFuture);
+                throw new RuntimeException(e);
+            } catch (ExecutionException | InterruptedException e) {
                 throw new RuntimeException(e);
             } finally {
                 pendingOperations.remove(operation.getId());
@@ -1399,7 +1527,9 @@ public class DefaultMcpClient implements McpClient {
     private static String getNextCursor(JsonNode response) {
         McpPaginatedResult.Result result =
                 McpJson.deserialize(response, McpPaginatedResult.class).getResult();
-        if (result == null || result.getNextCursor() == null || result.getNextCursor().isEmpty()) {
+        if (result == null
+                || result.getNextCursor() == null
+                || result.getNextCursor().isEmpty()) {
             return null;
         }
         return result.getNextCursor();
@@ -1594,6 +1724,7 @@ public class DefaultMcpClient implements McpClient {
 
         @Deprecated(since = "1.20.0", forRemoval = true)
         private McpToolResultExtractor toolResultExtractor;
+
         private Integer multiRoundTripMaxRetries;
         private Boolean subscribeToToolListChanges;
         private Boolean subscribeToPromptListChanges;
@@ -1963,5 +2094,4 @@ public class DefaultMcpClient implements McpClient {
     private CompletableFuture<JsonNode> initializeViaTransport(McpInitializeRequest request) {
         return McpJson.map(transport.sendInitializeRequest(request), McpJson::parse);
     }
-
 }

@@ -13,6 +13,17 @@
           "code": "java.annotation.removed",
           "new": "class dev.langchain4j.service.tool.AiServiceTool",
           "justification": "@Internal removed intentionally: AiServiceTool is now part of the public API and can be constructed and passed to AiServices directly by users (e.g. via AiServices.tools(List<AiServiceTool>))."
+        },
+        {
+          "code": "java.method.visibilityIncreased",
+          "new": "method void dev.langchain4j.service.tool.ToolService.CompensableToolExecution::<init>(dev.langchain4j.service.tool.ToolExecution, dev.langchain4j.data.message.ToolExecutionResultMessage)",
+          "justification": "CompensableToolExecution is @Internal framework plumbing that was widened from private to public only so the streaming publisher (in a different package) can accumulate compensable executions and pass them back to ToolService.compensateOnCancellationAsync(...). It is a record (implicitly final), so the subclass-with-lesser-visibility-constructor concern behind this check cannot arise, and it is not part of the user-facing API."
+        },
+        {
+          "code": "java.annotation.added",
+          "new": "class dev.langchain4j.service.tool.ToolService.CompensableToolExecution",
+          "annotationType": "dev.langchain4j.Internal",
+          "justification": "CompensableToolExecution is public only for internal cross-package use (see the visibilityIncreased entry above); marking it @Internal documents that it is not user-facing API."
         }
       ]
     }
