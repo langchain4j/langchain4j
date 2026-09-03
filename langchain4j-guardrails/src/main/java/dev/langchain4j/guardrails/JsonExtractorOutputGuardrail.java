@@ -8,7 +8,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.guardrail.OutputGuardrail;
 import dev.langchain4j.guardrail.OutputGuardrailResult;
-import dev.langchain4j.internal.Json;
 import dev.langchain4j.internal.JsonParsingUtils;
 import java.lang.reflect.Type;
 import java.util.Optional;
@@ -23,17 +22,15 @@ import org.slf4j.LoggerFactory;
  *     defaults to {@link #DEFAULT_REPROMPT_PROMPT}.
  * </p>
  * <p>
- *     Deserialization goes through LangChain4j's configured JSON codec - the same one AI Services
- *     use to read structured output - so that swapping the JSON library applies here too. That
- *     codec is deliberately more forgiving than a bare Jackson {@code ObjectMapper}: it reads
- *     private fields without setters, accepts enum constants case-insensitively, and parses dates
- *     that an LLM has written in a field-wise form. It does still reject unknown properties, which
- *     is the check that catches a hallucinated field.
+ *     Deserialization uses a plain Jackson {@link ObjectMapper} with its default settings. A
+ *     guardrail exists to reject output that does not fit the expected shape, so it deliberately
+ *     does not use LangChain4j's own JSON codec, which is more forgiving: that codec reads private
+ *     fields without setters, accepts enum constants case-insensitively, and parses dates an LLM
+ *     has written in a field-wise form. Output this guardrail rejects should stay rejected.
  * </p>
  * <p>
- *     If you need the stricter behaviour of a plain {@code ObjectMapper}, configure one and pass it
- *     to {@link #JsonExtractorOutputGuardrail(ObjectMapper, Class)}, which is deprecated but is
- *     honoured for as long as it exists.
+ *     One consequence is that this guardrail always uses Jackson 2, and is the one part of
+ *     LangChain4j that the {@code langchain4j-jackson3} opt-in does not switch over.
  * </p>
  *
  * @param <T> The type of object that the class should deserialize from JSON
@@ -58,9 +55,8 @@ public class JsonExtractorOutputGuardrail<T> implements OutputGuardrail {
 
     /**
      * @deprecated use {@link #JsonExtractorOutputGuardrail(Class)}, which does not expose Jackson
-     * types. Deserialization then goes through LangChain4j's configured JSON codec, which can be
-     * swapped for Jackson 3. Note that the codec is configured differently from a plain
-     * {@code ObjectMapper}: see the class javadoc.
+     * types in its signature. It parses with a default {@link ObjectMapper}, so pass one here only
+     * if you need a mapper configured differently.
      */
     @Deprecated(since = "1.20.0", forRemoval = true)
     public JsonExtractorOutputGuardrail(ObjectMapper objectMapper, Class<T> outputClass) {
@@ -70,10 +66,8 @@ public class JsonExtractorOutputGuardrail<T> implements OutputGuardrail {
 
     /**
      * @deprecated use {@link #JsonExtractorOutputGuardrail(Type)}, which does not expose Jackson
-     * types. Pass {@code new TypeReference<Foo>() {}.getType()} to migrate. Deserialization then
-     * goes through LangChain4j's configured JSON codec, which can be swapped for Jackson 3. Note
-     * that the codec is configured differently from a plain {@code ObjectMapper}: see the class
-     * javadoc.
+     * types in its signature. Pass {@code new TypeReference<Foo>() {}.getType()} to migrate, and
+     * pass a mapper here only if you need one configured differently from the default.
      */
     @Deprecated(since = "1.20.0", forRemoval = true)
     public JsonExtractorOutputGuardrail(ObjectMapper objectMapper, TypeReference<T> outputType) {
@@ -82,20 +76,19 @@ public class JsonExtractorOutputGuardrail<T> implements OutputGuardrail {
     }
 
     /**
-     * Deserializes with LangChain4j's configured JSON codec, so that swapping the JSON library -
-     * for example by putting {@code langchain4j-jackson3} on the classpath - applies here too.
+     * Deserializes with a plain Jackson {@link ObjectMapper}, as this guardrail has always done.
      */
     public JsonExtractorOutputGuardrail(Class<T> outputClass) {
-        this.objectMapper = null;
+        this.objectMapper = new ObjectMapper();
         this.outputClass = ensureNotNull(outputClass, "outputClass");
     }
 
     /**
-     * Deserializes with LangChain4j's configured JSON codec, so that swapping the JSON library
-     * applies here too.
+     * Deserializes with a plain Jackson {@link ObjectMapper}, matching
+     * {@link #JsonExtractorOutputGuardrail(Class)}.
      */
     public JsonExtractorOutputGuardrail(Type outputType) {
-        this.objectMapper = null;
+        this.objectMapper = new ObjectMapper();
         this.reflectedType = ensureNotNull(outputType, "outputType");
     }
 
@@ -109,16 +102,14 @@ public class JsonExtractorOutputGuardrail<T> implements OutputGuardrail {
         this(new ObjectMapper(), outputType);
     }
 
-    @SuppressWarnings("unchecked")
     private T parse(String text) throws Exception {
-        if (objectMapper != null) {
-            return outputClass != null
-                    ? objectMapper.readValue(text, outputClass)
-                    : objectMapper.readValue(text, outputType);
+        if (outputClass != null) {
+            return objectMapper.readValue(text, outputClass);
         }
-        return outputClass != null
-                ? Json.fromJson(text, outputClass)
-                : (T) Json.fromJson(text, reflectedType);
+        if (outputType != null) {
+            return objectMapper.readValue(text, outputType);
+        }
+        return objectMapper.readValue(text, objectMapper.constructType(reflectedType));
     }
 
     @Override

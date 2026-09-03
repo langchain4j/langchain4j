@@ -74,6 +74,34 @@ to revisit when you add this module:
 
 Catching `RuntimeException` works either way.
 
+Two places reach application code without a `catch` block being involved, so they are worth
+checking before you switch:
+
+**A tool-argument error handler.** When a model produces tool arguments that are not valid JSON,
+LangChain4j hands the failure to the handler you registered with
+`AiServices.toolArgumentsErrorHandler(...)`. On Jackson 2 that failure is Jackson's own
+`JsonParseException`; with this module it is a `JsonReadException`. A handler that branches on the
+type stops matching, and nothing warns you, because the handler is still called and simply takes
+its other branch:
+
+```java
+AiServices.builder(Assistant.class)
+    .toolArgumentsErrorHandler((error, context) -> {
+-       if (error instanceof JsonParseException) {
++       if (error instanceof JsonReadException) {
+            return ToolErrorHandlerResult.text("Please return valid JSON.");
+        }
+        throw error;
+    })
+```
+
+Match on the message, or on `RuntimeException`, if you want a handler that works under both.
+
+**The cause of an `OutputParsingException`.** When structured output cannot be parsed, LangChain4j
+throws `OutputParsingException` either way - that type does not change. What changes is the
+exception underneath it, from Jackson 2's `JsonProcessingException` to Jackson 3's
+`StreamReadException`. Code that inspects `getRootCause()` needs the same treatment.
+
 **Data you have already stored stays readable.** Chat memory and `InMemoryEmbeddingStore` files
 written by Jackson 2 are read correctly by Jackson 3, and what Jackson 3 writes is byte-for-byte
 what Jackson 2 would have written. That is covered by tests, so it stays true.
@@ -92,6 +120,7 @@ Whether it can actually leave depends on which modules you use:
 | Provider modules — OpenAI, Anthropic, Mistral, Ollama, Gemini, and the rest | Yes |
 | Embedding stores, web search, code execution | Yes |
 | `langchain4j-agentic` | Yes |
+| `langchain4j-guardrails` | No - `JsonExtractorOutputGuardrail` parses with a plain Jackson 2 `ObjectMapper` on purpose, so that a guardrail stays as strict as it was |
 | `langchain4j-mcp` | No — Jackson's `JsonNode` appears in its public API, so the module loads Jackson 2 on every path |
 | `langchain4j-vespa` | No — its HTTP client uses Retrofit's own Jackson 2 converter |
 | Anything using a vendor SDK — AWS, Azure, Google | No — the SDK depends on Jackson 2 itself |
