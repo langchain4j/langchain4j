@@ -27,7 +27,7 @@ import org.junit.jupiter.api.Test;
 
 /**
  * The Jackson 3 opt-in as an application actually assembles it: {@code langchain4j-core}, the main
- * module, a provider, and {@code langchain4j-json-jackson3} - with Jackson 2 excluded from the
+ * module, a provider, and {@code langchain4j-jackson3} - with Jackson 2 excluded from the
  * whole dependency graph by this module's pom.
  *
  * <p>The codec module's own tests show the codec is correct. These show that an application built

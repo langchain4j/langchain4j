@@ -69,7 +69,7 @@ class McpOperationHandlerRobustnessTest {
         // while a stream reader logs it and carries on. Swallowing it here left the streamable-HTTP
         // and Docker transports with a future nobody completed.
         // Either of the two types the transports catch: the Jackson 2 codecs report the
-        // IllegalArgumentException this has always thrown, langchain4j-json-jackson3 a JsonException.
+        // IllegalArgumentException this has always thrown, langchain4j-jackson3 a JsonException.
         assertThatThrownBy(() -> handler().onMessage("not json"))
                 .isInstanceOfAny(JsonException.class, IllegalArgumentException.class);
     }

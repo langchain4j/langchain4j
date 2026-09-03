@@ -17,7 +17,7 @@ Add one dependency:
 ```xml
 <dependency>
     <groupId>dev.langchain4j</groupId>
-    <artifactId>langchain4j-json-jackson3</artifactId>
+    <artifactId>langchain4j-jackson3</artifactId>
     <version>1.20.0-beta30</version>
 </dependency>
 ```
@@ -142,7 +142,7 @@ route hands the builder straight to the constructor without calling `build()`, s
 inside `build()` never happens. Default the builder's field where it is declared instead.
 
 A module that supports the opt-in declares a `jackson3` Maven profile, which puts
-`langchain4j-json-jackson3` on that module's test classpath so its existing tests run against
+`langchain4j-jackson3` on that module's test classpath so its existing tests run against
 Jackson 3. CI runs all of them on every pull request, and you can run one module the same way:
 
 ```bash
@@ -153,9 +153,9 @@ Check that the module's `pom.xml` actually declares that profile before trusting
 Maven ignores a profile the selected module does not declare, so the command above reports
 success having run everything on Jackson 2. Adding the profile is part of migrating a module.
 
-`langchain4j-open-ai` is the one module that cannot have it. `langchain4j-json-jackson3` depends
+`langchain4j-open-ai` is the one module that cannot have it. `langchain4j-jackson3` depends
 on `langchain4j`, whose own tests depend on `langchain4j-open-ai`, so the profile would make the
-module graph cyclic. Its wire types are checked from `langchain4j-json-jackson3` instead, where
+module graph cyclic. Its wire types are checked from `langchain4j-jackson3` instead, where
 `OpenAiBuilderCreatorParityTest` compares every builder-based DTO built through its builder against
 the same DTO parsed from `{}`, which is what the missing `build()` call above would change.
 
@@ -163,7 +163,7 @@ the same DTO parsed from `{}`, which is what the missing `build()` call above wo
 
 You do not need this section to use Jackson 3 — adding the dependency is enough. It is for
 frameworks that supply their own configured JSON mapper to LangChain4j rather than letting it pick
-one, which is what `langchain4j-json-jackson3` itself does.
+one, which is what `langchain4j-jackson3` itself does.
 
 LangChain4j does not have a single JSON entry point. It asks a `ServiceLoader` for a codec at each
 of the places below, so that each can be answered separately:

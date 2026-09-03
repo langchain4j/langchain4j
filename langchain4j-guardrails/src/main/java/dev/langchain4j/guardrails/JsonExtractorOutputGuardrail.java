@@ -83,7 +83,7 @@ public class JsonExtractorOutputGuardrail<T> implements OutputGuardrail {
 
     /**
      * Deserializes with LangChain4j's configured JSON codec, so that swapping the JSON library -
-     * for example by putting {@code langchain4j-json-jackson3} on the classpath - applies here too.
+     * for example by putting {@code langchain4j-jackson3} on the classpath - applies here too.
      */
     public JsonExtractorOutputGuardrail(Class<T> outputClass) {
         this.objectMapper = null;

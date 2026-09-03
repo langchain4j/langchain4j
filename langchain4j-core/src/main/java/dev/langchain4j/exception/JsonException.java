@@ -7,7 +7,7 @@ package dev.langchain4j.exception;
  * exception a caller sees should not depend on it. That library's own failure is kept as the
  * {@linkplain #getCause() cause}.
  *
- * <p><b>Not yet reported everywhere.</b> The codecs in {@code langchain4j-json-jackson3} report
+ * <p><b>Not yet reported everywhere.</b> The codecs in {@code langchain4j-jackson3} report
  * failures as these types. The Jackson 2 codecs, which are what LangChain4j uses by default, still
  * wrap Jackson's own exception in a plain {@link RuntimeException} as they always have, so that
  * code written against them keeps working. They will move to these types in the next major

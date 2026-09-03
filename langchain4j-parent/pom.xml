@@ -94,7 +94,7 @@
             </dependency>
 
             <!--
-                Jackson 3 is used only by the opt-in langchain4j-json-jackson3 module, but its
+                Jackson 3 is used only by the opt-in langchain4j-core-jackson3 module, but its
                 version is managed here so that a user adding a Jackson 3 datatype or dataformat
                 module cannot end up with a split version.
             -->

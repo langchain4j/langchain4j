@@ -134,7 +134,7 @@ jobs:
           } >> $GITHUB_STEP_SUMMARY
 
   jackson3_unit_test:
-    # Re-runs the unit tests with langchain4j-json-jackson3 on the test classpath of every
+    # Re-runs the unit tests with langchain4j-core-jackson3 on the test classpath of every
     # module that declares the jackson3 profile, so the JSON SPI resolves to Jackson 3 instead
     # of the Jackson 2 default. Without this, a DTO that only Jackson 2 can read goes unnoticed
     # until a user opts in. The whole reactor is built so that a profile which makes the module
@@ -173,7 +173,7 @@ jobs:
             echo '## Jackson 3 opt-in failures'
             echo ''
             echo 'These modules pass on Jackson 2. A failure here means something behaves'
-            echo 'differently once `langchain4j-json-jackson3` is on the classpath.'
+            echo 'differently once `langchain4j-core-jackson3` is on the classpath.'
             echo ''
             echo '```'
             grep '^\[ERROR\]' maven-output.log | head -50

@@ -82,7 +82,7 @@
 
         <dependency>
             <groupId>dev.langchain4j</groupId>
-            <artifactId>langchain4j-json-jackson3</artifactId>
+            <artifactId>langchain4j-jackson3</artifactId>
             <version>${langchain4j.beta.version}</version>
         </dependency>
 

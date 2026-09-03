@@ -139,7 +139,7 @@ public final class McpJson {
      * <p>A transport branches on the failure to decide whether to fail an operation or log and
      * carry on, so which type it is matters. The Jackson 2 codecs report a plain
      * {@link RuntimeException}, which is normalised here to the {@link IllegalArgumentException}
-     * this has always thrown; {@code langchain4j-json-jackson3} reports a {@link JsonException},
+     * this has always thrown; {@code langchain4j-jackson3} reports a {@link JsonException},
      * which is left alone. Both carry the JSON library's own exception as the cause. The
      * normalisation goes away when the Jackson 2 codecs move to the typed exceptions.
      */

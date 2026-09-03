@@ -17,7 +17,7 @@ import org.junit.jupiter.api.Test;
  *
  * <p>Written against the message rather than the exception type, because the type differs by
  * codec: the Jackson 2 codecs still wrap the library's own exception, while
- * {@code langchain4j-json-jackson3} reports {@link JsonReadException}. The guarantee is the same
+ * {@code langchain4j-jackson3} reports {@link JsonReadException}. The guarantee is the same
  * either way, and its Jackson 3 half is pinned by {@code Jackson3ParityTest}.
  */
 class JsonExceptionMessageTest {
