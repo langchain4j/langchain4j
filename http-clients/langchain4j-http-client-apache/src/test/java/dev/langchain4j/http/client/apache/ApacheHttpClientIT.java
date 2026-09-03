@@ -9,6 +9,11 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 class ApacheHttpClientIT extends HttpClientIT {
 
     @Override
+    protected boolean supportsExecuteAsync() {
+        return true;
+    }
+
+    @Override
     protected List<HttpClient> clients() {
         return List.of(ApacheHttpClient.builder().build());
     }
