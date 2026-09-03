@@ -1,7 +1,6 @@
 package dev.langchain4j.model.openai;
 
 import dev.langchain4j.model.output.TokenUsage;
-
 import java.util.Objects;
 
 public class OpenAiTokenUsage extends TokenUsage {
@@ -46,7 +45,12 @@ public class OpenAiTokenUsage extends TokenUsage {
                 return this.inputTokensDetails;
             } else {
                 return InputTokensDetails.builder()
-                        .cachedTokens(sum(this.inputTokensDetails.cachedTokens, thatOpenAiTokenUsage.inputTokensDetails.cachedTokens))
+                        .cachedTokens(sum(
+                                this.inputTokensDetails.cachedTokens,
+                                thatOpenAiTokenUsage.inputTokensDetails.cachedTokens))
+                        .cacheWriteTokens(sum(
+                                this.inputTokensDetails.cacheWriteTokens,
+                                thatOpenAiTokenUsage.inputTokensDetails.cacheWriteTokens))
                         .build();
             }
         } else {
@@ -62,7 +66,9 @@ public class OpenAiTokenUsage extends TokenUsage {
                 return this.outputTokensDetails;
             } else {
                 return OutputTokensDetails.builder()
-                        .reasoningTokens(sum(this.outputTokensDetails.reasoningTokens, thatOpenAiTokenUsage.outputTokensDetails.reasoningTokens))
+                        .reasoningTokens(sum(
+                                this.outputTokensDetails.reasoningTokens,
+                                thatOpenAiTokenUsage.outputTokensDetails.reasoningTokens))
                         .build();
             }
         } else {
@@ -87,13 +93,12 @@ public class OpenAiTokenUsage extends TokenUsage {
 
     @Override
     public String toString() {
-        return "OpenAiTokenUsage {" +
-                " inputTokenCount = " + inputTokenCount() +
-                ", inputTokensDetails = " + inputTokensDetails +
-                ", outputTokenCount = " + outputTokenCount() +
-                ", outputTokensDetails = " + outputTokensDetails +
-                ", totalTokenCount = " + totalTokenCount() +
-                " }";
+        return "OpenAiTokenUsage {" + " inputTokenCount = "
+                + inputTokenCount() + ", inputTokensDetails = "
+                + inputTokensDetails + ", outputTokenCount = "
+                + outputTokenCount() + ", outputTokensDetails = "
+                + outputTokensDetails + ", totalTokenCount = "
+                + totalTokenCount() + " }";
     }
 
     public static Builder builder() {
@@ -141,13 +146,29 @@ public class OpenAiTokenUsage extends TokenUsage {
     public static class InputTokensDetails {
 
         private final Integer cachedTokens;
+        private final Integer cacheWriteTokens;
 
         public InputTokensDetails(Builder builder) {
             this.cachedTokens = builder.cachedTokens;
+            this.cacheWriteTokens = builder.cacheWriteTokens;
         }
 
         public Integer cachedTokens() {
             return cachedTokens;
+        }
+
+        /**
+         * Returns the number of input tokens written to the prompt cache, as reported by
+         * {@code usage.prompt_tokens_details.cache_write_tokens} (Chat Completions API) and
+         * {@code usage.input_tokens_details.cache_write_tokens} (Responses API).
+         * <p>
+         * Returns {@code null} when the model provider did not report it, which is distinct from a
+         * reported zero.
+         *
+         * @since 1.20.0
+         */
+        public Integer cacheWriteTokens() {
+            return cacheWriteTokens;
         }
 
         public static Builder builder() {
@@ -157,9 +178,18 @@ public class OpenAiTokenUsage extends TokenUsage {
         public static class Builder {
 
             private Integer cachedTokens;
+            private Integer cacheWriteTokens;
 
             public Builder cachedTokens(Integer cachedTokens) {
                 this.cachedTokens = cachedTokens;
+                return this;
+            }
+
+            /**
+             * @since 1.20.0
+             */
+            public Builder cacheWriteTokens(Integer cacheWriteTokens) {
+                this.cacheWriteTokens = cacheWriteTokens;
                 return this;
             }
 
@@ -173,19 +203,20 @@ public class OpenAiTokenUsage extends TokenUsage {
             if (obj == this) return true;
             if (obj == null || obj.getClass() != this.getClass()) return false;
             var that = (InputTokensDetails) obj;
-            return Objects.equals(this.cachedTokens, that.cachedTokens);
+            return Objects.equals(this.cachedTokens, that.cachedTokens)
+                    && Objects.equals(this.cacheWriteTokens, that.cacheWriteTokens);
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(cachedTokens);
+            return Objects.hash(cachedTokens, cacheWriteTokens);
         }
 
         @Override
         public String toString() {
-            return "OpenAiTokenUsage.InputTokensDetails {" +
-                    " cachedTokens = " + cachedTokens +
-                    " }";
+            return "OpenAiTokenUsage.InputTokensDetails {" + " cachedTokens = "
+                    + cachedTokens + ", cacheWriteTokens = "
+                    + cacheWriteTokens + " }";
         }
     }
 
@@ -234,9 +265,7 @@ public class OpenAiTokenUsage extends TokenUsage {
 
         @Override
         public String toString() {
-            return "OpenAiTokenUsage.OutputTokensDetails {" +
-                    " reasoningTokens = " + reasoningTokens +
-                    " }";
+            return "OpenAiTokenUsage.OutputTokensDetails {" + " reasoningTokens = " + reasoningTokens + " }";
         }
     }
 }

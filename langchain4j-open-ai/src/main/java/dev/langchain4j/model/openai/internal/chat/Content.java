@@ -36,6 +36,9 @@ public final class Content {
     @JsonProperty
     private final PdfFile file;
 
+    @JsonProperty
+    private final PromptCacheBreakpoint promptCacheBreakpoint;
+
     public Content(Builder builder) {
         this.type = builder.type;
         this.text = builder.text;
@@ -44,6 +47,7 @@ public final class Content {
         this.videoUrl = builder.videoUrl;
         this.inputAudio = builder.inputAudio;
         this.file = builder.file;
+        this.promptCacheBreakpoint = builder.promptCacheBreakpoint;
     }
 
     public ContentType type() {
@@ -74,6 +78,10 @@ public final class Content {
         return file;
     }
 
+    public PromptCacheBreakpoint promptCacheBreakpoint() {
+        return promptCacheBreakpoint;
+    }
+
     @Override
     @JacocoIgnoreCoverageGenerated
     public boolean equals(Object another) {
@@ -89,7 +97,8 @@ public final class Content {
                 && Objects.equals(inputImageUrl, another.inputImageUrl)
                 && Objects.equals(videoUrl, another.videoUrl)
                 && Objects.equals(inputAudio, another.inputAudio)
-                && Objects.equals(file, another.file);
+                && Objects.equals(file, another.file)
+                && Objects.equals(promptCacheBreakpoint, another.promptCacheBreakpoint);
     }
 
     @Override
@@ -103,6 +112,7 @@ public final class Content {
         h += (h << 5) + Objects.hashCode(videoUrl);
         h += (h << 5) + Objects.hashCode(inputAudio);
         h += (h << 5) + Objects.hashCode(file);
+        h += (h << 5) + Objects.hashCode(promptCacheBreakpoint);
         return h;
     }
 
@@ -116,11 +126,28 @@ public final class Content {
                 + inputImageUrl + ", videoUrl="
                 + videoUrl + ", inputAudio="
                 + inputAudio + ", file="
-                + file + "}";
+                + file + ", promptCacheBreakpoint="
+                + promptCacheBreakpoint + "}";
     }
 
     public static Builder builder() {
         return new Builder();
+    }
+
+    public Builder toBuilder() {
+        Builder builder = builder()
+                .type(type)
+                .text(text)
+                .videoUrl(videoUrl)
+                .inputAudio(inputAudio)
+                .file(file)
+                .promptCacheBreakpoint(promptCacheBreakpoint);
+        if (imageUrl != null) {
+            builder.imageUrl(imageUrl);
+        } else if (inputImageUrl != null) {
+            builder.inputImageUrl(inputImageUrl);
+        }
+        return builder;
     }
 
     @JsonProperty("image_url")
@@ -140,6 +167,7 @@ public final class Content {
         private VideoUrl videoUrl;
         private InputAudio inputAudio;
         private PdfFile file;
+        private PromptCacheBreakpoint promptCacheBreakpoint;
 
         public Builder type(ContentType type) {
             this.type = type;
@@ -191,6 +219,11 @@ public final class Content {
 
         public Builder file(PdfFile file) {
             this.file = file;
+            return this;
+        }
+
+        public Builder promptCacheBreakpoint(PromptCacheBreakpoint promptCacheBreakpoint) {
+            this.promptCacheBreakpoint = promptCacheBreakpoint;
             return this;
         }
 

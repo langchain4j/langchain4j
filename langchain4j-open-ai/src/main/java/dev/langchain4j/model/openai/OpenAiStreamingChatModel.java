@@ -31,10 +31,10 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
+import dev.langchain4j.model.chat.response.ChatModelStreamingEvent;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
-import dev.langchain4j.model.chat.response.ChatModelStreamingEvent;
 import dev.langchain4j.model.openai.internal.ChatCompletionOptions;
 import dev.langchain4j.model.openai.internal.OpenAiClient;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionRequest;
@@ -44,9 +44,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Flow.Publisher;
-
 import java.util.function.Supplier;
-
 import org.slf4j.Logger;
 
 /**
@@ -121,6 +119,8 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
                 .store(getOrDefault(builder.store, openAiParameters.store()))
                 .metadata(getOrDefault(builder.metadata, openAiParameters.metadata()))
                 .serviceTier(getOrDefault(builder.serviceTier, openAiParameters.serviceTier()))
+                .promptCacheKey(getOrDefault(builder.promptCacheKey, openAiParameters.promptCacheKey()))
+                .promptCacheOptions(getOrDefault(builder.promptCacheOptions, openAiParameters.promptCacheOptions()))
                 .reasoningEffort(getOrDefault(builder.reasoningEffort, openAiParameters.reasoningEffort()))
                 .customParameters(getOrDefault(builder.customParameters, openAiParameters.customParameters()))
                 .build();
@@ -189,10 +189,15 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
         return client.chatCompletionPublisher(openAiRequest, options);
     }
 
-    private ChatCompletionRequest createOpenAiRequest(ChatRequest request,
-                                                      OpenAiChatRequestParameters parameters) {
+    private ChatCompletionRequest createOpenAiRequest(ChatRequest request, OpenAiChatRequestParameters parameters) {
         return toOpenAiChatRequest(
-                        request, parameters, sendThinking, thinkingFieldName, strictTools, strictJsonSchema, useInputImageFormat)
+                        request,
+                        parameters,
+                        sendThinking,
+                        thinkingFieldName,
+                        strictTools,
+                        strictJsonSchema,
+                        useInputImageFormat)
                 .stream(true)
                 .streamOptions(StreamOptions.builder().includeUsage(true).build())
                 .build();
@@ -243,6 +248,8 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
         private Boolean store;
         private Map<String, String> metadata;
         private String serviceTier;
+        private String promptCacheKey;
+        private OpenAiPromptCacheOptions promptCacheOptions;
         private String reasoningEffort;
         private Boolean returnThinking;
         private Boolean sendThinking;
@@ -394,6 +401,22 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
 
         public OpenAiStreamingChatModelBuilder metadata(Map<String, String> metadata) {
             this.metadata = metadata;
+            return this;
+        }
+
+        /**
+         * @since 1.20.0
+         */
+        public OpenAiStreamingChatModelBuilder promptCacheKey(String promptCacheKey) {
+            this.promptCacheKey = promptCacheKey;
+            return this;
+        }
+
+        /**
+         * @since 1.20.0
+         */
+        public OpenAiStreamingChatModelBuilder promptCacheOptions(OpenAiPromptCacheOptions promptCacheOptions) {
+            this.promptCacheOptions = promptCacheOptions;
             return this;
         }
 

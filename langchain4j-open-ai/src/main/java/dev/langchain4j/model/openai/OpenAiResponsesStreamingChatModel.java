@@ -8,7 +8,6 @@ import static java.util.Arrays.asList;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.exception.UnsupportedFeatureException;
-import dev.langchain4j.model.openai.internal.OpenAiClient;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.Capability;
@@ -19,8 +18,8 @@ import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ToolChoice;
-import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.chat.response.ChatModelStreamingEvent;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -78,6 +77,7 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
                 .promptCacheKey(getOrDefault(builder.promptCacheKey, responsesParameters.promptCacheKey()))
                 .promptCacheRetention(
                         getOrDefault(builder.promptCacheRetention, responsesParameters.promptCacheRetention()))
+                .promptCacheOptions(getOrDefault(builder.promptCacheOptions, responsesParameters.promptCacheOptions()))
                 .reasoningEffort(getOrDefault(builder.reasoningEffort, responsesParameters.reasoningEffort()))
                 .reasoningSummary(getOrDefault(builder.reasoningSummary, responsesParameters.reasoningSummary()))
                 .textVerbosity(getOrDefault(builder.textVerbosity, responsesParameters.textVerbosity()))
@@ -169,6 +169,7 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
         private String safetyIdentifier;
         private String promptCacheKey;
         private String promptCacheRetention;
+        private OpenAiPromptCacheOptions promptCacheOptions;
         private String reasoningEffort;
         private String reasoningSummary;
         private String textVerbosity;
@@ -285,6 +286,14 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
 
         public Builder promptCacheRetention(String promptCacheRetention) {
             this.promptCacheRetention = promptCacheRetention;
+            return this;
+        }
+
+        /**
+         * @since 1.20.0
+         */
+        public Builder promptCacheOptions(OpenAiPromptCacheOptions promptCacheOptions) {
+            this.promptCacheOptions = promptCacheOptions;
             return this;
         }
 

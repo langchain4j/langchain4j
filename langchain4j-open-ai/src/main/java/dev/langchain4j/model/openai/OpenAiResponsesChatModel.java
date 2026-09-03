@@ -21,8 +21,8 @@ import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
 
 @Experimental
@@ -75,6 +75,7 @@ public class OpenAiResponsesChatModel implements ChatModel {
                 .promptCacheKey(getOrDefault(builder.promptCacheKey, responsesParameters.promptCacheKey()))
                 .promptCacheRetention(
                         getOrDefault(builder.promptCacheRetention, responsesParameters.promptCacheRetention()))
+                .promptCacheOptions(getOrDefault(builder.promptCacheOptions, responsesParameters.promptCacheOptions()))
                 .reasoningEffort(getOrDefault(builder.reasoningEffort, responsesParameters.reasoningEffort()))
                 .reasoningSummary(getOrDefault(builder.reasoningSummary, responsesParameters.reasoningSummary()))
                 .textVerbosity(getOrDefault(builder.textVerbosity, responsesParameters.textVerbosity()))
@@ -168,6 +169,7 @@ public class OpenAiResponsesChatModel implements ChatModel {
         private String safetyIdentifier;
         private String promptCacheKey;
         private String promptCacheRetention;
+        private OpenAiPromptCacheOptions promptCacheOptions;
         private String reasoningEffort;
         private String reasoningSummary;
         private String textVerbosity;
@@ -271,6 +273,14 @@ public class OpenAiResponsesChatModel implements ChatModel {
 
         public Builder promptCacheRetention(String promptCacheRetention) {
             this.promptCacheRetention = promptCacheRetention;
+            return this;
+        }
+
+        /**
+         * @since 1.20.0
+         */
+        public Builder promptCacheOptions(OpenAiPromptCacheOptions promptCacheOptions) {
+            this.promptCacheOptions = promptCacheOptions;
             return this;
         }
 

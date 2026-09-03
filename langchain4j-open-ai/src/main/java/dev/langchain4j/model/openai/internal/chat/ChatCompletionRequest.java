@@ -14,6 +14,7 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
+import dev.langchain4j.model.openai.internal.shared.PromptCacheOptions;
 import dev.langchain4j.model.openai.internal.shared.StreamOptions;
 import java.util.ArrayList;
 import java.util.List;
@@ -95,6 +96,12 @@ public final class ChatCompletionRequest {
     private final String serviceTier;
 
     @JsonProperty
+    private final String promptCacheKey;
+
+    @JsonProperty
+    private final PromptCacheOptions promptCacheOptions;
+
+    @JsonProperty
     private final Boolean logprobs;
 
     @JsonProperty
@@ -134,6 +141,8 @@ public final class ChatCompletionRequest {
         this.metadata = builder.metadata;
         this.reasoningEffort = builder.reasoningEffort;
         this.serviceTier = builder.serviceTier;
+        this.promptCacheKey = builder.promptCacheKey;
+        this.promptCacheOptions = builder.promptCacheOptions;
         this.logprobs = builder.logprobs;
         this.topLogprobs = builder.topLogprobs;
         this.functions = builder.functions;
@@ -233,6 +242,14 @@ public final class ChatCompletionRequest {
         return serviceTier;
     }
 
+    public String promptCacheKey() {
+        return promptCacheKey;
+    }
+
+    public PromptCacheOptions promptCacheOptions() {
+        return promptCacheOptions;
+    }
+
     public Boolean logprobs() {
         return logprobs;
     }
@@ -288,6 +305,8 @@ public final class ChatCompletionRequest {
                 && Objects.equals(metadata, another.metadata)
                 && Objects.equals(reasoningEffort, another.reasoningEffort)
                 && Objects.equals(serviceTier, another.serviceTier)
+                && Objects.equals(promptCacheKey, another.promptCacheKey)
+                && Objects.equals(promptCacheOptions, another.promptCacheOptions)
                 && Objects.equals(logprobs, another.logprobs)
                 && Objects.equals(topLogprobs, another.topLogprobs)
                 && Objects.equals(functions, another.functions)
@@ -322,6 +341,8 @@ public final class ChatCompletionRequest {
         h += (h << 5) + Objects.hashCode(metadata);
         h += (h << 5) + Objects.hashCode(reasoningEffort);
         h += (h << 5) + Objects.hashCode(serviceTier);
+        h += (h << 5) + Objects.hashCode(promptCacheKey);
+        h += (h << 5) + Objects.hashCode(promptCacheOptions);
         h += (h << 5) + Objects.hashCode(logprobs);
         h += (h << 5) + Objects.hashCode(topLogprobs);
         h += (h << 5) + Objects.hashCode(functions);
@@ -357,6 +378,8 @@ public final class ChatCompletionRequest {
                 + ", metadata=" + metadata
                 + ", reasoningEffort=" + reasoningEffort
                 + ", serviceTier=" + serviceTier
+                + ", promptCacheKey=" + promptCacheKey
+                + ", promptCacheOptions=" + promptCacheOptions
                 + ", logprobs=" + logprobs
                 + ", topLogprobs=" + topLogprobs
                 + ", functions=" + functions
@@ -397,6 +420,8 @@ public final class ChatCompletionRequest {
         private Map<String, String> metadata;
         private String reasoningEffort;
         private String serviceTier;
+        private String promptCacheKey;
+        private PromptCacheOptions promptCacheOptions;
         private Boolean logprobs;
         private Integer topLogprobs;
 
@@ -432,6 +457,8 @@ public final class ChatCompletionRequest {
             metadata(instance.metadata);
             reasoningEffort(instance.reasoningEffort);
             serviceTier(instance.serviceTier);
+            promptCacheKey(instance.promptCacheKey);
+            promptCacheOptions(instance.promptCacheOptions);
             logprobs(instance.logprobs);
             topLogprobs(instance.topLogprobs);
             functions(instance.functions);
@@ -627,6 +654,16 @@ public final class ChatCompletionRequest {
 
         public Builder serviceTier(String serviceTier) {
             this.serviceTier = serviceTier;
+            return this;
+        }
+
+        public Builder promptCacheKey(String promptCacheKey) {
+            this.promptCacheKey = promptCacheKey;
+            return this;
+        }
+
+        public Builder promptCacheOptions(PromptCacheOptions promptCacheOptions) {
+            this.promptCacheOptions = promptCacheOptions;
             return this;
         }
 

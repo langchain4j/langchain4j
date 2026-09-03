@@ -24,6 +24,7 @@ public class OpenAiResponsesChatRequestParameters extends DefaultChatRequestPara
     private final String safetyIdentifier;
     private final String promptCacheKey;
     private final String promptCacheRetention;
+    private final OpenAiPromptCacheOptions promptCacheOptions;
     private final String reasoningEffort;
     private final String reasoningSummary;
     private final String textVerbosity;
@@ -45,6 +46,7 @@ public class OpenAiResponsesChatRequestParameters extends DefaultChatRequestPara
         this.safetyIdentifier = builder.safetyIdentifier;
         this.promptCacheKey = builder.promptCacheKey;
         this.promptCacheRetention = builder.promptCacheRetention;
+        this.promptCacheOptions = builder.promptCacheOptions;
         this.reasoningEffort = builder.reasoningEffort;
         this.reasoningSummary = builder.reasoningSummary;
         this.textVerbosity = builder.textVerbosity;
@@ -91,8 +93,22 @@ public class OpenAiResponsesChatRequestParameters extends DefaultChatRequestPara
         return promptCacheKey;
     }
 
+    /**
+     * Returns {@code prompt_cache_retention}, which applies to models older than {@code gpt-5.6}.
+     * On {@code gpt-5.6} and later use {@link #promptCacheOptions()} instead; OpenAI rejects a request
+     * that carries both.
+     */
     public String promptCacheRetention() {
         return promptCacheRetention;
+    }
+
+    /**
+     * Returns {@code prompt_cache_options}, supported by {@code gpt-5.6} and later.
+     *
+     * @since 1.20.0
+     */
+    public OpenAiPromptCacheOptions promptCacheOptions() {
+        return promptCacheOptions;
     }
 
     public String reasoningEffort() {
@@ -159,6 +175,7 @@ public class OpenAiResponsesChatRequestParameters extends DefaultChatRequestPara
                 && Objects.equals(safetyIdentifier, that.safetyIdentifier)
                 && Objects.equals(promptCacheKey, that.promptCacheKey)
                 && Objects.equals(promptCacheRetention, that.promptCacheRetention)
+                && Objects.equals(promptCacheOptions, that.promptCacheOptions)
                 && Objects.equals(reasoningEffort, that.reasoningEffort)
                 && Objects.equals(reasoningSummary, that.reasoningSummary)
                 && Objects.equals(textVerbosity, that.textVerbosity)
@@ -183,6 +200,7 @@ public class OpenAiResponsesChatRequestParameters extends DefaultChatRequestPara
                 safetyIdentifier,
                 promptCacheKey,
                 promptCacheRetention,
+                promptCacheOptions,
                 reasoningEffort,
                 reasoningSummary,
                 textVerbosity,
@@ -209,6 +227,7 @@ public class OpenAiResponsesChatRequestParameters extends DefaultChatRequestPara
         private String safetyIdentifier;
         private String promptCacheKey;
         private String promptCacheRetention;
+        private OpenAiPromptCacheOptions promptCacheOptions;
         private String reasoningEffort;
         private String reasoningSummary;
         private String textVerbosity;
@@ -232,6 +251,7 @@ public class OpenAiResponsesChatRequestParameters extends DefaultChatRequestPara
                 safetyIdentifier(getOrDefault(p.safetyIdentifier(), safetyIdentifier));
                 promptCacheKey(getOrDefault(p.promptCacheKey(), promptCacheKey));
                 promptCacheRetention(getOrDefault(p.promptCacheRetention(), promptCacheRetention));
+                promptCacheOptions(getOrDefault(p.promptCacheOptions(), promptCacheOptions));
                 reasoningEffort(getOrDefault(p.reasoningEffort(), reasoningEffort));
                 reasoningSummary(getOrDefault(p.reasoningSummary(), reasoningSummary));
                 textVerbosity(getOrDefault(p.textVerbosity(), textVerbosity));
@@ -291,6 +311,14 @@ public class OpenAiResponsesChatRequestParameters extends DefaultChatRequestPara
 
         public Builder promptCacheRetention(String promptCacheRetention) {
             this.promptCacheRetention = promptCacheRetention;
+            return this;
+        }
+
+        /**
+         * @since 1.20.0
+         */
+        public Builder promptCacheOptions(OpenAiPromptCacheOptions promptCacheOptions) {
+            this.promptCacheOptions = promptCacheOptions;
             return this;
         }
 

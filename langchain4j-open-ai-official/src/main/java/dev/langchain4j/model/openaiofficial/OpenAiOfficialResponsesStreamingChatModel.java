@@ -183,6 +183,7 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                 .promptCacheKey(getOrDefault(builder.promptCacheKey, responsesParameters.promptCacheKey()))
                 .promptCacheRetention(
                         getOrDefault(builder.promptCacheRetention, responsesParameters.promptCacheRetention()))
+                .promptCacheOptions(getOrDefault(builder.promptCacheOptions, responsesParameters.promptCacheOptions()))
                 .reasoningEffort(getOrDefault(builder.reasoningEffort, responsesParameters.reasoningEffort()))
                 .reasoningSummary(getOrDefault(builder.reasoningSummary, responsesParameters.reasoningSummary()))
                 .textVerbosity(getOrDefault(builder.textVerbosity, responsesParameters.textVerbosity()))
@@ -406,6 +407,12 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                         .totalTokenCount(usage.totalTokens())
                         .inputTokensDetails(OpenAiOfficialTokenUsage.InputTokensDetails.builder()
                                 .cachedTokens(usage.inputTokensDetails().cachedTokens())
+                                // read through the JsonField so that "not reported" stays distinct from
+                                // a reported zero: the accessor returns a primitive long
+                                .cacheWriteTokens(usage.inputTokensDetails()
+                                        ._cacheWriteTokens()
+                                        .asKnown()
+                                        .orElse(null))
                                 .build())
                         .outputTokensDetails(OpenAiOfficialTokenUsage.OutputTokensDetails.builder()
                                 .reasoningTokens(usage.outputTokensDetails().reasoningTokens())
@@ -470,6 +477,9 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
             paramsBuilder.putAdditionalBodyProperty(
                     PROMPT_CACHE_RETENTION_FIELD, JsonValue.from(parameters.promptCacheRetention()));
         }
+        if (parameters.promptCacheOptions() != null) {
+            paramsBuilder.promptCacheOptions(toPromptCacheOptions(parameters.promptCacheOptions()));
+        }
         if (parameters.reasoningEffort() != null || parameters.reasoningSummary() != null) {
             Reasoning.Builder reasoningBuilder = Reasoning.builder();
             if (parameters.reasoningEffort() != null) {
@@ -527,10 +537,31 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
 
     private static List<ResponseInputItem> toResponseInputItems(ChatMessage msg) {
         if (msg instanceof SystemMessage systemMessage) {
+            if (OpenAiOfficialPromptCacheBreakpoint.isMarked(systemMessage.attributes())) {
+                // the string form of "content" cannot carry a "prompt_cache_breakpoint",
+                // so the block form is used
+                return List.of(ResponseInputItem.ofEasyInputMessage(EasyInputMessage.builder()
+                        .role(EasyInputMessage.Role.SYSTEM)
+                        .content(EasyInputMessage.Content.ofResponseInputMessageContentList(List.of(
+                                ResponseInputContent.ofInputText(ResponseInputText.builder()
+                                        .text(systemMessage.text())
+                                        .promptCacheBreakpoint(ResponseInputText.PromptCacheBreakpoint.builder()
+                                                .mode(JsonValue.from(OpenAiOfficialPromptCacheBreakpoint.MODE_EXPLICIT))
+                                                .build())
+                                        .build()))))
+                        .build()));
+            }
             return List.of(createTextMessage(EasyInputMessage.Role.SYSTEM, systemMessage.text()));
         } else if (msg instanceof UserMessage userMessage) {
             return List.of(createUserMessage(userMessage));
         } else if (msg instanceof AiMessage aiMessage) {
+            if (OpenAiOfficialPromptCacheBreakpoint.isMarked(aiMessage.attributes())) {
+                throw new UnsupportedFeatureException("OpenAI does not support a \""
+                        + OpenAiOfficialPromptCacheBreakpoint.ATTRIBUTE_KEY
+                        + "\" on an AiMessage. Mark a SystemMessage, a UserMessage "
+                        + "or a ToolExecutionResultMessage instead.");
+            }
+
             var items = new ArrayList<ResponseInputItem>();
 
             // Add reasoning item (with encrypted_content and summary) if present
@@ -565,7 +596,10 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
         } else if (msg instanceof ToolExecutionResultMessage toolResultMessage) {
             var outputBuilder = ResponseInputItem.FunctionCallOutput.builder().callId(toolResultMessage.id());
 
-            if (toolResultMessage.hasSingleText()) {
+            boolean promptCacheBreakpoint =
+                    OpenAiOfficialPromptCacheBreakpoint.isMarked(toolResultMessage.attributes());
+
+            if (toolResultMessage.hasSingleText() && !promptCacheBreakpoint) {
                 outputBuilder.output(toolResultMessage.text());
             } else {
                 var outputItems = new ArrayList<ResponseFunctionCallOutputItem>();
@@ -584,6 +618,12 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                                 + content.getClass().getName()
                                 + ". Only TextContent and ImageContent are supported.");
                     }
+                }
+                if (promptCacheBreakpoint) {
+                    // the string form of "output" cannot carry a "prompt_cache_breakpoint",
+                    // so the block form is used
+                    int lastIndex = outputItems.size() - 1;
+                    outputItems.set(lastIndex, withPromptCacheBreakpoint(outputItems.get(lastIndex)));
                 }
                 outputBuilder.output(
                         ResponseInputItem.FunctionCallOutput.Output.ofResponseFunctionCallOutputItemList(outputItems));
@@ -609,6 +649,65 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                 .encryptedContent(encryptedContent)
                 .build();
         return ResponseInputItem.ofReasoning(reasoningItem);
+    }
+
+    private static ResponseCreateParams.PromptCacheOptions toPromptCacheOptions(
+            OpenAiOfficialPromptCacheOptions promptCacheOptions) {
+        ResponseCreateParams.PromptCacheOptions.Builder builder = ResponseCreateParams.PromptCacheOptions.builder();
+        if (promptCacheOptions.mode() != null) {
+            builder.mode(ResponseCreateParams.PromptCacheOptions.Mode.of(promptCacheOptions.mode()));
+        }
+        if (promptCacheOptions.ttl() != null) {
+            builder.ttl(ResponseCreateParams.PromptCacheOptions.Ttl.of(promptCacheOptions.ttl()));
+        }
+        return builder.build();
+    }
+
+    private static ResponseInputContent withPromptCacheBreakpoint(ResponseInputContent content) {
+        if (content.isInputText()) {
+            return ResponseInputContent.ofInputText(content.asInputText().toBuilder()
+                    .promptCacheBreakpoint(ResponseInputText.PromptCacheBreakpoint.builder()
+                            .mode(JsonValue.from(OpenAiOfficialPromptCacheBreakpoint.MODE_EXPLICIT))
+                            .build())
+                    .build());
+        }
+        if (content.isInputImage()) {
+            return ResponseInputContent.ofInputImage(content.asInputImage().toBuilder()
+                    .promptCacheBreakpoint(ResponseInputImage.PromptCacheBreakpoint.builder()
+                            .mode(JsonValue.from(OpenAiOfficialPromptCacheBreakpoint.MODE_EXPLICIT))
+                            .build())
+                    .build());
+        }
+        if (content.isInputFile()) {
+            return ResponseInputContent.ofInputFile(content.asInputFile().toBuilder()
+                    .promptCacheBreakpoint(ResponseInputFile.PromptCacheBreakpoint.builder()
+                            .mode(JsonValue.from(OpenAiOfficialPromptCacheBreakpoint.MODE_EXPLICIT))
+                            .build())
+                    .build());
+        }
+        throw new UnsupportedFeatureException("OpenAI does not support a \""
+                + OpenAiOfficialPromptCacheBreakpoint.ATTRIBUTE_KEY + "\" on a " + content
+                + " content block. Supported content blocks: input_text, input_image and input_file.");
+    }
+
+    private static ResponseFunctionCallOutputItem withPromptCacheBreakpoint(ResponseFunctionCallOutputItem item) {
+        if (item.isInputText()) {
+            return ResponseFunctionCallOutputItem.ofInputText(item.asInputText().toBuilder()
+                    .promptCacheBreakpoint(ResponseInputTextContent.PromptCacheBreakpoint.builder()
+                            .mode(JsonValue.from(OpenAiOfficialPromptCacheBreakpoint.MODE_EXPLICIT))
+                            .build())
+                    .build());
+        }
+        if (item.isInputImage()) {
+            return ResponseFunctionCallOutputItem.ofInputImage(item.asInputImage().toBuilder()
+                    .promptCacheBreakpoint(ResponseInputImageContent.PromptCacheBreakpoint.builder()
+                            .mode(JsonValue.from(OpenAiOfficialPromptCacheBreakpoint.MODE_EXPLICIT))
+                            .build())
+                    .build());
+        }
+        throw new UnsupportedFeatureException("OpenAI does not support a \""
+                + OpenAiOfficialPromptCacheBreakpoint.ATTRIBUTE_KEY + "\" on a " + item
+                + " content block. Supported content blocks: input_text and input_image.");
     }
 
     private static ResponseInputItem createTextMessage(EasyInputMessage.Role role, String text) {
@@ -650,6 +749,13 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                         + content.getClass().getName()
                         + ". Only TextContent, ImageContent, and PdfFileContent are supported.");
             }
+        }
+
+        if (OpenAiOfficialPromptCacheBreakpoint.isMarked(userMessage.attributes())) {
+            // prompt caching is prefix-based, so the breakpoint goes on the last content block of the
+            // marked message: that makes the whole message part of the cached prefix
+            int lastIndex = contentList.size() - 1;
+            contentList.set(lastIndex, withPromptCacheBreakpoint(contentList.get(lastIndex)));
         }
 
         return ResponseInputItem.ofEasyInputMessage(EasyInputMessage.builder()
@@ -819,6 +925,7 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
         private String safetyIdentifier;
         private String promptCacheKey;
         private String promptCacheRetention;
+        private OpenAiOfficialPromptCacheOptions promptCacheOptions;
         private ReasoningEffort reasoningEffort;
         private Reasoning.Summary reasoningSummary;
         private String textVerbosity;
@@ -983,6 +1090,14 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
 
         public Builder promptCacheKey(String promptCacheKey) {
             this.promptCacheKey = promptCacheKey;
+            return this;
+        }
+
+        /**
+         * @since 1.20.0
+         */
+        public Builder promptCacheOptions(OpenAiOfficialPromptCacheOptions promptCacheOptions) {
+            this.promptCacheOptions = promptCacheOptions;
             return this;
         }
 
