@@ -29,7 +29,7 @@ public final class ModerationResponse {
     public ModerationResponse(Builder builder) {
         this.id = builder.id;
         this.model = builder.model;
-        this.results = builder.results;
+        this.results = builder.results == null ? null : unmodifiableList(builder.results);
     }
 
     public String id() {
@@ -104,7 +104,7 @@ public final class ModerationResponse {
 
         public Builder results(List<ModerationResult> results) {
             if (results != null) {
-                this.results = unmodifiableList(results);
+                this.results = results;
             }
             return this;
         }

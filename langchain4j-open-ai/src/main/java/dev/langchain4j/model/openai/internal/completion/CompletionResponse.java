@@ -35,7 +35,7 @@ public final class CompletionResponse {
         this.id = builder.id;
         this.created = builder.created;
         this.model = builder.model;
-        this.choices = builder.choices;
+        this.choices = builder.choices == null ? null : unmodifiableList(builder.choices);
         this.usage = builder.usage;
     }
 
@@ -139,7 +139,7 @@ public final class CompletionResponse {
 
         public Builder choices(List<CompletionChoice> choices) {
             if (choices != null) {
-                this.choices = unmodifiableList(choices);
+                this.choices = choices;
             }
             return this;
         }

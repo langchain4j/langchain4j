@@ -137,9 +137,26 @@ from `jackson-annotations`, the artifact the two versions share.
 
 **A builder-based DTO needs `@JsonCreator`.** `@JsonDeserialize(builder = ...)` is also a `databind`
 annotation, so under Jackson 3 the DTO is instead built through the `@JsonCreator` on the
-constructor that takes the builder. Both have to be present. One consequence is easy to miss: that
-route hands the builder straight to the constructor without calling `build()`, so a default applied
-inside `build()` never happens. Default the builder's field where it is declared instead.
+constructor that takes the builder. Both have to be present.
+
+**Nothing on the builder's methods runs.** This is the consequence to internalise, because it is
+silent and it has bitten this codebase four times. Jackson 2 fills a builder by calling its setters
+and then `build()`. Jackson 3 fills the builder's *fields* and hands it to the constructor - no
+setter is called, and `build()` never runs. So anything you express on a builder method is ignored:
+
+| On a builder method | Put it instead |
+|---|---|
+| a default applied in `build()` | on the builder's field, where it is declared |
+| `@JsonSetter("odd-name")` or `@JsonAlias` on a setter | on the builder's field as well - both versions read `jackson-annotations` |
+| a defensive copy, or any normalising, in a setter | in the constructor, which both routes go through |
+
+Each of those went wrong here: a type defaulted in `build()` dropped every mistral-ai tool call;
+`@JsonSetter("self-harm")` on a setter left eight OpenAI moderation flags unset; `@JsonAlias` on a
+setter dropped reasoning content; and `unmodifiableList(...)` in a setter meant the same response
+came back mutable under one codec and not the other. None of them threw.
+
+The rule that avoids all four: **a builder method may assign, and nothing else.** Anything the type
+guarantees belongs on the field or in the constructor.
 
 A module that supports the opt-in declares a `jackson3` Maven profile, which puts
 `langchain4j-jackson3` on that module's test classpath so its existing tests run against

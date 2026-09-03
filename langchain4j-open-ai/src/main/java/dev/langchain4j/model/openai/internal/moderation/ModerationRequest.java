@@ -27,7 +27,7 @@ public class ModerationRequest {
     @JsonCreator
     public ModerationRequest(Builder builder) {
         this.model = builder.model;
-        this.input = builder.input;
+        this.input = builder.input == null ? null : unmodifiableList(builder.input);
     }
 
     public String model() {
@@ -89,7 +89,7 @@ public class ModerationRequest {
 
         public Builder input(List<String> input) {
             if (input != null) {
-                this.input = unmodifiableList(input);
+                this.input = input;
             }
             return this;
         }

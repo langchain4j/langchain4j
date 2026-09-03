@@ -40,7 +40,7 @@ public final class EmbeddingRequest {
     @JsonCreator
     public EmbeddingRequest(Builder builder) {
         this.model = builder.model;
-        this.input = builder.input;
+        this.input = builder.input == null ? null : unmodifiableList(builder.input);
         this.dimensions = builder.dimensions;
         this.user = builder.user;
         this.encodingFormat = builder.encodingFormat;
@@ -142,7 +142,7 @@ public final class EmbeddingRequest {
 
         public Builder input(List<String> input) {
             if (input != null) {
-                this.input = unmodifiableList(input);
+                this.input = input;
             }
             return this;
         }

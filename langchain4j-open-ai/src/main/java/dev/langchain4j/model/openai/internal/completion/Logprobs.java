@@ -33,10 +33,10 @@ public final class Logprobs {
 
     @JsonCreator
     public Logprobs(Builder builder) {
-        this.tokens = builder.tokens;
-        this.tokenLogprobs = builder.tokenLogprobs;
-        this.topLogprobs = builder.topLogprobs;
-        this.textOffset = builder.textOffset;
+        this.tokens = builder.tokens == null ? null : unmodifiableList(builder.tokens);
+        this.tokenLogprobs = builder.tokenLogprobs == null ? null : unmodifiableList(builder.tokenLogprobs);
+        this.topLogprobs = builder.topLogprobs == null ? null : unmodifiableList(builder.topLogprobs);
+        this.textOffset = builder.textOffset == null ? null : unmodifiableList(builder.textOffset);
     }
 
     public List<String> tokens() {
@@ -109,14 +109,14 @@ public final class Logprobs {
 
         public Builder tokens(List<String> tokens) {
             if (tokens != null) {
-                this.tokens = unmodifiableList(tokens);
+                this.tokens = tokens;
             }
             return this;
         }
 
         public Builder tokenLogprobs(List<Double> tokenLogprobs) {
             if (tokenLogprobs != null) {
-                this.tokenLogprobs = unmodifiableList(tokenLogprobs);
+                this.tokenLogprobs = tokenLogprobs;
             }
             return this;
         }
@@ -127,7 +127,7 @@ public final class Logprobs {
                 for (Map<String, Double> map : topLogprobs) {
                     topLogprobsCopy.add(unmodifiableMap(map));
                 }
-                this.topLogprobs = unmodifiableList(topLogprobsCopy);
+                this.topLogprobs = topLogprobsCopy;
             }
 
             return this;
@@ -135,7 +135,7 @@ public final class Logprobs {
 
         public Builder textOffset(List<Integer> textOffset) {
             if (textOffset != null) {
-                this.textOffset = unmodifiableList(textOffset);
+                this.textOffset = textOffset;
             }
             return this;
         }

@@ -39,7 +39,7 @@ public final class ChatCompletionResponse {
         this.id = builder.id;
         this.created = builder.created;
         this.model = builder.model;
-        this.choices = builder.choices;
+        this.choices = builder.choices == null ? null : unmodifiableList(builder.choices);
         this.usage = builder.usage;
         this.systemFingerprint = builder.systemFingerprint;
         this.serviceTier = builder.serviceTier;
@@ -161,7 +161,7 @@ public final class ChatCompletionResponse {
 
         public Builder choices(List<ChatCompletionChoice> choices) {
             if (choices != null) {
-                this.choices = unmodifiableList(choices);
+                this.choices = choices;
             }
             return this;
         }

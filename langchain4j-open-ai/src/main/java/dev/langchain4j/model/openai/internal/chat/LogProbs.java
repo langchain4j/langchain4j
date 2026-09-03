@@ -22,7 +22,7 @@ public final class LogProbs {
 
     @JsonCreator
     public LogProbs(Builder builder) {
-        this.content = builder.content;
+        this.content = builder.content == null ? null : unmodifiableList(builder.content);
     }
 
     public List<LogProb> content() {
@@ -68,7 +68,7 @@ public final class LogProbs {
 
         public Builder content(List<LogProb> content) {
             if (content != null) {
-                this.content = unmodifiableList(content);
+                this.content = content;
             }
             return this;
         }

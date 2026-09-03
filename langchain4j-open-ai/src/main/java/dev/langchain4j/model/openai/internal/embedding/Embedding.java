@@ -29,7 +29,7 @@ public final class Embedding {
 
     @JsonCreator
     public Embedding(Builder builder) {
-        this.embedding = builder.embedding;
+        this.embedding = builder.embedding == null ? null : unmodifiableList(builder.embedding);
         this.index = builder.index;
     }
 
@@ -82,7 +82,7 @@ public final class Embedding {
 
         public Builder embedding(List<Float> embedding) {
             if (embedding != null) {
-                this.embedding = unmodifiableList(embedding);
+                this.embedding = embedding;
             }
             return this;
         }

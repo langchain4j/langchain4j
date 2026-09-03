@@ -33,8 +33,8 @@ public final class LogProb {
     public LogProb(Builder builder) {
         this.token = builder.token;
         this.logprob = builder.logprob;
-        this.bytes = builder.bytes;
-        this.topLogprobs = builder.topLogprobs;
+        this.bytes = builder.bytes == null ? null : unmodifiableList(builder.bytes);
+        this.topLogprobs = builder.topLogprobs == null ? null : unmodifiableList(builder.topLogprobs);
     }
 
     public String token() {
@@ -116,14 +116,14 @@ public final class LogProb {
 
         public Builder bytes(List<Integer> bytes) {
             if (bytes != null) {
-                this.bytes = unmodifiableList(bytes);
+                this.bytes = bytes;
             }
             return this;
         }
 
         public Builder topLogprobs(List<LogProb> topLogprobs) {
             if (topLogprobs != null) {
-                this.topLogprobs = unmodifiableList(topLogprobs);
+                this.topLogprobs = topLogprobs;
             }
             return this;
         }

@@ -29,7 +29,7 @@ public final class EmbeddingResponse {
     @JsonCreator
     public EmbeddingResponse(Builder builder) {
         this.model = builder.model;
-        this.data = builder.data;
+        this.data = builder.data == null ? null : unmodifiableList(builder.data);
         this.usage = builder.usage;
     }
 
@@ -107,7 +107,7 @@ public final class EmbeddingResponse {
 
         public Builder data(List<Embedding> data) {
             if (data != null) {
-                this.data = unmodifiableList(data);
+                this.data = data;
             }
             return this;
         }

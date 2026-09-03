@@ -55,7 +55,7 @@ public final class AssistantMessage implements Message {
         this.content = builder.content;
         this.reasoningContent = builder.reasoningContent;
         this.name = builder.name;
-        this.toolCalls = builder.toolCalls;
+        this.toolCalls = builder.toolCalls == null ? null : unmodifiableList(builder.toolCalls);
         this.refusal = builder.refusal;
         this.functionCall = builder.functionCall;
         this.customParameters = builder.customParameters;
@@ -189,7 +189,7 @@ public final class AssistantMessage implements Message {
         @JsonSetter
         public Builder toolCalls(List<ToolCall> toolCalls) {
             if (toolCalls != null) {
-                this.toolCalls = unmodifiableList(toolCalls);
+                this.toolCalls = toolCalls;
             }
             return this;
         }

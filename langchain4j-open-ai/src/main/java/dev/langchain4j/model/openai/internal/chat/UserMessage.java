@@ -32,7 +32,9 @@ public final class UserMessage implements Message {
 
     @JsonCreator
     public UserMessage(Builder builder) {
-        this.content = builder.stringContent != null ? builder.stringContent : builder.content;
+        this.content = builder.stringContent != null
+                ? builder.stringContent
+                : (builder.content == null ? null : unmodifiableList(builder.content));
         this.name = builder.name;
     }
 
@@ -162,7 +164,7 @@ public final class UserMessage implements Message {
 
         public Builder content(List<Content> content) {
             if (content != null) {
-                this.content = unmodifiableList(content);
+                this.content = content;
             }
             return this;
         }

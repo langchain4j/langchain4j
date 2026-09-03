@@ -39,7 +39,7 @@ public final class Delta {
         this.role = builder.role;
         this.content = builder.content;
         this.reasoningContent = builder.reasoningContent;
-        this.toolCalls = builder.toolCalls;
+        this.toolCalls = builder.toolCalls == null ? null : unmodifiableList(builder.toolCalls);
         this.functionCall = builder.functionCall;
     }
 
@@ -140,7 +140,7 @@ public final class Delta {
 
         public Builder toolCalls(List<ToolCall> toolCalls) {
             if (toolCalls != null) {
-                this.toolCalls = unmodifiableList(toolCalls);
+                this.toolCalls = toolCalls;
             }
             return this;
         }

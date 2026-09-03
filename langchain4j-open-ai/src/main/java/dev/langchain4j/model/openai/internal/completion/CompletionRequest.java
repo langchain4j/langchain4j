@@ -69,11 +69,11 @@ public final class CompletionRequest {
         this.streamOptions = builder.streamOptions;
         this.logprobs = builder.logprobs;
         this.echo = builder.echo;
-        this.stop = builder.stop;
+        this.stop = builder.stop == null ? null : unmodifiableList(builder.stop);
         this.presencePenalty = builder.presencePenalty;
         this.frequencyPenalty = builder.frequencyPenalty;
         this.bestOf = builder.bestOf;
-        this.logitBias = builder.logitBias;
+        this.logitBias = builder.logitBias == null ? null : unmodifiableMap(builder.logitBias);
         this.user = builder.user;
     }
 
@@ -327,7 +327,7 @@ public final class CompletionRequest {
 
         public Builder stop(List<String> stop) {
             if (stop != null) {
-                this.stop = unmodifiableList(stop);
+                this.stop = stop;
             }
             return this;
         }
@@ -349,7 +349,7 @@ public final class CompletionRequest {
 
         public Builder logitBias(Map<String, Integer> logitBias) {
             if (logitBias != null) {
-                this.logitBias = unmodifiableMap(logitBias);
+                this.logitBias = logitBias;
             }
             return this;
         }
