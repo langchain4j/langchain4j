@@ -15,8 +15,10 @@ class VecDbEmbeddingTableTest {
     /** Verifies that earlier VecDB tables use their physical METADATA column in SQL filters. */
     @Test
     void testMapsMetadataKeyForEarlierApi() {
-        VecDbEmbeddingTable table = VecDbEmbeddingTable.builder().name("VECTORS").build();
-        String metadataColumn = VecDbApiDialect.forVersion(VecDbApiVersion.V23_26_1).metadataColumn();
+        VecDbEmbeddingTable table =
+                VecDbEmbeddingTable.builder().name("VECTORS").build();
+        String metadataColumn =
+                VecDbApiDialect.forVersion(VecDbApiVersion.V23_26_1).metadataColumn();
 
         assertThat(table.mapMetadataKey(metadataColumn, "tenant", OracleType.VARCHAR2))
                 .isEqualTo("JSON_VALUE(METADATA, '$.\"tenant\"' RETURNING VARCHAR2 NULL ON ERROR)");
@@ -25,8 +27,10 @@ class VecDbEmbeddingTableTest {
     /** Verifies that newer VecDB tables use their physical CONTENT_METADATA column in SQL filters. */
     @Test
     void testMapsMetadataKeyForNewerApi() {
-        VecDbEmbeddingTable table = VecDbEmbeddingTable.builder().name("VECTORS").build();
-        String metadataColumn = VecDbApiDialect.forVersion(VecDbApiVersion.V23_26_3).metadataColumn();
+        VecDbEmbeddingTable table =
+                VecDbEmbeddingTable.builder().name("VECTORS").build();
+        String metadataColumn =
+                VecDbApiDialect.forVersion(VecDbApiVersion.V23_26_3).metadataColumn();
 
         assertThat(table.mapMetadataKey(metadataColumn, "tenant", OracleType.VARCHAR2))
                 .isEqualTo("JSON_VALUE(CONTENT_METADATA, '$.\"tenant\"' RETURNING VARCHAR2 NULL ON ERROR)");

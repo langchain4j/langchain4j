@@ -147,8 +147,8 @@ public final class OracleVecDbEmbeddingStore implements EmbeddingStore<TextSegme
         VecDbFilters.validate(filter, apiVersion);
         String metadataColumn = VecDbApiDialect.forVersion(apiVersion).metadataColumn();
         SQLFilter sqlFilter = SQLFilters.create(
-                filter, (metadataKey, oracleType) ->
-                        embeddingTable.mapMetadataKey(metadataColumn, metadataKey, oracleType));
+                filter,
+                (metadataKey, oracleType) -> embeddingTable.mapMetadataKey(metadataColumn, metadataKey, oracleType));
 
         try (Connection connection = dataSource.getConnection()) {
             queryExecutor.deleteVectorsByFilter(connection, embeddingTable.name(), sqlFilter);

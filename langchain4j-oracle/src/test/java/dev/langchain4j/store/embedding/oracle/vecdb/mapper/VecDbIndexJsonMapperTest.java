@@ -207,8 +207,8 @@ class VecDbIndexJsonMapperTest {
                 .distanceMetric(VecDbDistanceMetric.EUCLIDEAN)
                 .build();
 
-        JsonNode vectorParameters = readJson(VecDbIndexJsonMapper.toJson(vectorIndex, null, null))
-                .path("vector_index_params");
+        JsonNode vectorParameters =
+                readJson(VecDbIndexJsonMapper.toJson(vectorIndex, null, null)).path("vector_index_params");
 
         assertThat(vectorParameters.path("advanced_params").path("partitions").intValue())
                 .isEqualTo(5);

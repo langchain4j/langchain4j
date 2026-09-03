@@ -48,8 +48,8 @@ class VecDbJdbcQueryExecutorTest {
     /** Verifies that floating-point boundary values are bound as Oracle JSON doubles, not Oracle numbers. */
     @Test
     void testMapsSmallestDoubleToTypedOracleJson() throws SQLException {
-        OracleJsonObject json = VecDbJdbcQueryExecutor.toOracleJsonValue("{\"value\":4.9E-324}")
-                .asJsonObject();
+        OracleJsonObject json =
+                VecDbJdbcQueryExecutor.toOracleJsonValue("{\"value\":4.9E-324}").asJsonObject();
 
         OracleJsonValue value = json.get("value");
         assertThat(value.getOracleJsonType()).isEqualTo(OracleJsonValue.OracleJsonType.DOUBLE);
@@ -70,8 +70,7 @@ class VecDbJdbcQueryExecutorTest {
                           },
                           "dense_vector": [0.1, -0.2]
                         }
-                        """)
-                .asJsonObject();
+                        """).asJsonObject();
 
         assertThat(json.getString("id")).isEqualTo("vector-1");
         assertThat(json.getObject("metadata").getInt("page")).isEqualTo(3);
