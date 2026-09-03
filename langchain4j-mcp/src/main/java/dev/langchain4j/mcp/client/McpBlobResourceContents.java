@@ -4,7 +4,6 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-
 import java.util.Base64;
 import java.util.Objects;
 
@@ -22,15 +21,16 @@ public final class McpBlobResourceContents implements McpResourceContents {
     }
 
     public static McpBlobResourceContents create(String uri, byte[] blob) {
-        return new McpBlobResourceContents(uri, Base64.getMimeEncoder().encodeToString(blob), null);
+        // Use the standard Base64 encoder: the MCP schema defines 'blob' as plain Base64, while the
+        // MIME encoder inserts CRLF line breaks every 76 characters, which strict decoders reject.
+        return new McpBlobResourceContents(uri, Base64.getEncoder().encodeToString(blob), null);
     }
 
     @JsonCreator
     public McpBlobResourceContents(
             @JsonProperty("uri") String uri,
             @JsonProperty("blob") String blob,
-            @JsonProperty("mimeType") String mimeType
-    ) {
+            @JsonProperty("mimeType") String mimeType) {
         ensureNotNull(uri, "uri");
         ensureNotNull(blob, "blob");
         this.uri = uri;
@@ -60,9 +60,9 @@ public final class McpBlobResourceContents implements McpResourceContents {
         if (obj == this) return true;
         if (obj == null || obj.getClass() != this.getClass()) return false;
         var that = (McpBlobResourceContents) obj;
-        return Objects.equals(this.uri, that.uri) &&
-                Objects.equals(this.blob, that.blob) &&
-                Objects.equals(this.mimeType, that.mimeType);
+        return Objects.equals(this.uri, that.uri)
+                && Objects.equals(this.blob, that.blob)
+                && Objects.equals(this.mimeType, that.mimeType);
     }
 
     @Override
@@ -72,9 +72,6 @@ public final class McpBlobResourceContents implements McpResourceContents {
 
     @Override
     public String toString() {
-        return "McpBlobResourceContents[" +
-                "uri=" + uri + ", " +
-                "blob=" + blob + ", " +
-                "mimeType=" + mimeType + ']';
+        return "McpBlobResourceContents[" + "uri=" + uri + ", " + "blob=" + blob + ", " + "mimeType=" + mimeType + ']';
     }
 }
