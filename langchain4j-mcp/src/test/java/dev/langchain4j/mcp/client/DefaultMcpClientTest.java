@@ -217,6 +217,28 @@ public class DefaultMcpClientTest {
     }
 
     @Test
+    public void should_preserve_error_data_when_tool_list_is_refused() throws Exception {
+        final McpTransport transport = getMinimalMcpTransportMock();
+        final DefaultMcpClient client =
+                new DefaultMcpClient.Builder().transport(transport).build();
+        final ObjectNode errorResponse = JsonNodeFactory.instance.objectNode();
+        errorResponse.put("jsonrpc", "2.0").put("id", 1);
+        final ObjectNode error = errorResponse.putObject("error");
+        error.put("code", -32001).put("message", "Rate limited");
+        error.putObject("data").put("retryAfter", 5);
+        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
+                .thenReturn(CompletableFuture.completedFuture(errorResponse));
+
+        final Throwable thrown = catchThrowable(client::listTools);
+
+        assertThat(thrown).isInstanceOf(McpException.class);
+        final McpException exception = (McpException) thrown;
+        assertThat(exception.errorCode()).isEqualTo(-32001);
+        assertThat(exception.errorDataAsJson()).isEqualTo("{\"retryAfter\":5}");
+        assertThat(exception.errorDataAsMap()).containsEntry("retryAfter", 5);
+    }
+
+    @Test
     public void should_cache_tool_list() throws Exception {
         // given
         final McpTransport transport = getMinimalMcpTransportMock();
@@ -1614,6 +1636,54 @@ public class DefaultMcpClientTest {
 
         client.executeTool(
                 ToolExecutionRequest.builder().name("slowTool").arguments("{}").build());
+
+        assertThat(neverCompletes.isCancelled()).isTrue();
+        verify(transport, never()).sendMessage(any(McpClientMessage.class));
+    }
+
+    @Test
+    public void list_timeout_over_stdio_sends_cancellation_notification_modern() throws Exception {
+        McpTransport transport = getModernStdioTransportMock();
+
+        CompletableFuture<JsonNode> neverCompletes = new CompletableFuture<>();
+        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
+                .thenReturn(CompletableFuture.completedFuture(getDiscoverResult()))
+                .thenReturn(neverCompletes);
+
+        DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion("2026-07-28")
+                .toolExecutionTimeout(java.time.Duration.ofMillis(100))
+                .subscribeToToolListChanges(false)
+                .subscribeToPromptListChanges(false)
+                .subscribeToResourceListChanges(false)
+                .build();
+
+        assertThatThrownBy(client::listTools).isInstanceOf(RuntimeException.class);
+
+        assertThat(neverCompletes.isCancelled()).isTrue();
+        verify(transport, times(1)).sendMessage(any(McpClientMessage.class));
+    }
+
+    @Test
+    public void list_timeout_over_http_does_not_send_cancellation_notification_modern() throws Exception {
+        McpTransport transport = getModernHttpTransportMock();
+
+        CompletableFuture<JsonNode> neverCompletes = new CompletableFuture<>();
+        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
+                .thenReturn(CompletableFuture.completedFuture(getDiscoverResult()))
+                .thenReturn(neverCompletes);
+
+        DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion("2026-07-28")
+                .toolExecutionTimeout(java.time.Duration.ofMillis(100))
+                .subscribeToToolListChanges(false)
+                .subscribeToPromptListChanges(false)
+                .subscribeToResourceListChanges(false)
+                .build();
+
+        assertThatThrownBy(client::listTools).isInstanceOf(RuntimeException.class);
 
         assertThat(neverCompletes.isCancelled()).isTrue();
         verify(transport, never()).sendMessage(any(McpClientMessage.class));

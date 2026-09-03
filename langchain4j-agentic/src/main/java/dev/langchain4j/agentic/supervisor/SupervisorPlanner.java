@@ -117,6 +117,10 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
     }
 
     private static String argumentDescription(AgentArgument arg) {
+        String description = arg.description();
+        if (description != null && !description.isBlank()) {
+            return argumentDescription(arg.rawType(), arg.name()) + " - " + description;
+        }
         return argumentDescription(arg.rawType(), arg.name());
     }
 
