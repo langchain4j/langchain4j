@@ -96,6 +96,9 @@ public class MistralAiChatModel implements ChatModel {
                 .randomSeed(getOrDefault(builder.randomSeed, mistralParameters.randomSeed()))
                 .sendThinking(getOrDefault(builder.sendThinking, mistralParameters.sendThinking()))
                 .returnThinking(getOrDefault(builder.returnThinking, mistralParameters.returnThinking()))
+                .promptCacheKey(getOrDefault(builder.promptCacheKey, mistralParameters.promptCacheKey()))
+                .reasoningEffort(getOrDefault(builder.reasoningEffort, mistralParameters.reasoningEffort()))
+                .serviceTier(getOrDefault(builder.serviceTier, mistralParameters.serviceTier()))
                 .build();
     }
 
@@ -104,13 +107,7 @@ public class MistralAiChatModel implements ChatModel {
         MistralAiChatRequestParameters parameters = (MistralAiChatRequestParameters) chatRequest.parameters();
         validate(parameters);
 
-        MistralAiChatCompletionRequest request = createMistralAiRequest(
-                chatRequest,
-                parameters.safePrompt(),
-                parameters.randomSeed(),
-                false,
-                getOrDefault(parameters.sendThinking(), false),
-                strictJsonSchema);
+        MistralAiChatCompletionRequest request = createMistralAiRequest(chatRequest, false, strictJsonSchema);
 
         ParsedAndRawResponse<MistralAiChatCompletionResponse> response =
                 withRetryMappingExceptions(() -> client.chatCompletionWithRawResponse(request), maxRetries);
@@ -186,6 +183,9 @@ public class MistralAiChatModel implements ChatModel {
         private List<ChatModelListener> listeners;
         private Set<Capability> supportedCapabilities;
         private Boolean strictJsonSchema;
+        private String promptCacheKey;
+        private String reasoningEffort;
+        private String serviceTier;
         private ChatRequestParameters defaultRequestParameters;
         private Supplier<Map<String, String>> customHeadersSupplier;
 
@@ -397,6 +397,40 @@ public class MistralAiChatModel implements ChatModel {
 
         public MistralAiChatModelBuilder defaultRequestParameters(ChatRequestParameters parameters) {
             this.defaultRequestParameters = parameters;
+            return this;
+        }
+
+        /**
+         * A cache key for prompt caching. Use the same key for requests with shared prompt prefixes,
+         * such as multi-turn conversations or repeated system prompts, to increase cache hits.
+         *
+         * @param promptCacheKey the cache key used for prompt caching.
+         * @return {@code this}.
+         */
+        public MistralAiChatModelBuilder promptCacheKey(String promptCacheKey) {
+            this.promptCacheKey = promptCacheKey;
+            return this;
+        }
+
+        /**
+         * The reasoning effort level to use for the request.
+         *
+         * @param reasoningEffort the level of reasoning to use for the request.
+         * @return {@code this}.
+         */
+        public MistralAiChatModelBuilder reasoningEffort(String reasoningEffort) {
+            this.reasoningEffort = reasoningEffort;
+            return this;
+        }
+
+        /**
+         * Determines whether to serve the request using priority or standard capacity.
+         *
+         * @param serviceTier the service tier to use for the request.
+         * @return {@code this}.
+         */
+        public MistralAiChatModelBuilder serviceTier(String serviceTier) {
+            this.serviceTier = serviceTier;
             return this;
         }
 

@@ -8,7 +8,6 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
-
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
@@ -33,6 +32,9 @@ public class MistralAiChatCompletionRequest {
     private String[] stop;
     private Double frequencyPenalty;
     private Double presencePenalty;
+    private String promptCacheKey;
+    private String reasoningEffort;
+    private String serviceTier;
 
     private MistralAiChatCompletionRequest(MistralAiChatCompletionRequestBuilder builder) {
         this.model = builder.model;
@@ -49,6 +51,9 @@ public class MistralAiChatCompletionRequest {
         this.stop = builder.stop;
         this.frequencyPenalty = builder.frequencyPenalty;
         this.presencePenalty = builder.presencePenalty;
+        this.promptCacheKey = builder.promptCacheKey;
+        this.reasoningEffort = builder.reasoningEffort;
+        this.serviceTier = builder.serviceTier;
     }
 
     public String getModel() {
@@ -107,6 +112,18 @@ public class MistralAiChatCompletionRequest {
         return presencePenalty;
     }
 
+    public String getPromptCacheKey() {
+        return promptCacheKey;
+    }
+
+    public String getReasoningEffort() {
+        return reasoningEffort;
+    }
+
+    public String getServiceTier() {
+        return serviceTier;
+    }
+
     @Override
     public int hashCode() {
         int hash = 7;
@@ -124,6 +141,9 @@ public class MistralAiChatCompletionRequest {
         hash = 83 * hash + Objects.hashCode(this.stop);
         hash = 83 * hash + Objects.hashCode(this.frequencyPenalty);
         hash = 83 * hash + Objects.hashCode(this.presencePenalty);
+        hash = 83 * hash + Objects.hashCode(this.promptCacheKey);
+        hash = 83 * hash + Objects.hashCode(this.reasoningEffort);
+        hash = 83 * hash + Objects.hashCode(this.serviceTier);
         return hash;
     }
 
@@ -145,7 +165,10 @@ public class MistralAiChatCompletionRequest {
                 && Objects.equals(this.responseFormat, other.responseFormat)
                 && Arrays.equals(this.stop, other.stop)
                 && Objects.equals(this.frequencyPenalty, other.frequencyPenalty)
-                && Objects.equals(this.presencePenalty, other.presencePenalty);
+                && Objects.equals(this.presencePenalty, other.presencePenalty)
+                && Objects.equals(this.promptCacheKey, other.promptCacheKey)
+                && Objects.equals(this.reasoningEffort, other.reasoningEffort)
+                && Objects.equals(this.serviceTier, other.serviceTier);
     }
 
     @Override
@@ -163,6 +186,12 @@ public class MistralAiChatCompletionRequest {
                 .add("tools=" + this.getTools())
                 .add("toolChoice=" + this.getToolChoice())
                 .add("responseFormat=" + this.getResponseFormat())
+                .add("stop=" + this.getStop())
+                .add("frequencyPenalty=" + this.getFrequencyPenalty())
+                .add("presencePenalty=" + this.getPresencePenalty())
+                .add("promptCacheKey=" + this.getPromptCacheKey())
+                .add("reasoningEffort=" + this.getReasoningEffort())
+                .add("serviceTier=" + this.getServiceTier())
                 .toString();
     }
 
@@ -188,6 +217,9 @@ public class MistralAiChatCompletionRequest {
         private String[] stop;
         private Double frequencyPenalty;
         private Double presencePenalty;
+        private String promptCacheKey;
+        private String reasoningEffort;
+        private String serviceTier;
 
         private MistralAiChatCompletionRequestBuilder() {}
 
@@ -279,7 +311,7 @@ public class MistralAiChatCompletionRequest {
             return this;
         }
 
-        public MistralAiChatCompletionRequestBuilder stop(String ... stop) {
+        public MistralAiChatCompletionRequestBuilder stop(String... stop) {
             this.stop = stop;
             return this;
         }
@@ -291,6 +323,21 @@ public class MistralAiChatCompletionRequest {
 
         public MistralAiChatCompletionRequestBuilder presencePenalty(Double presencePenalty) {
             this.presencePenalty = presencePenalty;
+            return this;
+        }
+
+        public MistralAiChatCompletionRequestBuilder promptCacheKey(String promptCacheKey) {
+            this.promptCacheKey = promptCacheKey;
+            return this;
+        }
+
+        public MistralAiChatCompletionRequestBuilder reasoningEffort(String reasoningEffort) {
+            this.reasoningEffort = reasoningEffort;
+            return this;
+        }
+
+        public MistralAiChatCompletionRequestBuilder serviceTier(String serviceTier) {
+            this.serviceTier = serviceTier;
             return this;
         }
 
