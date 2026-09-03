@@ -223,6 +223,11 @@
           "classQualifiedName": "dev.langchain4j.mcp.transport.stdio.JsonRpcIoHandler",
           "annotationType": "dev.langchain4j.Internal",
           "justification": "JsonRpcIoHandler is the stdio transport's newline framing; only StdioMcpTransport constructs it and quarkus-langchain4j does not reference it. Marking it @Internal records that, and matches the constructor change already recorded below. Adding an annotation changes no signature and is binary and source compatible."
+        },
+        {
+          "code": "java.class.removed",
+          "old": "class dev.langchain4j.mcp.transport.stdio.JsonRpcIoHandler",
+          "justification": "The class is still present; it is only absent from the analysed API because this branch excludes @dev.langchain4j.Internal-annotated elements from Revapi, and JsonRpcIoHandler gained @Internal after the 1.19.0-beta29 baseline was released. The baseline therefore still analyses it while the current version does not. The exclusion disappears once a release carries the annotation into the baseline."
         }
       ]
     }

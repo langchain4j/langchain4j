@@ -25,13 +25,13 @@ import com.ibm.watsonx.ai.chat.model.ResultMessage;
 import com.ibm.watsonx.ai.chat.model.ToolCall;
 import com.ibm.watsonx.ai.chat.model.UserMessage;
 import com.ibm.watsonx.ai.core.auth.ibmcloud.IBMCloudAuthenticator;
+import com.ibm.watsonx.ai.gateway.chat.ModelGatewayChatParameters.Cache;
+import com.ibm.watsonx.ai.gateway.chat.ModelGatewayChatParameters.ReasoningEffort;
+import com.ibm.watsonx.ai.gateway.chat.ModelGatewayChatParameters.Router;
+import com.ibm.watsonx.ai.gateway.chat.ModelGatewayChatParameters.ServiceTier;
 import com.ibm.watsonx.ai.gateway.chat.ModelGatewayChatRequest;
 import com.ibm.watsonx.ai.gateway.chat.ModelGatewayChatResponse;
-import com.ibm.watsonx.ai.gateway.chat.ModelGatewayParameters.Cache;
-import com.ibm.watsonx.ai.gateway.chat.ModelGatewayParameters.ReasoningEffort;
-import com.ibm.watsonx.ai.gateway.chat.ModelGatewayParameters.Router;
-import com.ibm.watsonx.ai.gateway.chat.ModelGatewayParameters.ServiceTier;
-import com.ibm.watsonx.ai.gateway.chat.ModelGatewayService;
+import com.ibm.watsonx.ai.gateway.chat.ModelGatewayChatService;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.exception.ContentFilteredException;
 import dev.langchain4j.exception.UnsupportedFeatureException;
@@ -66,10 +66,10 @@ import org.mockito.quality.Strictness;
 public class WatsonxGatewayChatModelTest {
 
     @Mock
-    ModelGatewayService mockModelGatewayService;
+    ModelGatewayChatService mockModelGatewayChatService;
 
     @Mock
-    ModelGatewayService.Builder mockModelGatewayServiceBuilder;
+    ModelGatewayChatService.Builder mockModelGatewayChatServiceBuilder;
 
     @Captor
     ArgumentCaptor<ModelGatewayChatRequest> chatRequestCaptor;
@@ -79,17 +79,17 @@ public class WatsonxGatewayChatModelTest {
     @BeforeEach
     void setUp() {
 
-        when(mockModelGatewayServiceBuilder.modelId(any())).thenReturn(mockModelGatewayServiceBuilder);
-        when(mockModelGatewayServiceBuilder.baseUrl(any(URI.class))).thenReturn(mockModelGatewayServiceBuilder);
-        when(mockModelGatewayServiceBuilder.timeout(any())).thenReturn(mockModelGatewayServiceBuilder);
-        when(mockModelGatewayServiceBuilder.version(any())).thenReturn(mockModelGatewayServiceBuilder);
-        when(mockModelGatewayServiceBuilder.logRequests(any())).thenReturn(mockModelGatewayServiceBuilder);
-        when(mockModelGatewayServiceBuilder.logResponses(any())).thenReturn(mockModelGatewayServiceBuilder);
-        when(mockModelGatewayServiceBuilder.authenticator(any())).thenReturn(mockModelGatewayServiceBuilder);
-        when(mockModelGatewayServiceBuilder.apiKey(any())).thenReturn(mockModelGatewayServiceBuilder);
-        when(mockModelGatewayServiceBuilder.httpClient(any())).thenReturn(mockModelGatewayServiceBuilder);
-        when(mockModelGatewayServiceBuilder.verifySsl(anyBoolean())).thenReturn(mockModelGatewayServiceBuilder);
-        when(mockModelGatewayServiceBuilder.build()).thenReturn(mockModelGatewayService);
+        when(mockModelGatewayChatServiceBuilder.modelId(any())).thenReturn(mockModelGatewayChatServiceBuilder);
+        when(mockModelGatewayChatServiceBuilder.baseUrl(any(URI.class))).thenReturn(mockModelGatewayChatServiceBuilder);
+        when(mockModelGatewayChatServiceBuilder.timeout(any())).thenReturn(mockModelGatewayChatServiceBuilder);
+        when(mockModelGatewayChatServiceBuilder.version(any())).thenReturn(mockModelGatewayChatServiceBuilder);
+        when(mockModelGatewayChatServiceBuilder.logRequests(any())).thenReturn(mockModelGatewayChatServiceBuilder);
+        when(mockModelGatewayChatServiceBuilder.logResponses(any())).thenReturn(mockModelGatewayChatServiceBuilder);
+        when(mockModelGatewayChatServiceBuilder.authenticator(any())).thenReturn(mockModelGatewayChatServiceBuilder);
+        when(mockModelGatewayChatServiceBuilder.apiKey(any())).thenReturn(mockModelGatewayChatServiceBuilder);
+        when(mockModelGatewayChatServiceBuilder.httpClient(any())).thenReturn(mockModelGatewayChatServiceBuilder);
+        when(mockModelGatewayChatServiceBuilder.verifySsl(anyBoolean())).thenReturn(mockModelGatewayChatServiceBuilder);
+        when(mockModelGatewayChatServiceBuilder.build()).thenReturn(mockModelGatewayChatService);
 
         var chatUsage = new ChatUsage(10, 10, 20);
         chatResponse = ModelGatewayChatResponse.builder()
@@ -121,11 +121,11 @@ public class WatsonxGatewayChatModelTest {
         var defaultRequestParameters =
                 assertInstanceOf(WatsonxGatewayChatRequestParameters.class, chatModel.defaultRequestParameters());
 
-        var modelGatewayServiceField =
-                assertDoesNotThrow(() -> chatModel.getClass().getSuperclass().getDeclaredField("modelGatewayService"));
-        var modelGatewayService = assertDoesNotThrow(() -> modelGatewayServiceField.get(chatModel));
+        var modelGatewayChatServiceField = assertDoesNotThrow(
+                () -> chatModel.getClass().getSuperclass().getDeclaredField("modelGatewayChatService"));
+        var modelGatewayChatService = assertDoesNotThrow(() -> modelGatewayChatServiceField.get(chatModel));
 
-        assertInstanceOf(ModelGatewayService.class, modelGatewayService);
+        assertInstanceOf(ModelGatewayChatService.class, modelGatewayChatService);
         assertEquals(ModelProvider.WATSONX, chatModel.provider());
         assertNull(defaultRequestParameters.frequencyPenalty());
         assertNull(defaultRequestParameters.logitBias());
@@ -161,9 +161,9 @@ public class WatsonxGatewayChatModelTest {
         var resultChoice = new ResultChoice(0, resultMessage, "stop");
         chatResponse.choices(List.of(resultChoice));
 
-        when(mockModelGatewayService.chat(chatRequestCaptor.capture())).thenReturn(chatResponse.build());
+        when(mockModelGatewayChatService.chat(chatRequestCaptor.capture())).thenReturn(chatResponse.build());
 
-        withModelGatewayServiceMock(() -> {
+        withModelGatewayChatServiceMock(() -> {
             var chatModel = WatsonxGatewayChatModel.builder()
                     .baseUrl("https://test.com")
                     .modelName("gpt-4o")
@@ -184,9 +184,9 @@ public class WatsonxGatewayChatModelTest {
         var resultChoice = new ResultChoice(0, resultMessage, "stop");
         chatResponse.choices(List.of(resultChoice));
 
-        when(mockModelGatewayService.chat(chatRequestCaptor.capture())).thenReturn(chatResponse.build());
+        when(mockModelGatewayChatService.chat(chatRequestCaptor.capture())).thenReturn(chatResponse.build());
 
-        withModelGatewayServiceMock(() -> {
+        withModelGatewayChatServiceMock(() -> {
             var chatModel = WatsonxGatewayChatModel.builder()
                     .baseUrl("https://test.com")
                     .modelName("gpt-4o")
@@ -204,9 +204,9 @@ public class WatsonxGatewayChatModelTest {
         var resultMessage = new ResultMessage(AssistantMessage.ROLE, null, null, null, List.of(toolCall));
         var resultChoice = new ResultChoice(0, resultMessage, "stop");
         chatResponse.choices(List.of(resultChoice));
-        when(mockModelGatewayService.chat(chatRequestCaptor.capture())).thenReturn(chatResponse.build());
+        when(mockModelGatewayChatService.chat(chatRequestCaptor.capture())).thenReturn(chatResponse.build());
 
-        withModelGatewayServiceMock(() -> {
+        withModelGatewayChatServiceMock(() -> {
             var chatModel = WatsonxGatewayChatModel.builder()
                     .baseUrl("https://test.com")
                     .modelName("gpt-4o")
@@ -229,11 +229,11 @@ public class WatsonxGatewayChatModelTest {
             var metadata = (WatsonxChatResponseMetadata) response.metadata();
             assertEquals("id", response.id());
             assertEquals("model", response.modelName());
-            assertEquals("modelVersion", metadata.getModelVersion());
-            assertEquals(1L, metadata.getCreated());
-            assertEquals("auto", metadata.getServiceTier());
-            assertEquals("fp", metadata.getSystemFingerprint());
-            assertEquals(true, metadata.getCached());
+            assertEquals("modelVersion", metadata.modelVersion());
+            assertEquals(1L, metadata.created());
+            assertEquals("auto", metadata.serviceTier());
+            assertEquals("fp", metadata.systemFingerprint());
+            assertEquals(true, metadata.cached());
             assertEquals(FinishReason.STOP, response.finishReason());
             assertEquals(10, response.tokenUsage().inputTokenCount());
             assertEquals(10, response.tokenUsage().outputTokenCount());
@@ -256,9 +256,9 @@ public class WatsonxGatewayChatModelTest {
         var resultChoice = new ResultChoice(0, resultMessage, "stop");
         chatResponse.choices(List.of(resultChoice));
 
-        when(mockModelGatewayService.chat(chatRequestCaptor.capture())).thenReturn(chatResponse.build());
+        when(mockModelGatewayChatService.chat(chatRequestCaptor.capture())).thenReturn(chatResponse.build());
 
-        withModelGatewayServiceMock(() -> {
+        withModelGatewayChatServiceMock(() -> {
             var chatModel = WatsonxGatewayChatModel.builder()
                     .baseUrl("https://test.com")
                     .modelName("gpt-4o")
@@ -331,9 +331,9 @@ public class WatsonxGatewayChatModelTest {
         var resultChoice = new ResultChoice(0, resultMessage, "stop");
         chatResponse.choices(List.of(resultChoice));
 
-        when(mockModelGatewayService.chat(chatRequestCaptor.capture())).thenReturn(chatResponse.build());
+        when(mockModelGatewayChatService.chat(chatRequestCaptor.capture())).thenReturn(chatResponse.build());
 
-        withModelGatewayServiceMock(() -> {
+        withModelGatewayChatServiceMock(() -> {
             var chatModel = WatsonxGatewayChatModel.builder()
                     .baseUrl("https://test.com")
                     .modelName("gpt-4o")
@@ -393,9 +393,9 @@ public class WatsonxGatewayChatModelTest {
         var resultChoice = new ResultChoice(0, resultMessage, "stop");
         chatResponse.choices(List.of(resultChoice));
 
-        when(mockModelGatewayService.chat(chatRequestCaptor.capture())).thenReturn(chatResponse.build());
+        when(mockModelGatewayChatService.chat(chatRequestCaptor.capture())).thenReturn(chatResponse.build());
 
-        withModelGatewayServiceMock(() -> {
+        withModelGatewayChatServiceMock(() -> {
             var chatModel = WatsonxGatewayChatModel.builder()
                     .baseUrl("https://test.com")
                     .apiKey("api-key")
@@ -447,9 +447,9 @@ public class WatsonxGatewayChatModelTest {
         var resultChoice = new ResultChoice(0, resultMessage, "stop");
         chatResponse.choices(List.of(resultChoice));
 
-        when(mockModelGatewayService.chat(chatRequestCaptor.capture())).thenReturn(chatResponse.build());
+        when(mockModelGatewayChatService.chat(chatRequestCaptor.capture())).thenReturn(chatResponse.build());
 
-        withModelGatewayServiceMock(() -> {
+        withModelGatewayChatServiceMock(() -> {
             var chatModel = WatsonxGatewayChatModel.builder()
                     .baseUrl("https://test.com")
                     .modelName("gpt-4o")
@@ -581,15 +581,15 @@ public class WatsonxGatewayChatModelTest {
 
         var authenticator = mock(IBMCloudAuthenticator.class);
 
-        withModelGatewayServiceMock(() -> {
+        withModelGatewayChatServiceMock(() -> {
             assertDoesNotThrow(() -> WatsonxGatewayChatModel.builder()
                     .baseUrl("https://test.com")
                     .modelName("gpt-4o")
                     .authenticator(authenticator)
                     .build());
 
-            verify(mockModelGatewayServiceBuilder).authenticator(authenticator);
-            verify(mockModelGatewayServiceBuilder, never()).apiKey(any());
+            verify(mockModelGatewayChatServiceBuilder).authenticator(authenticator);
+            verify(mockModelGatewayChatServiceBuilder, never()).apiKey(any());
         });
     }
 
@@ -600,7 +600,7 @@ public class WatsonxGatewayChatModelTest {
         var resultChoice = new ResultChoice(0, resultMessage, "stop");
         chatResponse.choices(List.of(resultChoice));
 
-        when(mockModelGatewayService.chat(chatRequestCaptor.capture())).thenReturn(chatResponse.build());
+        when(mockModelGatewayChatService.chat(chatRequestCaptor.capture())).thenReturn(chatResponse.build());
 
         var responseFormat = ResponseFormat.builder()
                 .type(ResponseFormatType.JSON)
@@ -614,7 +614,7 @@ public class WatsonxGatewayChatModelTest {
                         .build())
                 .build();
 
-        withModelGatewayServiceMock(() -> {
+        withModelGatewayChatServiceMock(() -> {
             var chatModel = WatsonxGatewayChatModel.builder()
                     .baseUrl("https://test.com")
                     .modelName("gpt-4o")
@@ -631,7 +631,7 @@ public class WatsonxGatewayChatModelTest {
             assertEquals(false, schema.get("additionalProperties"));
         });
 
-        withModelGatewayServiceMock(() -> {
+        withModelGatewayChatServiceMock(() -> {
             var chatModel = WatsonxGatewayChatModel.builder()
                     .baseUrl("https://test.com")
                     .modelName("gpt-4o")
@@ -650,9 +650,9 @@ public class WatsonxGatewayChatModelTest {
         });
     }
 
-    private void withModelGatewayServiceMock(Runnable action) {
-        try (MockedStatic<ModelGatewayService> mockedStatic = mockStatic(ModelGatewayService.class)) {
-            mockedStatic.when(ModelGatewayService::builder).thenReturn(mockModelGatewayServiceBuilder);
+    private void withModelGatewayChatServiceMock(Runnable action) {
+        try (MockedStatic<ModelGatewayChatService> mockedStatic = mockStatic(ModelGatewayChatService.class)) {
+            mockedStatic.when(ModelGatewayChatService::builder).thenReturn(mockModelGatewayChatServiceBuilder);
             action.run();
         }
     }

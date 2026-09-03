@@ -504,6 +504,13 @@ class Tests {
 See the [`GuardrailAssertions`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-test/src/main/java/dev/langchain4j/test/guardrail/GuardrailAssertions.java) and [`OutputGuardrailResultAssert`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-test/src/main/java/dev/langchain4j/test/guardrail/OutputGuardrailResultAssert.java) classes for more details.
 :::
 
+:::note
+A guardrail that performs I/O can implement `validateAsync(...)` so that it does not block a thread when the
+AI Service is used in a non-blocking mode. Input and output guardrails, including tool-aware reprompts, are
+supported on the asynchronous and reactive modes.
+See [Non-blocking and Reactive](/tutorials/non-blocking).
+:::
+
 ## Mixing and matching
 
 You can mix and match input and output guardrails however you like!
