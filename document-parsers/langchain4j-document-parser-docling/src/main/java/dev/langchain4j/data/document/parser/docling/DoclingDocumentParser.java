@@ -166,15 +166,13 @@ public class DoclingDocumentParser implements DocumentParser {
     }
 
     private static RuntimeException toParseException(Throwable cause) {
-        final RuntimeException result;
         if (cause instanceof BlankDocumentException blank) {
-            result = blank;
+            return blank;
         } else if (cause instanceof IllegalArgumentException illegalArgument) {
-            result = illegalArgument;
-        } else {
-            result = new RuntimeException("Docling failed to parse document: " + cause.getMessage(), cause);
+            return illegalArgument;
         }
-        return result;
+
+        return new RuntimeException("Docling failed to parse document: " + cause.getMessage(), cause);
     }
 
     /**
