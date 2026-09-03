@@ -46,27 +46,30 @@ class VespaClient {
     public static VespaApi createInstance(
             String baseUrl, Path certificate, Path privateKey, boolean logRequests, boolean logResponses) {
         try {
-            OkHttpClient.Builder builder = new OkHttpClient.Builder().addInterceptor(chain -> {
-                Request request = chain.request()
-                        .newBuilder()
-                        .addHeader("User-Agent", "LangChain4j")
-                        .build();
-                return chain.proceed(request);
-            }).addInterceptor(chain -> {
-                // trick to format the query URL exactly how Vespa expects it (search/?query),
-                // see https://docs.vespa.ai/en/reference/query-language-reference.html
-                Request request = chain.request();
-                if (request.url().url().getPath().startsWith("/search/")) {
-                    HttpUrl url = request.url()
-                            .newBuilder()
-                            .removePathSegment(1)
-                            .addPathSegment("")
-                            .encodedQuery(request.url().encodedPathSegments().get(1))
-                            .build();
-                    request = request.newBuilder().url(url).build();
-                }
-                return chain.proceed(request);
-            });
+            OkHttpClient.Builder builder = new OkHttpClient.Builder()
+                    .addInterceptor(chain -> {
+                        Request request = chain.request()
+                                .newBuilder()
+                                .addHeader("User-Agent", "LangChain4j")
+                                .build();
+                        return chain.proceed(request);
+                    })
+                    .addInterceptor(chain -> {
+                        // trick to format the query URL exactly how Vespa expects it (search/?query),
+                        // see https://docs.vespa.ai/en/reference/query-language-reference.html
+                        Request request = chain.request();
+                        if (request.url().url().getPath().startsWith("/search/")) {
+                            HttpUrl url = request.url()
+                                    .newBuilder()
+                                    .removePathSegment(1)
+                                    .addPathSegment("")
+                                    .encodedQuery(
+                                            request.url().encodedPathSegments().get(1))
+                                    .build();
+                            request = request.newBuilder().url(url).build();
+                        }
+                        return chain.proceed(request);
+                    });
 
             addSsl(certificate, privateKey, builder);
 

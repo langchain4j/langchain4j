@@ -33,10 +33,8 @@ class CohereClient {
 
         Duration timeout = getOrDefault(builder.timeout, ofSeconds(60));
 
-        HttpClient httpClient = httpClientBuilder
-                .connectTimeout(timeout)
-                .readTimeout(timeout)
-                .build();
+        HttpClient httpClient =
+                httpClientBuilder.connectTimeout(timeout).readTimeout(timeout).build();
 
         if (builder.logRequests != null && builder.logRequests
                 || builder.logResponses != null && builder.logResponses) {
@@ -128,8 +126,7 @@ class CohereClient {
         private Boolean logResponses;
         private Logger logger;
 
-        CohereClientBuilder() {
-        }
+        CohereClientBuilder() {}
 
         public CohereClientBuilder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
             this.httpClientBuilder = httpClientBuilder;
@@ -181,7 +178,9 @@ class CohereClient {
         }
 
         public String toString() {
-            return "CohereClient.CohereClientBuilder(baseUrl=" + this.baseUrl + ", apiKey=" + this.apiKey + ", timeout=" + this.timeout + ", proxy=" + this.proxy + ", logRequests=" + this.logRequests + ", logResponses=" + this.logResponses + ")";
+            return "CohereClient.CohereClientBuilder(baseUrl=" + this.baseUrl + ", apiKey=" + this.apiKey + ", timeout="
+                    + this.timeout + ", proxy=" + this.proxy + ", logRequests=" + this.logRequests + ", logResponses="
+                    + this.logResponses + ")";
         }
     }
 }

@@ -82,8 +82,7 @@ class TavilyClient {
         private Boolean logRequests;
         private Boolean logResponses;
 
-        TavilyClientBuilder() {
-        }
+        TavilyClientBuilder() {}
 
         public TavilyClientBuilder baseUrl(String baseUrl) {
             this.baseUrl = baseUrl;

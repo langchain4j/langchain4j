@@ -74,8 +74,7 @@ class SearchApiClient {
         private Boolean logRequests;
         private Boolean logResponses;
 
-        SearchApiClientBuilder() {
-        }
+        SearchApiClientBuilder() {}
 
         public SearchApiClientBuilder timeout(Duration timeout) {
             this.timeout = timeout;
