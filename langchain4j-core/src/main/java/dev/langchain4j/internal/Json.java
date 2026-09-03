@@ -74,6 +74,9 @@ public class Json {
     private static final JsonCodec CODEC = loadCodec();
 
     private static JsonCodec loadCodec() {
+        // Substituted by quarkus-langchain4j for native image (@TargetClass/@Substitute in its
+        // Substitutions), so this name and signature are depended on from outside despite being
+        // private. Renaming it breaks that build with no compile error here.
         for (JsonCodecFactory factory : loadFactories(JsonCodecFactory.class)) {
             return factory.create();
         }

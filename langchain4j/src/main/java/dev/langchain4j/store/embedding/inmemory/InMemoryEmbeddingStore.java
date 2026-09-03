@@ -339,6 +339,9 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
     }
 
     private static InMemoryEmbeddingStoreJsonCodec loadCodec() {
+        // Substituted by quarkus-langchain4j for native image (@TargetClass/@Substitute in its
+        // Substitutions), so this name and signature are depended on from outside despite being
+        // private. Renaming it breaks that build with no compile error here.
         for (InMemoryEmbeddingStoreJsonCodecFactory factory :
                 loadFactories(InMemoryEmbeddingStoreJsonCodecFactory.class)) {
             return factory.create();
