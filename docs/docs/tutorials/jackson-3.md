@@ -1,12 +1,13 @@
 ---
-sidebar_position: 36
+sidebar_position: 37
 ---
 
 # Using Jackson 3
 
 LangChain4j reads and writes JSON in a lot of places: the requests and responses it exchanges with
 LLM providers, the structured output an AI Service parses, chat memory you persist, and more. By
-default it does that with [Jackson 2](https://github.com/FasterXML/jackson).
+default it does that with [Jackson 2](https://github.com/FasterXML/jackson). How LangChain4j uses
+JSON, and how to plug in your own mapper, is covered in [JSON](/tutorials/json).
 
 If your application is on Jackson 3, you can have LangChain4j use it instead.
 
@@ -26,6 +27,18 @@ That is the whole of it, for every module including `langchain4j-agentic`. LangC
 module through the `ServiceLoader` and routes its JSON through Jackson 3. There is nothing to
 configure and no API to call, and if you remove the dependency everything goes back to Jackson 2.
 
+The support is split across two artifacts, and `langchain4j-jackson3` above pulls in both, so that
+is the one to add unless you have a reason not to:
+
+| Artifact | Covers | Depends on |
+|---|---|---|
+| `langchain4j-core-jackson3` | everything in `langchain4j-core`: provider requests and responses, structured output, chat-memory serialization, agent state | `langchain4j-core` |
+| `langchain4j-jackson3` | the above, plus `InMemoryEmbeddingStore` persistence, which lives in the `langchain4j` module | `langchain4j-core-jackson3` and `langchain4j` |
+
+Add `langchain4j-core-jackson3` on its own only if your application uses `langchain4j-core` and a
+provider without the `langchain4j` module - for instance a framework integration that builds models
+directly. Adding it alongside `langchain4j-jackson3` is unnecessary but harmless.
+
 ## What stays the same
 
 Switching a JSON library is a good way to change behaviour by accident, so the module works hard not
@@ -38,6 +51,7 @@ to. Jackson 3 changed several defaults, and every one of them is set back to wha
 | `SORT_PROPERTIES_ALPHABETICALLY` | enabled | disabled |
 | `FAIL_ON_TRAILING_TOKENS` | enabled | disabled |
 | `FAIL_ON_NULL_FOR_PRIMITIVES` | enabled | disabled |
+| `""` coerced to an enum | rejected | read as `null`, as Jackson 2 does |
 
 The first one matters most: without it, a final collection field is left empty instead of being
 populated, and nothing tells you.
@@ -175,11 +189,16 @@ Check that the module's `pom.xml` actually declares that profile before trusting
 Maven ignores a profile the selected module does not declare, so the command above reports
 success having run everything on Jackson 2. Adding the profile is part of migrating a module.
 
-`langchain4j-open-ai` is the one module that cannot have it. `langchain4j-jackson3` depends
-on `langchain4j`, whose own tests depend on `langchain4j-open-ai`, so the profile would make the
-module graph cyclic. Its wire types are checked from `langchain4j-jackson3` instead, where
-`OpenAiBuilderCreatorParityTest` compares every builder-based DTO built through its builder against
-the same DTO parsed from `{}`, which is what the missing `build()` call above would change.
+The profile puts `langchain4j-core-jackson3` on the test classpath, not `langchain4j-jackson3`,
+because the latter depends on the `langchain4j` module and would make the graph cyclic for the
+modules that module is itself built on. `InMemoryEmbeddingStore` persistence, which is the part
+that needs the full artifact, is covered by `langchain4j-jackson3`'s own tests and by
+`integration-tests/integration-tests-jackson3`.
+
+`langchain4j-open-ai` also carries `OpenAiBuilderCreatorParityTest`, which compares every
+builder-based DTO built through its builder against the same DTO parsed from `{}`. That is the
+difference the missing `build()` call above produces, so the test catches it for the whole of the
+OpenAI wire model at once rather than one field at a time.
 
 ## If you plug in your own JSON
 

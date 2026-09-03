@@ -5,16 +5,18 @@ import static dev.langchain4j.spi.PrioritizedFactory.YIELDS_TO_OTHERS;
 import static com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility.ANY;
 import static com.fasterxml.jackson.annotation.PropertyAccessor.FIELD;
 
-import dev.langchain4j.spi.PrioritizedFactory;
+import dev.langchain4j.exception.JsonReadException;
+import dev.langchain4j.exception.JsonWriteException;
 import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.model.input.structured.StructuredPrompt;
+import dev.langchain4j.spi.PrioritizedFactory;
 import dev.langchain4j.spi.prompt.structured.StructuredPromptFactory;
 import java.util.Map;
+import tools.jackson.core.JacksonException;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.json.JsonMapper;
-
 /**
  * Jackson 3 twin of the default structured prompt factory.
  */
@@ -40,6 +42,16 @@ public class Jackson3StructuredPromptFactory implements StructuredPromptFactory,
     }
 
     private static Map<String, Object> extractVariables(Object structuredPrompt) {
-        return OBJECT_MAPPER.readValue(OBJECT_MAPPER.writeValueAsString(structuredPrompt), MAP_TYPE);
+        String json;
+        try {
+            json = OBJECT_MAPPER.writeValueAsString(structuredPrompt);
+        } catch (JacksonException e) {
+            throw new JsonWriteException(e);
+        }
+        try {
+            return OBJECT_MAPPER.readValue(json, MAP_TYPE);
+        } catch (JacksonException e) {
+            throw new JsonReadException(e);
+        }
     }
 }
