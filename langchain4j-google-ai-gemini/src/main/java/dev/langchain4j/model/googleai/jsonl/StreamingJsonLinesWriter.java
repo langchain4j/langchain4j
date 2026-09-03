@@ -1,8 +1,8 @@
 package dev.langchain4j.model.googleai.jsonl;
 
 import dev.langchain4j.internal.Json;
-import dev.langchain4j.internal.WireJson;
-import dev.langchain4j.internal.WireJsonSpec;
+import dev.langchain4j.internal.ProviderJson;
+import dev.langchain4j.internal.ProviderJsonSpec;
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -14,7 +14,7 @@ import java.nio.file.Path;
 
 final class StreamingJsonLinesWriter implements JsonLinesWriter {
 
-    private static final Json.JsonCodec CODEC = WireJson.codec(WireJsonSpec.builder().build());
+    private static final Json.JsonCodec CODEC = ProviderJson.codec(ProviderJsonSpec.builder().build());
 
     private final BufferedWriter writer;
 

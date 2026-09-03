@@ -20,8 +20,8 @@ import ai.vespa.feed.client.Result;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.internal.Json;
-import dev.langchain4j.internal.WireJson;
-import dev.langchain4j.internal.WireJsonSpec;
+import dev.langchain4j.internal.ProviderJson;
+import dev.langchain4j.internal.ProviderJsonSpec;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
@@ -49,8 +49,8 @@ public class VespaEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     // SNAKE_CASE matches the @JsonNaming that Record.Fields still carries for Retrofit's own mapper,
     // so both paths agree whichever JSON library backs this codec.
-    private static final Json.JsonCodec CODEC = WireJson.codec(
-            WireJsonSpec.builder().propertyNaming(WireJsonSpec.PropertyNaming.SNAKE_CASE).build());
+    private static final Json.JsonCodec CODEC = ProviderJson.codec(
+            ProviderJsonSpec.builder().propertyNaming(ProviderJsonSpec.PropertyNaming.SNAKE_CASE).build());
 
     private static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(5);
     static final String DEFAULT_NAMESPACE = "namespace";

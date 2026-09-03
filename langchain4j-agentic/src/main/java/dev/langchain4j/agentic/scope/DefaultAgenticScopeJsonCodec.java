@@ -5,7 +5,7 @@ import dev.langchain4j.agentic.internal.PendingResponse;
 import dev.langchain4j.agentic.internal.SuspendedResponse;
 import dev.langchain4j.exception.JsonTypeNotAllowedException;
 import dev.langchain4j.internal.Json;
-import dev.langchain4j.internal.PolymorphicJson;
+import dev.langchain4j.internal.StateJson;
 import dev.langchain4j.internal.TypeAllowlist;
 
 /**
@@ -13,7 +13,7 @@ import dev.langchain4j.internal.TypeAllowlist;
  *
  * <p>Agent state holds whatever the agents put in it, so the document names the types it contains
  * and reading it means instantiating them - hence the allowlist. Everything JSON-library-specific
- * about that lives behind {@link PolymorphicJson}, which is why this module needs no JSON library
+ * about that lives behind {@link StateJson}, which is why this module needs no JSON library
  * of its own.
  */
 @Internal
@@ -30,7 +30,7 @@ class DefaultAgenticScopeJsonCodec implements AgenticScopeJsonCodec {
      * serving other threads must not be mutated, and a Jackson 3 mapper cannot be reconfigured
      * once built.
      */
-    private static volatile Json.JsonCodec codec = PolymorphicJson.codec(ALLOWLIST);
+    private static volatile Json.JsonCodec codec = StateJson.codec(ALLOWLIST);
 
     private static TypeAllowlist agenticScopeAllowlist() {
         TypeAllowlist allowlist = new TypeAllowlist();
@@ -65,7 +65,7 @@ class DefaultAgenticScopeJsonCodec implements AgenticScopeJsonCodec {
 
     @Override
     public boolean withClassLoader(ClassLoader classLoader) {
-        codec = PolymorphicJson.codec(ALLOWLIST, classLoader);
+        codec = StateJson.codec(ALLOWLIST, classLoader);
         return true;
     }
 

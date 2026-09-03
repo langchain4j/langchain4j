@@ -10,8 +10,8 @@ import dev.langchain4j.Internal;
 import dev.langchain4j.exception.JsonException;
 import dev.langchain4j.internal.Json;
 import dev.langchain4j.internal.Types;
-import dev.langchain4j.internal.WireJson;
-import dev.langchain4j.internal.WireJsonSpec;
+import dev.langchain4j.internal.ProviderJson;
+import dev.langchain4j.internal.ProviderJsonSpec;
 import java.lang.reflect.Type;
 import java.util.List;
 import java.util.Map;
@@ -32,7 +32,7 @@ public final class McpJson {
      * <p>Wire codecs ignore unknown properties, which MCP needs: the protocol adds fields in a
      * backwards-compatible way, such as the {@code title} that 2025-06-18 put on every named object.
      */
-    private static final Json.JsonCodec CODEC = WireJson.codec(WireJsonSpec.builder().build());
+    private static final Json.JsonCodec CODEC = ProviderJson.codec(ProviderJsonSpec.builder().build());
 
     /**
      * Only for the tree the deprecated {@code JsonNode} APIs still expose, and for the tree the

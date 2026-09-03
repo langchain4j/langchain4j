@@ -1,20 +1,20 @@
 package dev.langchain4j.model.googleai;
 
 import dev.langchain4j.Internal;
-import dev.langchain4j.internal.WireJson;
-import dev.langchain4j.internal.WireJsonSpec;
+import dev.langchain4j.internal.ProviderJson;
+import dev.langchain4j.internal.ProviderJsonSpec;
 import java.lang.reflect.Type;
 
 @Internal
 class Json {
 
-    private static final dev.langchain4j.internal.Json.JsonCodec CODEC = WireJson.codec(WireJsonSpec.builder()
-            .inclusion(WireJsonSpec.Inclusion.NON_NULL)
+    private static final dev.langchain4j.internal.Json.JsonCodec CODEC = ProviderJson.codec(ProviderJsonSpec.builder()
+            .inclusion(ProviderJsonSpec.Inclusion.NON_NULL)
             .prettyPrint(true)
             .build());
 
     private static final dev.langchain4j.internal.Json.JsonCodec CODEC_WITHOUT_INDENT =
-            WireJson.codec(WireJsonSpec.builder().build());
+            ProviderJson.codec(ProviderJsonSpec.builder().build());
 
     static String toJson(Object o) {
         return CODEC.toJson(o);

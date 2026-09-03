@@ -5,8 +5,8 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.internal.Json;
-import dev.langchain4j.internal.WireJson;
-import dev.langchain4j.internal.WireJsonSpec;
+import dev.langchain4j.internal.ProviderJson;
+import dev.langchain4j.internal.ProviderJsonSpec;
 import dev.langchain4j.store.embedding.filter.Filter;
 import java.sql.*;
 import java.util.*;
@@ -16,7 +16,7 @@ import java.util.*;
  */
 class JSONMetadataHandler implements MetadataHandler {
     private static final Json.JsonCodec CODEC =
-            WireJson.codec(WireJsonSpec.builder().prettyPrint(true).build());
+            ProviderJson.codec(ProviderJsonSpec.builder().prettyPrint(true).build());
     public static final String DEFAULT_COLUMN_METADATA = "metadata";
     private final MetadataColumDefinition columnDefinition;
     private final String escapedColumnsName;

@@ -4,8 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.langchain4j.internal.Json;
-import dev.langchain4j.internal.WireJson;
-import dev.langchain4j.internal.WireJsonSpec;
+import dev.langchain4j.internal.ProviderJson;
+import dev.langchain4j.internal.ProviderJsonSpec;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.Base64;
@@ -18,8 +18,8 @@ import org.junit.jupiter.api.Test;
  */
 class EmbeddingDeserializationTest {
 
-    private final Json.JsonCodec codec = WireJson.codec(WireJsonSpec.builder()
-            .propertyNaming(WireJsonSpec.PropertyNaming.SNAKE_CASE)
+    private final Json.JsonCodec codec = ProviderJson.codec(ProviderJsonSpec.builder()
+            .propertyNaming(ProviderJsonSpec.PropertyNaming.SNAKE_CASE)
             .build());
 
     private static String base64(List<Float> floats) {

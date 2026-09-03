@@ -4,8 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.langchain4j.internal.Json;
-import dev.langchain4j.internal.WireJson;
-import dev.langchain4j.internal.WireJsonSpec;
+import dev.langchain4j.internal.ProviderJson;
+import dev.langchain4j.internal.ProviderJsonSpec;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionRequest;
 import dev.langchain4j.model.openai.internal.chat.Content;
 import dev.langchain4j.model.openai.internal.chat.ContentType;
@@ -24,8 +24,8 @@ import org.junit.jupiter.api.Test;
  */
 class OpenAiWireFormatWithoutJackson2Test {
 
-    private final Json.JsonCodec codec = WireJson.codec(WireJsonSpec.builder()
-            .propertyNaming(WireJsonSpec.PropertyNaming.SNAKE_CASE)
+    private final Json.JsonCodec codec = ProviderJson.codec(ProviderJsonSpec.builder()
+            .propertyNaming(ProviderJsonSpec.PropertyNaming.SNAKE_CASE)
             .build());
 
     @Test
@@ -126,7 +126,7 @@ class OpenAiWireFormatWithoutJackson2Test {
 
     @Test
     void snake_case_can_be_turned_off_via_the_spec() {
-        Json.JsonCodec identity = WireJson.codec(WireJsonSpec.builder().build());
+        Json.JsonCodec identity = ProviderJson.codec(ProviderJsonSpec.builder().build());
         assertThat(identity.toJson(List.of())).isEqualTo("[]");
     }
 }

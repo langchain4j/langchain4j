@@ -3,8 +3,8 @@ package dev.langchain4j.model.jina;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
-import dev.langchain4j.internal.WireJson;
-import dev.langchain4j.internal.WireJsonSpec;
+import dev.langchain4j.internal.ProviderJson;
+import dev.langchain4j.internal.ProviderJsonSpec;
 import dev.langchain4j.data.message.ContentType;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.TextContent;
@@ -16,8 +16,8 @@ import org.junit.jupiter.api.Test;
 class JinaMultimodalEmbeddingModelTest {
 
     // Mirrors the codec JinaJsonUtils uses, which is where the snake_case naming now lives.
-    private static final dev.langchain4j.internal.Json.JsonCodec CODEC = WireJson.codec(WireJsonSpec.builder()
-            .propertyNaming(WireJsonSpec.PropertyNaming.SNAKE_CASE)
+    private static final dev.langchain4j.internal.Json.JsonCodec CODEC = ProviderJson.codec(ProviderJsonSpec.builder()
+            .propertyNaming(ProviderJsonSpec.PropertyNaming.SNAKE_CASE)
             .build());
 
     private static JinaEmbeddingModel model(String modelName) {

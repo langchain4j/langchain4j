@@ -1,14 +1,14 @@
 package dev.langchain4j.model.bedrock;
 
 import dev.langchain4j.Internal;
-import dev.langchain4j.internal.WireJson;
-import dev.langchain4j.internal.WireJsonSpec;
+import dev.langchain4j.internal.ProviderJson;
+import dev.langchain4j.internal.ProviderJsonSpec;
 
 @Internal
 class Json {
 
-    private static final dev.langchain4j.internal.Json.JsonCodec CODEC = WireJson.codec(WireJsonSpec.builder()
-            .inclusion(WireJsonSpec.Inclusion.NON_NULL)
+    private static final dev.langchain4j.internal.Json.JsonCodec CODEC = ProviderJson.codec(ProviderJsonSpec.builder()
+            .inclusion(ProviderJsonSpec.Inclusion.NON_NULL)
             .prettyPrint(true)
             .build());
 

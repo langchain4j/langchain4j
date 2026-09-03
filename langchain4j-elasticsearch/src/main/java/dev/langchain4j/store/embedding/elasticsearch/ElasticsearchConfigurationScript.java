@@ -10,8 +10,8 @@ import co.elastic.clients.elasticsearch.core.search.SourceConfig;
 import co.elastic.clients.json.JsonData;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.internal.Json;
-import dev.langchain4j.internal.WireJson;
-import dev.langchain4j.internal.WireJsonSpec;
+import dev.langchain4j.internal.ProviderJson;
+import dev.langchain4j.internal.ProviderJsonSpec;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.filter.Filter;
 import java.io.IOException;
@@ -26,7 +26,7 @@ import java.io.IOException;
  * @see <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-script-score-query.html#vector-functions-cosine">vector-functions-cosine</a>
  */
 public class ElasticsearchConfigurationScript implements ElasticsearchConfiguration {
-    private final Json.JsonCodec codec = WireJson.codec(WireJsonSpec.builder().build());
+    private final Json.JsonCodec codec = ProviderJson.codec(ProviderJsonSpec.builder().build());
     private final boolean includeVectorResponse;
 
     public static class Builder {

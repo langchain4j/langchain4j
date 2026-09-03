@@ -7,7 +7,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.JsonTypeNotAllowedException;
 import dev.langchain4j.internal.Json;
-import dev.langchain4j.internal.PolymorphicJson;
+import dev.langchain4j.internal.StateJson;
 import dev.langchain4j.internal.TypeAllowlist;
 import java.math.BigDecimal;
 import java.util.LinkedHashMap;
@@ -36,7 +36,7 @@ class Jackson3PolymorphicCompatibilityTest {
                     + "\"toolExecutionRequests\":[\"java.util.ImmutableCollections$ListN\",[]],"
                     + "\"attributes\":[\"java.util.ImmutableCollections$MapN\",{}],\"type\":\"AI\"}]}";
 
-    private final Json.JsonCodec codec = PolymorphicJson.codec(new TypeAllowlist());
+    private final Json.JsonCodec codec = StateJson.codec(new TypeAllowlist());
 
     private static Map<String, Object> state() {
         Map<String, Object> state = new LinkedHashMap<>();
@@ -53,7 +53,7 @@ class Jackson3PolymorphicCompatibilityTest {
 
     @Test
     void the_spi_resolves_to_the_jackson3_codec() {
-        assertThat(codec).isInstanceOf(Jackson3PolymorphicJsonCodec.class);
+        assertThat(codec).isInstanceOf(Jackson3StateJsonCodec.class);
     }
 
     @Test
@@ -96,7 +96,7 @@ class Jackson3PolymorphicCompatibilityTest {
         allowlist.addAllowedClass(NotAllowed.class.getName());
         String json = "{\"order\":[\"" + NotAllowed.class.getName() + "\",{\"sku\":\"abc\"}]}";
 
-        Map<?, ?> restored = PolymorphicJson.codec(allowlist).fromJson(json, LinkedHashMap.class);
+        Map<?, ?> restored = StateJson.codec(allowlist).fromJson(json, LinkedHashMap.class);
 
         assertThat(restored.get("order")).isInstanceOfSatisfying(NotAllowed.class, order -> assertThat(order.sku)
                 .isEqualTo("abc"));

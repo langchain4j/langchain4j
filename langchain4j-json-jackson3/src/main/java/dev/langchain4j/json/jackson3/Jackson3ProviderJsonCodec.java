@@ -4,7 +4,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import dev.langchain4j.exception.JsonWriteException;
 import dev.langchain4j.exception.JsonReadException;
 import dev.langchain4j.internal.Json;
-import dev.langchain4j.internal.WireJsonSpec;
+import dev.langchain4j.internal.ProviderJsonSpec;
 import java.lang.reflect.Type;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.DeserializationFeature;
@@ -19,11 +19,11 @@ import tools.jackson.databind.json.JsonMapper;
  * <p>The defaults Jackson 3 changed are pinned to their Jackson 2 values, so switching the codec
  * does not also change what goes on the wire.
  */
-public class Jackson3WireJsonCodec implements Json.JsonCodec {
+public class Jackson3ProviderJsonCodec implements Json.JsonCodec {
 
     private final ObjectMapper objectMapper;
 
-    public Jackson3WireJsonCodec(WireJsonSpec spec) {
+    public Jackson3ProviderJsonCodec(ProviderJsonSpec spec) {
         JsonMapper.Builder builder = Jackson3Defaults.pinJackson2Defaults(JsonMapper.builder())
                 .disable(DeserializationFeature.FAIL_ON_IGNORED_PROPERTIES)
                 // a provider adding a field must never break deserialization
@@ -31,14 +31,14 @@ public class Jackson3WireJsonCodec implements Json.JsonCodec {
         if (spec.prettyPrint()) {
             builder.enable(SerializationFeature.INDENT_OUTPUT);
         }
-        if (spec.propertyNaming() == WireJsonSpec.PropertyNaming.SNAKE_CASE) {
+        if (spec.propertyNaming() == ProviderJsonSpec.PropertyNaming.SNAKE_CASE) {
             builder.propertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE);
         }
         builder.changeDefaultPropertyInclusion(incl -> incl.withValueInclusion(toJacksonInclude(spec.inclusion())));
         this.objectMapper = builder.build();
     }
 
-    private static JsonInclude.Include toJacksonInclude(WireJsonSpec.Inclusion inclusion) {
+    private static JsonInclude.Include toJacksonInclude(ProviderJsonSpec.Inclusion inclusion) {
         return switch (inclusion) {
             case NON_NULL -> JsonInclude.Include.NON_NULL;
             case NON_EMPTY -> JsonInclude.Include.NON_EMPTY;

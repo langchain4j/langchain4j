@@ -3,8 +3,8 @@ package dev.langchain4j.store.embedding.pgvector;
 
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.internal.Json;
-import dev.langchain4j.internal.WireJson;
-import dev.langchain4j.internal.WireJsonSpec;
+import dev.langchain4j.internal.ProviderJson;
+import dev.langchain4j.internal.ProviderJsonSpec;
 import dev.langchain4j.store.embedding.filter.Filter;
 
 import java.sql.*;
@@ -19,7 +19,7 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
  */
 class JSONMetadataHandler implements MetadataHandler {
     private static final Json.JsonCodec CODEC =
-            WireJson.codec(WireJsonSpec.builder().prettyPrint(true).build());
+            ProviderJson.codec(ProviderJsonSpec.builder().prettyPrint(true).build());
 
     final MetadataColumDefinition columnDefinition;
     final String columnName;

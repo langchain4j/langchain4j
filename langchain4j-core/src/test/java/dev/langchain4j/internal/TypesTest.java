@@ -10,7 +10,7 @@ class TypesTest {
 
     record Person(String name, int age) {}
 
-    private final Json.JsonCodec codec = WireJson.codec(WireJsonSpec.builder().build());
+    private final Json.JsonCodec codec = ProviderJson.codec(ProviderJsonSpec.builder().build());
 
     @Test
     void reads_a_list_of_a_generic_type() {

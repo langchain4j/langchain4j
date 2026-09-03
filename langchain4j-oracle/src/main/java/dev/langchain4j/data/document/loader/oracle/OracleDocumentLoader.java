@@ -3,8 +3,8 @@ package dev.langchain4j.data.document.loader.oracle;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.internal.Json;
-import dev.langchain4j.internal.WireJson;
-import dev.langchain4j.internal.WireJsonSpec;
+import dev.langchain4j.internal.ProviderJson;
+import dev.langchain4j.internal.ProviderJsonSpec;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -41,7 +41,7 @@ import org.jsoup.select.Elements;
  */
 public class OracleDocumentLoader {
 
-    private static final Json.JsonCodec CODEC = WireJson.codec(WireJsonSpec.builder().build());
+    private static final Json.JsonCodec CODEC = ProviderJson.codec(ProviderJsonSpec.builder().build());
 
     private final Connection conn;
 

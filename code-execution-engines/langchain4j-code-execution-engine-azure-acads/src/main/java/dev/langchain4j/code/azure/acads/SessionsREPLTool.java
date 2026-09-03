@@ -13,8 +13,8 @@ import dev.langchain4j.http.client.HttpMethod;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.internal.Json;
-import dev.langchain4j.internal.WireJson;
-import dev.langchain4j.internal.WireJsonSpec;
+import dev.langchain4j.internal.ProviderJson;
+import dev.langchain4j.internal.ProviderJsonSpec;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
@@ -80,9 +80,9 @@ public class SessionsREPLTool implements CodeExecutionEngine {
     private static final String USER_AGENT = "langchain4j-azure-dynamic-sessions";
     private static final String API_VERSION = "2024-02-02-preview";
     private static final Logger log = LoggerFactory.getLogger(SessionsREPLTool.class);
-    private static final Json.JsonCodec CODEC = WireJson.codec(WireJsonSpec.builder().build());
+    private static final Json.JsonCodec CODEC = ProviderJson.codec(ProviderJsonSpec.builder().build());
     private static final Json.JsonCodec PRETTY_CODEC =
-            WireJson.codec(WireJsonSpec.builder().prettyPrint(true).build());
+            ProviderJson.codec(ProviderJsonSpec.builder().prettyPrint(true).build());
 
 
     private static final Pattern SANITIZE_PATTERN_START = Pattern.compile("^(\\s|`)*(?i:python)?\\s*");

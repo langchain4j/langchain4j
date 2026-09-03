@@ -3,21 +3,21 @@ package dev.langchain4j.internal;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 import dev.langchain4j.Internal;
-import dev.langchain4j.spi.json.PolymorphicJsonCodecFactory;
+import dev.langchain4j.spi.json.StateJsonCodecFactory;
 
 /**
  * Entry point for the JSON codec used where values are not known ahead of time and their types have
  * to be written into the document.
  *
- * <p>Kept apart from {@link WireJson}, which describes a wire format agreed with a remote service
+ * <p>Kept apart from {@link ProviderJson}, which describes a wire format agreed with a remote service
  * and never writes type information.
  *
- * @see PolymorphicJsonCodecFactory
+ * @see StateJsonCodecFactory
  */
 @Internal
-public final class PolymorphicJson {
+public final class StateJson {
 
-    private PolymorphicJson() {}
+    private StateJson() {}
 
     /**
      * A codec is built per call rather than cached, because a {@link TypeAllowlist} is mutable and
@@ -34,9 +34,9 @@ public final class PolymorphicJson {
      *                    it means asking for another codec.
      */
     public static Json.JsonCodec codec(TypeAllowlist allowlist, ClassLoader classLoader) {
-        for (PolymorphicJsonCodecFactory factory : loadFactories(PolymorphicJsonCodecFactory.class)) {
+        for (StateJsonCodecFactory factory : loadFactories(StateJsonCodecFactory.class)) {
             return factory.create(allowlist, classLoader);
         }
-        return new JacksonPolymorphicJsonCodec(allowlist, classLoader);
+        return new JacksonStateJsonCodec(allowlist, classLoader);
     }
 }

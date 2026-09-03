@@ -4,8 +4,8 @@ import static java.time.format.DateTimeFormatter.ISO_DATE_TIME;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.internal.Json;
-import dev.langchain4j.internal.WireJson;
-import dev.langchain4j.internal.WireJsonSpec;
+import dev.langchain4j.internal.ProviderJson;
+import dev.langchain4j.internal.ProviderJsonSpec;
 import java.time.LocalDateTime;
 
 @Internal
@@ -24,7 +24,7 @@ public class McpRegistryJson {
      * this.
      */
     private static final Json.JsonCodec CODEC =
-            WireJson.codec(WireJsonSpec.builder().prettyPrint(true).build());
+            ProviderJson.codec(ProviderJsonSpec.builder().prettyPrint(true).build());
 
     public static <T> T fromJson(String json, Class<T> type) {
         return CODEC.fromJson(json, type);

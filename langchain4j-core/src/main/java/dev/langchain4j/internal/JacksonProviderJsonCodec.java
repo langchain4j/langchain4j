@@ -16,11 +16,11 @@ import java.lang.reflect.Type;
  * Default {@link Json.JsonCodec} for provider wire DTOs, backed by Jackson 2.
  */
 @Internal
-class JacksonWireJsonCodec implements Json.JsonCodec {
+class JacksonProviderJsonCodec implements Json.JsonCodec {
 
     private final ObjectMapper objectMapper;
 
-    JacksonWireJsonCodec(WireJsonSpec spec) {
+    JacksonProviderJsonCodec(ProviderJsonSpec spec) {
         JsonMapper.Builder builder = JsonMapper.builder()
                 .disable(FAIL_ON_IGNORED_PROPERTIES)
                 // a provider adding a field must never break deserialization
@@ -28,14 +28,14 @@ class JacksonWireJsonCodec implements Json.JsonCodec {
         if (spec.prettyPrint()) {
             builder.enable(INDENT_OUTPUT);
         }
-        if (spec.propertyNaming() == WireJsonSpec.PropertyNaming.SNAKE_CASE) {
+        if (spec.propertyNaming() == ProviderJsonSpec.PropertyNaming.SNAKE_CASE) {
             builder.propertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE);
         }
         builder.serializationInclusion(toJacksonInclude(spec.inclusion()));
         this.objectMapper = builder.build();
     }
 
-    private static JsonInclude.Include toJacksonInclude(WireJsonSpec.Inclusion inclusion) {
+    private static JsonInclude.Include toJacksonInclude(ProviderJsonSpec.Inclusion inclusion) {
         return switch (inclusion) {
             case NON_NULL -> JsonInclude.Include.NON_NULL;
             case NON_EMPTY -> JsonInclude.Include.NON_EMPTY;

@@ -6,8 +6,8 @@ import dev.langchain4j.data.document.splitter.oracle.Chunk;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.internal.Json;
-import dev.langchain4j.internal.WireJson;
-import dev.langchain4j.internal.WireJsonSpec;
+import dev.langchain4j.internal.ProviderJson;
+import dev.langchain4j.internal.ProviderJsonSpec;
 import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
 import dev.langchain4j.model.output.Response;
 import java.sql.Array;
@@ -44,7 +44,7 @@ import oracle.jdbc.OracleConnection;
  */
 public class OracleEmbeddingModel extends DimensionAwareEmbeddingModel {
 
-    private static final Json.JsonCodec CODEC = WireJson.codec(WireJsonSpec.builder().build());
+    private static final Json.JsonCodec CODEC = ProviderJson.codec(ProviderJsonSpec.builder().build());
 
     private final Connection conn;
     private final String pref;

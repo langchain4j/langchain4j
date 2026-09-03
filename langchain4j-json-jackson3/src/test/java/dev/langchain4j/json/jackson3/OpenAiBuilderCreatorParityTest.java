@@ -6,8 +6,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.DynamicTest.dynamicTest;
 
 import dev.langchain4j.internal.Json;
-import dev.langchain4j.internal.WireJson;
-import dev.langchain4j.internal.WireJsonSpec;
+import dev.langchain4j.internal.ProviderJson;
+import dev.langchain4j.internal.ProviderJsonSpec;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionRequest;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
@@ -55,8 +55,8 @@ class OpenAiBuilderCreatorParityTest {
      */
     private static final int EXPECTED_AT_LEAST = 40;
 
-    private final Json.JsonCodec codec = WireJson.codec(WireJsonSpec.builder()
-            .propertyNaming(WireJsonSpec.PropertyNaming.SNAKE_CASE)
+    private final Json.JsonCodec codec = ProviderJson.codec(ProviderJsonSpec.builder()
+            .propertyNaming(ProviderJsonSpec.PropertyNaming.SNAKE_CASE)
             .build());
 
     @TestFactory

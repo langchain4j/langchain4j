@@ -10,7 +10,7 @@ import java.util.Objects;
  * a particular JSON library. This is what lets the underlying codec be swapped.
  */
 @Internal
-public class WireJsonSpec {
+public class ProviderJsonSpec {
 
     /**
      * How Java property names are translated to JSON field names.
@@ -35,7 +35,7 @@ public class WireJsonSpec {
     private final Inclusion inclusion;
     private final boolean prettyPrint;
 
-    public WireJsonSpec(Builder builder) {
+    public ProviderJsonSpec(Builder builder) {
         this.propertyNaming = getOrDefault(builder.propertyNaming, PropertyNaming.IDENTITY);
         this.inclusion = getOrDefault(builder.inclusion, Inclusion.ALWAYS);
         this.prettyPrint = getOrDefault(builder.prettyPrint, false);
@@ -56,7 +56,7 @@ public class WireJsonSpec {
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (!(o instanceof WireJsonSpec that)) return false;
+        if (!(o instanceof ProviderJsonSpec that)) return false;
         return prettyPrint == that.prettyPrint
                 && propertyNaming == that.propertyNaming
                 && inclusion == that.inclusion;
@@ -69,7 +69,7 @@ public class WireJsonSpec {
 
     @Override
     public String toString() {
-        return "WireJsonSpec{" + "propertyNaming="
+        return "ProviderJsonSpec{" + "propertyNaming="
                 + propertyNaming + ", inclusion="
                 + inclusion + ", prettyPrint="
                 + prettyPrint + "}";
@@ -100,8 +100,8 @@ public class WireJsonSpec {
             return this;
         }
 
-        public WireJsonSpec build() {
-            return new WireJsonSpec(this);
+        public ProviderJsonSpec build() {
+            return new ProviderJsonSpec(this);
         }
     }
 }

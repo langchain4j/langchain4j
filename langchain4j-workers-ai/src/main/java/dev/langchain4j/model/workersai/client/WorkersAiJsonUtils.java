@@ -1,8 +1,8 @@
 package dev.langchain4j.model.workersai.client;
 
 import dev.langchain4j.internal.Json;
-import dev.langchain4j.internal.WireJson;
-import dev.langchain4j.internal.WireJsonSpec;
+import dev.langchain4j.internal.ProviderJson;
+import dev.langchain4j.internal.ProviderJsonSpec;
 
 class WorkersAiJsonUtils {
 
@@ -10,7 +10,7 @@ class WorkersAiJsonUtils {
         throw new InstantiationException("Can't instantiate this utility class.");
     }
 
-    private static final Json.JsonCodec CODEC = WireJson.codec(WireJsonSpec.builder().build());
+    private static final Json.JsonCodec CODEC = ProviderJson.codec(ProviderJsonSpec.builder().build());
 
     static String toJson(Object object) {
         return CODEC.toJson(object);

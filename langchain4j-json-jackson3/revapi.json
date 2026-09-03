@@ -31,7 +31,7 @@
         },
         {
           "code": "java.class.externalClassExposedInAPI",
-          "new": "missing-class dev.langchain4j.internal.WireJsonSpec",
+          "new": "missing-class dev.langchain4j.internal.ProviderJsonSpec",
           "justification": "This module exists to implement the LangChain4j wire-codec SPI; implementing it necessarily exposes the spec type."
         },
         {

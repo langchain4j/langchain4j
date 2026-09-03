@@ -1,15 +1,15 @@
 package dev.langchain4j.model.mistralai.internal.client;
 
 
-import dev.langchain4j.internal.WireJsonSpec;
-import dev.langchain4j.internal.WireJson;
+import dev.langchain4j.internal.ProviderJsonSpec;
+import dev.langchain4j.internal.ProviderJson;
 import dev.langchain4j.Internal;
 
 @Internal
 class MistralAiJsonUtils {
 
-    private static final dev.langchain4j.internal.Json.JsonCodec CODEC = WireJson.codec(WireJsonSpec.builder()
-                    .propertyNaming(WireJsonSpec.PropertyNaming.SNAKE_CASE)
+    private static final dev.langchain4j.internal.Json.JsonCodec CODEC = ProviderJson.codec(ProviderJsonSpec.builder()
+                    .propertyNaming(ProviderJsonSpec.PropertyNaming.SNAKE_CASE)
                     .prettyPrint(true)
                     .build());
 

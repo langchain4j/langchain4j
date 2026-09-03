@@ -21,8 +21,8 @@ import com.google.genai.types.Tool;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.internal.Json;
-import dev.langchain4j.internal.WireJson;
-import dev.langchain4j.internal.WireJsonSpec;
+import dev.langchain4j.internal.ProviderJson;
+import dev.langchain4j.internal.ProviderJsonSpec;
 import dev.langchain4j.model.image.ImageModel;
 import dev.langchain4j.model.output.Response;
 import java.time.Duration;
@@ -192,7 +192,7 @@ public class GoogleGenAiImageModel implements ImageModel {
         return Part.fromBytes(imageBytes, mimeType);
     }
 
-    private static final Json.JsonCodec CODEC = WireJson.codec(WireJsonSpec.builder().build());
+    private static final Json.JsonCodec CODEC = ProviderJson.codec(ProviderJsonSpec.builder().build());
 
     private Response<Image> toResponse(GenerateContentResponse response) {
         if (response.parts() == null || response.parts().isEmpty()) {

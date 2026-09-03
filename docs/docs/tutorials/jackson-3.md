@@ -127,8 +127,8 @@ package, so Jackson 3 does not see it at all — the field names silently come o
 naming on the codec instead:
 
 ```java
-WireJson.codec(WireJsonSpec.builder()
-        .propertyNaming(WireJsonSpec.PropertyNaming.SNAKE_CASE)
+ProviderJson.codec(ProviderJsonSpec.builder()
+        .propertyNaming(ProviderJsonSpec.PropertyNaming.SNAKE_CASE)
         .build());
 ```
 
@@ -171,8 +171,8 @@ of the places below, so that each can be answered separately:
 | Service interface | Decides how LangChain4j reads and writes |
 |---|---|
 | `dev.langchain4j.spi.json.JsonCodecFactory` | general-purpose JSON — an AI Service's structured output, a model's tool arguments |
-| `dev.langchain4j.spi.json.WireJsonCodecFactory` | the requests and responses exchanged with LLM providers |
-| `dev.langchain4j.spi.json.PolymorphicJsonCodecFactory` | state whose types are not known ahead of time, and which therefore carries type names — agent state |
+| `dev.langchain4j.spi.json.ProviderJsonCodecFactory` | the requests and responses exchanged with LLM providers |
+| `dev.langchain4j.spi.json.StateJsonCodecFactory` | state whose types are not known ahead of time, and which therefore carries type names — agent state |
 | `dev.langchain4j.spi.data.message.ChatMessageJsonCodecFactory` | chat memory you persist |
 | `dev.langchain4j.spi.agent.tool.ToolSpecificationJsonCodecFactory` | `ToolSpecification.toJson()` and `ToolSpecification.fromJson(String)` |
 | `dev.langchain4j.spi.prompt.structured.StructuredPromptFactory` | `@StructuredPrompt` templates |
@@ -189,6 +189,6 @@ your mapper and agent state by a different library. If you deliberately leave on
 is what you get.
 
 Two of these are worth a second look if you already integrate with an older version:
-`WireJsonCodecFactory` and `PolymorphicJsonCodecFactory` are new, so an existing integration that
+`ProviderJsonCodecFactory` and `StateJsonCodecFactory` are new, so an existing integration that
 does not know about them keeps working while quietly using Jackson 2 for provider traffic and agent
 state.

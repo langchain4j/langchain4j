@@ -13,8 +13,8 @@ import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.http.client.log.LoggingHttpClient;
 import dev.langchain4j.internal.Json;
 import dev.langchain4j.internal.Utils;
-import dev.langchain4j.internal.WireJson;
-import dev.langchain4j.internal.WireJsonSpec;
+import dev.langchain4j.internal.ProviderJson;
+import dev.langchain4j.internal.ProviderJsonSpec;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -77,9 +77,9 @@ class ChromaHttpClient {
                 clientBuilder.connectTimeout(timeout).readTimeout(timeout).build(), logRequests, logResponses);
         this.customHeadersSupplier = getOrDefault(customHeadersSupplier, () -> Map::of);
 
-        this.codec = WireJson.codec(WireJsonSpec.builder()
-                .propertyNaming(WireJsonSpec.PropertyNaming.SNAKE_CASE)
-                .inclusion(WireJsonSpec.Inclusion.NON_NULL)
+        this.codec = ProviderJson.codec(ProviderJsonSpec.builder()
+                .propertyNaming(ProviderJsonSpec.PropertyNaming.SNAKE_CASE)
+                .inclusion(ProviderJsonSpec.Inclusion.NON_NULL)
                 .prettyPrint(true)
                 .build());
     }

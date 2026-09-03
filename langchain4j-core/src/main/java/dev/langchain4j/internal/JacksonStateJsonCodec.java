@@ -14,14 +14,14 @@ import dev.langchain4j.exception.JsonTypeNotAllowedException;
 import java.lang.reflect.Type;
 
 /**
- * The Jackson 2 implementation, used when no {@code PolymorphicJsonCodecFactory} is registered.
+ * The Jackson 2 implementation, used when no {@code StateJsonCodecFactory} is registered.
  */
 @Internal
-class JacksonPolymorphicJsonCodec implements Json.JsonCodec {
+class JacksonStateJsonCodec implements Json.JsonCodec {
 
     private final ObjectMapper mapper;
 
-    JacksonPolymorphicJsonCodec(TypeAllowlist allowlist, ClassLoader classLoader) {
+    JacksonStateJsonCodec(TypeAllowlist allowlist, ClassLoader classLoader) {
         // Built on the chat-message mapper because the values being written can include chat
         // messages, which need the same handling here as anywhere else.
         JsonMapper.Builder builder = JacksonChatMessageJsonCodec.chatMessageJsonMapperBuilder();

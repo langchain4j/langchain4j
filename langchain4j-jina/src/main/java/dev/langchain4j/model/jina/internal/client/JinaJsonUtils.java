@@ -1,8 +1,8 @@
 package dev.langchain4j.model.jina.internal.client;
 
 
-import dev.langchain4j.internal.WireJsonSpec;
-import dev.langchain4j.internal.WireJson;
+import dev.langchain4j.internal.ProviderJsonSpec;
+import dev.langchain4j.internal.ProviderJson;
 
 class JinaJsonUtils {
 
@@ -10,8 +10,8 @@ class JinaJsonUtils {
         throw new InstantiationException("Can't instantiate this utility class.");
     }
 
-    private static final dev.langchain4j.internal.Json.JsonCodec CODEC = WireJson.codec(WireJsonSpec.builder()
-                    .propertyNaming(WireJsonSpec.PropertyNaming.SNAKE_CASE)
+    private static final dev.langchain4j.internal.Json.JsonCodec CODEC = ProviderJson.codec(ProviderJsonSpec.builder()
+                    .propertyNaming(ProviderJsonSpec.PropertyNaming.SNAKE_CASE)
                     .prettyPrint(true)
                     .build());
 

@@ -1,13 +1,13 @@
 package dev.langchain4j.model.openai.internal;
 
-import dev.langchain4j.internal.WireJson;
-import dev.langchain4j.internal.WireJsonSpec;
+import dev.langchain4j.internal.ProviderJson;
+import dev.langchain4j.internal.ProviderJsonSpec;
 
 class Json {
 
     private static final dev.langchain4j.internal.Json.JsonCodec CODEC =
-            WireJson.codec(WireJsonSpec.builder()
-                    .propertyNaming(WireJsonSpec.PropertyNaming.SNAKE_CASE)
+            ProviderJson.codec(ProviderJsonSpec.builder()
+                    .propertyNaming(ProviderJsonSpec.PropertyNaming.SNAKE_CASE)
                     .prettyPrint(true)
                     .build());
 

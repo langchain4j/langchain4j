@@ -13,10 +13,10 @@ import dev.langchain4j.spi.ServiceHelper;
  * being the case in LangChain4j - so that such state is read and written by the same JSON library
  * as everything else.
  *
- * @see dev.langchain4j.internal.PolymorphicJson
+ * @see dev.langchain4j.internal.StateJson
  */
 @Internal
-public interface PolymorphicJsonCodecFactory {
+public interface StateJsonCodecFactory {
 
     /**
      * @param allowlist   decides which types the returned codec may instantiate while reading.

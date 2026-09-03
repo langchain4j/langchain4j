@@ -39,8 +39,8 @@ import dev.langchain4j.internal.ExceptionMapper;
 import dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils;
 import dev.langchain4j.internal.Json;
 import dev.langchain4j.internal.MappingTrackingStreamingChatResponseHandler;
-import dev.langchain4j.internal.WireJson;
-import dev.langchain4j.internal.WireJsonSpec;
+import dev.langchain4j.internal.ProviderJson;
+import dev.langchain4j.internal.ProviderJsonSpec;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
@@ -76,7 +76,7 @@ class OpenAiResponsesClient {
      * Pretty-printing is kept because that is what this client has always sent.
      */
     private static final Json.JsonCodec CODEC =
-            WireJson.codec(WireJsonSpec.builder().prettyPrint(true).build());
+            ProviderJson.codec(ProviderJsonSpec.builder().prettyPrint(true).build());
 
     private static final String DEFAULT_BASE_URL = "https://api.openai.com/v1";
     private static final String OPENAI_ORGANIZATION_HEADER = "OpenAI-Organization";

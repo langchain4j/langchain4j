@@ -20,11 +20,11 @@ import tools.jackson.databind.jsontype.PolymorphicTypeValidator;
  * <p>Writes the same document as its Jackson 2 counterpart, which matters more here than elsewhere:
  * agent state persisted by one has to be readable by the other.
  */
-public class Jackson3PolymorphicJsonCodec implements Json.JsonCodec {
+public class Jackson3StateJsonCodec implements Json.JsonCodec {
 
     private final ObjectMapper objectMapper;
 
-    public Jackson3PolymorphicJsonCodec(TypeAllowlist allowlist, ClassLoader classLoader) {
+    public Jackson3StateJsonCodec(TypeAllowlist allowlist, ClassLoader classLoader) {
         // Built on the chat-message mapper because the values being written can include chat
         // messages, which need the same handling here as anywhere else.
         JsonMapper.Builder builder = Jackson3ChatMessageJsonCodec.chatMessageJsonMapperBuilder()
