@@ -1,5 +1,6 @@
 package dev.langchain4j.http.client;
 
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import static dev.langchain4j.http.client.HttpMethod.POST;
 import static java.util.Collections.synchronizedList;
 import static java.util.Collections.synchronizedSet;
@@ -47,6 +48,16 @@ import org.mockito.InOrder;
 public abstract class HttpClientIT {
 
     private static final String OPENAI_API_KEY = System.getenv("OPENAI_API_KEY");
+
+    /**
+     * Whether the client under test implements {@link HttpClient#executeAsync(HttpRequest)}. That method is
+     * opt-in - its default reports "not implemented" through the returned future - so this defaults to
+     * {@code false} and an implementation that has opted in overrides it. Without the override the asynchronous
+     * cases are skipped rather than failing a client that never claimed to support them.
+     */
+    protected boolean supportsExecuteAsync() {
+        return false;
+    }
 
     protected abstract List<HttpClient> clients();
 
@@ -201,6 +212,8 @@ public abstract class HttpClientIT {
     @EnumSource(ExecutionMode.class)
     void should_return_successful_http_response(ExecutionMode mode) {
 
+        assumeTrue(mode == ExecutionMode.SYNC || supportsExecuteAsync());
+
         for (HttpClient client : clients()) {
 
             // given
@@ -235,6 +248,8 @@ public abstract class HttpClientIT {
 
     @Test
     void should_deliver_response_off_the_calling_thread_executeAsync() throws Exception {
+
+        assumeTrue(supportsExecuteAsync());
 
         for (HttpClient client : clients()) {
 
@@ -279,6 +294,8 @@ public abstract class HttpClientIT {
     @EnumSource(ExecutionMode.class)
     void should_throw_400(ExecutionMode mode) {
 
+        assumeTrue(mode == ExecutionMode.SYNC || supportsExecuteAsync());
+
         for (HttpClient client : clients()) {
 
             // given
@@ -314,6 +331,8 @@ public abstract class HttpClientIT {
     @ParameterizedTest
     @EnumSource(ExecutionMode.class)
     void should_throw_401(ExecutionMode mode) {
+
+        assumeTrue(mode == ExecutionMode.SYNC || supportsExecuteAsync());
 
         for (HttpClient client : clients()) {
 
