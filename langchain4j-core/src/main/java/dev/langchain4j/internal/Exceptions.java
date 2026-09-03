@@ -67,7 +67,10 @@ public class Exceptions {
 
     public static Throwable unwrapRuntimeException(Exception e) {
         if (e.getClass() == RuntimeException.class && e.getCause() != null) {
-            // when checked exception (e.g., JsonProcessingException) is wrapped into RuntimeException
+            // when a checked exception is wrapped into a bare RuntimeException, so that callers see
+            // the original. A typed exception such as JsonReadException is left alone: its type is
+            // the information, and unwrapping it would hand the caller back the JSON library's own
+            // exception, which is exactly what a swappable codec must not expose.
             return e.getCause();
         } else {
             return e;

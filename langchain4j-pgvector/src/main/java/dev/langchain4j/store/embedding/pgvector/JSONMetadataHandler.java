@@ -1,15 +1,15 @@
 package dev.langchain4j.store.embedding.pgvector;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 import dev.langchain4j.data.document.Metadata;
+import dev.langchain4j.internal.Json;
+import dev.langchain4j.internal.ProviderJson;
+import dev.langchain4j.internal.ProviderJsonSpec;
 import dev.langchain4j.store.embedding.filter.Filter;
 
 import java.sql.*;
 import java.util.*;
 
-import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
 import static dev.langchain4j.internal.Utils.toStringValueMap;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -18,8 +18,8 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
  * Handle metadata as JSON column.
  */
 class JSONMetadataHandler implements MetadataHandler {
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
-            .enable(INDENT_OUTPUT);
+    private static final Json.JsonCodec CODEC =
+            ProviderJson.codec(ProviderJsonSpec.builder().prettyPrint(true).build());
 
     final MetadataColumDefinition columnDefinition;
     final String columnName;
@@ -69,8 +69,8 @@ class JSONMetadataHandler implements MetadataHandler {
     public Metadata fromResultSet(ResultSet resultSet) {
         try {
             String metadataJson = getOrDefault(resultSet.getString(columnsNames().get(0)),"{}");
-            return new Metadata(OBJECT_MAPPER.readValue(metadataJson, Map.class));
-        } catch (SQLException | JsonProcessingException e) {
+            return new Metadata(CODEC.fromJson(metadataJson, Map.class));
+        } catch (SQLException e) {
             throw new RuntimeException(e);
         }
     }
@@ -84,8 +84,8 @@ class JSONMetadataHandler implements MetadataHandler {
     public void setMetadata(PreparedStatement upsertStmt, Integer parameterInitialIndex, Metadata metadata) {
         try {
             upsertStmt.setObject(parameterInitialIndex,
-                    OBJECT_MAPPER.writeValueAsString(toStringValueMap(metadata.toMap())), Types.OTHER);
-        } catch (SQLException | JsonProcessingException e) {
+                    CODEC.toJson(toStringValueMap(metadata.toMap())), Types.OTHER);
+        } catch (SQLException e) {
             throw new RuntimeException(e);
         }
     }

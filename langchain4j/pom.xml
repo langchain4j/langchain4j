@@ -203,4 +203,25 @@
 
         </plugins>
     </build>
+    <profiles>
+        <!--
+            Runs this module's existing tests with langchain4j-core-jackson3 on the test classpath,
+            so the JSON SPI resolves to the Jackson 3 codec instead of the Jackson 2 default.
+            langchain4j-jackson3 cannot be used here - it depends on this module - so the
+            InMemoryEmbeddingStore codec is covered from langchain4j-jackson3 and the
+            integration-tests-jackson3 module instead.
+        -->
+        <profile>
+            <id>jackson3</id>
+            <dependencies>
+                <dependency>
+                    <groupId>dev.langchain4j</groupId>
+                    <artifactId>langchain4j-core-jackson3</artifactId>
+                    <version>${langchain4j.beta.version}</version>
+                    <scope>test</scope>
+                </dependency>
+            </dependencies>
+        </profile>
+    </profiles>
+
 </project>

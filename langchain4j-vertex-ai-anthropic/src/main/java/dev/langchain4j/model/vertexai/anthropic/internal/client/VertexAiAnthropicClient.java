@@ -1,7 +1,5 @@
 package dev.langchain4j.model.vertexai.anthropic.internal.client;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
 import com.google.api.HttpBody;
 import com.google.api.gax.core.FixedCredentialsProvider;
 import com.google.api.gax.rpc.UnavailableException;
@@ -32,7 +30,6 @@ public class VertexAiAnthropicClient {
     private final String project;
     private final String location;
     private final GoogleCredentials credentials;
-    private final ObjectMapper objectMapper;
 
     public VertexAiAnthropicClient(String project, String location, String model) {
         this(project, location, model, null);
@@ -55,7 +52,6 @@ public class VertexAiAnthropicClient {
         // Vertex AI locations are lowercase, both in the endpoint host and in the resource name
         this.location = location.toLowerCase(Locale.ROOT);
         this.credentials = credentials;
-        this.objectMapper = new ObjectMapper().disable(SerializationFeature.FAIL_ON_EMPTY_BEANS);
         this.predictionServiceClient = createClient();
     }
 
@@ -183,13 +179,13 @@ public class VertexAiAnthropicClient {
 
         try {
             Map<String, Object> requestMap = buildRequestMap(request);
-            String requestJson = objectMapper.writeValueAsString(requestMap);
+            String requestJson = VertexAiAnthropicJsonUtils.toJson(requestMap);
 
             RawPredictRequest rawPredictRequest = buildRawPredictRequest(requestJson, modelName);
             HttpBody response = predictionServiceClient.rawPredict(rawPredictRequest);
 
             String responseJson = response.getData().toStringUtf8();
-            return objectMapper.readValue(responseJson, AnthropicResponse.class);
+            return VertexAiAnthropicJsonUtils.fromJson(responseJson, AnthropicResponse.class);
 
         } catch (UnavailableException e) {
             return handleUnavailableException(e, request, modelName, attempt);

@@ -57,6 +57,7 @@
         <azure-sdk.version>1.3.7</azure-sdk.version>
         <blockhound.version>1.0.17.RELEASE</blockhound.version>
         <jackson.version>2.22.1</jackson.version>
+        <jackson3.version>3.2.2</jackson3.version>
         <jspecify.version>1.0.1</jspecify.version>
         <jtokkit.version>1.1.0</jtokkit.version>
         <junit.version>6.0.3</junit.version>
@@ -88,6 +89,19 @@
                 <groupId>com.fasterxml.jackson</groupId>
                 <artifactId>jackson-bom</artifactId>
                 <version>${jackson.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <!--
+                Jackson 3 is used only by the opt-in langchain4j-core-jackson3 module, but its
+                version is managed here so that a user adding a Jackson 3 datatype or dataformat
+                module cannot end up with a split version.
+            -->
+            <dependency>
+                <groupId>tools.jackson</groupId>
+                <artifactId>jackson-bom</artifactId>
+                <version>${jackson3.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
