@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>dev.langchain4j</groupId>
+        <artifactId>langchain4j-parent</artifactId>
+        <version>1.20.0-beta30-SNAPSHOT</version>
+        <relativePath>../langchain4j-parent/pom.xml</relativePath>
+    </parent>
+
+    <artifactId>langchain4j-hibernate-milvus</artifactId>
+    <name>LangChain4j :: Integration :: Hibernate :: Milvus</name>
+
+    <properties>
+        <hibernate.version>7.4.5.Final</hibernate.version>
+        <hibernate-nosql.version>1.0.0.Alpha1</hibernate-nosql.version>
+        <milvus-sdk-java.version>2.6.22</milvus-sdk-java.version>
+        <!-- TODO: remove enforcer.skipRules -->
+        <enforcer.skipRules>dependencyConvergence,requireUpperBoundDeps</enforcer.skipRules>
+    </properties>
+
+    <dependencies>
+
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-core</artifactId>
+            <version>1.20.0-SNAPSHOT</version>
+        </dependency>
+
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-hibernate</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.hibernate.nosql</groupId>
+            <artifactId>hibernate-milvus</artifactId>
+            <version>${hibernate-nosql.version}</version>
+            <exclusions>
+                <!--
+                    hibernate-milvus depends on milvus-sdk-java-bulkwriter, which drags in Hadoop, Parquet,
+                    the AWS SDK v1, the Azure SDK and MinIO. The Milvus dialect only uses the plain SDK,
+                    so the bulk writer is excluded and milvus-sdk-java is declared directly below.
+                -->
+                <exclusion>
+                    <groupId>io.milvus</groupId>
+                    <artifactId>milvus-sdk-java-bulkwriter</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <dependency>
+            <groupId>io.milvus</groupId>
+            <artifactId>milvus-sdk-java</artifactId>
+            <version>${milvus-sdk-java.version}</version>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- test dependencies -->
+
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-core</artifactId>
+            <version>1.20.0-SNAPSHOT</version>
+            <classifier>tests</classifier>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-hibernate</artifactId>
+            <version>${project.version}</version>
+            <classifier>tests</classifier>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>milvus</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-embeddings-all-minilm-l6-v2-q</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.honton.chas</groupId>
+                <artifactId>license-maven-plugin</artifactId>
+                <configuration>
+                    <skipCompliance>true</skipCompliance>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.hibernate.orm</groupId>
+                            <artifactId>hibernate-processor</artifactId>
+                            <version>${hibernate.version}</version>
+                        </path>
+                    </annotationProcessorPaths>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>

@@ -33,11 +33,19 @@ public enum DistanceFunction {
      */
     MANHATTAN,
     /**
-     * The INNER_PRODUCT distance function
+     * The INNER_PRODUCT distance function.
+     * <p>
+     * Unlike the other distance functions, the inner product is unbounded, so it cannot be mapped onto the
+     * {@code 0..1} relevance score that a search result reports in a linear way. A sigmoid function is used instead,
+     * which means a score of exactly {@code 1} is never reached: searching with a minimum score of {@code 1} always
+     * returns no results. Use a value below {@code 1}, for example {@code 0.9}.
      */
     INNER_PRODUCT,
     /**
-     * The NEGATIVE_INNER_PRODUCT distance function
+     * The NEGATIVE_INNER_PRODUCT distance function.
+     * <p>
+     * The same score mapping as for {@link #INNER_PRODUCT} applies, so a minimum score of exactly {@code 1} also
+     * returns no results here.
      */
     NEGATIVE_INNER_PRODUCT,
     /**
