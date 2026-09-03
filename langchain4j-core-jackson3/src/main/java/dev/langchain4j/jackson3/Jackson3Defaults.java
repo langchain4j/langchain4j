@@ -3,6 +3,7 @@ package dev.langchain4j.jackson3;
 import tools.jackson.databind.DeserializationFeature;
 import tools.jackson.databind.cfg.CoercionAction;
 import tools.jackson.databind.cfg.CoercionInputShape;
+import tools.jackson.databind.type.LogicalType;
 import tools.jackson.databind.MapperFeature;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -25,10 +26,13 @@ public final class Jackson3Defaults {
                 // silently left empty on deserialization
                 .enable(MapperFeature.ALLOW_FINAL_FIELDS_AS_MUTATORS)
                 .enable(MapperFeature.USE_GETTERS_AS_SETTERS)
-                // Jackson 2 reads "" as null rather than failing, and providers do send it -
-                // an OpenAI-compatible server returning "type": "" for a tool call is what found
-                // this. Jackson 3 refuses unless coercion is configured.
-                .withCoercionConfigDefaults(
+                // Jackson 2 reads "" as null for an enum rather than failing, and providers do
+                // send it - an OpenAI-compatible server returning "type": "" for a tool call is
+                // what found this. Scoped to enums on purpose: Jackson 2 fails on "" for a POJO,
+                // a Map or a List, so coercing those too would make this codec more lenient than
+                // the one it stands in for.
+                .withCoercionConfig(
+                        LogicalType.Enum,
                         config -> config.setCoercion(CoercionInputShape.EmptyString, CoercionAction.AsNull));
     }
 }

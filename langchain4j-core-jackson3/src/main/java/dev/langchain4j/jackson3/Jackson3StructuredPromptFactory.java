@@ -1,8 +1,11 @@
 package dev.langchain4j.jackson3;
 
+import static dev.langchain4j.spi.PrioritizedFactory.YIELDS_TO_OTHERS;
+
 import static com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility.ANY;
 import static com.fasterxml.jackson.annotation.PropertyAccessor.FIELD;
 
+import dev.langchain4j.spi.PrioritizedFactory;
 import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.model.input.structured.StructuredPrompt;
@@ -15,7 +18,13 @@ import tools.jackson.databind.json.JsonMapper;
 /**
  * Jackson 3 twin of the default structured prompt factory.
  */
-public class Jackson3StructuredPromptFactory implements StructuredPromptFactory {
+public class Jackson3StructuredPromptFactory implements StructuredPromptFactory, PrioritizedFactory {
+
+    @Override
+    public int priority() {
+        return YIELDS_TO_OTHERS; // a framework that supplies its own codec keeps it
+    }
+
 
     private static final ObjectMapper OBJECT_MAPPER = Jackson3Defaults.pinJackson2Defaults(JsonMapper.builder())
             .changeDefaultVisibility(vc -> vc.withVisibility(FIELD, ANY))

@@ -12,6 +12,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import dev.langchain4j.exception.JsonReadException;
 import dev.langchain4j.exception.JsonWriteException;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.audio.Audio;
@@ -64,12 +65,29 @@ public class Jackson3ChatMessageJsonCodec implements ChatMessageJsonCodec {
 
     @Override
     public ChatMessage messageFromJson(String json) {
-        return OBJECT_MAPPER.readValue(json, ChatMessage.class);
+        if (json == null) {
+            return null;
+        }
+        try {
+            return OBJECT_MAPPER.readValue(json, ChatMessage.class);
+        } catch (JacksonException e) {
+            throw new JsonReadException(e);
+        }
     }
 
     @Override
     public List<ChatMessage> messagesFromJson(String json) {
-        return OBJECT_MAPPER.readValue(json, MESSAGE_LIST_TYPE);
+        // A store returns null for a memory id it does not know, which is the documented
+        // PersistentChatMemoryStore pattern, so this is reached on first use rather than rarely.
+        if (json == null) {
+            return List.of();
+        }
+        try {
+            List<ChatMessage> messages = OBJECT_MAPPER.readValue(json, MESSAGE_LIST_TYPE);
+            return messages == null ? List.of() : messages;
+        } catch (JacksonException e) {
+            throw new JsonReadException(e);
+        }
     }
 
     @Override
