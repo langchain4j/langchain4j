@@ -69,17 +69,20 @@
         {
           "code": "java.annotation.removed",
           "annotationType": "com.fasterxml.jackson.databind.annotation.JsonNaming",
-          "justification": "The snake_case naming strategy moved from the DTOs onto the codec, which is what allows the JSON library to be swapped. @JsonNaming lives in Jackson's databind package, which moved in Jackson 3, so a Jackson 3 mapper cannot see it. The wire format is unchanged and covered by tests."
+          "justification": "The snake_case naming strategy moved from the DTOs onto the codec, which is what allows the JSON library to be swapped. @JsonNaming lives in Jackson's databind package, which moved in Jackson 3, so a Jackson 3 mapper cannot see it. The wire format is unchanged and covered by tests.",
+          "package": "dev.langchain4j.model.jina.internal.api"
         },
         {
           "code": "java.annotation.added",
           "annotationType": "com.fasterxml.jackson.annotation.JsonCreator",
-          "justification": "Added so the DTOs can also be deserialized by Jackson 3, whose databind-package @JsonDeserialize(builder=...) differs from Jackson 2's. Jackson 2 behaviour is unchanged."
+          "justification": "Added so the DTOs can also be deserialized by Jackson 3, whose databind-package @JsonDeserialize(builder=...) differs from Jackson 2's. Jackson 2 behaviour is unchanged.",
+          "package": "dev.langchain4j.model.jina.internal.api"
         },
         {
           "code": "java.annotation.added",
           "annotationType": "com.fasterxml.jackson.annotation.JsonAutoDetect",
-          "justification": "Added to the builders so the Jackson 3 creator does not depend on the consuming mapper enabling field visibility."
+          "justification": "Added to the builders so the Jackson 3 creator does not depend on the consuming mapper enabling field visibility.",
+          "package": "dev.langchain4j.model.jina.internal.api"
         }
       ]
     }

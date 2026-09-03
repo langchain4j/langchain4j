@@ -3,6 +3,8 @@ package dev.langchain4j.internal;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import java.net.URL;
+import java.net.URLClassLoader;
 import org.junit.jupiter.api.Test;
 
 class WireJsonTest {
@@ -90,4 +92,32 @@ class WireJsonTest {
                 .isNotSameAs(WireJson.codec(WireJsonSpec.builder().build()));
     }
 
+
+    @Test
+    void a_codec_is_reused_for_the_same_spec_and_class_loader() {
+        assertThat(WireJson.codec(WireJsonSpec.builder().build()))
+                .isSameAs(WireJson.codec(WireJsonSpec.builder().build()));
+    }
+
+    /**
+     * The codec is resolved through the thread-context class loader, so caching one for every
+     * caller would hand the first application's codec to the rest - the case being several
+     * deployments sharing one copy of LangChain4j from a container's common directory.
+     */
+    @Test
+    void a_different_class_loader_gets_its_own_codec() throws Exception {
+        WireJsonSpec spec = WireJsonSpec.builder().build();
+        ClassLoader original = Thread.currentThread().getContextClassLoader();
+        try (URLClassLoader other = new URLClassLoader(new URL[0], original)) {
+            Json.JsonCodec mine = WireJson.codec(spec);
+
+            Thread.currentThread().setContextClassLoader(other);
+            Json.JsonCodec theirs = WireJson.codec(spec);
+
+            assertThat(theirs).isNotSameAs(mine);
+            assertThat(WireJson.codec(spec)).isSameAs(theirs);
+        } finally {
+            Thread.currentThread().setContextClassLoader(original);
+        }
+    }
 }

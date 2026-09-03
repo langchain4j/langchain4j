@@ -112,17 +112,23 @@
         {
           "code": "java.annotation.added",
           "annotationType": "com.fasterxml.jackson.annotation.JsonCreator",
-          "justification": "Added so the internal wire DTOs can also be deserialized by Jackson 3, whose databind-package @JsonDeserialize(builder=...) differs from Jackson 2's. Jackson 2 behaviour is unchanged: the explicit @JsonDeserialize still takes precedence."
+          "justification": "Added so the internal wire DTOs can also be deserialized by Jackson 3, whose databind-package @JsonDeserialize(builder=...) differs from Jackson 2's. Jackson 2 behaviour is unchanged: the explicit @JsonDeserialize still takes precedence.",
+          "regex": true,
+          "package": "dev\\.langchain4j\\.model\\.openai\\.internal(\\..*)?"
         },
         {
           "code": "java.annotation.added",
           "annotationType": "com.fasterxml.jackson.annotation.JsonAutoDetect",
-          "justification": "Added to the builders so the Jackson 3 creator does not depend on the consuming mapper enabling field visibility. Affects internal wire DTOs only."
+          "justification": "Added to the builders so the Jackson 3 creator does not depend on the consuming mapper enabling field visibility. Affects internal wire DTOs only.",
+          "regex": true,
+          "package": "dev\\.langchain4j\\.model\\.openai\\.internal(\\..*)?"
         },
         {
           "code": "java.annotation.removed",
           "annotationType": "com.fasterxml.jackson.databind.annotation.JsonNaming",
-          "justification": "Removed from the internal wire DTOs; the snake_case naming strategy now lives on the codec, which is what allows the JSON library to be swapped. Wire format is unchanged and covered by WireFormatTest."
+          "justification": "Removed from the internal wire DTOs; the snake_case naming strategy now lives on the codec, which is what allows the JSON library to be swapped. Wire format is unchanged and covered by WireFormatTest.",
+          "regex": true,
+          "package": "dev\\.langchain4j\\.model\\.openai\\.internal(\\..*)?"
         },
         {
           "code": "java.annotation.removed",
