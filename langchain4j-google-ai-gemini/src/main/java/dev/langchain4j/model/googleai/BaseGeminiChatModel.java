@@ -275,8 +275,24 @@ class BaseGeminiChatModel {
                                 firstCandidate.urlContextMetadata() != null
                                         ? toUrlContextMetadata(firstCandidate.urlContextMetadata())
                                         : null)
+                        .safetyRatings(resolveSafetyRatings(geminiResponse, firstCandidate))
+                        .blockReason(
+                                geminiResponse.promptFeedback() != null
+                                        ? geminiResponse.promptFeedback().blockReason()
+                                        : null)
                         .build())
                 .build();
+    }
+
+    private static List<GeminiSafetyRating> resolveSafetyRatings(
+            GeminiGenerateContentResponse response, GeminiCandidate candidate) {
+        if (candidate != null && candidate.safetyRatings() != null) {
+            return candidate.safetyRatings();
+        }
+        if (response.promptFeedback() != null && response.promptFeedback().safetyRatings() != null) {
+            return response.promptFeedback().safetyRatings();
+        }
+        return List.of();
     }
 
     protected AiMessage createAiMessage(GeminiCandidate candidate) {

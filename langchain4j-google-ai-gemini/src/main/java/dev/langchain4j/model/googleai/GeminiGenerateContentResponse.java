@@ -10,14 +10,34 @@ record GeminiGenerateContentResponse(
         @JsonProperty("modelVersion") String modelVersion,
         @JsonProperty("candidates") List<GeminiCandidate> candidates,
         @JsonProperty("usageMetadata") GeminiUsageMetadata usageMetadata,
-        @JsonProperty("groundingMetadata") GroundingMetadata groundingMetadata) {
+        @JsonProperty("groundingMetadata") GroundingMetadata groundingMetadata,
+        @JsonProperty("promptFeedback") GeminiPromptFeedback promptFeedback) {
+
+    GeminiGenerateContentResponse(
+            String responseId,
+            String modelVersion,
+            List<GeminiCandidate> candidates,
+            GeminiUsageMetadata usageMetadata,
+            GroundingMetadata groundingMetadata) {
+        this(responseId, modelVersion, candidates, usageMetadata, groundingMetadata, null);
+    }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     record GeminiCandidate(
             @JsonProperty("content") GeminiContent content,
             @JsonProperty("finishReason") GeminiFinishReason finishReason,
             @JsonProperty("urlContextMetadata") GeminiUrlContextMetadata urlContextMetadata,
-            @JsonProperty("groundingMetadata") GroundingMetadata groundingMetadata) {
+            @JsonProperty("groundingMetadata") GroundingMetadata groundingMetadata,
+            @JsonProperty("safetyRatings") List<GeminiSafetyRating> safetyRatings) {
+
+        GeminiCandidate(
+                GeminiContent content,
+                GeminiFinishReason finishReason,
+                GeminiUrlContextMetadata urlContextMetadata,
+                GroundingMetadata groundingMetadata) {
+            this(content, finishReason, urlContextMetadata, groundingMetadata, null);
+        }
+
         enum GeminiFinishReason {
             FINISH_REASON_UNSPECIFIED,
             STOP,
@@ -42,6 +62,11 @@ record GeminiGenerateContentResponse(
             ESCALATION
         }
     }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    record GeminiPromptFeedback(
+            @JsonProperty("blockReason") String blockReason,
+            @JsonProperty("safetyRatings") List<GeminiSafetyRating> safetyRatings) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     record GeminiUrlContextMetadata(
