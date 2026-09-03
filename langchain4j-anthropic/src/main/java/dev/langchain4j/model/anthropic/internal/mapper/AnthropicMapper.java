@@ -224,9 +224,12 @@ public class AnthropicMapper {
     private static List<AnthropicMessageContent> toAnthropicMessageContents(AiMessage message, boolean sendThinking) {
         List<AnthropicMessageContent> contents = new ArrayList<>();
 
-        if (sendThinking && isNotNullOrBlank(message.thinking())) {
+        if (sendThinking) {
             String signature = message.attribute(THINKING_SIGNATURE_KEY, String.class);
-            contents.add(new AnthropicThinkingContent(message.thinking(), signature));
+            if (isNotNullOrBlank(message.thinking()) || isNotNullOrBlank(signature)) {
+                String thinking = message.thinking() != null ? message.thinking() : "";
+                contents.add(new AnthropicThinkingContent(thinking, signature));
+            }
         }
 
         if (sendThinking && message.attributes().containsKey(REDACTED_THINKING_KEY)) {
