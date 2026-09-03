@@ -17,6 +17,10 @@ public record AgentArgument(Type type, String name, Object defaultValue, boolean
         this(type, name, defaultValue, false);
     }
 
+    public AgentArgument withDescription(String description) {
+        return new AgentArgument(type, name, defaultValue, isOptional, description);
+    }
+
     public Class<?> rawType() {
         return AgentUtil.rawType(type);
     }
