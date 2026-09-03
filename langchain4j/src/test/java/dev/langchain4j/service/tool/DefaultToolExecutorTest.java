@@ -175,9 +175,13 @@ class DefaultToolExecutorTest implements WithAssertions {
 
         assertThat(coerceArgument(true, "arg", boolean.class, null)).isEqualTo(true);
         assertThat(coerceArgument(Boolean.FALSE, "arg", boolean.class, null)).isEqualTo(false);
+        // String values must be accepted, consistently with the numeric/enum/UUID branches.
+        assertThat(coerceArgument("true", "arg", boolean.class, null)).isEqualTo(true);
+        assertThat(coerceArgument("false", "arg", Boolean.class, null)).isEqualTo(false);
+        assertThat(coerceArgument("TRUE", "arg", boolean.class, null)).isEqualTo(true);
         assertThatExceptionOfType(IllegalArgumentException.class)
-                .isThrownBy(() -> coerceArgument("true", "arg", boolean.class, null))
-                .withMessageContaining("Argument \"arg\" is not convertable to boolean, got java.lang.String: <true>");
+                .isThrownBy(() -> coerceArgument("not-a-boolean", "arg", boolean.class, null))
+                .withMessageContaining("Argument \"arg\" is not convertable to boolean, got java.lang.String: <not-a-boolean>");
 
         assertThat(coerceArgument(1.5, "arg", double.class, null)).isEqualTo(1.5);
         assertThat(coerceArgument(1.5, "arg", Double.class, null)).isEqualTo(1.5);

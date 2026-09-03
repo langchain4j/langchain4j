@@ -2,6 +2,9 @@ package dev.langchain4j.model.openai;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.TextContent;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.model.TokenCountEstimator;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -95,6 +98,26 @@ class OpenAiTokenCountEstimatorTest {
 
         // then
         assertThat(tokenCount).isPositive();
+    }
+
+    @Test
+    void should_count_tokens_in_tool_execution_result_message_with_non_text_contents() {
+
+        // given - a tool result containing both text and an image; calling text() on it would throw,
+        // so the estimator must iterate over contents() instead.
+        ToolExecutionResultMessage message = ToolExecutionResultMessage.builder()
+                .toolName("tool")
+                .contents(TextContent.from("hello"), ImageContent.from("http://example.com/image.png"))
+                .build();
+
+        // when
+        int tokenCount = tokenCountEstimator.estimateTokenCountInMessage(message);
+
+        // then - non-text contents are ignored, so the count matches a plain text result
+        int textOnlyTokenCount = tokenCountEstimator.estimateTokenCountInMessage(
+                ToolExecutionResultMessage.from("id", "tool", "hello"));
+        assertThat(tokenCount).isPositive();
+        assertThat(tokenCount).isEqualTo(textOnlyTokenCount);
     }
 
     @Test

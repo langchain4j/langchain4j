@@ -165,7 +165,14 @@ public class OpenAiTokenCountEstimator implements TokenCountEstimator {
     }
 
     private int estimateTokenCountIn(ToolExecutionResultMessage toolExecutionResultMessage) {
-        return estimateTokenCountInText(toolExecutionResultMessage.text());
+        int tokenCount = 0;
+        for (Content content : toolExecutionResultMessage.contents()) {
+            if (content instanceof TextContent textContent) {
+                tokenCount += estimateTokenCountInText(textContent.text());
+            }
+            // Non-text content (e.g. ImageContent) has no text to count.
+        }
+        return tokenCount;
     }
 
     @Override
