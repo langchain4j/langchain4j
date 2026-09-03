@@ -1,5 +1,7 @@
 package dev.langchain4j.store.embedding.mongodb;
 
+import static java.lang.String.format;
+
 import com.mongodb.ConnectionString;
 import com.mongodb.MongoClientSettings;
 import com.mongodb.ServerApi;
@@ -11,14 +13,11 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
+import java.util.concurrent.ThreadLocalRandom;
+import java.util.function.Function;
 import org.bson.UuidRepresentation;
 import org.testcontainers.mongodb.MongoDBAtlasLocalContainer;
 import org.testcontainers.shaded.com.google.common.collect.Sets;
-
-import java.util.concurrent.ThreadLocalRandom;
-import java.util.function.Function;
-
-import static java.lang.String.format;
 
 final class MongoDbTestFixture {
 
@@ -45,7 +44,8 @@ final class MongoDbTestFixture {
     }
 
     MongoDbTestFixture initialize(Function<MongoDbEmbeddingStore.Builder, MongoDbEmbeddingStore.Builder> initializer) {
-        this.embeddingStore = initializer.apply(getDefaultMongoDbEmbeddingStoreBuilder()).build();
+        this.embeddingStore =
+                initializer.apply(getDefaultMongoDbEmbeddingStoreBuilder()).build();
         return this;
     }
 
@@ -67,8 +67,8 @@ final class MongoDbTestFixture {
             String connectionString = CONNECTION_STRING != null
                     ? CONNECTION_STRING
                     : format("mongodb+srv://%s:%s@%s/?retryWrites=true&w=majority", USERNAME, PASSWORD, HOST);
-            MongoClientSettings.Builder builder = MongoClientSettings.builder()
-                    .applyConnectionString(new ConnectionString(connectionString));
+            MongoClientSettings.Builder builder =
+                    MongoClientSettings.builder().applyConnectionString(new ConnectionString(connectionString));
             return createClientFromBuilder(builder);
         } else {
             MongoClientSettings.Builder builder = MongoClientSettings.builder()
@@ -78,8 +78,7 @@ final class MongoDbTestFixture {
     }
 
     private static MongoClient createClientFromBuilder(MongoClientSettings.Builder builder) {
-        MongoClientSettings mongoClientSettings = builder
-                .uuidRepresentation(UuidRepresentation.STANDARD)
+        MongoClientSettings mongoClientSettings = builder.uuidRepresentation(UuidRepresentation.STANDARD)
                 .serverApi(ServerApi.builder().version(ServerApiVersion.V1).build())
                 .build();
         return MongoClients.create(mongoClientSettings);

@@ -12,10 +12,10 @@ public class MongoDbMatchedDocument {
     private Map<String, Object> metadata;
     private Double score;
 
-    public MongoDbMatchedDocument() {
-    }
+    public MongoDbMatchedDocument() {}
 
-    public MongoDbMatchedDocument(String id, List<Float> embedding, String text, Map<String, String> metadata, Double score) {
+    public MongoDbMatchedDocument(
+            String id, List<Float> embedding, String text, Map<String, String> metadata, Double score) {
         this.id = id;
         this.embedding = embedding;
         this.text = text;
