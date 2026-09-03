@@ -217,6 +217,28 @@ public class DefaultMcpClientTest {
     }
 
     @Test
+    public void should_preserve_error_data_when_tool_list_is_refused() throws Exception {
+        final McpTransport transport = getMinimalMcpTransportMock();
+        final DefaultMcpClient client =
+                new DefaultMcpClient.Builder().transport(transport).build();
+        final ObjectNode errorResponse = JsonNodeFactory.instance.objectNode();
+        errorResponse.put("jsonrpc", "2.0").put("id", 1);
+        final ObjectNode error = errorResponse.putObject("error");
+        error.put("code", -32001).put("message", "Rate limited");
+        error.putObject("data").put("retryAfter", 5);
+        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
+                .thenReturn(CompletableFuture.completedFuture(errorResponse));
+
+        final Throwable thrown = catchThrowable(client::listTools);
+
+        assertThat(thrown).isInstanceOf(McpException.class);
+        final McpException exception = (McpException) thrown;
+        assertThat(exception.errorCode()).isEqualTo(-32001);
+        assertThat(exception.errorDataAsJson()).isEqualTo("{\"retryAfter\":5}");
+        assertThat(exception.errorDataAsMap()).containsEntry("retryAfter", 5);
+    }
+
+    @Test
     public void should_cache_tool_list() throws Exception {
         // given
         final McpTransport transport = getMinimalMcpTransportMock();
