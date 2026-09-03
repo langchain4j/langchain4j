@@ -4,7 +4,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.Test;
 
-class SupervisorPlannerTest {
+/**
+ * Tests the generation of the argument descriptions the supervisor includes in
+ * its agent cards ({@link SupervisorPlanner#argumentDescription(Class, String)}),
+ * in particular for argument types extending a base class.
+ */
+class SupervisorArgumentDescriptionTest {
 
     static class BaseTask {
 

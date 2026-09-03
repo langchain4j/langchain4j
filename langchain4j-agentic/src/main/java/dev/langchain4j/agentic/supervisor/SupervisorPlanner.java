@@ -21,7 +21,6 @@ import dev.langchain4j.service.ParameterNameResolver;
 import dev.langchain4j.service.memory.ChatMemoryAccess;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -145,24 +144,27 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
         return name + ": {" + fieldsDescription + "}";
     }
 
-    /**
-     * Declared fields of {@code type} followed by the fields of its superclasses
-     * (up to, excluding, {@code Object}), so the supervisor's request context
-     * describes the whole state of an output POJO that extends a base class.
-     * A field redeclared in a subclass shadows the inherited one.
-     */
     private static List<Field> fieldsIncludingInherited(Class<?> type) {
-        List<Class<?>> hierarchy = new ArrayList<>();
-        for (Class<?> current = type; current != null && current != Object.class; current = current.getSuperclass()) {
-            hierarchy.add(current);
+        List<Field> fields = new ArrayList<>();
+        collectFields(type, fields);
+        return List.copyOf(fields);
+    }
+
+    /**
+     * Collects the declared fields of {@code type} followed by those of its
+     * superclasses (up to, excluding, {@code Object}), so the supervisor's
+     * request context describes the whole state of an output POJO that extends
+     * a base class. A field redeclared in a subclass shadows the inherited one.
+     */
+    private static void collectFields(Class<?> type, List<Field> fields) {
+        if (type == null || type == Object.class) {
+            return;
         }
-        Map<String, Field> fields = new LinkedHashMap<>();
-        for (int i = hierarchy.size() - 1; i >= 0; i--) {
-            for (Field field : hierarchy.get(i).getDeclaredFields()) {
-                fields.put(field.getName(), field);
-            }
+        collectFields(type.getSuperclass(), fields);
+        for (Field field : type.getDeclaredFields()) {
+            fields.removeIf(inherited -> inherited.getName().equals(field.getName()));
+            fields.add(field);
         }
-        return List.copyOf(fields.values());
     }
 
     private Action nextSubagent(AgenticScope agenticScope, String lastResponse) {
