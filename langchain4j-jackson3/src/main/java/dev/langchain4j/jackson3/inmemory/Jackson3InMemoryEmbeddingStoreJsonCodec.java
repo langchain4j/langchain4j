@@ -10,6 +10,7 @@ import dev.langchain4j.exception.JsonReadException;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.jackson3.Jackson3Defaults;
 import dev.langchain4j.store.embedding.inmemory.InMemoryEmbeddingStore;
 import dev.langchain4j.store.embedding.inmemory.InMemoryEmbeddingStoreJsonCodec;
 import java.io.InputStream;

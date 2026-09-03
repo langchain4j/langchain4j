@@ -133,11 +133,15 @@ public final class CategoryScores {
     public static final class Builder {
 
         private Double hate;
+        @JsonSetter("hate/threatening")
         private Double hateThreatening;
+        @JsonSetter("self-harm")
         private Double selfHarm;
         private Double sexual;
+        @JsonSetter("sexual/minors")
         private Double sexualMinors;
         private Double violence;
+        @JsonSetter("violence/graphic")
         private Double violenceGraphic;
 
         public Builder hate(Double hate) {

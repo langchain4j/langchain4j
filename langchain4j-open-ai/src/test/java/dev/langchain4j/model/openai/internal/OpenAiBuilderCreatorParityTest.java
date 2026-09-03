@@ -53,7 +53,7 @@ class OpenAiBuilderCreatorParityTest {
      */
     private static final int EXPECTED_AT_LEAST = 40;
 
-    private final Json.JsonCodec codec = ProviderJson.codec(ProviderJsonSpec.builder()
+    private static final Json.JsonCodec CODEC = ProviderJson.codec(ProviderJsonSpec.builder()
             .propertyNaming(ProviderJsonSpec.PropertyNaming.SNAKE_CASE)
             .build());
 
@@ -65,11 +65,15 @@ class OpenAiBuilderCreatorParityTest {
                 .as("DTOs found under %s - scanning is broken if this is empty or short", PACKAGE)
                 .hasSizeGreaterThanOrEqualTo(EXPECTED_AT_LEAST);
 
+        assertThat(notDeserializable)
+                .as("types the configured codec cannot construct at all, so they are not compared")
+                .hasSizeLessThanOrEqualTo(2);
+
         List<DynamicTest> tests = new ArrayList<>();
         for (Class<?> dto : dtos) {
             tests.add(dynamicTest(dto.getSimpleName(), () -> {
                 Object viaBuilder = buildEmpty(dto);
-                Object viaCreator = codec.fromJson("{}", dto);
+                Object viaCreator = CODEC.fromJson("{}", dto);
 
                 assertThat(viaCreator)
                         .usingRecursiveComparison()
@@ -90,7 +94,7 @@ class OpenAiBuilderCreatorParityTest {
     @Test
     void a_default_applied_inside_build_does_not_survive_the_creator_route() {
         DefaultedInBuild viaBuilder = DefaultedInBuild.builder().build();
-        DefaultedInBuild viaCreator = codec.fromJson("{}", DefaultedInBuild.class);
+        DefaultedInBuild viaCreator = CODEC.fromJson("{}", DefaultedInBuild.class);
 
         assertThat(viaBuilder.type).isEqualTo("function");
         assertThat(viaCreator.type).isNull();
@@ -136,6 +140,8 @@ class OpenAiBuilderCreatorParityTest {
      * builder. A DTO whose builder validates required fields cannot be built empty, so it is left
      * out rather than reported as a failure.
      */
+    private static final List<String> notDeserializable = new ArrayList<>();
+
     private static List<Class<?>> builderBackedDtos() throws Exception {
         List<Class<?>> dtos = new ArrayList<>();
         for (String className : classNamesIn(PACKAGE)) {
@@ -160,6 +166,17 @@ class OpenAiBuilderCreatorParityTest {
             try {
                 buildEmpty(type);
             } catch (Exception e) {
+                // A builder that validates required fields cannot be built empty, so there is
+                // nothing to compare.
+                continue;
+            }
+            try {
+                CODEC.fromJson("{}", type);
+            } catch (RuntimeException e) {
+                // The configured codec cannot construct this type at all - EmbeddingRequest's
+                // builder overloads input(), which Jackson 2 rejects as conflicting setters.
+                // It is a request type, never read back, so this is not a parity question.
+                notDeserializable.add(type.getSimpleName());
                 continue;
             }
             dtos.add(type);

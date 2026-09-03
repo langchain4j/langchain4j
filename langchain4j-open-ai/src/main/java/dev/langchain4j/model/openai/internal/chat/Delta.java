@@ -115,6 +115,7 @@ public final class Delta {
 
         private String role;
         private String content;
+        @JsonAlias("reasoning")
         private String reasoningContent;
         private List<ToolCall> toolCalls;
 

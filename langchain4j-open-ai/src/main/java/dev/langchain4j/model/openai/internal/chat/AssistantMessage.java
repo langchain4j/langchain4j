@@ -159,6 +159,7 @@ public final class AssistantMessage implements Message {
     public static final class Builder {
 
         private String content;
+        @JsonAlias("reasoning")
         private String reasoningContent;
         private String name;
         private List<ToolCall> toolCalls;

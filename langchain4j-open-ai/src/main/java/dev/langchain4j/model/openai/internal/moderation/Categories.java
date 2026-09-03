@@ -133,11 +133,15 @@ public final class Categories {
     public static final class Builder {
 
         private Boolean hate;
+        @JsonSetter("hate/threatening")
         private Boolean hateThreatening;
+        @JsonSetter("self-harm")
         private Boolean selfHarm;
         private Boolean sexual;
+        @JsonSetter("sexual/minors")
         private Boolean sexualMinors;
         private Boolean violence;
+        @JsonSetter("violence/graphic")
         private Boolean violenceGraphic;
 
         public Builder hate(Boolean hate) {
