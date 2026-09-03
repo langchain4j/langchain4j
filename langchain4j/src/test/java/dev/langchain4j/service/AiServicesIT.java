@@ -15,7 +15,7 @@ import static dev.langchain4j.service.AiServicesIT.IssueCategory.OVERALL_EXPERIE
 import static dev.langchain4j.service.AiServicesIT.IssueCategory.SERVICE_ISSUE;
 import static dev.langchain4j.service.AiServicesIT.Sentiment.POSITIVE;
 import static java.time.Month.JULY;
-import static java.util.Collections.singletonList;
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.data.MapEntry.entry;
@@ -48,6 +48,7 @@ import java.time.LocalTime;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.UnaryOperator;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -96,11 +97,13 @@ public class AiServicesIT {
     // TODO rename verifyNoMoreImportantInteractions
     public static void verifyNoMoreInteractionsFor(ChatModel model) {
         ignoreInteractions(model).doChat(any());
+        ignoreInteractions(model).doChatAsync(any());
         ignoreInteractions(model).defaultRequestParameters();
         ignoreInteractions(model).supportedCapabilities();
         ignoreInteractions(model).listeners();
         ignoreInteractions(model).provider();
         ignoreInteractions(model).chat(any(ChatRequest.class), any(ChatRequestOptions.class));
+        ignoreInteractions(model).chatAsync(any(ChatRequest.class), any(ChatRequestOptions.class));
         verifyNoMoreInteractions(model);
     }
 
@@ -123,6 +126,53 @@ public class AiServicesIT {
                 .chat(chatRequest("Count the number of eggs mentioned in this sentence:\n"
                         + "|||I have ten eggs in my basket and three in my pocket.|||\n"
                         + "You must answer strictly in the following format: integer number"));
+    }
+
+    interface AsyncAssistant {
+
+        CompletableFuture<String> chat(String userMessage);
+    }
+
+    @Test
+    void should_chat_via_completable_future() throws Exception {
+        AsyncAssistant assistant = AiServices.create(AsyncAssistant.class, chatModel);
+
+        String userMessage = "What is the capital of Germany? Answer with a single word";
+
+        CompletableFuture<String> future = assistant.chat(userMessage);
+
+        assertThat(future.get(30, SECONDS)).containsIgnoringCase("Berlin");
+
+        verify(chatModel).chatAsync(chatRequest(userMessage));
+    }
+
+    @Test
+    void should_chat_via_completable_future_with_chat_memory() throws Exception {
+
+        // A fresh (non-spy) model + memory so the strict @AfterEach verification of the shared spies is unaffected.
+        ChatModel model = OpenAiChatModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
+                .apiKey(System.getenv("OPENAI_API_KEY"))
+                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+                .modelName(GPT_4_O_MINI)
+                .temperature(0.0)
+                .build();
+
+        ChatMemory memory = MessageWindowChatMemory.withMaxMessages(10);
+
+        AsyncAssistant assistant = AiServices.builder(AsyncAssistant.class)
+                .chatModel(model)
+                .chatMemory(memory)
+                .build();
+
+        assistant.chat("My name is Klaus. Reply with a single word: OK").get(30, SECONDS);
+
+        String answer =
+                assistant.chat("What is my name? Answer with a single word").get(30, SECONDS);
+
+        assertThat(answer).containsIgnoringCase("Klaus");
+        // two user + two AI messages persisted across the two asynchronous turns
+        assertThat(memory.messages()).hasSizeGreaterThanOrEqualTo(4);
     }
 
     interface Humorist {

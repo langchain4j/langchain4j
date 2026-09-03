@@ -251,6 +251,11 @@ interface Assistant {
 For this, please import `langchain4j-reactor` module.
 See more details [here](/tutorials/ai-services#flux).
 
+That module also provides `Mono<T>` and `Flux<AiServiceStreamingEvent>` for the
+[non-blocking modes](/tutorials/non-blocking), and the starter can route LangChain4j's offloaded work through
+Spring's own task executor with `langchain4j.executor.use-spring-task-executor=true` so that tracing, MDC and
+security context follow an asynchronous invocation.
+
 
 ## Observability
 
