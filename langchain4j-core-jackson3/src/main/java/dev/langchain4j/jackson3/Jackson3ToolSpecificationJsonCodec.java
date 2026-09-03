@@ -1,18 +1,19 @@
 package dev.langchain4j.jackson3;
 
-import dev.langchain4j.exception.JsonWriteException;
-import dev.langchain4j.exception.JsonReadException;
+import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolSpecificationJsonCodec;
+import dev.langchain4j.exception.JsonReadException;
+import dev.langchain4j.exception.JsonWriteException;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.json.JsonMapper;
-
 /**
  * Jackson 3 twin of the default tool specification codec.
  *
  * <p>It uses its own mapper, separate from the general-purpose codec, so that tool specification
  * serialization is not affected by customizations applied through {@code JsonCodecFactory}.
  */
+@Internal
 public class Jackson3ToolSpecificationJsonCodec implements ToolSpecificationJsonCodec {
 
     private final ObjectMapper objectMapper;

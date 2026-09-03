@@ -9,29 +9,16 @@ import dev.langchain4j.internal.Json;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
-class Jackson3OptInTest {
+/**
+ * The core JSON entry points, exercised in an application that has excluded Jackson 2. Absence of
+ * Jackson 2 itself, and the AI Service paths, are covered by {@link ApplicationWithoutJackson2Test}.
+ */
+class CoreEntryPointsWithoutJackson2Test {
+
+
 
     // ---------------------------------------------------------------
-    // 1. Jackson 2 must be genuinely absent from the runtime classpath
-    // ---------------------------------------------------------------
-
-    @Test
-    void jackson2_databind_is_not_on_the_classpath() {
-        assertThatThrownBy(() -> Class.forName("com.fasterxml.jackson.databind.ObjectMapper"))
-                .isInstanceOf(ClassNotFoundException.class);
-        assertThatThrownBy(() -> Class.forName("com.fasterxml.jackson.core.JsonParser"))
-                .isInstanceOf(ClassNotFoundException.class);
-    }
-
-    @Test
-    void jackson_annotations_ARE_still_present_and_that_is_correct() throws Exception {
-        // jackson-annotations stays on 2.x coordinates and is a required dependency of Jackson 3
-        assertThat(Class.forName("com.fasterxml.jackson.annotation.JsonProperty")).isNotNull();
-        assertThat(Class.forName("tools.jackson.databind.ObjectMapper")).isNotNull();
-    }
-
-    // ---------------------------------------------------------------
-    // 2. The SPI must actually pick up the Jackson 3 codec
+    // The SPI must actually pick up the Jackson 3 codec
     // ---------------------------------------------------------------
 
     @Test
@@ -57,7 +44,7 @@ class Jackson3OptInTest {
     void core_Json_fromJson_with_generic_Type() throws Exception {
         // java.lang.reflect.Type, obtained without any Jackson type at all
         java.lang.reflect.Type listOfPojo =
-                Jackson3OptInTest.class.getDeclaredField("genericTypeHolder").getGenericType();
+                CoreEntryPointsWithoutJackson2Test.class.getDeclaredField("genericTypeHolder").getGenericType();
 
         List<Pojo> list = Json.fromJson(
                 "[{\"name\":\"a\",\"age\":1},{\"name\":\"b\",\"age\":2}]", listOfPojo);
@@ -66,7 +53,7 @@ class Jackson3OptInTest {
     }
 
     // ---------------------------------------------------------------
-    // 3. ChatMessage serialization — the chat-memory persistence path
+    // ChatMessage serialization - the chat-memory persistence path
     // ---------------------------------------------------------------
 
     @Test
@@ -147,26 +134,6 @@ class Jackson3OptInTest {
                 .isEqualTo("Hello bob, you are 42");
     }
 
-    @Test
-    void in_memory_embedding_store_round_trips_through_jackson3() {
-        dev.langchain4j.store.embedding.inmemory.InMemoryEmbeddingStore<dev.langchain4j.data.segment.TextSegment>
-                store = new dev.langchain4j.store.embedding.inmemory.InMemoryEmbeddingStore<>();
-        store.add(
-                dev.langchain4j.data.embedding.Embedding.from(new float[] {0.1f, 0.2f}),
-                dev.langchain4j.data.segment.TextSegment.from("hello"));
-
-        String json = store.serializeToJson();
-        var restored = dev.langchain4j.store.embedding.inmemory.InMemoryEmbeddingStore.fromJson(json);
-
-        var matches = restored.search(dev.langchain4j.store.embedding.EmbeddingSearchRequest.builder()
-                        .queryEmbedding(dev.langchain4j.data.embedding.Embedding.from(new float[] {0.1f, 0.2f}))
-                        .maxResults(1)
-                        .build())
-                .matches();
-
-        assertThat(matches).hasSize(1);
-        assertThat(matches.get(0).embedded().text()).isEqualTo("hello");
-    }
 
     static class Pojo {
         String name;

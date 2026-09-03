@@ -22,12 +22,12 @@
         {
           "code": "java.class.externalClassExposedInAPI",
           "new": "missing-class tools.jackson.databind.ObjectMapper",
-          "justification": "Exposed intentionally so users can supply a customized Jackson 3 ObjectMapper, mirroring the Jackson 2 codec."
+          "justification": "The codec takes an ObjectMapper the way the Jackson 2 codec takes one. The class is @Internal, so this is framework plumbing rather than supported API."
         },
         {
           "code": "java.class.externalClassExposedInAPI",
           "new": "missing-class tools.jackson.databind.json.JsonMapper.Builder",
-          "justification": "Exposed intentionally so users can extend the chat message mapper configuration, mirroring the Jackson 2 codec."
+          "justification": "The chat message mapper builder is reachable the way the Jackson 2 codec exposes its own. The class is @Internal, so this is framework plumbing rather than supported API."
         },
         {
           "code": "java.class.externalClassExposedInAPI",

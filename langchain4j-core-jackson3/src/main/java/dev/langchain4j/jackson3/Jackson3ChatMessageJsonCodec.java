@@ -1,5 +1,26 @@
 package dev.langchain4j.jackson3;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonSubTypes;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import dev.langchain4j.Internal;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.data.audio.Audio;
+import dev.langchain4j.data.image.Image;
+import dev.langchain4j.data.message.*;
+import dev.langchain4j.data.pdf.PdfFile;
+import dev.langchain4j.data.video.Video;
+import dev.langchain4j.exception.JsonReadException;
+import dev.langchain4j.exception.JsonWriteException;
+import java.util.List;
+import java.util.Map;
+import tools.jackson.core.JacksonException;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.annotation.JsonDeserialize;
+import tools.jackson.databind.json.JsonMapper;
 import static com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility.ANY;
 import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_EMPTY;
 import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
@@ -7,26 +28,6 @@ import static com.fasterxml.jackson.annotation.JsonTypeInfo.As.EXISTING_PROPERTY
 import static com.fasterxml.jackson.annotation.JsonTypeInfo.Id.NAME;
 import static com.fasterxml.jackson.annotation.PropertyAccessor.FIELD;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonSubTypes;
-import com.fasterxml.jackson.annotation.JsonTypeInfo;
-import dev.langchain4j.exception.JsonReadException;
-import dev.langchain4j.exception.JsonWriteException;
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.data.audio.Audio;
-import dev.langchain4j.data.image.Image;
-import dev.langchain4j.data.message.*;
-import dev.langchain4j.data.pdf.PdfFile;
-import dev.langchain4j.data.video.Video;
-import java.util.List;
-import java.util.Map;
-import tools.jackson.core.type.TypeReference;
-import tools.jackson.core.JacksonException;
-import tools.jackson.databind.ObjectMapper;
-import tools.jackson.databind.annotation.JsonDeserialize;
-import tools.jackson.databind.json.JsonMapper;
 
 /**
  * Jackson 3 twin of {@code JacksonChatMessageJsonCodec}.
@@ -35,6 +36,7 @@ import tools.jackson.databind.json.JsonMapper;
  * {@code jackson-annotations} artifact and is identical to the Jackson 2 version.
  * Only {@code @JsonDeserialize} lives in the databind package and therefore had to move.
  */
+@Internal
 public class Jackson3ChatMessageJsonCodec implements ChatMessageJsonCodec {
 
     public static JsonMapper.Builder chatMessageJsonMapperBuilder() {

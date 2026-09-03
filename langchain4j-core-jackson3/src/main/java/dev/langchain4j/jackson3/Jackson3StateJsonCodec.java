@@ -1,5 +1,6 @@
 package dev.langchain4j.jackson3;
 
+import dev.langchain4j.Internal;
 import dev.langchain4j.exception.JsonReadException;
 import dev.langchain4j.exception.JsonTypeNotAllowedException;
 import dev.langchain4j.exception.JsonWriteException;
@@ -13,13 +14,13 @@ import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.exc.InvalidTypeIdException;
 import tools.jackson.databind.json.JsonMapper;
 import tools.jackson.databind.jsontype.PolymorphicTypeValidator;
-
 /**
  * Jackson 3 codec for JSON that carries type information.
  *
  * <p>Writes the same document as its Jackson 2 counterpart, which matters more here than elsewhere:
  * agent state persisted by one has to be readable by the other.
  */
+@Internal
 public class Jackson3StateJsonCodec implements Json.JsonCodec {
 
     private final ObjectMapper objectMapper;

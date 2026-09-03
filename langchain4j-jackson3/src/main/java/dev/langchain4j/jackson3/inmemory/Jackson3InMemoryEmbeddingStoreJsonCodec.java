@@ -1,24 +1,25 @@
 package dev.langchain4j.jackson3.inmemory;
 
-import static com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility.ANY;
-import static com.fasterxml.jackson.annotation.PropertyAccessor.FIELD;
-
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import dev.langchain4j.exception.JsonWriteException;
-import dev.langchain4j.exception.JsonReadException;
+import dev.langchain4j.Internal;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.exception.JsonReadException;
+import dev.langchain4j.exception.JsonWriteException;
 import dev.langchain4j.jackson3.Jackson3Defaults;
 import dev.langchain4j.store.embedding.inmemory.InMemoryEmbeddingStore;
 import dev.langchain4j.store.embedding.inmemory.InMemoryEmbeddingStoreJsonCodec;
 import java.io.InputStream;
 import java.io.OutputStream;
-import tools.jackson.core.type.TypeReference;
 import tools.jackson.core.JacksonException;
+import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.json.JsonMapper;
+import static com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility.ANY;
+import static com.fasterxml.jackson.annotation.PropertyAccessor.FIELD;
+
 
 /**
  * Jackson 3 twin of the default in-memory embedding store codec.
@@ -26,6 +27,7 @@ import tools.jackson.databind.json.JsonMapper;
  * <p>Every annotation on the mixins below comes from the shared {@code jackson-annotations}
  * artifact, so they are identical to the Jackson 2 version.
  */
+@Internal
 public class Jackson3InMemoryEmbeddingStoreJsonCodec implements InMemoryEmbeddingStoreJsonCodec {
 
     private static final ObjectMapper OBJECT_MAPPER = Jackson3Defaults.pinJackson2Defaults(JsonMapper.builder())

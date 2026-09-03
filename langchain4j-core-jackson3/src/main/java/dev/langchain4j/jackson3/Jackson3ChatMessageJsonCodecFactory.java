@@ -1,11 +1,13 @@
 package dev.langchain4j.jackson3;
 
+import dev.langchain4j.Internal;
+import dev.langchain4j.data.message.ChatMessageJsonCodec;
+import dev.langchain4j.spi.PrioritizedFactory;
+import dev.langchain4j.spi.data.message.ChatMessageJsonCodecFactory;
 import static dev.langchain4j.spi.PrioritizedFactory.YIELDS_TO_OTHERS;
 
-import dev.langchain4j.spi.PrioritizedFactory;
-import dev.langchain4j.data.message.ChatMessageJsonCodec;
-import dev.langchain4j.spi.data.message.ChatMessageJsonCodecFactory;
 
+@Internal
 public class Jackson3ChatMessageJsonCodecFactory implements ChatMessageJsonCodecFactory, PrioritizedFactory {
 
     @Override

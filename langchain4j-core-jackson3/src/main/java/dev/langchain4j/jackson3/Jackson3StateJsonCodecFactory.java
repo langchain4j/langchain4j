@@ -1,12 +1,14 @@
 package dev.langchain4j.jackson3;
 
-import static dev.langchain4j.spi.PrioritizedFactory.YIELDS_TO_OTHERS;
-
-import dev.langchain4j.spi.PrioritizedFactory;
+import dev.langchain4j.Internal;
 import dev.langchain4j.internal.Json;
 import dev.langchain4j.internal.TypeAllowlist;
+import dev.langchain4j.spi.PrioritizedFactory;
 import dev.langchain4j.spi.json.StateJsonCodecFactory;
+import static dev.langchain4j.spi.PrioritizedFactory.YIELDS_TO_OTHERS;
 
+
+@Internal
 public class Jackson3StateJsonCodecFactory implements StateJsonCodecFactory, PrioritizedFactory {
 
     @Override
