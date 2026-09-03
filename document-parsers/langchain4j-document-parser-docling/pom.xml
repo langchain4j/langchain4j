@@ -13,7 +13,7 @@
     <name>LangChain4j :: Document Parser :: Docling</name>
 
     <properties>
-        <docling.version>0.6.0</docling.version>
+        <docling.version>0.6.4</docling.version>
     </properties>
 
     <dependencyManagement>
@@ -36,10 +36,21 @@
             <version>1.20.0-SNAPSHOT</version>
         </dependency>
 
+        <!--
+            Docling transitively declares jspecify 1.0.1, while langchain4j-core brings jspecify 1.0.0.
+            Exclude Docling's copy so the build converges on core's version. jspecify contains only
+            compile-time annotations (CLASS retention, no runtime code), so the patch difference is harmless.
+        -->
         <dependency>
             <groupId>ai.docling</groupId>
             <artifactId>docling-serve-api</artifactId>
             <version>${docling.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.jspecify</groupId>
+                    <artifactId>jspecify</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
         <!-- Docling reference client - optional; frameworks like Spring/Quarkus provide their own impl -->
@@ -49,6 +60,12 @@
             <version>${docling.version}</version>
             <scope>runtime</scope>
             <optional>true</optional>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.jspecify</groupId>
+                    <artifactId>jspecify</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
         <!-- Testing -->
@@ -58,6 +75,12 @@
             <artifactId>docling-testcontainers</artifactId>
             <version>${docling.version}</version>
             <scope>test</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.jspecify</groupId>
+                    <artifactId>jspecify</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
         <dependency>
