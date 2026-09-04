@@ -12,7 +12,7 @@ class McpMetadataParsingTest {
 
     @Test
     void resourceWithMetadataAndIcons() throws Exception {
-        JsonNode json = McpJson.parse(
+        String json = 
                 // language=json
                 """
                         {
@@ -38,9 +38,9 @@ class McpMetadataParsingTest {
                             ]
                           }
                         }
-                        """);
+                        """;
 
-        McpResource resource = ResourcesHelper.parseResourceRefs(json).get(0);
+        McpResource resource = ResourcesHelper.parseResourceRefs(json).items().get(0);
 
         assertThat(resource.metadata().get("example.org/status")).isEqualTo("stable");
         assertThat(resource.metadata()).doesNotContainKey(ICONS);
@@ -51,7 +51,7 @@ class McpMetadataParsingTest {
 
     @Test
     void resourceTemplateWithMetadataAndIcons() throws Exception {
-        JsonNode json = McpJson.parse(
+        String json = 
                 // language=json
                 """
                         {
@@ -77,10 +77,10 @@ class McpMetadataParsingTest {
                             ]
                           }
                         }
-                        """);
+                        """;
 
         McpResourceTemplate resourceTemplate =
-                ResourcesHelper.parseResourceTemplateRefs(json).get(0);
+                ResourcesHelper.parseResourceTemplateRefs(json).items().get(0);
 
         assertThat(resourceTemplate.metadata().get("example.org/status")).isEqualTo("stable");
         assertThat(resourceTemplate.metadata()).doesNotContainKey(ICONS);
@@ -91,7 +91,7 @@ class McpMetadataParsingTest {
 
     @Test
     void promptWithMetadataAndIcons() throws Exception {
-        JsonNode json = McpJson.parse(
+        String json = 
                 // language=json
                 """
                         {
@@ -120,9 +120,9 @@ class McpMetadataParsingTest {
                             ]
                           }
                         }
-                        """);
+                        """;
 
-        McpPrompt prompt = PromptsHelper.parsePromptRefs(json).get(0);
+        McpPrompt prompt = PromptsHelper.parsePromptRefs(json).items().get(0);
 
         assertThat(prompt.metadata().get("example.org/status")).isEqualTo("stable");
         assertThat(prompt.metadata()).doesNotContainKey(ICONS);
@@ -132,7 +132,7 @@ class McpMetadataParsingTest {
 
     @Test
     void metadataIsEmptyWhenMetaAndIconsAreAbsent() throws Exception {
-        JsonNode resourcesJson = McpJson.parse(
+        String resourcesJson = 
                 // language=json
                 """
                         {
@@ -145,8 +145,8 @@ class McpMetadataParsingTest {
                             ]
                           }
                         }
-                        """);
-        JsonNode resourceTemplatesJson = McpJson.parse(
+                        """;
+        String resourceTemplatesJson = 
                 // language=json
                 """
                         {
@@ -159,8 +159,8 @@ class McpMetadataParsingTest {
                             ]
                           }
                         }
-                        """);
-        JsonNode promptsJson = McpJson.parse(
+                        """;
+        String promptsJson = 
                 // language=json
                 """
                         {
@@ -172,12 +172,12 @@ class McpMetadataParsingTest {
                             ]
                           }
                         }
-                        """);
+                        """;
 
-        McpResource resource = ResourcesHelper.parseResourceRefs(resourcesJson).get(0);
+        McpResource resource = ResourcesHelper.parseResourceRefs(resourcesJson).items().get(0);
         McpResourceTemplate resourceTemplate =
-                ResourcesHelper.parseResourceTemplateRefs(resourceTemplatesJson).get(0);
-        McpPrompt prompt = PromptsHelper.parsePromptRefs(promptsJson).get(0);
+                ResourcesHelper.parseResourceTemplateRefs(resourceTemplatesJson).items().get(0);
+        McpPrompt prompt = PromptsHelper.parsePromptRefs(promptsJson).items().get(0);
 
         assertThat(resource.metadata()).isEmpty();
         assertThat(resource.icons()).isEmpty();

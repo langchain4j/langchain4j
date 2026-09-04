@@ -23,12 +23,14 @@ import dev.langchain4j.model.vertexai.anthropic.internal.api.AnthropicRequest;
 import dev.langchain4j.model.vertexai.anthropic.internal.api.AnthropicResponse;
 import dev.langchain4j.model.vertexai.anthropic.internal.client.StreamingResponseHandler;
 import dev.langchain4j.model.vertexai.anthropic.internal.client.VertexAiAnthropicClient;
+import dev.langchain4j.model.vertexai.anthropic.internal.client.VertexAiAnthropicJsonUtils;
 import dev.langchain4j.model.vertexai.anthropic.internal.mapper.AnthropicRequestMapper;
 import dev.langchain4j.model.vertexai.anthropic.internal.mapper.AnthropicResponseMapper;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -230,13 +232,11 @@ public class VertexAiAnthropicStreamingChatModel implements StreamingChatModel, 
                 }
             }
 
-            private String serializeToolArguments(Object input) throws com.fasterxml.jackson.core.JsonProcessingException {
+            private String serializeToolArguments(Object input) {
                 if (input == null) {
                     return "{}";
                 }
-                com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
-                mapper.enable(com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT);
-                return mapper.writeValueAsString(input);
+                return VertexAiAnthropicJsonUtils.toJson(input);
             }
 
             private void processStreamingChunk(String jsonChunk, StreamingChatResponseHandler handler) {
@@ -263,16 +263,11 @@ public class VertexAiAnthropicStreamingChatModel implements StreamingChatModel, 
 
             private String extractTextDelta(String jsonChunk) {
                 try {
-                    com.fasterxml.jackson.databind.ObjectMapper mapper = 
-                            new com.fasterxml.jackson.databind.ObjectMapper();
-                    com.fasterxml.jackson.databind.JsonNode rootNode = mapper.readTree(jsonChunk);
-                    
-                    com.fasterxml.jackson.databind.JsonNode deltaNode = rootNode.get("delta");
-                    if (deltaNode != null && !deltaNode.isNull()) {
-                        com.fasterxml.jackson.databind.JsonNode textNode = deltaNode.get("text");
-                        if (textNode != null && !textNode.isNull() && textNode.isTextual()) {
-                            return textNode.asText();
-                        }
+                    Map<String, Object> rootNode = VertexAiAnthropicJsonUtils.fromJson(jsonChunk, Map.class);
+
+                    if (rootNode.get("delta") instanceof Map<?, ?> deltaNode
+                            && deltaNode.get("text") instanceof String text) {
+                        return text;
                     }
                 } catch (Exception e) {
                     logger.warn("Failed to extract text delta from chunk: {}", jsonChunk, e);

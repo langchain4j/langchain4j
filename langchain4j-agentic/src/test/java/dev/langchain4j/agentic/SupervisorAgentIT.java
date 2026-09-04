@@ -10,6 +10,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -65,6 +67,7 @@ import java.util.stream.Collectors;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.mockito.ArgumentCaptor;
 
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 @EnabledIfEnvironmentVariable(named = "GOOGLE_AI_GEMINI_API_KEY", matches = ".+")
@@ -100,8 +103,7 @@ public class SupervisorAgentIT {
             The user request is: '{{request}}'.
             """)
         @Agent("An agent that categorizes the user request")
-        String categorizeRequest(
-                @V("request") @P("The complete end-user request to categorize") String request);
+        String categorizeRequest(@V("request") @P("The complete end-user request to categorize") String request);
     }
 
     @Test
@@ -183,8 +185,9 @@ public class SupervisorAgentIT {
             Withdraw {{amountInUSD}} USD from {{withdrawUser}}'s account and return the new balance.
             """)
         @Agent("A banker that withdraw USD from an account")
-        String withdraw(@V("withdrawUser") @P("The user to withdraw from") String withdrawUser,
-                        @V("amountInUSD") @P("The amount to withdraw") Double amountInUSD);
+        String withdraw(
+                @V("withdrawUser") @P("The user to withdraw from") String withdrawUser,
+                @V("amountInUSD") @P("The amount to withdraw") Double amountInUSD);
     }
 
     public interface CreditAgent {
@@ -195,8 +198,9 @@ public class SupervisorAgentIT {
             Credit {{amountInUSD}} USD to {{creditUser}}'s account and return the new balance.
             """)
         @Agent("A banker that credit USD to an account")
-        String credit(@V("creditUser") @P("The user to credit") String creditUser,
-                      @V("amountInUSD") @P("The amount to credit") Double amountInUSD);
+        String credit(
+                @V("creditUser") @P("The user to credit") String creditUser,
+                @V("amountInUSD") @P("The amount to credit") Double amountInUSD);
     }
 
     static class BankTool {
@@ -1117,5 +1121,71 @@ public class SupervisorAgentIT {
         String result = supervisor.invoke("What is the capital of France?");
 
         assertThat(result).isEqualTo("The capital of France is Paris");
+    }
+
+    static class Document {
+
+        private final String author;
+
+        Document(String author) {
+            this.author = author;
+        }
+
+        public String getAuthor() {
+            return author;
+        }
+    }
+
+    static class Invoice extends Document {
+
+        private final double amountInUSD;
+
+        // The planner returns the argument as a JSON object, which AgentUtil.adaptValueToType reads
+        // back into this type. A class with final fields and no no-arg constructor gives Jackson
+        // nothing to construct from, so the creator has to be named explicitly. The other argument
+        // fixtures here are records, which carry that for free; this one cannot be, because the
+        // point of the test is a field inherited from a superclass.
+        @JsonCreator
+        Invoice(@JsonProperty("author") String author, @JsonProperty("amountInUSD") double amountInUSD) {
+            super(author);
+            this.amountInUSD = amountInUSD;
+        }
+
+        public double getAmountInUSD() {
+            return amountInUSD;
+        }
+    }
+
+    public interface InvoiceRegistrationAgent {
+
+        @UserMessage("""
+                Register the invoice described as '{{invoice}}'.
+                """)
+        @Agent("An agent that registers invoices")
+        String register(@V("invoice") Invoice invoice);
+    }
+
+    @Test
+    void supervisor_should_fill_inherited_argument_fields_test() {
+        // The argument type extends Document: only the argument description sent to the
+        // planner carries the inherited 'author' field, so this exercises the fix end-to-end,
+        // from the agent cards through planning to the actual sub-agent invocation.
+        InvoiceRegistrationAgent invoiceAgent = spy(AgenticServices.agentBuilder(InvoiceRegistrationAgent.class)
+                .chatModel(baseModel())
+                .build());
+
+        SupervisorAgent supervisor = AgenticServices.supervisorBuilder()
+                .chatModel(plannerModel())
+                .subAgents(invoiceAgent)
+                .build();
+
+        supervisor.invoke("Register an invoice of 100 USD authored by Mario");
+
+        ArgumentCaptor<Invoice> invoiceCaptor = ArgumentCaptor.forClass(Invoice.class);
+        verify(invoiceAgent).register(invoiceCaptor.capture());
+        // 'author' is declared on the base class and is only visible to the planner
+        // because argument descriptions include inherited fields
+        assertThat(invoiceCaptor.getValue().getAuthor()).isEqualTo("Mario");
+        assertThat(invoiceCaptor.getValue().getAmountInUSD()).isEqualTo(100.0, offset(0.01));
     }
 }

@@ -1,18 +1,17 @@
 package dev.langchain4j.model.openai.internal.image;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
 import java.util.Objects;
 
 @JsonDeserialize(builder = ImageUsage.Builder.class)
 @JsonInclude(JsonInclude.Include.NON_NULL)
-@JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public class ImageUsage {
 
     @JsonProperty
@@ -30,6 +29,7 @@ public class ImageUsage {
     @JsonProperty
     private final TokensDetails outputTokensDetails;
 
+    @JsonCreator
     public ImageUsage(Builder builder) {
         this.inputTokens = builder.inputTokens;
         this.outputTokens = builder.outputTokens;
@@ -95,7 +95,7 @@ public class ImageUsage {
 
     @JsonPOJOBuilder(withPrefix = "")
     @JsonIgnoreProperties(ignoreUnknown = true)
-    @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
+    @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
     public static class Builder {
 
         private Integer inputTokens;
@@ -136,7 +136,6 @@ public class ImageUsage {
 
     @JsonDeserialize(builder = TokensDetails.TokensDetailsBuilder.class)
     @JsonInclude(JsonInclude.Include.NON_NULL)
-    @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
     public static class TokensDetails {
 
         @JsonProperty
@@ -185,7 +184,6 @@ public class ImageUsage {
 
         @JsonPOJOBuilder(withPrefix = "")
         @JsonIgnoreProperties(ignoreUnknown = true)
-        @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
         public static class TokensDetailsBuilder {
 
             private Integer imageTokens;

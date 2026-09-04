@@ -1,8 +1,12 @@
 package dev.langchain4j.agentic.scope;
 
+import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 import static dev.langchain4j.agentic.internal.AgentUtil.keyDefaultValue;
 import static dev.langchain4j.agentic.internal.AgentUtil.keyName;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agentic.agent.AgentInvocationException;
 import dev.langchain4j.agentic.agent.ChatMessagesAccess;
@@ -40,11 +44,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @Internal
+@JsonInclude(NON_NULL)
 public class DefaultAgenticScope implements AgenticScope {
 
     private static final Logger LOG = LoggerFactory.getLogger(DefaultAgenticScope.class);
 
-    public record AgentMessage(String agentName, String agentId, ChatMessage message) {}
+    @JsonInclude(NON_NULL)
+    public record AgentMessage(
+            @JsonProperty("agentName") String agentName,
+            @JsonProperty("agentId") String agentId,
+            @JsonProperty("message") ChatMessage message) {}
 
     private final Object memoryId;
     private final Map<String, Object> state = new ConcurrentHashMap<>();
@@ -85,7 +94,11 @@ public class DefaultAgenticScope implements AgenticScope {
 
     private final Kind kind;
 
-    DefaultAgenticScope serializableCopy() {
+    /**
+     * The state that is safe to persist. Public so that a JSON codec supplied through the SPI can
+     * reach it from another package.
+     */
+    public DefaultAgenticScope serializableCopy() {
         DefaultAgenticScope copy = new DefaultAgenticScope(memoryId, kind);
         state.forEach((key, value) -> {
             if (isSerializable(value)) {
@@ -118,7 +131,8 @@ public class DefaultAgenticScope implements AgenticScope {
         this(Utils.randomUUID(), kind);
     }
 
-    DefaultAgenticScope(Object memoryId, Kind kind) {
+    @JsonCreator
+    DefaultAgenticScope(@JsonProperty("memoryId") Object memoryId, @JsonProperty("kind") Kind kind) {
         this.memoryId = memoryId;
         this.kind = kind;
         this.lock = (kind == Kind.PERSISTENT) ? new ReentrantReadWriteLock() : null;
@@ -438,7 +452,7 @@ public class DefaultAgenticScope implements AgenticScope {
                     && deferred.responseId().equals(responseId)) {
                 boolean completed = ((DeferredResponse<Object>) deferred).complete(value);
                 if (completed) {
-                    withReadLock(() -> state.put(entry.getKey(), value));
+                    writeState(entry.getKey(), value);
                 }
                 return completed;
             }
