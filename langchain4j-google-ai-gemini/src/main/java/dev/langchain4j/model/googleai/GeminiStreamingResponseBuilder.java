@@ -38,6 +38,8 @@ class GeminiStreamingResponseBuilder {
     private final AtomicReference<String> modelName = new AtomicReference<>();
     private final AtomicReference<TokenUsage> tokenUsage = new AtomicReference<>();
     private final AtomicReference<FinishReason> finishReason = new AtomicReference<>();
+    private final AtomicReference<GroundingMetadata> groundingMetadata = new AtomicReference<>();
+    private final AtomicReference<UrlContextMetadata> urlContextMetadata = new AtomicReference<>();
 
     GeminiStreamingResponseBuilder(boolean includeCodeExecutionOutput, Boolean returnThinking) {
         this.includeCodeExecutionOutput = includeCodeExecutionOutput;
@@ -71,6 +73,8 @@ class GeminiStreamingResponseBuilder {
         updateModelName(partialResponse);
         updateFinishReason(firstCandidate);
         updateTokenUsage(partialResponse.usageMetadata());
+        updateGroundingMetadata(partialResponse, firstCandidate);
+        updateUrlContextMetadata(firstCandidate);
 
         GeminiContent content = firstCandidate.content();
         if (content == null || content.parts() == null) {
@@ -100,6 +104,8 @@ class GeminiStreamingResponseBuilder {
                         .modelName(modelName.get())
                         .tokenUsage(tokenUsage.get())
                         .finishReason(aiMessage.hasToolExecutionRequests() ? TOOL_EXECUTION : finishReason.get())
+                        .groundingMetadata(groundingMetadata.get())
+                        .urlContextMetadata(urlContextMetadata.get())
                         .build())
                 .build();
     }
@@ -107,6 +113,21 @@ class GeminiStreamingResponseBuilder {
     private void updateId(GeminiGenerateContentResponse response) {
         if (!isNullOrBlank(response.responseId())) {
             id.set(response.responseId());
+        }
+    }
+
+    private void updateGroundingMetadata(GeminiGenerateContentResponse response, GeminiCandidate candidate) {
+        GroundingMetadata metadata =
+                response.groundingMetadata() != null ? response.groundingMetadata() : candidate.groundingMetadata();
+        if (metadata != null) {
+            groundingMetadata.set(metadata);
+        }
+    }
+
+    private void updateUrlContextMetadata(GeminiCandidate candidate) {
+        UrlContextMetadata metadata = BaseGeminiChatModel.toUrlContextMetadata(candidate.urlContextMetadata());
+        if (metadata != null) {
+            urlContextMetadata.set(metadata);
         }
     }
 
