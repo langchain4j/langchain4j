@@ -1,16 +1,19 @@
 package dev.langchain4j.agentic.internal;
 
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
+
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.UserMessage;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
-
-import static dev.langchain4j.internal.Utils.isNullOrBlank;
 
 public class Context {
 
-    private static ContextSummarizer SUMMARIZER_INSTANCE;
+    // Reuse a stateless summarizer for each ChatModel.
+    private static final Map<ChatModel, ContextSummarizer> SUMMARIZERS = new ConcurrentHashMap<>();
 
     public interface ContextSummarizer {
 
@@ -35,13 +38,16 @@ public class Context {
         }
     }
 
-    private static ContextSummarizer initSummarizer(ChatModel chatModel) {
-        if (SUMMARIZER_INSTANCE == null) {
-            SUMMARIZER_INSTANCE = AiServices.builder(ContextSummarizer.class)
-                    .chatModel(chatModel)
-                    .build();
+    static ContextSummarizer createSummarizer(ChatModel chatModel) {
+        if (chatModel == null) {
+            // Preserve AiServices' fail-fast validation for a missing model.
+            return AiServices.builder(ContextSummarizer.class).build();
         }
-        return SUMMARIZER_INSTANCE;
+        return SUMMARIZERS.computeIfAbsent(
+                chatModel,
+                model -> AiServices.builder(ContextSummarizer.class)
+                        .chatModel(model)
+                        .build());
     }
 
     public static class AgenticScopeContextGenerator implements UserMessageTransformer {
@@ -68,9 +74,15 @@ public class Context {
 
     public static class Summarizer extends AgenticScopeContextGenerator {
         public Summarizer(AgenticScope agenticScope, ChatModel chatModel, String... agentNames) {
+            this(agenticScope, createSummarizer(chatModel), agentNames);
+        }
+
+        private Summarizer(AgenticScope agenticScope, ContextSummarizer summarizer, String... agentNames) {
             super(agenticScope, c -> {
                 String context = c.contextAsConversation(agentNames);
-                return context.isBlank() ? context : initSummarizer(chatModel).summarize(context).getSummary();
+                return context.isBlank()
+                        ? context
+                        : summarizer.summarize(context).getSummary();
             });
         }
     }
