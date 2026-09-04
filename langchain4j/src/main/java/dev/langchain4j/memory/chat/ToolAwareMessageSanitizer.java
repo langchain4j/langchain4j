@@ -55,9 +55,14 @@ public final class ToolAwareMessageSanitizer {
     /**
      * Returns a view of messages with all orphaned ToolExecutionResultMessages removed.
      *
-     * A ToolExecutionResultMessage is considered orphaned when no
-     * AiMessage currently in the list contains a ToolExecutionRequest
-     * whose id() matches the result's id().
+     * A ToolExecutionResultMessage is considered orphaned when it has a non-null id()
+     * and no AiMessage currently in the list contains a ToolExecutionRequest whose id()
+     * matches it. A result with a null id() is never treated as orphaned: some providers
+     * (and several fixtures in this codebase) don't assign tool-call ids at all, and without
+     * an id there is no reliable way to tell a genuinely orphaned result apart from one that
+     * is correctly paired with a still-present, id-less AiMessage - so we only repair the
+     * corruption pattern described in issue #3133, which always involves real provider-issued
+     * ids, and leave id-less histories untouched.
      *
      * This method is O(n) in the number of messages and performs
      * zero allocations when the list is already valid.
@@ -86,7 +91,7 @@ public final class ToolAwareMessageSanitizer {
             ChatMessage message = messages.get(i);
             if (message instanceof ToolExecutionResultMessage result) {
                 String id = result.id();
-                boolean isOrphaned = id == null || !coveredToolCallIds.contains(id);
+                boolean isOrphaned = id != null && !coveredToolCallIds.contains(id);
                 if (isOrphaned) {
                     log.warn(
                             "[langchain4j] Removing orphaned ToolExecutionResultMessage (id={}) from chat memory. "
