@@ -1,16 +1,18 @@
 package dev.langchain4j.agentic.internal;
 
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
+
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.UserMessage;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
-
-import static dev.langchain4j.internal.Utils.isNullOrBlank;
 
 public class Context {
 
-    private static ContextSummarizer SUMMARIZER_INSTANCE;
+    private static final Map<ChatModel, ContextSummarizer> SUMMARIZERS = new ConcurrentHashMap<>();
 
     public interface ContextSummarizer {
 
@@ -36,12 +38,13 @@ public class Context {
     }
 
     private static ContextSummarizer initSummarizer(ChatModel chatModel) {
-        if (SUMMARIZER_INSTANCE == null) {
-            SUMMARIZER_INSTANCE = AiServices.builder(ContextSummarizer.class)
-                    .chatModel(chatModel)
-                    .build();
-        }
-        return SUMMARIZER_INSTANCE;
+        // The summarizer is memoized per ChatModel: a single JVM-wide instance would silently route
+        // every agent's summarization requests to whichever model happened to build the first one.
+        return SUMMARIZERS.computeIfAbsent(
+                chatModel,
+                model -> AiServices.builder(ContextSummarizer.class)
+                        .chatModel(model)
+                        .build());
     }
 
     public static class AgenticScopeContextGenerator implements UserMessageTransformer {
@@ -70,7 +73,9 @@ public class Context {
         public Summarizer(AgenticScope agenticScope, ChatModel chatModel, String... agentNames) {
             super(agenticScope, c -> {
                 String context = c.contextAsConversation(agentNames);
-                return context.isBlank() ? context : initSummarizer(chatModel).summarize(context).getSummary();
+                return context.isBlank()
+                        ? context
+                        : initSummarizer(chatModel).summarize(context).getSummary();
             });
         }
     }
