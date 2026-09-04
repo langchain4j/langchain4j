@@ -1,6 +1,9 @@
 # Oracle Database Embedding Store
 This module implements `EmbeddingStore` using Oracle Database.
 
+The proposed VecDB architecture and delivery plan are documented in the
+[Oracle VecDB Embedding Store Specification](VECDB_EMBEDDING_STORE_SPEC.md).
+
 ## Requirements
 - Oracle Database 23.4 or newer
 
