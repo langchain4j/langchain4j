@@ -34,19 +34,21 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
-import org.a2aproject.sdk.A2A;
 import org.a2aproject.sdk.client.Client;
 import org.a2aproject.sdk.client.ClientBuilder;
 import org.a2aproject.sdk.client.ClientEvent;
 import org.a2aproject.sdk.client.MessageEvent;
 import org.a2aproject.sdk.client.TaskEvent;
 import org.a2aproject.sdk.client.TaskUpdateEvent;
+import org.a2aproject.sdk.client.http.A2ACardResolver;
+import org.a2aproject.sdk.client.http.A2AHttpClientFactory;
 import org.a2aproject.sdk.client.transport.jsonrpc.JSONRPCTransport;
 import org.a2aproject.sdk.client.transport.jsonrpc.JSONRPCTransportConfigBuilder;
 import org.a2aproject.sdk.spec.A2AClientError;
 import org.a2aproject.sdk.spec.A2AClientException;
 import org.a2aproject.sdk.spec.AgentCard;
 import org.a2aproject.sdk.spec.Message;
+import org.a2aproject.sdk.spec.MessageSendParams;
 import org.a2aproject.sdk.spec.Part;
 import org.a2aproject.sdk.spec.Task;
 import org.a2aproject.sdk.spec.TaskState;
@@ -82,10 +84,23 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
     private AgentListener agentListener;
 
     DefaultA2AClientBuilder(String a2aServerUrl, Class<T> agentServiceClass) {
-        this.agentCard = agentCard(a2aServerUrl);
+        this(a2aServerUrl, agentServiceClass, null);
+    }
+
+    DefaultA2AClientBuilder(String a2aServerUrl, Class<T> agentServiceClass, String tenant) {
+        this.agentCard = agentCard(a2aServerUrl, tenant);
         this.name = agentCard.name();
         this.agentId = this.name;
         this.agentServiceClass = agentServiceClass;
+    }
+
+    // For testing only: bypasses URL fetch and pre-sets the client.
+    DefaultA2AClientBuilder(AgentCard agentCard, Class<T> agentServiceClass, Client a2aClient) {
+        this.agentCard = agentCard;
+        this.name = agentCard.name();
+        this.agentId = this.name;
+        this.agentServiceClass = agentServiceClass;
+        this.a2aClient = a2aClient;
     }
 
     private Client buildClient() {
@@ -102,9 +117,16 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
         }
     }
 
-    private static AgentCard agentCard(String a2aServerUrl) {
+    private static AgentCard agentCard(String a2aServerUrl, String tenant) {
         try {
-            return A2A.getAgentCard(a2aServerUrl);
+            return A2ACardResolver.builder()
+                    .httpClient(A2AHttpClientFactory.create())
+                    .baseUrl(a2aServerUrl)
+                    .agentCardPath(null)
+                    .tenant(tenant)
+                    .authHeaders(null)
+                    .build()
+                    .getAgentCard();
         } catch (A2AClientError e) {
             throw new RuntimeException(e);
         }
@@ -116,7 +138,9 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
             throw new IllegalArgumentException("Input names must be provided for UntypedAgent.");
         }
 
-        this.a2aClient = buildClient();
+        if (this.a2aClient == null) {
+            this.a2aClient = buildClient();
+        }
 
         Object agent = Proxy.newProxyInstance(
                 agentServiceClass.getClassLoader(), new Class<?>[] {agentServiceClass, A2AClientInstance.class}, this);
@@ -182,6 +206,9 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
         List<Part<?>> parts = new ArrayList<>();
         String contextId = null;
         String taskId = null;
+        // Per-call tenant extracted from the @A2ATenantId-annotated parameter at invocation time.
+        // Distinct from the instance field 'tenant', which is used only during agent-card discovery.
+        String callTenant = null;
         String contextIdKey = null;
         String taskIdKey = null;
 
@@ -203,6 +230,8 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
                     if (ParameterNameResolver.hasName(parameters[i])) {
                         taskIdKey = ParameterNameResolver.name(parameters[i]);
                     }
+                } else if (parameters[i].getAnnotation(A2ATenantId.class) != null) {
+                    callTenant = args[i] != null && !args[i].toString().isEmpty() ? args[i].toString() : null;
                 } else {
                     parts.add(new TextPart(args[i].toString()));
                 }
@@ -225,9 +254,9 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
         if (scope != null && scope.state().get(responseKey) instanceof String input) {
             A2ATaskInterruptedException interruption =
                     A2ATaskInterruptedException.fromMetadata(scope.state().get(interruptionKey));
-            response = sendMessage(continuationMessage(interruption, input));
+            response = sendMessage(continuationMessage(interruption, input), callTenant);
         } else {
-            response = sendMessage(message);
+            response = sendMessage(message, callTenant);
         }
 
         if (response.interruption != null) {
@@ -279,7 +308,7 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
                 .build();
     }
 
-    private A2AResponse sendMessage(Message message) throws A2AClientException {
+    private A2AResponse sendMessage(Message message, String callTenant) throws A2AClientException {
         final CompletableFuture<String> messageResponse = new CompletableFuture<>();
         AtomicReference<String> responseContextId = new AtomicReference<>();
         AtomicReference<String> responseTaskId = new AtomicReference<>();
@@ -302,7 +331,18 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
             }
         });
         Consumer<Throwable> streamingErrorHandler = error -> handleStreamEnd(error, messageResponse);
-        a2aClient.sendMessage(message, consumers, streamingErrorHandler, null);
+        if (callTenant != null) {
+            a2aClient.sendMessage(
+                    MessageSendParams.builder()
+                            .message(message)
+                            .tenant(callTenant)
+                            .build(),
+                    consumers,
+                    streamingErrorHandler,
+                    null);
+        } else {
+            a2aClient.sendMessage(message, consumers, streamingErrorHandler, null);
+        }
 
         try {
             String responseText = messageResponse.get();
