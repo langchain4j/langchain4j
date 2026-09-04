@@ -81,6 +81,36 @@ class OpenAiStreamingResponseBuilderTest {
     }
 
     @Test
+    void should_handle_negative_tool_call_index() {
+        // Given: an OpenAI-compatible proxy translating Anthropic responses emits a negative
+        // tool-call index, which is invalid per the OpenAI spec and must fall back like null
+        OpenAiStreamingResponseBuilder builder = new OpenAiStreamingResponseBuilder();
+
+        ToolCall toolCall = ToolCall.builder()
+                .id("call_789")
+                .index(-1)
+                .type(ToolType.FUNCTION)
+                .function(FunctionCall.builder()
+                        .name("getWeather")
+                        .arguments("{\"city\": \"Berlin\"}")
+                        .build())
+                .build();
+
+        // The DTO normalizes the invalid negative index to null at the wire boundary
+        assertThat(toolCall.index()).isNull();
+
+        // When: appending the response (should not throw IllegalArgumentException)
+        builder.append(chatCompletionResponse(toolCall));
+
+        // Then: the tool execution request is built correctly
+        ChatResponse chatResponse = builder.build();
+        assertThat(chatResponse.aiMessage().toolExecutionRequests()).hasSize(1);
+        assertThat(chatResponse.aiMessage().toolExecutionRequests().get(0).name())
+                .isEqualTo("getWeather");
+        assertThat(chatResponse.aiMessage().toolExecutionRequests().get(0).id()).isEqualTo("call_789");
+    }
+
+    @Test
     void should_handle_non_null_tool_call_index() {
         // Given: a standard tool call with non-null index
         OpenAiStreamingResponseBuilder builder = new OpenAiStreamingResponseBuilder();

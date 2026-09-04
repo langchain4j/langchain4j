@@ -1,5 +1,7 @@
 package dev.langchain4j.model.openai.internal.chat;
 
+import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
+
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -8,11 +10,8 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
-
 import java.util.Locale;
 import java.util.Objects;
-
-import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 
 @JsonDeserialize(builder = ToolCall.Builder.class)
 @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -20,10 +19,13 @@ public class ToolCall {
 
     @JsonProperty
     private final String id;
+
     @JsonProperty
     private final Integer index;
+
     @JsonProperty
     private final ToolType type;
+
     @JsonProperty
     private final FunctionCall function;
 
@@ -55,8 +57,7 @@ public class ToolCall {
     @JacocoIgnoreCoverageGenerated
     public boolean equals(Object another) {
         if (this == another) return true;
-        return another instanceof ToolCall
-                && equalTo((ToolCall) another);
+        return another instanceof ToolCall && equalTo((ToolCall) another);
     }
 
     @JacocoIgnoreCoverageGenerated
@@ -81,12 +82,7 @@ public class ToolCall {
     @Override
     @JacocoIgnoreCoverageGenerated
     public String toString() {
-        return "ToolCall{"
-                + "id=" + id
-                + ", index=" + index
-                + ", type=" + type
-                + ", function=" + function
-                + "}";
+        return "ToolCall{" + "id=" + id + ", index=" + index + ", type=" + type + ", function=" + function + "}";
     }
 
     public static Builder builder() {
@@ -109,6 +105,12 @@ public class ToolCall {
         }
 
         public Builder index(Integer index) {
+            // Some OpenAI-compatible proxies emit negative tool-call indexes (e.g. when translating
+            // Anthropic content-block indexes); the OpenAI spec requires non-negative values, so
+            // treat them as absent and let the existing null-index fallback handle them.
+            if (index != null && index < 0) {
+                index = null;
+            }
             this.index = index;
             return this;
         }

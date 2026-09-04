@@ -108,6 +108,10 @@ public class OpenSearchEmbeddingStore implements EmbeddingStore<TextSegment> {
                     httpClientBuilder.setConnectionManager(
                             PoolingAsyncClientConnectionManagerBuilder.create().build());
 
+                    // override the default opensearch-java User-Agent to identify LangChain4j
+                    httpClientBuilder.addRequestInterceptorFirst(
+                            (request, entity, context) -> request.setHeader("User-Agent", "LangChain4j"));
+
                     return httpClientBuilder;
                 })
                 .build();
