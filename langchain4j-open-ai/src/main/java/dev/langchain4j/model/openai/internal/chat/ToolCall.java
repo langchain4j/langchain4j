@@ -32,7 +32,7 @@ public class ToolCall {
     @JsonCreator
     public ToolCall(Builder builder) {
         this.id = builder.id;
-        this.index = builder.index;
+        this.index = Builder.normalizeIndex(builder.index);
         this.type = builder.type;
         this.function = builder.function;
     }
