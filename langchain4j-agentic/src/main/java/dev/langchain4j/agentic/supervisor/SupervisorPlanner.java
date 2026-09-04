@@ -55,6 +55,8 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
 
     private final Function<AgenticScope, Object> output;
 
+    private final SupervisorTools tools;
+
     private Map<String, AgentInstance> agents;
     private String agentsList;
 
@@ -69,6 +71,28 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
             Function<AgenticScope, String> requestGenerator,
             String outputKey,
             Function<AgenticScope, Object> output) {
+        this(
+                chatModel,
+                chatMemoryProvider,
+                maxAgentsInvocations,
+                contextStrategy,
+                responseStrategy,
+                requestGenerator,
+                outputKey,
+                output,
+                SupervisorTools.EMPTY);
+    }
+
+    SupervisorPlanner(
+            ChatModel chatModel,
+            ChatMemoryProvider chatMemoryProvider,
+            int maxAgentsInvocations,
+            SupervisorContextStrategy contextStrategy,
+            SupervisorResponseStrategy responseStrategy,
+            Function<AgenticScope, String> requestGenerator,
+            String outputKey,
+            Function<AgenticScope, Object> output,
+            SupervisorTools tools) {
         this.chatModel = chatModel;
         this.chatMemoryProvider = chatMemoryProvider;
         this.maxAgentsInvocations = maxAgentsInvocations;
@@ -77,6 +101,7 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
         this.requestGenerator = requestGenerator;
         this.outputKey = outputKey;
         this.output = output;
+        this.tools = tools;
     }
 
     @Override
@@ -176,10 +201,8 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
                 ? SUPERVISOR_CONTEXT_PREFIX + "'" + agenticScope.readState(SUPERVISOR_CONTEXT_KEY, "") + "'."
                 : "";
 
-        AgentInvocation agentInvocation = withAgenticScope(
-                agenticScope,
-                () -> planner(agenticScope)
-                        .plan(agenticScope.memoryId(), agentsList, request, lastResponse, supervisorContext));
+        AgentInvocation agentInvocation =
+                withAgenticScope(agenticScope, () -> plan(agenticScope, lastResponse, supervisorContext));
         LOG.info("Agent Invocation: {}", agentInvocation);
 
         if (agentInvocation.getAgentName().equalsIgnoreCase("done")) {
@@ -245,6 +268,13 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
         return done(output != null ? output.apply(agenticScope) : result);
     }
 
+    private AgentInvocation plan(AgenticScope agenticScope, String lastResponse, String supervisorContext) {
+        PlannerAgent planner = planner(agenticScope);
+        return tools.isEmpty()
+                ? planner.plan(agenticScope.memoryId(), agentsList, request, lastResponse, supervisorContext)
+                : planner.planWithTools(agenticScope.memoryId(), agentsList, request, lastResponse, supervisorContext);
+    }
+
     private PlannerAgent planner(AgenticScope agenticScope) {
         return ((DefaultAgenticScope) agenticScope).getOrCreateAgent(agentId(), this::buildPlannerAgent);
     }
@@ -270,6 +300,7 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
     private PlannerAgent buildPlannerAgent(AgenticScope agenticScope) {
         var builder = AiServices.builder(PlannerAgent.class).chatModel(chatModel);
         configureMemoryAndContext(agenticScope, builder);
+        tools.configure(builder);
         return builder.build();
     }
 

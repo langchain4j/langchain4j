@@ -1525,6 +1525,47 @@ String result = (String) bankSupervisor.invoke(input);
 
 If both are provided, the invocation value overrides the build-time `supervisorContext`.
 
+### Giving tools to the supervisor
+
+A supervisor delegates to its subagents, and in the examples above every tool is registered on the subagent that
+needs it. A supervisor can also be given tools of its own, using the same builder methods as a leaf agent, for
+facts it needs in order to choose the next subagent or to fill in one of that subagent's arguments:
+
+```java
+SupervisorAgent bankSupervisor = AgenticServices
+        .supervisorBuilder()
+        .chatModel(PLANNER_MODEL)
+        .subAgents(withdrawAgent, creditAgent, exchangeAgent)
+        .tools(new AccountPolicyTool())
+        .build();
+```
+
+`tools(Map<ToolSpecification, ToolExecutor>)`, `toolProvider(ToolProvider)` and `maxToolCallingRoundTrips(int)`
+are available as well, and behave as they do on `AgenticServices.agentBuilder(...)`.
+
+The two sets of tools are independent. A tool registered on the supervisor is declared only to the planning model,
+and a tool registered on a subagent is declared only to that subagent's model during its own invocation. To share
+one, pass the same object to both builders:
+
+```java
+BankTool bankTool = new BankTool();
+
+WithdrawAgent withdrawAgent = AgenticServices
+        .agentBuilder(WithdrawAgent.class)
+        .chatModel(BASE_MODEL)
+        .tools(bankTool)
+        .build();
+
+SupervisorAgent bankSupervisor = AgenticServices
+        .supervisorBuilder()
+        .chatModel(PLANNER_MODEL)
+        .subAgents(withdrawAgent)
+        .tools(bankTool)
+        .build();
+```
+
+A supervisor with no registered tool is unaffected: its planning prompt and requests are unchanged.
+
 ## Custom agentic patterns
 
 The agentic patterns discussed so far are provided out-of-the-box by the `langchain4j-agentic` module, but what if none of them fit the specific needs of your application? In this case it is possible to create your own custom pattern, that orchestrates the interactions among a set of subagents in a way that is tailored to your requirements.

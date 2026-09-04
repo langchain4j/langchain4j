@@ -177,6 +177,71 @@
           "annotationType": "com.fasterxml.jackson.annotation.JsonInclude",
           "justification": "Keeps null properties out of persisted agent state, as the Jackson-2-only mixin did before. From jackson-annotations, which both Jackson versions read. The persisted format is unchanged and pinned by Jackson3PolymorphicCompatibilityTest.",
           "package": "dev.langchain4j.agentic.scope"
+        },
+        {
+          "code": "java.method.addedToInterface",
+          "new": "method dev.langchain4j.agentic.supervisor.SupervisorAgentService<T> dev.langchain4j.agentic.supervisor.SupervisorAgentService<T>::tools(java.lang.Object[])",
+          "justification": "New builder method mirroring the tool surface already offered by AgentBuilder, so that a supervisor's planner can be given tools the same way a leaf agent is. Additive: SupervisorAgentServiceImpl is the only implementation in this repository, and a supervisor built without registering any tool is unaffected."
+        },
+        {
+          "code": "java.method.addedToInterface",
+          "new": "method dev.langchain4j.agentic.supervisor.SupervisorAgentService<T> dev.langchain4j.agentic.supervisor.SupervisorAgentService<T>::tools(java.util.Map<dev.langchain4j.agent.tool.ToolSpecification, dev.langchain4j.service.tool.ToolExecutor>)",
+          "justification": "New builder method mirroring the tool surface already offered by AgentBuilder, so that a supervisor's planner can be given tools the same way a leaf agent is. Additive: SupervisorAgentServiceImpl is the only implementation in this repository, and a supervisor built without registering any tool is unaffected."
+        },
+        {
+          "code": "java.method.addedToInterface",
+          "new": "method dev.langchain4j.agentic.supervisor.SupervisorAgentService<T> dev.langchain4j.agentic.supervisor.SupervisorAgentService<T>::tools(java.util.Map<dev.langchain4j.agent.tool.ToolSpecification, dev.langchain4j.service.tool.ToolExecutor>, java.util.Set<java.lang.String>)",
+          "justification": "New builder method mirroring the tool surface already offered by AgentBuilder, so that a supervisor's planner can be given tools the same way a leaf agent is. Additive: SupervisorAgentServiceImpl is the only implementation in this repository, and a supervisor built without registering any tool is unaffected."
+        },
+        {
+          "code": "java.method.addedToInterface",
+          "new": "method dev.langchain4j.agentic.supervisor.SupervisorAgentService<T> dev.langchain4j.agentic.supervisor.SupervisorAgentService<T>::toolProvider(dev.langchain4j.service.tool.ToolProvider)",
+          "justification": "New builder method mirroring the tool surface already offered by AgentBuilder, so that a supervisor's planner can be given tools the same way a leaf agent is. Additive: SupervisorAgentServiceImpl is the only implementation in this repository, and a supervisor built without registering any tool is unaffected."
+        },
+        {
+          "code": "java.method.addedToInterface",
+          "new": "method dev.langchain4j.agentic.supervisor.SupervisorAgentService<T> dev.langchain4j.agentic.supervisor.SupervisorAgentService<T>::toolProviders(java.util.Collection<dev.langchain4j.service.tool.ToolProvider>)",
+          "justification": "New builder method mirroring the tool surface already offered by AgentBuilder, so that a supervisor's planner can be given tools the same way a leaf agent is. Additive: SupervisorAgentServiceImpl is the only implementation in this repository, and a supervisor built without registering any tool is unaffected."
+        },
+        {
+          "code": "java.method.addedToInterface",
+          "new": "method dev.langchain4j.agentic.supervisor.SupervisorAgentService<T> dev.langchain4j.agentic.supervisor.SupervisorAgentService<T>::toolProviders(dev.langchain4j.service.tool.ToolProvider[])",
+          "justification": "New builder method mirroring the tool surface already offered by AgentBuilder, so that a supervisor's planner can be given tools the same way a leaf agent is. Additive: SupervisorAgentServiceImpl is the only implementation in this repository, and a supervisor built without registering any tool is unaffected."
+        },
+        {
+          "code": "java.method.addedToInterface",
+          "new": "method dev.langchain4j.agentic.supervisor.SupervisorAgentService<T> dev.langchain4j.agentic.supervisor.SupervisorAgentService<T>::maxToolCallingRoundTrips(int)",
+          "justification": "New builder method mirroring the tool surface already offered by AgentBuilder, so that a supervisor's planner can be given tools the same way a leaf agent is. Additive: SupervisorAgentServiceImpl is the only implementation in this repository, and a supervisor built without registering any tool is unaffected."
+        },
+        {
+          "code": "java.method.addedToInterface",
+          "new": "method dev.langchain4j.agentic.supervisor.AgentInvocation dev.langchain4j.agentic.supervisor.PlannerAgent::planWithTools(java.lang.Object, java.lang.String, java.lang.String, java.lang.String, java.lang.String)",
+          "justification": "Planning prompt used only when tools have been registered on the supervisor, leaving the existing plan() prompt byte-identical. PlannerAgent is implemented by AiServices at runtime rather than by hand, so the added method breaks no existing implementation."
+        },
+        {
+          "code": "java.method.addedToInterface",
+          "new": "method dev.langchain4j.agentic.supervisor.SupervisorAgentService<T> dev.langchain4j.agentic.supervisor.SupervisorAgentService<T>::hallucinatedToolNameStrategy(java.util.function.Function<dev.langchain4j.agent.tool.ToolExecutionRequest, dev.langchain4j.data.message.ToolExecutionResultMessage>)",
+          "justification": "New builder method mirroring the tool surface already offered by AgentBuilder, so that a supervisor's planner can be given tools the same way a leaf agent is. Additive: SupervisorAgentServiceImpl is the only implementation in this repository, and a supervisor built without registering any tool is unaffected."
+        },
+        {
+          "code": "java.method.addedToInterface",
+          "new": "method dev.langchain4j.agentic.supervisor.SupervisorAgentService<T> dev.langchain4j.agentic.supervisor.SupervisorAgentService<T>::executeToolsConcurrently()",
+          "justification": "New builder method mirroring the tool surface already offered by AgentBuilder, so that a supervisor's planner can be given tools the same way a leaf agent is. Additive: SupervisorAgentServiceImpl is the only implementation in this repository, and a supervisor built without registering any tool is unaffected."
+        },
+        {
+          "code": "java.method.addedToInterface",
+          "new": "method dev.langchain4j.agentic.supervisor.SupervisorAgentService<T> dev.langchain4j.agentic.supervisor.SupervisorAgentService<T>::executeToolsConcurrently(java.util.concurrent.Executor)",
+          "justification": "New builder method mirroring the tool surface already offered by AgentBuilder, so that a supervisor's planner can be given tools the same way a leaf agent is. Additive: SupervisorAgentServiceImpl is the only implementation in this repository, and a supervisor built without registering any tool is unaffected."
+        },
+        {
+          "code": "java.method.addedToInterface",
+          "new": "method dev.langchain4j.agentic.supervisor.SupervisorAgentService<T> dev.langchain4j.agentic.supervisor.SupervisorAgentService<T>::toolArgumentsErrorHandler(dev.langchain4j.service.tool.ToolArgumentsErrorHandler)",
+          "justification": "New builder method mirroring the tool surface already offered by AgentBuilder, so that a supervisor's planner can be given tools the same way a leaf agent is. Additive: SupervisorAgentServiceImpl is the only implementation in this repository, and a supervisor built without registering any tool is unaffected."
+        },
+        {
+          "code": "java.method.addedToInterface",
+          "new": "method dev.langchain4j.agentic.supervisor.SupervisorAgentService<T> dev.langchain4j.agentic.supervisor.SupervisorAgentService<T>::toolExecutionErrorHandler(dev.langchain4j.service.tool.ToolExecutionErrorHandler)",
+          "justification": "New builder method mirroring the tool surface already offered by AgentBuilder, so that a supervisor's planner can be given tools the same way a leaf agent is. Additive: SupervisorAgentServiceImpl is the only implementation in this repository, and a supervisor built without registering any tool is unaffected."
         }
       ]
     }
