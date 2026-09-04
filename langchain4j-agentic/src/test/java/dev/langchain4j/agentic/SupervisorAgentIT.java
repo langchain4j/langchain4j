@@ -1154,6 +1154,15 @@ public class SupervisorAgentIT {
         public double getAmountInUSD() {
             return amountInUSD;
         }
+
+        // The agent renders this straight into its prompt with {{invoice}}, and a template variable
+        // becomes text through toString(). Without one the model is asked to register
+        // "Invoice@4f2a1b3c" and the supervisor keeps retrying. Records get this for free, which is
+        // why the other argument fixtures here do not need it.
+        @Override
+        public String toString() {
+            return "invoice of " + amountInUSD + " USD authored by " + getAuthor();
+        }
     }
 
     public interface InvoiceRegistrationAgent {
