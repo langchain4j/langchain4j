@@ -3235,6 +3235,32 @@ public interface DeclarativeA2AWithCustomizer {
 }
 ```
 
+### Streaming A2A Client Listener
+
+When invoking a remote A2A agent with streaming enabled, you can use `A2AStreamingClientListener` to observe events received from the remote agent and control when the client should stop consuming the stream.
+
+This is useful when you only need to react to specific events instead of waiting for the remote task to finish. For example, you can stop listening when the remote agent requests additional input and return the message to the caller immediately.
+
+```java
+UntypedAgent creativeWriter = AgenticServices.a2aBuilder(A2A_SERVER_URL)
+        .inputKeys("topic")
+        .outputKey("story")
+        .streamingClientListener((TaskUpdateEvent event) ->{
+            UpdateEvent updateEvent = event.getUpdateEvent();
+            if (updateEvent instanceof TaskStatusUpdateEvent taskStatusUpdateEvent
+                    && taskStatusUpdateEvent.status().state() == TaskState.TASK_STATE_WORKING) {
+                return A2AStreamingClientListenerResult.stopWithResponse(
+                        "stop when status update to TASK_STATE_WORKING, and return this message to the caller");
+            }
+            return A2AStreamingClientListenerResult.continueStreaming();
+        })
+        .build();
+```
+
+The listener is invoked for each event received from the remote A2A agent. Return `continueStreaming()` to keep consuming events, or `stopWithResponse(response)` to stop consuming the stream and return the specified response to the caller.
+
+Stopping the client-side stream does not cancel the remote A2A task. The remote task may continue executing asynchronously.
+
 ### Configuring the A2A server URL dynamically
 
 By default, the `@A2AClientAgent` annotation requires the A2A server URL as a compile-time string literal via the `a2aServerUrl` attribute. For environments where the URL varies (e.g., dev, staging, production), a static method annotated with `@A2AServerUrlSupplier` can provide the URL dynamically at build time instead:

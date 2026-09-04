@@ -11,11 +11,13 @@ import dev.langchain4j.agentic.a2a.Agents.DeclarativeA2ACreativeWriter;
 import dev.langchain4j.agentic.a2a.Agents.StoryCreatorWithCustomizedWriter;
 import dev.langchain4j.agentic.a2a.Agents.StoryCreatorWithReview;
 import dev.langchain4j.agentic.a2a.Agents.StoryCreatorWithUrlSupplier;
+import dev.langchain4j.agentic.a2a.Agents.StreamingA2ATester;
 import dev.langchain4j.agentic.a2a.Agents.StyleEditor;
 import dev.langchain4j.agentic.a2a.Agents.StyleReviewLoop;
 import dev.langchain4j.agentic.a2a.Agents.StyleScorer;
 import dev.langchain4j.agentic.a2a.Agents.StyledWriter;
 import dev.langchain4j.agentic.declarative.A2AClientAgent;
+import dev.langchain4j.agentic.observability.A2AStreamingClientListenerResult;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.observability.AgentRequest;
 import dev.langchain4j.agentic.scope.AgentInvocation;
@@ -27,15 +29,63 @@ import dev.langchain4j.agentic.supervisor.SupervisorAgent;
 import dev.langchain4j.service.V;
 import java.util.List;
 import org.a2aproject.sdk.client.ClientBuilder;
-import org.a2aproject.sdk.client.config.ClientConfig;
+import org.a2aproject.sdk.client.TaskUpdateEvent;
 import org.a2aproject.sdk.client.transport.jsonrpc.JSONRPCTransport;
 import org.a2aproject.sdk.client.transport.jsonrpc.JSONRPCTransportConfigBuilder;
+import org.a2aproject.sdk.spec.Task;
+import org.a2aproject.sdk.spec.TaskArtifactUpdateEvent;
+import org.a2aproject.sdk.spec.TaskState;
+import org.a2aproject.sdk.spec.TaskStatusUpdateEvent;
+import org.a2aproject.sdk.spec.UpdateEvent;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 public class A2AAgentIT {
 
     static final String A2A_SERVER_URL = "http://localhost:8080";
+
+    @Test
+    @Disabled("Requires A2A server to be running")
+    void streaming_a2a_agent_TaskStatusUpdateEvent_tests() {
+        ResultWithAgenticScope<String> result = AgenticServices.a2aBuilder(A2A_SERVER_URL, StreamingA2ATester.class)
+                .outputKey("result")
+                .streamingClientListener((TaskUpdateEvent event) -> {
+                    UpdateEvent updateEvent = event.getUpdateEvent();
+                    if (updateEvent instanceof TaskStatusUpdateEvent taskStatusUpdateEvent
+                            && taskStatusUpdateEvent.status().state() == TaskState.TASK_STATE_WORKING) {
+                        return A2AStreamingClientListenerResult.stopWithResponse(
+                                "stop when status update to TASK_STATE_WORKING");
+                    }
+                    return A2AStreamingClientListenerResult.continueStreaming();
+                })
+                .build()
+                .test("test");
+        String s = result.agenticScope().readState("result", "");
+
+        assertThat(s).isEqualTo("stop when status update to TASK_STATE_WORKING");
+    }
+
+    @Test
+    @Disabled("Requires A2A server to be running")
+    void streaming_a2a_agent_TaskArtifactUpdateEvent_tests() {
+        ResultWithAgenticScope<String> result = AgenticServices.a2aBuilder(A2A_SERVER_URL, StreamingA2ATester.class)
+                .outputKey("result")
+                .streamingClientListener((TaskUpdateEvent event) -> {
+                    UpdateEvent updateEvent = event.getUpdateEvent();
+                    Task task = event.getTask();
+                    if (updateEvent instanceof TaskArtifactUpdateEvent
+                            && task.artifacts() != null
+                            && task.artifacts().size() >= 2) {
+                        return A2AStreamingClientListenerResult.stopWithResponse("get 2 artifacts, stop streaming");
+                    }
+                    return A2AStreamingClientListenerResult.continueStreaming();
+                })
+                .build()
+                .test("test");
+        String s = result.agenticScope().readState("result", "");
+
+        assertThat(s).isEqualTo("get 2 artifacts, stop streaming");
+    }
 
     @Test
     @Disabled("Requires A2A server to be running")
@@ -220,7 +270,9 @@ public class A2AAgentIT {
 
     public interface EchoWithAgenticScopAgent {
 
-        @A2AClientAgent(a2aServerUrl = A2A_ECHO_SERVER_URL, outputKey = "response",
+        @A2AClientAgent(
+                a2aServerUrl = A2A_ECHO_SERVER_URL,
+                outputKey = "response",
                 description = "Echo agent for testing contextId/taskId propagation")
         ResultWithAgenticScope<String> echo(
                 @V("question") String question,
@@ -243,8 +295,8 @@ public class A2AAgentIT {
     @Test
     @Disabled("Requires a2a-echo-server to be running on port 8081")
     void a2a_client_agent_should_propagate_contextId_and_taskId_on_message_envelope() {
-        EchoWithAgenticScopAgent echoAgent = AgenticServices
-                .a2aBuilder(A2A_ECHO_SERVER_URL, EchoWithAgenticScopAgent.class)
+        EchoWithAgenticScopAgent echoAgent = AgenticServices.a2aBuilder(
+                        A2A_ECHO_SERVER_URL, EchoWithAgenticScopAgent.class)
                 .outputKey("response")
                 .build();
 
@@ -262,7 +314,8 @@ public class A2AAgentIT {
 
         // SECOND TURN: pass the server-generated IDs to continue the conversation
         // Without the fix this throws TaskNotFoundError because the IDs end up as TextParts
-        ResultWithAgenticScope<String> secondResult = echoAgent.echo("follow-up question", serverContextId, serverTaskId);
+        ResultWithAgenticScope<String> secondResult =
+                echoAgent.echo("follow-up question", serverContextId, serverTaskId);
         System.out.println("Second response: " + secondResult.result());
 
         // The server should resolve to the same context and task
@@ -274,11 +327,14 @@ public class A2AAgentIT {
 
     public interface EchoAgent {
 
-        @A2AClientAgent(a2aServerUrl = A2A_ECHO_SERVER_URL, outputKey = "response",
+        @A2AClientAgent(
+                a2aServerUrl = A2A_ECHO_SERVER_URL,
+                outputKey = "response",
                 description = "Echo sub-agent for multi-turn workflow")
-        String echo(@V("question") String question,
-                    @A2AContextId @V("contextId") String contextId,
-                    @A2ATaskId @V("taskId") String taskId);
+        String echo(
+                @V("question") String question,
+                @A2AContextId @V("contextId") String contextId,
+                @A2ATaskId @V("taskId") String taskId);
     }
 
     public interface MultiTurnWorkflow extends AgenticScopeAccess {
@@ -302,13 +358,11 @@ public class A2AAgentIT {
     @Test
     @Disabled("Requires a2a-echo-server to be running on port 8081")
     void a2a_multi_turn_sequence_should_propagate_contextId_and_taskId_through_scope() {
-        EchoAgent firstTurn = AgenticServices
-                .a2aBuilder(A2A_ECHO_SERVER_URL, EchoAgent.class)
+        EchoAgent firstTurn = AgenticServices.a2aBuilder(A2A_ECHO_SERVER_URL, EchoAgent.class)
                 .outputKey("firstResponse")
                 .build();
 
-        EchoAgent secondTurn = AgenticServices
-                .a2aBuilder(A2A_ECHO_SERVER_URL, EchoAgent.class)
+        EchoAgent secondTurn = AgenticServices.a2aBuilder(A2A_ECHO_SERVER_URL, EchoAgent.class)
                 .outputKey("secondResponse")
                 .build();
 
