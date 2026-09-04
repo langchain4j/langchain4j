@@ -43,4 +43,24 @@
 
     </dependencies>
 
+    <build>
+        <plugins>
+            <!-- Jackson3ActiveTest ships here so every module running the jackson3 profile can
+                 assert that the SPI really resolved to Jackson 3. See that test for why. The whole
+                 test suite comes with it: surefire scans this module's test output directly in a
+                 reactor build, so a test here has to be one that can run in another module too. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>test-jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
 </project>

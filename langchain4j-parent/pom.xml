@@ -1078,6 +1078,31 @@
             </build>
         </profile>
 
+
+        <!--
+            Runs Jackson3ActiveTest in every module that activates the jackson3 profile. That
+            profile puts langchain4j-core-jackson3 on the test classpath; this checks the SPI
+            actually resolved to it, so a module cannot quietly test Jackson 2 twice and report
+            success. The test-jar itself comes from each module's own profile, because declaring
+            that dependency here would make the reactor cyclic.
+        -->
+        <profile>
+            <id>jackson3</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <configuration>
+                            <dependenciesToScan>
+                                <dependency>dev.langchain4j:langchain4j-core-jackson3</dependency>
+                            </dependenciesToScan>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
     </profiles>
 
 </project>

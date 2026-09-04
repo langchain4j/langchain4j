@@ -1,5 +1,6 @@
 package dev.langchain4j.jackson3;
 
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
@@ -31,9 +32,10 @@ class ChatMessageMixinParityTest {
             "../langchain4j-core/src/main/java/dev/langchain4j/data/message/JacksonChatMessageJsonCodec.java");
 
     private static Set<String> mixinTargetsOf(Path source) throws IOException {
-        assertThat(source)
-                .as("codec source, resolved relative to the module directory")
-                .exists();
+        // This test reads the two codecs' source, so it only means anything when run from this
+        // module. Other modules pull this suite in through the jackson3 profile to get
+        // Jackson3ActiveTest, and there the sources are not there to read.
+        assumeTrue(Files.exists(source), "not run from the module directory, so the source is not readable");
 
         Set<String> targets = new LinkedHashSet<>();
         Matcher matcher = MIXIN_TARGET.matcher(Files.readString(source));
