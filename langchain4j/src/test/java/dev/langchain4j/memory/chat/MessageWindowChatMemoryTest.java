@@ -3,6 +3,7 @@ package dev.langchain4j.memory.chat;
 import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static dev.langchain4j.data.message.SystemMessage.systemMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
+import static java.util.Arrays.asList;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
@@ -11,6 +12,7 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.HitCountChatMemoryStore.HitCounts;
+import dev.langchain4j.store.memory.chat.InMemoryChatMemoryStore;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -669,5 +671,57 @@ class MessageWindowChatMemoryTest implements WithAssertions {
         // and further mutation of the caller's list must not affect stored memory
         callerList.add(userMessage("a4-injected"));
         assertThat(chatMemory.messages()).containsExactly(userMessage("a2"), userMessage("a3"));
+    }
+
+    @Test
+    void should_self_heal_orphaned_ToolExecutionResultMessage_left_by_a_prior_corrupt_state() {
+
+        // given a store already holding a corrupt history: a ToolExecutionResultMessage
+        // whose parent AiMessage was evicted (or dropped) by an earlier session, e.g. bulk
+        // tool execution outrunning ensureCapacity's forward-eviction cascade (issue #3133)
+        InMemoryChatMemoryStore store = new InMemoryChatMemoryStore();
+
+        ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
+                .id("1")
+                .name("calculator")
+                .arguments("{ \"a\": 2, \"b\": 2 }")
+                .build();
+        ToolExecutionResultMessage orphanedResult = ToolExecutionResultMessage.from(toolExecutionRequest, "4");
+        AiMessage followUp = aiMessage("2 + 2 = 4");
+
+        store.updateMessages("default", asList(orphanedResult, followUp));
+
+        // when
+        ChatMemory chatMemory = MessageWindowChatMemory.builder()
+                .maxMessages(10)
+                .chatMemoryStore(store)
+                .build();
+
+        // then the orphan is dropped and the rest of the history is untouched
+        assertThat(chatMemory.messages()).containsExactly(followUp);
+    }
+
+    @Test
+    void should_not_touch_valid_history_when_sanitizing() {
+
+        InMemoryChatMemoryStore store = new InMemoryChatMemoryStore();
+
+        ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
+                .id("1")
+                .name("calculator")
+                .arguments("{ \"a\": 2, \"b\": 2 }")
+                .build();
+        AiMessage aiMessage = AiMessage.from(toolExecutionRequest);
+        ToolExecutionResultMessage toolExecutionResultMessage =
+                ToolExecutionResultMessage.from(toolExecutionRequest, "4");
+
+        store.updateMessages("default", asList(aiMessage, toolExecutionResultMessage));
+
+        ChatMemory chatMemory = MessageWindowChatMemory.builder()
+                .maxMessages(10)
+                .chatMemoryStore(store)
+                .build();
+
+        assertThat(chatMemory.messages()).containsExactly(aiMessage, toolExecutionResultMessage);
     }
 }

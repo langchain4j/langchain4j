@@ -42,6 +42,10 @@ import java.util.function.Function;
  * the following orphan {@link ToolExecutionResultMessage}(s) are also automatically evicted
  * to avoid problems with some LLM providers (such as OpenAI)
  * that prohibit sending orphan {@code ToolExecutionResultMessage}(s) in the request.
+ * Additionally, every time {@link #messages()} or {@link #messagesAsync()} loads messages from the
+ * {@link ChatMemoryStore}, {@link ToolAwareMessageSanitizer} strips any {@code ToolExecutionResultMessage}(s)
+ * that are already orphaned in the persisted state (e.g. left behind by an earlier session or an older
+ * library version), so a corrupt history self-heals rather than failing every subsequent call.
  * <p>
  * The state of chat memory is stored in {@link ChatMemoryStore} ({@link SingleSlotChatMemoryStore} is used by default).
  */
@@ -166,7 +170,7 @@ public class MessageWindowChatMemory implements ChatMemory {
     private List<ChatMessage> windowed(List<ChatMessage> stored) {
         Integer maxMessages = this.maxMessagesProvider.apply(this.id);
         ensureGreaterThanZero(maxMessages, "maxMessages");
-        List<ChatMessage> messages = new LinkedList<>(stored);
+        List<ChatMessage> messages = new LinkedList<>(ToolAwareMessageSanitizer.sanitize(stored));
         ensureCapacity(messages, maxMessages);
         return messages;
     }
