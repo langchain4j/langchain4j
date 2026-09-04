@@ -169,11 +169,24 @@ public class StreamableHttpMcpTransport implements McpTransport {
         if (headers != null) {
             headers.forEach(builder::header);
         }
+        applyDefaultUserAgent(builder, headers);
         return builder.uri(URI.create(url))
                 .header("Content-Type", "application/json")
                 .header("Accept", "application/json,text/event-stream")
                 .POST(bodyPublisher)
                 .build();
+    }
+
+    /**
+     * Sets a default {@code User-Agent} header identifying LangChain4j, unless the caller already supplied one
+     * (case-insensitively) via custom headers.
+     */
+    private static void applyDefaultUserAgent(HttpRequest.Builder builder, Map<String, String> customHeaders) {
+        boolean userAgentPresent =
+                customHeaders != null && customHeaders.keySet().stream().anyMatch("User-Agent"::equalsIgnoreCase);
+        if (!userAgentPresent) {
+            builder.header("User-Agent", "LangChain4j");
+        }
     }
 
     @Override
@@ -383,6 +396,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
         if (headers != null) {
             headers.forEach(requestBuilder::header);
         }
+        applyDefaultUserAgent(requestBuilder, headers);
         HttpRequest request = requestBuilder.build();
 
         CompletableFuture<Void> result = new CompletableFuture<>();
