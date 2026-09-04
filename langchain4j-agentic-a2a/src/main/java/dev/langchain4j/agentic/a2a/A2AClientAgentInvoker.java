@@ -44,15 +44,19 @@ public class A2AClientAgentInvoker implements AgentInvoker {
     }
 
     private List<AgentArgument> arguments(A2AClientInstance a2AClientInstance) {
-        Set<String> a2aArgs = Stream.of(method.getParameters())
-                .filter(p -> p.isAnnotationPresent(A2AContextId.class) || p.isAnnotationPresent(A2ATaskId.class))
+        if (isUntyped()) {
+            return Stream.of(a2AClientInstance.inputKeys())
+                    .map(input -> new AgentArgument(Object.class, input))
+                    .toList();
+        }
+        Set<String> optionalProtocolArgs = Stream.of(method.getParameters())
+                .filter(p -> (p.isAnnotationPresent(A2AContextId.class)
+                                || p.isAnnotationPresent(A2ATaskId.class)
+                                || p.isAnnotationPresent(A2ATenantId.class))
+                        && ParameterNameResolver.hasName(p))
                 .map(ParameterNameResolver::name)
                 .collect(Collectors.toSet());
-        return isUntyped()
-                ? Stream.of(a2AClientInstance.inputKeys())
-                        .map(input -> new AgentArgument(Object.class, input))
-                        .toList()
-                : argumentsFromMethod(method, a2aArgs);
+        return argumentsFromMethod(method, optionalProtocolArgs);
     }
 
     @Override
