@@ -897,6 +897,8 @@ caches.deleteCache(cache.name());
 
 ## Batch Processing
 
+> For an in-depth description of batching see the [batching tutorial](/tutorials/batch-processing).
+
 ### GoogleAiBatchChatModel
 
 The `GoogleAiBatchChatModel` provides an interface for processing large volumes of chat requests asynchronously at a reduced cost [(50% of standard pricing)](https://ai.google.dev/gemini-api/docs/batch-api). It is ideal for non-urgent, large-scale tasks with a 24-hour turnaround SLO.
