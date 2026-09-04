@@ -409,6 +409,29 @@ class DefaultToolExecutorTest implements WithAssertions {
     }
 
     @Test
+    void should_execute_tool_by_custom_tool_name() {
+        ToolExecutionRequest request = ToolExecutionRequest.builder()
+                .id("1")
+                .name("add_one")
+                .arguments("{ \"arg0\": 2 }")
+                .build();
+
+        DefaultToolExecutor toolExecutor = new DefaultToolExecutor(new CustomNamedTool(), request);
+
+        String result = toolExecutor.execute(request, "DEFAULT");
+
+        assertThat(result).isEqualTo("3");
+    }
+
+    static class CustomNamedTool {
+
+        @Tool(name = "add_one")
+        public int addOne(int value) {
+            return value + 1;
+        }
+    }
+
+    @Test
     void should_not_execute_tool_with_wrong_execution_request() {
         ToolExecutionRequest request = ToolExecutionRequest.builder()
                 .id("1")

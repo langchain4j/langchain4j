@@ -3,6 +3,7 @@ package dev.langchain4j.service.tool;
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.Exceptions.unwrapRuntimeException;
 import static dev.langchain4j.internal.Utils.allConcreteMethods;
+import static dev.langchain4j.internal.Utils.getAnnotatedMethod;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
@@ -10,6 +11,7 @@ import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static dev.langchain4j.service.tool.ToolExecutionRequestUtil.argumentsAsMap;
 
 import dev.langchain4j.agent.tool.P;
+import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolMemoryId;
 import dev.langchain4j.data.image.Image;
@@ -83,8 +85,20 @@ public class DefaultToolExecutor implements ToolExecutor {
 
     private Method findMethod(Object object, ToolExecutionRequest toolExecutionRequest) {
         String requestedMethodName = toolExecutionRequest.name();
+        List<Method> methods = allConcreteMethods(object.getClass());
 
-        for (Method method : allConcreteMethods(object.getClass())) {
+        // Tool specifications use @Tool(name) when present, so resolve custom names first.
+        for (Method method : methods) {
+            Optional<Method> annotatedMethod = getAnnotatedMethod(method, Tool.class);
+            if (annotatedMethod.isPresent()) {
+                Tool tool = annotatedMethod.get().getAnnotation(Tool.class);
+                if (isNotNullOrBlank(tool.name()) && tool.name().equals(requestedMethodName)) {
+                    return method;
+                }
+            }
+        }
+
+        for (Method method : methods) {
             if (method.getName().equals(requestedMethodName)) {
                 return method;
             }
