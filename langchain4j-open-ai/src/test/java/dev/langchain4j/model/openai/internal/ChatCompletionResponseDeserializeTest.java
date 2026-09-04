@@ -60,6 +60,35 @@ class ChatCompletionResponseDeserializeTest {
     }
 
     @Test
+    void should_normalize_negative_tool_call_index() {
+
+        // given
+        String json = """
+                {
+                    "choices": [
+                        {
+                            "index": 0,
+                            "delta": {
+                                "tool_calls": [
+                                    { "index": -1 },
+                                    { "index": 2 }
+                                ]
+                            }
+                        }
+                    ]
+                }
+                """;
+
+        // when
+        ChatCompletionResponse response = Json.fromJson(json, ChatCompletionResponse.class);
+
+        // then
+        assertThat(response.choices().get(0).delta().toolCalls())
+                .extracting(ToolCall::index)
+                .containsExactly(null, 2);
+    }
+
+    @Test
     void should_deserialize_message_with_reasoning_content_field() {
 
         // given
