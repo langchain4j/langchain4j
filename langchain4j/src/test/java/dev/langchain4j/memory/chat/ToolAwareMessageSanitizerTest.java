@@ -72,20 +72,22 @@ class ToolAwareMessageSanitizerTest implements WithAssertions {
         ToolExecutionResultMessage orphan2 = ToolExecutionResultMessage.from(toolExecutionRequest("2"), "9");
         UserMessage userMessage = userMessage("hi");
 
-        List<ChatMessage> sanitized =
-                ToolAwareMessageSanitizer.sanitize(asList(orphan1, orphan2, userMessage));
+        List<ChatMessage> sanitized = ToolAwareMessageSanitizer.sanitize(asList(orphan1, orphan2, userMessage));
 
         assertThat(sanitized).containsExactly(userMessage);
     }
 
     @Test
-    void should_treat_result_with_null_id_as_orphaned() {
+    void should_never_treat_a_null_id_result_as_orphaned() {
+        // Some providers (and several fixtures elsewhere in this codebase) never assign tool-call
+        // ids. Without an id there's no reliable way to match a result back to its AiMessage, so a
+        // null id must never be dropped - otherwise legitimate id-less histories get corrupted.
         ToolExecutionResultMessage nullIdResult = ToolExecutionResultMessage.from(null, "calculator", "4");
         UserMessage userMessage = userMessage("hi");
 
-        List<ChatMessage> sanitized = ToolAwareMessageSanitizer.sanitize(asList(nullIdResult, userMessage));
+        List<ChatMessage> messages = asList(nullIdResult, userMessage);
 
-        assertThat(sanitized).containsExactly(userMessage);
+        assertThat(ToolAwareMessageSanitizer.sanitize(messages)).isSameAs(messages);
     }
 
     @Test
