@@ -15,4 +15,16 @@ public class VectorUtils {
         }
         return (float) Math.sqrt(sumOfSquares);
     }
+
+    /**
+     * Scales the vector to unit length, so that cosine similarity between two such vectors is their dot product.
+     */
+    public static float[] normalize(float[] vector) {
+        float norm = magnitudeOf(vector);
+        float[] normalizedVector = new float[vector.length];
+        for (int i = 0; i < vector.length; i++) {
+            normalizedVector[i] = vector[i] / norm;
+        }
+        return normalizedVector;
+    }
 }
