@@ -30,6 +30,7 @@ https://github.com/googleapis/java-genai
 - [File API](#file-api)
 - [Cached Content Support](#cached-content-support)
 - [Thinking Models (Gemini 3.0+)](#thinking-models-gemini-30)
+- [Token Usage](#token-usage)
 - [Multimodality (Audio, Video, PDF)](#multimodality-audio-video-pdf)
 - [Token Count Estimator](#token-count-estimator)
 - [Model Catalog](#model-catalog)
@@ -474,6 +475,23 @@ preserved, regardless of this setting.
 > [!NOTE]
 > `returnThinking` is disabled by default. Thought summaries returned by the model are then discarded and
 > never appear in `AiMessage.text()`.
+
+## Token Usage
+
+Responses carry a `GoogleGenAiTokenUsage`, which adds the token counts Gemini reports for thinking, cached
+content and tool results to the standard input, output and total counts:
+
+```java
+GoogleGenAiTokenUsage tokenUsage = (GoogleGenAiTokenUsage) response.metadata().tokenUsage();
+
+Integer thoughtsTokenCount = tokenUsage.thoughtsTokenCount();
+Integer cachedContentTokenCount = tokenUsage.cachedContentTokenCount();
+Integer toolUsePromptTokenCount = tokenUsage.toolUsePromptTokenCount();
+```
+
+Each is `null` when the model does not report it. `cachedContentTokenCount` is a subset of
+`inputTokenCount()`, whereas `toolUsePromptTokenCount` and `thoughtsTokenCount` are counted on top of it:
+Gemini defines the total as `inputTokenCount + outputTokenCount + toolUsePromptTokenCount + thoughtsTokenCount`.
 
 ## GoogleGenAiEmbeddingModel
 
