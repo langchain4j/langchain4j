@@ -418,3 +418,65 @@ metadata.createdAt();        // Timestamp when the response was created
 metadata.completedAt();      // Timestamp when the response was completed
 metadata.serviceTier();      // Service tier used for the request
 ```
+
+## Batch Processing
+
+`OpenAiOfficialBatchChatModel` implements the core `BatchChatModel` interface to process many chat requests
+asynchronously via the [OpenAI Batch API](https://platform.openai.com/docs/guides/batch), at 50% of the
+standard per-token price. See [Batch Processing](/tutorials/batch-processing) for how batching works in
+LangChain4j.
+
+Requests are written to a JSONL file, uploaded through the Files API with the `batch` purpose, and run
+against the `/v1/chat/completions` endpoint. All requests in a batch must resolve to the same model. Results
+preserve submission order, so the i-th result always corresponds to the i-th request, whether it succeeded
+or failed.
+
+```java
+OpenAiOfficialBatchChatModel batchModel = OpenAiOfficialBatchChatModel.builder()
+        .apiKey(System.getenv("OPENAI_API_KEY"))
+        .modelName("gpt-4o-mini")
+        .build();
+
+BatchResponse<ChatResponse> submitted = batchModel.submit(new BatchRequest<>(List.of(
+        ChatRequest.builder().messages(UserMessage.from("What is the capital of France?")).build(),
+        ChatRequest.builder().messages(UserMessage.from("What is the capital of Germany?")).build())));
+
+String batchId = submitted.batchId();
+
+// Poll until the batch reaches a terminal state (SUCCEEDED, FAILED, CANCELLED, EXPIRED).
+BatchResponse<ChatResponse> batch = batchModel.retrieve(batchId);
+while (!batch.state().isTerminal()) {
+    Thread.sleep(Duration.ofSeconds(30).toMillis());
+    batch = batchModel.retrieve(batchId);
+}
+
+for (BatchItemResult<ChatResponse> result : batch.results()) {
+    if (result.isSuccess()) {
+        System.out.println(result.response().aiMessage().text());
+    } else {
+        System.out.println("Failed: " + result.error().message());
+    }
+}
+```
+
+A running batch can be cancelled, and existing batches can be listed with pagination:
+```java
+batchModel.cancel(batchId);
+
+BatchPage<ChatResponse> page = batchModel.list(new BatchPagination(20, null));
+```
+
+Azure OpenAI is supported as well, where the model is identified by its batch deployment name, as is any
+OpenAI-compatible endpoint that implements the Files and Batch APIs.
+
+Batch-specific options can be set on the builder:
+```java
+OpenAiOfficialBatchChatModel batchModel = OpenAiOfficialBatchChatModel.builder()
+        .apiKey(System.getenv("OPENAI_API_KEY"))
+        .modelName("gpt-4o-mini")
+        .completionWindow("24h")                          // defaults to 24h
+        .batchMetadata(Map.of("owner", "nightly-job"))    // attached to the batch itself
+        .inputFileExpiresAfterSeconds(Duration.ofDays(14).toSeconds())
+        .outputExpiresAfterSeconds(Duration.ofDays(7).toSeconds())
+        .build();
+```
