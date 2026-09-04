@@ -1,10 +1,12 @@
 package dev.langchain4j.agentic.scope;
 
 import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
-
 import static dev.langchain4j.agentic.internal.AgentUtil.keyDefaultValue;
 import static dev.langchain4j.agentic.internal.AgentUtil.keyName;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agentic.agent.AgentInvocationException;
 import dev.langchain4j.agentic.agent.ChatMessagesAccess;
@@ -38,9 +40,6 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -453,7 +452,7 @@ public class DefaultAgenticScope implements AgenticScope {
                     && deferred.responseId().equals(responseId)) {
                 boolean completed = ((DeferredResponse<Object>) deferred).complete(value);
                 if (completed) {
-                    withReadLock(() -> state.put(entry.getKey(), value));
+                    writeState(entry.getKey(), value);
                 }
                 return completed;
             }
