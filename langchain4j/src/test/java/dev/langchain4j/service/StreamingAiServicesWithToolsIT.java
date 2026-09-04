@@ -20,7 +20,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
-import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -1154,8 +1153,7 @@ class StreamingAiServicesWithToolsIT {
         Throwable error = futureError.get(60, SECONDS);
 
         assertThat(error)
-                .isExactlyInstanceOf(RuntimeException.class)
-                .hasCauseExactlyInstanceOf(JsonParseException.class)
+                .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("Unexpected character");
 
         verifyNoInteractions(spyTool);
@@ -1199,9 +1197,7 @@ class StreamingAiServicesWithToolsIT {
         String customizedErrorMessage = "Invalid JSON, try again";
 
         ToolArgumentsErrorHandler toolArgumentsErrorHandler = (error, context) -> {
-            assertThat(error)
-                    .isExactlyInstanceOf(JsonParseException.class)
-                    .hasMessageContaining("Unexpected character");
+            assertThat(error).hasMessageContaining("Unexpected character");
 
             assertThat(context.toolExecutionRequest()).isEqualTo(toolExecutionRequest1);
             assertThat(context.memoryId()).isEqualTo("default");
@@ -1296,9 +1292,7 @@ class StreamingAiServicesWithToolsIT {
         RuntimeException customException = new RuntimeException("Can't parse JSON arguments");
 
         ToolArgumentsErrorHandler toolArgumentsErrorHandler = (error, context) -> {
-            assertThat(error)
-                    .isExactlyInstanceOf(JsonParseException.class)
-                    .hasMessageContaining("Unexpected character");
+            assertThat(error).hasMessageContaining("Unexpected character");
 
             assertThat(context.toolExecutionRequest()).isEqualTo(toolExecutionRequest);
             assertThat(context.memoryId()).isEqualTo("default");

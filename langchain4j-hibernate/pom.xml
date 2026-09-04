@@ -16,7 +16,7 @@
         <postgresql.version>42.7.12</postgresql.version>
         <db2.version>12.1.5.0</db2.version>
         <oracle.version>23.26.2.0.0</oracle.version>
-        <mariadb.version>3.5.5</mariadb.version>
+        <mariadb.version>3.5.9</mariadb.version>
         <mssql.version>13.4.0.jre11</mssql.version>
         <hibernate.version>7.4.2.Final</hibernate.version>
         <!-- TODO: remove enforcer.skipRules -->
@@ -41,16 +41,6 @@
             <groupId>org.hibernate.orm</groupId>
             <artifactId>hibernate-vector</artifactId>
             <version>${hibernate.version}</version>
-        </dependency>
-
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-core</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-databind</artifactId>
         </dependency>
 
         <!-- test dependencies -->
@@ -187,5 +177,25 @@
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <!--
+            Runs this module's existing tests with langchain4j-core-jackson3 on the test classpath,
+            so the JSON SPI resolves to the Jackson 3 codec instead of the Jackson 2 default.
+            Jackson 2 is still present - this checks that the DTOs are readable by both codecs,
+            which is what the opt-in promises.
+        -->
+        <profile>
+            <id>jackson3</id>
+            <dependencies>
+                <dependency>
+                    <groupId>dev.langchain4j</groupId>
+                    <artifactId>langchain4j-core-jackson3</artifactId>
+                    <version>${langchain4j.beta.version}</version>
+                    <scope>test</scope>
+                </dependency>
+            </dependencies>
+        </profile>
+    </profiles>
 
 </project>

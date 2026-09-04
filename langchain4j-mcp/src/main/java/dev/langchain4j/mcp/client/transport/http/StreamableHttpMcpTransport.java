@@ -4,6 +4,7 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import dev.langchain4j.exception.JsonException;
 import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.mcp.client.McpCallContext;
 import dev.langchain4j.mcp.client.McpHeadersSupplier;
@@ -78,7 +79,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
         sslContext = builder.sslContext;
         httpVersion = builder.forceHttpVersion1_1 ? HttpClient.Version.HTTP_1_1 : HttpClient.Version.HTTP_2;
         subsidiaryChannelEnabled = builder.subsidiaryChannelEnabled;
-        executor = getOrDefault(builder.executor, DefaultExecutorProvider.getDefaultExecutorService());
+        executor = getOrDefault(builder.executor, DefaultExecutorProvider.getDefaultExecutor());
         HttpClient.Builder clientBuilder =
                 HttpClient.newBuilder().connectTimeout(timeout).version(httpVersion);
         if (builder.followRedirects) {
@@ -260,7 +261,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
         HttpRequest request = null;
         try {
             request = createRequest(context.message(), context);
-        } catch (IllegalArgumentException e) {
+        } catch (JsonException | IllegalArgumentException e) {
             return CompletableFuture.failedFuture(e);
         }
         CompletableFuture<String> future = new CompletableFuture<>();
@@ -276,8 +277,8 @@ public class StreamableHttpMcpTransport implements McpTransport {
                                 && !modernProtocol) {
                             // Legacy protocol only (up to 2025-11-25) — 404 means session expired, reinitialize
                             if (!isRetry) {
-                                initialize(StreamableHttpMcpTransport.this.initializeRequest)
-                                        .thenAccept(node -> {
+                                sendInitializeRequest(StreamableHttpMcpTransport.this.initializeRequest)
+                                        .thenAccept(ignored -> {
                                             execute(context, true)
                                                     .thenAccept(future::complete)
                                                     .exceptionally(t -> {

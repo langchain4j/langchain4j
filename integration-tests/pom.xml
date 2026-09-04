@@ -30,6 +30,7 @@
         <module>integration-tests-class-metadata-provider</module>
         <module>integration-tests-class-metadata-provider/integration-tests-class-metadata-provider-spring</module>
         <module>integration-tests-guardrails</module>
+        <module>integration-tests-jackson3</module>
     </modules>
 
     <properties>

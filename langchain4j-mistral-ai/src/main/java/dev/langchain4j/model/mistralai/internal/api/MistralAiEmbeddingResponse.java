@@ -2,11 +2,11 @@ package dev.langchain4j.model.mistralai.internal.api;
 
 import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import java.util.List;
 import java.util.Objects;
@@ -14,7 +14,6 @@ import java.util.StringJoiner;
 
 @JsonInclude(NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
-@JsonNaming(SnakeCaseStrategy.class)
 @JsonDeserialize(builder = MistralAiEmbeddingResponse.MistralAiEmbeddingResponseBuilder.class)
 public class MistralAiEmbeddingResponse {
     private String id;
@@ -23,6 +22,7 @@ public class MistralAiEmbeddingResponse {
     private List<MistralAiEmbedding> data;
     private MistralAiUsage usage;
 
+    @JsonCreator
     private MistralAiEmbeddingResponse(MistralAiEmbeddingResponseBuilder builder) {
         this.id = builder.id;
         this.object = builder.object;
@@ -91,7 +91,7 @@ public class MistralAiEmbeddingResponse {
 
     @JsonPOJOBuilder(withPrefix = "")
     @JsonIgnoreProperties(ignoreUnknown = true)
-    @JsonNaming(SnakeCaseStrategy.class)
+    @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
     public static class MistralAiEmbeddingResponseBuilder {
 
         private String id;

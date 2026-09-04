@@ -8,6 +8,11 @@
           "code": "java.class.externalClassExposedInAPI",
           "new": "missing-class dev.langchain4j.data.message.ChatMessage",
           "justification": "ChatMessage is intentionally exposed by OracleChatMemoryStore because it implements the core ChatMemoryStore API"
+        },
+        {
+          "code": "java.method.exception.checkedRemoved",
+          "justification": "JsonProcessingException comes from Jackson 2's jackson-core, so declaring it kept this module's public API tied to a specific JSON library; the splitter now goes through the codec and cannot throw it. Callers are unaffected unless they catch JsonProcessingException specifically around this call, where the catch becomes unreachable and has to be removed - a narrow break, and the alternative was to keep advertising an exception that can no longer be thrown.",
+          "new": "method java.lang.String[] dev.langchain4j.data.document.splitter.oracle.OracleDocumentSplitter::split(java.lang.String) throws java.sql.SQLException"
         }
       ]
     }

@@ -1,8 +1,6 @@
 package dev.langchain4j.model.anthropic.internal.api;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
 
 /**
  * A single line of the JSONL document served from a batch's {@code results_url}.
@@ -13,14 +11,12 @@ import com.fasterxml.jackson.databind.annotation.JsonNaming;
  * {@code expired}; {@link Result#message} is populated only for {@code succeeded}.</p>
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
-@JsonNaming(SnakeCaseStrategy.class)
 public class AnthropicBatchResult {
 
     public String customId;
     public Result result;
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    @JsonNaming(SnakeCaseStrategy.class)
     public static class Result {
 
         public String type;
@@ -29,7 +25,6 @@ public class AnthropicBatchResult {
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    @JsonNaming(SnakeCaseStrategy.class)
     public static class ResultError {
 
         public String type;

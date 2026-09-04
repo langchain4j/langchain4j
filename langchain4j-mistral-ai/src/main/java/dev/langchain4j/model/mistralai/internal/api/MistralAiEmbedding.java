@@ -2,11 +2,11 @@ package dev.langchain4j.model.mistralai.internal.api;
 
 import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import java.util.List;
 import java.util.Objects;
@@ -14,7 +14,6 @@ import java.util.StringJoiner;
 
 @JsonInclude(NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
-@JsonNaming(SnakeCaseStrategy.class)
 @JsonDeserialize(builder = MistralAiEmbedding.MistralAiEmbeddingBuilder.class)
 public class MistralAiEmbedding {
 
@@ -22,6 +21,7 @@ public class MistralAiEmbedding {
     private List<Float> embedding;
     private Integer index;
 
+    @JsonCreator
     private MistralAiEmbedding(MistralAiEmbeddingBuilder builder) {
         this.object = builder.object;
         this.embedding = builder.embedding;
@@ -78,7 +78,7 @@ public class MistralAiEmbedding {
 
     @JsonPOJOBuilder(withPrefix = "")
     @JsonIgnoreProperties(ignoreUnknown = true)
-    @JsonNaming(SnakeCaseStrategy.class)
+    @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
     public static class MistralAiEmbeddingBuilder {
 
         private String object;

@@ -52,6 +52,11 @@
             <artifactId>slf4j-api</artifactId>
         </dependency>
 
+        <dependency>
+            <groupId>io.smallrye.reactive</groupId>
+            <artifactId>mutiny-zero</artifactId>
+        </dependency>
+
         <!-- test dependencies -->
 
         <dependency>
@@ -99,6 +104,31 @@
             <scope>test</scope>
         </dependency>
 
+        <dependency>
+            <groupId>io.projectreactor.tools</groupId>
+            <artifactId>blockhound</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>com.tngtech.archunit</groupId>
+            <artifactId>archunit</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.reactivestreams</groupId>
+            <artifactId>reactive-streams-tck</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Runs the TestNG-based Reactive Streams TCK (PublisherVerification) under the JUnit Platform -->
+        <dependency>
+            <groupId>org.junit.support</groupId>
+            <artifactId>testng-engine</artifactId>
+            <scope>test</scope>
+        </dependency>
+
     </dependencies>
 
     <!--  Contains references to a jar file created specifically for the ClasspathFileSystemDocumentLoaderTest tests  -->
@@ -116,6 +146,17 @@
 
     <build>
         <plugins>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration combine.children="append">
+                    <!-- AiServicesNonBlockingTest runs BlockHound, which needs this flag to
+                         instrument JDK classes on JDK 13+. Keep the parent's argLine and the mockito
+                         agent. Benign for tests that don't use BlockHound. -->
+                    <argLine>@{argLine} -javaagent:${org.mockito:mockito-core:jar} -XX:+AllowRedefinitionToAddDeleteMethods</argLine>
+                </configuration>
+            </plugin>
 
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -162,4 +203,25 @@
 
         </plugins>
     </build>
+    <profiles>
+        <!--
+            Runs this module's existing tests with langchain4j-core-jackson3 on the test classpath,
+            so the JSON SPI resolves to the Jackson 3 codec instead of the Jackson 2 default.
+            langchain4j-jackson3 cannot be used here - it depends on this module - so the
+            InMemoryEmbeddingStore codec is covered from langchain4j-jackson3 and the
+            integration-tests-jackson3 module instead.
+        -->
+        <profile>
+            <id>jackson3</id>
+            <dependencies>
+                <dependency>
+                    <groupId>dev.langchain4j</groupId>
+                    <artifactId>langchain4j-core-jackson3</artifactId>
+                    <version>${langchain4j.beta.version}</version>
+                    <scope>test</scope>
+                </dependency>
+            </dependencies>
+        </profile>
+    </profiles>
+
 </project>

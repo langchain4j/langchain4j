@@ -95,4 +95,24 @@
 
     </dependencies>
 
+    <profiles>
+        <!--
+            Runs this module's existing tests with langchain4j-core-jackson3 on the test classpath,
+            so the JSON SPI resolves to the Jackson 3 codec instead of the Jackson 2 default.
+            Jackson 2 is still present - this checks that the DTOs are readable by both codecs,
+            which is what the opt-in promises.
+        -->
+        <profile>
+            <id>jackson3</id>
+            <dependencies>
+                <dependency>
+                    <groupId>dev.langchain4j</groupId>
+                    <artifactId>langchain4j-core-jackson3</artifactId>
+                    <version>${langchain4j.beta.version}</version>
+                    <scope>test</scope>
+                </dependency>
+            </dependencies>
+        </profile>
+    </profiles>
+
 </project>
