@@ -53,6 +53,7 @@ class NomicClient {
                 .url(baseUrl + "embedding/text")
                 .addHeader("Content-Type", "application/json")
                 .addHeader("Authorization", authorizationHeader)
+                .addHeader("User-Agent", "LangChain4j")
                 .body(toJson(request))
                 .build();
 
@@ -70,8 +71,7 @@ class NomicClient {
         private Logger logger;
         private HttpClientBuilder httpClientBuilder;
 
-        NomicClientBuilder() {
-        }
+        NomicClientBuilder() {}
 
         public NomicClientBuilder baseUrl(String baseUrl) {
             this.baseUrl = baseUrl;
@@ -113,7 +113,9 @@ class NomicClient {
         }
 
         public String toString() {
-            return "NomicClient.NomicClientBuilder(baseUrl=" + this.baseUrl + ", apiKey=" + (this.apiKey == null ? null : "********") + ", timeout=" + this.timeout + ", logRequests=" + this.logRequests + ", logResponses=" + this.logResponses + ")";
+            return "NomicClient.NomicClientBuilder(baseUrl=" + this.baseUrl + ", apiKey="
+                    + (this.apiKey == null ? null : "********") + ", timeout=" + this.timeout + ", logRequests="
+                    + this.logRequests + ", logResponses=" + this.logResponses + ")";
         }
     }
 }

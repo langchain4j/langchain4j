@@ -63,16 +63,16 @@ import dev.langchain4j.model.anthropic.internal.api.AnthropicStreamingData;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicStreamingException;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicUsage;
 import dev.langchain4j.model.anthropic.internal.api.MessageTokenCountResponse;
+import dev.langchain4j.model.chat.response.ChatModelStreamingEvent;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
-import dev.langchain4j.model.chat.response.ChatModelStreamingEvent;
 import dev.langchain4j.model.chat.response.StreamingHandle;
-import dev.langchain4j.reactive.streaming.TubeBackedStreamingChatResponseHandler;
-import dev.langchain4j.reactive.streaming.HttpStreamingChatPublisher;
 import dev.langchain4j.model.output.FinishReason;
+import dev.langchain4j.reactive.streaming.HttpStreamingChatPublisher;
+import dev.langchain4j.reactive.streaming.TubeBackedStreamingChatResponseHandler;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -266,7 +266,8 @@ public class DefaultAnthropicClient extends AnthropicClient {
      * without ever parking a thread.
      */
     @Override
-    public CompletableFuture<ParsedAndRawResponse> createMessageWithRawResponseAsync(AnthropicCreateMessageRequest request) {
+    public CompletableFuture<ParsedAndRawResponse> createMessageWithRawResponseAsync(
+            AnthropicCreateMessageRequest request) {
         HttpRequest httpRequest = toHttpRequest(toJson(request), "messages");
         return httpClient.executeAsync(httpRequest).thenApply(rawResponse -> {
             AnthropicCreateMessageResponse parsedResponse =
@@ -704,9 +705,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
 
         HttpRequest httpRequest = toHttpRequest(toJson(request), "messages");
         return HttpStreamingChatPublisher.create(
-                bufferSize,
-                () -> httpClient.stream(httpRequest, new DefaultServerSentEventParser()),
-                tube -> {
+                bufferSize, () -> httpClient.stream(httpRequest, new DefaultServerSentEventParser()), tube -> {
                     ServerSentEventListener eventListener =
                             buildStreamingEventListener(new TubeBackedStreamingChatResponseHandler(tube), options);
                     return new HttpStreamingChatPublisher.Sink() {
@@ -766,6 +765,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
                 .url(baseUrl, "models")
                 .addHeader("x-api-key", apiKey)
                 .addHeader("anthropic-version", version)
+                .addHeader("User-Agent", "LangChain4j")
                 .addHeaders(customHeadersSupplier.get())
                 .build();
         SuccessfulHttpResponse successfulHttpResponse = httpClient.execute(httpRequest);
@@ -807,6 +807,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
                 .url(baseUrl, "messages/batches/" + batchId + "/cancel")
                 .addHeader("x-api-key", apiKey)
                 .addHeader("anthropic-version", version)
+                .addHeader("User-Agent", "LangChain4j")
                 .addHeaders(customHeadersSupplier.get())
                 .build();
         SuccessfulHttpResponse rawResponse = httpClient.execute(httpRequest);
@@ -836,6 +837,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
                 .url(baseUrl, path)
                 .addHeader("x-api-key", apiKey)
                 .addHeader("anthropic-version", version)
+                .addHeader("User-Agent", "LangChain4j")
                 .addHeaders(customHeadersSupplier.get())
                 .build();
     }
@@ -876,6 +878,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
                 .addHeader("Content-Type", "application/json")
                 .addHeader("x-api-key", apiKey)
                 .addHeader("anthropic-version", version)
+                .addHeader("User-Agent", "LangChain4j")
                 .addHeaders(customHeadersSupplier.get())
                 .body(jsonRequest);
 
