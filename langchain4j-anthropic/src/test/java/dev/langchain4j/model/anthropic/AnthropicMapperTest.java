@@ -19,6 +19,7 @@ import static java.util.Collections.singletonMap;
 import static java.util.stream.Collectors.toMap;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import dev.langchain4j.model.anthropic.internal.client.Json;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -283,7 +284,7 @@ class AnthropicMapperTest {
         Map<String, Object> map = toAnthropicSchema(jsonSchemaElement);
 
         // then
-        assertThat(new ObjectMapper().writeValueAsString(map)).isEqualToIgnoringWhitespace("""
+        assertThat(Json.toJson(map)).isEqualToIgnoringWhitespace("""
                         {
                           "type": "object",
                           "properties": {
@@ -319,7 +320,7 @@ class AnthropicMapperTest {
         Map<String, Object> map = toAnthropicSchema(rootSchema);
 
         // then
-        assertThat(new ObjectMapper().writeValueAsString(map)).isEqualToIgnoringWhitespace("""
+        assertThat(Json.toJson(map)).isEqualToIgnoringWhitespace("""
                         {
                           "type": "object",
                           "properties": {
@@ -414,7 +415,7 @@ class AnthropicMapperTest {
         Map<String, Object> map = toAnthropicSchema(bookRecord);
 
         // then
-        assertThat(new ObjectMapper().writeValueAsString(map)).isEqualToIgnoringWhitespace("""
+        assertThat(Json.toJson(map)).isEqualToIgnoringWhitespace("""
                         {
                           "type": "object",
                           "properties": {
@@ -1022,8 +1023,7 @@ class AnthropicMapperTest {
         List<AnthropicMessage> anthropicMessages = toAnthropicMessages(singletonList(userMessage));
 
         // then
-        String json = new ObjectMapper()
-                .writeValueAsString(anthropicMessages.get(0).content.get(0));
+        String json = Json.toJson(anthropicMessages.get(0).content.get(0));
         assertThat(json).isEqualToIgnoringWhitespace("""
                         {
                           "type": "image",
@@ -1043,8 +1043,7 @@ class AnthropicMapperTest {
         List<AnthropicMessage> anthropicMessages = toAnthropicMessages(singletonList(userMessage));
 
         // then
-        String json = new ObjectMapper()
-                .writeValueAsString(anthropicMessages.get(0).content.get(0));
+        String json = Json.toJson(anthropicMessages.get(0).content.get(0));
         assertThat(json).isEqualToIgnoringWhitespace("""
                         {
                           "type": "document",

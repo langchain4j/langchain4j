@@ -12,6 +12,7 @@ import static java.util.Comparator.comparingDouble;
 import static java.util.stream.Collectors.toList;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import dev.langchain4j.Internal;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
@@ -298,7 +299,14 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
         return false;
     }
 
-    static class Entry<Embedded> {
+    /**
+     * Public so that alternative JSON codecs, supplied through
+     * {@link dev.langchain4j.spi.store.embedding.inmemory.InMemoryEmbeddingStoreJsonCodecFactory},
+     * can describe how an entry is serialized without living in this package. It is not part of
+     * the supported API: its shape follows whatever this store persists.
+     */
+    @Internal
+    public static class Entry<Embedded> {
 
         String id;
         Embedding embedding;
@@ -331,6 +339,9 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
     }
 
     private static InMemoryEmbeddingStoreJsonCodec loadCodec() {
+        // Substituted by quarkus-langchain4j for native image (@TargetClass/@Substitute in its
+        // Substitutions), so this name and signature are depended on from outside despite being
+        // private. Renaming it breaks that build with no compile error here.
         for (InMemoryEmbeddingStoreJsonCodecFactory factory :
                 loadFactories(InMemoryEmbeddingStoreJsonCodecFactory.class)) {
             return factory.create();

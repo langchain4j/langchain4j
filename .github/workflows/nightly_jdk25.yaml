@@ -76,7 +76,24 @@ jobs:
         uses: jbangdev/setup-jbang@2b1b465a7b75f4222b81426f23a01e013aa7b95c # v0.1.1
         continue-on-error: true
 
-      - name: Build with JDK 25
+      - name: Decide whether tonight is the Jackson 3 run
+        id: jackson3
+        # The opt-in swaps the JSON codec, and unit tests can only prove so much about a wire
+        # format. One of the three nightlies runs the integration tests on Jackson 3 instead of
+        # Jackson 2, so every night exactly one does and each JDK takes its turn every third day.
+        # Deterministic rather than random: given the date you can tell which ran, and re-running
+        # the same day reproduces it.
+        run: |
+          if [ $(( 10#$(date -u +%j) % 3 )) -eq 2 ]; then
+            echo "profile=-Pjackson3" >> "$GITHUB_OUTPUT"
+            echo "label=Jackson 3" >> "$GITHUB_OUTPUT"
+            echo "::notice title=JSON codec::Integration tests are running on Jackson 3 tonight (JDK 25)."
+          else
+            echo "profile=" >> "$GITHUB_OUTPUT"
+            echo "label=Jackson 2" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build with JDK 25 on ${{ steps.jackson3.outputs.label }}
         run: |
           modules="${{ join(matrix.modules, ',') }}"
           echo "Building modules: $modules"
@@ -84,7 +101,7 @@ jobs:
           ## compile and install ALL modules to avoid running integration tests on dependent modules in the step below
           mvn -B -U -T8C -DskipTests -DskipITs -DembeddingsSkipCache install
 
-          mvn -B -U verify \
+          mvn -B -U verify ${{ steps.jackson3.outputs.profile }} \
             -pl "${modules}" \
             -DskipAzureAiSearchITs -DskipJlamaITs -DskipLocalAiITs -DskipMilvusITs -DskipOllamaITs -DskipOracleITs -DskipVespaITs \
             --fail-at-end \
