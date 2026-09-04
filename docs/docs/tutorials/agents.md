@@ -3168,6 +3168,37 @@ ResultWithAgenticScope<String> result = workflow.converse("hello");
 
 In this sequence, the first agent sends a message with no `contextId`/`taskId` (they are `null` in the scope). The server creates a new task and context. The response IDs are written to the scope. When the second agent runs, it reads the now-populated `contextId` and `taskId` from the scope and sends them on the message envelope, continuing the same conversation.
 
+### Multi-tenant A2A agents
+
+In a multi-tenant A2A deployment, messages must be scoped to a specific tenant so the server can apply the correct routing, isolation, and policies. The `@A2ATenantId` annotation marks a method parameter whose value is set as the `tenant` field on the outgoing `MessageSendParams` — it is **not** included as a `TextPart` in the message content.
+
+```java
+public interface MyA2AAgent {
+
+    @A2AClientAgent(a2aServerUrl = "http://localhost:8080", outputKey = "response")
+    String chat(@V("question") String question,
+                @A2AContextId String contextId,
+                @A2ATenantId String tenant);
+}
+```
+
+When `null` or an empty string is passed for `tenant`, the field is omitted from `MessageSendParams` and the server applies its default tenant resolution.
+
+`@A2ATenantId` can be combined with `@A2AContextId` and `@A2ATaskId` freely:
+
+```java
+public interface MultiTenantChatAgent {
+
+    @A2AClientAgent(a2aServerUrl = "http://localhost:8080", outputKey = "response")
+    String chat(@V("question") String question,
+                @A2AContextId @V("contextId") String contextId,
+                @A2ATaskId   @V("taskId")    String taskId,
+                @A2ATenantId                 String tenant);
+}
+```
+
+Unlike `@A2AContextId` and `@A2ATaskId`, the tenant value is never written back to the `AgenticScope` by the server — the caller is responsible for supplying it on every invocation.
+
 ### Human-in-the-loop A2A agents
 
 An A2A server can pause a task in the `input-required` or `auth-required` state. When this happens inside an agentic system, the A2A client stores a `SuspendedResponse` in the `AgenticScope`, checkpoints the workflow, and releases the calling thread. The interruption contains the task and context IDs required to continue the same remote task.
