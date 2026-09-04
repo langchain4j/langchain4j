@@ -37,9 +37,32 @@ class DefaultMcpToolResultConverterTest {
 
     @Test
     void rejects_unsupported_content_type() {
-        assertThatThrownBy(() -> extractor.convert(List.of(Map.of("type", "image", "data", "xxx")), false))
+        assertThatThrownBy(() -> extractor.convert(List.of(Map.of("type", "audio", "data", "xxx")), false))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("Unsupported content type");
+    }
+
+    @Test
+    void extracts_image_as_data_uri() {
+        ToolExecutionResult result = extractor.convert(
+                List.of(Map.of("type", "image", "data", "iVBORw0KGgo=", "mimeType", "image/png")), false);
+
+        assertThat(result.resultText()).isEqualTo("data:image/png;base64,iVBORw0KGgo=");
+    }
+
+    @Test
+    void handles_image_with_missing_fields() {
+        ToolExecutionResult result = extractor.convert(List.of(Map.of("type", "image", "data", "xxx")), false);
+
+        assertThat(result.resultText()).isEqualTo("[image: missing data or mimeType]");
+    }
+
+    @Test
+    void extracts_resource_text_content() {
+        ToolExecutionResult result = extractor.convert(
+                List.of(Map.of("type", "resource", "resource", Map.of("text", "resource text"))), false);
+
+        assertThat(result.resultText()).isEqualTo("resource text");
     }
 
     @Test
