@@ -45,7 +45,7 @@ StreamingChatModel model = OpenAiStreamingChatModel.builder()
         .accumulateToolCallId(false) // Set to false for DeepSeek, Qwen, etc.
         .build();
     ```
-Below we provide specific examples for popular OpenAI-compatible APIs, including OrcaRouter, Tuning Engines, Groq, Docker Model Runner, GPT4All, Ollama, and LM Studio.
+Below we provide specific examples for popular OpenAI-compatible APIs, including OrcaRouter, Tuning Engines, Groq, Docker Model Runner, GPT4All, Ollama, llmman, and LM Studio.
 
 ### Contents:
 - [Prerequisites for Using OpenAI-Compatible Language Models](#prerequisites-for-using-openai-compatible-language-models)
@@ -55,6 +55,7 @@ Below we provide specific examples for popular OpenAI-compatible APIs, including
 - [Docker Model Runner](#docker-model-runner)
 - [GPT4All](#gpt4all)
 - [Ollama](#ollama)
+- [llmman](#llmman)
 - [LM Studio](#lm-studio)
 
 ## Prerequisites for Using OpenAI-Compatible Language Models
@@ -199,6 +200,25 @@ ChatModel model = OpenAiChatModel.builder()
 **Examples:**
 *   For OpenAI-compatible endpoint usage, adapt general OpenAI examples.
 *   Using the dedicated Ollama module: [langchain4j-examples/.../OllamaChatModelExamples.java](https://github.com/langchain4j/langchain4j-examples/blob/main/src/main/java/dev/langchain4j/model/ollama/OllamaChatModelExamples.java)
+
+
+## llmman
+
+**Deployment:** Local
+
+**Description:** [llmman](https://github.com/llmmanorg/llmman) is a local model runner that serves the Ollama API (alongside OpenAI- and Anthropic-compatible ones) on port 17434. Models are pulled as OCI artifacts or straight from Hugging Face (`hf.co/org/model`) and served by `llama.cpp`, `vllm` or `mlx-lm`. You can also use the `langchain4j-ollama` module, see [Using with llmman](./ollama.md#using-with-llmman).
+
+**Setup:**
+1. Install llmman: `curl -fsSL https://raw.githubusercontent.com/llmmanorg/llmman/b319/install.sh | LLMMAN_VERSION=b319 sh` (Linux/macOS) or `$env:LLMMAN_VERSION="b319"; irm https://raw.githubusercontent.com/llmmanorg/llmman/b319/install.ps1 | iex` (Windows). This pins release `b319`; newer tags are listed at [https://github.com/llmmanorg/llmman/releases](https://github.com/llmmanorg/llmman/releases).
+2. Start the server: `llmman serve`.
+3. Pull a model: `llmman pull <model_name>` (e.g., `llmman pull gemma4` or `llmman pull hf.co/unsloth/Qwen3.5-0.8B-GGUF`).
+4. Configure LangChain4j. No API key is required; the OpenAI-compatible API is at `http://localhost:17434/v1`:
+```java
+ChatModel model = OpenAiChatModel.builder()
+        .baseUrl("http://localhost:17434/v1")
+        .modelName("gemma4")
+        .build();
+```
 
 
 ## LM Studio

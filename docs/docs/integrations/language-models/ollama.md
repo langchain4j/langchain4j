@@ -484,3 +484,34 @@ ChatResponse chatResponse = ollamaChatModel.chat(ChatRequest.builder().messages(
 
 System.out.println(chatResponse.aiMessage().text()); // "Yes" (meaning risk detected by Granite Guardian)
 ```
+
+### Using with llmman
+
+[llmman](https://github.com/llmmanorg/llmman) is a local model runner that serves the Ollama API
+(alongside OpenAI- and Anthropic-compatible ones) on port 17434. Models are pulled as OCI artifacts
+or straight from Hugging Face (`hf.co/org/model`) and served by `llama.cpp`, `vllm` or `mlx-lm`.
+
+`OllamaChatModel`, `OllamaStreamingChatModel` and `OllamaEmbeddingModel` work against it unchanged;
+only the `baseUrl` differs. The install command below pins release `b319`; newer tags are listed at
+[https://github.com/llmmanorg/llmman/releases](https://github.com/llmmanorg/llmman/releases):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/llmmanorg/llmman/b319/install.sh | LLMMAN_VERSION=b319 sh
+llmman serve
+llmman pull gemma4
+```
+
+```java
+ChatModel model = OllamaChatModel.builder()
+        .baseUrl("http://localhost:17434")
+        .modelName("gemma4")
+        .build();
+
+EmbeddingModel embeddingModel = OllamaEmbeddingModel.builder()
+        .baseUrl("http://localhost:17434")
+        .modelName("<embedding_model_name>")
+        .build();
+```
+
+llmman's OpenAI-compatible endpoint is documented in
+[OpenAI-Compatible Language Models](./openai-compatible.md#llmman).
