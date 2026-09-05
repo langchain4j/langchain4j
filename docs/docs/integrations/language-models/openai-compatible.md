@@ -134,6 +134,46 @@ ChatModel model = OpenAiChatModel.builder()
 ```
 You can find available model names on the [Groq models page](https://console.groq.com/docs/models).
 
+## The Grid
+
+**Deployment:** SaaS (Key Required)
+
+**Description:** [The Grid](https://thegrid.ai) is a spot market for inference. Model names are market instruments — a task type (`text`, `code`, `agent`) paired with a quality tier (`standard`, `prime`, `max`), plus lab-scoped markets such as `claude-opus-latest`. Each request is filled by whichever supplier is competitive at the time, so the model reported in the response is the one that served the request, not the instrument you asked for.
+
+**Setup:**
+To use The Grid, you'll need an API key from [The Grid](https://thegrid.ai/docs/start-here/quickstart).
+
+The Grid answers inference requests with a [`307` redirect](https://thegrid.ai/docs/api-reference/request-routing-and-redirects) to its routing layer on the same host. Java's `HttpClient` does not follow redirects by default, so configure `followRedirects` — otherwise the call fails with an HTML redirect body rather than a chat response:
+
+```xml
+<dependency>
+    <groupId>dev.langchain4j</groupId>
+    <artifactId>langchain4j-http-client-jdk</artifactId>
+    <version>1.20.0</version>
+</dependency>
+```
+
+```java
+import java.net.http.HttpClient;
+import dev.langchain4j.http.client.jdk.JdkHttpClient;
+import dev.langchain4j.http.client.jdk.JdkHttpClientBuilder;
+
+...
+
+JdkHttpClientBuilder httpClientBuilder = JdkHttpClient.builder()
+        .httpClientBuilder(HttpClient.newBuilder()
+                .followRedirects(HttpClient.Redirect.NORMAL));
+
+ChatModel model = OpenAiChatModel.builder()
+        .baseUrl("https://api.thegrid.ai/v1")
+        .apiKey(System.getenv("THEGRID_API_KEY"))
+        .modelName("text-standard") // Or any other instrument, e.g. code-prime, agent-max
+        .httpClientBuilder(httpClientBuilder)
+        .build();
+```
+
+The same `httpClientBuilder` applies to `OpenAiStreamingChatModel`. Chat, streaming, tool calling and structured outputs are supported. You can find available instruments on [The Grid instruments page](https://thegrid.ai/docs/instrument-specifications/current-instruments).
+
 ## Docker Model Runner
 
 **Deployment:** Local
