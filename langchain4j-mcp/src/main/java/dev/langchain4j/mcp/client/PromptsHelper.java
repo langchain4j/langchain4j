@@ -1,9 +1,8 @@
 package dev.langchain4j.mcp.client;
 
-import static dev.langchain4j.mcp.client.DefaultMcpClient.OBJECT_MAPPER;
-
-import com.fasterxml.jackson.databind.JsonNode;
-import java.util.ArrayList;
+import dev.langchain4j.mcp.client.transport.McpJson;
+import dev.langchain4j.mcp.protocol.McpGetPromptResponse;
+import dev.langchain4j.mcp.protocol.McpListPromptsResult;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,28 +11,22 @@ class PromptsHelper {
 
     private static final Logger log = LoggerFactory.getLogger(PromptsHelper.class);
 
-    static List<McpPrompt> parsePromptRefs(JsonNode mcpMessage) {
-        McpErrorHelper.checkForErrors(mcpMessage);
-        if (mcpMessage.has("result")) {
-            JsonNode resultNode = mcpMessage.get("result");
-            if (resultNode.has("prompts")) {
-                List<McpPrompt> promptRefs = new ArrayList<>();
-                for (JsonNode promptNode : resultNode.get("prompts")) {
-                    promptRefs.add(OBJECT_MAPPER.convertValue(promptNode, McpPrompt.class));
-                }
-                return promptRefs;
-            } else {
-                log.warn("Result does not contain 'prompts' element: {}", resultNode);
-                throw new IllegalResponseException("Result does not contain 'prompts' element");
-            }
-        } else {
+    static McpPage<McpPrompt> parsePromptRefs(String mcpMessage) {
+        McpListPromptsResult.Result result =
+                McpJson.deserialize(mcpMessage, McpListPromptsResult.class).getResult();
+        if (result == null) {
             log.warn("Result does not contain 'result' element: {}", mcpMessage);
             throw new IllegalResponseException("Result does not contain 'result' element");
         }
+        if (result.getPrompts() == null) {
+            log.warn("Result does not contain 'prompts' element: {}", mcpMessage);
+            throw new IllegalResponseException("Result does not contain 'prompts' element");
+        }
+        return new McpPage<>(result.getPrompts(), result.getNextCursor());
     }
 
-    static McpGetPromptResult parsePromptContents(JsonNode mcpMessage) {
+    static McpGetPromptResult parsePromptContents(String mcpMessage) {
         McpErrorHelper.checkForErrors(mcpMessage);
-        return OBJECT_MAPPER.convertValue(mcpMessage.get("result"), McpGetPromptResult.class);
+        return McpJson.deserialize(mcpMessage, McpGetPromptResponse.class).getResult();
     }
 }

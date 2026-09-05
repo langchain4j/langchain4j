@@ -1,17 +1,14 @@
 package dev.langchain4j.model.jlama;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.langchain4j.internal.ProviderJson;
+import dev.langchain4j.internal.ProviderJsonSpec;
 
 class Json {
 
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final dev.langchain4j.internal.Json.JsonCodec CODEC =
+            ProviderJson.codec(ProviderJsonSpec.builder().build());
 
     static <T> T fromJson(String json, Class<T> type) {
-        try {
-            return OBJECT_MAPPER.readValue(json, type);
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
-        }
+        return CODEC.fromJson(json, type);
     }
 }

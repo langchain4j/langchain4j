@@ -1,10 +1,10 @@
 package dev.langchain4j.model.mistralai.internal.api;
 
 import java.util.List;
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
@@ -15,6 +15,7 @@ public final class MistralAiModerationResponse {
     private final String model;
     private final List<MistralAiModerationResult> results;
 
+    @JsonCreator
     public MistralAiModerationResponse(Builder builder) {
         this.id = builder.id;
         this.model = builder.model;
@@ -39,7 +40,7 @@ public final class MistralAiModerationResponse {
 
     @JsonPOJOBuilder(withPrefix = "")
     @JsonIgnoreProperties(ignoreUnknown = true)
-    @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
+    @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
     public static class Builder {
 
         private String id;

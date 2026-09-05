@@ -1,10 +1,17 @@
 package dev.langchain4j.model.google.genai;
 
+import static dev.langchain4j.model.output.FinishReason.CONTENT_FILTER;
+import static dev.langchain4j.model.output.FinishReason.LENGTH;
+import static dev.langchain4j.model.output.FinishReason.OTHER;
+import static dev.langchain4j.model.output.FinishReason.STOP;
+import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.google.genai.types.Candidate;
 import com.google.genai.types.Content;
+import com.google.genai.types.FinishReason;
+import com.google.genai.types.FinishReason.Known;
 import com.google.genai.types.FunctionCall;
 import com.google.genai.types.GenerateContentResponse;
 import com.google.genai.types.GenerateContentResponseUsageMetadata;
@@ -13,13 +20,13 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.ChatMessageType;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.output.FinishReason;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -171,9 +178,11 @@ class GoogleGenAiContentMapperTest {
                 .build();
         AiMessage message = AiMessage.from(toolRequest);
 
+        // Not asserted by exception type: the configured JSON codec decides that, and this module
+        // is also run against the Jackson 3 codec, which reports a different one.
         assertThatThrownBy(() -> GoogleGenAiContentMapper.toContent(message))
                 .isInstanceOf(RuntimeException.class)
-                .hasCauseInstanceOf(com.fasterxml.jackson.core.JsonProcessingException.class);
+                .hasCauseInstanceOf(Exception.class);
     }
 
     @Test
@@ -219,7 +228,7 @@ class GoogleGenAiContentMapperTest {
     void should_throw_for_unknown_message_type() {
         ChatMessage unknownMessage = new ChatMessage() {
             @Override
-            public dev.langchain4j.data.message.ChatMessageType type() {
+            public ChatMessageType type() {
                 return null;
             }
         };
@@ -238,7 +247,7 @@ class GoogleGenAiContentMapperTest {
         ChatResponse result = GoogleGenAiContentMapper.toChatResponse(response, "test-model");
 
         assertThat(result.aiMessage().text()).isEqualTo("Empty response");
-        assertThat(result.finishReason()).isEqualTo(FinishReason.OTHER);
+        assertThat(result.finishReason()).isEqualTo(OTHER);
         assertThat(result.tokenUsage().inputTokenCount()).isEqualTo(0);
     }
 
@@ -260,7 +269,7 @@ class GoogleGenAiContentMapperTest {
         ChatResponse result = GoogleGenAiContentMapper.toChatResponse(response, "test-model");
 
         assertThat(result.aiMessage().text()).isEqualTo("Hello!");
-        assertThat(result.finishReason()).isEqualTo(FinishReason.STOP);
+        assertThat(result.finishReason()).isEqualTo(STOP);
         assertThat(result.tokenUsage().inputTokenCount()).isEqualTo(10);
         assertThat(result.tokenUsage().outputTokenCount()).isEqualTo(5);
     }
@@ -332,7 +341,7 @@ class GoogleGenAiContentMapperTest {
         GoogleGenAiChatResponseMetadata metadata = (GoogleGenAiChatResponseMetadata) result.metadata();
         assertThat(metadata.rawResponse()).isSameAs(response);
         assertThat(metadata.tokenUsage().inputTokenCount()).isEqualTo(10);
-        assertThat(metadata.finishReason()).isEqualTo(FinishReason.STOP);
+        assertThat(metadata.finishReason()).isEqualTo(STOP);
     }
 
     @Test
@@ -405,14 +414,13 @@ class GoogleGenAiContentMapperTest {
                                                 .build())
                                         .build())
                                 .build())
-                        .finishReason(
-                                new com.google.genai.types.FinishReason(com.google.genai.types.FinishReason.Known.STOP))
+                        .finishReason(new FinishReason(Known.STOP))
                         .build()))
                 .build();
 
         ChatResponse result = GoogleGenAiContentMapper.toChatResponse(response, "test-model");
 
-        assertThat(result.finishReason()).isEqualTo(FinishReason.TOOL_EXECUTION);
+        assertThat(result.finishReason()).isEqualTo(TOOL_EXECUTION);
     }
 
     @Test
@@ -423,14 +431,13 @@ class GoogleGenAiContentMapperTest {
                                 .role("model")
                                 .parts(Part.builder().text("Hello!").build())
                                 .build())
-                        .finishReason(
-                                new com.google.genai.types.FinishReason(com.google.genai.types.FinishReason.Known.STOP))
+                        .finishReason(new FinishReason(Known.STOP))
                         .build()))
                 .build();
 
         ChatResponse result = GoogleGenAiContentMapper.toChatResponse(response, "test-model");
 
-        assertThat(result.finishReason()).isEqualTo(FinishReason.STOP);
+        assertThat(result.finishReason()).isEqualTo(STOP);
     }
 
     @Test
@@ -442,7 +449,7 @@ class GoogleGenAiContentMapperTest {
         ChatResponse result = GoogleGenAiContentMapper.toChatResponse(response, "test-model");
 
         assertThat(result.aiMessage().text()).isEmpty();
-        assertThat(result.finishReason()).isEqualTo(FinishReason.STOP);
+        assertThat(result.finishReason()).isEqualTo(STOP);
     }
 
     @Test
@@ -567,30 +574,28 @@ class GoogleGenAiContentMapperTest {
 
     @Test
     void should_map_finish_reason() {
-        assertThat(GoogleGenAiContentMapper.mapFinishReason(
-                        new com.google.genai.types.FinishReason(com.google.genai.types.FinishReason.Known.STOP)))
-                .isEqualTo(FinishReason.STOP);
+        assertThat(GoogleGenAiContentMapper.mapFinishReason(new FinishReason(Known.STOP)))
+                .isEqualTo(STOP);
 
-        assertThat(GoogleGenAiContentMapper.mapFinishReason(
-                        new com.google.genai.types.FinishReason(com.google.genai.types.FinishReason.Known.MAX_TOKENS)))
-                .isEqualTo(FinishReason.LENGTH);
+        assertThat(GoogleGenAiContentMapper.mapFinishReason(new FinishReason(Known.MAX_TOKENS)))
+                .isEqualTo(LENGTH);
 
-        assertThat(GoogleGenAiContentMapper.mapFinishReason(new com.google.genai.types.FinishReason(
-                        com.google.genai.types.FinishReason.Known.IMAGE_RECITATION)))
-                .isEqualTo(FinishReason.CONTENT_FILTER);
+        assertThat(GoogleGenAiContentMapper.mapFinishReason(new FinishReason(Known.IMAGE_RECITATION)))
+                .isEqualTo(CONTENT_FILTER);
 
-        assertThat(GoogleGenAiContentMapper.mapFinishReason(
-                        new com.google.genai.types.FinishReason(com.google.genai.types.FinishReason.Known.SAFETY)))
-                .isEqualTo(FinishReason.CONTENT_FILTER);
+        assertThat(GoogleGenAiContentMapper.mapFinishReason(new FinishReason(Known.SAFETY)))
+                .isEqualTo(CONTENT_FILTER);
 
-        assertThat(GoogleGenAiContentMapper.mapFinishReason(
-                        new com.google.genai.types.FinishReason(com.google.genai.types.FinishReason.Known.OTHER)))
-                .isEqualTo(FinishReason.OTHER);
+        assertThat(GoogleGenAiContentMapper.mapFinishReason(new FinishReason(Known.OTHER)))
+                .isEqualTo(OTHER);
+
+        assertThat(GoogleGenAiContentMapper.mapFinishReason(new FinishReason(Known.TOO_MANY_TOOL_CALLS)))
+                .isEqualTo(OTHER);
     }
 
     @Test
     void should_map_null_finish_reason_to_other() {
-        assertThat(GoogleGenAiContentMapper.mapFinishReason(null)).isEqualTo(FinishReason.OTHER);
+        assertThat(GoogleGenAiContentMapper.mapFinishReason(null)).isEqualTo(OTHER);
     }
 
     private static GenerateContentResponse responseWithThoughtAndAnswer() {

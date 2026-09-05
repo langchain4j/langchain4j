@@ -25,6 +25,9 @@ public class PromptTemplate {
     private static final PromptTemplateFactory FACTORY = factory();
 
     private static PromptTemplateFactory factory() {
+        // Substituted by quarkus-langchain4j for native image (@TargetClass/@Substitute in its
+        // Substitutions), so this name and signature are depended on from outside despite being
+        // private. Renaming it breaks that build with no compile error here.
         for (PromptTemplateFactory factory : loadFactories(PromptTemplateFactory.class)) {
             return factory;
         }

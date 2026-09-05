@@ -12,6 +12,7 @@ import java.nio.file.StandardOpenOption;
 import java.nio.file.spi.FileTypeDetector;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -124,7 +125,7 @@ public class CustomMimeTypesFileTypeDetector extends FileTypeDetector {
      */
     @Override
     public String probeContentType(Path path) {
-        String extension = extension(path).toLowerCase();
+        String extension = extension(path).toLowerCase(Locale.ROOT);
 
         if (mappings.containsKey(extension)) {
             return mappings.get(extension);

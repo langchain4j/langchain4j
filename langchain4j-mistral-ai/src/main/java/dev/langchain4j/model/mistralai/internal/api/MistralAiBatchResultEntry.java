@@ -2,8 +2,6 @@ package dev.langchain4j.model.mistralai.internal.api;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonSetter;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import java.util.Map;
 import org.jspecify.annotations.Nullable;
 
@@ -17,7 +15,6 @@ import org.jspecify.annotations.Nullable;
  * a failed line carries an {@link #error}.</p>
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
-@JsonNaming(SnakeCaseStrategy.class)
 public class MistralAiBatchResultEntry {
 
     public String customId;
@@ -37,7 +34,6 @@ public class MistralAiBatchResultEntry {
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    @JsonNaming(SnakeCaseStrategy.class)
     public static class Response {
 
         public Integer statusCode;

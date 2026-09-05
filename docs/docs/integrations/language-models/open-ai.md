@@ -31,7 +31,7 @@ LangChain4j provides 3 different integrations with OpenAI for using chat models,
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai</artifactId>
-    <version>1.19.0</version>
+    <version>1.20.0</version>
 </dependency>
 ```
 
@@ -40,7 +40,7 @@ LangChain4j provides 3 different integrations with OpenAI for using chat models,
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai-spring-boot-starter</artifactId>
-    <version>1.19.0-beta29</version>
+    <version>1.20.0-beta30</version>
 </dependency>
 ```
 
@@ -676,7 +676,7 @@ OpenAiResponsesChatResponseMetadata metadata =
 
 metadata.id();               // Response ID (can be used as previousResponseId)
 metadata.modelName();        // Model name used for the request
-metadata.finishReason();     // Finish reason (STOP, LENGTH, TOOL_EXECUTION, OTHER)
+metadata.finishReason();     // Finish reason (STOP, LENGTH, TOOL_EXECUTION, CONTENT_FILTER, OTHER)
 metadata.tokenUsage();       // Returns OpenAiTokenUsage with detailed token counts
 metadata.createdAt();        // Timestamp when the response was created
 metadata.completedAt();      // Timestamp when the response was completed

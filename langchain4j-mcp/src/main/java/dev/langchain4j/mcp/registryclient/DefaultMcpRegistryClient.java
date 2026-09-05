@@ -1,19 +1,7 @@
 package dev.langchain4j.mcp.registryclient;
 
-import static com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility.ANY;
-import static com.fasterxml.jackson.annotation.PropertyAccessor.FIELD;
-import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
-import static java.time.format.DateTimeFormatter.ISO_DATE_TIME;
 import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.DeserializationContext;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.JsonDeserializer;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.module.SimpleModule;
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpClientBuilderLoader;
 import dev.langchain4j.http.client.HttpMethod;
@@ -50,21 +38,6 @@ public class DefaultMcpRegistryClient implements McpRegistryClient {
             .parseLenient()
             .appendLiteral('Z') // we are using UTC time and the official registry requires the 'Z' to be present
             .toFormatter();
-
-    private static final SimpleModule JACKSON_MODULE = new SimpleModule("mcp-registry-client-module")
-            .addDeserializer(LocalDateTime.class, new JsonDeserializer<>() {
-                @Override
-                public LocalDateTime deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
-                    JsonNode node = p.getCodec().readTree(p);
-                    return LocalDateTime.parse(node.asText(), ISO_DATE_TIME);
-                }
-            });
-    static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
-            .setVisibility(FIELD, ANY)
-            .registerModule(JACKSON_MODULE)
-            // the servers might add new properties over time, let's not allow that to break the client
-            .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
-            .enable(INDENT_OUTPUT);
 
     private final String baseUrl;
     private final HttpClient httpClient;
@@ -197,8 +170,8 @@ public class DefaultMcpRegistryClient implements McpRegistryClient {
     private <T> T sendAndProcessResponse(HttpRequest httpRequest, Class<T> returnType) {
         SuccessfulHttpResponse response = httpClient.execute(httpRequest);
         try {
-            return OBJECT_MAPPER.readValue(response.body(), returnType);
-        } catch (JsonProcessingException e) {
+            return McpRegistryJson.fromJson(response.body(), returnType);
+        } catch (RuntimeException e) {
             throw new McpRegistryClientException(e);
         }
     }
