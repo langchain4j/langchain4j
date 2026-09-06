@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
+import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.mcp.client.transport.http.StreamableHttpMcpTransport;
 import dev.langchain4j.mcp.protocol.McpInitializeRequest;
 import dev.langchain4j.mcp.protocol.McpListToolsRequest;
@@ -38,9 +39,15 @@ class StreamableHttpMcpTransportSessionExpiryTest {
     private final AtomicInteger sessionCounter = new AtomicInteger();
     private final List<String> toolsListSessionIds = Collections.synchronizedList(new ArrayList<>());
     private volatile boolean retrySucceeds;
+    private volatile int rejectedStatusCode;
 
     private void startServer(boolean retrySucceeds) throws IOException {
+        startServer(retrySucceeds, 404);
+    }
+
+    private void startServer(boolean retrySucceeds, int rejectedStatusCode) throws IOException {
         this.retrySucceeds = retrySucceeds;
+        this.rejectedStatusCode = rejectedStatusCode;
         sessionCounter.set(0);
         toolsListSessionIds.clear();
         server = HttpServer.create(new InetSocketAddress("localhost", 0), 0);
@@ -61,8 +68,8 @@ class StreamableHttpMcpTransportSessionExpiryTest {
                     // simulate an expired session
                     respond(
                             exchange,
-                            404,
-                            "{\"jsonrpc\":\"2.0\",\"id\":1,\"error\":{\"code\":-32000,\"message\":\"Session not found\"}}");
+                            rejectedStatusCode,
+                            "{\"jsonrpc\":\"2.0\",\"id\":1,\"error\":{\"code\":-32000,\"message\":\"Request rejected\"}}");
                 }
             } else {
                 respond(exchange, 500, "{}");
@@ -134,5 +141,23 @@ class StreamableHttpMcpTransportSessionExpiryTest {
                 .isInstanceOf(ExecutionException.class)
                 .hasMessageContaining("after reinitialization");
         assertThat(toolsListSessionIds).containsExactly("session-1", "session-2");
+    }
+
+    @Test
+    void shouldExposeTheHttpStatusWhenARequestIsRejected() throws Exception {
+        startServer(false, 401);
+
+        transport.sendInitializeRequest(new McpInitializeRequest(0L)).get(5, TimeUnit.SECONDS);
+
+        CompletableFuture<String> response = transport.sendRequest(new McpListToolsRequest(1L, null));
+
+        assertThatThrownBy(() -> response.get(5, TimeUnit.SECONDS))
+                .isInstanceOf(ExecutionException.class)
+                .hasCauseInstanceOf(HttpException.class)
+                .extracting(Throwable::getCause)
+                .extracting(HttpException.class::cast)
+                .extracting(HttpException::statusCode)
+                .isEqualTo(401);
+        assertThat(toolsListSessionIds).containsExactly("session-1");
     }
 }
