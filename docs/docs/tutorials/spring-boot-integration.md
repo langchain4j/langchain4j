@@ -31,7 +31,7 @@ For example, for OpenAI (`langchain4j-open-ai`):
  <dependency>
      <groupId>dev.langchain4j</groupId>
      <artifactId>langchain4j-open-ai-spring-boot-starter</artifactId>
-     <version>1.19.0-beta29</version>
+     <version>1.20.0-beta30</version>
  </dependency>
 ```
 
@@ -40,7 +40,7 @@ For example, for OpenAI (`langchain4j-open-ai`):
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai-spring-boot4-starter</artifactId>
-    <version>1.19.0-beta29</version>
+    <version>1.20.0-beta30</version>
 </dependency>
 ```
 
@@ -93,7 +93,7 @@ import `langchain4j-spring-boot-starter` (Spring Boot 3) or `langchain4j-spring-
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-spring-boot-starter</artifactId>
-    <version>1.19.0-beta29</version>
+    <version>1.20.0-beta30</version>
 </dependency>
 ```
 
@@ -102,7 +102,7 @@ import `langchain4j-spring-boot-starter` (Spring Boot 3) or `langchain4j-spring-
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-spring-boot4-starter</artifactId>
-    <version>1.19.0-beta29</version>
+    <version>1.20.0-beta30</version>
 </dependency>
 ```
 
@@ -251,6 +251,11 @@ interface Assistant {
 For this, please import `langchain4j-reactor` module.
 See more details [here](/tutorials/ai-services#flux).
 
+That module also provides `Mono<T>` and `Flux<AiServiceStreamingEvent>` for the
+[non-blocking modes](/tutorials/non-blocking), and the starter can route LangChain4j's offloaded work through
+Spring's own task executor with `langchain4j.executor.use-spring-task-executor=true` so that tracing, MDC and
+security context follow an asynchronous invocation.
+
 
 ## Observability
 
@@ -298,12 +303,12 @@ For Maven:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-micrometer-metrics</artifactId>
-    <version>1.19.0-beta29</version>
+    <version>1.20.0-beta30</version>
 </dependency>
 ```
 For Gradle:
 ```gradle
-implementation 'dev.langchain4j:langchain4j-micrometer-metrics:1.19.0-beta29'
+implementation 'dev.langchain4j:langchain4j-micrometer-metrics:1.20.0-beta30'
 ```
 
 #### Micrometer (Actuator) Configuration

@@ -10,7 +10,7 @@ sidebar_position: 1
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-bedrock</artifactId>
-    <version>1.19.0</version>
+    <version>1.20.0</version>
 </dependency>
 ```
 
@@ -111,12 +111,13 @@ StreamingChatModel model = BedrockStreamingChatModel.builder()
 
 ## Strict Tools
 
-For Bedrock Converse models that support strict tool use, such as Anthropic Claude models,
+For Bedrock Converse models that support [structured outputs](https://docs.aws.amazon.com/bedrock/latest/userguide/structured-output.html),
+such as [Claude Haiku 4.5](https://docs.aws.amazon.com/bedrock/latest/userguide/model-card-anthropic-claude-haiku-4-5.html),
 set `.strictTools(true)` when building the model:
 
 ```java
 ChatModel model = BedrockChatModel.builder()
-        .modelId("anthropic.claude-3-5-sonnet-20241022-v2:0")
+        .modelId("us.anthropic.claude-haiku-4-5-20251001-v1:0")
         .strictTools(true)
         .build();
 ```

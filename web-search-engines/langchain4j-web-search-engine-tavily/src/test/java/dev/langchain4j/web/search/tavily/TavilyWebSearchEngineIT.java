@@ -6,14 +6,20 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import dev.langchain4j.web.search.WebSearchEngine;
 import dev.langchain4j.web.search.WebSearchEngineIT;
 import dev.langchain4j.web.search.WebSearchOrganicResult;
+import dev.langchain4j.web.search.WebSearchRequest;
 import dev.langchain4j.web.search.WebSearchResults;
 import java.net.URI;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 @EnabledIfEnvironmentVariable(named = "TAVILY_API_KEY", matches = ".+")
 class TavilyWebSearchEngineIT extends WebSearchEngineIT {
+
+    // Tavily's server-side default for "max_results" is not stable, so every test that asserts on the number of
+    // results has to request an explicit maximum instead of relying on that default.
+    private static final int MAX_RESULTS = 5;
 
     WebSearchEngine webSearchEngine = TavilyWebSearchEngine.withApiKey(System.getenv("TAVILY_API_KEY"));
 
@@ -44,7 +50,8 @@ class TavilyWebSearchEngineIT extends WebSearchEngineIT {
             assertThat(result.metadata()).containsOnlyKeys("score");
         });
 
-        assertThat(results).anyMatch(result -> result.content() != null && result.content().contains("LangChain4j"));
+        assertThat(results)
+                .anyMatch(result -> result.content() != null && result.content().contains("LangChain4j"));
     }
 
     @Test
@@ -56,12 +63,17 @@ class TavilyWebSearchEngineIT extends WebSearchEngineIT {
                 .includeAnswer(true)
                 .build();
 
+        WebSearchRequest request = WebSearchRequest.builder()
+                .searchTerms("What is LangChain4j?")
+                .maxResults(MAX_RESULTS)
+                .build();
+
         // when
-        WebSearchResults webSearchResults = tavilyWebSearchEngine.search("What is LangChain4j?");
+        WebSearchResults webSearchResults = tavilyWebSearchEngine.search(request);
 
         // then
         List<WebSearchOrganicResult> results = webSearchResults.results();
-        assertThat(results).hasSize(5 + 1); // +1 for answer
+        assertThat(results).hasSize(MAX_RESULTS + 1); // +1 for answer
 
         WebSearchOrganicResult answerResult = results.get(0);
         assertThat(answerResult.title()).isEqualTo("Tavily Search API");
@@ -88,12 +100,45 @@ class TavilyWebSearchEngineIT extends WebSearchEngineIT {
                 .includeAnswer(true)
                 .build();
 
+        WebSearchRequest request = WebSearchRequest.builder()
+                .searchTerms("Release notes for ADP Workforce Now")
+                .maxResults(MAX_RESULTS)
+                .build();
+
         // when
-        WebSearchResults webSearchResults = tavilyWebSearchEngine.search("Release notes for ADP Workforce Now");
+        WebSearchResults webSearchResults = tavilyWebSearchEngine.search(request);
 
         // then
         List<WebSearchOrganicResult> results = webSearchResults.results();
-        assertThat(results).hasSize(5 + 1); // +1 for answer
+        assertThat(results).hasSize(MAX_RESULTS + 1); // +1 for answer
+    }
+
+    @Test
+    void searchAsync_should_return_the_same_results_as_the_blocking_search() throws Exception {
+
+        // given
+        TavilyWebSearchEngine tavilyWebSearchEngine = TavilyWebSearchEngine.builder()
+                .apiKey(System.getenv("TAVILY_API_KEY"))
+                .includeAnswer(true)
+                .build();
+
+        WebSearchRequest request = WebSearchRequest.builder()
+                .searchTerms("What is LangChain4j?")
+                .maxResults(MAX_RESULTS)
+                .build();
+
+        // when
+        WebSearchResults webSearchResults =
+                tavilyWebSearchEngine.searchAsync(request).get(30, TimeUnit.SECONDS);
+
+        // then
+        List<WebSearchOrganicResult> results = webSearchResults.results();
+        assertThat(results).hasSize(MAX_RESULTS + 1); // +1 for answer
+
+        WebSearchOrganicResult answerResult = results.get(0);
+        assertThat(answerResult.title()).isEqualTo("Tavily Search API");
+        assertThat(answerResult.url()).isEqualTo(URI.create("https://tavily.com/"));
+        assertThat(answerResult.snippet()).isNotBlank();
     }
 
     @Override

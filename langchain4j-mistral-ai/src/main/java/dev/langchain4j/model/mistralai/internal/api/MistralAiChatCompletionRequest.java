@@ -2,11 +2,11 @@ package dev.langchain4j.model.mistralai.internal.api;
 
 import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 
 import java.util.Arrays;
@@ -16,7 +16,6 @@ import java.util.StringJoiner;
 
 @JsonInclude(NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
-@JsonNaming(SnakeCaseStrategy.class)
 @JsonDeserialize(builder = MistralAiChatCompletionRequest.MistralAiChatCompletionRequestBuilder.class)
 public class MistralAiChatCompletionRequest {
     private String model;
@@ -34,6 +33,7 @@ public class MistralAiChatCompletionRequest {
     private Double frequencyPenalty;
     private Double presencePenalty;
 
+    @JsonCreator
     private MistralAiChatCompletionRequest(MistralAiChatCompletionRequestBuilder builder) {
         this.model = builder.model;
         this.messages = builder.messages;
@@ -172,7 +172,7 @@ public class MistralAiChatCompletionRequest {
 
     @JsonPOJOBuilder(withPrefix = "")
     @JsonIgnoreProperties(ignoreUnknown = true)
-    @JsonNaming(SnakeCaseStrategy.class)
+    @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
     public static class MistralAiChatCompletionRequestBuilder {
         private String model;
         private List<MistralAiChatMessage> messages;

@@ -15,9 +15,11 @@ public class McpEnvironmentVariable {
     private String format;
 
     @JsonAlias("is_required")
+    @JsonProperty("isRequired")
     private boolean isRequired;
 
     @JsonAlias("is_secret")
+    @JsonProperty("isSecret")
     private boolean isSecret;
 
     private String name;
