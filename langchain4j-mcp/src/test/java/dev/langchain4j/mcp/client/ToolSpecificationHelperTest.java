@@ -1379,4 +1379,143 @@ class ToolSpecificationHelperTest {
             throw new RuntimeException(e);
         }
     }
+
+    @Test
+    void allOfSubSchemasAreMergedIntoObjectSchema() throws JsonProcessingException {
+        String text =
+                // language=json
+                """
+                [ {
+                      "name" : "create_action",
+                      "inputSchema" : {
+                        "type" : "object",
+                        "allOf" : [ {
+                          "type" : "object",
+                          "properties" : {
+                            "identifier" : {
+                              "type" : "string"
+                            }
+                          },
+                          "required" : [ "identifier" ]
+                        }, {
+                          "type" : "object",
+                          "properties" : {
+                            "title" : {
+                              "type" : "string"
+                            },
+                            "requiredApproval" : {
+                              "type" : "boolean"
+                            }
+                          }
+                        } ]
+                      }
+                } ]
+                """;
+        List<Map<String, Object>> json = toolList(text);
+        ToolSpecification toolSpecification = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json)
+                .get(0);
+        JsonObjectSchema parameters = toolSpecification.parameters();
+
+        // properties from all sub-schemas are merged, required lists are united
+        assertThat(parameters.properties()).containsOnlyKeys("identifier", "title", "requiredApproval");
+        assertThat(parameters.required()).containsExactly("identifier");
+    }
+
+    @Test
+    void allOfEntriesThatDoNotConvertToObjectsAreIgnored() throws JsonProcessingException {
+        String text =
+                // language=json
+                """
+                [ {
+                      "name" : "create_action",
+                      "inputSchema" : {
+                        "type" : "object",
+                        "properties" : {
+                          "icon" : {
+                            "type" : "string"
+                          }
+                        },
+                        "allOf" : [ {
+                          "type" : "string"
+                        } ]
+                      }
+                } ]
+                """;
+        List<Map<String, Object>> json = toolList(text);
+        ToolSpecification toolSpecification = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json)
+                .get(0);
+        JsonObjectSchema parameters = toolSpecification.parameters();
+
+        assertThat(parameters.properties()).containsOnlyKeys("icon");
+    }
+
+    @Test
+    void allOfOwnPropertiesTakePrecedenceOverMergedSubSchemas() throws JsonProcessingException {
+        String text =
+                // language=json
+                """
+                [ {
+                      "name" : "create_action",
+                      "inputSchema" : {
+                        "type" : "object",
+                        "allOf" : [ {
+                          "type" : "object",
+                          "properties" : {
+                            "title" : {
+                              "type" : "string",
+                              "description" : "from allOf"
+                            }
+                          }
+                        } ],
+                        "properties" : {
+                          "title" : {
+                            "type" : "string",
+                            "description" : "from own schema"
+                          }
+                        }
+                      }
+                } ]
+                """;
+        List<Map<String, Object>> json = toolList(text);
+        ToolSpecification toolSpecification = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json)
+                .get(0);
+        JsonObjectSchema parameters = toolSpecification.parameters();
+
+        JsonStringSchema title = (JsonStringSchema) parameters.properties().get("title");
+        assertThat(title.description()).isEqualTo("from own schema");
+    }
+
+    @Test
+    void arrayWithoutItemsIsAccepted() throws JsonProcessingException {
+        // Regression for #3585: 'items' is optional in JSON Schema, so an array property without
+        // it (e.g. {"type": "array"}) must convert instead of failing with "items cannot be null".
+        String text =
+                // language=json
+                """
+                [ {
+                      "name" : "create_action",
+                      "inputSchema" : {
+                        "type" : "object",
+                        "properties" : {
+                          "enum" : {
+                            "type" : "array"
+                          },
+                          "rules" : {
+                            "type" : "array"
+                          }
+                        }
+                      }
+                } ]
+                """;
+        List<Map<String, Object>> json = toolList(text);
+        ToolSpecification toolSpecification = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json)
+                .get(0);
+        JsonObjectSchema parameters = toolSpecification.parameters();
+
+        JsonArraySchema enumProperty = (JsonArraySchema) parameters.properties().get("enum");
+        assertThat(enumProperty.items()).isNull();
+        JsonArraySchema rulesProperty =
+                (JsonArraySchema) parameters.properties().get("rules");
+        assertThat(rulesProperty.items()).isNull();
+    }
 }
