@@ -1,20 +1,20 @@
 package dev.langchain4j.model.openai;
 
+import static dev.langchain4j.internal.Utils.copy;
+
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.TokenUsage;
-
 import java.util.List;
 import java.util.Objects;
-
-import static dev.langchain4j.internal.Utils.copy;
 
 public class OpenAiResponsesChatResponseMetadata extends ChatResponseMetadata {
 
     private final Long createdAt;
     private final Long completedAt;
     private final String serviceTier;
+    private final OpenAiResponsesWebSearchMetadata webSearchMetadata;
     private final SuccessfulHttpResponse rawHttpResponse;
     private final List<ServerSentEvent> rawServerSentEvents;
 
@@ -23,6 +23,7 @@ public class OpenAiResponsesChatResponseMetadata extends ChatResponseMetadata {
         this.createdAt = builder.createdAt;
         this.completedAt = builder.completedAt;
         this.serviceTier = builder.serviceTier;
+        this.webSearchMetadata = builder.webSearchMetadata;
         this.rawHttpResponse = builder.rawHttpResponse;
         this.rawServerSentEvents = copy(builder.rawServerSentEvents);
     }
@@ -55,6 +56,10 @@ public class OpenAiResponsesChatResponseMetadata extends ChatResponseMetadata {
         return serviceTier;
     }
 
+    public OpenAiResponsesWebSearchMetadata webSearchMetadata() {
+        return webSearchMetadata;
+    }
+
     public SuccessfulHttpResponse rawHttpResponse() {
         return rawHttpResponse;
     }
@@ -69,6 +74,7 @@ public class OpenAiResponsesChatResponseMetadata extends ChatResponseMetadata {
                 .createdAt(createdAt)
                 .completedAt(completedAt)
                 .serviceTier(serviceTier)
+                .webSearchMetadata(webSearchMetadata)
                 .rawHttpResponse(rawHttpResponse)
                 .rawServerSentEvents(rawServerSentEvents);
     }
@@ -82,6 +88,7 @@ public class OpenAiResponsesChatResponseMetadata extends ChatResponseMetadata {
         return Objects.equals(createdAt, that.createdAt)
                 && Objects.equals(completedAt, that.completedAt)
                 && Objects.equals(serviceTier, that.serviceTier)
+                && Objects.equals(webSearchMetadata, that.webSearchMetadata)
                 && Objects.equals(rawHttpResponse, that.rawHttpResponse)
                 && Objects.equals(rawServerSentEvents, that.rawServerSentEvents);
     }
@@ -93,6 +100,7 @@ public class OpenAiResponsesChatResponseMetadata extends ChatResponseMetadata {
                 createdAt,
                 completedAt,
                 serviceTier,
+                webSearchMetadata,
                 rawHttpResponse,
                 rawServerSentEvents);
     }
@@ -106,7 +114,8 @@ public class OpenAiResponsesChatResponseMetadata extends ChatResponseMetadata {
                 + finishReason() + ", createdAt="
                 + createdAt + ", completedAt="
                 + completedAt + ", serviceTier='"
-                + serviceTier + '\'' + ", rawHttpResponse="
+                + serviceTier + '\'' + ", webSearchMetadata="
+                + webSearchMetadata + ", rawHttpResponse="
                 + rawHttpResponse + ", rawServerSentEvents="
                 + rawServerSentEvents + '}';
     }
@@ -120,6 +129,7 @@ public class OpenAiResponsesChatResponseMetadata extends ChatResponseMetadata {
         private Long createdAt;
         private Long completedAt;
         private String serviceTier;
+        private OpenAiResponsesWebSearchMetadata webSearchMetadata;
         private SuccessfulHttpResponse rawHttpResponse;
         private List<ServerSentEvent> rawServerSentEvents;
 
@@ -135,6 +145,11 @@ public class OpenAiResponsesChatResponseMetadata extends ChatResponseMetadata {
 
         public Builder serviceTier(String serviceTier) {
             this.serviceTier = serviceTier;
+            return this;
+        }
+
+        public Builder webSearchMetadata(OpenAiResponsesWebSearchMetadata webSearchMetadata) {
+            this.webSearchMetadata = webSearchMetadata;
             return this;
         }
 

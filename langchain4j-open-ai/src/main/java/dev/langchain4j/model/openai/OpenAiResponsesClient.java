@@ -1,11 +1,11 @@
 package dev.langchain4j.model.openai;
 
 import static dev.langchain4j.http.client.sse.ServerSentEventParsingHandleUtils.toStreamingHandle;
+import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.*;
 import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
 import static dev.langchain4j.internal.ToolSpecificationUtils.isEffectivelyStrict;
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -36,7 +36,6 @@ import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventContext;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.internal.ExceptionMapper;
-import dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils;
 import dev.langchain4j.internal.Json;
 import dev.langchain4j.internal.MappingTrackingStreamingChatResponseHandler;
 import dev.langchain4j.internal.ProviderJson;
@@ -48,16 +47,16 @@ import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonRawSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
+import dev.langchain4j.model.chat.response.ChatModelStreamingEvent;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
-import dev.langchain4j.model.chat.response.ChatModelStreamingEvent;
 import dev.langchain4j.model.chat.response.StreamingHandle;
 import dev.langchain4j.model.openai.internal.OpenAiClient;
+import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.reactive.streaming.HttpStreamingChatPublisher;
 import dev.langchain4j.reactive.streaming.TubeBackedStreamingChatResponseHandler;
-import dev.langchain4j.model.output.FinishReason;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -128,6 +127,13 @@ class OpenAiResponsesClient {
     private static final String FIELD_OUTPUT_TOKENS_DETAILS = "output_tokens_details";
     private static final String FIELD_REASONING_TOKENS = "reasoning_tokens";
     private static final String FIELD_MODEL = "model";
+    private static final String FIELD_ANNOTATIONS = "annotations";
+    private static final String FIELD_ACTION = "action";
+    private static final String FIELD_QUERY = "query";
+    private static final String FIELD_URL = "url";
+    private static final String FIELD_TITLE = "title";
+    private static final String FIELD_START_INDEX = "start_index";
+    private static final String FIELD_END_INDEX = "end_index";
     private static final String FIELD_INPUT = "input";
     private static final String FIELD_STREAM = "stream";
     private static final String FIELD_STORE = "store";
@@ -185,6 +191,8 @@ class OpenAiResponsesClient {
     private static final String TYPE_FUNCTION_CALL_OUTPUT = "function_call_output";
     private static final String TYPE_JSON_OBJECT = "json_object";
     private static final String TYPE_JSON_SCHEMA = "json_schema";
+    private static final String TYPE_WEB_SEARCH_CALL = "web_search_call";
+    private static final String TYPE_URL_CITATION = "url_citation";
 
     private final HttpClient httpClient;
     private final String baseUrl;
@@ -206,7 +214,8 @@ class OpenAiResponsesClient {
         this.apiKey = builder.apiKey;
         this.organizationId = builder.organizationId;
         this.streamingBufferSize = ensureGreaterThanZero(
-                getOrDefault(builder.streamingBufferSize, OpenAiClient.DEFAULT_STREAMING_BUFFER_SIZE), "streamingBufferSize");
+                getOrDefault(builder.streamingBufferSize, OpenAiClient.DEFAULT_STREAMING_BUFFER_SIZE),
+                "streamingBufferSize");
         this.customHeadersSupplier = getOrDefault(builder.customHeadersSupplier, () -> Map::of);
     }
 
@@ -490,7 +499,6 @@ class OpenAiResponsesClient {
         return requestBuilder.body(requestBody).build();
     }
 
-
     // --- JSON accessors over the plain JDK values (Map/List/String/Number/Boolean) a parsed response is made of ---
 
     /** Mirrors {@code node.path(field)}: an absent field yields null rather than an exception. */
@@ -588,6 +596,55 @@ class OpenAiResponsesClient {
         return null;
     }
 
+    /**
+     * Collects the web-search data from the response output: queries from {@code web_search_call}
+     * items and {@code url_citation} annotations from {@code output_text} content parts.
+     *
+     * @return the metadata, or {@code null} when the response contains neither
+     */
+    private static OpenAiResponsesWebSearchMetadata extractWebSearchMetadata(Object output) {
+        List<String> searchQueries = new ArrayList<>();
+        List<OpenAiResponsesWebSearchMetadata.UrlCitation> citations = new ArrayList<>();
+        for (Object item : arr(output)) {
+            String type = str(at(item, FIELD_TYPE));
+            if (TYPE_WEB_SEARCH_CALL.equals(type)) {
+                Object action = at(item, FIELD_ACTION);
+                String query = str(at(action != null ? action : item, FIELD_QUERY), null);
+                if (query != null && !query.isBlank()) {
+                    searchQueries.add(query);
+                }
+            } else if (TYPE_MESSAGE.equals(type)) {
+                for (Object content : arr(at(item, FIELD_CONTENT))) {
+                    if (!TYPE_OUTPUT_TEXT.equals(str(at(content, FIELD_TYPE)))) {
+                        continue;
+                    }
+                    for (Object annotation : arr(at(content, FIELD_ANNOTATIONS))) {
+                        if (!TYPE_URL_CITATION.equals(str(at(annotation, FIELD_TYPE)))) {
+                            continue;
+                        }
+                        Integer startIndex = hasNonNull(annotation, FIELD_START_INDEX)
+                                ? intOf(at(annotation, FIELD_START_INDEX))
+                                : null;
+                        Integer endIndex =
+                                hasNonNull(annotation, FIELD_END_INDEX) ? intOf(at(annotation, FIELD_END_INDEX)) : null;
+                        citations.add(new OpenAiResponsesWebSearchMetadata.UrlCitation(
+                                str(at(annotation, FIELD_URL), null),
+                                str(at(annotation, FIELD_TITLE), null),
+                                startIndex,
+                                endIndex));
+                    }
+                }
+            }
+        }
+        if (searchQueries.isEmpty() && citations.isEmpty()) {
+            return null;
+        }
+        return OpenAiResponsesWebSearchMetadata.builder()
+                .searchQueries(searchQueries)
+                .citations(citations)
+                .build();
+    }
+
     private static List<ToolExecutionRequest> extractToolExecutionRequests(Object output) {
         List<ToolExecutionRequest> toolExecutionRequests = new ArrayList<>();
         for (Object item : arr(output)) {
@@ -630,8 +687,7 @@ class OpenAiResponsesClient {
         Object outputDetailsNode = at(usageNode, FIELD_OUTPUT_TOKENS_DETAILS);
         if (outputDetailsNode != null) {
             usageBuilder.outputTokensDetails(OpenAiTokenUsage.OutputTokensDetails.builder()
-                    .reasoningTokens(
-                            intOf(at(outputDetailsNode, FIELD_REASONING_TOKENS)))
+                    .reasoningTokens(intOf(at(outputDetailsNode, FIELD_REASONING_TOKENS)))
                     .build());
         }
 
@@ -698,6 +754,11 @@ class OpenAiResponsesClient {
 
         if (hasNonNull(responseNode, FIELD_SERVICE_TIER)) {
             metadataBuilder.serviceTier(str(at(responseNode, FIELD_SERVICE_TIER)));
+        }
+
+        OpenAiResponsesWebSearchMetadata webSearchMetadata = extractWebSearchMetadata(outputNode);
+        if (webSearchMetadata != null) {
+            metadataBuilder.webSearchMetadata(webSearchMetadata);
         }
 
         metadataBuilder.rawHttpResponse(rawHttpResponse);
@@ -1182,13 +1243,17 @@ class OpenAiResponsesClient {
                 metadataBuilder.createdAt(longOf(at(responseNode, FIELD_CREATED_AT)));
             }
             if (hasNonNull(responseNode, FIELD_COMPLETED_AT)) {
-                metadataBuilder.completedAt(
-                        longOf(at(responseNode, FIELD_COMPLETED_AT)));
+                metadataBuilder.completedAt(longOf(at(responseNode, FIELD_COMPLETED_AT)));
             }
             if (hasNonNull(responseNode, FIELD_SERVICE_TIER)) {
-                metadataBuilder.serviceTier(
-                        str(at(responseNode, FIELD_SERVICE_TIER)));
+                metadataBuilder.serviceTier(str(at(responseNode, FIELD_SERVICE_TIER)));
             }
+
+            OpenAiResponsesWebSearchMetadata webSearchMetadata = extractWebSearchMetadata(outputNode);
+            if (webSearchMetadata != null) {
+                metadataBuilder.webSearchMetadata(webSearchMetadata);
+            }
+
             if (rawHttpResponse != null) {
                 metadataBuilder.rawHttpResponse(rawHttpResponse);
             }
