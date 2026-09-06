@@ -1,8 +1,8 @@
 package dev.langchain4j.model.output;
 
-import java.util.Objects;
-
 import static dev.langchain4j.internal.Utils.getOrDefault;
+
+import java.util.Objects;
 
 /**
  * Represents the token usage of a response.
@@ -105,6 +105,9 @@ public class TokenUsage {
      *
      * <p>Fields which are null in both responses will be null in the result.
      *
+     * <p>Subclasses carrying their own fields should override this method to sum them as well;
+     * the base implementation only sums the fields declared here.
+     *
      * @param that The token usage to add to this one.
      * @return a new {@link TokenUsage} instance with the token usage of both responses added together.
      */
@@ -115,15 +118,27 @@ public class TokenUsage {
 
         if (that.getClass() != TokenUsage.class) {
             // when adding TokenUsage ("this") and one of TokenUsage's subclasses ("that"),
-            // we want to call "add" on the subclass to preserve extra information present in the subclass
-            return that.add(this);
+            // we want to call "add" on the subclass to preserve extra information present in the subclass.
+            // "this" is handed over as a plain TokenUsage: a subclass that inherits this method instead of
+            // overriding it would otherwise delegate straight back here, and the two instances would pass
+            // the call to each other until the stack overflows.
+            return that.add(asTokenUsage());
         }
 
         return new TokenUsage(
                 sum(this.inputTokenCount, that.inputTokenCount),
                 sum(this.outputTokenCount, that.outputTokenCount),
-                sum(this.totalTokenCount, that.totalTokenCount)
-        );
+                sum(this.totalTokenCount, that.totalTokenCount));
+    }
+
+    /**
+     * Returns this token usage as a plain {@link TokenUsage}, so that handing it to
+     * {@link #add(TokenUsage)} of a subclass cannot bounce the call back to a subclass implementation.
+     */
+    private TokenUsage asTokenUsage() {
+        return getClass() == TokenUsage.class
+                ? this
+                : new TokenUsage(inputTokenCount, outputTokenCount, totalTokenCount);
     }
 
     /**
@@ -158,10 +173,9 @@ public class TokenUsage {
 
     @Override
     public String toString() {
-        return "TokenUsage {" +
-                " inputTokenCount = " + inputTokenCount +
-                ", outputTokenCount = " + outputTokenCount +
-                ", totalTokenCount = " + totalTokenCount +
-                " }";
+        return "TokenUsage {" + " inputTokenCount = "
+                + inputTokenCount + ", outputTokenCount = "
+                + outputTokenCount + ", totalTokenCount = "
+                + totalTokenCount + " }";
     }
 }
