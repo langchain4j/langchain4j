@@ -28,10 +28,12 @@ class OnnxScoringBertCrossEncoder implements AutoCloseable {
             String pathToTokenizer,
             int modelMaxLength,
             boolean normalize) {
+        OrtSession initializedSession = null;
+        HuggingFaceTokenizer initializedTokenizer = null;
         try (options) { // properly release parent session at the end of this block to prevent leaks
             this.environment = OrtEnvironment.getEnvironment();
-            this.session = this.environment.createSession(modelPath, options);
-            this.expectedInputs = session.getInputNames();
+            initializedSession = this.environment.createSession(modelPath, options);
+            this.expectedInputs = initializedSession.getInputNames();
             Map<String, String> tokenizerOptions = new HashMap<String, String>() {
                 {
                     put("padding", "true");
@@ -43,9 +45,26 @@ class OnnxScoringBertCrossEncoder implements AutoCloseable {
                 }
             };
             this.normalize = normalize;
-            this.tokenizer = HuggingFaceTokenizer.newInstance(Paths.get(pathToTokenizer), tokenizerOptions);
-        } catch (Exception e) {
+            initializedTokenizer = HuggingFaceTokenizer.newInstance(Paths.get(pathToTokenizer), tokenizerOptions);
+        } catch (Exception | Error e) {
+            closeOnFailure(initializedTokenizer, e);
+            closeOnFailure(initializedSession, e);
+            if (e instanceof Error error) {
+                throw error;
+            }
             throw new RuntimeException(e);
+        }
+        this.session = initializedSession;
+        this.tokenizer = initializedTokenizer;
+    }
+
+    private static void closeOnFailure(AutoCloseable resource, Throwable failure) {
+        if (resource != null) {
+            try {
+                resource.close();
+            } catch (Exception | Error closeFailure) {
+                failure.addSuppressed(closeFailure);
+            }
         }
     }
 
