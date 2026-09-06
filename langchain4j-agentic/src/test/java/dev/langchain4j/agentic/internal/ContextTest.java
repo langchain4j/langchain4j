@@ -18,6 +18,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 
 class ContextTest {
@@ -44,13 +45,30 @@ class ContextTest {
         }
     }
 
+    private static class EqualRecordingChatModel extends RecordingChatModel {
+
+        EqualRecordingChatModel(String summary) {
+            super(summary);
+        }
+
+        @Override
+        public boolean equals(Object other) {
+            return other instanceof EqualRecordingChatModel;
+        }
+
+        @Override
+        public int hashCode() {
+            return EqualRecordingChatModel.class.hashCode();
+        }
+    }
+
     @Test
     void summarizers_using_different_models_should_each_use_their_own_model() {
         AgenticScope agenticScope = mock(AgenticScope.class);
         when(agenticScope.contextAsConversation("expert")).thenReturn("expert conversation");
 
-        RecordingChatModel firstModel = new RecordingChatModel("summary-from-first-model");
-        RecordingChatModel secondModel = new RecordingChatModel("summary-from-second-model");
+        RecordingChatModel firstModel = new EqualRecordingChatModel("summary-from-first-model");
+        RecordingChatModel secondModel = new EqualRecordingChatModel("summary-from-second-model");
 
         String firstTransformedMessage = new Context.Summarizer(agenticScope, firstModel, "expert")
                 .transformUserMessage("first question", "memory");
@@ -85,13 +103,13 @@ class ContextTest {
     }
 
     @Test
-    void summarizers_sharing_the_same_model_should_share_a_single_service() {
+    void summarizers_created_for_the_same_model_should_be_independent() {
         RecordingChatModel model = new RecordingChatModel("shared summary");
 
         Context.ContextSummarizer first = Context.createSummarizer(model);
         Context.ContextSummarizer second = Context.createSummarizer(model);
 
-        assertThat(second).isSameAs(first);
+        assertThat(second).isNotSameAs(first);
     }
 
     @Test
@@ -103,7 +121,7 @@ class ContextTest {
     }
 
     @Test
-    void concurrent_createSummarizer_calls_with_the_same_model_should_share_a_single_service() throws Exception {
+    void concurrent_createSummarizer_calls_with_the_same_model_should_create_independent_services() throws Exception {
         RecordingChatModel model = new RecordingChatModel("concurrent summary");
         int threads = 8;
         CyclicBarrier barrier = new CyclicBarrier(threads);
@@ -116,12 +134,46 @@ class ContextTest {
                     return Context.createSummarizer(model);
                 }));
             }
-            Context.ContextSummarizer first = futures.get(0).get();
             for (Future<Context.ContextSummarizer> future : futures) {
-                assertThat(future.get()).isSameAs(first);
+                assertThat(future.get()).isNotNull();
             }
         } finally {
             executor.shutdownNow();
         }
+    }
+
+    @Test
+    void summarizer_with_chat_model_provider_should_follow_model_changes() {
+        AgenticScope agenticScope = mock(AgenticScope.class);
+        when(agenticScope.contextAsConversation("expert")).thenReturn("expert conversation");
+
+        RecordingChatModel firstModel = new EqualRecordingChatModel("summary-from-first-model");
+        RecordingChatModel secondModel = new EqualRecordingChatModel("summary-from-second-model");
+        AtomicReference<ChatModel> currentModel = new AtomicReference<>(firstModel);
+
+        Context.Summarizer summarizer =
+                Context.Summarizer.withChatModelProvider(agenticScope, ignored -> currentModel.get(), "expert");
+
+        assertThat(summarizer.transformUserMessage("question", "memory")).contains("summary-from-first-model");
+        currentModel.set(secondModel);
+        assertThat(summarizer.transformUserMessage("question", "memory")).contains("summary-from-second-model");
+        currentModel.set(firstModel);
+        assertThat(summarizer.transformUserMessage("question", "memory")).contains("summary-from-first-model");
+
+        assertThat(firstModel.invocations()).isEqualTo(2);
+        assertThat(secondModel.invocations()).isEqualTo(1);
+    }
+
+    @Test
+    void summarizer_with_chat_model_provider_should_fail_when_provider_returns_null() {
+        AgenticScope agenticScope = mock(AgenticScope.class);
+        when(agenticScope.contextAsConversation("expert")).thenReturn("expert conversation");
+
+        Context.Summarizer summarizer =
+                Context.Summarizer.withChatModelProvider(agenticScope, ignored -> null, "expert");
+
+        assertThatExceptionOfType(IllegalConfigurationException.class)
+                .isThrownBy(() -> summarizer.transformUserMessage("question", "memory"))
+                .withMessage("The chat model provider returned null while summarizing agentic context.");
     }
 }
