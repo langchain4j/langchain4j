@@ -14,7 +14,7 @@ JVector is a pure Java embedded vector search engine that provides high-performa
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-community-jvector</artifactId>
-    <version>1.19.0-beta29</version>
+    <version>1.20.0-beta30</version>
 </dependency>
 ```
 
