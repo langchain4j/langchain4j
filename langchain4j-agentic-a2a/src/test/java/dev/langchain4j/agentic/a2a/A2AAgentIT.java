@@ -28,6 +28,7 @@ import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.agentic.supervisor.SupervisorAgent;
 import dev.langchain4j.service.V;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.a2aproject.sdk.client.ClientBuilder;
 import org.a2aproject.sdk.client.TaskUpdateEvent;
 import org.a2aproject.sdk.client.transport.jsonrpc.JSONRPCTransport;
@@ -42,7 +43,7 @@ import org.junit.jupiter.api.Test;
 
 public class A2AAgentIT {
 
-    static final String A2A_SERVER_URL = "http://localhost:8080";
+    static final String A2A_SERVER_URL = "http://localhost:7777";
 
     @Test
     @Disabled("Requires A2A server to be running")
@@ -85,6 +86,28 @@ public class A2AAgentIT {
         String s = result.agenticScope().readState("result", "");
 
         assertThat(s).isEqualTo("get 2 artifacts, stop streaming");
+    }
+
+    @Test
+    @Disabled("Requires A2A server to be running， send addArtifact 2 times")
+    void streaming_a2a_agent_stopWithResponse_tests() {
+        AtomicInteger taskArtifactUpdateEventCount = new AtomicInteger(0);
+        ResultWithAgenticScope<String> result = AgenticServices.a2aBuilder(A2A_SERVER_URL, StreamingA2ATester.class)
+                .outputKey("result")
+                .streamingClientListener((TaskUpdateEvent event) -> {
+                    UpdateEvent updateEvent = event.getUpdateEvent();
+                    if (updateEvent instanceof TaskArtifactUpdateEvent) {
+                        taskArtifactUpdateEventCount.incrementAndGet();
+                        return A2AStreamingClientListenerResult.stopWithResponse("get artifact, stop streaming");
+                    }
+                    return A2AStreamingClientListenerResult.continueStreaming();
+                })
+                .build()
+                .test("test");
+        String s = result.agenticScope().readState("result", "");
+
+        assertThat(s).isEqualTo("get artifact, stop streaming");
+        assertThat(taskArtifactUpdateEventCount).hasValue(1);
     }
 
     @Test

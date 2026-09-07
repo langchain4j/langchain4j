@@ -32,6 +32,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
@@ -54,6 +55,7 @@ import org.a2aproject.sdk.spec.Part;
 import org.a2aproject.sdk.spec.Task;
 import org.a2aproject.sdk.spec.TaskState;
 import org.a2aproject.sdk.spec.TextPart;
+import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -287,24 +289,8 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
         final CompletableFuture<String> messageResponse = new CompletableFuture<>();
         AtomicReference<String> responseContextId = new AtomicReference<>();
         AtomicReference<String> responseTaskId = new AtomicReference<>();
-
-        List<BiConsumer<ClientEvent, AgentCard>> consumers = List.of((event, card) -> {
-            if (event instanceof TaskEvent taskEvent) {
-                captureTaskIds(taskEvent.getTask(), responseContextId, responseTaskId);
-                handleTaskEvent(taskEvent, messageResponse);
-            } else if (event instanceof MessageEvent messageEvent) {
-                Message msg = messageEvent.getMessage();
-                responseContextId.set(msg.contextId());
-                responseTaskId.set(msg.taskId());
-                handleMessageEvent(msg, messageResponse);
-            } else if (event instanceof TaskUpdateEvent updateEvent) {
-                captureTaskIds(updateEvent.getTask(), responseContextId, responseTaskId);
-                handleUpdateEvent(updateEvent, messageResponse);
-            } else {
-                messageResponse.completeExceptionally(
-                        new IllegalArgumentException("The event expected should be of type " + event.getClass()));
-            }
-        });
+        List<BiConsumer<ClientEvent, AgentCard>> consumers =
+                getEventConsumers(responseContextId, responseTaskId, messageResponse);
         Consumer<Throwable> streamingErrorHandler = error -> handleStreamEnd(error, messageResponse);
         a2aClient.sendMessage(message, consumers, streamingErrorHandler, null);
 
@@ -325,6 +311,38 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
             }
             throw new RuntimeException("Failed to get response: " + e.getMessage(), e);
         }
+    }
+
+    private @NonNull List<BiConsumer<ClientEvent, AgentCard>> getEventConsumers(
+            AtomicReference<String> responseContextId,
+            AtomicReference<String> responseTaskId,
+            CompletableFuture<String> messageResponse) {
+
+        AtomicBoolean stopped = new AtomicBoolean(false);
+
+        BiConsumer<ClientEvent, AgentCard> defaultEventConsumer = (event, card) -> {
+            if (stopped.get()) {
+                return;
+            }
+
+            if (event instanceof TaskEvent taskEvent) {
+                captureTaskIds(taskEvent.getTask(), responseContextId, responseTaskId);
+                handleTaskEvent(taskEvent, messageResponse);
+            } else if (event instanceof MessageEvent messageEvent) {
+                Message msg = messageEvent.getMessage();
+                responseContextId.set(msg.contextId());
+                responseTaskId.set(msg.taskId());
+                handleMessageEvent(msg, messageResponse);
+            } else if (event instanceof TaskUpdateEvent updateEvent) {
+                captureTaskIds(updateEvent.getTask(), responseContextId, responseTaskId);
+                handleUpdateEvent(updateEvent, messageResponse, stopped);
+            } else {
+                messageResponse.completeExceptionally(
+                        new IllegalArgumentException("The event expected should be of type " + event.getClass()));
+            }
+        };
+
+        return List.of(defaultEventConsumer);
     }
 
     private static void captureTaskIds(Task task, AtomicReference<String> contextId, AtomicReference<String> taskId) {
@@ -364,7 +382,8 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
         messageResponse.complete(extractTextFromParts(message.parts()));
     }
 
-    private void handleUpdateEvent(TaskUpdateEvent taskUpdateEvent, CompletableFuture<String> messageResponse) {
+    private void handleUpdateEvent(
+            TaskUpdateEvent taskUpdateEvent, CompletableFuture<String> messageResponse, AtomicBoolean stopped) {
         // Task lifecycle stream: If the agent returns a Task, the stream MUST begin with the Task
         // object, followed by zero or more TaskStatusUpdateEvent or TaskArtifactUpdateEvent objects.
         // The stream MUST close when the task reaches a terminal state
@@ -373,6 +392,7 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
             A2AStreamingClientListenerResult listenerResult = streamingClientListener.onUpdateEvent(taskUpdateEvent);
             if (listenerResult.stop()) {
                 messageResponse.complete(listenerResult.response());
+                stopped.set(true);
             }
         }
         completeFromTask(taskUpdateEvent.getTask(), messageResponse);
