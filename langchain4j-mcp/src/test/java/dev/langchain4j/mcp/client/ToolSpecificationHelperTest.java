@@ -1522,4 +1522,200 @@ class ToolSpecificationHelperTest {
                 (JsonArraySchema) parameters.properties().get("rules");
         assertThat(rulesProperty.items()).isNull();
     }
+
+    @Test
+    void allOfRefIsResolvedAndMergedViaDefs() throws JsonProcessingException {
+        // An allOf entry that is a $ref into $defs is resolved and the target object is merged,
+        // rather than being dropped as an unmergeable JsonReferenceSchema.
+        String text =
+                // language=json
+                """
+                [ {
+                      "name" : "create_action",
+                      "inputSchema" : {
+                        "type" : "object",
+                        "allOf" : [ {
+                          "$ref" : "#/$defs/Base"
+                        }, {
+                          "type" : "object",
+                          "properties" : {
+                            "title" : {
+                              "type" : "string"
+                            }
+                          }
+                        } ],
+                        "$defs" : {
+                          "Base" : {
+                            "type" : "object",
+                            "properties" : {
+                              "identifier" : {
+                                "type" : "string"
+                              }
+                            },
+                            "required" : [ "identifier" ]
+                          }
+                        }
+                      }
+                } ]
+                """;
+        List<Map<String, Object>> json = toolList(text);
+        ToolSpecification toolSpecification = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json)
+                .get(0);
+        JsonObjectSchema parameters = toolSpecification.parameters();
+
+        assertThat(parameters.properties()).containsOnlyKeys("identifier", "title");
+        assertThat(parameters.properties().get("identifier")).isInstanceOf(JsonStringSchema.class);
+        assertThat(parameters.properties().get("title")).isInstanceOf(JsonStringSchema.class);
+        assertThat(parameters.required()).containsExactly("identifier");
+    }
+
+    @Test
+    void allOfRefIsResolvedAndMergedViaDefinitions() throws JsonProcessingException {
+        // Same as above, but using draft-07 'definitions' and a '#/definitions/...' pointer.
+        String text =
+                // language=json
+                """
+                [ {
+                      "name" : "create_action",
+                      "inputSchema" : {
+                        "type" : "object",
+                        "allOf" : [ {
+                          "$ref" : "#/definitions/Base"
+                        } ],
+                        "definitions" : {
+                          "Base" : {
+                            "type" : "object",
+                            "properties" : {
+                              "identifier" : {
+                                "type" : "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                } ]
+                """;
+        List<Map<String, Object>> json = toolList(text);
+        ToolSpecification toolSpecification = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json)
+                .get(0);
+        JsonObjectSchema parameters = toolSpecification.parameters();
+
+        assertThat(parameters.properties()).containsOnlyKeys("identifier");
+        assertThat(parameters.properties().get("identifier")).isInstanceOf(JsonStringSchema.class);
+    }
+
+    @Test
+    void allOfRefResolvesAgainstRootDefinitionsWhenNested() throws JsonProcessingException {
+        // The $defs live on the root inputSchema, but the allOf that references them is nested
+        // inside a property. Definitions are threaded through the recursion so the ref resolves.
+        String text =
+                // language=json
+                """
+                [ {
+                      "name" : "create_action",
+                      "inputSchema" : {
+                        "type" : "object",
+                        "properties" : {
+                          "config" : {
+                            "type" : "object",
+                            "allOf" : [ {
+                              "$ref" : "#/$defs/Base"
+                            } ]
+                          }
+                        },
+                        "$defs" : {
+                          "Base" : {
+                            "type" : "object",
+                            "properties" : {
+                              "identifier" : {
+                                "type" : "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                } ]
+                """;
+        List<Map<String, Object>> json = toolList(text);
+        ToolSpecification toolSpecification = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json)
+                .get(0);
+        JsonObjectSchema parameters = toolSpecification.parameters();
+
+        assertThat(parameters.properties().get("config")).isInstanceOf(JsonObjectSchema.class);
+        JsonObjectSchema config =
+                (JsonObjectSchema) parameters.properties().get("config");
+        assertThat(config.properties()).containsOnlyKeys("identifier");
+        assertThat(config.properties().get("identifier")).isInstanceOf(JsonStringSchema.class);
+    }
+
+    @Test
+    void allOfRefCycleTerminates() throws JsonProcessingException {
+        // A self-referential definition (its own allOf points back at itself) must not loop
+        // forever: the cycle guard stops re-resolving a ref already on the stack, and the
+        // definition's own members are still merged.
+        String text =
+                // language=json
+                """
+                [ {
+                      "name" : "create_action",
+                      "inputSchema" : {
+                        "type" : "object",
+                        "allOf" : [ {
+                          "$ref" : "#/$defs/Node"
+                        } ],
+                        "$defs" : {
+                          "Node" : {
+                            "type" : "object",
+                            "allOf" : [ {
+                              "$ref" : "#/$defs/Node"
+                            } ],
+                            "properties" : {
+                              "value" : {
+                                "type" : "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                } ]
+                """;
+        List<Map<String, Object>> json = toolList(text);
+        ToolSpecification toolSpecification = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json)
+                .get(0);
+        JsonObjectSchema parameters = toolSpecification.parameters();
+
+        assertThat(parameters.properties()).containsOnlyKeys("value");
+        assertThat(parameters.properties().get("value")).isInstanceOf(JsonStringSchema.class);
+    }
+
+    @Test
+    void allOfRefToUnknownDefinitionIsIgnored() throws JsonProcessingException {
+        // A $ref that cannot be resolved (no such definition) contributes nothing and does not
+        // fail; the node's own members are unaffected.
+        String text =
+                // language=json
+                """
+                [ {
+                      "name" : "create_action",
+                      "inputSchema" : {
+                        "type" : "object",
+                        "allOf" : [ {
+                          "$ref" : "#/$defs/DoesNotExist"
+                        } ],
+                        "properties" : {
+                          "title" : {
+                            "type" : "string"
+                          }
+                        }
+                      }
+                } ]
+                """;
+        List<Map<String, Object>> json = toolList(text);
+        ToolSpecification toolSpecification = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json)
+                .get(0);
+        JsonObjectSchema parameters = toolSpecification.parameters();
+
+        assertThat(parameters.properties()).containsOnlyKeys("title");
+        assertThat(parameters.properties().get("title")).isInstanceOf(JsonStringSchema.class);
+    }
 }
