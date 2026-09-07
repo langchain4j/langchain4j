@@ -30,8 +30,10 @@ public class WorkersAiClient {
 
         // The 30s timeouts preserve the original behavior: slow, but can be needed for images.
         this.httpClient = httpClientBuilder
-                .connectTimeout(getOrDefault(getOrDefault(builder.timeout, httpClientBuilder.connectTimeout()), ofSeconds(30)))
-                .readTimeout(getOrDefault(getOrDefault(builder.timeout, httpClientBuilder.readTimeout()), ofSeconds(30)))
+                .connectTimeout(
+                        getOrDefault(getOrDefault(builder.timeout, httpClientBuilder.connectTimeout()), ofSeconds(30)))
+                .readTimeout(
+                        getOrDefault(getOrDefault(builder.timeout, httpClientBuilder.readTimeout()), ofSeconds(30)))
                 .build();
 
         this.authorizationHeader = "Bearer " + builder.apiToken;
@@ -47,8 +49,8 @@ public class WorkersAiClient {
      */
     public WorkersAiChatCompletionResponse generateChat(
             WorkersAiChatCompletionRequest apiRequest, String accountIdentifier, String modelName) {
-        return checkSuccess(
-                fromJson(execute(apiRequest, accountIdentifier, modelName).body(), WorkersAiChatCompletionResponse.class));
+        return checkSuccess(fromJson(
+                execute(apiRequest, accountIdentifier, modelName).body(), WorkersAiChatCompletionResponse.class));
     }
 
     /**
@@ -61,8 +63,8 @@ public class WorkersAiClient {
      */
     public WorkersAiTextCompletionResponse generateText(
             WorkersAiTextCompletionRequest apiRequest, String accountIdentifier, String modelName) {
-        return checkSuccess(
-                fromJson(execute(apiRequest, accountIdentifier, modelName).body(), WorkersAiTextCompletionResponse.class));
+        return checkSuccess(fromJson(
+                execute(apiRequest, accountIdentifier, modelName).body(), WorkersAiTextCompletionResponse.class));
     }
 
     /**
@@ -117,6 +119,7 @@ public class WorkersAiClient {
                 .url(BASE_URL + "client/v4/accounts/" + accountIdentifier + "/ai/run/" + modelName)
                 .addHeader("Content-Type", "application/json")
                 .addHeader("Authorization", authorizationHeader)
+                .addHeader("User-Agent", "LangChain4j")
                 .body(toJson(apiRequest))
                 .build();
         return mappingException(() -> httpClient.execute(httpRequest));

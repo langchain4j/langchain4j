@@ -95,6 +95,7 @@ class ChromaHttpClient {
                 .method(HttpMethod.GET)
                 .url(url)
                 .addHeader("Content-Type", "application/json")
+                .addHeader("User-Agent", "LangChain4j")
                 .addHeaders(customHeadersSupplier.get())
                 .build();
 
@@ -114,6 +115,7 @@ class ChromaHttpClient {
                 .method(HttpMethod.POST)
                 .url(url)
                 .addHeader("Content-Type", "application/json")
+                .addHeader("User-Agent", "LangChain4j")
                 .addHeaders(customHeadersSupplier.get())
                 .body(jsonBody)
                 .build();
@@ -132,6 +134,7 @@ class ChromaHttpClient {
                 .method(HttpMethod.DELETE)
                 .url(url)
                 .addHeader("Content-Type", "application/json")
+                .addHeader("User-Agent", "LangChain4j")
                 .addHeaders(customHeadersSupplier.get())
                 .build();
 

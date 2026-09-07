@@ -44,6 +44,7 @@ import dev.langchain4j.model.chat.response.StreamingHandle;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
@@ -79,11 +80,13 @@ class OllamaClient {
     }
 
     private Map<String, String> buildRequestHeaders() {
+        Map<String, String> headers = new HashMap<>();
+        headers.put("User-Agent", "LangChain4j");
         Map<String, String> dynamicHeaders = customHeadersSupplier.get();
-        if (isNullOrEmpty(dynamicHeaders)) {
-            return Map.of();
+        if (!isNullOrEmpty(dynamicHeaders)) {
+            headers.putAll(dynamicHeaders);
         }
-        return dynamicHeaders;
+        return headers;
     }
 
     static Builder builder() {
