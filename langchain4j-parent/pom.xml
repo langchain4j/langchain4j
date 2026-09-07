@@ -44,7 +44,7 @@
         <kotlin.compiler.apiVersion>1.9</kotlin.compiler.apiVersion>
         <kotlin-compiler.version>2.1.21</kotlin-compiler.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <project.build.outputTimestamp>1788529353</project.build.outputTimestamp>
+        <project.build.outputTimestamp>1788778504</project.build.outputTimestamp>
         <argLine></argLine>
         <!-- Dependency Versions -->
         <dokka.version>2.1.0-Beta</dokka.version>

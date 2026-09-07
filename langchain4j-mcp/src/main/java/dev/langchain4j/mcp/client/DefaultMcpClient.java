@@ -455,8 +455,8 @@ public class DefaultMcpClient implements McpClient {
                         error.getData() == null ? null : McpJson.serialize(error.getData()));
             }
             log.debug("MCP server discover result: {}", response);
-            McpServerDiscoverResponse.Result discovered =
-                    McpJson.deserialize(response, McpServerDiscoverResponse.class).getResult();
+            McpServerDiscoverResponse.Result discovered = McpJson.deserialize(response, McpServerDiscoverResponse.class)
+                    .getResult();
             initializeResult = toInitializeResultFromDiscover(response, discovered);
             modernProtocol = true;
             McpDiscoverResult discoverResult = toDiscoverResult(discovered);
@@ -828,13 +828,12 @@ public class DefaultMcpClient implements McpClient {
         // built on demand, not once at construction: a custom converter must not be invoked
         // for a tool call that never happened
         return toolResultConverter.convert(
-                List.of(Map.of("type", "text", "text", toolExecutionTimeoutErrorMessage)), false);
+                List.of(Map.of("type", "text", "text", toolExecutionTimeoutErrorMessage)), true);
     }
 
     private ToolExecutionResult extractResultAndNotifyListeners(McpCallContext context, String finalResult) {
         try {
-            ToolExecutionResult toolResult = ToolExecutionHelper.extractResult(
-                    finalResult, false, toolResultConverter);
+            ToolExecutionResult toolResult = ToolExecutionHelper.extractResult(finalResult, false, toolResultConverter);
             notifyListeners(finalResult, (l, response) -> l.afterExecuteTool(context, toolResult, response));
             return toolResult;
         } catch (ToolExecutionException e) {
@@ -1531,7 +1530,6 @@ public class DefaultMcpClient implements McpClient {
                 McpJson.deserialize(response, McpErrorResponse.class).getError();
         return error == null ? "" : error.getMessage();
     }
-
 
     @Override
     public void close() {
