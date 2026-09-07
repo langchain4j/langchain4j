@@ -124,11 +124,9 @@ public class Jackson3ChatMessageJsonCodec implements ChatMessageJsonCodec {
         public abstract ChatMessageType type();
     }
 
-    @JsonInclude(NON_NULL)
-    private abstract static class SystemMessageMixin {
-        @JsonCreator
-        public SystemMessageMixin(@JsonProperty("text") String text) {}
-    }
+    @JsonInclude(NON_EMPTY)
+    @JsonDeserialize(builder = SystemMessage.Builder.class)
+    private abstract static class SystemMessageMixin {}
 
     @JsonInclude(NON_EMPTY)
     @JsonDeserialize(builder = UserMessage.Builder.class)
