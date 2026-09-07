@@ -424,3 +424,38 @@ jobs:
               | head -50
             echo '```'
           } >> $GITHUB_STEP_SUMMARY
+
+  # revapi binds to the verify phase, which no other CI job reaches - they stop at test. An
+  # unusable API baseline therefore stays invisible until a release build fails on it.
+  # Only on main: on a release branch revapi compares against the release directly below the one
+  # being built, which for release/1.19.x is the erroneous 1.19.1 and can never pass.
+  revapi:
+    if: github.ref == 'refs/heads/main' || github.base_ref == 'main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Set up JDK 17
+        uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'maven'
+      - name: Revapi API Check
+        run: |
+          set -o pipefail
+          mvn -B -U -T8C -DskipTests -DskipITs -DembeddingsSkipDownload \
+            -Dmaven.javadoc.skip=true -Dmaven.source.skip=true \
+            verify 2>&1 | tee maven-output.log
+
+      - name: Surface build errors
+        if: failure()
+        run: |
+          {
+            echo '## API Errors (revapi)'
+            echo ''
+            echo '```'
+            grep '^\[ERROR\]' maven-output.log \
+              | grep -vE '^\[ERROR\]( +"|[[:space:]]*(Stub|DEBUG:)|[[:space:]]*$)' \
+              | head -50
+            echo '```'
+          } >> $GITHUB_STEP_SUMMARY
