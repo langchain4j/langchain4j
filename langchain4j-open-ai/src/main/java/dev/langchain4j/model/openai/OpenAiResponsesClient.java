@@ -36,7 +36,6 @@ import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventContext;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.internal.ExceptionMapper;
-import dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils;
 import dev.langchain4j.internal.Json;
 import dev.langchain4j.internal.MappingTrackingStreamingChatResponseHandler;
 import dev.langchain4j.internal.ProviderJson;
@@ -510,7 +509,6 @@ class OpenAiResponsesClient {
         return requestBuilder.body(requestBody).build();
     }
 
-
     // --- JSON accessors over the plain JDK values (Map/List/String/Number/Boolean) a parsed response is made of ---
 
     /** Mirrors {@code node.path(field)}: an absent field yields null rather than an exception. */
@@ -642,9 +640,9 @@ class OpenAiResponsesClient {
 
         Object inputDetailsNode = at(usageNode, FIELD_INPUT_TOKENS_DETAILS);
         if (inputDetailsNode != null) {
-            OpenAiTokenUsage.InputTokensDetails.Builder inputTokensDetailsBuilder = 
-                OpenAiTokenUsage.InputTokensDetails.builder()
-                .cachedTokens(intOf(at(inputDetailsNode, FIELD_CACHED_TOKENS)));
+            OpenAiTokenUsage.InputTokensDetails.Builder inputTokensDetailsBuilder =
+                    OpenAiTokenUsage.InputTokensDetails.builder()
+                            .cachedTokens(intOf(at(inputDetailsNode, FIELD_CACHED_TOKENS)));
 
             // Keep cache_write_tokens null when it is not reported.
             Object cacheWriteTokens = at(inputDetailsNode, FIELD_CACHE_WRITE_TOKENS);
@@ -654,13 +652,11 @@ class OpenAiResponsesClient {
 
             usageBuilder.inputTokensDetails(inputTokensDetailsBuilder.build());
         }
-        
 
         Object outputDetailsNode = at(usageNode, FIELD_OUTPUT_TOKENS_DETAILS);
         if (outputDetailsNode != null) {
             usageBuilder.outputTokensDetails(OpenAiTokenUsage.OutputTokensDetails.builder()
-                    .reasoningTokens(
-                            intOf(at(outputDetailsNode, FIELD_REASONING_TOKENS)))
+                    .reasoningTokens(intOf(at(outputDetailsNode, FIELD_REASONING_TOKENS)))
                     .build());
         }
 
@@ -1258,12 +1254,10 @@ class OpenAiResponsesClient {
                 metadataBuilder.createdAt(longOf(at(responseNode, FIELD_CREATED_AT)));
             }
             if (hasNonNull(responseNode, FIELD_COMPLETED_AT)) {
-                metadataBuilder.completedAt(
-                        longOf(at(responseNode, FIELD_COMPLETED_AT)));
+                metadataBuilder.completedAt(longOf(at(responseNode, FIELD_COMPLETED_AT)));
             }
             if (hasNonNull(responseNode, FIELD_SERVICE_TIER)) {
-                metadataBuilder.serviceTier(
-                        str(at(responseNode, FIELD_SERVICE_TIER)));
+                metadataBuilder.serviceTier(str(at(responseNode, FIELD_SERVICE_TIER)));
             }
             if (rawHttpResponse != null) {
                 metadataBuilder.rawHttpResponse(rawHttpResponse);

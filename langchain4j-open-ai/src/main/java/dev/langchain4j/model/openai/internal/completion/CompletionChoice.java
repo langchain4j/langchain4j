@@ -8,7 +8,6 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
-
 import java.util.Objects;
 
 @JsonDeserialize(builder = CompletionChoice.Builder.class)
@@ -17,10 +16,13 @@ public final class CompletionChoice {
 
     @JsonProperty
     private final String text;
+
     @JsonProperty
     private final Integer index;
+
     @JsonProperty
     private final Logprobs logprobs;
+
     @JsonProperty
     private final String finishReason;
 
@@ -52,8 +54,7 @@ public final class CompletionChoice {
     @JacocoIgnoreCoverageGenerated
     public boolean equals(Object another) {
         if (this == another) return true;
-        return another instanceof CompletionChoice
-                && equalTo((CompletionChoice) another);
+        return another instanceof CompletionChoice && equalTo((CompletionChoice) another);
     }
 
     @JacocoIgnoreCoverageGenerated
@@ -97,10 +98,13 @@ public final class CompletionChoice {
 
         @JsonProperty
         private String text;
+
         @JsonProperty
         private Integer index;
+
         @JsonProperty
         private Logprobs logprobs;
+
         @JsonProperty
         private String finishReason;
 

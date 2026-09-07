@@ -9,7 +9,6 @@ import com.fasterxml.jackson.annotation.JsonSetter;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
-
 import java.util.Objects;
 
 @JsonDeserialize(builder = Categories.Builder.class)
@@ -80,8 +79,7 @@ public final class Categories {
     @JacocoIgnoreCoverageGenerated
     public boolean equals(Object another) {
         if (this == another) return true;
-        return another instanceof Categories
-                && equalTo((Categories) another);
+        return another instanceof Categories && equalTo((Categories) another);
     }
 
     @JacocoIgnoreCoverageGenerated

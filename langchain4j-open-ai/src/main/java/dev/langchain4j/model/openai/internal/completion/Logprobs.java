@@ -1,5 +1,7 @@
 package dev.langchain4j.model.openai.internal.completion;
 
+import static java.util.Collections.unmodifiableList;
+import static java.util.Collections.unmodifiableMap;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -9,14 +11,10 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-
-import static java.util.Collections.unmodifiableList;
-import static java.util.Collections.unmodifiableMap;
 
 @JsonDeserialize(builder = Logprobs.Builder.class)
 @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -24,10 +22,13 @@ public final class Logprobs {
 
     @JsonProperty
     private final List<String> tokens;
+
     @JsonProperty
     private final List<Double> tokenLogprobs;
+
     @JsonProperty
     private final List<Map<String, Double>> topLogprobs;
+
     @JsonProperty
     private final List<Integer> textOffset;
 
@@ -59,8 +60,7 @@ public final class Logprobs {
     @JacocoIgnoreCoverageGenerated
     public boolean equals(Object another) {
         if (this == another) return true;
-        return another instanceof Logprobs
-                && equalTo((Logprobs) another);
+        return another instanceof Logprobs && equalTo((Logprobs) another);
     }
 
     @JacocoIgnoreCoverageGenerated

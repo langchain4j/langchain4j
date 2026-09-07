@@ -8,7 +8,6 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
-
 import java.util.Map;
 import java.util.Objects;
 
@@ -18,8 +17,10 @@ public class JsonSchema {
 
     @JsonProperty
     private final String name;
+
     @JsonProperty
     private final Boolean strict;
+
     @JsonProperty
     private final Map<String, Object> schema;
 
@@ -34,8 +35,7 @@ public class JsonSchema {
     @JacocoIgnoreCoverageGenerated
     public boolean equals(Object another) {
         if (this == another) return true;
-        return another instanceof JsonSchema
-                && equalTo((JsonSchema) another);
+        return another instanceof JsonSchema && equalTo((JsonSchema) another);
     }
 
     @JacocoIgnoreCoverageGenerated
@@ -58,11 +58,7 @@ public class JsonSchema {
     @Override
     @JacocoIgnoreCoverageGenerated
     public String toString() {
-        return "JsonSchema{" +
-                "name=" + name +
-                ", strict=" + strict +
-                ", schema=" + schema +
-                "}";
+        return "JsonSchema{" + "name=" + name + ", strict=" + strict + ", schema=" + schema + "}";
     }
 
     public static Builder builder() {

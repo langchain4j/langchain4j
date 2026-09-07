@@ -8,7 +8,6 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
-
 import java.util.Objects;
 
 @JsonDeserialize(builder = CompletionTokensDetails.Builder.class)
@@ -31,8 +30,7 @@ public final class CompletionTokensDetails {
     @JacocoIgnoreCoverageGenerated
     public boolean equals(Object another) {
         if (this == another) return true;
-        return another instanceof CompletionTokensDetails
-                && equalTo((CompletionTokensDetails) another);
+        return another instanceof CompletionTokensDetails && equalTo((CompletionTokensDetails) another);
     }
 
     @JacocoIgnoreCoverageGenerated
@@ -51,9 +49,7 @@ public final class CompletionTokensDetails {
     @Override
     @JacocoIgnoreCoverageGenerated
     public String toString() {
-        return "CompletionTokensDetails{"
-                + "reasoningTokens=" + reasoningTokens
-                + "}";
+        return "CompletionTokensDetails{" + "reasoningTokens=" + reasoningTokens + "}";
     }
 
     public static Builder builder() {

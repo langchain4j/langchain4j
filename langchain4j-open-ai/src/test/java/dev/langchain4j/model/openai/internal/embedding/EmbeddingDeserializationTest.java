@@ -49,9 +49,11 @@ class EmbeddingDeserializationTest {
 
     @Test
     void should_read_an_empty_embedding() {
-        assertThat(codec.fromJson("{\"index\":0,\"embedding\":[]}", Embedding.class).embedding())
+        assertThat(codec.fromJson("{\"index\":0,\"embedding\":[]}", Embedding.class)
+                        .embedding())
                 .isEmpty();
-        assertThat(codec.fromJson("{\"index\":0,\"embedding\":\"\"}", Embedding.class).embedding())
+        assertThat(codec.fromJson("{\"index\":0,\"embedding\":\"\"}", Embedding.class)
+                        .embedding())
                 .isEmpty();
     }
 

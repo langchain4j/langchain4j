@@ -1,5 +1,8 @@
 package dev.langchain4j.model.openai.internal.completion;
 
+import static java.util.Collections.unmodifiableList;
+import static java.util.Collections.unmodifiableMap;
+
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -9,13 +12,9 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
 import dev.langchain4j.model.openai.internal.shared.StreamOptions;
-
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-
-import static java.util.Collections.unmodifiableList;
-import static java.util.Collections.unmodifiableMap;
 
 @JsonDeserialize(builder = CompletionRequest.Builder.class)
 @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -23,36 +22,52 @@ public final class CompletionRequest {
 
     @JsonProperty
     private final String model;
+
     @JsonProperty
     private final String prompt;
+
     @JsonProperty
     private final String suffix;
+
     @JsonProperty
     private final Integer maxTokens;
+
     @JsonProperty
     private final Double temperature;
+
     @JsonProperty
     private final Double topP;
+
     @JsonProperty
     private final Integer n;
+
     @JsonProperty
     private final Boolean stream;
+
     @JsonProperty
     private final StreamOptions streamOptions;
+
     @JsonProperty
     private final Integer logprobs;
+
     @JsonProperty
     private final Boolean echo;
+
     @JsonProperty
     private final List<String> stop;
+
     @JsonProperty
     private final Double presencePenalty;
+
     @JsonProperty
     private final Double frequencyPenalty;
+
     @JsonProperty
     private final Integer bestOf;
+
     @JsonProperty
     private final Map<String, Integer> logitBias;
+
     @JsonProperty
     private final String user;
 
@@ -149,8 +164,7 @@ public final class CompletionRequest {
     @JacocoIgnoreCoverageGenerated
     public boolean equals(Object another) {
         if (this == another) return true;
-        return another instanceof CompletionRequest
-                && equalTo((CompletionRequest) another);
+        return another instanceof CompletionRequest && equalTo((CompletionRequest) another);
     }
 
     @JacocoIgnoreCoverageGenerated

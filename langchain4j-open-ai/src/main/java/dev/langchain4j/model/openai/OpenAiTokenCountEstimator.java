@@ -1,5 +1,10 @@
 package dev.langchain4j.model.openai;
 
+import static com.knuddels.jtokkit.api.EncodingType.O200K_BASE;
+import static dev.langchain4j.internal.Exceptions.illegalArgument;
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+
 import com.knuddels.jtokkit.Encodings;
 import com.knuddels.jtokkit.api.Encoding;
 import com.knuddels.jtokkit.api.EncodingRegistry;
@@ -14,15 +19,9 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.internal.Json;
 import dev.langchain4j.model.TokenCountEstimator;
-
 import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
-
-import static com.knuddels.jtokkit.api.EncodingType.O200K_BASE;
-import static dev.langchain4j.internal.Exceptions.illegalArgument;
-import static dev.langchain4j.internal.Utils.isNullOrBlank;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
 /**
  * This class can be used to estimate the cost (in tokens) before calling OpenAI.
@@ -128,7 +127,8 @@ public class OpenAiTokenCountEstimator implements TokenCountEstimator {
             tokenCount += 6;
             if (aiMessage.toolExecutionRequests().size() == 1) {
                 tokenCount -= 1;
-                ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
+                ToolExecutionRequest toolExecutionRequest =
+                        aiMessage.toolExecutionRequests().get(0);
                 tokenCount += estimateTokenCountInText(toolExecutionRequest.name()) * 2;
                 tokenCount += estimateTokenCountInText(toolExecutionRequest.arguments());
             } else {
@@ -170,7 +170,7 @@ public class OpenAiTokenCountEstimator implements TokenCountEstimator {
         for (ChatMessage message : messages) {
             tokenCount += estimateTokenCountInMessage(message);
         }
-        if (modelName.startsWith("o") ) {
+        if (modelName.startsWith("o")) {
             tokenCount -= 1;
         }
         return tokenCount;

@@ -8,7 +8,6 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
-
 import java.util.Objects;
 
 @JsonDeserialize(builder = PdfFile.Builder.class)
@@ -39,14 +38,12 @@ public class PdfFile {
     @JacocoIgnoreCoverageGenerated
     public boolean equals(Object another) {
         if (this == another) return true;
-        return another instanceof PdfFile
-                && equalTo((PdfFile) another);
+        return another instanceof PdfFile && equalTo((PdfFile) another);
     }
 
     @JacocoIgnoreCoverageGenerated
     private boolean equalTo(PdfFile another) {
-        return Objects.equals(fileData, another.fileData)
-                && Objects.equals(filename, another.filename);
+        return Objects.equals(fileData, another.fileData) && Objects.equals(filename, another.filename);
     }
 
     @Override
@@ -61,10 +58,7 @@ public class PdfFile {
     @Override
     @JacocoIgnoreCoverageGenerated
     public String toString() {
-        return "PdfFile{" +
-                "fileData=" + (fileData != null ? "[PDF DATA]" : "null") +
-                ", filename=" + filename +
-                "}";
+        return "PdfFile{" + "fileData=" + (fileData != null ? "[PDF DATA]" : "null") + ", filename=" + filename + "}";
     }
 
     public static Builder builder() {

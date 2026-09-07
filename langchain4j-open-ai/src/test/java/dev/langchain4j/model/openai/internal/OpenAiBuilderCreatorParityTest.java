@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.DynamicTest.dynamicTest;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonCreator;
 import dev.langchain4j.internal.Json;
 import dev.langchain4j.internal.ProviderJson;
 import dev.langchain4j.internal.ProviderJsonSpec;
@@ -19,8 +21,6 @@ import java.util.List;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.stream.Stream;
-import com.fasterxml.jackson.annotation.JsonAutoDetect;
-import com.fasterxml.jackson.annotation.JsonCreator;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestFactory;
@@ -99,7 +99,8 @@ class OpenAiBuilderCreatorParityTest {
         assertThat(viaBuilder.type).isEqualTo("function");
         assertThat(viaCreator.type).isNull();
 
-        assertThatThrownBy(() -> assertThat(viaCreator).usingRecursiveComparison().isEqualTo(viaBuilder))
+        assertThatThrownBy(
+                        () -> assertThat(viaCreator).usingRecursiveComparison().isEqualTo(viaBuilder))
                 .isInstanceOf(AssertionError.class);
     }
 
@@ -221,7 +222,8 @@ class OpenAiBuilderCreatorParityTest {
         }
 
         return entries.stream()
-                .map(name -> name.substring(0, name.length() - ".class".length()).replace('/', '.'))
+                .map(name ->
+                        name.substring(0, name.length() - ".class".length()).replace('/', '.'))
                 .toList();
     }
 }
