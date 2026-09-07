@@ -66,6 +66,23 @@ jobs:
           echo "Branch to release from: $BRANCH"
           echo "Start from phase: $START_FROM"
 
+      # Guards against releasing from the wrong branch, which is how 1.19.1 was cut from main on
+      # top of 1.20.0. The version being released must be newer than every release already
+      # reachable from the chosen branch.
+      - name: Verify the version is newer than the branch's latest release
+        run: |
+          LATEST=$(git tag --merged HEAD | grep -E '^[0-9]+\.[0-9]+\.[0-9]+' | sort -V | tail -1)
+          if [ -z "$LATEST" ]; then
+            echo "No release tags reachable from $BRANCH; nothing to compare against."
+            exit 0
+          fi
+          NEWEST=$(printf '%s\n%s\n' "$LATEST" "$STABLE_VERSION" | sort -V | tail -1)
+          if [ "$STABLE_VERSION" = "$LATEST" ] || [ "$NEWEST" != "$STABLE_VERSION" ]; then
+            echo "::error::Refusing to release $STABLE_VERSION from $BRANCH: $LATEST is already released and reachable from this branch. A patch must be cut from its release/x.y.x branch, not from a branch that has moved past it."
+            exit 1
+          fi
+          echo "OK: $STABLE_VERSION is newer than $LATEST, the latest release reachable from $BRANCH."
+
       - name: Compute start phase number
         id: phase
         run: |
@@ -176,6 +193,27 @@ jobs:
         run: |
           git tag "$STABLE_VERSION"
           git push origin "$STABLE_VERSION"
+
+      # A minor release is the point where its maintenance line starts, so create the branch now
+      # rather than scrambling for one when a patch is needed.
+      - name: Create the maintenance branch for a minor release
+        if: ${{ fromJSON(steps.phase.outputs.num) <= 4 }}
+        run: |
+          case "$STABLE_VERSION" in
+            *.0)
+              MAINTENANCE_BRANCH="release/${STABLE_VERSION%.*}.x"
+              if git ls-remote --exit-code --heads origin "$MAINTENANCE_BRANCH" >/dev/null 2>&1; then
+                echo "$MAINTENANCE_BRANCH already exists."
+              else
+                git branch "$MAINTENANCE_BRANCH" HEAD
+                git push origin "$MAINTENANCE_BRANCH"
+                echo "Created $MAINTENANCE_BRANCH."
+              fi
+              ;;
+            *)
+              echo "$STABLE_VERSION is a patch release; its maintenance branch already exists."
+              ;;
+          esac
 
       - name: Trigger release in the langchain4j/langchain4j-spring repo
         env:
