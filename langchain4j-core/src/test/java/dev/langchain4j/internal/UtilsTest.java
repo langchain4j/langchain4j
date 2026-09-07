@@ -328,6 +328,20 @@ class UtilsTest {
     }
 
     @Test
+    void copy_list_and_copyIfNotNull_areIndependentOfSource() {
+        List<String> source = new ArrayList<>(List.of("one"));
+        List<String> copy = Utils.copy(source);
+        source.add("two");
+        // A copy must not reflect later mutations of the source list.
+        assertThat(copy).containsExactly("one");
+
+        List<String> sourceIfNotNull = new ArrayList<>(List.of("one"));
+        List<String> copyIfNotNull = Utils.copyIfNotNull(sourceIfNotNull);
+        sourceIfNotNull.add("two");
+        assertThat(copyIfNotNull).containsExactly("one");
+    }
+
+    @Test
     void mutableCopy_list() {
         assertThat(Utils.mutableCopy((List<?>) null)).isEmpty();
         assertThat(Utils.mutableCopy(emptyList())).isEmpty();

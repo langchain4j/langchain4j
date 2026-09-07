@@ -25,8 +25,8 @@ import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
@@ -414,7 +414,9 @@ public class Utils {
             return null;
         }
 
-        return unmodifiableList(list);
+        // Copy into a new list so the result is independent of the source; unmodifiableList(list)
+        // alone is only a live view and would reflect later mutations of the caller's list.
+        return unmodifiableList(new ArrayList<>(list));
     }
 
     /**
@@ -430,7 +432,9 @@ public class Utils {
             return List.of();
         }
 
-        return unmodifiableList(list);
+        // Copy into a new list so the result is independent of the source; unmodifiableList(list)
+        // alone is only a live view and would reflect later mutations of the caller's list.
+        return unmodifiableList(new ArrayList<>(list));
     }
 
     /**
@@ -586,8 +590,8 @@ public class Utils {
         }
     }
 
-    private static void collectInterfaceMethods(Class<?> clazz, Set<MethodSignature> seen,
-                                                List<Method> result, Set<Class<?>> visited) {
+    private static void collectInterfaceMethods(
+            Class<?> clazz, Set<MethodSignature> seen, List<Method> result, Set<Class<?>> visited) {
         if (clazz == null) {
             return;
         }
