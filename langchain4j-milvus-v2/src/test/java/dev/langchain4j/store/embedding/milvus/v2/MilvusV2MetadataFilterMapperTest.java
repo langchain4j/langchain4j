@@ -92,4 +92,43 @@ class MilvusV2MetadataFilterMapperTest {
 
         assertThat(expr).isEqualTo("metadata[\"user.email 1\"] == \"foo\"");
     }
+
+    @Test
+    void contains_should_wrap_plain_value_in_like_wildcards() {
+        Filter filter = metadataKey("key").containsString("foo");
+
+        String expr = MilvusV2MetadataFilterMapper.map(filter, "metadata");
+
+        assertThat(expr).isEqualTo("metadata[\"key\"] LIKE \"%foo%\"");
+    }
+
+    @Test
+    void contains_should_escape_percent_wildcard_in_value() {
+        // "50%" must be matched as a literal substring; the user's '%' must NOT act as a LIKE wildcard.
+        // Two backslashes reach Milvus so that one survives into the LIKE pattern.
+        Filter filter = metadataKey("key").containsString("50%");
+
+        String expr = MilvusV2MetadataFilterMapper.map(filter, "metadata");
+
+        assertThat(expr).isEqualTo("metadata[\"key\"] LIKE \"%50\\\\%%\"");
+    }
+
+    @Test
+    void contains_should_escape_underscore_wildcard_in_value() {
+        // "a_b" must be matched literally; the user's '_' must NOT act as a single-character wildcard.
+        Filter filter = metadataKey("key").containsString("a_b");
+
+        String expr = MilvusV2MetadataFilterMapper.map(filter, "metadata");
+
+        assertThat(expr).isEqualTo("metadata[\"key\"] LIKE \"%a\\\\_b%\"");
+    }
+
+    @Test
+    void contains_should_escape_backslash_percent_and_underscore_together() {
+        Filter filter = metadataKey("key").containsString("a\\b100%_done");
+
+        String expr = MilvusV2MetadataFilterMapper.map(filter, "metadata");
+
+        assertThat(expr).isEqualTo("metadata[\"key\"] LIKE \"%a\\\\b100\\\\%\\\\_done%\"");
+    }
 }
