@@ -1,12 +1,12 @@
 package dev.langchain4j.model.openai.internal.moderation;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonSetter;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
 
@@ -14,7 +14,6 @@ import java.util.Objects;
 
 @JsonDeserialize(builder = CategoryScores.Builder.class)
 @JsonInclude(JsonInclude.Include.NON_NULL)
-@JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public final class CategoryScores {
 
     @JsonProperty
@@ -38,6 +37,7 @@ public final class CategoryScores {
     @JsonProperty("violence/graphic")
     private final Double violenceGraphic;
 
+    @JsonCreator
     public CategoryScores(Builder builder) {
         this.hate = builder.hate;
         this.hateThreatening = builder.hateThreatening;
@@ -129,7 +129,7 @@ public final class CategoryScores {
 
     @JsonPOJOBuilder(withPrefix = "")
     @JsonIgnoreProperties(ignoreUnknown = true)
-    @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
+    @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
     public static final class Builder {
 
         private Double hate;

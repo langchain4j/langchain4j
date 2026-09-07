@@ -178,9 +178,11 @@ class GoogleGenAiContentMapperTest {
                 .build();
         AiMessage message = AiMessage.from(toolRequest);
 
+        // Not asserted by exception type: the configured JSON codec decides that, and this module
+        // is also run against the Jackson 3 codec, which reports a different one.
         assertThatThrownBy(() -> GoogleGenAiContentMapper.toContent(message))
                 .isInstanceOf(RuntimeException.class)
-                .hasCauseInstanceOf(com.fasterxml.jackson.core.JsonProcessingException.class);
+                .hasCauseInstanceOf(Exception.class);
     }
 
     @Test
@@ -779,5 +781,99 @@ class GoogleGenAiContentMapperTest {
         assertThat(parts).hasSize(1);
         assertThat(parts.get(0).text()).hasValue("");
         assertThat(parts.get(0).thought()).isEmpty();
+    }
+
+    @Test
+    void should_map_cached_content_and_thoughts_token_counts() {
+        GenerateContentResponse response = GenerateContentResponse.builder()
+                .candidates(List.of(Candidate.builder()
+                        .content(Content.builder()
+                                .parts(Part.builder().text("42").build())
+                                .build())
+                        .build()))
+                .usageMetadata(GenerateContentResponseUsageMetadata.builder()
+                        .promptTokenCount(10)
+                        .candidatesTokenCount(5)
+                        .totalTokenCount(40)
+                        .cachedContentTokenCount(7)
+                        .thoughtsTokenCount(25)
+                        .toolUsePromptTokenCount(3)
+                        .build())
+                .build();
+
+        ChatResponse result = GoogleGenAiContentMapper.toChatResponse(response, "test-model");
+
+        GoogleGenAiTokenUsage tokenUsage = (GoogleGenAiTokenUsage) result.tokenUsage();
+        assertThat(tokenUsage.inputTokenCount()).isEqualTo(10);
+        assertThat(tokenUsage.outputTokenCount()).isEqualTo(5);
+        assertThat(tokenUsage.totalTokenCount()).isEqualTo(40);
+        assertThat(tokenUsage.cachedContentTokenCount()).isEqualTo(7);
+        assertThat(tokenUsage.thoughtsTokenCount()).isEqualTo(25);
+        assertThat(tokenUsage.toolUsePromptTokenCount()).isEqualTo(3);
+    }
+
+    @Test
+    void should_map_usage_metadata_when_candidates_are_empty() {
+        GenerateContentResponse response = GenerateContentResponse.builder()
+                .usageMetadata(GenerateContentResponseUsageMetadata.builder()
+                        .promptTokenCount(10)
+                        .candidatesTokenCount(0)
+                        .totalTokenCount(35)
+                        .cachedContentTokenCount(7)
+                        .thoughtsTokenCount(25)
+                        .build())
+                .build();
+
+        ChatResponse result = GoogleGenAiContentMapper.toChatResponse(response, "test-model");
+
+        GoogleGenAiTokenUsage tokenUsage = (GoogleGenAiTokenUsage) result.tokenUsage();
+        assertThat(tokenUsage.inputTokenCount()).isEqualTo(10);
+        assertThat(tokenUsage.totalTokenCount()).isEqualTo(35);
+        assertThat(tokenUsage.cachedContentTokenCount()).isEqualTo(7);
+        assertThat(tokenUsage.thoughtsTokenCount()).isEqualTo(25);
+    }
+
+    @Test
+    void should_include_thoughts_and_tool_use_tokens_in_the_fallback_total() {
+        GenerateContentResponse response = GenerateContentResponse.builder()
+                .candidates(List.of(Candidate.builder()
+                        .content(Content.builder()
+                                .parts(Part.builder().text("42").build())
+                                .build())
+                        .build()))
+                .usageMetadata(GenerateContentResponseUsageMetadata.builder()
+                        .promptTokenCount(10)
+                        .candidatesTokenCount(5)
+                        .thoughtsTokenCount(25)
+                        .toolUsePromptTokenCount(3)
+                        .build())
+                .build();
+
+        ChatResponse result = GoogleGenAiContentMapper.toChatResponse(response, "test-model");
+
+        assertThat(result.tokenUsage().totalTokenCount()).isEqualTo(43);
+    }
+
+    @Test
+    void should_leave_cached_content_and_thoughts_token_counts_null_when_not_reported() {
+        GenerateContentResponse response = GenerateContentResponse.builder()
+                .candidates(List.of(Candidate.builder()
+                        .content(Content.builder()
+                                .parts(Part.builder().text("42").build())
+                                .build())
+                        .build()))
+                .usageMetadata(GenerateContentResponseUsageMetadata.builder()
+                        .promptTokenCount(10)
+                        .candidatesTokenCount(5)
+                        .build())
+                .build();
+
+        ChatResponse result = GoogleGenAiContentMapper.toChatResponse(response, "test-model");
+
+        GoogleGenAiTokenUsage tokenUsage = (GoogleGenAiTokenUsage) result.tokenUsage();
+        assertThat(tokenUsage.cachedContentTokenCount()).isNull();
+        assertThat(tokenUsage.thoughtsTokenCount()).isNull();
+        assertThat(tokenUsage.toolUsePromptTokenCount()).isNull();
+        assertThat(tokenUsage.totalTokenCount()).isEqualTo(15);
     }
 }

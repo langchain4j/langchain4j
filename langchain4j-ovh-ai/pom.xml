@@ -5,7 +5,7 @@
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>1.20.0-beta30-SNAPSHOT</version>
+        <version>1.21.0-beta31-SNAPSHOT</version>
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
@@ -21,25 +21,20 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
-            <version>1.20.0-SNAPSHOT</version>
+            <version>1.21.0-SNAPSHOT</version>
         </dependency>
 
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-http-client</artifactId>
-            <version>1.20.0-SNAPSHOT</version>
+            <version>1.21.0-SNAPSHOT</version>
         </dependency>
 
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-http-client-jdk</artifactId>
-            <version>1.20.0-SNAPSHOT</version>
+            <version>1.21.0-SNAPSHOT</version>
             <scope>runtime</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-databind</artifactId>
         </dependency>
 
         <dependency>
@@ -47,12 +42,11 @@
             <artifactId>slf4j-api</artifactId>
         </dependency>
 
-
         <!-- test dependencies -->
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
-            <version>1.20.0-SNAPSHOT</version>
+            <version>1.21.0-SNAPSHOT</version>
             <classifier>tests</classifier>
             <type>test-jar</type>
             <scope>test</scope>
@@ -61,10 +55,35 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-open-ai</artifactId>
-            <version>1.20.0-SNAPSHOT</version>
+            <version>1.21.0-SNAPSHOT</version>
             <scope>test</scope>
         </dependency>
 
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-annotations</artifactId>
+        </dependency>
+
     </dependencies>
+
+    <profiles>
+        <!--
+            Runs this module's existing tests with langchain4j-core-jackson3 on the test classpath,
+            so the JSON SPI resolves to the Jackson 3 codec instead of the Jackson 2 default.
+            Jackson 2 is still present - this checks that the DTOs are readable by both codecs,
+            which is what the opt-in promises.
+        -->
+        <profile>
+            <id>jackson3</id>
+            <dependencies>
+                <dependency>
+                    <groupId>dev.langchain4j</groupId>
+                    <artifactId>langchain4j-core-jackson3</artifactId>
+                    <version>${langchain4j.beta.version}</version>
+                    <scope>test</scope>
+                </dependency>
+            </dependencies>
+        </profile>
+    </profiles>
 
 </project>

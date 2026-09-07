@@ -215,11 +215,10 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
             beforeAgentInvocation(agentListener, currentScope, this, namedArgs);
         }
 
-        Planner planner = plannerSupplier.get();
-        planner.init(new InitPlanningContext(currentScope, this, subagents));
-
         Object result;
         try {
+            Planner planner = plannerSupplier.get();
+            planner.init(new InitPlanningContext(currentScope, this, subagents));
             result = new PlannerLoop(planner, currentScope, registry).loop();
         } catch (Exception e) {
             currentScope.compensateAll();

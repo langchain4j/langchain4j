@@ -1,6 +1,5 @@
 package dev.langchain4j.mcp.client;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import dev.langchain4j.mcp.client.transport.McpJson;
 import dev.langchain4j.mcp.protocol.McpListResourceTemplatesResult;
 import dev.langchain4j.mcp.protocol.McpListResourcesResult;
@@ -14,23 +13,22 @@ class ResourcesHelper {
 
     private static final Logger log = LoggerFactory.getLogger(ResourcesHelper.class);
 
-    static List<McpResource> parseResourceRefs(JsonNode mcpMessage) {
-        McpErrorHelper.checkForErrors(mcpMessage);
+    static McpPage<McpResource> parseResourceRefs(String mcpMessage) {
         McpListResourcesResult.Result result =
                 McpJson.deserialize(mcpMessage, McpListResourcesResult.class).getResult();
         requireResult(result, mcpMessage);
-        return require(result.getResources(), "resources", mcpMessage);
+        return new McpPage<>(require(result.getResources(), "resources", mcpMessage), result.getNextCursor());
     }
 
-    static List<McpResourceTemplate> parseResourceTemplateRefs(JsonNode mcpMessage) {
-        McpErrorHelper.checkForErrors(mcpMessage);
+    static McpPage<McpResourceTemplate> parseResourceTemplateRefs(String mcpMessage) {
         McpListResourceTemplatesResult.Result result =
                 McpJson.deserialize(mcpMessage, McpListResourceTemplatesResult.class).getResult();
         requireResult(result, mcpMessage);
-        return require(result.getResourceTemplates(), "resourceTemplates", mcpMessage);
+        return new McpPage<>(
+                require(result.getResourceTemplates(), "resourceTemplates", mcpMessage), result.getNextCursor());
     }
 
-    static McpReadResourceResult parseResourceContents(JsonNode mcpMessage) {
+    static McpReadResourceResult parseResourceContents(String mcpMessage) {
         McpErrorHelper.checkForErrors(mcpMessage);
         McpReadResourceResponse.Result result =
                 McpJson.deserialize(mcpMessage, McpReadResourceResponse.class).getResult();
@@ -51,14 +49,14 @@ class ResourcesHelper {
         return new McpReadResourceResult(resourceContentsList);
     }
 
-    private static void requireResult(Object result, JsonNode mcpMessage) {
+    private static void requireResult(Object result, String mcpMessage) {
         if (result == null) {
             log.warn("Result does not contain 'result' element: {}", mcpMessage);
             throw new IllegalResponseException("Result does not contain 'result' element");
         }
     }
 
-    private static <T> List<T> require(List<T> values, String element, JsonNode mcpMessage) {
+    private static <T> List<T> require(List<T> values, String element, String mcpMessage) {
         if (values == null) {
             log.warn("Result does not contain '{}' element: {}", element, mcpMessage);
             throw new IllegalResponseException("Result does not contain '" + element + "' element");
