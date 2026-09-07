@@ -111,13 +111,23 @@ class MilvusV2MetadataFilterMapper {
     }
 
     private static String formatKey(String key, String metadataFieldName) {
-        return metadataFieldName + "[\"" + key + "\"]";
+        return metadataFieldName + "[\"" + escape(key) + "\"]";
+    }
+
+    /**
+     * Escapes a string that is embedded into a double-quoted Milvus string literal. This applies both to
+     * metadata keys, which are embedded into the {@code metadata["..."]} accessor, and to string values.
+     * Without it, a key or value containing a double quote could break out of the literal and inject
+     * arbitrary Milvus filter expression syntax.
+     */
+    private static String escape(String value) {
+        // Escape backslashes first, then double quotes (Milvus treats backslash as the escape character)
+        return value.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 
     private static String formatValue(Object value) {
         if (value instanceof String stringValue) {
-            final String escapedValue = stringValue.replace("\\", "\\\\").replace("\"", "\\\"");
-            return "\"" + escapedValue + "\"";
+            return "\"" + escape(stringValue) + "\"";
         } else if (value instanceof UUID) {
             return "\"" + value + "\"";
         } else {
