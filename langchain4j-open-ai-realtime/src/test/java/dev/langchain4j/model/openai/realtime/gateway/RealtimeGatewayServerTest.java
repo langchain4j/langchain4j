@@ -96,6 +96,62 @@ class RealtimeGatewayServerTest {
     }
 
     @Test
+    void outboundClosed_closesInboundWebSocket() throws Exception {
+        FakeRealtimeTransport fake = new FakeRealtimeTransport();
+        gateway = OpenAiRealtimeGateway.builder()
+                .host("127.0.0.1")
+                .port(0)
+                .tools(sampleTools())
+                .toolExecutor(Runnable::run)
+                .outboundTransportFactory(apiKey -> fake)
+                .build();
+        gateway.start();
+
+        List<String> inbound = new CopyOnWriteArrayList<>();
+        CountDownLatch open = new CountDownLatch(1);
+        CountDownLatch closed = new CountDownLatch(1);
+        client = newClient(gateway.wsUri(), "sk-test", open, inbound, closed);
+        assertThat(client.connectBlocking(5, TimeUnit.SECONDS)).isTrue();
+        assertThat(open.await(5, TimeUnit.SECONDS)).isTrue();
+        awaitCondition(() -> fake.listener != null, 5);
+
+        fake.simulateClosed(1000, "bye");
+
+        assertThat(closed.await(5, TimeUnit.SECONDS)).isTrue();
+        assertThat(inbound.stream().anyMatch(s -> s.contains("Outbound connection closed")))
+                .isTrue();
+        assertThat(client.isOpen()).isFalse();
+    }
+
+    @Test
+    void outboundFailure_closesInboundWebSocket() throws Exception {
+        FakeRealtimeTransport fake = new FakeRealtimeTransport();
+        gateway = OpenAiRealtimeGateway.builder()
+                .host("127.0.0.1")
+                .port(0)
+                .tools(sampleTools())
+                .toolExecutor(Runnable::run)
+                .outboundTransportFactory(apiKey -> fake)
+                .build();
+        gateway.start();
+
+        List<String> inbound = new CopyOnWriteArrayList<>();
+        CountDownLatch open = new CountDownLatch(1);
+        CountDownLatch closed = new CountDownLatch(1);
+        client = newClient(gateway.wsUri(), "sk-test", open, inbound, closed);
+        assertThat(client.connectBlocking(5, TimeUnit.SECONDS)).isTrue();
+        assertThat(open.await(5, TimeUnit.SECONDS)).isTrue();
+        awaitCondition(() -> fake.listener != null, 5);
+
+        fake.simulateFailure(new RuntimeException("boom"));
+
+        assertThat(closed.await(5, TimeUnit.SECONDS)).isTrue();
+        assertThat(inbound.stream().anyMatch(s -> s.contains("Outbound connection failed")))
+                .isTrue();
+        assertThat(client.isOpen()).isFalse();
+    }
+
+    @Test
     void responseDoneWithFunctionCall_loopsAndForwardsToClient() throws Exception {
         FakeRealtimeTransport fake = new FakeRealtimeTransport();
         gateway = OpenAiRealtimeGateway.builder()
@@ -157,6 +213,15 @@ class RealtimeGatewayServerTest {
 
     private static WebSocketClient newClient(
             URI uri, String apiKey, CountDownLatch open, List<String> messages) {
+        return newClient(uri, apiKey, open, messages, null);
+    }
+
+    private static WebSocketClient newClient(
+            URI uri,
+            String apiKey,
+            CountDownLatch open,
+            List<String> messages,
+            CountDownLatch closed) {
         Map<String, String> headers = new LinkedHashMap<>();
         headers.put("Authorization", "Bearer " + apiKey);
         return new WebSocketClient(uri, headers) {
@@ -171,7 +236,11 @@ class RealtimeGatewayServerTest {
             }
 
             @Override
-            public void onClose(int code, String reason, boolean remote) {}
+            public void onClose(int code, String reason, boolean remote) {
+                if (closed != null) {
+                    closed.countDown();
+                }
+            }
 
             @Override
             public void onError(Exception ex) {}

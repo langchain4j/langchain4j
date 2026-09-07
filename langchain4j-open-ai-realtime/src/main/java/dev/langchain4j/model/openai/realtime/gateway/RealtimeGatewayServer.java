@@ -133,6 +133,7 @@ public final class RealtimeGatewayServer {
                             if (session != null) {
                                 session.onOutboundClosed(code, reason);
                             }
+                            closeInboundQuietly(conn, 1011, "Outbound closed");
                         }
 
                         @Override
@@ -141,6 +142,7 @@ public final class RealtimeGatewayServer {
                             if (session != null) {
                                 session.onOutboundFailure(t);
                             }
+                            closeInboundQuietly(conn, 1011, "Outbound failed");
                         }
                     })
                     .build();
@@ -197,6 +199,17 @@ public final class RealtimeGatewayServer {
                 conn.send(message);
             } catch (Exception e) {
                 log.debug("Failed to send inbound message", e);
+            }
+        }
+
+        private static void closeInboundQuietly(WebSocket conn, int code, String reason) {
+            if (conn == null || !conn.isOpen()) {
+                return;
+            }
+            try {
+                conn.close(code, reason);
+            } catch (Exception e) {
+                log.debug("Failed to close inbound WebSocket", e);
             }
         }
 

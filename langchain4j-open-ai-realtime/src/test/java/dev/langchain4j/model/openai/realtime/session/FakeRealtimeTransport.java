@@ -42,4 +42,18 @@ public final class FakeRealtimeTransport implements RealtimeTransport {
         }
         listener.onTextMessage(text);
     }
+
+    public void simulateClosed(int code, String reason) {
+        if (listener == null) {
+            throw new IllegalStateException("not connected");
+        }
+        listener.onClosed(code, reason);
+    }
+
+    public void simulateFailure(Throwable t) {
+        if (listener == null) {
+            throw new IllegalStateException("not connected");
+        }
+        listener.onFailure(t);
+    }
 }
