@@ -43,7 +43,7 @@ import org.junit.jupiter.api.Test;
 
 public class A2AAgentIT {
 
-    static final String A2A_SERVER_URL = "http://localhost:7777";
+    static final String A2A_SERVER_URL = "http://localhost:8080";
 
     @Test
     @Disabled("Requires A2A server to be running")
