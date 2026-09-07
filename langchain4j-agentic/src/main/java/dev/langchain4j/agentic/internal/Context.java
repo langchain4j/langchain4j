@@ -1,16 +1,15 @@
 package dev.langchain4j.agentic.internal;
 
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
+
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.UserMessage;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 
-import static dev.langchain4j.internal.Utils.isNullOrBlank;
-
 public class Context {
-
-    private static ContextSummarizer SUMMARIZER_INSTANCE;
 
     public interface ContextSummarizer {
 
@@ -33,15 +32,6 @@ public class Context {
         public void setSummary(final String summary) {
             this.summary = summary;
         }
-    }
-
-    private static ContextSummarizer initSummarizer(ChatModel chatModel) {
-        if (SUMMARIZER_INSTANCE == null) {
-            SUMMARIZER_INSTANCE = AiServices.builder(ContextSummarizer.class)
-                    .chatModel(chatModel)
-                    .build();
-        }
-        return SUMMARIZER_INSTANCE;
     }
 
     public static class AgenticScopeContextGenerator implements UserMessageTransformer {
@@ -68,10 +58,26 @@ public class Context {
 
     public static class Summarizer extends AgenticScopeContextGenerator {
         public Summarizer(AgenticScope agenticScope, ChatModel chatModel, String... agentNames) {
-            super(agenticScope, c -> {
+            super(agenticScope, summarizingContextProvider(chatModel, agentNames));
+        }
+
+        private static Function<AgenticScope, String> summarizingContextProvider(
+                ChatModel chatModel, String... agentNames) {
+            AtomicReference<ContextSummarizer> summarizer = new AtomicReference<>();
+            return c -> {
                 String context = c.contextAsConversation(agentNames);
-                return context.isBlank() ? context : initSummarizer(chatModel).summarize(context).getSummary();
-            });
+                if (context.isBlank()) {
+                    return context;
+                }
+                return summarizer
+                        .updateAndGet(current -> current != null
+                                ? current
+                                : AiServices.builder(ContextSummarizer.class)
+                                        .chatModel(chatModel)
+                                        .build())
+                        .summarize(context)
+                        .getSummary();
+            };
         }
     }
 }
