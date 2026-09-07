@@ -57,17 +57,21 @@ class MilvusMetadataFilterMapper {
 
     /**
      * Builds a quoted Milvus LIKE pattern that matches the given value as a literal substring. The value's
-     * own LIKE wildcards ({@code %} and {@code _}) are escaped with a backslash so they are matched
-     * literally, while the surrounding {@code %} characters remain wildcards for the "contains" semantics.
-     * Backslash and double quote are escaped as in {@link #formatValue(Object)} so the value stays inside
-     * the string literal.
+     * own LIKE wildcards ({@code %} and {@code _}) are escaped so they are matched literally, while the
+     * surrounding {@code %} characters remain wildcards for the "contains" semantics.
+     *
+     * <p>Milvus resolves backslash escapes twice: once when reading the string literal out of the filter
+     * expression, and again when interpreting the LIKE pattern. A wildcard therefore needs two backslashes
+     * in the expression we send so that a single one reaches the pattern; a single backslash makes the
+     * server reject the whole expression with a parse error.
+     *
+     * <p>Two inputs are known not to work, because Milvus itself mis-parses them: a value ending with
+     * {@code %}, and a value containing a backslash immediately before a {@code %} or {@code _}.
      */
     private static String formatLikePattern(String value) {
-        // Escape backslash first, then the LIKE wildcards % and _, then the string-literal double quote.
-        String escaped = value.replace("\\", "\\\\")
-                .replace("%", "\\%")
-                .replace("_", "\\_")
-                .replace("\"", "\\\"");
+        // escape() covers the string literal layer. A wildcard has to survive the LIKE pattern layer as
+        // well, so it gets two backslashes here and reaches the pattern with one.
+        String escaped = escape(value).replace("%", "\\\\%").replace("_", "\\\\_");
         return "\"%" + escaped + "%\"";
     }
 

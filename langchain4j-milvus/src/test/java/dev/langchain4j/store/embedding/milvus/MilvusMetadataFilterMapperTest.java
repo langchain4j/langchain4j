@@ -56,11 +56,12 @@ class MilvusMetadataFilterMapperTest {
     @Test
     void contains_should_escape_percent_wildcard_in_value() {
         // "50%" must be matched as a literal substring; the user's '%' must NOT act as a LIKE wildcard.
+        // Two backslashes reach Milvus so that one survives into the LIKE pattern.
         Filter filter = metadataKey("key").containsString("50%");
 
         String expr = MilvusMetadataFilterMapper.map(filter, "metadata");
 
-        assertThat(expr).isEqualTo("metadata[\"key\"] LIKE \"%50\\%%\"");
+        assertThat(expr).isEqualTo("metadata[\"key\"] LIKE \"%50\\\\%%\"");
     }
 
     @Test
@@ -70,7 +71,7 @@ class MilvusMetadataFilterMapperTest {
 
         String expr = MilvusMetadataFilterMapper.map(filter, "metadata");
 
-        assertThat(expr).isEqualTo("metadata[\"key\"] LIKE \"%a\\_b%\"");
+        assertThat(expr).isEqualTo("metadata[\"key\"] LIKE \"%a\\\\_b%\"");
     }
 
     @Test
@@ -79,7 +80,7 @@ class MilvusMetadataFilterMapperTest {
 
         String expr = MilvusMetadataFilterMapper.map(filter, "metadata");
 
-        assertThat(expr).isEqualTo("metadata[\"key\"] LIKE \"%a\\\\b100\\%\\_done%\"");
+        assertThat(expr).isEqualTo("metadata[\"key\"] LIKE \"%a\\\\b100\\\\%\\\\_done%\"");
     }
 
     @Test
