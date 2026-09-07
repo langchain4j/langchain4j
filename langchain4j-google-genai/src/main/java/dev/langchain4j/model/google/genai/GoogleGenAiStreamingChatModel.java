@@ -173,7 +173,7 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
                 StringBuilder thinkingBuilder = new StringBuilder();
                 List<ToolExecutionRequest> toolRequests = new ArrayList<>();
                 Map<String, Object> attributes = new java.util.HashMap<>();
-                TokenUsage tokenUsage = new TokenUsage();
+                TokenUsage tokenUsage = GoogleGenAiTokenUsage.builder().build();
                 FinishReason finishReason = null;
                 GenerateContentResponse lastChunk = null;
 
