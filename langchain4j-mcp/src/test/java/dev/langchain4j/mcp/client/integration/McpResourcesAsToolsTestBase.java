@@ -3,10 +3,10 @@ package dev.langchain4j.mcp.client.integration;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.fasterxml.jackson.databind.node.ArrayNode;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.internal.Json;
+import dev.langchain4j.internal.Types;
 import dev.langchain4j.mcp.McpToolProvider;
 import dev.langchain4j.mcp.client.McpClient;
 import dev.langchain4j.mcp.resourcesastools.DefaultMcpResourcesAsToolsPresenter;
@@ -16,11 +16,15 @@ import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.tool.ToolProvider;
 import dev.langchain4j.service.tool.ToolProviderResult;
+import java.lang.reflect.Type;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 
 public abstract class McpResourcesAsToolsTestBase {
+
+    private static final Type LIST_OF_MAPS = Types.listOf(Types.parameterized(Map.class, String.class, Object.class));
 
     static McpClient mcpClientAlice;
     static McpClient mcpClientBob;
@@ -54,14 +58,17 @@ public abstract class McpResourcesAsToolsTestBase {
         // call the list_resources tool and verify the output
         String listResourcesResult =
                 toolProviderResult.toolExecutorByName("list_resources").execute(null, null);
-        ArrayNode resources = Json.fromJson(listResourcesResult, ArrayNode.class);
-        assertThat(resources.size()).isEqualTo(1);
-        assertThat(resources.get(0).get("mcpServer").asText()).isEqualTo("alice");
-        assertThat(resources.get(0).get("uri").asText()).isEqualTo("file:///info");
-        assertThat(resources.get(0).get("uriTemplate").isNull()).isTrue();
-        assertThat(resources.get(0).get("name").asText()).isEqualTo("basicInfo");
-        assertThat(resources.get(0).get("description").asText()).isEqualTo("Basic information about Alice");
-        assertThat(resources.get(0).get("mimeType").asText()).isEqualTo("text/plain");
+        // Read as plain values rather than a Jackson node type: the codec behind Json is whichever
+        // JSON library the application opted into, and a node type belongs to one of them.
+        List<Map<String, Object>> resources = Json.fromJson(listResourcesResult, LIST_OF_MAPS);
+        assertThat(resources).hasSize(1);
+        assertThat(resources.get(0))
+                .containsEntry("mcpServer", "alice")
+                .containsEntry("uri", "file:///info")
+                .containsEntry("uriTemplate", null)
+                .containsEntry("name", "basicInfo")
+                .containsEntry("description", "Basic information about Alice")
+                .containsEntry("mimeType", "text/plain");
 
         // call the get_resource tool
         ToolExecutionRequest request = ToolExecutionRequest.builder()

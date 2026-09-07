@@ -10,6 +10,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -1138,13 +1140,28 @@ public class SupervisorAgentIT {
 
         private final double amountInUSD;
 
-        Invoice(String author, double amountInUSD) {
+        // The planner returns the argument as a JSON object, which AgentUtil.adaptValueToType reads
+        // back into this type. A class with final fields and no no-arg constructor gives Jackson
+        // nothing to construct from, so the creator has to be named explicitly. The other argument
+        // fixtures here are records, which carry that for free; this one cannot be, because the
+        // point of the test is a field inherited from a superclass.
+        @JsonCreator
+        Invoice(@JsonProperty("author") String author, @JsonProperty("amountInUSD") double amountInUSD) {
             super(author);
             this.amountInUSD = amountInUSD;
         }
 
         public double getAmountInUSD() {
             return amountInUSD;
+        }
+
+        // The agent renders this straight into its prompt with {{invoice}}, and a template variable
+        // becomes text through toString(). Without one the model is asked to register
+        // "Invoice@4f2a1b3c" and the supervisor keeps retrying. Records get this for free, which is
+        // why the other argument fixtures here do not need it.
+        @Override
+        public String toString() {
+            return "invoice of " + amountInUSD + " USD authored by " + getAuthor();
         }
     }
 

@@ -35,7 +35,12 @@ public class Jackson3ProviderJsonCodec implements Json.JsonCodec {
         if (spec.propertyNaming() == ProviderJsonSpec.PropertyNaming.SNAKE_CASE) {
             builder.propertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE);
         }
-        builder.changeDefaultPropertyInclusion(incl -> incl.withValueInclusion(toJacksonInclude(spec.inclusion())));
+        // Content inclusion as well as value inclusion, because Jackson 2's serializationInclusion(...)
+        // sets both: without it a null map value is written where Jackson 2 omits it, and a provider
+        // that rejects an explicit null (Bedrock does) fails the request.
+        JsonInclude.Include include = toJacksonInclude(spec.inclusion());
+        builder.changeDefaultPropertyInclusion(
+                incl -> incl.withValueInclusion(include).withContentInclusion(include));
         this.objectMapper = builder.build();
     }
 
