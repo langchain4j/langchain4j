@@ -14,6 +14,7 @@ import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.exc.InvalidTypeIdException;
 import tools.jackson.databind.json.JsonMapper;
 import tools.jackson.databind.jsontype.PolymorphicTypeValidator;
+
 /**
  * Jackson 3 codec for JSON that carries type information.
  *

@@ -46,7 +46,8 @@ class Jackson3ParityTest {
 
     @Test
     void reads_iso_date() {
-        assertThat(Json.fromJson("{\"date\":\"2026-08-20\"}", WithDate.class).date).isEqualTo(LocalDate.of(2026, 8, 20));
+        assertThat(Json.fromJson("{\"date\":\"2026-08-20\"}", WithDate.class).date)
+                .isEqualTo(LocalDate.of(2026, 8, 20));
     }
 
     @Test

@@ -16,8 +16,9 @@ import org.junit.jupiter.api.Test;
  */
 class Jackson3InclusionParityTest {
 
-    private static final Json.JsonCodec CODEC = ProviderJson.codec(
-            ProviderJsonSpec.builder().inclusion(ProviderJsonSpec.Inclusion.NON_NULL).build());
+    private static final Json.JsonCodec CODEC = ProviderJson.codec(ProviderJsonSpec.builder()
+            .inclusion(ProviderJsonSpec.Inclusion.NON_NULL)
+            .build());
 
     @Test
     void a_null_map_value_is_not_written() {
