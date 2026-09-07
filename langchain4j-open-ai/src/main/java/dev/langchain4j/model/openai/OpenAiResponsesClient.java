@@ -641,20 +641,20 @@ class OpenAiResponsesClient {
                 .totalTokenCount(intOf(at(usageNode, FIELD_TOTAL_TOKENS)));
 
         Object inputDetailsNode = at(usageNode, FIELD_INPUT_TOKENS_DETAILS);
-           if (inputDetailsNode != null) {
-               OpenAiTokenUsage.InputTokensDetails.Builder inputTokensDetailsBuilder =
-                       OpenAiTokenUsage.InputTokensDetails.builder()
-                               .cachedTokens(intOf(at(inputDetailsNode, FIELD_CACHED_TOKENS)));
+        if (inputDetailsNode != null) {
+            OpenAiTokenUsage.InputTokensDetails.Builder inputTokensDetailsBuilder = 
+                OpenAiTokenUsage.InputTokensDetails.builder()
+                .cachedTokens(intOf(at(inputDetailsNode, FIELD_CACHED_TOKENS)));
 
-               // Keep cache_write_tokens null when it is not reported.
-               Object cacheWriteTokens = at(inputDetailsNode, FIELD_CACHE_WRITE_TOKENS);
-               if (cacheWriteTokens != null) {
-                   inputTokensDetailsBuilder.cacheWriteTokens(intOf(cacheWriteTokens));
-               }
+            // Keep cache_write_tokens null when it is not reported.
+            Object cacheWriteTokens = at(inputDetailsNode, FIELD_CACHE_WRITE_TOKENS);
+            if (cacheWriteTokens != null) {
+                inputTokensDetailsBuilder.cacheWriteTokens(intOf(cacheWriteTokens));
+            }
 
-               usageBuilder.inputTokensDetails(inputTokensDetailsBuilder.build());
-           }
+            usageBuilder.inputTokensDetails(inputTokensDetailsBuilder.build());
         }
+        
 
         Object outputDetailsNode = at(usageNode, FIELD_OUTPUT_TOKENS_DETAILS);
         if (outputDetailsNode != null) {
