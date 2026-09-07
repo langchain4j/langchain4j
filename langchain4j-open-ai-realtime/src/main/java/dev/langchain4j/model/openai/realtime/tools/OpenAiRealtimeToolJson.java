@@ -4,6 +4,7 @@ import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -15,6 +16,7 @@ import java.util.Objects;
  * Maps {@link ToolSpecification} to OpenAI Realtime function-tool JSON
  * (flat {@code type/name/description/parameters}, not Chat Completions nested shape).
  */
+@Internal
 public final class OpenAiRealtimeToolJson {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();

@@ -20,7 +20,7 @@ public final class OkHttpRealtimeTransport implements RealtimeTransport {
         this(new OkHttpClient());
     }
 
-    public OkHttpRealtimeTransport(OkHttpClient client) {
+    OkHttpRealtimeTransport(OkHttpClient client) {
         this.client = Objects.requireNonNull(client, "client");
     }
 
