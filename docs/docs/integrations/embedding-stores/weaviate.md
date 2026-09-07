@@ -13,7 +13,7 @@ https://weaviate.io/
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-weaviate</artifactId>
-    <version>1.19.0-beta29</version>
+    <version>1.20.0-beta30</version>
 </dependency>
 ```
 
@@ -45,7 +45,7 @@ Starting from version 1.39, Weaviate stores the embedding of an object in a *nam
 (called `default`) when it creates a collection automatically. Older versions of Weaviate
 used a single unnamed vector instead.
 
-`langchain4j-weaviate` `1.19.0-beta29` and earlier read only the single unnamed vector.
+`langchain4j-weaviate` `1.20.0-beta30` and earlier read only the single unnamed vector.
 When such a version is used with a collection created by Weaviate 1.39 or newer,
 `EmbeddingMatch.embedding()` is empty for every search result. The score, the ID,
 the `TextSegment` and its `Metadata` are returned correctly, so this is only relevant
@@ -54,7 +54,7 @@ if your application uses the embedding of a match.
 This is fixed in `1.20.0-beta30`, which reads both layouts: embeddings that were stored
 by an earlier version are returned as well, and no change is needed.
 
-With `1.19.0-beta29` and earlier, create the collection yourself, before using
+With `1.20.0-beta30` and earlier, create the collection yourself, before using
 `WeaviateEmbeddingStore`, and configure it without a named vector:
 
 ```java
