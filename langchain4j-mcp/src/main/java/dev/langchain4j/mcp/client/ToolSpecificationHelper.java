@@ -18,6 +18,7 @@ import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -105,14 +106,39 @@ class ToolSpecificationHelper {
             if (node.containsKey("description")) {
                 builder.description(string(node.get("description")));
             }
+            // MCP servers commonly compose object schemas with 'allOf' (e.g. one object schema per
+            // capability). JsonObjectSchema cannot represent 'allOf' itself, so object-typed
+            // sub-schemas are merged into this one: union of properties, union of required and
+            // collected definitions, with the node's own members taking precedence on conflicts.
+            // Entries that do not convert to an object (e.g. a $ref or a scalar constraint) are
+            // ignored, as they were before.
+            Map<String, JsonSchemaElement> mergedProperties = new LinkedHashMap<>();
+            Set<String> mergedRequired = new LinkedHashSet<>();
+            Map<String, JsonSchemaElement> mergedDefinitions = new LinkedHashMap<>();
+            if (node.containsKey("allOf")) {
+                for (Object allOfEntry : array(node.get("allOf"))) {
+                    JsonSchemaElement element = jsonNodeToJsonSchemaElement(object(allOfEntry));
+                    if (element instanceof JsonObjectSchema subSchema) {
+                        mergedProperties.putAll(subSchema.properties());
+                        mergedRequired.addAll(subSchema.required());
+                        mergedDefinitions.putAll(subSchema.definitions());
+                    }
+                }
+            }
             if (node.containsKey("properties")) {
                 for (Map.Entry<String, Object> property :
                         object(node.get("properties")).entrySet()) {
-                    builder.addProperty(property.getKey(), jsonNodeToJsonSchemaElement(object(property.getValue())));
+                    mergedProperties.put(property.getKey(), jsonNodeToJsonSchemaElement(object(property.getValue())));
                 }
             }
+            if (!mergedProperties.isEmpty()) {
+                builder.addProperties(mergedProperties);
+            }
             if (node.containsKey("required")) {
-                builder.required(toStringArray(node.get("required")));
+                mergedRequired.addAll(List.of(toStringArray(node.get("required"))));
+            }
+            if (!mergedRequired.isEmpty()) {
+                builder.required(List.copyOf(mergedRequired));
             }
             if (node.containsKey("additionalProperties")) {
                 Object additionalProperties = node.get("additionalProperties");
@@ -130,11 +156,12 @@ class ToolSpecificationHelper {
             // Handle $defs (draft 2019-09+) and definitions (draft-07)
             Object defsNode = node.containsKey("$defs") ? node.get("$defs") : node.get("definitions");
             if (defsNode != null) {
-                Map<String, JsonSchemaElement> definitions = new LinkedHashMap<>();
                 for (Map.Entry<String, Object> entry : object(defsNode).entrySet()) {
-                    definitions.put(entry.getKey(), jsonNodeToJsonSchemaElement(object(entry.getValue())));
+                    mergedDefinitions.put(entry.getKey(), jsonNodeToJsonSchemaElement(object(entry.getValue())));
                 }
-                builder.definitions(definitions);
+            }
+            if (!mergedDefinitions.isEmpty()) {
+                builder.definitions(mergedDefinitions);
             }
             return builder.build();
         } else if (typeNode instanceof String) {
