@@ -1,10 +1,10 @@
 package dev.langchain4j.mcp.client;
 
-import static dev.langchain4j.mcp.client.DefaultMcpClient.OBJECT_MAPPER;
 import static dev.langchain4j.mcp.client.McpToolMetadataKeys.ICONS;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import dev.langchain4j.mcp.client.transport.McpJson;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -12,7 +12,7 @@ class McpMetadataParsingTest {
 
     @Test
     void resourceWithMetadataAndIcons() throws Exception {
-        JsonNode json = OBJECT_MAPPER.readTree(
+        JsonNode json = McpJson.parse(
                 // language=json
                 """
                         {
@@ -51,7 +51,7 @@ class McpMetadataParsingTest {
 
     @Test
     void resourceTemplateWithMetadataAndIcons() throws Exception {
-        JsonNode json = OBJECT_MAPPER.readTree(
+        JsonNode json = McpJson.parse(
                 // language=json
                 """
                         {
@@ -91,7 +91,7 @@ class McpMetadataParsingTest {
 
     @Test
     void promptWithMetadataAndIcons() throws Exception {
-        JsonNode json = OBJECT_MAPPER.readTree(
+        JsonNode json = McpJson.parse(
                 // language=json
                 """
                         {
@@ -132,7 +132,7 @@ class McpMetadataParsingTest {
 
     @Test
     void metadataIsEmptyWhenMetaAndIconsAreAbsent() throws Exception {
-        JsonNode resourcesJson = OBJECT_MAPPER.readTree(
+        JsonNode resourcesJson = McpJson.parse(
                 // language=json
                 """
                         {
@@ -146,7 +146,7 @@ class McpMetadataParsingTest {
                           }
                         }
                         """);
-        JsonNode resourceTemplatesJson = OBJECT_MAPPER.readTree(
+        JsonNode resourceTemplatesJson = McpJson.parse(
                 // language=json
                 """
                         {
@@ -160,7 +160,7 @@ class McpMetadataParsingTest {
                           }
                         }
                         """);
-        JsonNode promptsJson = OBJECT_MAPPER.readTree(
+        JsonNode promptsJson = McpJson.parse(
                 // language=json
                 """
                         {

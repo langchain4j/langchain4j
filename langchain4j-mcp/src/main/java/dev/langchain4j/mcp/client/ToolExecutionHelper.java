@@ -4,12 +4,14 @@ import com.fasterxml.jackson.databind.JsonNode;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.exception.ToolExecutionException;
+import dev.langchain4j.mcp.client.transport.McpJson;
+import dev.langchain4j.mcp.protocol.McpCallToolResult;
+import dev.langchain4j.mcp.protocol.McpErrorResponse;
 import dev.langchain4j.service.tool.ToolExecutionResult;
-import java.io.IOException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 
 class ToolExecutionHelper {
 
@@ -23,44 +25,50 @@ class ToolExecutionHelper {
      * {@link ToolExecutionResult#attributes()} and are not sent to the LLM.
      */
     static ToolExecutionResult extractResult(
-            JsonNode result, boolean ignoreApplicationLevelErrors, McpToolResultExtractor toolResultExtractor) {
-        if (result.has("result")) {
-            JsonNode resultNode = result.get("result");
-            if (resultNode.has("structuredContent")
-                    && !resultNode.get("structuredContent").isNull()) {
-                JsonNode content = resultNode.get("structuredContent");
-                if (isError(resultNode) && !ignoreApplicationLevelErrors) {
-                    throw new ToolExecutionException(content.toString());
+            JsonNode response, boolean ignoreApplicationLevelErrors, McpToolResultConverter toolResultConverter) {
+
+        McpCallToolResult.Result result =
+                McpJson.deserialize(response, McpCallToolResult.class).getResult();
+
+        if (result != null) {
+            boolean applicationError = Boolean.TRUE.equals(result.getIsError());
+            Map<String, Object> attributes = toolAttributes(result.getMeta());
+
+            if (result.getStructuredContent() != null) {
+                String resultText = McpJson.serialize(result.getStructuredContent());
+                if (applicationError && !ignoreApplicationLevelErrors) {
+                    throw new ToolExecutionException(resultText);
                 }
                 return ToolExecutionResult.builder()
-                        .result(toObject(content))
-                        .resultText(content.toString())
-                        .isError(isError(resultNode))
-                        .attributes(extractMeta(resultNode))
+                        .result(result.getStructuredContent())
+                        .resultText(resultText)
+                        .isError(applicationError)
+                        .attributes(attributes)
                         .build();
-            } else if (resultNode.has("content")) {
-                boolean applicationError = isError(resultNode);
+            }
+
+            if (result.getContent() != null) {
                 ToolExecutionResult toolExecutionResult =
-                        toolResultExtractor.extract(resultNode.get("content"), applicationError);
+                        toolResultConverter.convert(result.getContent(), applicationError);
                 if (applicationError && !ignoreApplicationLevelErrors) {
-                    throw new ToolExecutionException(errorMessage(toolExecutionResult, resultNode.get("content")));
+                    throw new ToolExecutionException(errorMessage(toolExecutionResult, result.getContent()));
                 }
-                return withAttributes(toolExecutionResult, extractMeta(resultNode));
-            } else {
-                throw new RuntimeException("Result does not contain 'content' element: " + result);
+                return withAttributes(toolExecutionResult, attributes);
             }
-        } else {
-            if (result.has("error")) {
-                String errorMessage = extractErrorMessage(result.get("error"));
-                Integer errorCode = extractErrorCode(result.get("error"));
-                if (errorCode != null && errorCode == ERROR_CODE_INVALID_PARAMETERS) {
-                    throw new ToolArgumentsException(errorMessage, errorCode);
-                } else {
-                    throw new ToolExecutionException(errorMessage, errorCode);
-                }
-            }
-            throw new RuntimeException("Result contains neither 'result' nor 'error' element: " + result);
+
+            throw new RuntimeException("Result does not contain 'content' element: " + response);
         }
+
+        McpErrorResponse.Error error =
+                McpJson.deserialize(response, McpErrorResponse.class).getError();
+        if (error != null) {
+            if (error.getCode() == ERROR_CODE_INVALID_PARAMETERS) {
+                throw new ToolArgumentsException(error.getMessage(), error.getCode());
+            }
+            throw new ToolExecutionException(error.getMessage(), error.getCode());
+        }
+
+        throw new RuntimeException("Result contains neither 'result' nor 'error' element: " + response);
     }
 
     /**
@@ -68,17 +76,16 @@ class ToolExecutionHelper {
      * Keys reserved by the MCP specification, such as 'io.modelcontextprotocol/serverInfo',
      * are skipped, as they describe the protocol interaction and not the tool result.
      */
-    private static Map<String, Object> extractMeta(JsonNode resultNode) {
-        JsonNode meta = resultNode.get("_meta");
-        if (meta == null || !meta.isObject()) {
+    private static Map<String, Object> toolAttributes(Map<String, Object> meta) {
+        if (meta == null) {
             return Map.of();
         }
         Map<String, Object> attributes = new HashMap<>();
-        for (Map.Entry<String, JsonNode> property : meta.properties()) {
-            if (!isReservedByMcp(property.getKey())) {
-                attributes.put(property.getKey(), toObject(property.getValue()));
+        meta.forEach((key, value) -> {
+            if (!isReservedByMcp(key)) {
+                attributes.put(key, value);
             }
-        }
+        });
         return attributes;
     }
 
@@ -97,7 +104,7 @@ class ToolExecutionHelper {
     }
 
     /**
-     * Adds the given attributes to a {@link ToolExecutionResult} produced by a {@link McpToolResultExtractor}.
+     * Adds the given attributes to a {@link ToolExecutionResult} produced by a {@link McpToolResultConverter}.
      * Attributes set by the extractor take precedence.
      */
     private static ToolExecutionResult withAttributes(ToolExecutionResult result, Map<String, Object> attributes) {
@@ -109,7 +116,7 @@ class ToolExecutionHelper {
         return result.toBuilder().attributes(mergedAttributes).build();
     }
 
-    private static String errorMessage(ToolExecutionResult toolExecutionResult, JsonNode content) {
+    private static String errorMessage(ToolExecutionResult toolExecutionResult, List<Map<String, Object>> content) {
         String contentsText = toolExecutionResult.resultContents().stream()
                 .filter(TextContent.class::isInstance)
                 .map(TextContent.class::cast)
@@ -121,7 +128,7 @@ class ToolExecutionHelper {
         if (toolExecutionResult.result() != null) {
             return toolExecutionResult.result().toString();
         }
-        String rawContentText = StreamSupport.stream(content.spliterator(), false)
+        String rawContentText = content.stream()
                 .map(ToolExecutionHelper::textFromContentItem)
                 .filter(text -> !text.isEmpty())
                 .collect(Collectors.joining("\n"));
@@ -131,71 +138,13 @@ class ToolExecutionHelper {
         return "";
     }
 
-    private static String textFromContentItem(JsonNode contentItem) {
-        JsonNode type = contentItem.get("type");
-        JsonNode text = contentItem.get("text");
-        if (type != null && "text".equals(type.asText()) && text != null) {
-            return text.asText();
+    private static String textFromContentItem(Map<String, Object> contentItem) {
+        Object type = contentItem.get("type");
+        Object text = contentItem.get("text");
+        if ("text".equals(type) && text != null) {
+            return String.valueOf(text);
         }
         return "";
     }
 
-    /**
-     * Converts any JsonNode into a recursive Map using basic Java types
-     */
-    static Object toObject(JsonNode content) {
-        return switch (content.getNodeType()) {
-            case BOOLEAN -> content.asBoolean();
-            case NUMBER ->
-                switch (content.numberType()) {
-                    case INT -> content.asInt();
-                    case LONG -> content.asLong();
-                    case BIG_INTEGER -> content.bigIntegerValue();
-                    case FLOAT, DOUBLE, BIG_DECIMAL -> content.asDouble();
-                };
-            case STRING -> content.asText();
-            case NULL -> null;
-            case ARRAY ->
-                StreamSupport.stream(content.spliterator(), true)
-                        .map(element -> toObject(element))
-                        .collect(Collectors.toList());
-            case OBJECT -> {
-                Map<String, Object> map = new HashMap<>();
-                for (Map.Entry<String, JsonNode> property : content.properties()) {
-                    map.put(property.getKey(), toObject(property.getValue()));
-                }
-                yield map;
-            }
-            case BINARY -> {
-                try {
-                    yield content.binaryValue();
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-            }
-            case POJO -> new Object(); // shouldn't happen
-            case MISSING -> new Object(); // shouldn't happen
-        };
-    }
-
-    private static boolean isError(JsonNode resultNode) {
-        if (resultNode.has("isError")) {
-            return resultNode.get("isError").asBoolean();
-        }
-        return false;
-    }
-
-    private static String extractErrorMessage(JsonNode errorNode) {
-        if (errorNode.has("message")) {
-            return errorNode.get("message").asText("");
-        }
-        return "";
-    }
-
-    private static Integer extractErrorCode(JsonNode errorNode) {
-        if (errorNode.has("code")) {
-            return errorNode.get("code").asInt();
-        }
-        return null;
-    }
 }

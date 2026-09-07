@@ -1,8 +1,10 @@
 package dev.langchain4j.mcp.client;
 
-import static dev.langchain4j.mcp.client.DefaultMcpClient.OBJECT_MAPPER;
-
 import com.fasterxml.jackson.databind.JsonNode;
+import dev.langchain4j.mcp.client.transport.McpJson;
+import dev.langchain4j.mcp.protocol.McpListResourceTemplatesResult;
+import dev.langchain4j.mcp.protocol.McpListResourcesResult;
+import dev.langchain4j.mcp.protocol.McpReadResourceResponse;
 import java.util.ArrayList;
 import java.util.List;
 import org.slf4j.Logger;
@@ -14,72 +16,53 @@ class ResourcesHelper {
 
     static List<McpResource> parseResourceRefs(JsonNode mcpMessage) {
         McpErrorHelper.checkForErrors(mcpMessage);
-        if (mcpMessage.has("result")) {
-            JsonNode resultNode = mcpMessage.get("result");
-            if (resultNode.has("resources")) {
-                List<McpResource> resourceRefs = new ArrayList<>();
-                for (JsonNode resourceNode : resultNode.get("resources")) {
-                    resourceRefs.add(OBJECT_MAPPER.convertValue(resourceNode, McpResource.class));
-                }
-                return resourceRefs;
-            } else {
-                log.warn("Result does not contain 'resources' element: {}", resultNode);
-                throw new IllegalResponseException("Result does not contain 'resources' element");
-            }
-        } else {
-            log.warn("Result does not contain 'result' element: {}", mcpMessage);
-            throw new IllegalResponseException("Result does not contain 'result' element");
-        }
-    }
-
-    static McpReadResourceResult parseResourceContents(JsonNode mcpMessage) {
-        McpErrorHelper.checkForErrors(mcpMessage);
-        if (mcpMessage.has("result")) {
-            JsonNode resultNode = mcpMessage.get("result");
-            if (resultNode.has("contents")) {
-                List<McpResourceContents> resourceContentsList = new ArrayList<>();
-                for (JsonNode resourceNode : resultNode.get("contents")) {
-                    String uri = resourceNode.get("uri").asText();
-                    String mimeType = resourceNode.get("mimeType") != null
-                            ? resourceNode.get("mimeType").asText()
-                            : null;
-                    if (resourceNode.has("text")) {
-                        resourceContentsList.add(new McpTextResourceContents(
-                                uri, resourceNode.get("text").asText(), mimeType));
-                    } else if (resourceNode.has("blob")) {
-                        resourceContentsList.add(new McpBlobResourceContents(
-                                uri, resourceNode.get("blob").asText(), mimeType));
-                    }
-                }
-                return new McpReadResourceResult(resourceContentsList);
-            } else {
-                log.warn("Result does not contain 'contents' element: {}", resultNode);
-                throw new IllegalResponseException("Result does not contain 'resources' element");
-            }
-        } else {
-            log.warn("Result does not contain 'result' element: {}", mcpMessage);
-            throw new IllegalResponseException("Result does not contain 'result' element");
-        }
+        McpListResourcesResult.Result result =
+                McpJson.deserialize(mcpMessage, McpListResourcesResult.class).getResult();
+        requireResult(result, mcpMessage);
+        return require(result.getResources(), "resources", mcpMessage);
     }
 
     static List<McpResourceTemplate> parseResourceTemplateRefs(JsonNode mcpMessage) {
         McpErrorHelper.checkForErrors(mcpMessage);
-        if (mcpMessage.has("result")) {
-            JsonNode resultNode = mcpMessage.get("result");
-            if (resultNode.has("resourceTemplates")) {
-                List<McpResourceTemplate> resourceTemplateRefs = new ArrayList<>();
-                for (JsonNode resourceTemplateNode : resultNode.get("resourceTemplates")) {
-                    resourceTemplateRefs.add(
-                            OBJECT_MAPPER.convertValue(resourceTemplateNode, McpResourceTemplate.class));
-                }
-                return resourceTemplateRefs;
-            } else {
-                log.warn("Result does not contain 'resourceTemplates' element: {}", resultNode);
-                throw new IllegalResponseException("Result does not contain 'resourceTemplates' element");
+        McpListResourceTemplatesResult.Result result =
+                McpJson.deserialize(mcpMessage, McpListResourceTemplatesResult.class).getResult();
+        requireResult(result, mcpMessage);
+        return require(result.getResourceTemplates(), "resourceTemplates", mcpMessage);
+    }
+
+    static McpReadResourceResult parseResourceContents(JsonNode mcpMessage) {
+        McpErrorHelper.checkForErrors(mcpMessage);
+        McpReadResourceResponse.Result result =
+                McpJson.deserialize(mcpMessage, McpReadResourceResponse.class).getResult();
+
+        requireResult(result, mcpMessage);
+        List<McpReadResourceResponse.Contents> contents = require(result.getContents(), "contents", mcpMessage);
+
+        List<McpResourceContents> resourceContentsList = new ArrayList<>();
+        for (McpReadResourceResponse.Contents item : contents) {
+            if (item.getText() != null) {
+                resourceContentsList.add(
+                        new McpTextResourceContents(item.getUri(), item.getText(), item.getMimeType()));
+            } else if (item.getBlob() != null) {
+                resourceContentsList.add(
+                        new McpBlobResourceContents(item.getUri(), item.getBlob(), item.getMimeType()));
             }
-        } else {
+        }
+        return new McpReadResourceResult(resourceContentsList);
+    }
+
+    private static void requireResult(Object result, JsonNode mcpMessage) {
+        if (result == null) {
             log.warn("Result does not contain 'result' element: {}", mcpMessage);
             throw new IllegalResponseException("Result does not contain 'result' element");
         }
+    }
+
+    private static <T> List<T> require(List<T> values, String element, JsonNode mcpMessage) {
+        if (values == null) {
+            log.warn("Result does not contain '{}' element: {}", element, mcpMessage);
+            throw new IllegalResponseException("Result does not contain '" + element + "' element");
+        }
+        return values;
     }
 }
