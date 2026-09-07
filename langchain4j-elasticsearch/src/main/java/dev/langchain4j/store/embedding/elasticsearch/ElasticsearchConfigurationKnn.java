@@ -3,8 +3,13 @@ package dev.langchain4j.store.embedding.elasticsearch;
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.ElasticsearchException;
 import co.elastic.clients.elasticsearch._types.KnnQuery;
+import co.elastic.clients.elasticsearch._types.query_dsl.Query;
+import co.elastic.clients.elasticsearch._types.query_dsl.ScriptScoreQuery;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
 import co.elastic.clients.elasticsearch.core.search.SourceConfig;
+import co.elastic.clients.json.JsonData;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import java.io.IOException;
 import org.slf4j.Logger;
@@ -14,10 +19,25 @@ import org.slf4j.LoggerFactory;
  * Represents an <a href="https://www.elastic.co/">Elasticsearch</a> index as an embedding store
  * using the approximate kNN query implementation.
  *
+ * <p>The kNN query scores are normalized from the raw similarity scale ([-1;1] for cosine) to a
+ * relevance score in [0;1] via {@code (cosineSimilarity + 1) / 2}, consistently with
+ * {@link ElasticsearchConfigurationScript}. This way {@link EmbeddingSearchRequest#minScore()} is
+ * compared against the same relevance scale used by the other configurations and the returned scores
+ * are always in [0;1].
+ *
  * @see <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-knn-query.html#knn-query-top-level-parameters">kNN query</a>
  */
 public class ElasticsearchConfigurationKnn implements ElasticsearchConfiguration {
     private static final Logger log = LoggerFactory.getLogger(ElasticsearchConfigurationKnn.class);
+
+    /**
+     * Maps the cosine similarity returned by the kNN query (in [-1;1]) to a relevance score in
+     * [0;1], so that it matches the semantics of {@link EmbeddingSearchRequest#minScore()}.
+     */
+    private static final String NORMALIZED_COSINE_SIMILARITY_SCRIPT =
+            "(cosineSimilarity(params.query_vector, 'vector') + 1.0) / 2";
+
+    private final ObjectMapper objectMapper = new ObjectMapper();
     private final Integer numCandidates;
     private final boolean includeVectorResponse;
 
@@ -72,6 +92,26 @@ public class ElasticsearchConfigurationKnn implements ElasticsearchConfiguration
     public SearchResponse<Document> vectorSearch(
             ElasticsearchClient client, String indexName, EmbeddingSearchRequest embeddingSearchRequest)
             throws ElasticsearchException, IOException {
+        KnnQuery knn = buildKnnQuery(embeddingSearchRequest);
+
+        ScriptScoreQuery scriptScoreQuery = buildScriptScoreQuery(knn, embeddingSearchRequest);
+
+        log.trace("Searching for embeddings in index [{}] with query [{}].", indexName, scriptScoreQuery);
+
+        return client.search(
+                s -> s.source(sr -> {
+                            if (includeVectorResponse) {
+                                return sr.filter(f -> f.excludeVectors(false));
+                            }
+                            return new SourceConfig.Builder().filter(f -> f);
+                        })
+                        .index(indexName)
+                        .size(embeddingSearchRequest.maxResults())
+                        .query(q -> q.scriptScore(scriptScoreQuery)),
+                Document.class);
+    }
+
+    private KnnQuery buildKnnQuery(EmbeddingSearchRequest embeddingSearchRequest) {
         KnnQuery.Builder krb = new KnnQuery.Builder()
                 .field(VECTOR_FIELD)
                 .queryVector(embeddingSearchRequest.queryEmbedding().vectorAsList());
@@ -84,21 +124,22 @@ public class ElasticsearchConfigurationKnn implements ElasticsearchConfiguration
             krb.numCandidates(numCandidates);
         }
 
-        KnnQuery knn = krb.build();
+        return krb.build();
+    }
 
-        log.trace("Searching for embeddings in index [{}] with query [{}].", indexName, knn);
+    private ScriptScoreQuery buildScriptScoreQuery(KnnQuery knn, EmbeddingSearchRequest embeddingSearchRequest)
+            throws JsonProcessingException {
+        JsonData queryVector =
+                toJsonData(embeddingSearchRequest.queryEmbedding().vector());
+        return ScriptScoreQuery.of(q -> q.query(Query.of(query -> query.knn(knn)))
+                // minScore() is a relevance score in [0;1], so it must be compared against the cosine
+                // similarity normalized to the same range instead of the raw kNN score in [-1;1]
+                .minScore((float) embeddingSearchRequest.minScore())
+                .script(s -> s.source(source -> source.scriptString(NORMALIZED_COSINE_SIMILARITY_SCRIPT))
+                        .params("query_vector", queryVector)));
+    }
 
-        return client.search(
-                s -> s.source(sr -> {
-                            if (includeVectorResponse) {
-                                return sr.filter(f -> f.excludeVectors(false));
-                            }
-                            return new SourceConfig.Builder().filter(f -> f);
-                        })
-                        .index(indexName)
-                        .size(embeddingSearchRequest.maxResults())
-                        .query(q -> q.knn(knn))
-                        .minScore(embeddingSearchRequest.minScore()),
-                Document.class);
+    private <T> JsonData toJsonData(T rawData) throws JsonProcessingException {
+        return JsonData.fromJson(objectMapper.writeValueAsString(rawData));
     }
 }
