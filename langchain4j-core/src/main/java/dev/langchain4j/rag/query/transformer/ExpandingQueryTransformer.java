@@ -82,9 +82,10 @@ public class ExpandingQueryTransformer implements QueryTransformer {
     @Override
     public CompletableFuture<Collection<Query>> transformAsync(Query query) {
         Prompt prompt = createPrompt(query);
-        var chatFuture = chatModel.chatAsync(ChatRequest.builder().messages(prompt.toUserMessage()).build());
-        CompletableFuture<Collection<Query>> result =
-                chatFuture.thenApply(response -> toQueries(query, response.aiMessage().text()));
+        var chatFuture = chatModel.chatAsync(
+                ChatRequest.builder().messages(prompt.toUserMessage()).build());
+        CompletableFuture<Collection<Query>> result = chatFuture.thenApply(
+                response -> toQueries(query, response.aiMessage().text()));
         // Link the caller-facing derived stage back to the raw chat call so cancellation reaches the in-flight I/O.
         propagateCancellation(result, chatFuture);
         return result;
@@ -95,9 +96,8 @@ public class ExpandingQueryTransformer implements QueryTransformer {
                 // LLMs sometimes return more queries than requested (introductory lines, extra results);
                 // keep at most n queries so downstream retrieval cost stays predictable
                 .limit(n)
-                .map(queryText -> query.metadata() == null
-                        ? Query.from(queryText)
-                        : Query.from(queryText, query.metadata()))
+                .map(queryText ->
+                        query.metadata() == null ? Query.from(queryText) : Query.from(queryText, query.metadata()))
                 .collect(toList());
     }
 
