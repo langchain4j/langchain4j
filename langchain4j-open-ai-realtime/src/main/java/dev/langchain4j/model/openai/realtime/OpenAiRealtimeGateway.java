@@ -107,13 +107,12 @@ public final class OpenAiRealtimeGateway implements AutoCloseable {
         }
 
         public OpenAiRealtimeGateway build() {
-            Executor executor =
-                    toolExecutor != null ? toolExecutor : Executors.newCachedThreadPool();
+            Executor executor = toolExecutor != null ? toolExecutor : Executors.newCachedThreadPool();
             Function<String, RealtimeTransport> transportFactory = outboundTransportFactory != null
                     ? outboundTransportFactory
                     : apiKey -> new OkHttpRealtimeTransport();
-            RealtimeGatewayConfig config = new RealtimeGatewayConfig(
-                    host, port, RealtimeToolRegistry.from(tools), executor, transportFactory);
+            RealtimeGatewayConfig config =
+                    new RealtimeGatewayConfig(host, port, RealtimeToolRegistry.from(tools), executor, transportFactory);
             return new OpenAiRealtimeGateway(new RealtimeGatewayServer(config));
         }
     }

@@ -24,10 +24,8 @@ class RealtimeToolLoopTest {
             .name("get_weather")
             .description("weather")
             .build();
-    private final ToolSpecification pingSpec = ToolSpecification.builder()
-            .name("ping")
-            .description("ping")
-            .build();
+    private final ToolSpecification pingSpec =
+            ToolSpecification.builder().name("ping").description("ping").build();
 
     @Test
     void parallelFunctionCalls_emitOutputsThenSingleResponseCreate() throws Exception {
@@ -41,8 +39,10 @@ class RealtimeToolLoopTest {
         boolean handled = loop.onServerEvent(loadFixture("response-done-two-function-calls.json"));
 
         assertThat(handled).isTrue();
-        assertThat(sent.stream().filter(s -> s.contains("function_call_output"))).hasSize(2);
-        assertThat(sent.stream().filter(s -> s.contains("\"type\":\"response.create\""))).hasSize(1);
+        assertThat(sent.stream().filter(s -> s.contains("function_call_output")))
+                .hasSize(2);
+        assertThat(sent.stream().filter(s -> s.contains("\"type\":\"response.create\"")))
+                .hasSize(1);
 
         JsonNode weatherOut = findOutputByCallId(sent, "call_weather");
         assertThat(weatherOut.path("item").path("output").asText()).isEqualTo("sunny");
@@ -68,11 +68,9 @@ class RealtimeToolLoopTest {
         };
         Map<ToolSpecification, ToolExecutor> tools = new LinkedHashMap<>();
         tools.put(weatherSpec, boom);
-        RealtimeToolLoop loop =
-                new RealtimeToolLoop(RealtimeToolRegistry.from(tools), sent::add, Runnable::run);
+        RealtimeToolLoop loop = new RealtimeToolLoop(RealtimeToolRegistry.from(tools), sent::add, Runnable::run);
 
-        String event =
-                """
+        String event = """
                 {"type":"response.done","response":{"id":"resp_1","output":[{"type":"function_call","name":"get_weather","arguments":"{}","call_id":"call_boom"}]}}
                 """;
         boolean handled = loop.onServerEvent(event);
@@ -90,11 +88,9 @@ class RealtimeToolLoopTest {
     @Test
     void hallucinatedToolName_emitsErrorOutput() throws Exception {
         List<String> sent = Collections.synchronizedList(new ArrayList<>());
-        RealtimeToolLoop loop =
-                new RealtimeToolLoop(RealtimeToolRegistry.from(Map.of()), sent::add, Runnable::run);
+        RealtimeToolLoop loop = new RealtimeToolLoop(RealtimeToolRegistry.from(Map.of()), sent::add, Runnable::run);
 
-        String event =
-                """
+        String event = """
                 {"type":"response.done","response":{"id":"resp_1","output":[{"type":"function_call","name":"no_such_tool","arguments":"{}","call_id":"call_missing"}]}}
                 """;
         boolean handled = loop.onServerEvent(event);
@@ -110,11 +106,9 @@ class RealtimeToolLoopTest {
     @Test
     void responseDoneWithoutFunctionCall_returnsFalse() {
         List<String> sent = Collections.synchronizedList(new ArrayList<>());
-        RealtimeToolLoop loop =
-                new RealtimeToolLoop(RealtimeToolRegistry.from(Map.of()), sent::add, Runnable::run);
+        RealtimeToolLoop loop = new RealtimeToolLoop(RealtimeToolRegistry.from(Map.of()), sent::add, Runnable::run);
 
-        String event =
-                """
+        String event = """
                 {"type":"response.done","response":{"id":"resp_1","output":[{"type":"message","role":"assistant"}]}}
                 """;
         boolean handled = loop.onServerEvent(event);

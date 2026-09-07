@@ -26,7 +26,11 @@ class OpenAiRealtimeToolJsonTest {
         assertThat(node.get("name").asText()).isEqualTo("get_weather");
         assertThat(node.get("description").asText()).isEqualTo("Get weather");
         assertThat(node.get("parameters").get("type").asText()).isEqualTo("object");
-        assertThat(node.get("parameters").get("properties").get("city").get("type").asText())
+        assertThat(node.get("parameters")
+                        .get("properties")
+                        .get("city")
+                        .get("type")
+                        .asText())
                 .isEqualTo("string");
         assertThat(node.get("parameters").get("required").get(0).asText()).isEqualTo("city");
         // Realtime shape is flat — not Chat Completions nested function{}
@@ -35,10 +39,8 @@ class OpenAiRealtimeToolJsonTest {
 
     @Test
     void toFunctionTool_nullParameters_usesEmptyObjectSchema() {
-        ToolSpecification spec = ToolSpecification.builder()
-                .name("ping")
-                .description("Ping")
-                .build();
+        ToolSpecification spec =
+                ToolSpecification.builder().name("ping").description("Ping").build();
 
         ObjectNode node = OpenAiRealtimeToolJson.toFunctionTool(spec);
 

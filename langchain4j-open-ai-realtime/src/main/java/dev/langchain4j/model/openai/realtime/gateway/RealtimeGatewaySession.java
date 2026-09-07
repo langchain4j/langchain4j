@@ -59,7 +59,8 @@ public final class RealtimeGatewaySession implements AutoCloseable {
                 return;
             }
             if (isClientFunctionCallOutput(root, type)) {
-                inboundSink.accept(errorEvent("Clients must not send function_call_output; the gateway executes tools"));
+                inboundSink.accept(
+                        errorEvent("Clients must not send function_call_output; the gateway executes tools"));
                 return;
             }
             outbound.sendEvent(json);

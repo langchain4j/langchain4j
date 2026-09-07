@@ -175,20 +175,20 @@ class RealtimeGatewayServerTest {
 
         awaitSent(fake, 3);
         List<String> outboundCopy = new ArrayList<>(fake.sent);
-        assertThat(outboundCopy.stream().filter(s -> s.contains("function_call_output"))).hasSize(2);
+        assertThat(outboundCopy.stream().filter(s -> s.contains("function_call_output")))
+                .hasSize(2);
         assertThat(outboundCopy.stream().filter(s -> s.contains("\"type\":\"response.create\"")))
                 .hasSize(1);
 
         awaitCondition(() -> inbound.stream().anyMatch(s -> s.contains("response.done")), 5);
-        assertThat(inbound.stream()
-                        .anyMatch(s -> {
-                            try {
-                                return "response.done"
-                                        .equals(OBJECT_MAPPER.readTree(s).path("type").asText());
-                            } catch (Exception e) {
-                                return false;
-                            }
-                        }))
+        assertThat(inbound.stream().anyMatch(s -> {
+                    try {
+                        return "response.done"
+                                .equals(OBJECT_MAPPER.readTree(s).path("type").asText());
+                    } catch (Exception e) {
+                        return false;
+                    }
+                }))
                 .isTrue();
     }
 
@@ -201,27 +201,20 @@ class RealtimeGatewayServerTest {
                         .required("city")
                         .build())
                 .build();
-        ToolSpecification ping = ToolSpecification.builder()
-                .name("ping")
-                .description("Ping")
-                .build();
+        ToolSpecification ping =
+                ToolSpecification.builder().name("ping").description("Ping").build();
         Map<ToolSpecification, ToolExecutor> tools = new LinkedHashMap<>();
         tools.put(weather, (req, mem) -> "sunny");
         tools.put(ping, (req, mem) -> "pong");
         return tools;
     }
 
-    private static WebSocketClient newClient(
-            URI uri, String apiKey, CountDownLatch open, List<String> messages) {
+    private static WebSocketClient newClient(URI uri, String apiKey, CountDownLatch open, List<String> messages) {
         return newClient(uri, apiKey, open, messages, null);
     }
 
     private static WebSocketClient newClient(
-            URI uri,
-            String apiKey,
-            CountDownLatch open,
-            List<String> messages,
-            CountDownLatch closed) {
+            URI uri, String apiKey, CountDownLatch open, List<String> messages, CountDownLatch closed) {
         Map<String, String> headers = new LinkedHashMap<>();
         headers.put("Authorization", "Bearer " + apiKey);
         return new WebSocketClient(uri, headers) {
@@ -249,8 +242,7 @@ class RealtimeGatewayServerTest {
 
     private static String loadFixture(String name) throws Exception {
         String path = "realtime/fixtures/" + name;
-        try (InputStream in =
-                RealtimeGatewayServerTest.class.getClassLoader().getResourceAsStream(path)) {
+        try (InputStream in = RealtimeGatewayServerTest.class.getClassLoader().getResourceAsStream(path)) {
             assertThat(in).as("fixture %s", path).isNotNull();
             return new String(in.readAllBytes(), StandardCharsets.UTF_8);
         }

@@ -148,10 +148,7 @@ public final class RealtimeGatewayServer {
                     .build();
 
             RealtimeGatewaySession gatewaySession = new RealtimeGatewaySession(
-                    outbound,
-                    config.toolRegistry(),
-                    config.toolExecutor(),
-                    message -> sendToClient(conn, message));
+                    outbound, config.toolRegistry(), config.toolExecutor(), message -> sendToClient(conn, message));
             gatewayRef.set(gatewaySession);
             conn.setAttachment(gatewaySession);
 

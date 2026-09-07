@@ -29,10 +29,8 @@ class SessionUpdateToolsRewriterTest {
                         .required("city")
                         .build())
                 .build();
-        ToolSpecification ping = ToolSpecification.builder()
-                .name("ping")
-                .description("Ping")
-                .build();
+        ToolSpecification ping =
+                ToolSpecification.builder().name("ping").description("Ping").build();
         Map<ToolSpecification, ToolExecutor> tools = new LinkedHashMap<>();
         tools.put(weather, (req, mem) -> "sunny");
         tools.put(ping, (req, mem) -> "pong");
@@ -41,8 +39,7 @@ class SessionUpdateToolsRewriterTest {
 
     @Test
     void omitTools_usesFullRegistry() throws Exception {
-        String inbound =
-                """
+        String inbound = """
                 {"type":"session.update","session":{"type":"realtime","instructions":"hi"}}
                 """;
 
@@ -61,20 +58,19 @@ class SessionUpdateToolsRewriterTest {
 
     @Test
     void emptyToolsArray_usesFullRegistry() throws Exception {
-        String inbound =
-                """
+        String inbound = """
                 {"type":"session.update","session":{"tools":[]}}
                 """;
 
         String outbound = rewriter.rewrite(inbound);
 
-        assertThat(OBJECT_MAPPER.readTree(outbound).path("session").path("tools")).hasSize(2);
+        assertThat(OBJECT_MAPPER.readTree(outbound).path("session").path("tools"))
+                .hasSize(2);
     }
 
     @Test
     void whitelist_filtersByName() throws Exception {
-        String inbound =
-                """
+        String inbound = """
                 {"type":"session.update","session":{"type":"realtime","tools":[{"type":"function","name":"ping"}]}}
                 """;
 
@@ -88,8 +84,7 @@ class SessionUpdateToolsRewriterTest {
 
     @Test
     void whitelist_supportsNestedFunctionName() throws Exception {
-        String inbound =
-                """
+        String inbound = """
                 {"type":"session.update","session":{"tools":[{"type":"function","function":{"name":"get_weather"}}]}}
                 """;
 
@@ -103,8 +98,7 @@ class SessionUpdateToolsRewriterTest {
 
     @Test
     void unknownName_throws() {
-        String inbound =
-                """
+        String inbound = """
                 {"type":"session.update","session":{"tools":[{"type":"function","name":"unknown_tool"}]}}
                 """;
 
@@ -115,8 +109,7 @@ class SessionUpdateToolsRewriterTest {
 
     @Test
     void nonSessionUpdate_returnsUnchanged() {
-        String inbound =
-                """
+        String inbound = """
                 {"type":"response.create","response":{}}
                 """;
 

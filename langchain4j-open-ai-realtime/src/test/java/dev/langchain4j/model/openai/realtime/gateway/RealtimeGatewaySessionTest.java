@@ -47,10 +47,8 @@ class RealtimeGatewaySessionTest {
                         .required("city")
                         .build())
                 .build();
-        ToolSpecification ping = ToolSpecification.builder()
-                .name("ping")
-                .description("Ping")
-                .build();
+        ToolSpecification ping =
+                ToolSpecification.builder().name("ping").description("Ping").build();
         Map<ToolSpecification, ToolExecutor> tools = new LinkedHashMap<>();
         tools.put(weather, (req, mem) -> "sunny");
         tools.put(ping, (req, mem) -> "pong");
@@ -91,8 +89,7 @@ class RealtimeGatewaySessionTest {
 
     @Test
     void sessionUpdate_rewritesToolsBeforeOutbound() throws Exception {
-        String inbound =
-                """
+        String inbound = """
                 {"type":"session.update","session":{"type":"realtime","tools":[{"type":"function","name":"ping"}]}}
                 """;
 
@@ -110,8 +107,7 @@ class RealtimeGatewaySessionTest {
 
     @Test
     void sessionUpdate_unknownTool_sendsErrorAndNoOutbound() throws Exception {
-        String inbound =
-                """
+        String inbound = """
                 {"type":"session.update","session":{"tools":[{"type":"function","name":"unknown_tool"}]}}
                 """;
 
@@ -127,8 +123,7 @@ class RealtimeGatewaySessionTest {
 
     @Test
     void clientFunctionCallOutput_isIgnored() throws Exception {
-        String inbound =
-                """
+        String inbound = """
                 {"type":"conversation.item.create","item":{"type":"function_call_output","call_id":"call_1","output":"hack"}}
                 """;
 
@@ -150,8 +145,10 @@ class RealtimeGatewaySessionTest {
 
         awaitSent(transport, 3);
         List<String> outboundCopy = new ArrayList<>(transport.sent);
-        assertThat(outboundCopy.stream().filter(s -> s.contains("function_call_output"))).hasSize(2);
-        assertThat(outboundCopy.stream().filter(s -> s.contains("\"type\":\"response.create\""))).hasSize(1);
+        assertThat(outboundCopy.stream().filter(s -> s.contains("function_call_output")))
+                .hasSize(2);
+        assertThat(outboundCopy.stream().filter(s -> s.contains("\"type\":\"response.create\"")))
+                .hasSize(1);
 
         assertThat(clientMessages).hasSize(1);
         assertThat(OBJECT_MAPPER.readTree(clientMessages.get(0)).path("type").asText())
@@ -190,15 +187,13 @@ class RealtimeGatewaySessionTest {
 
     private static String loadFixture(String name) throws Exception {
         String path = "realtime/fixtures/" + name;
-        try (InputStream in =
-                RealtimeGatewaySessionTest.class.getClassLoader().getResourceAsStream(path)) {
+        try (InputStream in = RealtimeGatewaySessionTest.class.getClassLoader().getResourceAsStream(path)) {
             assertThat(in).as("fixture %s", path).isNotNull();
             return new String(in.readAllBytes(), StandardCharsets.UTF_8);
         }
     }
 
-    private static void awaitSent(FakeRealtimeTransport transport, int expected)
-            throws InterruptedException {
+    private static void awaitSent(FakeRealtimeTransport transport, int expected) throws InterruptedException {
         long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(2);
         while (transport.sent.size() < expected && System.nanoTime() < deadline) {
             Thread.sleep(10L);

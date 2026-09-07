@@ -27,8 +27,7 @@ public final class RealtimeGatewayConfig {
         this.port = port;
         this.toolRegistry = Objects.requireNonNull(toolRegistry, "toolRegistry");
         this.toolExecutor = Objects.requireNonNull(toolExecutor, "toolExecutor");
-        this.outboundTransportFactory =
-                Objects.requireNonNull(outboundTransportFactory, "outboundTransportFactory");
+        this.outboundTransportFactory = Objects.requireNonNull(outboundTransportFactory, "outboundTransportFactory");
     }
 
     public String host() {

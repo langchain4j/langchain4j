@@ -35,7 +35,8 @@ class OpenAiRealtimeSessionIT {
                     public void onEvent(String json) {
                         events.add(json);
                         try {
-                            String type = OBJECT_MAPPER.readTree(json).path("type").asText();
+                            String type =
+                                    OBJECT_MAPPER.readTree(json).path("type").asText();
                             if ("session.created".equals(type)) {
                                 sessionCreated.countDown();
                             } else if ("session.updated".equals(type)) {

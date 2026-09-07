@@ -23,8 +23,7 @@ public final class RealtimeToolLoop {
     private final RealtimeOutboundWriter writer;
     private final Executor toolExecutor;
 
-    public RealtimeToolLoop(
-            RealtimeToolRegistry registry, RealtimeOutboundWriter writer, Executor toolExecutor) {
+    public RealtimeToolLoop(RealtimeToolRegistry registry, RealtimeOutboundWriter writer, Executor toolExecutor) {
         this.registry = Objects.requireNonNull(registry, "registry");
         this.writer = Objects.requireNonNull(writer, "writer");
         this.toolExecutor = Objects.requireNonNull(toolExecutor, "toolExecutor");

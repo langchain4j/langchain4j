@@ -32,8 +32,7 @@ class OpenAiRealtimeSessionTest {
 
         session.connect();
 
-        assertThat(transport.connectedUrl)
-                .isEqualTo("wss://api.openai.com/v1/realtime?model=gpt-realtime-2.1");
+        assertThat(transport.connectedUrl).isEqualTo("wss://api.openai.com/v1/realtime?model=gpt-realtime-2.1");
         assertThat(transport.connectedHeaders)
                 .containsEntry("Authorization", "Bearer sk-test")
                 .containsEntry("OpenAI-Safety-Identifier", "safety-1");
