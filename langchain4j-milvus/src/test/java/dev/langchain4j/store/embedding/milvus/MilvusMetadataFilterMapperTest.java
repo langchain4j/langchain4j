@@ -81,4 +81,53 @@ class MilvusMetadataFilterMapperTest {
 
         assertThat(expr).isEqualTo("metadata[\"key\"] LIKE \"%a\\\\b100\\%\\_done%\"");
     }
+
+    @Test
+    void should_escape_double_quote_in_key() {
+        // An unescaped key would break out of the metadata["..."] accessor and inject
+        // arbitrary Milvus filter expression syntax (here: an "or" term the caller never wrote).
+        Filter filter = metadataKey("tenant\"] != \"\" or metadata[\"x").isEqualTo("acme");
+
+        String expr = MilvusMetadataFilterMapper.map(filter, "metadata");
+
+        assertThat(expr).isEqualTo("metadata[\"tenant\\\"] != \\\"\\\" or metadata[\\\"x\"] == \"acme\"");
+    }
+
+    @Test
+    void should_escape_backslash_in_key() {
+        Filter filter = metadataKey("a\\b").isEqualTo("foo");
+
+        String expr = MilvusMetadataFilterMapper.map(filter, "metadata");
+
+        assertThat(expr).isEqualTo("metadata[\"a\\\\b\"] == \"foo\"");
+    }
+
+    @Test
+    void should_escape_key_in_collection_filter() {
+        Filter filter = metadataKey("a\"b").isIn("foo");
+
+        String expr = MilvusMetadataFilterMapper.map(filter, "metadata");
+
+        assertThat(expr).isEqualTo("metadata[\"a\\\"b\"] in [\"foo\"]");
+    }
+
+    @Test
+    void should_escape_key_in_contains_filter() {
+        Filter filter = metadataKey("a\"b").containsString("foo");
+
+        String expr = MilvusMetadataFilterMapper.map(filter, "metadata");
+
+        assertThat(expr).isEqualTo("metadata[\"a\\\"b\"] LIKE \"%foo%\"");
+    }
+
+    @Test
+    void should_not_change_key_without_special_characters() {
+        // Metadata keys are not restricted to SQL-style identifiers, so dots, spaces and
+        // non-ASCII characters must keep working exactly as before.
+        Filter filter = metadataKey("user.email 1").isEqualTo("foo");
+
+        String expr = MilvusMetadataFilterMapper.map(filter, "metadata");
+
+        assertThat(expr).isEqualTo("metadata[\"user.email 1\"] == \"foo\"");
+    }
 }
