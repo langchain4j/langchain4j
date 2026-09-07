@@ -456,6 +456,14 @@ public class DefaultToolExecutor implements ToolExecutor {
             if (argument instanceof Boolean) {
                 return argument;
             }
+            if (argument instanceof String stringArgument) {
+                if ("true".equalsIgnoreCase(stringArgument)) {
+                    return true;
+                }
+                if ("false".equalsIgnoreCase(stringArgument)) {
+                    return false;
+                }
+            }
             throw new IllegalArgumentException(String.format(
                     "Argument \"%s\" is not convertable to %s, got %s: <%s>",
                     parameterName, parameterClass.getName(), argument.getClass().getName(), argument));
