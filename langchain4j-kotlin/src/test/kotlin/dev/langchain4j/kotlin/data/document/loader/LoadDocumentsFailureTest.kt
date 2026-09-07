@@ -7,6 +7,7 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.collections.shouldHaveSize
+import io.kotest.matchers.shouldBe
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Test
@@ -62,16 +63,17 @@ internal class LoadDocumentsFailureTest {
         }
 
     @Test
-    fun `Should still return all documents when none of them fail to parse`() =
+    fun `Should skip a file whose parser throws, not only blank ones`() =
         runTest {
             val documents =
                 loadDocuments(
-                    recursive = true,
-                    documentParser = parser,
-                    directoryPaths = listOf(Path.of("./src/test/resources/asyncDocumentLoaderTest"))
+                    recursive = false,
+                    documentParser = failingOn("two"),
+                    directoryPaths = listOf(Path.of("./src/test/resources/loadDocumentsFailureTest/mixedFiles"))
                 )
 
-            documents shouldHaveSize 4
+            documents shouldHaveSize 1
+            documents.single().metadata().getString("file_name") shouldBe "good.txt"
         }
 
     @Test
@@ -90,6 +92,17 @@ internal class LoadDocumentsFailureTest {
                     documentParser = cancellingParser,
                     directoryPaths = listOf(Path.of("./src/test/resources/loadDocumentsFailureTest/mixedFiles"))
                 )
+            }
+        }
+
+    // Simulates an arbitrary parser-library failure on every file containing [marker],
+    // while parsing all the other files for real.
+    private fun failingOn(marker: String) =
+        object : DocumentParser {
+            override fun parse(inputStream: InputStream): Document {
+                val text = inputStream.readBytes().decodeToString()
+                check(!text.contains(marker)) { "simulated parser failure" }
+                return parser.parse(text.byteInputStream())
             }
         }
 }
