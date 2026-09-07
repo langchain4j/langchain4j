@@ -83,6 +83,32 @@ public final class RealtimeGatewaySession implements AutoCloseable {
         inboundSink.accept(json);
     }
 
+    /**
+     * Outbound WebSocket closed. Notifies the inbound client once, then closes local state.
+     * Safe if invoked again after {@link #close()} (no re-notify / no recursion).
+     */
+    public void onOutboundClosed(int code, String reason) {
+        if (closed.get()) {
+            return;
+        }
+        String detail = reason == null || reason.isBlank() ? "" : " " + reason;
+        inboundSink.accept(errorEvent("Outbound connection closed: " + code + detail));
+        close();
+    }
+
+    /**
+     * Outbound failure. Notifies the inbound client once, then closes local state.
+     */
+    public void onOutboundFailure(Throwable t) {
+        if (closed.get()) {
+            return;
+        }
+        Objects.requireNonNull(t, "t");
+        String message = t.getMessage() == null ? t.getClass().getSimpleName() : t.getMessage();
+        inboundSink.accept(errorEvent("Outbound connection failed: " + message));
+        close();
+    }
+
     public void onClientClosed() {
         close();
     }

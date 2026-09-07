@@ -8,6 +8,7 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.openai.realtime.session.FakeRealtimeTransport;
 import dev.langchain4j.model.openai.realtime.session.OpenAiRealtimeSession;
+import dev.langchain4j.model.openai.realtime.session.OpenAiRealtimeSessionListener;
 import dev.langchain4j.model.openai.realtime.tools.RealtimeToolRegistry;
 import dev.langchain4j.service.tool.ToolExecutor;
 import java.io.InputStream;
@@ -59,7 +60,22 @@ class RealtimeGatewaySessionTest {
         outbound = OpenAiRealtimeSession.builder()
                 .transport(transport)
                 .apiKey("sk-test")
-                .listener(json -> gatewayRef.get().onOutboundEvent(json))
+                .listener(new OpenAiRealtimeSessionListener() {
+                    @Override
+                    public void onEvent(String json) {
+                        gatewayRef.get().onOutboundEvent(json);
+                    }
+
+                    @Override
+                    public void onClosed(int code, String reason) {
+                        gatewayRef.get().onOutboundClosed(code, reason);
+                    }
+
+                    @Override
+                    public void onFailure(Throwable t) {
+                        gatewayRef.get().onOutboundFailure(t);
+                    }
+                })
                 .build();
         gateway = new RealtimeGatewaySession(outbound, registry, Runnable::run, clientMessages::add);
         gatewayRef.set(gateway);
@@ -140,6 +156,36 @@ class RealtimeGatewaySessionTest {
         assertThat(clientMessages).hasSize(1);
         assertThat(OBJECT_MAPPER.readTree(clientMessages.get(0)).path("type").asText())
                 .isEqualTo("response.done");
+    }
+
+    @Test
+    void onOutboundFailure_sendsErrorAndCloses() throws Exception {
+        gateway.onOutboundFailure(new RuntimeException("upstream boom"));
+
+        assertThat(clientMessages).hasSize(1);
+        JsonNode error = OBJECT_MAPPER.readTree(clientMessages.get(0));
+        assertThat(error.path("type").asText()).isEqualTo("error");
+        assertThat(error.path("error").path("message").asText()).contains("upstream boom");
+        assertThat(transport.closed).isTrue();
+
+        gateway.onOutboundFailure(new RuntimeException("again"));
+        assertThat(clientMessages).hasSize(1);
+    }
+
+    @Test
+    void onOutboundClosed_sendsErrorAndCloses() throws Exception {
+        gateway.onOutboundClosed(1006, "abnormal closure");
+
+        assertThat(clientMessages).hasSize(1);
+        JsonNode error = OBJECT_MAPPER.readTree(clientMessages.get(0));
+        assertThat(error.path("type").asText()).isEqualTo("error");
+        assertThat(error.path("error").path("message").asText())
+                .contains("1006")
+                .contains("abnormal closure");
+        assertThat(transport.closed).isTrue();
+
+        gateway.onOutboundClosed(1000, "ok");
+        assertThat(clientMessages).hasSize(1);
     }
 
     private static String loadFixture(String name) throws Exception {
