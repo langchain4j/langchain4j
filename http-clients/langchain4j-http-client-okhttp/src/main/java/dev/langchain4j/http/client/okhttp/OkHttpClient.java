@@ -15,7 +15,6 @@ import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventContext;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.http.client.sse.ServerSentEventParser;
-import dev.langchain4j.internal.DemandDecouplingPublisher;
 import mutiny.zero.BackpressureStrategy;
 import mutiny.zero.TubeConfiguration;
 import mutiny.zero.ZeroPublisher;
@@ -128,7 +127,7 @@ public class OkHttpClient implements HttpClient {
         TubeConfiguration config = new TubeConfiguration()
                 .withBackpressureStrategy(BackpressureStrategy.BUFFER)
                 .withBufferSize(streamingBufferSize);
-        Flow.Publisher<HttpStreamingEvent> events = ZeroPublisher.create(config, tube -> {
+        return ZeroPublisher.create(config, tube -> {
             Call call = enqueueServerSentEvents(request, parser, new ServerSentEventListener() {
                 @Override
                 public void onOpen(SuccessfulHttpResponse response) {
@@ -170,8 +169,6 @@ public class OkHttpClient implements HttpClient {
             // first event - also aborts a cancel that arrives before the first event.
             tube.whenTerminates(call::cancel);
         });
-        // Wrapped so that downstream demand never reaches the tube: see DemandDecouplingPublisher.
-        return new DemandDecouplingPublisher<>(events, streamingBufferSize);
     }
 
     @Override

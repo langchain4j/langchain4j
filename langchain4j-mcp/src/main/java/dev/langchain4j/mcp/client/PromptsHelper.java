@@ -1,6 +1,5 @@
 package dev.langchain4j.mcp.client;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import dev.langchain4j.mcp.client.transport.McpJson;
 import dev.langchain4j.mcp.protocol.McpGetPromptResponse;
 import dev.langchain4j.mcp.protocol.McpListPromptsResult;
@@ -12,8 +11,7 @@ class PromptsHelper {
 
     private static final Logger log = LoggerFactory.getLogger(PromptsHelper.class);
 
-    static List<McpPrompt> parsePromptRefs(JsonNode mcpMessage) {
-        McpErrorHelper.checkForErrors(mcpMessage);
+    static McpPage<McpPrompt> parsePromptRefs(String mcpMessage) {
         McpListPromptsResult.Result result =
                 McpJson.deserialize(mcpMessage, McpListPromptsResult.class).getResult();
         if (result == null) {
@@ -24,10 +22,10 @@ class PromptsHelper {
             log.warn("Result does not contain 'prompts' element: {}", mcpMessage);
             throw new IllegalResponseException("Result does not contain 'prompts' element");
         }
-        return result.getPrompts();
+        return new McpPage<>(result.getPrompts(), result.getNextCursor());
     }
 
-    static McpGetPromptResult parsePromptContents(JsonNode mcpMessage) {
+    static McpGetPromptResult parsePromptContents(String mcpMessage) {
         McpErrorHelper.checkForErrors(mcpMessage);
         return McpJson.deserialize(mcpMessage, McpGetPromptResponse.class).getResult();
     }
