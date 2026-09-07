@@ -1418,6 +1418,9 @@ class ToolSpecificationHelperTest {
 
         // properties from all sub-schemas are merged, required lists are united
         assertThat(parameters.properties()).containsOnlyKeys("identifier", "title", "requiredApproval");
+        assertThat(parameters.properties().get("identifier")).isInstanceOf(JsonStringSchema.class);
+        assertThat(parameters.properties().get("title")).isInstanceOf(JsonStringSchema.class);
+        assertThat(parameters.properties().get("requiredApproval")).isInstanceOf(JsonBooleanSchema.class);
         assertThat(parameters.required()).containsExactly("identifier");
     }
 
@@ -1447,6 +1450,7 @@ class ToolSpecificationHelperTest {
         JsonObjectSchema parameters = toolSpecification.parameters();
 
         assertThat(parameters.properties()).containsOnlyKeys("icon");
+        assertThat(parameters.properties().get("icon")).isInstanceOf(JsonStringSchema.class);
     }
 
     @Test
