@@ -101,9 +101,13 @@ jobs:
       - name: Update beta version property
         run: mvn versions:set-property -Dproperty=langchain4j.beta.version -DnewVersion="$BETA_VERSION" -DgenerateBackupPoms=false
 
+      # revapi is skipped for this release: its oldVersion=RELEASE baseline resolves to the newest
+      # release older than the version being built, which for 1.19.2 is 1.19.1 - a release published
+      # in error from main, holding all of 1.20.0. Every API added there looks removed here.
+      # Revert once 1.19.2 is on Central and becomes the baseline for 1.19.3.
       - name: Release core and parent modules
         if: ${{ fromJSON(steps.phase.outputs.num) <= 1 }}
-        run: mvn -B -U -pl internal/langchain4j-internal-test-retry,langchain4j-core,langchain4j-parent -Psign clean deploy
+        run: mvn -B -U -Drevapi.skip=true -pl internal/langchain4j-internal-test-retry,langchain4j-core,langchain4j-parent -Psign clean deploy
         env:
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
           MAVEN_CENTRAL_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
@@ -115,7 +119,7 @@ jobs:
           EMBEDDING_MODULES=$(find embeddings -mindepth 1 -maxdepth 1 -type d -exec test -f "{}/pom.xml" \; -print | paste -sd , -)
           
           mvn -B -U --fail-at-end \
-            -DskipTests -DskipITs \
+            -DskipTests -DskipITs -Drevapi.skip=true \
             -pl "$EMBEDDING_MODULES" \
             -Psign clean deploy
         env:
@@ -150,7 +154,7 @@ jobs:
           echo "Excluding modules: $EXCLUDES"
     
           mvn -B -U --fail-at-end \
-            -DskipTests -DskipITs \
+            -DskipTests -DskipITs -Drevapi.skip=true \
             -pl "$EXCLUDES" \
             -Psign clean deploy
         env:
