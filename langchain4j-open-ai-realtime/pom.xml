@@ -22,6 +22,13 @@
             <version>1.20.0-SNAPSHOT</version>
         </dependency>
 
+        <!-- ToolExecutor lives in langchain4j (not core) -->
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j</artifactId>
+            <version>1.20.0-SNAPSHOT</version>
+        </dependency>
+
         <dependency>
             <groupId>com.squareup.okhttp3</groupId>
             <artifactId>okhttp</artifactId>
