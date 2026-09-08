@@ -1,16 +1,21 @@
 package dev.langchain4j.model.googleai;
 
+import static dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiUrlRetrievalStatus.URL_RETRIEVAL_STATUS_ERROR;
 import static dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiUrlRetrievalStatus.URL_RETRIEVAL_STATUS_SUCCESS;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.googleai.GeminiContent.GeminiPart;
 import dev.langchain4j.model.googleai.GeminiContent.GeminiPart.GeminiBlob;
 import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiCandidate;
 import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiUrlContextMetadata;
 import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiUrlMetadata;
 import dev.langchain4j.model.googleai.GeminiStreamingResponseBuilder.TextAndTools;
+import dev.langchain4j.model.googleai.GroundingMetadata.GroundingChunk;
+import dev.langchain4j.model.googleai.GroundingMetadata.GroundingSupport;
+import dev.langchain4j.model.googleai.GroundingMetadata.SearchEntryPoint;
 import java.util.Collections;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -108,7 +113,7 @@ class GeminiStreamingResponseBuilderTest {
         GoogleAiGeminiChatResponseMetadata metadata =
                 (GoogleAiGeminiChatResponseMetadata) builder.build().metadata();
 
-        assertThat(metadata.groundingMetadata()).isSameAs(grounding);
+        assertThat(metadata.groundingMetadata()).isEqualTo(grounding);
     }
 
     @Test
@@ -121,7 +126,7 @@ class GeminiStreamingResponseBuilderTest {
         GoogleAiGeminiChatResponseMetadata metadata =
                 (GoogleAiGeminiChatResponseMetadata) builder.build().metadata();
 
-        assertThat(metadata.groundingMetadata()).isSameAs(grounding);
+        assertThat(metadata.groundingMetadata()).isEqualTo(grounding);
     }
 
     @Test
@@ -135,7 +140,7 @@ class GeminiStreamingResponseBuilderTest {
         GoogleAiGeminiChatResponseMetadata metadata =
                 (GoogleAiGeminiChatResponseMetadata) builder.build().metadata();
 
-        assertThat(metadata.groundingMetadata()).isSameAs(grounding);
+        assertThat(metadata.groundingMetadata()).isEqualTo(grounding);
     }
 
     @Test
@@ -165,6 +170,90 @@ class GeminiStreamingResponseBuilderTest {
         assertThat(metadata.urlContextMetadata()).isNull();
     }
 
+    @Test
+    void should_merge_grounding_metadata_fields_reported_by_different_chunks() {
+        builder.append(chunkGroundedWith(GroundingMetadata.builder()
+                .webSearchQueries(List.of("who won"))
+                .searchEntryPoint(new SearchEntryPoint("<div>suggestions</div>", null))
+                .build()));
+        builder.append(chunkGroundedWith(GroundingMetadata.builder()
+                .groundingChunks(List.of(webChunk("https://a.example")))
+                .groundingSupports(List.of(supportOf(0)))
+                .build()));
+
+        GroundingMetadata grounding = groundingOf(builder.build());
+
+        assertThat(grounding.webSearchQueries()).containsExactly("who won");
+        assertThat(grounding.searchEntryPoint().renderedContent()).isEqualTo("<div>suggestions</div>");
+        assertThat(grounding.groundingChunks()).containsExactly(webChunk("https://a.example"));
+        assertThat(grounding.groundingSupports()).containsExactly(supportOf(0));
+    }
+
+    @Test
+    void should_not_duplicate_grounding_metadata_a_later_chunk_repeats() {
+        builder.append(chunkGroundedWith(GroundingMetadata.builder()
+                .webSearchQueries(List.of("who won"))
+                .groundingChunks(List.of(webChunk("https://a.example")))
+                .groundingSupports(List.of(supportOf(0)))
+                .build()));
+        builder.append(chunkGroundedWith(GroundingMetadata.builder()
+                .webSearchQueries(List.of("who won"))
+                .groundingChunks(List.of(webChunk("https://a.example"), webChunk("https://b.example")))
+                .groundingSupports(List.of(supportOf(0), supportOf(1)))
+                .build()));
+
+        GroundingMetadata grounding = groundingOf(builder.build());
+
+        assertThat(grounding.webSearchQueries()).containsExactly("who won");
+        assertThat(grounding.groundingChunks())
+                .containsExactly(webChunk("https://a.example"), webChunk("https://b.example"));
+        assertThat(grounding.groundingSupports()).containsExactly(supportOf(0), supportOf(1));
+    }
+
+    @Test
+    void should_remap_grounding_chunk_indices_when_sources_arrive_across_chunks() {
+        builder.append(chunkGroundedWith(GroundingMetadata.builder()
+                .groundingChunks(List.of(webChunk("https://a.example")))
+                .groundingSupports(List.of(supportOf(0)))
+                .build()));
+        builder.append(chunkGroundedWith(GroundingMetadata.builder()
+                .groundingChunks(List.of(webChunk("https://b.example")))
+                .groundingSupports(List.of(supportOf(0)))
+                .build()));
+
+        GroundingMetadata grounding = groundingOf(builder.build());
+
+        assertThat(grounding.groundingChunks())
+                .containsExactly(webChunk("https://a.example"), webChunk("https://b.example"));
+        assertThat(grounding.groundingSupports()).containsExactly(supportOf(0), supportOf(1));
+    }
+
+    @Test
+    void should_merge_url_context_metadata_reported_by_different_chunks() {
+        builder.append(chunkWithUrlContext(new GeminiUrlMetadata("https://a.example", URL_RETRIEVAL_STATUS_SUCCESS)));
+        builder.append(chunkWithUrlContext(new GeminiUrlMetadata("https://b.example", URL_RETRIEVAL_STATUS_SUCCESS)));
+
+        GoogleAiGeminiChatResponseMetadata metadata =
+                (GoogleAiGeminiChatResponseMetadata) builder.build().metadata();
+
+        assertThat(metadata.urlContextMetadata().urlMetadata())
+                .extracting(UrlContextMetadata.UrlMetadata::retrievedUrl)
+                .containsExactly("https://a.example", "https://b.example");
+    }
+
+    @Test
+    void should_report_the_latest_retrieval_status_of_a_url_repeated_across_chunks() {
+        builder.append(chunkWithUrlContext(new GeminiUrlMetadata("https://a.example", URL_RETRIEVAL_STATUS_ERROR)));
+        builder.append(chunkWithUrlContext(new GeminiUrlMetadata("https://a.example", URL_RETRIEVAL_STATUS_SUCCESS)));
+
+        GoogleAiGeminiChatResponseMetadata metadata =
+                (GoogleAiGeminiChatResponseMetadata) builder.build().metadata();
+
+        assertThat(metadata.urlContextMetadata().urlMetadata())
+                .containsExactly(new UrlContextMetadata.UrlMetadata(
+                        "https://a.example", URL_RETRIEVAL_STATUS_SUCCESS.toString()));
+    }
+
     private static GeminiPart imagePart(String base64Data) {
         return new GeminiPart(
                 null, new GeminiBlob("image/png", base64Data), null, null, null, null, null, null, null, null);
@@ -173,6 +262,29 @@ class GeminiStreamingResponseBuilderTest {
     private static GeminiGenerateContentResponse chunkWith(GeminiPart part) {
         GeminiContent content = new GeminiContent(List.of(part), "model");
         GeminiCandidate candidate = new GeminiCandidate(content, null, null, null);
+        return new GeminiGenerateContentResponse("id-1", "gemini-pro", List.of(candidate), null, null);
+    }
+
+    private static GroundingMetadata groundingOf(ChatResponse response) {
+        return ((GoogleAiGeminiChatResponseMetadata) response.metadata()).groundingMetadata();
+    }
+
+    private static GroundingChunk webChunk(String uri) {
+        return new GroundingChunk(new GroundingChunk.Web(uri, "title"), null, null);
+    }
+
+    private static GroundingSupport supportOf(int groundingChunkIndex) {
+        return new GroundingSupport(List.of(groundingChunkIndex), null, null);
+    }
+
+    private static GeminiGenerateContentResponse chunkGroundedWith(GroundingMetadata grounding) {
+        GeminiCandidate candidate = new GeminiCandidate(null, null, null, grounding);
+        return new GeminiGenerateContentResponse("id-1", "gemini-pro", List.of(candidate), null, null);
+    }
+
+    private static GeminiGenerateContentResponse chunkWithUrlContext(GeminiUrlMetadata urlMetadata) {
+        GeminiCandidate candidate =
+                new GeminiCandidate(null, null, new GeminiUrlContextMetadata(List.of(urlMetadata)), null);
         return new GeminiGenerateContentResponse("id-1", "gemini-pro", List.of(candidate), null, null);
     }
 }
