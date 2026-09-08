@@ -559,13 +559,20 @@ public final class AnthropicBatchChatModel implements BatchChatModel {
         }
 
         /**
-         * Controls how thinking is returned by the API, e.g. {@code "summarized"} or {@code "omitted"}.
+         * Controls whether the API returns readable thinking text next to the thinking signature:
+         * {@code "summarized"} returns a readable summary of the reasoning,
+         * {@code "omitted"} returns an empty thinking text and only the encrypted signature.
+         * <p>
+         * When this is not set, the API picks a default that depends on the model:
+         * recent Claude models default to {@code "omitted"}, older ones to {@code "summarized"}.
+         * Set it to {@code "summarized"} whenever the thinking text itself is needed.
          * <p>
          * Applies only when thinking is enabled via
          * {@link AnthropicChatRequestParameters.Builder#thinkingType(String)}.
          *
          * @param thinkingDisplay the thinking display mode
          * @return {@code this}
+         * @see <a href="https://platform.claude.com/docs/en/build-with-claude/thinking">Anthropic documentation</a>
          * @see #returnThinking(Boolean)
          */
         public Builder thinkingDisplay(String thinkingDisplay) {
@@ -579,9 +586,13 @@ public final class AnthropicBatchChatModel implements BatchChatModel {
          * Disabled by default. Unlike {@link AnthropicChatModel}, this is resolved once per model rather than per
          * request, because results are mapped in {@link #retrieve(String)}, which has no access to the originating
          * request.
+         * <p>
+         * Please note that {@link AiMessage#thinking()} stays empty when the API returns no thinking text,
+         * which is the default for recent Claude models. See {@link #thinkingDisplay(String)}.
          *
          * @param returnThinking whether to return thinking
          * @return {@code this}
+         * @see #thinkingDisplay(String)
          */
         public Builder returnThinking(Boolean returnThinking) {
             this.returnThinking = returnThinking;

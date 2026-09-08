@@ -60,6 +60,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
 
 class AnthropicMapperTest {
 
@@ -1058,11 +1059,50 @@ class AnthropicMapperTest {
 
     @Test
     void should_send_thinking_block_that_has_only_a_signature() {
-        // Given an assistant turn whose thinking text is empty and whose content lives entirely in the
-        // (encrypted) signature — what adaptive-thinking models return.
+        // given an assistant turn whose thinking text is empty and whose reasoning is carried entirely by the
+        // (encrypted) signature: this is what a model returns when "thinking.display" is "omitted",
+        // which is the default for claude-sonnet-5, claude-opus-5 and others
+        String signature = "EoAECpABCBEYAipARsBWFsXRge7q";
+
+        AnthropicContent thinking = AnthropicContent.builder()
+                .type("thinking")
+                .thinking("")
+                .signature(signature)
+                .build();
+
+        AnthropicContent toolUse = AnthropicContent.builder()
+                .type("tool_use")
+                .id("tool-1")
+                .name("getWeather")
+                .input(emptyMap())
+                .build();
+
+        AiMessage aiMessage = toAiMessage(asList(thinking, toolUse), true);
+        // "toAiMessage" turns the empty thinking text into null, so only the signature survives
+        assertThat(aiMessage.thinking()).isNull();
+        assertThat(aiMessage.attribute(THINKING_SIGNATURE_KEY, String.class)).isEqualTo(signature);
+
+        // when
+        List<AnthropicMessage> anthropicMessages = toAnthropicMessages(singletonList(aiMessage), true);
+
+        // then the block must still be echoed back: Anthropic requires the assistant turn to be sent back unchanged
+        assertThat(anthropicMessages).hasSize(1);
+        AnthropicMessageContent content = anthropicMessages.get(0).content.get(0);
+        assertThat(content).isInstanceOf(AnthropicThinkingContent.class);
+
+        AnthropicThinkingContent thinkingContent = (AnthropicThinkingContent) content;
+        // "" and not null: the field is required by the API and the class is @JsonInclude(NON_NULL)
+        assertThat(thinkingContent.thinking).isEmpty();
+        assertThat(thinkingContent.signature).isEqualTo(signature);
+    }
+
+    @Test
+    void should_send_thinking_block_that_has_only_a_signature_when_thinking_text_is_empty() {
+        // given an AiMessage that carries an empty instead of a null thinking text,
+        // for example one restored from a serialized chat memory
         AiMessage aiMessage = AiMessage.builder()
                 .thinking("")
-                .attributes(singletonMap(THINKING_SIGNATURE_KEY, "EoAECpABCBEYAipARsBWFsXRge7q"))
+                .attributes(singletonMap(THINKING_SIGNATURE_KEY, "sig-abc"))
                 .toolExecutionRequests(singletonList(ToolExecutionRequest.builder()
                         .id("tool-1")
                         .name("getWeather")
@@ -1070,18 +1110,16 @@ class AnthropicMapperTest {
                         .build()))
                 .build();
 
-        // When
+        // when
         List<AnthropicMessage> anthropicMessages = toAnthropicMessages(singletonList(aiMessage), true);
 
-        // Then the block must still be echoed back: Anthropic requires it for the next request of the turn.
-        assertThat(anthropicMessages).hasSize(1);
+        // then
         AnthropicMessageContent content = anthropicMessages.get(0).content.get(0);
         assertThat(content).isInstanceOf(AnthropicThinkingContent.class);
 
         AnthropicThinkingContent thinkingContent = (AnthropicThinkingContent) content;
-        // "" and not null: the field is required by the API and the class is @JsonInclude(NON_NULL).
         assertThat(thinkingContent.thinking).isEmpty();
-        assertThat(thinkingContent.signature).isEqualTo("EoAECpABCBEYAipARsBWFsXRge7q");
+        assertThat(thinkingContent.signature).isEqualTo("sig-abc");
     }
 
     @Test
@@ -1101,9 +1139,11 @@ class AnthropicMapperTest {
         assertThat(thinkingContent.signature).isEqualTo("sig-abc");
     }
 
-    @Test
-    void should_not_send_thinking_block_when_there_is_neither_text_nor_signature() {
-        AiMessage aiMessage = AiMessage.builder().text("Hello").thinking("").build();
+    @ParameterizedTest
+    @NullAndEmptySource
+    void should_not_send_thinking_block_when_there_is_neither_text_nor_signature(String thinking) {
+        AiMessage aiMessage =
+                AiMessage.builder().text("Hello").thinking(thinking).build();
 
         List<AnthropicMessage> anthropicMessages = toAnthropicMessages(singletonList(aiMessage), true);
 

@@ -3,6 +3,7 @@ package dev.langchain4j.model.anthropic.internal.mapper;
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
 import static dev.langchain4j.internal.ToolSpecificationUtils.isEffectivelyStrict;
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
@@ -227,15 +228,15 @@ public class AnthropicMapper {
         if (sendThinking) {
             String signature = message.attribute(THINKING_SIGNATURE_KEY, String.class);
             if (isNotNullOrBlank(message.thinking()) || isNotNullOrBlank(signature)) {
-                String thinking = message.thinking() != null ? message.thinking() : "";
-                contents.add(new AnthropicThinkingContent(thinking, signature));
+                // "thinking" is required by the API, so an empty string is sent when the model returned no text
+                contents.add(new AnthropicThinkingContent(getOrDefault(message.thinking(), ""), signature));
             }
-        }
 
-        if (sendThinking && message.attributes().containsKey(REDACTED_THINKING_KEY)) {
-            List<String> redactedThinkings = message.attribute(REDACTED_THINKING_KEY, List.class);
-            for (String redactedThinking : redactedThinkings) {
-                contents.add(new AnthropicRedactedThinkingContent(redactedThinking));
+            if (message.attributes().containsKey(REDACTED_THINKING_KEY)) {
+                List<String> redactedThinkings = message.attribute(REDACTED_THINKING_KEY, List.class);
+                for (String redactedThinking : redactedThinkings) {
+                    contents.add(new AnthropicRedactedThinkingContent(redactedThinking));
+                }
             }
         }
 
