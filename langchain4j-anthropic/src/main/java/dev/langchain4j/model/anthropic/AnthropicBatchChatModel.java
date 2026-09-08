@@ -6,6 +6,7 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.anthropic.InternalAnthropicHelper.validate;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAiMessage;
+import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toCacheDiagnostics;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toFinishReason;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toTokenUsage;
 import static java.util.Arrays.asList;
@@ -246,6 +247,7 @@ public final class AnthropicBatchChatModel implements BatchChatModel {
                 .modelName(response.model)
                 .tokenUsage(toTokenUsage(response.usage))
                 .finishReason(toFinishReason(response.stopReason))
+                .cacheDiagnostics(toCacheDiagnostics(response.diagnostics))
                 .build();
         return ChatResponse.builder()
                 .aiMessage(toAiMessage(response.content, returnThinking, returnServerToolResults))
