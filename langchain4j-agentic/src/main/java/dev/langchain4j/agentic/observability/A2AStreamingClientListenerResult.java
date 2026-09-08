@@ -18,7 +18,7 @@ package dev.langchain4j.agentic.observability;
  *
  * <p>Typical usage:
  * <pre>
-
+ *
  * // Continue consuming the streaming response
  * return A2AStreamingClientListenerResult.continueStreaming();
  *
@@ -27,11 +27,7 @@ package dev.langchain4j.agentic.observability;
  * return A2AStreamingClientListenerResult.stopWithResponse("Task accepted");
  * </pre>
  */
-
-public record A2AStreamingClientListenerResult(
-        boolean stop,
-        String response
-) {
+public record A2AStreamingClientListenerResult(boolean stop, String response) {
     /**
      * Creates a result that signals the streaming process should continue.
      *
