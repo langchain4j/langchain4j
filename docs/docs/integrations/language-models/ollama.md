@@ -310,6 +310,22 @@ OllamaChatModel ollamaChatModel = OllamaChatModel.builder()
 ```
 
 #### Usage Example with Spring Boot
+
+Import the Spring Boot starter for Ollama:
+```xml
+<dependency>
+    <groupId>dev.langchain4j</groupId>
+    <artifactId>langchain4j-ollama-spring-boot4-starter</artifactId>
+    <version>1.20.0-beta30</version>
+</dependency>
+```
+
+:::note
+This starter requires **Spring Boot 4**. On **Spring Boot 3**, use `langchain4j-ollama-spring-boot-starter` instead.
+See [Spring Boot Integration](/tutorials/spring-boot-integration#supported-versions) for details.
+:::
+
+Then configure the `OllamaChatModel` bean:
 ```properties
 langchain4j.ollama.chat-model.base-url=http://localhost:11434
 langchain4j.ollama.chat-model.model-name=llama3.1

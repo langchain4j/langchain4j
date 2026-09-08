@@ -824,10 +824,15 @@ Import Spring Boot starter for Anthropic:
 ```xml
 <dependency>
     <groupId>dev.langchain4j</groupId>
-    <artifactId>langchain4j-anthropic-spring-boot-starter</artifactId>
+    <artifactId>langchain4j-anthropic-spring-boot4-starter</artifactId>
     <version>1.20.0-beta30</version>
 </dependency>
 ```
+
+:::note
+This starter requires **Spring Boot 4**. On **Spring Boot 3**, use `langchain4j-anthropic-spring-boot-starter` instead.
+See [Spring Boot Integration](/tutorials/spring-boot-integration#supported-versions) for details.
+:::
 
 Configure `AnthropicChatModel` bean:
 ```
