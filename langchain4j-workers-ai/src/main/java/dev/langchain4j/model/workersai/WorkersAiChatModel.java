@@ -21,6 +21,7 @@ import dev.langchain4j.model.workersai.spi.WorkersAiChatModelBuilderFactory;
 import org.slf4j.Logger;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.stream.Collectors;
 
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
@@ -181,9 +182,9 @@ public class WorkersAiChatModel extends AbstractWorkersAIModel implements ChatMo
      * @param message inbound message
      * @return message for request
      */
-    private WorkersAiChatCompletionRequest.Message toMessage(ChatMessage message) {
+    static WorkersAiChatCompletionRequest.Message toMessage(ChatMessage message) {
         return new WorkersAiChatCompletionRequest.Message(
-                WorkersAiChatCompletionRequest.MessageRole.valueOf(message.type().name().toLowerCase()),
+                WorkersAiChatCompletionRequest.MessageRole.valueOf(message.type().name().toLowerCase(Locale.ROOT)),
                 toText(message)
         );
     }
