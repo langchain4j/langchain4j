@@ -139,11 +139,6 @@ public @interface Agent {
      *     </li>
      * </ul>
      *
-     * <p>
-     * If no typed output key is configured, {@link NoTypedKey} is used as
-     * the default sentinel value, indicating that the agent does not declare
-     * its output through a typed key.
-     * </p>
      *
      * @return the {@link TypedKey} class identifying the strongly typed
      *         output variable where the result of this agent invocation
