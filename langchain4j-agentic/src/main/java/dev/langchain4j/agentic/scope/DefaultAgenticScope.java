@@ -354,7 +354,7 @@ public class DefaultAgenticScope implements AgenticScope {
 
     @Override
     public List<AgentInvocation> agentInvocations() {
-        return agentInvocations;
+        return Collections.unmodifiableList(agentInvocations);
     }
 
     @Override
