@@ -628,11 +628,18 @@ and [adaptive thinking](https://platform.claude.com/docs/en/build-with-claude/ad
 It is controlled by the following parameters:
 - `thinkingType` and `thinkingBudgetTokens`: enable thinking,
   see more details [here](https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking).
-- `thinkingDisplay`: controls how thinking content is returned. Valid values are `"summarized"` and `"omitted"`.
+- `thinkingDisplay`: controls whether the API returns readable thinking text next to the thinking signature.
+  Valid values are `"summarized"` (thinking blocks contain a readable summary of the reasoning)
+  and `"omitted"` (thinking blocks contain an empty thinking text, only the encrypted signature is returned).
+  When it is not set, the API picks a default that depends on the model: recent Claude models default to `"omitted"`,
+  older ones to `"summarized"`, see [Anthropic documentation](https://platform.claude.com/docs/en/build-with-claude/thinking).
+  Set it to `"summarized"` whenever the thinking text itself is needed, for example in order to show it to the end user.
+  The model thinks and is billed the same way in both cases; only the visibility of the thinking text changes.
 - `returnThinking`: controls whether to return thinking (if available) inside `AiMessage.thinking()`
   and whether to invoke `StreamingChatResponseHandler.onPartialThinking()` and `TokenStream.onPartialThinking()`
-  callbacks when using `BedrockStreamingChatModel`.
-  Disabled by default. If enabled, tinking signatures will also be stored and returned inside the `AiMessage.attributes()`.
+  callbacks when using `AnthropicStreamingChatModel`.
+  Disabled by default. If enabled, thinking signatures will also be stored and returned inside the `AiMessage.attributes()`.
+  Please note that `AiMessage.thinking()` stays empty when the API returns no thinking text, see `thinkingDisplay` above.
 - `sendThinking`: controls whether to send thinking and signatures stored in `AiMessage` to the LLM in follow-up requests.
 Enabled by default.
 
@@ -640,7 +647,7 @@ In order to configure `effort` parameter, set `customParameters` when building t
 ```java
 ChatModel model = AnthropicChatModel.builder()
         .apiKey(System.getenv("ANTHROPIC_API_KEY"))
-        .modelName("claude-sonnet-4-7")
+        .modelName("claude-sonnet-5")
         .customParameters(Map.of("output_config", Map.of("effort", "max")))
         ...
         .build();
@@ -654,6 +661,20 @@ ChatModel model = AnthropicChatModel.builder()
         .thinkingType("enabled")
         .thinkingBudgetTokens(1024)
         .maxTokens(1024 + 100)
+        .returnThinking(true)
+        .sendThinking(true)
+        .build();
+```
+
+Recent Claude models return no thinking text unless `thinkingDisplay` asks for it,
+so `AiMessage.thinking()` is empty when it is not set:
+```java
+ChatModel model = AnthropicChatModel.builder()
+        .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+        .modelName("claude-sonnet-5")
+        .thinkingType("adaptive")
+        .thinkingDisplay("summarized")
+        .maxTokens(16000)
         .returnThinking(true)
         .sendThinking(true)
         .build();

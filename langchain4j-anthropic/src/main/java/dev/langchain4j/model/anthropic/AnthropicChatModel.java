@@ -572,13 +572,23 @@ public class AnthropicChatModel implements ChatModel {
         }
 
         /**
-         * Controls how thinking content is returned in the response.
+         * Controls whether the API returns readable thinking text next to the thinking signature.
          * <p>
-         * Valid values: {@code "summarized"} and {@code "omitted"}. On Claude Opus 4.7
-         * the server default is {@code "omitted"}; on earlier Opus/Sonnet models the
-         * default is {@code "summarized"}. Set to {@code "summarized"} explicitly on
-         * Opus 4.7+ to restore visible thinking text for UIs that render it.
+         * Valid values:
+         * <ul>
+         *     <li>{@code "summarized"}: thinking blocks contain a readable summary of the reasoning.</li>
+         *     <li>{@code "omitted"}: thinking blocks contain an empty thinking text,
+         *     only the encrypted signature is returned.</li>
+         * </ul>
+         * When this is not set, the API picks a default that depends on the model:
+         * recent Claude models default to {@code "omitted"}, older ones to {@code "summarized"}.
+         * Set it to {@code "summarized"} whenever the thinking text itself is needed,
+         * for example in order to show it to the end user.
+         * <p>
+         * The model thinks and is billed the same way in both cases;
+         * only the visibility of the thinking text changes.
          *
+         * @see <a href="https://platform.claude.com/docs/en/build-with-claude/thinking">Anthropic documentation</a>
          * @see #thinkingType(String)
          * @see #returnThinking(Boolean)
          */
@@ -596,9 +606,13 @@ public class AnthropicChatModel implements ChatModel {
          * Disabled by default.
          * If enabled, the thinking text will be stored within the {@link AiMessage} and may be persisted.
          * If enabled, thinking signatures will also be stored and returned inside the {@link AiMessage#attributes()}.
+         * <p>
+         * Please note that {@link AiMessage#thinking()} stays empty when the API returns no thinking text,
+         * which is the default for recent Claude models. See {@link #thinkingDisplay(String)}.
          *
          * @see #thinkingType(String)
          * @see #thinkingBudgetTokens(Integer)
+         * @see #thinkingDisplay(String)
          * @see #sendThinking(Boolean)
          */
         public AnthropicChatModelBuilder returnThinking(Boolean returnThinking) {
