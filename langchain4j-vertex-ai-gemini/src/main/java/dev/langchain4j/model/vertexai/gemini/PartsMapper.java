@@ -76,7 +76,7 @@ class PartsMapper {
         EXTENSION_TO_MIME_TYPE.put("avi", "video/avi");
         EXTENSION_TO_MIME_TYPE.put("flv", "video/x-flv");
         EXTENSION_TO_MIME_TYPE.put("webm", "video/webm");
-        EXTENSION_TO_MIME_TYPE.put("mmv", "video/wmv");
+        EXTENSION_TO_MIME_TYPE.put("wmv", "video/wmv");
         EXTENSION_TO_MIME_TYPE.put("3gpp", "video/3gpp");
 
         // see document understanding:
