@@ -63,34 +63,6 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
     private String request;
 
     /**
-     * Creates a standalone supervisor planner.
-     *
-     * <p>{@link SupervisorAgentServiceImpl} uses the overload that accepts a pre-built
-     * {@link Context.ContextSummarizer}, so planners created for separate invocations can share the
-     * builder-scoped summarizer.
-     */
-    public SupervisorPlanner(
-            ChatModel chatModel,
-            ChatMemoryProvider chatMemoryProvider,
-            int maxAgentsInvocations,
-            SupervisorContextStrategy contextStrategy,
-            SupervisorResponseStrategy responseStrategy,
-            Function<AgenticScope, String> requestGenerator,
-            String outputKey,
-            Function<AgenticScope, Object> output) {
-        this(
-                chatModel,
-                chatMemoryProvider,
-                maxAgentsInvocations,
-                contextStrategy,
-                responseStrategy,
-                requestGenerator,
-                outputKey,
-                output,
-                contextStrategy == SupervisorContextStrategy.CHAT_MEMORY ? null : Context.createSummarizer(chatModel));
-    }
-
-    /**
      * Creates a supervisor planner reusing a pre-built {@link Context.ContextSummarizer}, so that
      * planners created for separate invocations can share the same summarizer AI service.
      *
@@ -98,7 +70,7 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
      *         strategy other than {@link SupervisorContextStrategy#CHAT_MEMORY}) and
      *         {@code contextSummarizer} is {@code null}
      */
-    public SupervisorPlanner(
+    SupervisorPlanner(
             ChatModel chatModel,
             ChatMemoryProvider chatMemoryProvider,
             int maxAgentsInvocations,
