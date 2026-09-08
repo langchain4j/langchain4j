@@ -441,6 +441,97 @@ public class DefaultMcpClientTest {
     }
 
     @Test
+    public void should_report_a_tool_execution_timeout_as_an_error() {
+        final McpTransport transport = getMinimalMcpTransportMock();
+        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
+                .thenAnswer(invocation -> new CompletableFuture<>());
+
+        DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion("2025-11-25")
+                .toolExecutionTimeout(java.time.Duration.ofMillis(1))
+                .build();
+
+        ToolExecutionResult result = client.executeTool(
+                ToolExecutionRequest.builder().name("test").arguments("{}").build());
+
+        assertThat(result.isError()).isTrue();
+        assertThat(result.resultText()).isEqualTo("There was a timeout executing the tool");
+    }
+
+    @Test
+    public void should_report_a_tool_execution_timeout_as_an_error_on_the_reactive_path() throws Exception {
+        final McpTransport transport = getMinimalMcpTransportMock();
+        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
+                .thenAnswer(invocation -> new CompletableFuture<>());
+
+        DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion("2025-11-25")
+                .toolExecutionTimeout(java.time.Duration.ofMillis(1))
+                .build();
+
+        ToolExecutionResult result = client.executeToolAsync(
+                        ToolExecutionRequest.builder()
+                                .name("test")
+                                .arguments("{}")
+                                .build(),
+                        null)
+                .get();
+
+        assertThat(result.isError()).isTrue();
+        assertThat(result.resultText()).isEqualTo("There was a timeout executing the tool");
+    }
+
+    @Test
+    public void should_pass_the_error_flag_to_a_custom_tool_result_converter_on_timeout() {
+        final McpTransport transport = getMinimalMcpTransportMock();
+        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
+                .thenAnswer(invocation -> new CompletableFuture<>());
+
+        McpToolResultConverter converter = (content, isError) -> ToolExecutionResult.builder()
+                .resultText(String.valueOf(content.get(0).get("text")))
+                .isError(isError)
+                .build();
+
+        DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion("2025-11-25")
+                .toolExecutionTimeout(java.time.Duration.ofMillis(1))
+                .toolResultConverter(converter)
+                .build();
+
+        ToolExecutionResult result = client.executeTool(
+                ToolExecutionRequest.builder().name("test").arguments("{}").build());
+
+        assertThat(result.isError()).isTrue();
+        assertThat(result.resultText()).isEqualTo("There was a timeout executing the tool");
+    }
+
+    @Test
+    public void should_not_report_a_successful_tool_execution_as_an_error() {
+        final McpTransport transport = getMinimalMcpTransportMock();
+        ObjectNode toolResult = JsonNodeFactory.instance.objectNode();
+        toolResult
+                .putObject("result")
+                .putArray("content")
+                .addObject()
+                .put("type", "text")
+                .put("text", "ok");
+        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
+                .thenReturn(CompletableFuture.completedFuture(toolResult));
+
+        DefaultMcpClient client =
+                new DefaultMcpClient.Builder().transport(transport).build();
+
+        ToolExecutionResult result = client.executeTool(
+                ToolExecutionRequest.builder().name("test").arguments("{}").build());
+
+        assertThat(result.isError()).isFalse();
+        assertThat(result.resultText()).isEqualTo("ok");
+    }
+
+    @Test
     public void should_use_custom_tool_result_extractor_for_listener_application_level_error_path() throws Exception {
         final McpTransport transport = getMinimalMcpTransportMock();
         ObjectNode toolResult = JsonNodeFactory.instance.objectNode();
