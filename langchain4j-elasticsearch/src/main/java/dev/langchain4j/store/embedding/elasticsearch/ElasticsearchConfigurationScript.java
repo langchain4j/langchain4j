@@ -8,9 +8,10 @@ import co.elastic.clients.elasticsearch.core.SearchRequest;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
 import co.elastic.clients.elasticsearch.core.search.SourceConfig;
 import co.elastic.clients.json.JsonData;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.data.document.Metadata;
+import dev.langchain4j.internal.Json;
+import dev.langchain4j.internal.ProviderJson;
+import dev.langchain4j.internal.ProviderJsonSpec;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.filter.Filter;
 import java.io.IOException;
@@ -25,7 +26,7 @@ import java.io.IOException;
  * @see <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-script-score-query.html#vector-functions-cosine">vector-functions-cosine</a>
  */
 public class ElasticsearchConfigurationScript implements ElasticsearchConfiguration {
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final Json.JsonCodec codec = ProviderJson.codec(ProviderJsonSpec.builder().build());
     private final boolean includeVectorResponse;
 
     public static class Builder {
@@ -81,8 +82,7 @@ public class ElasticsearchConfigurationScript implements ElasticsearchConfigurat
                 Document.class);
     }
 
-    private ScriptScoreQuery buildDefaultScriptScoreQuery(float[] vector, float minScore, Filter filter)
-            throws JsonProcessingException {
+    private ScriptScoreQuery buildDefaultScriptScoreQuery(float[] vector, float minScore, Filter filter) {
         JsonData queryVector = toJsonData(vector);
         Query query;
         if (filter == null) {
@@ -97,7 +97,7 @@ public class ElasticsearchConfigurationScript implements ElasticsearchConfigurat
                         .params("query_vector", queryVector)));
     }
 
-    private <T> JsonData toJsonData(T rawData) throws JsonProcessingException {
-        return JsonData.fromJson(objectMapper.writeValueAsString(rawData));
+    private <T> JsonData toJsonData(T rawData) {
+        return JsonData.fromJson(codec.toJson(rawData));
     }
 }

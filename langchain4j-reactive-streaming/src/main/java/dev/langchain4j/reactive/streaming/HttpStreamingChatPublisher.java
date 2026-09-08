@@ -2,7 +2,6 @@ package dev.langchain4j.reactive.streaming;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.http.client.sse.HttpStreamingEvent;
-import dev.langchain4j.internal.DemandDecouplingPublisher;
 import dev.langchain4j.model.chat.response.ChatModelStreamingEvent;
 import java.util.concurrent.Flow.Publisher;
 import java.util.concurrent.Flow.Subscriber;
@@ -65,7 +64,7 @@ public final class HttpStreamingChatPublisher {
                 .withBackpressureStrategy(BackpressureStrategy.BUFFER)
                 .withBufferSize(bufferSize);
 
-        Publisher<ChatModelStreamingEvent> events = ZeroPublisher.create(config, tube -> {
+        return ZeroPublisher.create(config, tube -> {
             final Sink sink;
             final Publisher<HttpStreamingEvent> source;
             try {
@@ -107,7 +106,5 @@ public final class HttpStreamingChatPublisher {
                 }
             });
         });
-        // Wrapped so that downstream demand never reaches the tube: see DemandDecouplingPublisher.
-        return new DemandDecouplingPublisher<>(events, bufferSize);
     }
 }

@@ -1,6 +1,5 @@
 package dev.langchain4j.mcp.client;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.exception.ToolExecutionException;
@@ -25,7 +24,7 @@ class ToolExecutionHelper {
      * {@link ToolExecutionResult#attributes()} and are not sent to the LLM.
      */
     static ToolExecutionResult extractResult(
-            JsonNode response, boolean ignoreApplicationLevelErrors, McpToolResultConverter toolResultConverter) {
+            String response, boolean ignoreApplicationLevelErrors, McpToolResultConverter toolResultConverter) {
 
         McpCallToolResult.Result result =
                 McpJson.deserialize(response, McpCallToolResult.class).getResult();
