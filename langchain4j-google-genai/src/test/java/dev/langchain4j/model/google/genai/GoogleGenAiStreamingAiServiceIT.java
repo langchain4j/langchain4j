@@ -1,13 +1,13 @@
 package dev.langchain4j.model.google.genai;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.common.AbstractStreamingAiServiceIT;
 import java.util.List;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 @EnabledIfEnvironmentVariable(named = "GOOGLE_AI_GEMINI_API_KEY", matches = ".+")
 class GoogleGenAiStreamingAiServiceIT extends AbstractStreamingAiServiceIT {
@@ -30,5 +30,10 @@ class GoogleGenAiStreamingAiServiceIT extends AbstractStreamingAiServiceIT {
         // total token count can be more than input+output due to thinking/reasoning
         assertThat(tokenUsage.totalTokenCount())
                 .isGreaterThanOrEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+    }
+
+    @Override
+    protected Class<? extends TokenUsage> tokenUsageType(StreamingChatModel model) {
+        return GoogleGenAiTokenUsage.class;
     }
 }
