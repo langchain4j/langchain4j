@@ -46,7 +46,7 @@ public @interface Agent {
 
     /**
      * Strongly typed key of the output variable that will be used to store
-     * the result of this agent's invocation in the {@link AgenticScope}.
+     * the result of this agent's invocation in the {@link dev.langchain4j.agentic.scope.AgenticScope}.
      * <p>
      * This attribute provides a type-safe alternative to {@link #outputKey()}.
      * Instead of identifying the output variable using a {@link String},
