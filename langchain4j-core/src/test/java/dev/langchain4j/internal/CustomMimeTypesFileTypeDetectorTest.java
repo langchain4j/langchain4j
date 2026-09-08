@@ -389,6 +389,18 @@ class CustomMimeTypesFileTypeDetectorTest {
     }
 
     @Test
+    void should_return_a_mime_type_for_m4a() {
+        // given
+        CustomMimeTypesFileTypeDetector detector = new CustomMimeTypesFileTypeDetector();
+
+        // when
+        String mimeType = detector.probeContentType(Path.of("/foo/bar/voice.m4a"));
+
+        // then
+        assertThat(mimeType).isEqualTo("audio/m4a");
+    }
+
+    @Test
     void should_return_empty_extension_for_path_without_file_name() {
         // when/then
         assertThat(CustomMimeTypesFileTypeDetector.extension(Path.of("/"))).isEmpty();
