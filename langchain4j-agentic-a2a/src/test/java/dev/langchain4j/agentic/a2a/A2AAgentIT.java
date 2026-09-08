@@ -30,6 +30,7 @@ import dev.langchain4j.service.V;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.a2aproject.sdk.client.ClientBuilder;
+import org.a2aproject.sdk.client.TaskUpdateEvent;
 import org.a2aproject.sdk.client.transport.jsonrpc.JSONRPCTransport;
 import org.a2aproject.sdk.client.transport.jsonrpc.JSONRPCTransportConfigBuilder;
 import org.a2aproject.sdk.spec.Task;
