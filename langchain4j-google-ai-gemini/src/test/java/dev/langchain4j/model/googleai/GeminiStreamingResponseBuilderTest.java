@@ -35,7 +35,7 @@ class GeminiStreamingResponseBuilderTest {
 
     @Test
     void should_return_empty_when_candidates_is_null() {
-        GeminiGenerateContentResponse response = new GeminiGenerateContentResponse(null, null, null, null, null);
+        GeminiGenerateContentResponse response = new GeminiGenerateContentResponse(null, null, null, null, null, null);
 
         TextAndTools result = builder.append(response);
 
@@ -47,7 +47,7 @@ class GeminiStreamingResponseBuilderTest {
     @Test
     void should_return_empty_when_candidates_is_empty() {
         GeminiGenerateContentResponse response =
-                new GeminiGenerateContentResponse(null, null, Collections.emptyList(), null, null);
+                new GeminiGenerateContentResponse(null, null, Collections.emptyList(), null, null, null);
 
         TextAndTools result = builder.append(response);
 
@@ -61,9 +61,9 @@ class GeminiStreamingResponseBuilderTest {
         GeminiContent content = new GeminiContent(
                 List.of(new GeminiContent.GeminiPart("Hello", null, null, null, null, null, null, null, null, null)),
                 "model");
-        GeminiCandidate candidate = new GeminiCandidate(content, null, null, null);
+        GeminiCandidate candidate = new GeminiCandidate(content, null, null, null, null);
         GeminiGenerateContentResponse response =
-                new GeminiGenerateContentResponse("id-1", "gemini-pro", List.of(candidate), null, null);
+                new GeminiGenerateContentResponse("id-1", "gemini-pro", List.of(candidate), null, null, null);
 
         TextAndTools result = builder.append(response);
 
@@ -108,7 +108,12 @@ class GeminiStreamingResponseBuilderTest {
         GroundingMetadata grounding =
                 GroundingMetadata.builder().webSearchQueries(List.of("who won")).build();
         builder.append(new GeminiGenerateContentResponse(
-                "id-1", "gemini-pro", List.of(new GeminiCandidate(null, null, null, null)), null, grounding));
+                "id-1",
+                "gemini-pro",
+                List.of(new GeminiCandidate(null, null, null, null, null)),
+                null,
+                grounding,
+                null));
 
         GoogleAiGeminiChatResponseMetadata metadata =
                 (GoogleAiGeminiChatResponseMetadata) builder.build().metadata();
@@ -121,7 +126,12 @@ class GeminiStreamingResponseBuilderTest {
         GroundingMetadata grounding =
                 GroundingMetadata.builder().webSearchQueries(List.of("who won")).build();
         builder.append(new GeminiGenerateContentResponse(
-                "id-1", "gemini-pro", List.of(new GeminiCandidate(null, null, null, grounding)), null, null));
+                "id-1",
+                "gemini-pro",
+                List.of(new GeminiCandidate(null, null, null, grounding, null)),
+                null,
+                null,
+                null));
 
         GoogleAiGeminiChatResponseMetadata metadata =
                 (GoogleAiGeminiChatResponseMetadata) builder.build().metadata();
@@ -134,7 +144,12 @@ class GeminiStreamingResponseBuilderTest {
         GroundingMetadata grounding =
                 GroundingMetadata.builder().webSearchQueries(List.of("who won")).build();
         builder.append(new GeminiGenerateContentResponse(
-                "id-1", "gemini-pro", List.of(new GeminiCandidate(null, null, null, null)), null, grounding));
+                "id-1",
+                "gemini-pro",
+                List.of(new GeminiCandidate(null, null, null, null, null)),
+                null,
+                grounding,
+                null));
         builder.append(chunkWith(GeminiPart.ofText("the answer")));
 
         GoogleAiGeminiChatResponseMetadata metadata =
@@ -148,7 +163,12 @@ class GeminiStreamingResponseBuilderTest {
         GeminiUrlContextMetadata urlContext = new GeminiUrlContextMetadata(
                 List.of(new GeminiUrlMetadata("https://example.com", URL_RETRIEVAL_STATUS_SUCCESS)));
         builder.append(new GeminiGenerateContentResponse(
-                "id-1", "gemini-pro", List.of(new GeminiCandidate(null, null, urlContext, null)), null, null));
+                "id-1",
+                "gemini-pro",
+                List.of(new GeminiCandidate(null, null, urlContext, null, null)),
+                null,
+                null,
+                null));
 
         GoogleAiGeminiChatResponseMetadata metadata =
                 (GoogleAiGeminiChatResponseMetadata) builder.build().metadata();
@@ -261,8 +281,8 @@ class GeminiStreamingResponseBuilderTest {
 
     private static GeminiGenerateContentResponse chunkWith(GeminiPart part) {
         GeminiContent content = new GeminiContent(List.of(part), "model");
-        GeminiCandidate candidate = new GeminiCandidate(content, null, null, null);
-        return new GeminiGenerateContentResponse("id-1", "gemini-pro", List.of(candidate), null, null);
+        GeminiCandidate candidate = new GeminiCandidate(content, null, null, null, null);
+        return new GeminiGenerateContentResponse("id-1", "gemini-pro", List.of(candidate), null, null, null);
     }
 
     private static GroundingMetadata groundingOf(ChatResponse response) {
@@ -278,13 +298,13 @@ class GeminiStreamingResponseBuilderTest {
     }
 
     private static GeminiGenerateContentResponse chunkGroundedWith(GroundingMetadata grounding) {
-        GeminiCandidate candidate = new GeminiCandidate(null, null, null, grounding);
-        return new GeminiGenerateContentResponse("id-1", "gemini-pro", List.of(candidate), null, null);
+        GeminiCandidate candidate = new GeminiCandidate(null, null, null, grounding, null);
+        return new GeminiGenerateContentResponse("id-1", "gemini-pro", List.of(candidate), null, null, null);
     }
 
     private static GeminiGenerateContentResponse chunkWithUrlContext(GeminiUrlMetadata urlMetadata) {
         GeminiCandidate candidate =
-                new GeminiCandidate(null, null, new GeminiUrlContextMetadata(List.of(urlMetadata)), null);
-        return new GeminiGenerateContentResponse("id-1", "gemini-pro", List.of(candidate), null, null);
+                new GeminiCandidate(null, null, new GeminiUrlContextMetadata(List.of(urlMetadata)), null, null);
+        return new GeminiGenerateContentResponse("id-1", "gemini-pro", List.of(candidate), null, null, null);
     }
 }
