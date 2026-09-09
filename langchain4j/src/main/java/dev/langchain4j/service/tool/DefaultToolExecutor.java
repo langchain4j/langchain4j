@@ -1,5 +1,6 @@
 package dev.langchain4j.service.tool;
 
+import static dev.langchain4j.agent.tool.ToolSpecifications.toolNameFrom;
 import static dev.langchain4j.internal.Exceptions.unwrapRuntimeException;
 import static dev.langchain4j.internal.Utils.allConcreteMethods;
 import static dev.langchain4j.internal.Utils.getAnnotatedMethod;
@@ -63,8 +64,9 @@ public class DefaultToolExecutor implements ToolExecutor {
     public DefaultToolExecutor(Object object, ToolExecutionRequest toolExecutionRequest) {
         this.object = ensureNotNull(object, "object");
         ensureNotNull(toolExecutionRequest, "toolExecutionRequest");
-        this.originalMethod = findMethod(object, toolExecutionRequest);
-        this.methodToInvoke = this.originalMethod;
+        ResolvedMethod resolvedMethod = findMethod(object, toolExecutionRequest);
+        this.originalMethod = resolvedMethod.originalMethod();
+        this.methodToInvoke = resolvedMethod.methodToInvoke();
         this.wrapToolArgumentsExceptions = false;
         this.propagateToolExecutionExceptions = false;
     }
@@ -73,30 +75,32 @@ public class DefaultToolExecutor implements ToolExecutor {
         return originalMethod;
     }
 
-    private Method findMethod(Object object, ToolExecutionRequest toolExecutionRequest) {
-        String requestedMethodName = toolExecutionRequest.name();
+    private record ResolvedMethod(Method originalMethod, Method methodToInvoke) {}
+
+    private ResolvedMethod findMethod(Object object, ToolExecutionRequest toolExecutionRequest) {
+        String requestedToolName = toolExecutionRequest.name();
         List<Method> methods = allConcreteMethods(object.getClass());
 
-        // Tool specifications use @Tool(name) when present, so resolve custom names first.
         for (Method method : methods) {
             Optional<Method> annotatedMethod = getAnnotatedMethod(method, Tool.class);
-            if (annotatedMethod.isPresent()) {
-                Tool tool = annotatedMethod.get().getAnnotation(Tool.class);
-                if (isNotNullOrBlank(tool.name()) && tool.name().equals(requestedMethodName)) {
-                    return method;
-                }
+            if (annotatedMethod.isPresent()
+                    && toolNameFrom(annotatedMethod.get()).equals(requestedToolName)) {
+                // @Tool and @P can be declared on a supertype (interface, superclass, AOP proxy),
+                // so parameter names have to be read from the annotated method,
+                // while the concrete method is the one that gets invoked
+                return new ResolvedMethod(annotatedMethod.get(), method);
             }
         }
 
         for (Method method : methods) {
-            if (method.getName().equals(requestedMethodName)) {
-                return method;
+            if (method.getName().equals(requestedToolName)) {
+                return new ResolvedMethod(method, method);
             }
         }
 
         throw new IllegalArgumentException(String.format(
                 "Method '%s' is not found in object '%s'",
-                requestedMethodName, object.getClass().getName()));
+                requestedToolName, object.getClass().getName()));
     }
 
     /**
