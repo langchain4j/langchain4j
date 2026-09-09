@@ -1,6 +1,7 @@
 package dev.langchain4j.store.embedding.mariadb;
 
 import static dev.langchain4j.internal.Utils.*;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.*;
 
 import dev.langchain4j.data.document.Metadata;
@@ -17,8 +18,6 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import javax.sql.DataSource;
 import org.mariadb.jdbc.MariaDbDataSource;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * MariaDB EmbeddingStore Implementation
@@ -27,7 +26,6 @@ import org.slf4j.LoggerFactory;
  *
  */
 public class MariaDbEmbeddingStore implements EmbeddingStore<TextSegment> {
-    private static final Logger log = LoggerFactory.getLogger(MariaDbEmbeddingStore.class);
 
     /**
      * Datasource used to create the store
@@ -83,9 +81,7 @@ public class MariaDbEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     private String validateAndEnquoteIdentifier(String value, String defaultValue) {
-        return isNullOrEmpty(value)
-                ? defaultValue
-                : MariaDbValidator.validateAndEnquoteIdentifier(value, false);
+        return isNullOrEmpty(value) ? defaultValue : MariaDbValidator.validateAndEnquoteIdentifier(value, false);
     }
 
     /**
@@ -200,7 +196,9 @@ public class MariaDbEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     @Override
     public void removeAll(Collection<String> ids) {
-        ensureNotEmpty(ids, "ids");
+        if (isNullOrEmpty(ids)) {
+            return;
+        }
         try (Connection connection = datasource.getConnection();
                 Statement statement = connection.createStatement()) {
             // ensure ids are UUID to avoid injection
@@ -315,14 +313,10 @@ public class MariaDbEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     private void addAllInternal(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
-        if (isNullOrEmpty(ids) || isNullOrEmpty(embeddings)) {
-            log.info("Empty embeddings - no ops");
+        ensureConsistentSizes(ids, embeddings, embedded);
+        if (isNullOrEmpty(embeddings)) {
             return;
         }
-        ensureTrue(ids.size() == embeddings.size(), "ids size is not equal to embeddings size");
-        ensureTrue(
-                embedded == null || embeddings.size() == embedded.size(),
-                "embeddings size is not equal to embedded size");
 
         try (Connection connection = datasource.getConnection()) {
             String query = String.format(

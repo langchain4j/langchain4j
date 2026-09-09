@@ -15,8 +15,8 @@ and any other HTTP client can be integrated by implementing the `HttpClient` SPI
 Currently, there are the following out-of-the-box implementations:
 - `JdkHttpClient` from the `langchain4j-http-client-jdk` module.
 It is used by default when a supported module (e.g., `langchain4j-open-ai`) is used.
-- `SpringRestClient` from the `langchain4j-http-client-spring-restclient`/`langchain4j-http-client-spring-boot4-restclient` modules.
-It is used by default when a supported module's Spring Boot starter (e.g., `langchain4j-open-ai-spring-boot-starter`/`langchain4j-open-ai-spring-boot4-starter`) is used.
+- `SpringRestClient` from the `langchain4j-http-client-spring-boot4-restclient`/`langchain4j-http-client-spring-restclient` modules.
+It is used by default when a supported module's Spring Boot starter (e.g., `langchain4j-open-ai-spring-boot4-starter`/`langchain4j-open-ai-spring-boot-starter`) is used.
 - `ApacheHttpClient` from the `langchain4j-http-client-apache` module.
 - `OkHttpClient` from the `langchain4j-http-client-okhttp` module.
 
@@ -35,6 +35,13 @@ OpenAiChatModel model = OpenAiChatModel.builder()
         .modelName("gpt-4o-mini")
         .build();
 ```
+
+:::note
+An `HttpClient` implementation can also provide non-blocking counterparts: `executeAsync(...)` for a single
+response and `stream(...)` for a cold `Flow.Publisher` of parsed server-sent events. The bundled JDK, OkHttp and
+Apache clients implement both.
+See [Non-blocking and Reactive](/tutorials/non-blocking).
+:::
 
 ## Customizing Spring's `RestClient`
 

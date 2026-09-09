@@ -15,7 +15,6 @@ import java.io.InputStream;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.lang.reflect.Proxy;
 import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URL;
@@ -23,9 +22,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Collection;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.HexFormat;
@@ -544,8 +545,12 @@ public class Utils {
 
     /**
      * Returns the method eventually annotated with the given annotation.
-     * It could be the method itself or, if the method belongs to a proxy,
-     * a method from one of the interfaces implemented by the proxy.
+     * It could be the method itself or, if the method overrides or implements an annotated one,
+     * the annotated method with the same signature from one of the supertypes.
+     * <p>
+     * Searching the supertypes is required because Java does not inherit method annotations,
+     * so a method that is generated to override an annotated one (for example, by a JDK proxy
+     * or by a class-based proxy such as CGLIB or Byte Buddy) does not carry the annotation itself.
      *
      * @param method     The method to check for the annotation.
      * @param annotation The annotation to look for.
@@ -557,19 +562,34 @@ public class Utils {
             return Optional.of(method);
         }
 
-        if (Proxy.isProxyClass(method.getDeclaringClass())) {
-            for (Class<?> iface : method.getDeclaringClass().getInterfaces()) {
-                try {
-                    Method interfaceMethod = iface.getMethod(method.getName(), method.getParameterTypes());
-                    if (interfaceMethod.isAnnotationPresent(annotation)) {
-                        return Optional.of(interfaceMethod);
-                    }
-                } catch (NoSuchMethodException e) {
-                    // Ignore and continue searching in the next interface
+        Set<Class<?>> visited = new HashSet<>();
+        Deque<Class<?>> supertypes = new ArrayDeque<>();
+        addSupertypes(method.getDeclaringClass(), supertypes, visited);
+        while (!supertypes.isEmpty()) {
+            Class<?> supertype = supertypes.poll();
+            try {
+                Method supertypeMethod = supertype.getDeclaredMethod(method.getName(), method.getParameterTypes());
+                if (supertypeMethod.isAnnotationPresent(annotation)) {
+                    return Optional.of(supertypeMethod);
                 }
+            } catch (NoSuchMethodException e) {
+                // Ignore and continue searching in the next supertype
             }
+            addSupertypes(supertype, supertypes, visited);
         }
         return Optional.empty();
+    }
+
+    private static void addSupertypes(Class<?> clazz, Deque<Class<?>> supertypes, Set<Class<?>> visited) {
+        Class<?> superclass = clazz.getSuperclass();
+        if (superclass != null && superclass != Object.class && visited.add(superclass)) {
+            supertypes.add(superclass);
+        }
+        for (Class<?> iface : clazz.getInterfaces()) {
+            if (visited.add(iface)) {
+                supertypes.add(iface);
+            }
+        }
     }
 
     private record MethodSignature(String name, List<Class<?>> params) {}

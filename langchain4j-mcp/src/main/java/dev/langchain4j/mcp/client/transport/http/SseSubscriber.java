@@ -1,7 +1,5 @@
 package dev.langchain4j.mcp.client.transport.http;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
 import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Flow;
@@ -16,7 +14,7 @@ class SseSubscriber implements Flow.Subscriber<String> {
      * Future for the result of the operation that this SSE subscriber was created for.
      * If this is a subsidiary SSE subscriber for the long-lived GET channel (therefore, no operation), this will be null.
      */
-    private final CompletableFuture<JsonNode> future;
+    private final CompletableFuture<String> future;
 
     private final Logger logger;
     private final boolean logResponses;
@@ -32,7 +30,7 @@ class SseSubscriber implements Flow.Subscriber<String> {
      * Constructor for a regular (non-subsidiary) SSE subscriber, used for POST response streams.
      */
     SseSubscriber(
-            CompletableFuture<JsonNode> future,
+            CompletableFuture<String> future,
             boolean logResponses,
             McpOperationHandler operationHandler,
             Logger logger,
@@ -93,15 +91,20 @@ class SseSubscriber implements Flow.Subscriber<String> {
 
     @Override
     public void onNext(String item) {
+        if (future != null && future.isCancelled()) {
+            // the operation was cancelled (e.g. by unsubscribeFromResources), so events that are
+            // still in flight on this stream must not reach the operation handler anymore
+            return;
+        }
         if (logResponses && !item.trim().isEmpty()) {
             logger.info("SSE event received: " + item);
         }
         subscription.request(1);
         if (item.startsWith("data:")) {
             try {
-                operationHandler.handle(StreamableHttpMcpTransport.OBJECT_MAPPER.readTree(item.substring(5)));
-            } catch (JsonProcessingException e) {
-                logger.warn("Failed to parse SSE event: " + item, e);
+                operationHandler.onMessage(item.substring(5));
+            } catch (RuntimeException e) {
+                logger.warn("Failed to handle SSE event: " + item, e);
             }
         } else if (item.startsWith("id:") && lastEventId != null) {
             lastEventId.set(item.substring(3).trim());

@@ -2,9 +2,8 @@ package dev.langchain4j.store.embedding.elasticsearch;
 
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.randomUUID;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
+import static dev.langchain4j.internal.ValidationUtils.ensureConsistentSizes;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 
@@ -256,7 +255,9 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
 
     @Override
     public void removeAll(Collection<String> ids) {
-        ensureNotEmpty(ids, "ids");
+        if (isNullOrEmpty(ids)) {
+            return;
+        }
         removeByIds(ids);
     }
 
@@ -292,14 +293,10 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
 
     @Override
     public void addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
-        if (isNullOrEmpty(ids) || isNullOrEmpty(embeddings)) {
-            log.info("[do not add empty embeddings to elasticsearch]");
+        ensureConsistentSizes(ids, embeddings, embedded);
+        if (isNullOrEmpty(embeddings)) {
             return;
         }
-        ensureTrue(ids.size() == embeddings.size(), "ids size is not equal to embeddings size");
-        ensureTrue(
-                embedded == null || embeddings.size() == embedded.size(),
-                "embeddings size is not equal to embedded size");
 
         try {
             bulkIndex(ids, embeddings, embedded);

@@ -3,6 +3,7 @@ package dev.langchain4j.model.openaiofficial;
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
 import static dev.langchain4j.internal.ToolSpecificationUtils.isEffectivelyStrict;
+import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.chat.request.ResponseFormat.JSON;
 import static dev.langchain4j.model.chat.request.ResponseFormatType.TEXT;
@@ -45,6 +46,7 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.ContentFilteredException;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
@@ -94,7 +96,7 @@ class InternalOpenAiOfficialHelper {
 
             if (!aiMessage.hasToolExecutionRequests()) {
                 return ChatCompletionMessageParam.ofAssistant(ChatCompletionAssistantMessageParam.builder()
-                        .content(aiMessage.text())
+                        .content(aiMessage.text() != null ? aiMessage.text() : "")
                         .build());
             }
 
@@ -268,6 +270,12 @@ class InternalOpenAiOfficialHelper {
 
     static AiMessage aiMessageFrom(ChatCompletion chatCompletion) {
         ChatCompletionMessage assistantMessage = chatCompletion.choices().get(0).message();
+
+        String refusal = assistantMessage.refusal().orElse(null);
+        if (isNotNullOrBlank(refusal)) {
+            throw new ContentFilteredException(refusal);
+        }
+
         Optional<String> text = assistantMessage.content();
 
         Optional<List<ChatCompletionMessageToolCall>> toolCalls = assistantMessage.toolCalls();

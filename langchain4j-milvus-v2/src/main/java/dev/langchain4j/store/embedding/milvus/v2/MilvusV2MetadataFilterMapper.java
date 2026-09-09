@@ -46,10 +46,33 @@ class MilvusV2MetadataFilterMapper {
     }
 
     private static String mapContains(ContainsString containsString, String metadataFieldName) {
+        // ContainsString is a literal substring match (see Filter / ContainsString#test, which uses
+        // String#contains). Milvus LIKE treats % and _ as wildcards, so any % or _ in the user-supplied
+        // value must be escaped to be matched literally; only the surrounding % we add are real wildcards.
         return format(
                 "%s LIKE %s",
                 formatKey(containsString.key(), metadataFieldName),
-                formatValue("%" + containsString.comparisonValue() + "%"));
+                formatLikePattern(containsString.comparisonValue()));
+    }
+
+    /**
+     * Builds a quoted Milvus LIKE pattern that matches the given value as a literal substring. The value's
+     * own LIKE wildcards ({@code %} and {@code _}) are escaped so they are matched literally, while the
+     * surrounding {@code %} characters remain wildcards for the "contains" semantics.
+     *
+     * <p>Milvus resolves backslash escapes twice: once when reading the string literal out of the filter
+     * expression, and again when interpreting the LIKE pattern. A wildcard therefore needs two backslashes
+     * in the expression we send so that a single one reaches the pattern; a single backslash makes the
+     * server reject the whole expression with a parse error.
+     *
+     * <p>Two inputs are known not to work, because Milvus itself mis-parses them: a value ending with
+     * {@code %}, and a value containing a backslash immediately before a {@code %} or {@code _}.
+     */
+    private static String formatLikePattern(String value) {
+        // escape() covers the string literal layer. A wildcard has to survive the LIKE pattern layer as
+        // well, so it gets two backslashes here and reaches the pattern with one.
+        String escaped = escape(value).replace("%", "\\\\%").replace("_", "\\\\_");
+        return "\"%" + escaped + "%\"";
     }
 
     private static String mapEqual(IsEqualTo isEqualTo, String metadataFieldName) {
@@ -111,14 +134,23 @@ class MilvusV2MetadataFilterMapper {
     }
 
     private static String formatKey(String key, String metadataFieldName) {
-        return metadataFieldName + "[\"" + key + "\"]";
+        return metadataFieldName + "[\"" + escape(key) + "\"]";
+    }
+
+    /**
+     * Escapes a string that is embedded into a double-quoted Milvus string literal. This applies both to
+     * metadata keys, which are embedded into the {@code metadata["..."]} accessor, and to string values.
+     * Without it, a key or value containing a double quote could break out of the literal and inject
+     * arbitrary Milvus filter expression syntax.
+     */
+    private static String escape(String value) {
+        // Escape backslashes first, then double quotes (Milvus treats backslash as the escape character)
+        return value.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 
     private static String formatValue(Object value) {
         if (value instanceof String stringValue) {
-            // Escape double quotes by replacing them with \"
-            final String escapedValue = stringValue.replace("\"", "\\\"");
-            return "\"" + escapedValue + "\"";
+            return "\"" + escape(stringValue) + "\"";
         } else if (value instanceof UUID) {
             return "\"" + value + "\"";
         } else {

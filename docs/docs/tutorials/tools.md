@@ -769,7 +769,7 @@ This way, the LLM has more information to decide whether or not to call the give
 
 ### Inheritance and tool discovery
 
-Concrete `@Tool`-annotated methods are inherited from superclasses and interfaces. When you pass a tool object to an AI Service, LangChain4j discovers `@Tool` methods from the object's class, all of its superclasses (up to, but excluding, `Object`), and `default` and `static` methods from implemented interfaces.
+When you pass a tool object to an AI Service, LangChain4j discovers `@Tool` methods from the object's class, all of its superclasses (up to, but excluding, `Object`), and `default` and `static` methods from implemented interfaces.
 
 ```java
 class BaseMathTools {
@@ -816,6 +816,38 @@ class ChildTools extends ParentTools {
 ```
 
 Here the LLM will see a single tool named `greet_formal` with description "Returns a formal greeting".
+
+A method is a tool also when it overrides or implements a `@Tool`-annotated method without repeating the annotation.
+This is handy when the tools are declared in an interface and implemented elsewhere:
+
+```java
+interface WeatherTools {
+
+    @Tool("Returns the weather in the given city")
+    String weather(String city);
+}
+
+class OpenMeteoWeatherTools implements WeatherTools {
+
+    @Override
+    public String weather(String city) {
+        return ...;
+    }
+}
+
+Assistant assistant = AiServices.builder(Assistant.class)
+    .chatModel(model)
+    .tools(new OpenMeteoWeatherTools()) // "weather" is available, described as declared in the interface
+    .build();
+```
+
+The LLM sees the `@Tool` annotation of the overridden method, unless the overriding method declares its own.
+
+This is also what makes tools work when the tool object is wrapped in a proxy,
+for example a Spring bean to which an `@Aspect`, `@Transactional` or `@Async` has been applied.
+Such a proxy is a generated subclass that overrides the tool methods, and Java does not copy method annotations
+into overriding methods, so the annotations are looked up on the class being proxied.
+Tools are invoked through the proxy, so interceptors and aspects still run.
 
 If a subclass declares a method with the same name as a parent method but with different parameters (an overload, not an override), both methods are discovered. Since tool names must be unique and default to the method name, you must give at least one of them an explicit name:
 
@@ -1534,6 +1566,14 @@ Like `IMMEDIATE`, `IMMEDIATE_IF_LAST` is only allowed on AI services with a `Res
 
 ### Error Handling
 
+:::note
+The defaults below apply to the synchronous and `TokenStream` modes. In the asynchronous and reactive modes they
+are **reversed**: a tool *execution* error fails the invocation instead of being sent to the LLM, and a tool
+*argument-parse* error is sent to the LLM instead of failing the invocation. A handler you configure explicitly is
+used by every mode. See [Non-blocking and Reactive](/tutorials/non-blocking#tool-errors).
+:::
+
+
 #### Handling Tool Name Errors
 
 It may happen that an LLM hallucinates on tools invocation,
@@ -1815,6 +1855,15 @@ in future releases.
 
 You can also import [tools from MCP server](https://modelcontextprotocol.io/docs/concepts/tools).
 More information on this can be found [here](/tutorials/mcp/#creating-an-mcp-tool-provider).
+
+:::note
+In the asynchronous and reactive AI Service modes, tools behave differently: they always run on an `Executor`
+and therefore **execute concurrently by default** (pass a single-threaded `Executor` to
+`executeToolsConcurrently(Executor)` to serialize them), a tool **execution** error fails the invocation while a
+tool **argument-parse** error is sent back to the LLM, and a hand-written `ToolExecutor` should implement
+`executeAsync(...)` or it will fail loudly rather than block a thread.
+See [Non-blocking and Reactive](/tutorials/non-blocking).
+:::
 
 ## Related Tutorials
 

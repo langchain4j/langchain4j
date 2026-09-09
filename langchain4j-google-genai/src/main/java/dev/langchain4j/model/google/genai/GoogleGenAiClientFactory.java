@@ -46,7 +46,9 @@ class GoogleGenAiClientFactory {
             }
             if (projectId != null) clientBuilder.project(projectId);
             if (location != null) clientBuilder.location(location);
-        } else if (apiKey != null) {
+        }
+
+        if (apiKey != null) {
             clientBuilder.apiKey(apiKey);
         }
 

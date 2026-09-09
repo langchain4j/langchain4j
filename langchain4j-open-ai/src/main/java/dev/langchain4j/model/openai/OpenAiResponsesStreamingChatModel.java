@@ -8,6 +8,7 @@ import static java.util.Arrays.asList;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.model.openai.internal.OpenAiClient;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.Capability;
@@ -19,9 +20,12 @@ import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.chat.response.ChatModelStreamingEvent;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.Flow.Publisher;
+import java.util.function.Supplier;
 
 @Experimental
 public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
@@ -38,6 +42,8 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
                 .organizationId(builder.organizationId)
                 .logRequests(builder.logRequests)
                 .logResponses(builder.logResponses)
+                .streamingBufferSize(builder.streamingBufferSize)
+                .customHeaders(builder.customHeadersSupplier)
                 .build();
 
         ChatRequestParameters commonParameters;
@@ -96,6 +102,14 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
         OpenAiResponsesChatRequestParameters parameters =
                 (OpenAiResponsesChatRequestParameters) chatRequest.parameters();
         client.streamingChat(chatRequest, parameters, handler);
+    }
+
+    @Override
+    public Publisher<ChatModelStreamingEvent> doChat(ChatRequest chatRequest) {
+        validate(chatRequest.parameters());
+        OpenAiResponsesChatRequestParameters parameters =
+                (OpenAiResponsesChatRequestParameters) chatRequest.parameters();
+        return client.streamingChatPublisher(chatRequest, parameters);
     }
 
     private static void validate(final ChatRequestParameters parameters) {
@@ -170,6 +184,8 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
         private Boolean logResponses;
         private List<ChatModelListener> listeners;
         private ChatRequestParameters defaultRequestParameters;
+        private Integer streamingBufferSize;
+        private Supplier<Map<String, String>> customHeadersSupplier;
 
         public Builder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
             this.httpClientBuilder = httpClientBuilder;
@@ -188,6 +204,17 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
 
         public Builder organizationId(String organizationId) {
             this.organizationId = organizationId;
+            return this;
+        }
+
+        /**
+         * Sets the size of the bounded back-pressure buffer for the reactive streaming path. Defaults to
+         * {@value dev.langchain4j.model.openai.internal.OpenAiClient#DEFAULT_STREAMING_BUFFER_SIZE}.
+         * @since 1.20.0
+         */
+        @Experimental
+        public Builder streamingBufferSize(Integer streamingBufferSize) {
+            this.streamingBufferSize = streamingBufferSize;
             return this;
         }
 
@@ -347,6 +374,30 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
 
         public Builder listeners(ChatModelListener... listeners) {
             return listeners(asList(listeners));
+        }
+
+        /**
+         * Sets custom HTTP headers to be added to each HTTP request.
+         *
+         * @param customHeaders a map of headers
+         * @return {@code this}
+         */
+        public Builder customHeaders(Map<String, String> customHeaders) {
+            this.customHeadersSupplier = () -> customHeaders;
+            return this;
+        }
+
+        /**
+         * Sets a supplier for custom HTTP headers to be added to each HTTP request.
+         * The supplier is called before each request, allowing dynamic header values.
+         * For example, this is useful for OAuth2 tokens that expire and need refreshing.
+         *
+         * @param customHeadersSupplier a supplier that provides a map of headers
+         * @return {@code this}
+         */
+        public Builder customHeaders(Supplier<Map<String, String>> customHeadersSupplier) {
+            this.customHeadersSupplier = customHeadersSupplier;
+            return this;
         }
 
         public Builder defaultRequestParameters(ChatRequestParameters parameters) {

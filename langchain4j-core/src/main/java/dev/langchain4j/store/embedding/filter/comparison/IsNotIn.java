@@ -12,7 +12,7 @@ import java.util.UUID;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static dev.langchain4j.store.embedding.filter.comparison.NumberComparator.containsAsBigDecimals;
+import static dev.langchain4j.store.embedding.filter.comparison.NumberComparator.isIn;
 import static dev.langchain4j.store.embedding.filter.comparison.TypeChecker.ensureTypesAreCompatible;
 import static dev.langchain4j.store.embedding.filter.comparison.UUIDComparator.containsAsUUID;
 import static java.util.Collections.unmodifiableSet;
@@ -51,7 +51,7 @@ public class IsNotIn implements Filter {
         ensureTypesAreCompatible(actualValue, comparisonValues.iterator().next(), key);
 
         if (comparisonValues.iterator().next() instanceof Number) {
-            return !containsAsBigDecimals(actualValue, comparisonValues);
+            return !isIn(actualValue, comparisonValues);
         }
         if (comparisonValues.iterator().next() instanceof UUID) {
             return !containsAsUUID(actualValue, comparisonValues);

@@ -13,6 +13,7 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -27,6 +28,7 @@ import org.junit.jupiter.api.condition.EnabledOnJre;
  * - Ensure you have access to Claude models in Vertex AI Model Garden
  * - Authenticate with Google Cloud (gcloud auth application-default login)
  */
+@Disabled
 @EnabledIf(
         value = "dev.langchain4j.model.vertexai.anthropic.VertexAiAnthropicChatModelIT#isMonday",
         disabledReason = "Not enough quota to run it more often")

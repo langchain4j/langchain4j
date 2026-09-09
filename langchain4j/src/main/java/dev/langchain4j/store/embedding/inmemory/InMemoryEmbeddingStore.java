@@ -1,8 +1,8 @@
 package dev.langchain4j.store.embedding.inmemory;
 
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.randomUUID;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.nio.file.StandardOpenOption.CREATE;
@@ -12,6 +12,7 @@ import static java.util.Comparator.comparingDouble;
 import static java.util.stream.Collectors.toList;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import dev.langchain4j.Internal;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
@@ -21,6 +22,7 @@ import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
+import java.util.concurrent.CompletableFuture;
 import dev.langchain4j.store.embedding.RelevanceScore;
 import dev.langchain4j.store.embedding.filter.Filter;
 import java.io.BufferedInputStream;
@@ -122,7 +124,9 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
 
     @Override
     public void removeAll(Collection<String> ids) {
-        ensureNotEmpty(ids, "ids");
+        if (isNullOrEmpty(ids)) {
+            return;
+        }
         Set<String> idSet = (ids instanceof Set) ? (Set<String>) ids : new HashSet<>(ids);
 
         entries.removeIf(entry -> idSet.contains(entry.id));
@@ -188,6 +192,20 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
         Collections.reverse(result);
 
         return new EmbeddingSearchResult<>(result);
+    }
+
+    /**
+     * The in-memory search is a non-blocking, CPU-only operation, so this completes synchronously on the calling
+     * thread rather than offloading to an executor (overriding the default, which would needlessly hop threads).
+     * A failure is delivered through the returned future rather than thrown, honoring the async error contract.
+     */
+    @Override
+    public CompletableFuture<EmbeddingSearchResult<Embedded>> searchAsync(EmbeddingSearchRequest request) {
+        try {
+            return CompletableFuture.completedFuture(search(request));
+        } catch (Throwable t) {
+            return CompletableFuture.failedFuture(t);
+        }
     }
 
     public String serializeToJson() {
@@ -281,7 +299,14 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
         return false;
     }
 
-    static class Entry<Embedded> {
+    /**
+     * Public so that alternative JSON codecs, supplied through
+     * {@link dev.langchain4j.spi.store.embedding.inmemory.InMemoryEmbeddingStoreJsonCodecFactory},
+     * can describe how an entry is serialized without living in this package. It is not part of
+     * the supported API: its shape follows whatever this store persists.
+     */
+    @Internal
+    public static class Entry<Embedded> {
 
         String id;
         Embedding embedding;
@@ -314,6 +339,9 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
     }
 
     private static InMemoryEmbeddingStoreJsonCodec loadCodec() {
+        // Substituted by quarkus-langchain4j for native image (@TargetClass/@Substitute in its
+        // Substitutions), so this name and signature are depended on from outside despite being
+        // private. Renaming it breaks that build with no compile error here.
         for (InMemoryEmbeddingStoreJsonCodecFactory factory :
                 loadFactories(InMemoryEmbeddingStoreJsonCodecFactory.class)) {
             return factory.create();

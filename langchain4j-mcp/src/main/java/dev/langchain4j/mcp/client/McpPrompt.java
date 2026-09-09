@@ -1,5 +1,6 @@
 package dev.langchain4j.mcp.client;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import static dev.langchain4j.internal.Utils.copy;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -13,6 +14,7 @@ import java.util.Objects;
  * It describes a declaration of a prompt, not its actual contents.
  * It contains a name, description and a list of arguments relevant for rendering an instance of the prompt.
  */
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class McpPrompt {
 
     private final String name;

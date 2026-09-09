@@ -21,7 +21,9 @@ import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.Set;
+import java.util.function.Supplier;
 
 @Experimental
 public class OpenAiResponsesChatModel implements ChatModel {
@@ -38,6 +40,7 @@ public class OpenAiResponsesChatModel implements ChatModel {
                 .organizationId(builder.organizationId)
                 .logRequests(builder.logRequests)
                 .logResponses(builder.logResponses)
+                .customHeaders(builder.customHeadersSupplier)
                 .build();
 
         ChatRequestParameters commonParameters;
@@ -94,6 +97,18 @@ public class OpenAiResponsesChatModel implements ChatModel {
         OpenAiResponsesChatRequestParameters parameters =
                 (OpenAiResponsesChatRequestParameters) chatRequest.parameters();
         return client.chat(chatRequest, parameters);
+    }
+
+    /**
+     * @since 1.20.0
+     */
+    @Experimental
+    @Override
+    public CompletableFuture<ChatResponse> doChatAsync(ChatRequest chatRequest) {
+        validate(chatRequest.parameters());
+        OpenAiResponsesChatRequestParameters parameters =
+                (OpenAiResponsesChatRequestParameters) chatRequest.parameters();
+        return client.chatAsync(chatRequest, parameters);
     }
 
     private static void validate(final ChatRequestParameters parameters) {
@@ -167,6 +182,7 @@ public class OpenAiResponsesChatModel implements ChatModel {
         private Boolean logResponses;
         private List<ChatModelListener> listeners;
         private ChatRequestParameters defaultRequestParameters;
+        private Supplier<Map<String, String>> customHeadersSupplier;
 
         public Builder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
             this.httpClientBuilder = httpClientBuilder;
@@ -329,6 +345,30 @@ public class OpenAiResponsesChatModel implements ChatModel {
 
         public Builder listeners(ChatModelListener... listeners) {
             return listeners(asList(listeners));
+        }
+
+        /**
+         * Sets custom HTTP headers to be added to each HTTP request.
+         *
+         * @param customHeaders a map of headers
+         * @return {@code this}
+         */
+        public Builder customHeaders(Map<String, String> customHeaders) {
+            this.customHeadersSupplier = () -> customHeaders;
+            return this;
+        }
+
+        /**
+         * Sets a supplier for custom HTTP headers to be added to each HTTP request.
+         * The supplier is called before each request, allowing dynamic header values.
+         * For example, this is useful for OAuth2 tokens that expire and need refreshing.
+         *
+         * @param customHeadersSupplier a supplier that provides a map of headers
+         * @return {@code this}
+         */
+        public Builder customHeaders(Supplier<Map<String, String>> customHeadersSupplier) {
+            this.customHeadersSupplier = customHeadersSupplier;
+            return this;
         }
 
         public Builder defaultRequestParameters(ChatRequestParameters parameters) {

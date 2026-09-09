@@ -297,17 +297,17 @@ class BaseGeminiChatModel {
                 .build();
     }
 
-    private UrlContextMetadata toUrlContextMetadata(
+    static UrlContextMetadata toUrlContextMetadata(
             GeminiGenerateContentResponse.GeminiUrlContextMetadata geminiUrlContextMetadata) {
         if (geminiUrlContextMetadata == null || geminiUrlContextMetadata.urlMetadata() == null) {
             return null;
         }
         return new UrlContextMetadata(geminiUrlContextMetadata.urlMetadata().stream()
-                .map(this::toUrlMetadata)
+                .map(BaseGeminiChatModel::toUrlMetadata)
                 .toList());
     }
 
-    private UrlContextMetadata.UrlMetadata toUrlMetadata(
+    private static UrlContextMetadata.UrlMetadata toUrlMetadata(
             GeminiGenerateContentResponse.GeminiUrlMetadata geminiUrlMetadata) {
         if (geminiUrlMetadata == null) {
             return null;
