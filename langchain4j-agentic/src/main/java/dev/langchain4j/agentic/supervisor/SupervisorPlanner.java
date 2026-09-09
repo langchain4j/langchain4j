@@ -17,8 +17,11 @@ import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.service.AiServices;
+import dev.langchain4j.service.IllegalConfigurationException;
 import dev.langchain4j.service.ParameterNameResolver;
 import dev.langchain4j.service.memory.ChatMemoryAccess;
+import java.lang.reflect.Field;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -36,6 +39,7 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
             + "constraints, policies or preferences when creating the plan ";
 
     private final ChatModel chatModel;
+    private final Context.ContextSummarizer contextSummarizer;
 
     private final ChatMemoryProvider chatMemoryProvider;
 
@@ -58,7 +62,15 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
 
     private String request;
 
-    public SupervisorPlanner(
+    /**
+     * Creates a supervisor planner reusing a pre-built {@link Context.ContextSummarizer}, so that
+     * planners created for separate invocations can share the same summarizer AI service.
+     *
+     * @throws IllegalConfigurationException if {@code contextStrategy} requires summarization (any
+     *         strategy other than {@link SupervisorContextStrategy#CHAT_MEMORY}) and
+     *         {@code contextSummarizer} is {@code null}
+     */
+    SupervisorPlanner(
             ChatModel chatModel,
             ChatMemoryProvider chatMemoryProvider,
             int maxAgentsInvocations,
@@ -66,8 +78,14 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
             SupervisorResponseStrategy responseStrategy,
             Function<AgenticScope, String> requestGenerator,
             String outputKey,
-            Function<AgenticScope, Object> output) {
+            Function<AgenticScope, Object> output,
+            Context.ContextSummarizer contextSummarizer) {
+        if (contextStrategy != SupervisorContextStrategy.CHAT_MEMORY && contextSummarizer == null) {
+            throw new IllegalConfigurationException(
+                    "A ContextSummarizer is required for the " + contextStrategy + " context strategy.");
+        }
         this.chatModel = chatModel;
+        this.contextSummarizer = contextSummarizer;
         this.chatMemoryProvider = chatMemoryProvider;
         this.maxAgentsInvocations = maxAgentsInvocations;
         this.contextStrategy = contextStrategy;
@@ -122,7 +140,7 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
         return argumentDescription(arg.rawType(), arg.name());
     }
 
-    private static String argumentDescription(Class<?> type, String name) {
+    static String argumentDescription(Class<?> type, String name) {
         if (name == null) {
             return "";
         }
@@ -139,11 +157,34 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
                 ? Stream.of(type.getDeclaredConstructors()[0].getParameters())
                         .map(p -> argumentDescription(p.getType(), ParameterNameResolver.name(p)))
                         .collect(Collectors.joining(", "))
-                : Stream.of(type.getDeclaredFields())
+                : fieldsIncludingInherited(type).stream()
                         .map(f -> argumentDescription(f.getType(), f.getName()))
                         .collect(Collectors.joining(", "));
 
         return name + ": {" + fieldsDescription + "}";
+    }
+
+    private static List<Field> fieldsIncludingInherited(Class<?> type) {
+        List<Field> fields = new ArrayList<>();
+        collectFields(type, fields);
+        return List.copyOf(fields);
+    }
+
+    /**
+     * Collects the declared fields of {@code type} followed by those of its
+     * superclasses (up to, excluding, {@code Object}), so the supervisor's
+     * request context describes the whole state of an output POJO that extends
+     * a base class. A field redeclared in a subclass shadows the inherited one.
+     */
+    private static void collectFields(Class<?> type, List<Field> fields) {
+        if (type == null || type == Object.class) {
+            return;
+        }
+        collectFields(type.getSuperclass(), fields);
+        for (Field field : type.getDeclaredFields()) {
+            fields.removeIf(inherited -> inherited.getName().equals(field.getName()));
+            fields.add(field);
+        }
     }
 
     private Action nextSubagent(AgenticScope agenticScope, String lastResponse) {
@@ -252,7 +293,7 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
         if (chatMemoryProvider != null) {
             builder.chatMemoryProvider(chatMemoryProvider);
             if (contextStrategy != SupervisorContextStrategy.CHAT_MEMORY) {
-                builder.chatRequestTransformer(new Context.Summarizer(agenticScope, chatModel));
+                builder.chatRequestTransformer(Context.Summarizer.withSummarizer(agenticScope, contextSummarizer));
             }
         } else {
             switch (contextStrategy) {
@@ -261,11 +302,11 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
                     break;
                 case SUMMARIZATION:
                     builder.chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(2))
-                            .chatRequestTransformer(new Context.Summarizer(agenticScope, chatModel));
+                            .chatRequestTransformer(Context.Summarizer.withSummarizer(agenticScope, contextSummarizer));
                     break;
                 case CHAT_MEMORY_AND_SUMMARIZATION:
                     builder.chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(20))
-                            .chatRequestTransformer(new Context.Summarizer(agenticScope, chatModel));
+                            .chatRequestTransformer(Context.Summarizer.withSummarizer(agenticScope, contextSummarizer));
                     break;
             }
         }

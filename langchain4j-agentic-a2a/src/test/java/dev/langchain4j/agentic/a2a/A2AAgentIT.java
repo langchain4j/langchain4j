@@ -27,7 +27,6 @@ import dev.langchain4j.agentic.supervisor.SupervisorAgent;
 import dev.langchain4j.service.V;
 import java.util.List;
 import org.a2aproject.sdk.client.ClientBuilder;
-import org.a2aproject.sdk.client.config.ClientConfig;
 import org.a2aproject.sdk.client.transport.jsonrpc.JSONRPCTransport;
 import org.a2aproject.sdk.client.transport.jsonrpc.JSONRPCTransportConfigBuilder;
 import org.junit.jupiter.api.Disabled;
@@ -216,11 +215,97 @@ public class A2AAgentIT {
         assertThat(agenticScope.readState("score", 0.0)).isGreaterThanOrEqualTo(0.8);
     }
 
+    static final String SCORER_TENANT = "scorer";
+
+    /**
+     * URL of the scorer A2A agent card. The scorer is hosted at a sub-path on the same server,
+     * allowing the server to route to the correct agent implementation.
+     */
+    static final String SCORER_AGENT_CARD_URL = A2A_SERVER_URL;
+
+    /**
+     * A style-scorer agent hosted as an A2A service.
+     * <p>
+     * The {@code @A2ATenantId @V("tenant")} parameter is populated from the agentic scope:
+     * when the outer workflow seeds {@code "tenant" = "scorer"} into the scope, every call to
+     * this agent automatically carries that tenant on the outgoing {@link org.a2aproject.sdk.spec.MessageSendParams},
+     * routing the request to the correct tenant on a multi-tenant A2A server.
+     */
+    public interface TenantedA2AStyleScorer {
+
+        @Agent
+        double scoreStyle(@V("story") String story, @V("style") String style, @A2ATenantId @V("tenant") String tenant);
+    }
+
+    /**
+     * A workflow whose signature passes the tenant down into the agentic scope so that
+     * {@link TenantedA2AStyleScorer} can pick it up via {@code @A2ATenantId @V("tenant")}.
+     */
+    public interface StyledWriterWithTenant extends dev.langchain4j.agentic.scope.AgenticScopeAccess {
+
+        @Agent
+        ResultWithAgenticScope<String> writeStoryWithStyle(
+                @V("topic") String topic, @V("style") String style, @V("tenant") String tenant);
+    }
+
+    /**
+     * Integration test for a style-review pipeline where the scorer runs as a tenanted A2A agent.
+     *
+     * <p>The creative writer runs as an A2A agent at the default server endpoint; the style editor
+     * runs locally; the style scorer is an external A2A service reached via {@link #SCORER_AGENT_CARD_URL}.
+     * The tenant {@code "scorer"} is injected into the agentic scope by the outer
+     * {@link StyledWriterWithTenant} and flows automatically to the scorer via
+     * {@code @A2ATenantId @V("tenant")}.
+     *
+     * <p>Requires: A2A server running on port 8080 with:
+     * <ul>
+     *   <li>a creative writer agent at the default endpoint ({@code /.well-known/agent-card.json})</li>
+     *   <li>a scorer agent reachable at {@code /.well-known/scorer/agent-card.json}</li>
+     * </ul>
+     */
+    @Test
+    @Disabled("Requires A2A server with scorer endpoint at /.well-known/scorer/agent-card.json and")
+    void a2a_agent_with_tenanted_scorer() {
+        TenantedA2AStyleScorer styleScorer = new DefaultA2AClientBuilder<>(
+                        SCORER_AGENT_CARD_URL, TenantedA2AStyleScorer.class, SCORER_TENANT)
+                .outputKey("score")
+                .build();
+
+        DeclarativeA2ACreativeWriter creativeWriter =
+                AgenticServices.createAgenticSystem(DeclarativeA2ACreativeWriter.class, baseModel());
+
+        StyleEditor styleEditor = AgenticServices.agentBuilder(StyleEditor.class)
+                .chatModel(baseModel())
+                .outputKey("story")
+                .build();
+
+        UntypedAgent styleReviewLoop = AgenticServices.loopBuilder()
+                .subAgents(styleScorer, styleEditor)
+                .maxIterations(5)
+                .exitCondition(agenticScope -> agenticScope.readState("score", 0.0) >= 0.8)
+                .build();
+
+        StyledWriterWithTenant styledWriter = AgenticServices.sequenceBuilder(StyledWriterWithTenant.class)
+                .subAgents(creativeWriter, styleReviewLoop)
+                .outputKey("story")
+                .build();
+
+        ResultWithAgenticScope<String> result =
+                styledWriter.writeStoryWithStyle("dragons and wizards", "comedy", SCORER_TENANT);
+        String story = result.result();
+
+        AgenticScope agenticScope = result.agenticScope();
+        assertThat(story).isEqualTo(agenticScope.readState("story"));
+        assertThat(agenticScope.readState("score", 0.0)).isGreaterThanOrEqualTo(0.8);
+    }
+
     static final String A2A_ECHO_SERVER_URL = "http://localhost:8081";
 
     public interface EchoWithAgenticScopAgent {
 
-        @A2AClientAgent(a2aServerUrl = A2A_ECHO_SERVER_URL, outputKey = "response",
+        @A2AClientAgent(
+                a2aServerUrl = A2A_ECHO_SERVER_URL,
+                outputKey = "response",
                 description = "Echo agent for testing contextId/taskId propagation")
         ResultWithAgenticScope<String> echo(
                 @V("question") String question,
@@ -243,8 +328,8 @@ public class A2AAgentIT {
     @Test
     @Disabled("Requires a2a-echo-server to be running on port 8081")
     void a2a_client_agent_should_propagate_contextId_and_taskId_on_message_envelope() {
-        EchoWithAgenticScopAgent echoAgent = AgenticServices
-                .a2aBuilder(A2A_ECHO_SERVER_URL, EchoWithAgenticScopAgent.class)
+        EchoWithAgenticScopAgent echoAgent = AgenticServices.a2aBuilder(
+                        A2A_ECHO_SERVER_URL, EchoWithAgenticScopAgent.class)
                 .outputKey("response")
                 .build();
 
@@ -262,7 +347,8 @@ public class A2AAgentIT {
 
         // SECOND TURN: pass the server-generated IDs to continue the conversation
         // Without the fix this throws TaskNotFoundError because the IDs end up as TextParts
-        ResultWithAgenticScope<String> secondResult = echoAgent.echo("follow-up question", serverContextId, serverTaskId);
+        ResultWithAgenticScope<String> secondResult =
+                echoAgent.echo("follow-up question", serverContextId, serverTaskId);
         System.out.println("Second response: " + secondResult.result());
 
         // The server should resolve to the same context and task
@@ -274,11 +360,14 @@ public class A2AAgentIT {
 
     public interface EchoAgent {
 
-        @A2AClientAgent(a2aServerUrl = A2A_ECHO_SERVER_URL, outputKey = "response",
+        @A2AClientAgent(
+                a2aServerUrl = A2A_ECHO_SERVER_URL,
+                outputKey = "response",
                 description = "Echo sub-agent for multi-turn workflow")
-        String echo(@V("question") String question,
-                    @A2AContextId @V("contextId") String contextId,
-                    @A2ATaskId @V("taskId") String taskId);
+        String echo(
+                @V("question") String question,
+                @A2AContextId @V("contextId") String contextId,
+                @A2ATaskId @V("taskId") String taskId);
     }
 
     public interface MultiTurnWorkflow extends AgenticScopeAccess {
@@ -302,13 +391,11 @@ public class A2AAgentIT {
     @Test
     @Disabled("Requires a2a-echo-server to be running on port 8081")
     void a2a_multi_turn_sequence_should_propagate_contextId_and_taskId_through_scope() {
-        EchoAgent firstTurn = AgenticServices
-                .a2aBuilder(A2A_ECHO_SERVER_URL, EchoAgent.class)
+        EchoAgent firstTurn = AgenticServices.a2aBuilder(A2A_ECHO_SERVER_URL, EchoAgent.class)
                 .outputKey("firstResponse")
                 .build();
 
-        EchoAgent secondTurn = AgenticServices
-                .a2aBuilder(A2A_ECHO_SERVER_URL, EchoAgent.class)
+        EchoAgent secondTurn = AgenticServices.a2aBuilder(A2A_ECHO_SERVER_URL, EchoAgent.class)
                 .outputKey("secondResponse")
                 .build();
 

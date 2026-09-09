@@ -1,8 +1,6 @@
 package dev.langchain4j.model.anthropic.internal.api;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
 
 /**
  * Metadata for a batch job returned by the Anthropic Message Batches API
@@ -17,7 +15,6 @@ import com.fasterxml.jackson.databind.annotation.JsonNaming;
  * response fields are ignored via {@link JsonIgnoreProperties}.</p>
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
-@JsonNaming(SnakeCaseStrategy.class)
 public class AnthropicBatch {
 
     public String id;

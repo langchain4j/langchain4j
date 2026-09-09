@@ -37,6 +37,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.function.Consumer;
 import org.slf4j.Logger;
@@ -68,7 +69,7 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
     private final Map<String, String> labels;
     private final Consumer<GenerateContentConfig.Builder> generateContentConfigCustomizer;
 
-    private final ExecutorService executor;
+    private final Executor executor;
 
     private GoogleGenAiStreamingChatModel(Builder builder) {
         this.listeners = copy(builder.listeners);
@@ -123,7 +124,7 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
                 .cachedContent(getOrDefault(builder.cachedContent, genAiParameters.cachedContent()))
                 .build();
 
-        this.executor = getOrDefault(builder.executor, DefaultExecutorProvider::getDefaultExecutorService);
+        this.executor = getOrDefault(builder.executor, DefaultExecutorProvider::getDefaultExecutor);
     }
 
     @Override
@@ -172,7 +173,7 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
                 StringBuilder thinkingBuilder = new StringBuilder();
                 List<ToolExecutionRequest> toolRequests = new ArrayList<>();
                 Map<String, Object> attributes = new java.util.HashMap<>();
-                TokenUsage tokenUsage = new TokenUsage();
+                TokenUsage tokenUsage = GoogleGenAiTokenUsage.builder().build();
                 FinishReason finishReason = null;
                 GenerateContentResponse lastChunk = null;
 

@@ -84,12 +84,6 @@ public class WatsonxGatewayStreamingChatModelIT extends AbstractStreamingChatMod
     }
 
     @Override
-    protected boolean supportsStreamingCancellation() {
-        // The watsonx models do not expose a StreamingHandle that can stop an ongoing stream
-        return false;
-    }
-
-    @Override
     protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id) {
         verifyToolCall(handler, io, 0, id, "getWeather", "{\"city\": \"Munich\"}");
     }

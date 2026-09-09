@@ -18,7 +18,7 @@ This module enables execution of arbitrary Python/JavaScript code via GraalVM an
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-code-execution-engine-graalvm-polyglot</artifactId>
-    <version>1.19.0-beta29</version>
+    <version>1.20.0-beta30</version>
 </dependency>
 ```
 
@@ -28,6 +28,47 @@ This module enables execution of arbitrary Python/JavaScript code via GraalVM an
 - `GraalVmJavaScriptExecutionTool`
 - `GraalVmPythonExecutionEngine`
 - `GraalVmPythonExecutionTool`
+
+
+## Return Value
+
+`execute(String code)` returns a single string that contains both what the code printed
+to stdout and stderr and the value the code evaluated to.
+
+Code that only evaluates to a value returns that value:
+
+```java
+engine.execute("40 + 2");
+// 42
+```
+
+Code that only prints returns what was printed, prefixed with `Output:`:
+
+```java
+engine.execute("print('hello')");
+// Output:
+// hello
+```
+
+Code that does both returns the printed output followed by the value:
+
+```java
+engine.execute("print('hello')\n42");
+// Output:
+// hello
+// Result:
+// 42
+```
+
+Code that neither prints nor evaluates to a value returns an empty string:
+
+```java
+engine.execute("x = 1");
+// (empty string)
+```
+
+If the code fails, a `PolyglotException` is thrown
+and anything the code printed before failing is lost.
 
 
 ## Examples

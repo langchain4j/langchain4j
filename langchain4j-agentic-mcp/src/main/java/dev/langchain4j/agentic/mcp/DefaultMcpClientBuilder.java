@@ -1,11 +1,15 @@
 package dev.langchain4j.agentic.mcp;
 
 import static dev.langchain4j.agentic.observability.ComposedAgentListener.composeWithInherited;
+import static dev.langchain4j.internal.Utils.getAnnotatedMethod;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.UntypedAgent;
+import dev.langchain4j.agentic.declarative.McpClientAgent;
 import dev.langchain4j.agentic.internal.AgentInvoker;
+import dev.langchain4j.agentic.internal.AgentUtil;
 import dev.langchain4j.agentic.internal.InternalAgent;
 import dev.langchain4j.agentic.internal.McpClientBuilder;
 import dev.langchain4j.agentic.observability.AgentListener;
@@ -26,6 +30,7 @@ import java.lang.reflect.Type;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,6 +51,7 @@ public class DefaultMcpClientBuilder<T> implements McpClientBuilder<T>, Internal
 
     private String[] inputKeys;
     private Map<String, String> inputDescriptions = Map.of();
+    private List<AgentArgument> arguments = List.of();
     private String outputKey;
     private boolean async;
 
@@ -114,10 +120,29 @@ public class DefaultMcpClientBuilder<T> implements McpClientBuilder<T>, Internal
             }
         }
 
+        if (agentServiceClass == UntypedAgent.class) {
+            this.arguments = McpSchemaToType.arguments(params, inputKeys);
+        } else {
+            this.arguments = McpSchemaToType.mergeDescriptions(typedArguments(), inputDescriptions);
+        }
+
         Object agent = Proxy.newProxyInstance(
                 agentServiceClass.getClassLoader(), new Class<?>[] {agentServiceClass, McpClientInstance.class}, this);
 
         return (T) agent;
+    }
+
+    private List<AgentArgument> typedArguments() {
+        for (Method method : agentServiceClass.getMethods()) {
+            Optional<Method> agentMethod = getAnnotatedMethod(method, Agent.class);
+            if (agentMethod.isEmpty()) {
+                agentMethod = getAnnotatedMethod(method, McpClientAgent.class);
+            }
+            if (agentMethod.isPresent()) {
+                return AgentUtil.argumentsFromMethod(agentMethod.get());
+            }
+        }
+        return List.of();
     }
 
     private ToolSpecification findTool() {
@@ -269,7 +294,7 @@ public class DefaultMcpClientBuilder<T> implements McpClientBuilder<T>, Internal
 
     @Override
     public List<AgentArgument> arguments() {
-        return List.of();
+        return arguments;
     }
 
     @Override

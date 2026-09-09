@@ -46,6 +46,7 @@ abstract class WatsonxDeploymentChat extends WatsonxTextChatBase<DeploymentChatR
             List<ChatMessage> messages, List<Tool> tools, ChatRequestParameters parameters) {
 
         validateModelName(parameters);
+        validateModerations(parameters);
 
         return applyChatRequest(DeploymentChatRequest.builder().deploymentId(deploymentId), messages, tools, parameters)
                 .build();
@@ -59,6 +60,7 @@ abstract class WatsonxDeploymentChat extends WatsonxTextChatBase<DeploymentChatR
     private static WatsonxChatRequestParameters mergeParameters(Builder<?> builder) {
 
         validateModelName(builder.defaultRequestParameters);
+        validateModerations(builder.defaultRequestParameters);
 
         var target = WatsonxChatRequestParameters.builder();
         applyTextChatParameters(target, builder);
@@ -70,6 +72,13 @@ abstract class WatsonxDeploymentChat extends WatsonxTextChatBase<DeploymentChatR
         if (nonNull(parameters) && nonNull(parameters.modelName()))
             throw new UnsupportedFeatureException(
                     "The 'modelName' parameter is not supported, the deployment id defines the model to call");
+    }
+
+    private static void validateModerations(ChatRequestParameters parameters) {
+        if (parameters instanceof WatsonxChatRequestParameters watsonxParameters
+                && nonNull(watsonxParameters.moderations()))
+            throw new UnsupportedFeatureException(
+                    "The 'moderations' parameter is not supported by the on-demand deployments");
     }
 
     @SuppressWarnings("unchecked")

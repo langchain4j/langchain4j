@@ -153,7 +153,7 @@ public class ToolSpecifications {
      *
      * @param method the method annotated with @{@link Tool}.
      * @return the name of the tool.
-     * @since 1.20.0
+     * @since 1.21.0
      */
     public static String toolNameFrom(Method method) {
         Tool tool = method.getAnnotation(Tool.class);

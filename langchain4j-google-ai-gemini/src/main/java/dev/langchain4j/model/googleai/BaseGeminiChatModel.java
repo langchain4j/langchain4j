@@ -4,6 +4,7 @@ import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.googleai.FinishReasonMapper.fromGFinishReasonToFinishReason;
 import static dev.langchain4j.model.googleai.FunctionMapper.fromToolSpecsToGTools;
 import static dev.langchain4j.model.googleai.PartsAndContentsMapper.fromGPartsToAiMessage;
@@ -252,6 +253,10 @@ class BaseGeminiChatModel {
     }
 
     protected ChatResponse processResponse(GeminiGenerateContentResponse geminiResponse) {
+        if (isNullOrEmpty(geminiResponse.candidates())) {
+            return processBlockedPromptResponse(geminiResponse);
+        }
+
         GeminiCandidate firstCandidate = geminiResponse.candidates().get(0);
         AiMessage aiMessage = createAiMessage(firstCandidate);
 
@@ -275,8 +280,37 @@ class BaseGeminiChatModel {
                                 firstCandidate.urlContextMetadata() != null
                                         ? toUrlContextMetadata(firstCandidate.urlContextMetadata())
                                         : null)
+                        .safetyRatings(firstCandidate.safetyRatings())
+                        .promptSafetyRatings(promptSafetyRatings(geminiResponse))
+                        .blockReason(blockReason(geminiResponse))
                         .build())
                 .build();
+    }
+
+    private ChatResponse processBlockedPromptResponse(GeminiGenerateContentResponse geminiResponse) {
+        // Gemini returns no candidates at all when it refuses the prompt; the reason is in promptFeedback instead.
+        return ChatResponse.builder()
+                .aiMessage(createAiMessage(null))
+                .metadata(GoogleAiGeminiChatResponseMetadata.builder()
+                        .id(geminiResponse.responseId())
+                        .modelName(geminiResponse.modelVersion())
+                        .tokenUsage(
+                                geminiResponse.usageMetadata() != null
+                                        ? createTokenUsage(geminiResponse.usageMetadata())
+                                        : null)
+                        .finishReason(FinishReason.CONTENT_FILTER)
+                        .promptSafetyRatings(promptSafetyRatings(geminiResponse))
+                        .blockReason(blockReason(geminiResponse))
+                        .build())
+                .build();
+    }
+
+    private static List<GeminiSafetyRating> promptSafetyRatings(GeminiGenerateContentResponse response) {
+        return response.promptFeedback() != null ? response.promptFeedback().safetyRatings() : null;
+    }
+
+    private static String blockReason(GeminiGenerateContentResponse response) {
+        return response.promptFeedback() != null ? response.promptFeedback().blockReason() : null;
     }
 
     protected AiMessage createAiMessage(GeminiCandidate candidate) {
@@ -297,17 +331,17 @@ class BaseGeminiChatModel {
                 .build();
     }
 
-    private UrlContextMetadata toUrlContextMetadata(
+    static UrlContextMetadata toUrlContextMetadata(
             GeminiGenerateContentResponse.GeminiUrlContextMetadata geminiUrlContextMetadata) {
         if (geminiUrlContextMetadata == null || geminiUrlContextMetadata.urlMetadata() == null) {
             return null;
         }
         return new UrlContextMetadata(geminiUrlContextMetadata.urlMetadata().stream()
-                .map(this::toUrlMetadata)
+                .map(BaseGeminiChatModel::toUrlMetadata)
                 .toList());
     }
 
-    private UrlContextMetadata.UrlMetadata toUrlMetadata(
+    private static UrlContextMetadata.UrlMetadata toUrlMetadata(
             GeminiGenerateContentResponse.GeminiUrlMetadata geminiUrlMetadata) {
         if (geminiUrlMetadata == null) {
             return null;
