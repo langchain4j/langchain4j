@@ -44,7 +44,9 @@ class HypotheticalQuestionContentRetrieverTest {
                         Content.from(
                                 TextSegment.from("Original text", Metadata.from("source", "b.txt")),
                                 Map.of(SCORE, 0.7, EMBEDDING_ID, "id-3")));
-        assertThat(result.get(0).metadata()).containsEntry(SCORE, 0.9).containsEntry(EMBEDDING_ID, "id-1");
+        assertThat(result)
+                .extracting(Content::metadata)
+                .containsExactly(first.metadata(), sameTextFromAnotherSource.metadata());
         verify(delegate).retrieve(query);
     }
 

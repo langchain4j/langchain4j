@@ -21,6 +21,10 @@ import java.util.Map;
  * retrieve more candidates than this retriever's {@code maxResults}, as multiple questions can refer to the same
  * original segment.
  *
+ * <p>The delegate must return hypothetical-question segments with
+ * {@link HypotheticalQuestionTextSegmentTransformer#ORIGINAL_TEXT_METADATA_KEY}. Embedding stores that require
+ * metadata fields to be declared must persist that key and any metadata used to distinguish original segments.
+ *
  * <pre>{@code
  * ContentRetriever candidates = EmbeddingStoreContentRetriever.builder()
  *         .embeddingStore(embeddingStore)

@@ -20,6 +20,10 @@ import java.util.Map;
  *
  * <p>This is a one-to-many transformation. Use {@link #transformAll(List)} rather than
  * {@link #transform(TextSegment)}.
+ *
+ * <p>The response is interpreted as one question per non-blank line. Embedding stores that require metadata fields
+ * to be declared must persist {@link #ORIGINAL_TEXT_METADATA_KEY} and any metadata used to distinguish original
+ * segments.
  */
 public class HypotheticalQuestionTextSegmentTransformer implements TextSegmentTransformer {
 
@@ -82,6 +86,9 @@ public class HypotheticalQuestionTextSegmentTransformer implements TextSegmentTr
         String response = chatModel.chat(promptTemplate
                 .apply(Map.of("text", segment.text(), "numberOfQuestions", numberOfQuestions))
                 .text());
+        if (!isNotNullOrBlank(response)) {
+            return List.of();
+        }
         return response.lines()
                 .map(String::trim)
                 .filter(question -> isNotNullOrBlank(question))

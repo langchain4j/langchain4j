@@ -58,6 +58,24 @@ class HypotheticalQuestionTextSegmentTransformerTest {
     }
 
     @Test
+    void should_use_original_text_when_response_has_no_text() {
+
+        // given
+        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds(
+                AiMessage.builder().thinking("thinking only").build());
+        TextSegment segment = TextSegment.from("Original text");
+        TextSegmentTransformer transformer = new HypotheticalQuestionTextSegmentTransformer(chatModel);
+
+        // when
+        List<TextSegment> result = transformer.transformAll(List.of(segment));
+
+        // then
+        assertThat(result)
+                .containsExactly(
+                        TextSegment.from("Original text", Metadata.from(ORIGINAL_TEXT_METADATA_KEY, "Original text")));
+    }
+
+    @Test
     void should_reject_reserved_metadata_before_calling_chat_model() {
 
         // given
