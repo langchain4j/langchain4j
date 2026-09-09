@@ -65,9 +65,11 @@ class OllamaStreamingChatModelToolCallsTest {
                 "{\"function\":{\"name\":\"getTime\",\"arguments\":{\"state\":\"Texas\"}}}"));
 
         assertThat(completeToolCalls)
-                .extracting(completeToolCall ->
-                        completeToolCall.toolExecutionRequest().name())
-                .containsExactly("getWeather", "getTime");
+                .extracting(
+                        CompleteToolCall::index,
+                        completeToolCall ->
+                                completeToolCall.toolExecutionRequest().name())
+                .containsExactly(tuple(0, "getWeather"), tuple(1, "getTime"));
     }
 
     @Test
@@ -81,6 +83,23 @@ class OllamaStreamingChatModelToolCallsTest {
         assertThat(response.aiMessage().toolExecutionRequests())
                 .extracting(ToolExecutionRequest::name)
                 .containsExactly("getWeather", "getTime");
+        assertThat(completeToolCalls).extracting(CompleteToolCall::index).containsExactly(0, 1);
+    }
+
+    @Test
+    void should_map_every_tool_call_when_they_arrive_in_separate_messages_without_index() throws Exception {
+        ChatResponse response = chat(
+                toolCallsEvent(
+                        "{\"id\":\"call_1\",\"function\":{\"name\":\"getWeather\",\"arguments\":{\"state\":\"California\"}}}"),
+                toolCallsEvent(
+                        "{\"id\":\"call_2\",\"function\":{\"name\":\"getTime\",\"arguments\":{\"state\":\"Texas\"}}}"));
+
+        assertThat(response.aiMessage().toolExecutionRequests())
+                .extracting(ToolExecutionRequest::id, ToolExecutionRequest::name, ToolExecutionRequest::arguments)
+                .containsExactly(
+                        tuple("call_1", "getWeather", "{\"state\":\"California\"}"),
+                        tuple("call_2", "getTime", "{\"state\":\"Texas\"}"));
+        assertThat(completeToolCalls).extracting(CompleteToolCall::index).containsExactly(0, 1);
     }
 
     @Test
