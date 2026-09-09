@@ -1,5 +1,7 @@
 package dev.langchain4j.model.googleai;
 
+import static dev.langchain4j.internal.Utils.copy;
+
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import java.util.List;
 import java.util.Objects;
@@ -12,13 +14,15 @@ public class GoogleAiGeminiChatResponseMetadata extends ChatResponseMetadata {
     private final GroundingMetadata groundingMetadata;
     private final UrlContextMetadata urlContextMetadata;
     private final List<GeminiSafetyRating> safetyRatings;
+    private final List<GeminiSafetyRating> promptSafetyRatings;
     private final String blockReason;
 
     private GoogleAiGeminiChatResponseMetadata(Builder builder) {
         super(builder);
         this.groundingMetadata = builder.groundingMetadata;
         this.urlContextMetadata = builder.urlContextMetadata;
-        this.safetyRatings = builder.safetyRatings;
+        this.safetyRatings = copy(builder.safetyRatings);
+        this.promptSafetyRatings = copy(builder.promptSafetyRatings);
         this.blockReason = builder.blockReason;
     }
 
@@ -31,20 +35,40 @@ public class GoogleAiGeminiChatResponseMetadata extends ChatResponseMetadata {
     }
 
     /**
-     * The safety assessments reported for this response, in the order returned by the API. Empty when the
-     * response carries no safety ratings.
+     * The safety assessments of the <em>generated content</em>, one per harm category that Gemini evaluated.
      *
-     * @return an immutable view of the safety ratings, or an empty list when none are present
+     * <p>Use these to find out why generation stopped when {@link #finishReason()} is
+     * {@link dev.langchain4j.model.output.FinishReason#CONTENT_FILTER}. To inspect the safety of the
+     * <em>prompt</em> instead, use {@link #promptSafetyRatings()}.
+     *
+     * @return an unmodifiable list of safety ratings, empty when the response carries none
      */
     public List<GeminiSafetyRating> safetyRatings() {
         return safetyRatings;
     }
 
     /**
-     * The reason the prompt was blocked, as reported by Gemini's {@code promptFeedback}, for example
-     * {@code PROHIBITED_CONTENT} or {@code BLOCKLIST}. {@code null} when the prompt was not blocked.
+     * The safety assessments of the <em>prompt</em>, as reported by Gemini's {@code promptFeedback}.
      *
-     * @return the prompt block reason, or {@code null} when the prompt was not blocked
+     * <p>These describe the request rather than the generated content, and are typically populated when Gemini
+     * refuses to answer at all. In that case {@link #blockReason()} is set and {@link #safetyRatings()} is empty.
+     *
+     * @return an unmodifiable list of safety ratings for the prompt, empty when the response carries none
+     */
+    public List<GeminiSafetyRating> promptSafetyRatings() {
+        return promptSafetyRatings;
+    }
+
+    /**
+     * The reason Gemini refused to process the prompt, for example {@code "SAFETY"}, {@code "PROHIBITED_CONTENT"},
+     * {@code "BLOCKLIST"} or {@code "IMAGE_SAFETY"}.
+     *
+     * <p>When this is set, Gemini returned no content at all: the {@link dev.langchain4j.data.message.AiMessage}
+     * carries no text, {@link #finishReason()} is
+     * {@link dev.langchain4j.model.output.FinishReason#CONTENT_FILTER}, and {@link #promptSafetyRatings()} explains
+     * which harm categories were involved.
+     *
+     * @return the block reason, or {@code null} when the prompt was not blocked
      */
     public String blockReason() {
         return blockReason;
@@ -56,6 +80,7 @@ public class GoogleAiGeminiChatResponseMetadata extends ChatResponseMetadata {
                 .groundingMetadata(groundingMetadata)
                 .urlContextMetadata(urlContextMetadata)
                 .safetyRatings(safetyRatings)
+                .promptSafetyRatings(promptSafetyRatings)
                 .blockReason(blockReason);
     }
 
@@ -67,12 +92,19 @@ public class GoogleAiGeminiChatResponseMetadata extends ChatResponseMetadata {
         return Objects.equals(groundingMetadata, that.groundingMetadata)
                 && Objects.equals(urlContextMetadata, that.urlContextMetadata)
                 && Objects.equals(safetyRatings, that.safetyRatings)
+                && Objects.equals(promptSafetyRatings, that.promptSafetyRatings)
                 && Objects.equals(blockReason, that.blockReason);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(super.hashCode(), groundingMetadata, urlContextMetadata, safetyRatings, blockReason);
+        return Objects.hash(
+                super.hashCode(),
+                groundingMetadata,
+                urlContextMetadata,
+                safetyRatings,
+                promptSafetyRatings,
+                blockReason);
     }
 
     @Override
@@ -84,7 +116,8 @@ public class GoogleAiGeminiChatResponseMetadata extends ChatResponseMetadata {
                 + finishReason() + ", groundingMetadata="
                 + groundingMetadata + ", urlContextMetadata="
                 + urlContextMetadata + ", safetyRatings="
-                + safetyRatings + ", blockReason='"
+                + safetyRatings + ", promptSafetyRatings="
+                + promptSafetyRatings + ", blockReason='"
                 + blockReason + '\'' + '}';
     }
 
@@ -96,7 +129,8 @@ public class GoogleAiGeminiChatResponseMetadata extends ChatResponseMetadata {
 
         private GroundingMetadata groundingMetadata;
         private UrlContextMetadata urlContextMetadata;
-        private List<GeminiSafetyRating> safetyRatings = List.of();
+        private List<GeminiSafetyRating> safetyRatings;
+        private List<GeminiSafetyRating> promptSafetyRatings;
         private String blockReason;
 
         public Builder groundingMetadata(GroundingMetadata groundingMetadata) {
@@ -111,6 +145,11 @@ public class GoogleAiGeminiChatResponseMetadata extends ChatResponseMetadata {
 
         public Builder safetyRatings(List<GeminiSafetyRating> safetyRatings) {
             this.safetyRatings = safetyRatings;
+            return this;
+        }
+
+        public Builder promptSafetyRatings(List<GeminiSafetyRating> promptSafetyRatings) {
+            this.promptSafetyRatings = promptSafetyRatings;
             return this;
         }
 

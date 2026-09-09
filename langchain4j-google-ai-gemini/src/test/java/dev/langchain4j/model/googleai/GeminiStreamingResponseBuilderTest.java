@@ -27,7 +27,7 @@ class GeminiStreamingResponseBuilderTest {
 
     @Test
     void should_return_empty_when_candidates_is_null() {
-        GeminiGenerateContentResponse response = new GeminiGenerateContentResponse(null, null, null, null, null);
+        GeminiGenerateContentResponse response = new GeminiGenerateContentResponse(null, null, null, null, null, null);
 
         TextAndTools result = builder.append(response);
 
@@ -39,7 +39,7 @@ class GeminiStreamingResponseBuilderTest {
     @Test
     void should_return_empty_when_candidates_is_empty() {
         GeminiGenerateContentResponse response =
-                new GeminiGenerateContentResponse(null, null, Collections.emptyList(), null, null);
+                new GeminiGenerateContentResponse(null, null, Collections.emptyList(), null, null, null);
 
         TextAndTools result = builder.append(response);
 
@@ -53,9 +53,9 @@ class GeminiStreamingResponseBuilderTest {
         GeminiContent content = new GeminiContent(
                 List.of(new GeminiContent.GeminiPart("Hello", null, null, null, null, null, null, null, null, null)),
                 "model");
-        GeminiCandidate candidate = new GeminiCandidate(content, null, null, null);
+        GeminiCandidate candidate = new GeminiCandidate(content, null, null, null, null);
         GeminiGenerateContentResponse response =
-                new GeminiGenerateContentResponse("id-1", "gemini-pro", List.of(candidate), null, null);
+                new GeminiGenerateContentResponse("id-1", "gemini-pro", List.of(candidate), null, null, null);
 
         TextAndTools result = builder.append(response);
 
@@ -102,7 +102,7 @@ class GeminiStreamingResponseBuilderTest {
 
     private static GeminiGenerateContentResponse chunkWith(GeminiPart part) {
         GeminiContent content = new GeminiContent(List.of(part), "model");
-        GeminiCandidate candidate = new GeminiCandidate(content, null, null, null);
-        return new GeminiGenerateContentResponse("id-1", "gemini-pro", List.of(candidate), null, null);
+        GeminiCandidate candidate = new GeminiCandidate(content, null, null, null, null);
+        return new GeminiGenerateContentResponse("id-1", "gemini-pro", List.of(candidate), null, null, null);
     }
 }

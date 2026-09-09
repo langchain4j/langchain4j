@@ -13,15 +13,6 @@ record GeminiGenerateContentResponse(
         @JsonProperty("groundingMetadata") GroundingMetadata groundingMetadata,
         @JsonProperty("promptFeedback") GeminiPromptFeedback promptFeedback) {
 
-    GeminiGenerateContentResponse(
-            String responseId,
-            String modelVersion,
-            List<GeminiCandidate> candidates,
-            GeminiUsageMetadata usageMetadata,
-            GroundingMetadata groundingMetadata) {
-        this(responseId, modelVersion, candidates, usageMetadata, groundingMetadata, null);
-    }
-
     @JsonIgnoreProperties(ignoreUnknown = true)
     record GeminiCandidate(
             @JsonProperty("content") GeminiContent content,
@@ -29,14 +20,6 @@ record GeminiGenerateContentResponse(
             @JsonProperty("urlContextMetadata") GeminiUrlContextMetadata urlContextMetadata,
             @JsonProperty("groundingMetadata") GroundingMetadata groundingMetadata,
             @JsonProperty("safetyRatings") List<GeminiSafetyRating> safetyRatings) {
-
-        GeminiCandidate(
-                GeminiContent content,
-                GeminiFinishReason finishReason,
-                GeminiUrlContextMetadata urlContextMetadata,
-                GroundingMetadata groundingMetadata) {
-            this(content, finishReason, urlContextMetadata, groundingMetadata, null);
-        }
 
         enum GeminiFinishReason {
             FINISH_REASON_UNSPECIFIED,

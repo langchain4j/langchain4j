@@ -1,147 +1,330 @@
 package dev.langchain4j.model.googleai;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.when;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.http.client.MockHttpClient;
+import dev.langchain4j.http.client.MockHttpClientBuilder;
+import dev.langchain4j.http.client.SuccessfulHttpResponse;
+import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.googleai.GeminiContent.GeminiPart;
-import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiCandidate;
-import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiCandidate.GeminiFinishReason;
-import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiPromptFeedback;
-import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiUsageMetadata;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.output.FinishReason;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 
-@ExtendWith(MockitoExtension.class)
+/**
+ * Covers the safety data Gemini reports on the response side. All fixtures are raw API payloads fed through the
+ * HTTP client, so that deserialization is exercised end-to-end rather than bypassed.
+ */
 class GeminiSafetyMetadataTest {
 
-    private static final String TEST_MODEL_NAME = "gemini-pro";
+    private static final String MODEL_NAME = "gemini-2.5-flash";
 
-    @Mock
-    GeminiService mockGeminiService;
+    private static final String WITH_CANDIDATE_SAFETY_RATINGS = """
+            {
+              "responseId": "response-id-123",
+              "modelVersion": "gemini-2.5-flash",
+              "candidates": [
+                {
+                  "content": {"role": "model", "parts": [{"text": "Hello"}]},
+                  "finishReason": "SAFETY",
+                  "safetyRatings": [
+                    {"category": "HARM_CATEGORY_HARASSMENT", "probability": "HIGH", "blocked": true},
+                    {"category": "HARM_CATEGORY_HATE_SPEECH", "probability": "NEGLIGIBLE"}
+                  ]
+                }
+              ],
+              "usageMetadata": {"promptTokenCount": 10, "candidatesTokenCount": 20, "totalTokenCount": 30}
+            }
+            """;
 
-    private static final GeminiSafetyRating SAFETY_RATING =
-            new GeminiSafetyRating(GeminiHarmCategory.HARM_CATEGORY_HARASSMENT, "HIGH", "HIGH", true);
+    private static final String BLOCKED_PROMPT = """
+            {
+              "responseId": "response-id-123",
+              "modelVersion": "gemini-2.5-flash",
+              "promptFeedback": {
+                "blockReason": "PROHIBITED_CONTENT",
+                "safetyRatings": [
+                  {"category": "HARM_CATEGORY_HARASSMENT", "probability": "HIGH", "blocked": true}
+                ]
+              },
+              "usageMetadata": {"promptTokenCount": 10, "totalTokenCount": 10}
+            }
+            """;
 
-    private static final GeminiPromptFeedback PROMPT_FEEDBACK =
-            new GeminiPromptFeedback("PROHIBITED_CONTENT", List.of(SAFETY_RATING));
+    private static final String WITHOUT_SAFETY_DATA = """
+            {
+              "responseId": "response-id-123",
+              "modelVersion": "gemini-2.5-flash",
+              "candidates": [
+                {
+                  "content": {"role": "model", "parts": [{"text": "Hello"}]},
+                  "finishReason": "STOP"
+                }
+              ],
+              "usageMetadata": {"promptTokenCount": 10, "candidatesTokenCount": 20, "totalTokenCount": 30}
+            }
+            """;
 
-    @Test
-    void should_expose_safety_ratings_and_block_reason_in_non_streaming_response() {
-        // Given
-        GeminiGenerateContentResponse geminiResponse = responseWith(
-                new GeminiCandidate(
-                        candidateContent("Hello"), GeminiFinishReason.SAFETY, null, null, List.of(SAFETY_RATING)),
-                PROMPT_FEEDBACK);
+    @Nested
+    class Sync {
 
-        // When
-        GoogleAiGeminiChatResponseMetadata metadata = chat(geminiResponse);
+        @Test
+        void should_expose_safety_ratings_of_the_generated_content() {
+            ChatResponse chatResponse = chat(WITH_CANDIDATE_SAFETY_RATINGS);
 
-        // Then
-        assertThat(metadata.safetyRatings()).containsExactly(SAFETY_RATING);
-        assertThat(metadata.blockReason()).isEqualTo("PROHIBITED_CONTENT");
+            GoogleAiGeminiChatResponseMetadata metadata = metadataOf(chatResponse);
+            assertThat(metadata.safetyRatings())
+                    .containsExactly(
+                            new GeminiSafetyRating("HARM_CATEGORY_HARASSMENT", "HIGH", true),
+                            new GeminiSafetyRating("HARM_CATEGORY_HATE_SPEECH", "NEGLIGIBLE", null));
+            assertThat(metadata.promptSafetyRatings()).isEmpty();
+            assertThat(metadata.blockReason()).isNull();
+            assertThat(metadata.finishReason()).isEqualTo(FinishReason.CONTENT_FILTER);
+        }
+
+        @Test
+        void should_expose_block_reason_and_prompt_safety_ratings_when_prompt_is_blocked() {
+            ChatResponse chatResponse = chat(BLOCKED_PROMPT);
+
+            GoogleAiGeminiChatResponseMetadata metadata = metadataOf(chatResponse);
+            assertThat(metadata.blockReason()).isEqualTo("PROHIBITED_CONTENT");
+            assertThat(metadata.promptSafetyRatings())
+                    .containsExactly(new GeminiSafetyRating("HARM_CATEGORY_HARASSMENT", "HIGH", true));
+            assertThat(metadata.safetyRatings()).isEmpty();
+            assertThat(metadata.finishReason()).isEqualTo(FinishReason.CONTENT_FILTER);
+            assertThat(chatResponse.aiMessage().text()).isNull();
+            assertThat(metadata.tokenUsage().inputTokenCount()).isEqualTo(10);
+        }
+
+        @Test
+        void should_expose_empty_safety_data_when_response_carries_none() {
+            ChatResponse chatResponse = chat(WITHOUT_SAFETY_DATA);
+
+            GoogleAiGeminiChatResponseMetadata metadata = metadataOf(chatResponse);
+            assertThat(metadata.safetyRatings()).isEmpty();
+            assertThat(metadata.promptSafetyRatings()).isEmpty();
+            assertThat(metadata.blockReason()).isNull();
+            assertThat(chatResponse.aiMessage().text()).isEqualTo("Hello");
+        }
+
+        @Test
+        void should_not_fail_on_harm_categories_langchain4j_does_not_know() {
+            // Gemini keeps adding harm categories (HARM_CATEGORY_JAILBREAK, the legacy PaLM ones, ...).
+            // An unrecognised one must not take down the whole response.
+            String body = """
+                    {
+                      "responseId": "response-id-123",
+                      "modelVersion": "gemini-2.5-flash",
+                      "candidates": [
+                        {
+                          "content": {"role": "model", "parts": [{"text": "Hello"}]},
+                          "finishReason": "STOP",
+                          "safetyRatings": [
+                            {"category": "HARM_CATEGORY_JAILBREAK", "probability": "NEGLIGIBLE"},
+                            {"category": "SOMETHING_INVENTED_LATER", "probability": "LOW"}
+                          ]
+                        }
+                      ],
+                      "usageMetadata": {"promptTokenCount": 10, "candidatesTokenCount": 20, "totalTokenCount": 30}
+                    }
+                    """;
+
+            GoogleAiGeminiChatResponseMetadata metadata = metadataOf(chat(body));
+            assertThat(metadata.safetyRatings())
+                    .extracting(GeminiSafetyRating::category)
+                    .containsExactly("HARM_CATEGORY_JAILBREAK", "SOMETHING_INVENTED_LATER");
+        }
+
+        private ChatResponse chat(String responseBody) {
+            GoogleAiGeminiChatModel model = GoogleAiGeminiChatModel.builder()
+                    .httpClientBuilder(new MockHttpClientBuilder(respondWith(responseBody)))
+                    .baseUrl("http://localhost")
+                    .apiKey("does not matter")
+                    .modelName(MODEL_NAME)
+                    .maxRetries(0)
+                    .build();
+
+            return model.chat(
+                    ChatRequest.builder().messages(UserMessage.from("Hi")).build());
+        }
+    }
+
+    @Nested
+    class Streaming {
+
+        @Test
+        void should_expose_safety_ratings_of_the_generated_content() {
+            ChatResponse chatResponse = stream(WITH_CANDIDATE_SAFETY_RATINGS);
+
+            GoogleAiGeminiChatResponseMetadata metadata = metadataOf(chatResponse);
+            assertThat(metadata.safetyRatings())
+                    .containsExactly(
+                            new GeminiSafetyRating("HARM_CATEGORY_HARASSMENT", "HIGH", true),
+                            new GeminiSafetyRating("HARM_CATEGORY_HATE_SPEECH", "NEGLIGIBLE", null));
+            assertThat(metadata.promptSafetyRatings()).isEmpty();
+            assertThat(metadata.blockReason()).isNull();
+        }
+
+        @Test
+        void should_expose_block_reason_and_prompt_safety_ratings_when_prompt_is_blocked() {
+            ChatResponse chatResponse = stream(BLOCKED_PROMPT);
+
+            GoogleAiGeminiChatResponseMetadata metadata = metadataOf(chatResponse);
+            assertThat(metadata.blockReason()).isEqualTo("PROHIBITED_CONTENT");
+            assertThat(metadata.promptSafetyRatings())
+                    .containsExactly(new GeminiSafetyRating("HARM_CATEGORY_HARASSMENT", "HIGH", true));
+            assertThat(metadata.safetyRatings()).isEmpty();
+            assertThat(metadata.finishReason()).isEqualTo(FinishReason.CONTENT_FILTER);
+            assertThat(chatResponse.aiMessage().text()).isNull();
+        }
+
+        @Test
+        void should_expose_empty_safety_data_when_response_carries_none() {
+            GoogleAiGeminiChatResponseMetadata metadata = metadataOf(stream(WITHOUT_SAFETY_DATA));
+
+            assertThat(metadata.safetyRatings()).isEmpty();
+            assertThat(metadata.promptSafetyRatings()).isEmpty();
+            assertThat(metadata.blockReason()).isNull();
+        }
+
+        private ChatResponse stream(String eventBody) {
+            MockHttpClient mockHttpClient =
+                    MockHttpClient.thatAlwaysResponds(List.of(new ServerSentEvent("message", eventBody)));
+
+            GoogleAiGeminiStreamingChatModel model = GoogleAiGeminiStreamingChatModel.builder()
+                    .httpClientBuilder(new MockHttpClientBuilder(mockHttpClient))
+                    .baseUrl("http://localhost")
+                    .apiKey("does not matter")
+                    .modelName(MODEL_NAME)
+                    .build();
+
+            CompletableFuture<ChatResponse> future = new CompletableFuture<>();
+            model.chat(
+                    ChatRequest.builder().messages(UserMessage.from("Hi")).build(), new StreamingChatResponseHandler() {
+                        @Override
+                        public void onPartialResponse(String partialResponse) {}
+
+                        @Override
+                        public void onCompleteResponse(ChatResponse completeResponse) {
+                            future.complete(completeResponse);
+                        }
+
+                        @Override
+                        public void onError(Throwable error) {
+                            future.completeExceptionally(error);
+                        }
+                    });
+
+            try {
+                return future.get(10, TimeUnit.SECONDS);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
+
+    @Nested
+    class Batch {
+
+        private static final String SUCCEEDED_BATCH_WITH_SAFETY_RATINGS = """
+                {
+                  "name": "batches/abc",
+                  "metadata": {
+                    "@type": "type.googleapis.com/google.ai.generativelanguage.v1main.GenerateContentBatch",
+                    "model": "models/gemini-2.5-flash",
+                    "state": "BATCH_STATE_SUCCEEDED",
+                    "name": "batches/abc"
+                  },
+                  "done": true,
+                  "response": {
+                    "@type": "type.googleapis.com/google.ai.generativelanguage.v1main.GenerateContentBatchOutput",
+                    "inlinedResponses": {
+                      "inlinedResponses": [
+                        {
+                          "response": {
+                            "candidates": [
+                              {
+                                "content": {"parts": [{"text": "Paris"}], "role": "model"},
+                                "finishReason": "STOP",
+                                "safetyRatings": [
+                                  {"category": "HARM_CATEGORY_HARASSMENT", "probability": "NEGLIGIBLE"}
+                                ]
+                              }
+                            ],
+                            "usageMetadata": {"promptTokenCount": 8, "candidatesTokenCount": 8, "totalTokenCount": 16},
+                            "modelVersion": "gemini-2.5-flash"
+                          }
+                        },
+                        {
+                          "response": {
+                            "promptFeedback": {
+                              "blockReason": "BLOCKLIST",
+                              "safetyRatings": [
+                                {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "probability": "HIGH",
+                                 "blocked": true}
+                              ]
+                            },
+                            "modelVersion": "gemini-2.5-flash"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+                """;
+
+        @Test
+        void should_expose_safety_data_for_batch_results() {
+            MockHttpClient mockHttpClient = respondWith(SUCCEEDED_BATCH_WITH_SAFETY_RATINGS);
+            GoogleAiGeminiBatchChatModel model = GoogleAiGeminiBatchChatModel.builder()
+                    .apiKey("does not matter")
+                    .modelName(MODEL_NAME)
+                    .httpClientBuilder(new MockHttpClientBuilder(mockHttpClient))
+                    .build();
+
+            List<ChatResponse> responses = model.retrieve("batches/abc").responses();
+
+            assertThat(responses).hasSize(2);
+
+            GoogleAiGeminiChatResponseMetadata succeeded = metadataOf(responses.get(0));
+            assertThat(succeeded.safetyRatings())
+                    .containsExactly(new GeminiSafetyRating("HARM_CATEGORY_HARASSMENT", "NEGLIGIBLE", null));
+            assertThat(succeeded.blockReason()).isNull();
+
+            GoogleAiGeminiChatResponseMetadata blocked = metadataOf(responses.get(1));
+            assertThat(blocked.blockReason()).isEqualTo("BLOCKLIST");
+            assertThat(blocked.promptSafetyRatings())
+                    .containsExactly(new GeminiSafetyRating("HARM_CATEGORY_DANGEROUS_CONTENT", "HIGH", true));
+            assertThat(blocked.safetyRatings()).isEmpty();
+            assertThat(blocked.finishReason()).isEqualTo(FinishReason.CONTENT_FILTER);
+        }
     }
 
     @Test
-    void should_fall_back_to_prompt_feedback_ratings_when_candidate_has_none() {
-        // Given
-        GeminiGenerateContentResponse geminiResponse = responseWith(
-                new GeminiCandidate(candidateContent("Hello"), GeminiFinishReason.SAFETY, null, null, null),
-                PROMPT_FEEDBACK);
+    void safety_ratings_should_be_unmodifiable() {
+        GoogleAiGeminiChatResponseMetadata metadata = GoogleAiGeminiChatResponseMetadata.builder()
+                .safetyRatings(
+                        new ArrayList<>(List.of(new GeminiSafetyRating("HARM_CATEGORY_HARASSMENT", "LOW", false))))
+                .build();
 
-        // When
-        GoogleAiGeminiChatResponseMetadata metadata = chat(geminiResponse);
-
-        // Then
-        assertThat(metadata.safetyRatings()).containsExactly(SAFETY_RATING);
-        assertThat(metadata.blockReason()).isEqualTo("PROHIBITED_CONTENT");
+        assertThat(metadata.safetyRatings()).hasSize(1);
+        assertThatThrownBy(() -> metadata.safetyRatings().clear()).isInstanceOf(UnsupportedOperationException.class);
     }
 
-    @Test
-    void should_expose_empty_collections_when_no_safety_data_is_present() {
-        // Given
-        GeminiGenerateContentResponse geminiResponse = responseWith(
-                new GeminiCandidate(candidateContent("Hello"), GeminiFinishReason.STOP, null, null, null), null);
-
-        // When
-        GoogleAiGeminiChatResponseMetadata metadata = chat(geminiResponse);
-
-        // Then
-        assertThat(metadata.safetyRatings()).isEmpty();
-        assertThat(metadata.blockReason()).isNull();
+    private static MockHttpClient respondWith(String body) {
+        return MockHttpClient.thatAlwaysResponds(
+                SuccessfulHttpResponse.builder().body(body).statusCode(200).build());
     }
 
-    @Test
-    void should_expose_safety_ratings_and_block_reason_in_streaming_response() {
-        // Given
-        GeminiStreamingResponseBuilder builder = new GeminiStreamingResponseBuilder(false, null);
-        GeminiCandidate candidate = new GeminiCandidate(
-                candidateContent("Hello"), GeminiFinishReason.SAFETY, null, null, List.of(SAFETY_RATING));
-
-        // When
-        builder.append(responseWith(candidate, PROMPT_FEEDBACK));
-        ChatResponse chatResponse = builder.build();
-
-        // Then
-        GoogleAiGeminiChatResponseMetadata metadata = (GoogleAiGeminiChatResponseMetadata) chatResponse.metadata();
-        assertThat(metadata.safetyRatings()).containsExactly(SAFETY_RATING);
-        assertThat(metadata.blockReason()).isEqualTo("PROHIBITED_CONTENT");
-    }
-
-    @Test
-    void should_expose_empty_collections_in_streaming_response_without_safety_data() {
-        // Given
-        GeminiStreamingResponseBuilder builder = new GeminiStreamingResponseBuilder(false, null);
-        GeminiCandidate candidate =
-                new GeminiCandidate(candidateContent("Hello"), GeminiFinishReason.STOP, null, null, null);
-
-        // When
-        builder.append(responseWith(candidate, null));
-        ChatResponse chatResponse = builder.build();
-
-        // Then
-        GoogleAiGeminiChatResponseMetadata metadata = (GoogleAiGeminiChatResponseMetadata) chatResponse.metadata();
-        assertThat(metadata.safetyRatings()).isEmpty();
-        assertThat(metadata.blockReason()).isNull();
-    }
-
-    private GoogleAiGeminiChatResponseMetadata chat(GeminiGenerateContentResponse geminiResponse) {
-        when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class)))
-                .thenReturn(geminiResponse);
-
-        GoogleAiGeminiChatModel model = GoogleAiGeminiChatModel.builder()
-                .apiKey("test-api-key")
-                .modelName(TEST_MODEL_NAME)
-                .build(mockGeminiService);
-
-        ChatResponse chatResponse =
-                model.chat(ChatRequest.builder().messages(new UserMessage("Hi")).build());
+    private static GoogleAiGeminiChatResponseMetadata metadataOf(ChatResponse chatResponse) {
         return (GoogleAiGeminiChatResponseMetadata) chatResponse.metadata();
-    }
-
-    private static GeminiGenerateContentResponse responseWith(
-            GeminiCandidate candidate, GeminiPromptFeedback promptFeedback) {
-        return new GeminiGenerateContentResponse(
-                "response-id-123",
-                "gemini-pro-v1",
-                List.of(candidate),
-                GeminiUsageMetadata.builder()
-                        .promptTokenCount(10)
-                        .candidatesTokenCount(20)
-                        .totalTokenCount(30)
-                        .build(),
-                null,
-                promptFeedback);
-    }
-
-    private static GeminiContent candidateContent(String text) {
-        return new GeminiContent(List.of(GeminiPart.builder().text(text).build()), "model");
     }
 }

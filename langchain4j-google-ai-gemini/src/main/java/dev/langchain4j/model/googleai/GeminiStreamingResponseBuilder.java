@@ -39,6 +39,7 @@ class GeminiStreamingResponseBuilder {
     private final AtomicReference<TokenUsage> tokenUsage = new AtomicReference<>();
     private final AtomicReference<FinishReason> finishReason = new AtomicReference<>();
     private final AtomicReference<List<GeminiSafetyRating>> safetyRatings = new AtomicReference<>();
+    private final AtomicReference<List<GeminiSafetyRating>> promptSafetyRatings = new AtomicReference<>();
     private final AtomicReference<String> blockReason = new AtomicReference<>();
 
     GeminiStreamingResponseBuilder(boolean includeCodeExecutionOutput, Boolean returnThinking) {
@@ -62,6 +63,8 @@ class GeminiStreamingResponseBuilder {
             return new TextAndTools(Optional.empty(), Optional.empty(), List.of());
         }
 
+        updatePromptFeedback(partialResponse);
+
         List<GeminiCandidate> candidates = partialResponse.candidates();
         if (candidates == null || candidates.isEmpty()) {
             return new TextAndTools(Optional.empty(), Optional.empty(), List.of());
@@ -73,7 +76,7 @@ class GeminiStreamingResponseBuilder {
         updateModelName(partialResponse);
         updateFinishReason(firstCandidate);
         updateTokenUsage(partialResponse.usageMetadata());
-        updateSafetyData(partialResponse, firstCandidate);
+        updateSafetyRatings(firstCandidate);
 
         GeminiContent content = firstCandidate.content();
         if (content == null || content.parts() == null) {
@@ -102,8 +105,9 @@ class GeminiStreamingResponseBuilder {
                         .id(id.get())
                         .modelName(modelName.get())
                         .tokenUsage(tokenUsage.get())
-                        .finishReason(aiMessage.hasToolExecutionRequests() ? TOOL_EXECUTION : finishReason.get())
-                        .safetyRatings(safetyRatings.get() != null ? safetyRatings.get() : List.of())
+                        .finishReason(resolveFinishReason(aiMessage))
+                        .safetyRatings(safetyRatings.get())
+                        .promptSafetyRatings(promptSafetyRatings.get())
                         .blockReason(blockReason.get())
                         .build())
                 .build();
@@ -140,13 +144,32 @@ class GeminiStreamingResponseBuilder {
         }
     }
 
-    private void updateSafetyData(GeminiGenerateContentResponse response, GeminiCandidate candidate) {
+    private void updateSafetyRatings(GeminiCandidate candidate) {
         if (candidate.safetyRatings() != null) {
             safetyRatings.set(candidate.safetyRatings());
         }
-        if (response.promptFeedback() != null && response.promptFeedback().blockReason() != null) {
+    }
+
+    private void updatePromptFeedback(GeminiGenerateContentResponse response) {
+        if (response.promptFeedback() == null) {
+            return;
+        }
+        if (response.promptFeedback().blockReason() != null) {
             blockReason.set(response.promptFeedback().blockReason());
         }
+        if (response.promptFeedback().safetyRatings() != null) {
+            promptSafetyRatings.set(response.promptFeedback().safetyRatings());
+        }
+    }
+
+    private FinishReason resolveFinishReason(AiMessage aiMessage) {
+        if (aiMessage.hasToolExecutionRequests()) {
+            return TOOL_EXECUTION;
+        }
+        if (finishReason.get() == null && blockReason.get() != null) {
+            return FinishReason.CONTENT_FILTER; // prompt was blocked, so no candidate carried a finishReason
+        }
+        return finishReason.get();
     }
 
     private void updateContentAndFunctionCalls(AiMessage message) {
