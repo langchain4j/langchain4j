@@ -15,7 +15,6 @@ import org.junit.jupiter.api.Test;
 
 public class StructuredContentParsingTest {
 
-
     @Test
     public void testComplexObject() throws JsonProcessingException {
         // JSON
@@ -37,10 +36,10 @@ public class StructuredContentParsingTest {
                   }
                 }
                 """;
-        JsonNode responseNode = McpJson.parse(response);
+        
         McpToolResultExtractor extractor = mock(McpToolResultExtractor.class);
         ToolExecutionResult toolExecutionResult =
-                ToolExecutionHelper.extractResult(responseNode, false, new LegacyToolResultConverterAdapter(extractor));
+                ToolExecutionHelper.extractResult(response, false, new LegacyToolResultConverterAdapter(extractor));
         assertThat(toolExecutionResult.result()).isInstanceOf(Map.class);
         Map<String, Object> map = (Map<String, Object>) toolExecutionResult.result();
         assertThat(map).hasSize(4);
@@ -73,11 +72,10 @@ public class StructuredContentParsingTest {
                 }
                 """;
 
-        JsonNode responseNode = McpJson.parse(response);
         McpToolResultExtractor extractor = mock(McpToolResultExtractor.class);
 
         ToolExecutionResult toolExecutionResult =
-                ToolExecutionHelper.extractResult(responseNode, false, new LegacyToolResultConverterAdapter(extractor));
+                ToolExecutionHelper.extractResult(response, false, new LegacyToolResultConverterAdapter(extractor));
 
         assertThat(toolExecutionResult.result()).isInstanceOf(Map.class);
         Map<String, Object> map = (Map<String, Object>) toolExecutionResult.result();
@@ -103,11 +101,10 @@ public class StructuredContentParsingTest {
                 }
                 """;
 
-        JsonNode responseNode = McpJson.parse(response);
         McpToolResultExtractor extractor = mock(McpToolResultExtractor.class);
 
         ToolExecutionResult toolExecutionResult =
-                ToolExecutionHelper.extractResult(responseNode, false, new LegacyToolResultConverterAdapter(extractor));
+                ToolExecutionHelper.extractResult(response, false, new LegacyToolResultConverterAdapter(extractor));
 
         assertThat(toolExecutionResult.result()).isInstanceOf(Map.class);
         Map<String, Object> map = (Map<String, Object>) toolExecutionResult.result();
@@ -130,11 +127,10 @@ public class StructuredContentParsingTest {
                 }
                 """;
 
-        JsonNode responseNode = McpJson.parse(response);
         McpToolResultExtractor extractor = mock(McpToolResultExtractor.class);
 
         ToolExecutionResult toolExecutionResult =
-                ToolExecutionHelper.extractResult(responseNode, false, new LegacyToolResultConverterAdapter(extractor));
+                ToolExecutionHelper.extractResult(response, false, new LegacyToolResultConverterAdapter(extractor));
 
         assertThat(toolExecutionResult.result()).isInstanceOf(Map.class);
         Map<String, Object> map = (Map<String, Object>) toolExecutionResult.result();
@@ -162,11 +158,10 @@ public class StructuredContentParsingTest {
                 }
                 """;
 
-        JsonNode responseNode = McpJson.parse(response);
         McpToolResultExtractor extractor = mock(McpToolResultExtractor.class);
 
         ToolExecutionResult toolExecutionResult =
-                ToolExecutionHelper.extractResult(responseNode, false, new LegacyToolResultConverterAdapter(extractor));
+                ToolExecutionHelper.extractResult(response, false, new LegacyToolResultConverterAdapter(extractor));
 
         assertThat(toolExecutionResult.result()).isEqualTo(Map.of("source", "structured"));
         assertThat(toolExecutionResult.resultText()).isEqualTo("{\"source\":\"structured\"}");

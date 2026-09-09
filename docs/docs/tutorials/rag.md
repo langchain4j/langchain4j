@@ -105,7 +105,7 @@ adjusting and customizing more and more aspects.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-easy-rag</artifactId>
-    <version>1.19.0-beta29</version>
+    <version>1.20.0-beta30</version>
 </dependency>
 ```
 
@@ -1160,6 +1160,14 @@ Assistant assistant = AiServices.builder(Assistant.class)
     .build();
 ```
 
+
+:::note
+The whole retrieval graph has asynchronous counterparts (`augmentAsync`, `retrieveAsync`, `routeAsync`,
+`aggregateAsync`), so RAG does not have to block a thread. A component that has not implemented its counterpart
+fails loudly by default rather than silently blocking; opt in to offloading it instead with
+`offloadBlocking(true)` on `DefaultRetrievalAugmentor` or `EmbeddingStoreContentRetriever`.
+See [Non-blocking and Reactive](/tutorials/non-blocking).
+:::
 
 ## Examples
 

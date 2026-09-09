@@ -4,9 +4,6 @@ import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
 import com.google.genai.types.Candidate;
 import com.google.genai.types.Content;
 import com.google.genai.types.FunctionCall;
@@ -29,9 +26,9 @@ import dev.langchain4j.data.message.VideoContent;
 import dev.langchain4j.data.pdf.PdfFile;
 import dev.langchain4j.data.video.Video;
 import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.internal.Json;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.FinishReason;
-import dev.langchain4j.model.output.TokenUsage;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Base64;
@@ -44,8 +41,6 @@ import java.util.stream.Collectors;
 
 class GoogleGenAiContentMapper {
 
-    static final ObjectMapper OBJECT_MAPPER = new ObjectMapper().disable(SerializationFeature.FAIL_ON_EMPTY_BEANS);
-    private static final TypeReference<Map<String, Object>> MAP_TYPE_REFERENCE = new TypeReference<>() {};
 
     private static final Map<String, String> EXTENSION_TO_MIME_TYPE = new HashMap<>();
 
@@ -198,11 +193,7 @@ class GoogleGenAiContentMapper {
                 for (ToolExecutionRequest req : aiMsg.toolExecutionRequests()) {
                     Map<String, Object> args = new HashMap<>();
                     if (req.arguments() != null && !req.arguments().isEmpty()) {
-                        try {
-                            args = OBJECT_MAPPER.readValue(req.arguments(), MAP_TYPE_REFERENCE);
-                        } catch (Exception e) {
-                            throw new RuntimeException(e);
-                        }
+                        args = Json.fromJson(req.arguments(), Map.class);
                     }
                     FunctionCall.Builder fcBuilder =
                             FunctionCall.builder().name(req.name()).args(args);
@@ -232,15 +223,45 @@ class GoogleGenAiContentMapper {
         return toChatResponse(response, modelName, false);
     }
 
+    private static GoogleGenAiTokenUsage toTokenUsage(GenerateContentResponse response) {
+        return response.usageMetadata()
+                .map(meta -> {
+                    int promptTokenCount = meta.promptTokenCount().orElse(0);
+                    int candidatesTokenCount = meta.candidatesTokenCount().orElse(0);
+                    Integer toolUsePromptTokenCount =
+                            meta.toolUsePromptTokenCount().orElse(null);
+                    Integer thoughtsTokenCount = meta.thoughtsTokenCount().orElse(null);
+                    return GoogleGenAiTokenUsage.builder()
+                            .inputTokenCount(promptTokenCount)
+                            .outputTokenCount(candidatesTokenCount)
+                            .totalTokenCount(meta.totalTokenCount()
+                                    .orElse(promptTokenCount
+                                            + candidatesTokenCount
+                                            + getOrDefault(toolUsePromptTokenCount, 0)
+                                            + getOrDefault(thoughtsTokenCount, 0)))
+                            .cachedContentTokenCount(
+                                    meta.cachedContentTokenCount().orElse(null))
+                            .thoughtsTokenCount(thoughtsTokenCount)
+                            .toolUsePromptTokenCount(toolUsePromptTokenCount)
+                            .build();
+                })
+                .orElse(GoogleGenAiTokenUsage.builder()
+                        .inputTokenCount(0)
+                        .outputTokenCount(0)
+                        .totalTokenCount(0)
+                        .build());
+    }
+
     static ChatResponse toChatResponse(GenerateContentResponse response, String modelName, boolean returnThinking) {
         List<Candidate> candidates = response.candidates().orElse(List.of());
+        GoogleGenAiTokenUsage usage = toTokenUsage(response);
 
         if (candidates.isEmpty()) {
             return ChatResponse.builder()
                     .aiMessage(AiMessage.from("Empty response"))
                     .metadata(GoogleGenAiChatResponseMetadata.builder()
                             .modelName(modelName)
-                            .tokenUsage(new TokenUsage(0, 0))
+                            .tokenUsage(usage)
                             .finishReason(FinishReason.OTHER)
                             .build())
                     .build();
@@ -272,11 +293,7 @@ class GoogleGenAiContentMapper {
                     String fnName = fc.name().orElseThrow();
                     Map<String, Object> args = fc.args().orElse(Map.of());
                     String jsonArgs;
-                    try {
-                        jsonArgs = OBJECT_MAPPER.writeValueAsString(args);
-                    } catch (Exception e) {
-                        throw new RuntimeException(e);
-                    }
+                    jsonArgs = Json.toJson(args);
                     String id = fc.id().orElseGet(() -> UUID.randomUUID().toString());
 
                     if (part.thoughtSignature().isPresent()) {
@@ -315,21 +332,6 @@ class GoogleGenAiContentMapper {
             aiMessageBuilder.attributes(attributes);
         }
         AiMessage aiMessage = aiMessageBuilder.build();
-
-        TokenUsage usage = response.usageMetadata()
-                .map(meta -> {
-                    int promptTokenCount = meta.promptTokenCount().isPresent()
-                            ? meta.promptTokenCount().get()
-                            : 0;
-                    int candidatesTokenCount = meta.candidatesTokenCount().isPresent()
-                            ? meta.candidatesTokenCount().get()
-                            : 0;
-                    int totalTokenCount = meta.totalTokenCount().isPresent()
-                            ? meta.totalTokenCount().get()
-                            : promptTokenCount + candidatesTokenCount;
-                    return new TokenUsage(promptTokenCount, candidatesTokenCount, totalTokenCount);
-                })
-                .orElse(new TokenUsage(0, 0));
 
         FinishReason finishReason = !toolRequests.isEmpty()
                 ? FinishReason.TOOL_EXECUTION
@@ -433,6 +435,7 @@ class GoogleGenAiContentMapper {
             case IMAGE_PROHIBITED_CONTENT:
             case IMAGE_RECITATION:
                 return FinishReason.CONTENT_FILTER;
+            case TOO_MANY_TOOL_CALLS:
             default:
                 return FinishReason.OTHER;
         }

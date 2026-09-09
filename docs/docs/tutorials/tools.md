@@ -1566,6 +1566,14 @@ Like `IMMEDIATE`, `IMMEDIATE_IF_LAST` is only allowed on AI services with a `Res
 
 ### Error Handling
 
+:::note
+The defaults below apply to the synchronous and `TokenStream` modes. In the asynchronous and reactive modes they
+are **reversed**: a tool *execution* error fails the invocation instead of being sent to the LLM, and a tool
+*argument-parse* error is sent to the LLM instead of failing the invocation. A handler you configure explicitly is
+used by every mode. See [Non-blocking and Reactive](/tutorials/non-blocking#tool-errors).
+:::
+
+
 #### Handling Tool Name Errors
 
 It may happen that an LLM hallucinates on tools invocation,
@@ -1847,6 +1855,15 @@ in future releases.
 
 You can also import [tools from MCP server](https://modelcontextprotocol.io/docs/concepts/tools).
 More information on this can be found [here](/tutorials/mcp/#creating-an-mcp-tool-provider).
+
+:::note
+In the asynchronous and reactive AI Service modes, tools behave differently: they always run on an `Executor`
+and therefore **execute concurrently by default** (pass a single-threaded `Executor` to
+`executeToolsConcurrently(Executor)` to serialize them), a tool **execution** error fails the invocation while a
+tool **argument-parse** error is sent back to the LLM, and a hand-written `ToolExecutor` should implement
+`executeAsync(...)` or it will fail loudly rather than block a thread.
+See [Non-blocking and Reactive](/tutorials/non-blocking).
+:::
 
 ## Related Tutorials
 

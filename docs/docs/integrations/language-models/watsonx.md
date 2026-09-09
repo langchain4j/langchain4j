@@ -16,7 +16,7 @@ This integration is built on top of the **IBM watsonx.ai Java SDK**. Every model
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-watsonx</artifactId>
-    <version>1.19.0-beta29</version>
+    <version>1.20.0-beta30</version>
 </dependency>
 ```
 
@@ -409,10 +409,132 @@ import dev.langchain4j.model.watsonx.WatsonxChatResponseMetadata;
 ChatResponse response = chatModel.chat(request);
 var metadata = (WatsonxChatResponseMetadata) response.metadata();
 
-metadata.getServiceTier();       // service tier that served the request (gateway only)
-metadata.getSystemFingerprint(); // provider system fingerprint (gateway only)
-metadata.getCached();            // whether the response was served from cache (gateway only)
+metadata.serviceTier();       // service tier that served the request (gateway only)
+metadata.systemFingerprint(); // provider system fingerprint (gateway only)
+metadata.cached();            // whether the response was served from cache (gateway only)
 ```
+
+## Inline moderation
+
+`WatsonxChatModel` and `WatsonxStreamingChatModel` can screen the input and the output of a chat request while the answer is generated, without any additional call to a moderation service. The screening is enabled with the `moderations(...)` builder method.
+
+```java
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.watsonx.WatsonxChatModel;
+import com.ibm.watsonx.ai.CloudRegion;
+import com.ibm.watsonx.ai.chat.ChatModeration;
+
+ChatModel chatModel = WatsonxChatModel.builder()
+    .baseUrl(CloudRegion.FRANKFURT)
+    .apiKey("your-api-key")
+    .projectId("your-project-id")
+    .modelName("ibm/granite-4-h-small")
+    .moderations(
+        ChatModeration.builder()
+            .pii(pii -> pii.input(true).output(true))
+            .hap(hap -> hap.output(0.8f))
+            .graniteGuardian(guardian -> guardian.input(0.85f))
+            .build()
+    )
+    .build();
+```
+
+Three detectors are available. `pii` and `hap` can be enabled on the input, on the output or on both, while `graniteGuardian` only screens the input.
+
+| Detector | Purpose | Enable via |
+|---|---|---|
+| `pii` | Detects personal data such as phone numbers, emails and credit cards. | `.pii(pii -> pii.input(true).output(true))` |
+| `hap` | Detects hate and profanity above a confidence threshold. | `.hap(hap -> hap.input(0.8f).output(0.9f))` |
+| `graniteGuardian` | General purpose classifier of harmful content. | `.graniteGuardian(guardian -> guardian.input(0.85f))` |
+
+`inputRanges(...)` narrows the screening of the input to the given ranges, where the start is inclusive and the end is exclusive.
+
+```java
+import com.ibm.watsonx.ai.chat.ChatModeration.InputRanges;
+
+ChatModeration.builder()
+    .pii(pii -> pii.input(true))
+    .inputRanges(List.of(InputRanges.of(0, 50), InputRanges.of(100, 150)))
+    .build();
+```
+
+### Reading the matches
+
+The matches are reported on the `WatsonxChatResponseMetadata` of the response.
+
+```java
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.watsonx.WatsonxChatResponseMetadata;
+
+ChatResponse response = chatModel.chat(request);
+var metadata = (WatsonxChatResponseMetadata) response.metadata();
+
+metadata.moderations(); // matches keyed by detector name, "pii", "hap" or "granite_guardian"
+metadata.detections();  // Granite Guardian detections keyed by position, "input" or "output"
+```
+
+Both maps are `null` when the moderation is disabled and when no detector matched. Every match tells whether it comes from the input or from the output, the score assigned by the detector, the type of entity that has been recognized and the position of the offending word inside the text. With `WatsonxStreamingChatModel` the matches of every chunk are merged and reported on the metadata of the response passed to `onCompleteResponse(...)`.
+
+| Field | Type | Description |
+|---|---|---|
+| `score()` | `float` | Confidence of the match. |
+| `input()` | `boolean` | `true` when the match comes from the input, `false` when it comes from the output. |
+| `position()` | `Position` | Start (inclusive) and end (exclusive) offsets of the match inside the text. |
+| `entity()` | `String` | Type of the recognized entity, for instance `PhoneNumber`. |
+| `word()` | `String` | The matched text. |
+
+The service reports the matches of the output without ever rewriting the answer, so redacting the text is left to the caller, which can use the offsets of every match. Every detector also accepts `mask(true)`, asking the service to remove the value of the detected entity, while the answer of the chat service keeps coming back as it is.
+
+```java
+import com.ibm.watsonx.ai.chat.TextChatResponse.ModerationResult;
+
+static String mask(String text, ModerationResult result) {
+    var position = result.position();
+    return text.substring(0, position.start())
+        + "*".repeat(position.end() - position.start())
+        + text.substring(position.end());
+}
+```
+
+### Input blocked by a detector
+
+An input that matches a detector blocks the generation. LangChain4j reports it as a `ContentFilteredException` whose cause is the `ModerationException` raised by the SDK, so the matches of every detector that triggered the block stay reachable.
+
+```java
+import com.ibm.watsonx.ai.chat.exception.ModerationException;
+import dev.langchain4j.exception.ContentFilteredException;
+
+try {
+    chatModel.chat(request);
+} catch (ContentFilteredException e) {
+    var cause = (ModerationException) e.getCause();
+    System.out.println(cause.moderations());
+}
+```
+
+On `WatsonxStreamingChatModel` the same exception is delivered to `onError(...)`.
+
+### Moderation of a single request
+
+`WatsonxChatRequestParameters` carries the same setting, taking precedence over the one configured on the builder.
+
+```java
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.watsonx.WatsonxChatRequestParameters;
+
+ChatRequest request = ChatRequest.builder()
+    .messages(UserMessage.from("Contact me at john@example.com."))
+    .parameters(
+        WatsonxChatRequestParameters.builder()
+            .moderations(ChatModeration.builder().pii(pii -> pii.output(true)).build())
+            .build()
+    ).build();
+```
+
+> **NOTE:** the inline moderation is only available on the foundation models. `WatsonxDeploymentChatModel` and  `WatsonxDeploymentStreamingChatModel` reject it with an `UnsupportedFeatureException`, while the Model Gateway does not support it. To screen a text outside a chat flow, use the [WatsonxModerationModel](#watsonxmoderationmodel).
+
+> 🔗 [SDK content moderation](https://ibm.github.io/watsonx-ai-java-sdk/services/chat-service#content-moderation), for the full list of options of every detector.
 
 ## Tool Integration
 
@@ -784,8 +906,7 @@ the same way as with any other provider. The mapping is driven by the error code
 | `token_quota_reached` | `RateLimitException` |
 | any other error code | `LangChain4jException` |
 
-When the response carries no error body, the exception is chosen from the HTTP status code instead. A request that
-exceeds its `timeout(...)` is reported as a `TimeoutException`.
+When the response carries no error body, the exception is chosen from the HTTP status code instead. A request that exceeds its `timeout(...)` is reported as a `TimeoutException`. A model that refuses to answer, and an input blocked by the [inline moderation](#inline-moderation), are reported as a `ContentFilteredException`.
 
 ```java
 try {

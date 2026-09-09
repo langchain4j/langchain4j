@@ -4,8 +4,6 @@ import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_EMPTY;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import java.util.List;
 import java.util.Objects;
 
@@ -15,7 +13,6 @@ import java.util.Objects;
  */
 @JsonInclude(NON_EMPTY)
 @JsonIgnoreProperties(ignoreUnknown = true)
-@JsonNaming(SnakeCaseStrategy.class)
 public class AnthropicContainer {
 
     public List<AnthropicContainerSkill> skills;
@@ -49,7 +46,6 @@ public class AnthropicContainer {
      */
     @JsonInclude(NON_EMPTY)
     @JsonIgnoreProperties(ignoreUnknown = true)
-    @JsonNaming(SnakeCaseStrategy.class)
     public static class AnthropicContainerSkill {
 
         public String type;
