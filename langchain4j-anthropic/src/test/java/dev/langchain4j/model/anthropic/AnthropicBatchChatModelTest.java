@@ -67,6 +67,14 @@ class AnthropicBatchChatModelTest {
                     + "\"model\":\"claude-haiku-4-5-20251001\",\"stop_reason\":\"end_turn\","
                     + "\"usage\":{\"input_tokens\":5,\"output_tokens\":1}}}}\n";
 
+    private static final String DIAGNOSTICS_RESULTS_JSONL =
+            "{\"custom_id\":\"request-0\",\"result\":{\"type\":\"succeeded\",\"message\":{\"id\":\"msg_0\","
+                    + "\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"A\"}],"
+                    + "\"model\":\"claude-haiku-4-5-20251001\",\"stop_reason\":\"end_turn\","
+                    + "\"usage\":{\"input_tokens\":5,\"output_tokens\":1},"
+                    + "\"diagnostics\":{\"cache_miss_reason\":{\"type\":\"system_changed\","
+                    + "\"cache_missed_input_tokens\":41850}}}}}\n";
+
     private static final String CANCELED_RESULTS_JSONL =
             "{\"custom_id\":\"request-0\",\"result\":{\"type\":\"canceled\"}}\n";
 
@@ -105,6 +113,8 @@ class AnthropicBatchChatModelTest {
                     responseBody = CANCELED_RESULTS_JSONL;
                 } else if (path.contains("msgbatch_thinking")) {
                     responseBody = THINKING_RESULTS_JSONL;
+                } else if (path.contains("msgbatch_diagnostics")) {
+                    responseBody = DIAGNOSTICS_RESULTS_JSONL;
                 } else {
                     responseBody = RESULTS_JSONL;
                 }
@@ -236,6 +246,26 @@ class AnthropicBatchChatModelTest {
         AiMessage aiMessage = response.results().get(0).response().aiMessage();
         assertThat(aiMessage.text()).isEqualTo("Paris");
         assertThat(aiMessage.thinking()).isNull();
+    }
+
+    @Test
+    void retrieve_maps_cache_diagnostics_from_the_result_message() {
+        BatchResponse<ChatResponse> response = model().retrieve("msgbatch_diagnostics");
+
+        AnthropicChatResponseMetadata metadata = (AnthropicChatResponseMetadata)
+                response.results().get(0).response().metadata();
+        assertThat(metadata.cacheDiagnostics()).isNotNull();
+        assertThat(metadata.cacheDiagnostics().cacheMissReasonType()).isEqualTo("system_changed");
+        assertThat(metadata.cacheDiagnostics().cacheMissedInputTokens()).isEqualTo(41850);
+    }
+
+    @Test
+    void retrieve_maps_absent_cache_diagnostics_to_null() {
+        BatchResponse<ChatResponse> response = model().retrieve("msgbatch_1");
+
+        AnthropicChatResponseMetadata metadata = (AnthropicChatResponseMetadata)
+                response.results().get(0).response().metadata();
+        assertThat(metadata.cacheDiagnostics()).isNull();
     }
 
     @Test

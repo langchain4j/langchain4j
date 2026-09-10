@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.internal.Json;
 import dev.langchain4j.model.input.PromptTemplate;
+import dev.langchain4j.service.UserMessage;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
@@ -32,15 +33,24 @@ class InvoiceFixtureTest {
      * the failure looks like a wrong invocation count rather than a useless prompt.
      */
     @Test
-    void the_prompt_the_agent_sends_describes_the_invoice() {
+    void the_prompt_the_agent_sends_describes_the_invoice() throws NoSuchMethodException {
         Map<String, Object> fromPlanner = Map.of("author", "Mario", "amountInUSD", 100.0);
         SupervisorAgentIT.Invoice invoice =
                 Json.fromJson(Json.toJson(fromPlanner), SupervisorAgentIT.Invoice.class);
 
-        String prompt = PromptTemplate.from("Register the invoice described as '{{invoice}}'.")
+        String prompt = PromptTemplate.from(registrationAgentUserMessageTemplate())
                 .apply(Map.of("invoice", invoice))
                 .text();
 
         assertThat(prompt).contains("Mario").contains("100").doesNotContain("@");
+    }
+
+    private static String registrationAgentUserMessageTemplate() throws NoSuchMethodException {
+        // Read off the agent rather than repeated here, so the assertion keeps covering the prompt
+        // the IT actually sends once someone rewords it.
+        UserMessage userMessage = SupervisorAgentIT.InvoiceRegistrationAgent.class
+                .getMethod("register", SupervisorAgentIT.Invoice.class)
+                .getAnnotation(UserMessage.class);
+        return String.join(userMessage.delimiter(), userMessage.value());
     }
 }

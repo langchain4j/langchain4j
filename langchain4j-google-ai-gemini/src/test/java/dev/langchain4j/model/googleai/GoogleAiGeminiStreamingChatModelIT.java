@@ -497,6 +497,73 @@ class GoogleAiGeminiStreamingChatModelIT {
         assertThat(aiMessage.text() != null || !aiMessage.images().isEmpty()).isTrue();
     }
 
+    @Test
+    void should_report_grounding_metadata_when_streaming() {
+        // given
+        GoogleAiGeminiStreamingChatModel gemini = GoogleAiGeminiStreamingChatModel.builder()
+                .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+                .modelName("gemini-2.5-flash")
+                .allowGoogleSearch(true)
+                .logRequests(true)
+                .logResponses(true)
+                .timeout(Duration.ofMinutes(1))
+                .build();
+
+        // when
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        gemini.chat("Who won the last Formula 1 race?", handler);
+        ChatResponse response = handler.get();
+
+        // then
+        assertThat(response.metadata()).isInstanceOf(GoogleAiGeminiChatResponseMetadata.class);
+        GroundingMetadata grounding = ((GoogleAiGeminiChatResponseMetadata) response.metadata()).groundingMetadata();
+
+        assertThat(grounding).isNotNull();
+        assertThat(grounding.webSearchQueries()).isNotEmpty();
+        assertThat(grounding.searchEntryPoint()).isNotNull();
+        assertThat(grounding.searchEntryPoint().renderedContent()).isNotBlank();
+        assertThat(grounding.groundingChunks()).isNotEmpty();
+        assertThat(grounding.groundingSupports()).isNotEmpty();
+
+        assertThat(grounding.groundingSupports())
+                .allSatisfy(support -> assertThat(support.groundingChunkIndices())
+                        .isNotEmpty()
+                        .allSatisfy(index -> assertThat(index)
+                                .isNotNull()
+                                .isBetween(0, grounding.groundingChunks().size() - 1)));
+    }
+
+    @Test
+    void should_report_url_context_metadata_when_streaming() {
+        // given
+        GoogleAiGeminiStreamingChatModel gemini = GoogleAiGeminiStreamingChatModel.builder()
+                .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+                .modelName("gemini-2.5-flash")
+                .allowUrlContext(true)
+                .logRequests(true)
+                .logResponses(true)
+                .timeout(Duration.ofMinutes(1))
+                .build();
+
+        // when
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        gemini.chat("Summarize https://example.com in one sentence.", handler);
+        ChatResponse response = handler.get();
+
+        // then
+        assertThat(response.metadata()).isInstanceOf(GoogleAiGeminiChatResponseMetadata.class);
+        UrlContextMetadata urlContext = ((GoogleAiGeminiChatResponseMetadata) response.metadata()).urlContextMetadata();
+
+        assertThat(urlContext).isNotNull();
+        assertThat(urlContext.urlMetadata()).isNotEmpty();
+        assertThat(urlContext.urlMetadata())
+                .anySatisfy(
+                        urlMetadata -> assertThat(urlMetadata.retrievedUrl()).contains("example.com"));
+        assertThat(urlContext.urlMetadata())
+                .allSatisfy(urlMetadata ->
+                        assertThat(urlMetadata.urlRetrievalStatus()).isNotBlank());
+    }
+
     @AfterEach
     void afterEach() throws InterruptedException {
         String ciDelaySeconds = System.getenv("CI_DELAY_SECONDS_GOOGLE_AI_GEMINI");
