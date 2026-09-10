@@ -111,6 +111,28 @@ public class A2AAgentIT {
     }
 
     @Test
+    @Disabled("Requires streaming A2A server to be running")
+    void streaming_a2a_agent_stopWithNullResponse_tests() {
+        AtomicInteger taskArtifactUpdateEventCount = new AtomicInteger(0);
+        ResultWithAgenticScope<String> result = AgenticServices.a2aBuilder(A2A_SERVER_URL, StreamingA2ATester.class)
+                .outputKey("result")
+                .streamingClientListener((TaskUpdateEvent event) -> {
+                    UpdateEvent updateEvent = event.getUpdateEvent();
+                    if (updateEvent instanceof TaskArtifactUpdateEvent) {
+                        taskArtifactUpdateEventCount.incrementAndGet();
+                        return A2AStreamingClientListenerResult.stopWithResponse(null);
+                    }
+                    return A2AStreamingClientListenerResult.continueStreaming();
+                })
+                .build()
+                .test("test");
+
+        assertThat(result.result()).isEqualTo("");
+        assertThat(result.agenticScope().readState("result", "")).isEmpty();
+        assertThat(taskArtifactUpdateEventCount).hasValue(1);
+    }
+
+    @Test
     @Disabled("Requires A2A server to be running")
     void a2a_agent_loop_tests() {
         class WriterListener implements AgentListener {

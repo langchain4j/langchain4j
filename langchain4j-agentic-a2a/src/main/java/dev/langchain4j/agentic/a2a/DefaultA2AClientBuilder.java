@@ -433,9 +433,11 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
                 if (listenerResult.withCurrentArtifacts()) {
                     completeArtifact(taskUpdateEvent.getTask().artifacts(), messageResponse);
                 } else {
-                    messageResponse.complete(listenerResult.response());
+                    String response = listenerResult.response();
+                    messageResponse.complete(response == null ? "" : response);
                 }
                 stopped.set(true);
+                return;
             }
         }
         completeFromTask(taskUpdateEvent.getTask(), messageResponse);
@@ -468,15 +470,13 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
     }
 
     private static void completeArtifact(List<Artifact> artifacts, CompletableFuture<String> messageResponse) {
-        List<Part<?>> list = new ArrayList<>();
-        if (artifacts == null) {
+        if (artifacts == null || artifacts.isEmpty()) {
             messageResponse.complete("");
             return;
         }
-        for (final Artifact artifact : artifacts) {
-            list.addAll(artifact.parts());
-        }
-        messageResponse.complete(extractTextFromParts(list));
+        messageResponse.complete(extractTextFromParts(artifacts.stream()
+                .flatMap(artifact -> artifact.parts().stream())
+                .toList()));
     }
 
     private static boolean isFailureState(TaskState state) {
