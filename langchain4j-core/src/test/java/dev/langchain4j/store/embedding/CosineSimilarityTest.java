@@ -35,6 +35,13 @@ class CosineSimilarityTest implements WithAssertions {
     }
 
     @Test
+    void should_not_overflow_when_vector_components_are_large() {
+        Embedding embedding = Embedding.from(new float[] {Float.MAX_VALUE, Float.MAX_VALUE});
+
+        assertThat(CosineSimilarity.between(embedding, embedding)).isCloseTo(1, withPercentage(1));
+    }
+
+    @Test
     void should_convert_relevance_score_into_cosine_similarity() {
         assertThat(CosineSimilarity.fromRelevanceScore(0)).isEqualTo(-1);
         assertThat(CosineSimilarity.fromRelevanceScore(0.5)).isEqualTo(0);
