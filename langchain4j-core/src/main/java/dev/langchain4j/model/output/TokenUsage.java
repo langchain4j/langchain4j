@@ -1,8 +1,8 @@
 package dev.langchain4j.model.output;
 
-import static dev.langchain4j.internal.Utils.getOrDefault;
-
 import java.util.Objects;
+
+import static dev.langchain4j.internal.Utils.getOrDefault;
 
 /**
  * Represents the token usage of a response.
@@ -105,8 +105,13 @@ public class TokenUsage {
      *
      * <p>Fields which are null in both responses will be null in the result.
      *
-     * <p>Subclasses carrying their own fields should override this method to sum them as well;
-     * the base implementation only sums the fields declared here.
+     * <p>When one of the two is an instance of a {@link TokenUsage} subclass, that subclass performs the
+     * addition, so that the extra fields it carries are preserved. The result then has the type of that
+     * subclass, no matter which of the two sides it was on.
+     *
+     * <p>A subclass carrying extra fields should therefore override this method and sum those fields as
+     * well. When neither side overrides it, there is nothing that knows how to sum the extra fields and
+     * the result is a plain {@link TokenUsage}.
      *
      * @param that The token usage to add to this one.
      * @return a new {@link TokenUsage} instance with the token usage of both responses added together.
@@ -118,22 +123,23 @@ public class TokenUsage {
 
         if (that.getClass() != TokenUsage.class) {
             // when adding TokenUsage ("this") and one of TokenUsage's subclasses ("that"),
-            // we want to call "add" on the subclass to preserve extra information present in the subclass.
-            // "this" is handed over as a plain TokenUsage: a subclass that inherits this method instead of
-            // overriding it would otherwise delegate straight back here, and the two instances would pass
-            // the call to each other until the stack overflows.
+            // we want to call "add" on the subclass to preserve extra information present in the subclass
             return that.add(asTokenUsage());
         }
 
         return new TokenUsage(
                 sum(this.inputTokenCount, that.inputTokenCount),
                 sum(this.outputTokenCount, that.outputTokenCount),
-                sum(this.totalTokenCount, that.totalTokenCount));
+                sum(this.totalTokenCount, that.totalTokenCount)
+        );
     }
 
     /**
-     * Returns this token usage as a plain {@link TokenUsage}, so that handing it to
-     * {@link #add(TokenUsage)} of a subclass cannot bounce the call back to a subclass implementation.
+     * Returns this token usage as a plain {@link TokenUsage}.
+     *
+     * <p>{@link #add(TokenUsage)} hands "this" to a subclass argument, and a subclass that inherits that
+     * method instead of overriding it would hand it straight back: passing an instance that is not a
+     * subclass stops the two from delegating to each other until the stack overflows.
      */
     private TokenUsage asTokenUsage() {
         return getClass() == TokenUsage.class
@@ -173,9 +179,10 @@ public class TokenUsage {
 
     @Override
     public String toString() {
-        return "TokenUsage {" + " inputTokenCount = "
-                + inputTokenCount + ", outputTokenCount = "
-                + outputTokenCount + ", totalTokenCount = "
-                + totalTokenCount + " }";
+        return "TokenUsage {" +
+                " inputTokenCount = " + inputTokenCount +
+                ", outputTokenCount = " + outputTokenCount +
+                ", totalTokenCount = " + totalTokenCount +
+                " }";
     }
 }
