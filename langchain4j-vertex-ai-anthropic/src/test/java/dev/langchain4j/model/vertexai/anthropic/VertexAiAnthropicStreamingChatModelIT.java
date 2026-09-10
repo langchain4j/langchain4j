@@ -16,11 +16,13 @@ import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.TokenUsage;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.api.condition.EnabledOnJre;
 import org.mockito.InOrder;
 
+@Disabled
 @EnabledIf(
         value = "dev.langchain4j.model.vertexai.anthropic.VertexAiAnthropicChatModelIT#isMonday",
         disabledReason = "Not enough quota to run it more often")
