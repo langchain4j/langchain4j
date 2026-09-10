@@ -3288,7 +3288,7 @@ UntypedAgent creativeWriter = AgenticServices.a2aBuilder(A2A_SERVER_URL)
         .build();
 ```
 
-The listener is invoked for each event received from the remote A2A agent. Return `continueStreaming()` to keep consuming events, or `stopWithResponse(response)` to stop consuming the stream and return the specified response to the caller.
+The listener is invoked for each event received from the remote A2A agent. Return `continueStreaming()` to keep consuming events, `stopWithResponse(response)` to stop consuming the stream and return the specified response to the caller, or `stopWithCurrentArtifacts()` to stop consuming the stream and return the artifacts received so far, using the default A2A client artifact-to-text extraction logic.
 
 Stopping the client-side stream does not cancel the remote A2A task. The remote task may continue executing asynchronously.
 

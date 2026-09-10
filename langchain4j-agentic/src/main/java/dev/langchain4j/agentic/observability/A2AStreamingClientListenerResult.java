@@ -27,14 +27,14 @@ package dev.langchain4j.agentic.observability;
  * return A2AStreamingClientListenerResult.stopWithResponse("Task accepted");
  * </pre>
  */
-public record A2AStreamingClientListenerResult(boolean stop, String response) {
+public record A2AStreamingClientListenerResult(boolean stop, String response, boolean withCurrentArtifacts) {
     /**
      * Creates a result that signals the streaming process should continue.
      *
      * @return an instance with {@code stop=false} and {@code response=null}
      */
     public static A2AStreamingClientListenerResult continueStreaming() {
-        return new A2AStreamingClientListenerResult(false, null);
+        return new A2AStreamingClientListenerResult(false, null, false);
     }
 
     /**
@@ -46,6 +46,19 @@ public record A2AStreamingClientListenerResult(boolean stop, String response) {
      * @return an instance with {@code stop=true} and the provided {@code response}
      */
     public static A2AStreamingClientListenerResult stopWithResponse(String response) {
-        return new A2AStreamingClientListenerResult(true, response);
+        return new A2AStreamingClientListenerResult(true, response, false);
+    }
+
+    /**
+     * Creates a result that signals the streaming process should stop and uses the
+     * artifacts received so far as the final response. The artifacts are extracted
+     * using the same {@code extractText} logic used by the default A2A client
+     * response handling.
+     *
+     * @return an instance with {@code stop=true} and the response extracted from
+     *         the artifacts received so far
+     */
+    public static A2AStreamingClientListenerResult stopWithCurrentArtifacts() {
+        return new A2AStreamingClientListenerResult(true, null, true);
     }
 }

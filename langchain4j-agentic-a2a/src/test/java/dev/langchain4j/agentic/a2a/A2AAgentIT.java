@@ -46,7 +46,7 @@ public class A2AAgentIT {
     static final String A2A_SERVER_URL = "http://localhost:8080";
 
     @Test
-    @Disabled("Requires A2A server to be running")
+    @Disabled("Requires streaming A2A server to be running")
     void streaming_a2a_agent_TaskStatusUpdateEvent_tests() {
         ResultWithAgenticScope<String> result = AgenticServices.a2aBuilder(A2A_SERVER_URL, StreamingA2ATester.class)
                 .outputKey("result")
@@ -67,7 +67,7 @@ public class A2AAgentIT {
     }
 
     @Test
-    @Disabled("Requires A2A server to be running")
+    @Disabled("Requires streaming A2A server to be running")
     void streaming_a2a_agent_TaskArtifactUpdateEvent_tests() {
         ResultWithAgenticScope<String> result = AgenticServices.a2aBuilder(A2A_SERVER_URL, StreamingA2ATester.class)
                 .outputKey("result")
@@ -77,7 +77,7 @@ public class A2AAgentIT {
                     if (updateEvent instanceof TaskArtifactUpdateEvent
                             && task.artifacts() != null
                             && task.artifacts().size() >= 2) {
-                        return A2AStreamingClientListenerResult.stopWithResponse("get 2 artifacts, stop streaming");
+                        return A2AStreamingClientListenerResult.stopWithCurrentArtifacts();
                     }
                     return A2AStreamingClientListenerResult.continueStreaming();
                 })
@@ -85,11 +85,11 @@ public class A2AAgentIT {
                 .test("test");
         String s = result.agenticScope().readState("result", "");
 
-        assertThat(s).isEqualTo("get 2 artifacts, stop streaming");
+        assertThat(s).isEqualTo("artifact1\nartifact2");
     }
 
     @Test
-    @Disabled("Requires A2A server to be running， send addArtifact 2 times")
+    @Disabled("Requires streaming A2A server to be running")
     void streaming_a2a_agent_stopWithResponse_tests() {
         AtomicInteger taskArtifactUpdateEventCount = new AtomicInteger(0);
         ResultWithAgenticScope<String> result = AgenticServices.a2aBuilder(A2A_SERVER_URL, StreamingA2ATester.class)

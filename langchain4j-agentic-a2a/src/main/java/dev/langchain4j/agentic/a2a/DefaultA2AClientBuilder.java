@@ -57,7 +57,6 @@ import org.a2aproject.sdk.spec.Part;
 import org.a2aproject.sdk.spec.Task;
 import org.a2aproject.sdk.spec.TaskState;
 import org.a2aproject.sdk.spec.TextPart;
-import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -353,7 +352,7 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
         }
     }
 
-    private @NonNull List<BiConsumer<ClientEvent, AgentCard>> getEventConsumers(
+    private List<BiConsumer<ClientEvent, AgentCard>> getEventConsumers(
             AtomicReference<String> responseContextId,
             AtomicReference<String> responseTaskId,
             CompletableFuture<String> messageResponse) {
@@ -431,7 +430,11 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
         if (streamingClientListener != null) {
             A2AStreamingClientListenerResult listenerResult = streamingClientListener.onUpdateEvent(taskUpdateEvent);
             if (listenerResult.stop()) {
-                messageResponse.complete(listenerResult.response());
+                if (listenerResult.withCurrentArtifacts()) {
+                    completeArtifact(taskUpdateEvent.getTask().artifacts(), messageResponse);
+                } else {
+                    messageResponse.complete(listenerResult.response());
+                }
                 stopped.set(true);
             }
         }
