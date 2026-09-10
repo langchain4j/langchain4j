@@ -98,8 +98,11 @@ class GoogleGenAiContentMapper {
     private static final String MODEL_ROLE = "model";
     private static final String FUNCTION_ROLE = "function";
 
+    // Signature of a part carrying a function call, keyed by the id of that function call.
     private static final String THOUGHT_SIGNATURE_KEY_PREFIX =
             "thought_signature_"; // do not change, will break backward compatibility!
+
+    // Signature of the last part of a response that carries no function call.
     private static final String THOUGHT_SIGNATURE_KEY =
             "thought_signature"; // do not change, will break backward compatibility!
 
@@ -189,9 +192,11 @@ class GoogleGenAiContentMapper {
             }
             if (aiMsg.text() != null) {
                 Part.Builder textPartBuilder = Part.builder().text(aiMsg.text());
-                String textSignature = aiMsg.attribute(THOUGHT_SIGNATURE_KEY, String.class);
-                if (textSignature != null) {
-                    textPartBuilder.thoughtSignature(Base64.getDecoder().decode(textSignature));
+                if (sendThinking) {
+                    String textSignature = aiMsg.attribute(THOUGHT_SIGNATURE_KEY, String.class);
+                    if (textSignature != null) {
+                        textPartBuilder.thoughtSignature(Base64.getDecoder().decode(textSignature));
+                    }
                 }
                 parts.add(textPartBuilder.build());
             }
@@ -294,13 +299,6 @@ class GoogleGenAiContentMapper {
                     }
                 }
 
-                if (part.functionCall().isEmpty() && part.thoughtSignature().isPresent()) {
-                    attributes.put(
-                            THOUGHT_SIGNATURE_KEY,
-                            Base64.getEncoder()
-                                    .encodeToString(part.thoughtSignature().get()));
-                }
-
                 if (part.functionCall().isPresent()) {
                     FunctionCall fc = part.functionCall().get();
                     String fnName = fc.name().orElseThrow();
@@ -321,6 +319,17 @@ class GoogleGenAiContentMapper {
                             .name(fnName)
                             .arguments(jsonArgs)
                             .build());
+                }
+            }
+
+            if (!parts.isEmpty()) {
+                Part lastPart = parts.get(parts.size() - 1);
+                if (lastPart.functionCall().isEmpty()
+                        && lastPart.thoughtSignature().isPresent()) {
+                    attributes.put(
+                            THOUGHT_SIGNATURE_KEY,
+                            Base64.getEncoder()
+                                    .encodeToString(lastPart.thoughtSignature().get()));
                 }
             }
         }

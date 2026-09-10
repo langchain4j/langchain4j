@@ -910,12 +910,28 @@ class GoogleGenAiContentMapperTest {
                 .attributes(Map.of("thought_signature", Base64.getEncoder().encodeToString(signature)))
                 .build();
 
-        Content result = GoogleGenAiContentMapper.toContent(message, false);
+        Content result = GoogleGenAiContentMapper.toContent(message, true);
 
         List<Part> parts = result.parts().orElseThrow();
         assertThat(parts).hasSize(1);
         assertThat(parts.get(0).text()).hasValue("42");
         assertThat(parts.get(0).thoughtSignature()).hasValue(signature);
+    }
+
+    @Test
+    void should_not_send_back_the_thought_signature_when_thinking_is_not_sent() {
+        String signature = Base64.getEncoder().encodeToString("text-signature".getBytes());
+        AiMessage message = AiMessage.builder()
+                .text("42")
+                .attributes(Map.of("thought_signature", signature))
+                .build();
+
+        Content result = GoogleGenAiContentMapper.toContent(message, false);
+
+        List<Part> parts = result.parts().orElseThrow();
+        assertThat(parts).hasSize(1);
+        assertThat(parts.get(0).text()).hasValue("42");
+        assertThat(parts.get(0).thoughtSignature()).isEmpty();
     }
 
     @Test
@@ -934,9 +950,34 @@ class GoogleGenAiContentMapperTest {
 
         AiMessage aiMessage =
                 GoogleGenAiContentMapper.toChatResponse(response, "test-model").aiMessage();
-        Content result = GoogleGenAiContentMapper.toContent(aiMessage, false);
+        Content result = GoogleGenAiContentMapper.toContent(aiMessage, true);
 
         assertThat(result.parts().orElseThrow().get(0).thoughtSignature()).hasValue(signature);
+    }
+
+    @Test
+    void should_not_capture_a_thought_signature_from_a_part_that_is_not_the_last() {
+        byte[] signature = "thinking-signature".getBytes();
+        GenerateContentResponse response = GenerateContentResponse.builder()
+                .candidates(List.of(Candidate.builder()
+                        .content(Content.builder()
+                                .parts(List.of(
+                                        Part.builder()
+                                                .text("Working it out.")
+                                                .thought(true)
+                                                .thoughtSignature(signature)
+                                                .build(),
+                                        Part.builder().text("42").build()))
+                                .build())
+                        .build()))
+                .build();
+
+        AiMessage aiMessage = GoogleGenAiContentMapper.toChatResponse(response, "test-model", true)
+                .aiMessage();
+
+        assertThat(aiMessage.attributes()).doesNotContainKey("thought_signature");
+        assertThat(GoogleGenAiContentMapper.toContent(aiMessage, true).parts().orElseThrow())
+                .allSatisfy(part -> assertThat(part.thoughtSignature()).isEmpty());
     }
 
     @Test
