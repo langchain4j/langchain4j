@@ -34,9 +34,6 @@ Double score = response.content();
 ```
 
 `OnnxScoringModel` implements `AutoCloseable`; close it when it is no longer needed to release its native resources.
-If model initialization fails, resources created before the failure are also closed, even though no model instance
-is returned to the caller. The original initialization failure is preserved, with any cleanup failures attached as
-suppressed exceptions.
 
 If you want to use the GPU, `onnxruntime_gpu` version can be found
 [here](https://onnxruntime.ai/docs/execution-providers/CUDA-ExecutionProvider.html).

@@ -47,9 +47,10 @@ class OnnxScoringBertCrossEncoder implements AutoCloseable {
             this.normalize = normalize;
             initializedTokenizer = HuggingFaceTokenizer.newInstance(Paths.get(pathToTokenizer), tokenizerOptions);
         } catch (Exception | Error e) {
-            closeOnFailure(initializedTokenizer, e);
             closeOnFailure(initializedSession, e);
+            closeOnFailure(initializedTokenizer, e);
             if (e instanceof Error error) {
+                // may originate from either native library (ONNX Runtime or DJL tokenizer), so it is not relabelled
                 throw error;
             }
             throw new RuntimeException(e);
