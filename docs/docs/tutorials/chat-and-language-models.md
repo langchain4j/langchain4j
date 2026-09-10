@@ -119,6 +119,10 @@ how it should behave, in what style to answer, etc.
 LLMs are trained to pay more attention to `SystemMessage` than to other types of messages,
 so be careful, and it's better not to give an end user free access to define or inject some input into a `SystemMessage`.
 Usually, it is located at the start of the conversation.
+It can contain:
+    - `text()`: the message text.
+    - `attributes()`: additional attributes: These attributes are not sent to the model,
+      but they are stored in the [`ChatMemory`](/tutorials/chat-memory).
 - `CustomMessage`: This is a custom message that can contain arbitrary attributes. This message type can only be used by
 `ChatModel` implementations that support it (currently only Ollama).
 

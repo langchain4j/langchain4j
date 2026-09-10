@@ -1,5 +1,12 @@
 package dev.langchain4j.jackson3;
 
+import static com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility.ANY;
+import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_EMPTY;
+import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
+import static com.fasterxml.jackson.annotation.JsonTypeInfo.As.EXISTING_PROPERTY;
+import static com.fasterxml.jackson.annotation.JsonTypeInfo.Id.NAME;
+import static com.fasterxml.jackson.annotation.PropertyAccessor.FIELD;
+
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -21,13 +28,6 @@ import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.annotation.JsonDeserialize;
 import tools.jackson.databind.json.JsonMapper;
-import static com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility.ANY;
-import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_EMPTY;
-import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
-import static com.fasterxml.jackson.annotation.JsonTypeInfo.As.EXISTING_PROPERTY;
-import static com.fasterxml.jackson.annotation.JsonTypeInfo.Id.NAME;
-import static com.fasterxml.jackson.annotation.PropertyAccessor.FIELD;
-
 
 /**
  * Jackson 3 twin of {@code JacksonChatMessageJsonCodec}.
@@ -61,7 +61,8 @@ public class Jackson3ChatMessageJsonCodec implements ChatMessageJsonCodec {
                 .addMixIn(PdfFile.class, PdfFileMixin.class);
     }
 
-    private static final ObjectMapper OBJECT_MAPPER = chatMessageJsonMapperBuilder().build();
+    private static final ObjectMapper OBJECT_MAPPER =
+            chatMessageJsonMapperBuilder().build();
 
     private static final TypeReference<List<ChatMessage>> MESSAGE_LIST_TYPE = new TypeReference<>() {};
 
@@ -124,11 +125,9 @@ public class Jackson3ChatMessageJsonCodec implements ChatMessageJsonCodec {
         public abstract ChatMessageType type();
     }
 
-    @JsonInclude(NON_NULL)
-    private abstract static class SystemMessageMixin {
-        @JsonCreator
-        public SystemMessageMixin(@JsonProperty("text") String text) {}
-    }
+    @JsonInclude(NON_EMPTY)
+    @JsonDeserialize(builder = SystemMessage.Builder.class)
+    private abstract static class SystemMessageMixin {}
 
     @JsonInclude(NON_EMPTY)
     @JsonDeserialize(builder = UserMessage.Builder.class)
