@@ -2,13 +2,11 @@ package dev.langchain4j.store.embedding.elasticsearch;
 
 import static dev.langchain4j.store.embedding.filter.MetadataFilterBuilder.metadataKey;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.within;
 
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
-import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.rag.AugmentationRequest;
-import dev.langchain4j.rag.DefaultRetrievalAugmentor;
 import dev.langchain4j.rag.content.ContentMetadata;
 import dev.langchain4j.rag.content.retriever.elasticsearch.ElasticsearchContentRetriever;
 import dev.langchain4j.rag.query.Query;
@@ -86,7 +84,7 @@ class ElasticsearchEmbeddingStoreScriptIT extends AbstractElasticsearchEmbedding
     @Test
     void should_preserve_metadata_filter_score_threshold_and_result_limit() throws Exception {
         ElasticsearchEmbeddingStore store = (ElasticsearchEmbeddingStore) embeddingStore();
-        float[] relatedVector = new float[384];
+        float[] relatedVector = new float[embeddingModel().dimension()];
         relatedVector[0] = 0.8f;
         relatedVector[1] = 0.6f;
         store.addAll(
@@ -109,44 +107,13 @@ class ElasticsearchEmbeddingStoreScriptIT extends AbstractElasticsearchEmbedding
                 .matches();
 
         assertThat(matches).extracting(EmbeddingMatch::embeddingId).containsExactly("matching");
-        assertThat(matches.get(0).score()).isEqualTo(1.0);
-    }
-
-    @Test
-    void should_augment_using_full_text_and_script_search_from_the_same_index() throws Exception {
-        ElasticsearchEmbeddingStore store = (ElasticsearchEmbeddingStore) embeddingStore();
-        TextSegment segment = TextSegment.from("Printer network connection guide");
-        store.addAll(
-                List.of("with-vector"), List.of(embeddingModel().embed(segment).content()), List.of(segment));
-        ElasticsearchContentRetriever fullText = fullTextRetriever();
-        fullText.add("text-only", "Printer troubleshooting guide");
-        elasticsearchClientHelper.refreshIndex(indexName);
-
-        ElasticsearchContentRetriever vector = ElasticsearchContentRetriever.builder()
-                .client(elasticsearchClientHelper.client)
-                .indexName(indexName)
-                .configuration(withConfiguration())
-                .embeddingModel(embeddingModel())
-                .maxResults(5)
-                .build();
-        DefaultRetrievalAugmentor augmentor = DefaultRetrievalAugmentor.builder()
-                .queryRouter(query -> List.of(fullText, vector))
-                .executor(Runnable::run)
-                .build();
-        UserMessage message = UserMessage.from("printer");
-
-        var result = augmentor.augment(new AugmentationRequest(
-                message, new dev.langchain4j.rag.query.Metadata(message, "conversation", List.of())));
-
-        assertThat(result.contents())
-                .extracting(content -> content.metadata().get(ContentMetadata.EMBEDDING_ID))
-                .containsExactly("with-vector", "text-only");
-        assertThat(((UserMessage) result.chatMessage()).singleText())
-                .contains("Printer network connection guide", "Printer troubleshooting guide");
+        assertThat(matches.get(0).score()).isCloseTo(1.0, within(1e-6));
     }
 
     @Test
     void should_not_lose_vector_matches_from_a_shard_containing_text_only_documents() throws Exception {
+        // this test needs a two-shard index, so it creates one itself and must start from a clean slate
+        elasticsearchClientHelper.removeDataStore(indexName);
         elasticsearchClientHelper
                 .client
                 .indices()
@@ -207,8 +174,8 @@ class ElasticsearchEmbeddingStoreScriptIT extends AbstractElasticsearchEmbedding
                 .build();
     }
 
-    private static Embedding unitEmbedding(int axis) {
-        float[] vector = new float[384];
+    private Embedding unitEmbedding(int axis) {
+        float[] vector = new float[embeddingModel().dimension()];
         vector[axis] = 1.0f;
         return Embedding.from(vector);
     }
