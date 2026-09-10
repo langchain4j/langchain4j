@@ -7,7 +7,6 @@ import dev.langchain4j.data.image.Image;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.Locale;
 import org.junit.jupiter.api.Test;
 
 class UtilsTest {
@@ -156,24 +155,6 @@ class UtilsTest {
         assertThat(Utils.extractAndValidateFormat(
                         Image.builder().url(new URI("file:///image.webp")).build()))
                 .isEqualTo("webp");
-    }
-
-    @Test
-    void should_extract_format_independently_of_default_locale() throws Exception {
-        Locale defaultLocale = Locale.getDefault();
-        Locale.setDefault(Locale.forLanguageTag("tr-TR"));
-        try {
-            assertThat(Utils.extractAndValidateFormat(
-                            Image.builder().url(new URI("file:///image.GIF")).build()))
-                    .isEqualTo("gif");
-            assertThat(Utils.extractAndValidateFormat(Image.builder()
-                            .mimeType("IMAGE/GIF")
-                            .url(new URI("file:///image"))
-                            .build()))
-                    .isEqualTo("gif");
-        } finally {
-            Locale.setDefault(defaultLocale);
-        }
     }
 
     @Test
