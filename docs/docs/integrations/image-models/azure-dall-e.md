@@ -35,10 +35,15 @@ that can be used for various image processing tasks.
 ```xml
 <dependency>
     <groupId>dev.langchain4j</groupId>
-    <artifactId>langchain4j-azure-open-ai-spring-boot-starter</artifactId>
+    <artifactId>langchain4j-azure-open-ai-spring-boot4-starter</artifactId>
     <version>1.20.0-beta30</version>
 </dependency>
 ```
+
+:::note
+This starter requires **Spring Boot 4**. On **Spring Boot 3**, use `langchain4j-azure-open-ai-spring-boot-starter` instead.
+See [Spring Boot Integration](/tutorials/spring-boot-integration#supported-versions) for details.
+:::
 
 
 ## Creating `AzureOpenAiImageModel`

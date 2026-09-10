@@ -39,10 +39,15 @@ LangChain4j provides 3 different integrations with OpenAI for using chat models,
 ```xml
 <dependency>
     <groupId>dev.langchain4j</groupId>
-    <artifactId>langchain4j-open-ai-spring-boot-starter</artifactId>
+    <artifactId>langchain4j-open-ai-spring-boot4-starter</artifactId>
     <version>1.20.0-beta30</version>
 </dependency>
 ```
+
+:::note
+This starter requires **Spring Boot 4**. On **Spring Boot 3**, use `langchain4j-open-ai-spring-boot-starter` instead.
+See [Spring Boot Integration](/tutorials/spring-boot-integration#supported-versions) for details.
+:::
 
 ## API Key
 
@@ -447,7 +452,7 @@ You can customize it or use any other HTTP client of your choice.
 More information can be found [here](/tutorials/customizable-http-client).
 
 ### Spring Boot
-When using the `langchain4j-open-ai-spring-boot-starter` Spring Boot starter,
+When using the `langchain4j-open-ai-spring-boot4-starter`/`langchain4j-open-ai-spring-boot-starter` Spring Boot starter,
 the Spring's `RestClient` is used as the default HTTP client.
 
 You can customize it or use any other HTTP client of your choice.
