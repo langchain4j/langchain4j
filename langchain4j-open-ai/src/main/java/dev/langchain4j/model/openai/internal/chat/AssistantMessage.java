@@ -4,10 +4,10 @@ import static dev.langchain4j.model.openai.internal.chat.Role.ASSISTANT;
 import static java.util.Arrays.asList;
 import static java.util.Collections.unmodifiableList;
 
-import com.fasterxml.jackson.annotation.JsonAlias;
-import com.fasterxml.jackson.annotation.JsonAnyGetter;
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonAlias;
+import com.fasterxml.jackson.annotation.JsonAnyGetter;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -159,10 +159,8 @@ public final class AssistantMessage implements Message {
     public static final class Builder {
 
         private String content;
-
         @JsonAlias("reasoning")
         private String reasoningContent;
-
         private String name;
         private List<ToolCall> toolCalls;
         private String refusal;

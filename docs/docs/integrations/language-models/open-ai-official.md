@@ -309,29 +309,27 @@ OpenAI rejects a request that carries both.
 ### `promptCacheBreakpoint`
 
 `SystemMessage`, `UserMessage` and `ToolExecutionResultMessage` can each be marked as a prompt cache
-breakpoint by setting the `prompt_cache_breakpoint` attribute to `explicit`. Because prompt caching is
-prefix-based, the breakpoint is applied to the **last content block** of the marked message, so that
-everything up to and including that message forms the cached prefix.
+breakpoint. Because prompt caching is prefix-based, the breakpoint is applied to the **last content
+block** of the marked message, so that everything up to and including that message forms the cached
+prefix.
 
-`SystemMessage` and `UserMessage` expose a mutable attributes map:
+`OpenAiOfficialPromptCacheBreakpoint.mark()` returns a marked copy of the message, leaving the original
+untouched:
 
 ```java
-SystemMessage systemMessage = SystemMessage.from(SHARED_INSTRUCTIONS);
-systemMessage.attributes().put(OpenAiOfficialPromptCacheBreakpoint.ATTRIBUTE_KEY,
-                               OpenAiOfficialPromptCacheBreakpoint.MODE_EXPLICIT);
+SystemMessage systemMessage = OpenAiOfficialPromptCacheBreakpoint.mark(SystemMessage.from(SHARED_INSTRUCTIONS));
+
+UserMessage userMessage = OpenAiOfficialPromptCacheBreakpoint.mark(UserMessage.from(LONG_DOCUMENT));
+
+ToolExecutionResultMessage toolResult = OpenAiOfficialPromptCacheBreakpoint.mark(someToolExecutionResultMessage);
 ```
 
-They can also be built with the attribute set upfront, which is the only option for the immutable
-`ToolExecutionResultMessage`:
+Marking is really just an attribute on the message, so it can also be done by hand — for example when
+you are already building the message anyway:
 
 ```java
 SystemMessage systemMessage = SystemMessage.builder()
         .text(SHARED_INSTRUCTIONS)
-        .attributes(Map.of(OpenAiOfficialPromptCacheBreakpoint.ATTRIBUTE_KEY,
-                           OpenAiOfficialPromptCacheBreakpoint.MODE_EXPLICIT))
-        .build();
-
-ToolExecutionResultMessage toolResult = someToolExecutionResultMessage.toBuilder()
         .attributes(Map.of(OpenAiOfficialPromptCacheBreakpoint.ATTRIBUTE_KEY,
                            OpenAiOfficialPromptCacheBreakpoint.MODE_EXPLICIT))
         .build();

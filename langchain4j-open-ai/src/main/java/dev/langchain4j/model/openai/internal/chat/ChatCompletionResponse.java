@@ -1,7 +1,5 @@
 package dev.langchain4j.model.openai.internal.chat;
 
-import static java.util.Collections.unmodifiableList;
-
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -11,8 +9,11 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
 import dev.langchain4j.model.openai.internal.shared.Usage;
+
 import java.util.List;
 import java.util.Objects;
+
+import static java.util.Collections.unmodifiableList;
 
 @JsonDeserialize(builder = ChatCompletionResponse.Builder.class)
 @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -20,22 +21,16 @@ public final class ChatCompletionResponse {
 
     @JsonProperty
     private final String id;
-
     @JsonProperty
     private final Long created;
-
     @JsonProperty
     private final String model;
-
     @JsonProperty
     private final List<ChatCompletionChoice> choices;
-
     @JsonProperty
     private final Usage usage;
-
     @JsonProperty
     private final String systemFingerprint;
-
     @JsonProperty
     private final String serviceTier;
 
@@ -89,7 +84,8 @@ public final class ChatCompletionResponse {
     @JacocoIgnoreCoverageGenerated
     public boolean equals(Object another) {
         if (this == another) return true;
-        return another instanceof ChatCompletionResponse && equalTo((ChatCompletionResponse) another);
+        return another instanceof ChatCompletionResponse
+                && equalTo((ChatCompletionResponse) another);
     }
 
     @JacocoIgnoreCoverageGenerated

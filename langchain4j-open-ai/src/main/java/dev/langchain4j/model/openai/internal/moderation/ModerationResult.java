@@ -8,6 +8,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
+
 import java.util.Objects;
 
 @JsonDeserialize(builder = ModerationResult.Builder.class)
@@ -16,10 +17,8 @@ public final class ModerationResult {
 
     @JsonProperty
     private final Categories categories;
-
     @JsonProperty
     private final CategoryScores categoryScores;
-
     @JsonProperty
     private final Boolean flagged;
 
@@ -46,7 +45,8 @@ public final class ModerationResult {
     @JacocoIgnoreCoverageGenerated
     public boolean equals(Object another) {
         if (this == another) return true;
-        return another instanceof ModerationResult && equalTo((ModerationResult) another);
+        return another instanceof ModerationResult
+                && equalTo((ModerationResult) another);
     }
 
     @JacocoIgnoreCoverageGenerated

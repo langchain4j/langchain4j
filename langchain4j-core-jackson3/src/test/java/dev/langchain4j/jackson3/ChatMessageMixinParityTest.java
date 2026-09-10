@@ -27,8 +27,8 @@ class ChatMessageMixinParityTest {
     private static final Path JACKSON3_CODEC =
             Path.of("src/main/java/dev/langchain4j/jackson3/Jackson3ChatMessageJsonCodec.java");
 
-    private static final Path JACKSON2_CODEC =
-            Path.of("../langchain4j-core/src/main/java/dev/langchain4j/data/message/JacksonChatMessageJsonCodec.java");
+    private static final Path JACKSON2_CODEC = Path.of(
+            "../langchain4j-core/src/main/java/dev/langchain4j/data/message/JacksonChatMessageJsonCodec.java");
 
     private static Set<String> mixinTargetsOf(Path source) throws IOException {
         assertThat(source)

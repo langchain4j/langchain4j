@@ -1,7 +1,5 @@
 package dev.langchain4j.model.openai.internal.completion;
 
-import static java.util.Collections.unmodifiableList;
-
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -11,8 +9,11 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
 import dev.langchain4j.model.openai.internal.shared.Usage;
+
 import java.util.List;
 import java.util.Objects;
+
+import static java.util.Collections.unmodifiableList;
 
 @JsonDeserialize(builder = CompletionResponse.Builder.class)
 @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -20,16 +21,12 @@ public final class CompletionResponse {
 
     @JsonProperty
     private final String id;
-
     @JsonProperty
     private final Integer created;
-
     @JsonProperty
     private final String model;
-
     @JsonProperty
     private final List<CompletionChoice> choices;
-
     @JsonProperty
     private final Usage usage;
 
@@ -73,7 +70,8 @@ public final class CompletionResponse {
     @JacocoIgnoreCoverageGenerated
     public boolean equals(Object another) {
         if (this == another) return true;
-        return another instanceof CompletionResponse && equalTo((CompletionResponse) another);
+        return another instanceof CompletionResponse
+                && equalTo((CompletionResponse) another);
     }
 
     @JacocoIgnoreCoverageGenerated

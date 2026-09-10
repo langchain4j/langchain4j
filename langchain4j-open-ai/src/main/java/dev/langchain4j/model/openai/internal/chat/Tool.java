@@ -1,7 +1,5 @@
 package dev.langchain4j.model.openai.internal.chat;
 
-import static dev.langchain4j.model.openai.internal.chat.ToolType.FUNCTION;
-
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -10,7 +8,10 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
+
 import java.util.Objects;
+
+import static dev.langchain4j.model.openai.internal.chat.ToolType.FUNCTION;
 
 @JsonDeserialize(builder = Tool.Builder.class)
 @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -18,7 +19,6 @@ public class Tool {
 
     @JsonProperty
     private final ToolType type = FUNCTION;
-
     @JsonProperty
     private final Function function;
 
@@ -39,12 +39,14 @@ public class Tool {
     @JacocoIgnoreCoverageGenerated
     public boolean equals(Object another) {
         if (this == another) return true;
-        return another instanceof Tool && equalTo((Tool) another);
+        return another instanceof Tool
+                && equalTo((Tool) another);
     }
 
     @JacocoIgnoreCoverageGenerated
     private boolean equalTo(Tool another) {
-        return Objects.equals(type, another.type) && Objects.equals(function, another.function);
+        return Objects.equals(type, another.type)
+                && Objects.equals(function, another.function);
     }
 
     @Override
@@ -59,11 +61,16 @@ public class Tool {
     @Override
     @JacocoIgnoreCoverageGenerated
     public String toString() {
-        return "Tool{" + "type=" + type + ", function=" + function + "}";
+        return "Tool{"
+                + "type=" + type
+                + ", function=" + function
+                + "}";
     }
 
     public static Tool from(Function function) {
-        return new Builder().function(function).build();
+        return new Builder()
+                .function(function)
+                .build();
     }
 
     public static Builder builder() {

@@ -1,8 +1,5 @@
 package dev.langchain4j.jackson3;
 
-import static com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility.ANY;
-import static com.fasterxml.jackson.annotation.PropertyAccessor.FIELD;
-
 import dev.langchain4j.Internal;
 import dev.langchain4j.exception.JsonReadException;
 import dev.langchain4j.exception.JsonWriteException;
@@ -16,6 +13,9 @@ import tools.jackson.databind.SerializationFeature;
 import tools.jackson.databind.introspect.AnnotationIntrospectorPair;
 import tools.jackson.databind.introspect.JacksonAnnotationIntrospector;
 import tools.jackson.databind.json.JsonMapper;
+import static com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility.ANY;
+import static com.fasterxml.jackson.annotation.PropertyAccessor.FIELD;
+
 
 /**
  * Jackson 3 implementation of {@link Json.JsonCodec}.

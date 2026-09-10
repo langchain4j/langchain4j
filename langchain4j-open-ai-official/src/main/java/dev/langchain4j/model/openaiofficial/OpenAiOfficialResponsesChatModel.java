@@ -372,7 +372,7 @@ public class OpenAiOfficialResponsesChatModel implements ChatModel {
         }
 
         /**
-         * @since 1.20.0
+         * @since 1.21.0
          */
         public Builder promptCacheOptions(OpenAiOfficialPromptCacheOptions promptCacheOptions) {
             this.promptCacheOptions = promptCacheOptions;

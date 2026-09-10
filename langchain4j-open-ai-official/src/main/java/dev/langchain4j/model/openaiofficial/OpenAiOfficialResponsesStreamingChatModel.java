@@ -686,8 +686,8 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                     .build());
         }
         throw new UnsupportedFeatureException("OpenAI does not support a \""
-                + OpenAiOfficialPromptCacheBreakpoint.ATTRIBUTE_KEY + "\" on a " + content
-                + " content block. Supported content blocks: input_text, input_image and input_file.");
+                + OpenAiOfficialPromptCacheBreakpoint.ATTRIBUTE_KEY
+                + "\" on this content block. Supported content blocks: input_text, input_image and input_file.");
     }
 
     private static ResponseFunctionCallOutputItem withPromptCacheBreakpoint(ResponseFunctionCallOutputItem item) {
@@ -706,8 +706,8 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                     .build());
         }
         throw new UnsupportedFeatureException("OpenAI does not support a \""
-                + OpenAiOfficialPromptCacheBreakpoint.ATTRIBUTE_KEY + "\" on a " + item
-                + " content block. Supported content blocks: input_text and input_image.");
+                + OpenAiOfficialPromptCacheBreakpoint.ATTRIBUTE_KEY
+                + "\" on this content block. Supported content blocks: input_text and input_image.");
     }
 
     private static ResponseInputItem createTextMessage(EasyInputMessage.Role role, String text) {
@@ -1094,7 +1094,7 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
         }
 
         /**
-         * @since 1.20.0
+         * @since 1.21.0
          */
         public Builder promptCacheOptions(OpenAiOfficialPromptCacheOptions promptCacheOptions) {
             this.promptCacheOptions = promptCacheOptions;

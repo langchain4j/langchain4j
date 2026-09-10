@@ -2,9 +2,9 @@ package dev.langchain4j.model.openai.internal.chat;
 
 import static java.util.Collections.unmodifiableList;
 
-import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -115,10 +115,8 @@ public final class Delta {
 
         private String role;
         private String content;
-
         @JsonAlias("reasoning")
         private String reasoningContent;
-
         private List<ToolCall> toolCalls;
 
         @Deprecated

@@ -7,7 +7,6 @@ import dev.langchain4j.exception.JsonWriteException;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.json.JsonMapper;
-
 /**
  * Jackson 3 twin of the default tool specification codec.
  *

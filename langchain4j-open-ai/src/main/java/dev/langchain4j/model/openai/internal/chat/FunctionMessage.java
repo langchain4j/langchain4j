@@ -1,7 +1,5 @@
 package dev.langchain4j.model.openai.internal.chat;
 
-import static dev.langchain4j.model.openai.internal.chat.Role.FUNCTION;
-
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -10,7 +8,10 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
+
 import java.util.Objects;
+
+import static dev.langchain4j.model.openai.internal.chat.Role.FUNCTION;
 
 @JsonDeserialize(builder = FunctionMessage.Builder.class)
 @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -19,10 +20,8 @@ public final class FunctionMessage implements Message {
 
     @JsonProperty
     private final Role role = FUNCTION;
-
     @JsonProperty
     private final String name;
-
     @JsonProperty
     private final String content;
 
@@ -48,7 +47,8 @@ public final class FunctionMessage implements Message {
     @JacocoIgnoreCoverageGenerated
     public boolean equals(Object another) {
         if (this == another) return true;
-        return another instanceof FunctionMessage && equalTo((FunctionMessage) another);
+        return another instanceof FunctionMessage
+                && equalTo((FunctionMessage) another);
     }
 
     @JacocoIgnoreCoverageGenerated
@@ -71,12 +71,19 @@ public final class FunctionMessage implements Message {
     @Override
     @JacocoIgnoreCoverageGenerated
     public String toString() {
-        return "FunctionMessage{" + "role=" + role + ", name=" + name + ", content=" + content + "}";
+        return "FunctionMessage{"
+                + "role=" + role
+                + ", name=" + name
+                + ", content=" + content
+                + "}";
     }
 
     @Deprecated
     public static FunctionMessage from(String name, String content) {
-        return FunctionMessage.builder().name(name).content(content).build();
+        return FunctionMessage.builder()
+                .name(name)
+                .content(content)
+                .build();
     }
 
     @Deprecated

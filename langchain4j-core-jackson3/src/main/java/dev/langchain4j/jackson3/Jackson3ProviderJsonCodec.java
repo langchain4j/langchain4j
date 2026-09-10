@@ -13,7 +13,6 @@ import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.PropertyNamingStrategies;
 import tools.jackson.databind.SerializationFeature;
 import tools.jackson.databind.json.JsonMapper;
-
 /**
  * Jackson 3 codec for provider wire DTOs.
  *

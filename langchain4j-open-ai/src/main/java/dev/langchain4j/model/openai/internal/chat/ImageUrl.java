@@ -8,6 +8,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
+
 import java.util.Objects;
 
 @JsonDeserialize(builder = ImageUrl.Builder.class)
@@ -16,7 +17,6 @@ public class ImageUrl {
 
     @JsonProperty
     private final String url;
-
     @JsonProperty
     private final ImageDetail detail;
 
@@ -38,12 +38,14 @@ public class ImageUrl {
     @JacocoIgnoreCoverageGenerated
     public boolean equals(Object another) {
         if (this == another) return true;
-        return another instanceof ImageUrl && equalTo((ImageUrl) another);
+        return another instanceof ImageUrl
+                && equalTo((ImageUrl) another);
     }
 
     @JacocoIgnoreCoverageGenerated
     private boolean equalTo(ImageUrl another) {
-        return Objects.equals(url, another.url) && Objects.equals(detail, another.detail);
+        return Objects.equals(url, another.url)
+                && Objects.equals(detail, another.detail);
     }
 
     @Override
@@ -58,7 +60,10 @@ public class ImageUrl {
     @Override
     @JacocoIgnoreCoverageGenerated
     public String toString() {
-        return "ImageUrl{" + "url=" + url + ", detail=" + detail + "}";
+        return "ImageUrl{" +
+                "url=" + url +
+                ", detail=" + detail +
+                "}";
     }
 
     public static Builder builder() {

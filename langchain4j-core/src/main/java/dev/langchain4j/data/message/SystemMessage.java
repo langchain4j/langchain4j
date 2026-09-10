@@ -38,7 +38,7 @@ public class SystemMessage implements ChatMessage {
     /**
      * Creates a {@link SystemMessage} from a builder.
      *
-     * @since 1.20.0
+     * @since 1.21.0
      */
     public SystemMessage(Builder builder) {
         this.text = ensureNotBlank(builder.text, "text");
@@ -57,7 +57,7 @@ public class SystemMessage implements ChatMessage {
      * Returns additional attributes.
      *
      * @see #attribute(String, Class)
-     * @since 1.20.0
+     * @since 1.21.0
      */
     @Experimental
     public Map<String, Object> attributes() {
@@ -68,7 +68,7 @@ public class SystemMessage implements ChatMessage {
      * Returns additional attribute by it's key.
      *
      * @see #attributes()
-     * @since 1.20.0
+     * @since 1.21.0
      */
     @Experimental
     public <T> T attribute(String key, Class<T> type) {
@@ -81,7 +81,7 @@ public class SystemMessage implements ChatMessage {
     }
 
     /**
-     * @since 1.20.0
+     * @since 1.21.0
      */
     public Builder toBuilder() {
         return builder().text(text).attributes(attributes);
@@ -106,14 +106,14 @@ public class SystemMessage implements ChatMessage {
     }
 
     /**
-     * @since 1.20.0
+     * @since 1.21.0
      */
     public static Builder builder() {
         return new Builder();
     }
 
     /**
-     * @since 1.20.0
+     * @since 1.21.0
      */
     public static class Builder {
 

@@ -20,7 +20,7 @@ import java.util.Objects;
  * earlier models only. Setting both on the same request is rejected by OpenAI.
  *
  * @see <a href="https://developers.openai.com/api/docs/guides/prompt-caching">Prompt caching</a>
- * @since 1.20.0
+ * @since 1.21.0
  */
 public class OpenAiOfficialPromptCacheOptions {
 

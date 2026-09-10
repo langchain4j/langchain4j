@@ -86,8 +86,8 @@ class Jackson3PolymorphicCompatibilityTest {
 
         assertThatThrownBy(() -> codec.fromJson(json, LinkedHashMap.class))
                 .isInstanceOf(JsonTypeNotAllowedException.class)
-                .satisfies(e ->
-                        assertThat(((JsonTypeNotAllowedException) e).typeId()).isEqualTo(NotAllowed.class.getName()));
+                .satisfies(e -> assertThat(((JsonTypeNotAllowedException) e).typeId())
+                        .isEqualTo(NotAllowed.class.getName()));
     }
 
     @Test
@@ -98,8 +98,7 @@ class Jackson3PolymorphicCompatibilityTest {
 
         Map<?, ?> restored = StateJson.codec(allowlist).fromJson(json, LinkedHashMap.class);
 
-        assertThat(restored.get("order"))
-                .isInstanceOfSatisfying(
-                        NotAllowed.class, order -> assertThat(order.sku).isEqualTo("abc"));
+        assertThat(restored.get("order")).isInstanceOfSatisfying(NotAllowed.class, order -> assertThat(order.sku)
+                .isEqualTo("abc"));
     }
 }

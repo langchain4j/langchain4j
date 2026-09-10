@@ -176,7 +176,7 @@ public class OpenAiOfficialTokenUsage extends TokenUsage {
          * Returns {@code null} when the model provider did not report it, which is distinct from a
          * reported zero.
          *
-         * @since 1.20.0
+         * @since 1.21.0
          */
         public Integer cacheWriteTokens() {
             return cacheWriteTokens;
@@ -204,7 +204,7 @@ public class OpenAiOfficialTokenUsage extends TokenUsage {
             }
 
             /**
-             * @since 1.20.0
+             * @since 1.21.0
              */
             public Builder cacheWriteTokens(Integer cacheWriteTokens) {
                 this.cacheWriteTokens = cacheWriteTokens;
@@ -212,7 +212,7 @@ public class OpenAiOfficialTokenUsage extends TokenUsage {
             }
 
             /**
-             * @since 1.20.0
+             * @since 1.21.0
              */
             public Builder cacheWriteTokens(Long cacheWriteTokens) {
                 if (cacheWriteTokens != null) {

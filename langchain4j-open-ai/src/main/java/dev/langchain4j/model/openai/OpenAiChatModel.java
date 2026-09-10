@@ -433,7 +433,7 @@ public class OpenAiChatModel implements ChatModel {
         }
 
         /**
-         * @since 1.20.0
+         * @since 1.21.0
          */
         public OpenAiChatModelBuilder promptCacheKey(String promptCacheKey) {
             this.promptCacheKey = promptCacheKey;
@@ -441,7 +441,7 @@ public class OpenAiChatModel implements ChatModel {
         }
 
         /**
-         * @since 1.20.0
+         * @since 1.21.0
          */
         public OpenAiChatModelBuilder promptCacheOptions(OpenAiPromptCacheOptions promptCacheOptions) {
             this.promptCacheOptions = promptCacheOptions;

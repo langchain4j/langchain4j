@@ -109,7 +109,7 @@ public class OpenAiOfficialResponsesChatRequestParameters extends DefaultChatReq
     /**
      * Returns {@code prompt_cache_options}, supported by {@code gpt-5.6} and later.
      *
-     * @since 1.20.0
+     * @since 1.21.0
      */
     public OpenAiOfficialPromptCacheOptions promptCacheOptions() {
         return promptCacheOptions;
@@ -319,7 +319,7 @@ public class OpenAiOfficialResponsesChatRequestParameters extends DefaultChatReq
         }
 
         /**
-         * @since 1.20.0
+         * @since 1.21.0
          */
         public Builder promptCacheOptions(OpenAiOfficialPromptCacheOptions promptCacheOptions) {
             this.promptCacheOptions = promptCacheOptions;

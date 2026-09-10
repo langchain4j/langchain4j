@@ -1,7 +1,5 @@
 package dev.langchain4j.model.openai.internal.embedding;
 
-import static java.util.Collections.unmodifiableList;
-
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -11,8 +9,11 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
 import dev.langchain4j.model.openai.internal.shared.Usage;
+
 import java.util.List;
 import java.util.Objects;
+
+import static java.util.Collections.unmodifiableList;
 
 @JsonDeserialize(builder = EmbeddingResponse.Builder.class)
 @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -20,10 +21,8 @@ public final class EmbeddingResponse {
 
     @JsonProperty
     private final String model;
-
     @JsonProperty
     private final List<Embedding> data;
-
     @JsonProperty
     private final Usage usage;
 
@@ -57,7 +56,8 @@ public final class EmbeddingResponse {
     @JacocoIgnoreCoverageGenerated
     public boolean equals(Object another) {
         if (this == another) return true;
-        return another instanceof EmbeddingResponse && equalTo((EmbeddingResponse) another);
+        return another instanceof EmbeddingResponse
+                && equalTo((EmbeddingResponse) another);
     }
 
     @JacocoIgnoreCoverageGenerated
@@ -80,7 +80,11 @@ public final class EmbeddingResponse {
     @Override
     @JacocoIgnoreCoverageGenerated
     public String toString() {
-        return "EmbeddingResponse{" + "model=" + model + ", data=" + data + ", usage=" + usage + "}";
+        return "EmbeddingResponse{"
+                + "model=" + model
+                + ", data=" + data
+                + ", usage=" + usage
+                + "}";
     }
 
     public static Builder builder() {

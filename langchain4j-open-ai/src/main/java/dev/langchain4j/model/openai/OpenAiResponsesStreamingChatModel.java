@@ -290,7 +290,7 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
         }
 
         /**
-         * @since 1.20.0
+         * @since 1.21.0
          */
         public Builder promptCacheOptions(OpenAiPromptCacheOptions promptCacheOptions) {
             this.promptCacheOptions = promptCacheOptions;

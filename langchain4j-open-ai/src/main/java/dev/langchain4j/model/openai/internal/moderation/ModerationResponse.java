@@ -1,7 +1,5 @@
 package dev.langchain4j.model.openai.internal.moderation;
 
-import static java.util.Collections.unmodifiableList;
-
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -10,8 +8,11 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
+
 import java.util.List;
 import java.util.Objects;
+
+import static java.util.Collections.unmodifiableList;
 
 @JsonDeserialize(builder = ModerationResponse.Builder.class)
 @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -19,10 +20,8 @@ public final class ModerationResponse {
 
     @JsonProperty
     private final String id;
-
     @JsonProperty
     private final String model;
-
     @JsonProperty
     private final List<ModerationResult> results;
 
@@ -49,7 +48,8 @@ public final class ModerationResponse {
     @JacocoIgnoreCoverageGenerated
     public boolean equals(Object another) {
         if (this == another) return true;
-        return another instanceof ModerationResponse && equalTo((ModerationResponse) another);
+        return another instanceof ModerationResponse
+                && equalTo((ModerationResponse) another);
     }
 
     @JacocoIgnoreCoverageGenerated
@@ -72,7 +72,11 @@ public final class ModerationResponse {
     @Override
     @JacocoIgnoreCoverageGenerated
     public String toString() {
-        return "ModerationResponse{" + "id=" + id + ", model=" + model + ", results=" + results + "}";
+        return "ModerationResponse{"
+                + "id=" + id
+                + ", model=" + model
+                + ", results=" + results
+                + "}";
     }
 
     public static Builder builder() {

@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
+
 import java.util.Objects;
 
 @JsonDeserialize(builder = InputAudio.Builder.class)
@@ -32,12 +33,14 @@ public class InputAudio {
     @JacocoIgnoreCoverageGenerated
     public boolean equals(Object another) {
         if (this == another) return true;
-        return another instanceof InputAudio && equalTo((InputAudio) another);
+        return another instanceof InputAudio
+                && equalTo((InputAudio) another);
     }
 
     @JacocoIgnoreCoverageGenerated
     private boolean equalTo(InputAudio another) {
-        return Objects.equals(data, another.data) && Objects.equals(format, another.format);
+        return Objects.equals(data, another.data)
+                && Objects.equals(format, another.format);
     }
 
     @Override
@@ -52,16 +55,20 @@ public class InputAudio {
     @Override
     @JacocoIgnoreCoverageGenerated
     public String toString() {
-        return "InputAudio{" + "data=" + data + ", format=" + format + "}";
+        return "InputAudio{" +
+                "data=" + data +
+                ", format=" + format +
+                "}";
     }
 
     public static Builder builder() {
         return new Builder();
     }
-
+    
     @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
+    
     public static final class Builder {
-
+        
         private String data;
         private String format;
 
@@ -82,5 +89,6 @@ public class InputAudio {
         public InputAudio build() {
             return new InputAudio(this);
         }
+        
     }
 }

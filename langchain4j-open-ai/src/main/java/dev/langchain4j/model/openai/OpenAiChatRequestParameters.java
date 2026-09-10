@@ -83,7 +83,7 @@ public class OpenAiChatRequestParameters extends DefaultChatRequestParameters {
      * Returns {@code prompt_cache_key}, an optional string that steers routing so that related requests
      * are more likely to hit a machine holding the cache entry.
      *
-     * @since 1.20.0
+     * @since 1.21.0
      */
     public String promptCacheKey() {
         return promptCacheKey;
@@ -92,7 +92,7 @@ public class OpenAiChatRequestParameters extends DefaultChatRequestParameters {
     /**
      * Returns {@code prompt_cache_options}, supported by {@code gpt-5.6} and later.
      *
-     * @since 1.20.0
+     * @since 1.21.0
      */
     public OpenAiPromptCacheOptions promptCacheOptions() {
         return promptCacheOptions;
@@ -290,7 +290,7 @@ public class OpenAiChatRequestParameters extends DefaultChatRequestParameters {
         }
 
         /**
-         * @since 1.20.0
+         * @since 1.21.0
          */
         public Builder promptCacheKey(String promptCacheKey) {
             this.promptCacheKey = promptCacheKey;
@@ -298,7 +298,7 @@ public class OpenAiChatRequestParameters extends DefaultChatRequestParameters {
         }
 
         /**
-         * @since 1.20.0
+         * @since 1.21.0
          */
         public Builder promptCacheOptions(OpenAiPromptCacheOptions promptCacheOptions) {
             this.promptCacheOptions = promptCacheOptions;

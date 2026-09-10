@@ -405,7 +405,7 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
         }
 
         /**
-         * @since 1.20.0
+         * @since 1.21.0
          */
         public OpenAiStreamingChatModelBuilder promptCacheKey(String promptCacheKey) {
             this.promptCacheKey = promptCacheKey;
@@ -413,7 +413,7 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
         }
 
         /**
-         * @since 1.20.0
+         * @since 1.21.0
          */
         public OpenAiStreamingChatModelBuilder promptCacheOptions(OpenAiPromptCacheOptions promptCacheOptions) {
             this.promptCacheOptions = promptCacheOptions;

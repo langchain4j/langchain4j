@@ -217,8 +217,8 @@ class InternalOpenAiOfficialHelper {
                     .build());
         }
         throw new UnsupportedFeatureException("OpenAI does not support a \""
-                + OpenAiOfficialPromptCacheBreakpoint.ATTRIBUTE_KEY + "\" on a " + part
-                + " content block. Supported content blocks: text, image_url, input_audio and file.");
+                + OpenAiOfficialPromptCacheBreakpoint.ATTRIBUTE_KEY
+                + "\" on this content block. Supported content blocks: text, image_url, input_audio and file.");
     }
 
     private static List<ChatCompletionContentPart> toOpenAiContent(List<Content> contents) {

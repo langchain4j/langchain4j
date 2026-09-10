@@ -402,4 +402,72 @@ class OpenAiOfficialPromptCachingTest {
 
         assertThat(first.add(second).inputTokensDetails().cacheWriteTokens()).isNull();
     }
+
+    // ----- OpenAiOfficialPromptCacheBreakpoint.mark(...) -----
+
+    @Test
+    void should_mark_every_supported_message_type() {
+        assertThat(OpenAiOfficialPromptCacheBreakpoint.mark(SystemMessage.from("text")).attributes())
+                .containsEntry(
+                        OpenAiOfficialPromptCacheBreakpoint.ATTRIBUTE_KEY,
+                        OpenAiOfficialPromptCacheBreakpoint.MODE_EXPLICIT);
+
+        assertThat(OpenAiOfficialPromptCacheBreakpoint.mark(UserMessage.from("text"))
+                        .attributes())
+                .containsEntry(
+                        OpenAiOfficialPromptCacheBreakpoint.ATTRIBUTE_KEY,
+                        OpenAiOfficialPromptCacheBreakpoint.MODE_EXPLICIT);
+
+        ToolExecutionResultMessage toolResult = ToolExecutionResultMessage.builder()
+                .id("call_123")
+                .toolName("getWeather")
+                .text("Sunny")
+                .build();
+        assertThat(OpenAiOfficialPromptCacheBreakpoint.mark(toolResult).attributes())
+                .containsEntry(
+                        OpenAiOfficialPromptCacheBreakpoint.ATTRIBUTE_KEY,
+                        OpenAiOfficialPromptCacheBreakpoint.MODE_EXPLICIT);
+    }
+
+    @Test
+    void should_send_breakpoint_for_a_message_marked_via_mark() {
+        ChatCompletionCreateParams params = chatCompletionParams(
+                OpenAiOfficialChatRequestParameters.builder()
+                        .modelName("gpt-5.6")
+                        .build(),
+                OpenAiOfficialPromptCacheBreakpoint.mark(SystemMessage.from("Shared instructions")),
+                UserMessage.from("Hi"));
+
+        var parts = params.messages().get(0).asSystem().content().asArrayOfContentParts();
+        assertThat(parts).hasSize(1);
+        assertThat(parts.get(0).text()).isEqualTo("Shared instructions");
+        assertThat(parts.get(0).promptCacheBreakpoint()).isPresent();
+    }
+
+    @Test
+    void should_leave_the_given_message_untouched_and_keep_its_other_attributes() {
+        SystemMessage original = SystemMessage.builder()
+                .text("Shared instructions")
+                .attributes(Map.of("other", "value"))
+                .build();
+
+        SystemMessage marked = OpenAiOfficialPromptCacheBreakpoint.mark(original);
+
+        assertThat(original.attributes()).containsOnlyKeys("other");
+        assertThat(marked.text()).isEqualTo("Shared instructions");
+        assertThat(marked.attributes())
+                .containsEntry("other", "value")
+                .containsEntry(
+                        OpenAiOfficialPromptCacheBreakpoint.ATTRIBUTE_KEY,
+                        OpenAiOfficialPromptCacheBreakpoint.MODE_EXPLICIT);
+    }
+
+    @Test
+    void should_fail_to_mark_an_ai_message() {
+        AiMessage aiMessage = AiMessage.from("Hello!");
+
+        assertThatThrownBy(() -> OpenAiOfficialPromptCacheBreakpoint.mark(aiMessage))
+                .isExactlyInstanceOf(UnsupportedFeatureException.class)
+                .hasMessageContaining("AiMessage");
+    }
 }
