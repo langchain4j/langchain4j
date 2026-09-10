@@ -101,6 +101,18 @@ class PartsMapperTest {
                 Arguments.of("http://example.org/cat.MP4", "video/mp4"),
                 Arguments.of("http://example.org/cat.mp4?query=dog.png", "video/mp4"),
 
+                Arguments.of("http://example.org/cat.m4a", "audio/m4a"),
+                Arguments.of("http://example.org/cat.M4A", "audio/m4a"),
+                Arguments.of("http://example.org/cat.m4a?query=dog.png", "audio/m4a"),
+
+                Arguments.of("http://example.org/cat.mpa", "audio/mpeg"),
+                Arguments.of("http://example.org/cat.MPA", "audio/mpeg"),
+                Arguments.of("http://example.org/cat.mpa?query=dog.png", "audio/mpeg"),
+
+                Arguments.of("http://example.org/cat.wmv", "video/wmv"),
+                Arguments.of("http://example.org/cat.WMV", "video/wmv"),
+                Arguments.of("http://example.org/cat.wmv?query=dog.png", "video/wmv"),
+
                 Arguments.of("https://storage.googleapis.com/cloud-samples-data/generative-ai/audio/pixel.mp3", "audio/mp3"),
                 Arguments.of("gs://cloud-samples-data/generative-ai/audio/pixel.mp3", "audio/mp3"),
 

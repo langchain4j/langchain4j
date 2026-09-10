@@ -62,6 +62,7 @@ class PartsMapper {
         EXTENSION_TO_MIME_TYPE.put("aac", "audio/aac");
         EXTENSION_TO_MIME_TYPE.put("flac", "audio/flac");
         EXTENSION_TO_MIME_TYPE.put("m4a", "audio/m4a");
+        EXTENSION_TO_MIME_TYPE.put("mpa", "audio/mpeg");
         EXTENSION_TO_MIME_TYPE.put("mpga", "audio/mpga");
         EXTENSION_TO_MIME_TYPE.put("opus", "audio/opus");
         EXTENSION_TO_MIME_TYPE.put("pcm", "audio/pcm");
@@ -76,7 +77,7 @@ class PartsMapper {
         EXTENSION_TO_MIME_TYPE.put("avi", "video/avi");
         EXTENSION_TO_MIME_TYPE.put("flv", "video/x-flv");
         EXTENSION_TO_MIME_TYPE.put("webm", "video/webm");
-        EXTENSION_TO_MIME_TYPE.put("mmv", "video/wmv");
+        EXTENSION_TO_MIME_TYPE.put("wmv", "video/wmv");
         EXTENSION_TO_MIME_TYPE.put("3gpp", "video/3gpp");
 
         // see document understanding:

@@ -66,6 +66,7 @@ class GoogleGenAiContentMapper {
         EXTENSION_TO_MIME_TYPE.put("aac", "audio/aac");
         EXTENSION_TO_MIME_TYPE.put("flac", "audio/flac");
         EXTENSION_TO_MIME_TYPE.put("m4a", "audio/m4a");
+        EXTENSION_TO_MIME_TYPE.put("mpa", "audio/mpeg");
         EXTENSION_TO_MIME_TYPE.put("mpga", "audio/mpga");
         EXTENSION_TO_MIME_TYPE.put("opus", "audio/opus");
         EXTENSION_TO_MIME_TYPE.put("pcm", "audio/pcm");

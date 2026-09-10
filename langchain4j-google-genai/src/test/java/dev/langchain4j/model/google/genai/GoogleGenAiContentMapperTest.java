@@ -487,6 +487,10 @@ class GoogleGenAiContentMapperTest {
                 .isEqualTo("audio/mp3");
         assertThat(GoogleGenAiContentMapper.detectMimeType(URI.create("file:///test.wav")))
                 .isEqualTo("audio/wav");
+        assertThat(GoogleGenAiContentMapper.detectMimeType(URI.create("file:///test.m4a")))
+                .isEqualTo("audio/m4a");
+        assertThat(GoogleGenAiContentMapper.detectMimeType(URI.create("file:///test.mpa")))
+                .isEqualTo("audio/mpeg");
     }
 
     @Test

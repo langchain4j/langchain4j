@@ -76,6 +76,7 @@ public class CustomMimeTypesFileTypeDetector extends FileTypeDetector {
         defaultMappings.put("aac", "audio/aac");
         defaultMappings.put("flac", "audio/flac");
         defaultMappings.put("m4a", "audio/m4a");
+        defaultMappings.put("mpa", "audio/mpeg");
         defaultMappings.put("mpga", "audio/mpga");
         defaultMappings.put("opus", "audio/opus");
         defaultMappings.put("pcm", "audio/pcm");

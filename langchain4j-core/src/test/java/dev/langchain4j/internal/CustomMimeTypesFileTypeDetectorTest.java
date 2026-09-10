@@ -55,6 +55,30 @@ class CustomMimeTypesFileTypeDetectorTest {
     }
 
     @Test
+    void should_return_a_mime_type_for_m4a_from_default_mapping() {
+        // given
+        CustomMimeTypesFileTypeDetector detector = new CustomMimeTypesFileTypeDetector();
+
+        // when
+        String mimeType = detector.probeContentType("voice.m4a");
+
+        // then
+        assertThat(mimeType).isEqualTo("audio/m4a");
+    }
+
+    @Test
+    void should_return_a_mime_type_for_mpa_from_default_mapping() {
+        // given
+        CustomMimeTypesFileTypeDetector detector = new CustomMimeTypesFileTypeDetector();
+
+        // when
+        String mimeType = detector.probeContentType("song.mpa");
+
+        // then
+        assertThat(mimeType).isEqualTo("audio/mpeg");
+    }
+
+    @Test
     void should_return_a_mime_type_from_default_mapping_from_string() {
         // given
         CustomMimeTypesFileTypeDetector detector = new CustomMimeTypesFileTypeDetector();
@@ -388,17 +412,6 @@ class CustomMimeTypesFileTypeDetectorTest {
         assertThat(mimeType).isEqualTo("audio/mp3");
     }
 
-    @Test
-    void should_return_a_mime_type_for_m4a() {
-        // given
-        CustomMimeTypesFileTypeDetector detector = new CustomMimeTypesFileTypeDetector();
-
-        // when
-        String mimeType = detector.probeContentType(Path.of("/foo/bar/voice.m4a"));
-
-        // then
-        assertThat(mimeType).isEqualTo("audio/m4a");
-    }
 
     @Test
     void should_return_empty_extension_for_path_without_file_name() {
