@@ -62,4 +62,22 @@ class EmbeddingTest implements WithAssertions {
         Embedding expect = new Embedding(new float[] {0f, 0f});
         assertThat(embedding).isEqualTo(expect);
     }
+
+    @Test
+    void normalize_large_finite_values() {
+        Embedding embedding = new Embedding(new float[] {6e20f, -8e20f});
+        embedding.normalize();
+
+        assertThat(embedding.vector()[0]).isCloseTo(0.6f, org.assertj.core.data.Offset.offset(1e-6f));
+        assertThat(embedding.vector()[1]).isCloseTo(-0.8f, org.assertj.core.data.Offset.offset(1e-6f));
+    }
+
+    @Test
+    void normalize_float_max_value() {
+        Embedding embedding = new Embedding(new float[] {Float.MAX_VALUE, Float.MAX_VALUE});
+        embedding.normalize();
+
+        assertThat(embedding.vector()[0]).isCloseTo(0.70710677f, org.assertj.core.data.Offset.offset(1e-6f));
+        assertThat(embedding.vector()[1]).isCloseTo(0.70710677f, org.assertj.core.data.Offset.offset(1e-6f));
+    }
 }
