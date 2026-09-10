@@ -171,7 +171,7 @@ public class WorkersAiChatModel extends AbstractWorkersAIModel implements ChatMo
     private Response<AiMessage> generate(List<ChatMessage> messages) {
         WorkersAiChatCompletionRequest req = new WorkersAiChatCompletionRequest();
         req.setMessages(messages.stream()
-                .map(this::toMessage)
+                .map(WorkersAiChatModel::toMessage)
                 .collect(Collectors.toList()));
         return new Response<>(new AiMessage(generate(req)), null, FinishReason.STOP);
     }

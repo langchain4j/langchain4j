@@ -6,7 +6,9 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.workersai.client.WorkersAiChatCompletionRequest.MessageRole;
 import java.util.Locale;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Isolated;
 
+@Isolated // mutates the JVM-wide default locale
 class WorkersAiChatModelLocaleTest {
 
     @Test
