@@ -11,6 +11,7 @@ import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.io.IOException;
 import java.net.URI;
@@ -19,6 +20,7 @@ import java.nio.file.Path;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class PartsMapperTest {
 
@@ -97,6 +99,10 @@ class PartsMapperTest {
                 Arguments.of("http://example.org/cat.MP3", "audio/mp3"),
                 Arguments.of("http://example.org/cat.mp3?query=dog.png", "audio/mp3"),
 
+                Arguments.of("http://example.org/cat.m4a", "audio/m4a"),
+                Arguments.of("http://example.org/cat.M4A", "audio/m4a"),
+                Arguments.of("http://example.org/cat.m4a?query=dog.png", "audio/m4a"),
+
                 Arguments.of("http://example.org/cat.mp4", "video/mp4"),
                 Arguments.of("http://example.org/cat.MP4", "video/mp4"),
                 Arguments.of("http://example.org/cat.mp4?query=dog.png", "video/mp4"),
@@ -111,6 +117,24 @@ class PartsMapperTest {
                 Arguments.of("https://storage.googleapis.com/cloud-samples-data/video/animals.mp4", "video/mp4"),
                 Arguments.of("gs://cloud-samples-data/video/animals.mp4", "video/mp4")
         );
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "http://example.org/cat.banana",
+            "http://example.org/cat.mmv",
+            "http://example.org/cat.mpa",
+            "http://example.org/cat"
+    })
+    void should_fail_to_detect_mime_type_of_unsupported_extension(String url) {
+
+        // given
+        URI uri = URI.create(url);
+
+        // when-then
+        assertThatThrownBy(() -> PartsMapper.detectMimeType(uri))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Unable to detect the MIME type");
     }
 
     @Test
