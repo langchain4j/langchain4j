@@ -47,6 +47,7 @@ public class McpToolProvider implements ToolProvider {
     private final AtomicReference<BiFunction<McpClient, ToolSpecification, ToolSpecification>> toolSpecificationMapper;
     private final Set<String> alwaysVisibleToolNames;
     private final boolean returnToolResultAttributes;
+    private final boolean dynamic;
 
     private McpToolProvider(Builder builder) {
         this.mcpClients = new CopyOnWriteArrayList<>(builder.mcpClients);
@@ -58,6 +59,7 @@ public class McpToolProvider implements ToolProvider {
         this.toolSpecificationMapper = new AtomicReference<>(builder.toolSpecificationMapper);
         this.alwaysVisibleToolNames = copy(builder.alwaysVisibleToolNames);
         this.returnToolResultAttributes = Utils.getOrDefault(builder.returnToolResultAttributes, false);
+        this.dynamic = Utils.getOrDefault(builder.dynamic, false);
     }
 
     protected McpToolProvider(
@@ -77,6 +79,7 @@ public class McpToolProvider implements ToolProvider {
         this.toolSpecificationMapper = new AtomicReference<>(toolSpecificationMapper);
         this.alwaysVisibleToolNames = Set.of();
         this.returnToolResultAttributes = false;
+        this.dynamic = false;
     }
 
     /**
@@ -151,6 +154,11 @@ public class McpToolProvider implements ToolProvider {
     @Override
     public ToolProviderResult provideTools(ToolProviderRequest request) {
         return provideTools(request, mcpToolsFilter.get());
+    }
+
+    @Override
+    public boolean isDynamic() {
+        return dynamic;
     }
 
     protected ToolProviderResult provideTools(
@@ -246,6 +254,7 @@ public class McpToolProvider implements ToolProvider {
         private BiFunction<McpClient, ToolSpecification, ToolSpecification> toolSpecificationMapper;
         private Set<String> alwaysVisibleToolNames;
         private Boolean returnToolResultAttributes;
+        private Boolean dynamic;
 
         /**
          * The list of MCP clients to use for retrieving tools.
@@ -396,6 +405,20 @@ public class McpToolProvider implements ToolProvider {
          */
         public McpToolProvider.Builder returnToolResultAttributes(Boolean returnToolResultAttributes) {
             this.returnToolResultAttributes = returnToolResultAttributes;
+            return this;
+        }
+
+        /**
+         * Controls whether this provider is re-evaluated before every LLM call in the tool execution loop.
+         * This allows filter changes made during a tool execution to make newly enabled tools available
+         * in the next request to the LLM. Tools already exposed remain available for the rest of the invocation.
+         * <p>
+         * Default: {@code false}.
+         *
+         * @since 1.20.0
+         */
+        public McpToolProvider.Builder dynamic(boolean dynamic) {
+            this.dynamic = dynamic;
             return this;
         }
 
