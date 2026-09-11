@@ -428,7 +428,7 @@ LangChain4j.
 
 Requests are written to a JSONL file, uploaded through the Files API with the `batch` purpose, and run
 against the `/v1/chat/completions` endpoint. All requests in a batch must resolve to the same model. Results
-preserve submission order, so the i-th result always corresponds to the i-th request, whether it succeeded
+preserve submission order, so the i-th result corresponds to the i-th request, whether it succeeded
 or failed.
 
 ```java
@@ -476,7 +476,7 @@ OpenAiOfficialBatchChatModel batchModel = OpenAiOfficialBatchChatModel.builder()
         .modelName("gpt-4o-mini")
         .completionWindow("24h")                          // defaults to 24h
         .batchMetadata(Map.of("owner", "nightly-job"))    // attached to the batch itself
-        .inputFileExpiresAfterSeconds(Duration.ofDays(14).toSeconds())
-        .outputExpiresAfterSeconds(Duration.ofDays(7).toSeconds())
+        .inputFileExpiresAfter(Duration.ofDays(14))
+        .outputExpiresAfter(Duration.ofDays(7))
         .build();
 ```

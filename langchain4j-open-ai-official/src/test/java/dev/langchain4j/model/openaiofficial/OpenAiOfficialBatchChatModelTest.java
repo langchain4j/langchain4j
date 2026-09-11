@@ -23,6 +23,7 @@ import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.FinishReason;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
@@ -146,7 +147,7 @@ class OpenAiOfficialBatchChatModelTest {
 
         modelBuilder()
                 .batchMetadata(Map.of("owner", "nightly-job"))
-                .outputExpiresAfterSeconds(3600L)
+                .outputExpiresAfter(Duration.ofHours(1))
                 .build()
                 .submit(batchOf("hi"));
 
@@ -289,51 +290,59 @@ class OpenAiOfficialBatchChatModelTest {
         httpClient.enqueue(OUTPUT_FILE_CONTENT_PATH, outputContent);
     }
 
-    @Test
-    void should_fail_when_a_result_has_a_malformed_custom_id() {
-        stubCompletedBatchWithOutput(
-                1, successLine(0, "ok").replace("\"custom_id\":\"request-0\"", "\"custom_id\":\"request-foo\""));
+    @ParameterizedTest
+    @CsvSource({
+        "\"custom_id\":\"request-0\", \"custom_id\":\"request-foo\", malformed",
+        "'\"custom_id\":\"request-0\",', '', absent",
+        "\"custom_id\":\"request-0\", \"custom_id\":\"request--1\", negative",
+        "\"custom_id\":\"request-0\", \"custom_id\":\"task-0\", 'foreign prefix'"
+    })
+    void should_return_results_in_file_order_when_a_custom_id_cannot_be_correlated(
+            String original, String replacement, String scenario) {
+        stubCompletedBatchWithOutput(1, successLine(0, "ok").replace(original, replacement));
 
-        assertThatThrownBy(() -> model().retrieve(BATCH_ID))
-                .isExactlyInstanceOf(IllegalStateException.class)
-                .hasMessage("Unexpected custom_id in batch result: request-foo");
+        List<BatchItemResult<ChatResponse>> results = model().retrieve(BATCH_ID).results();
+
+        assertThat(results).as(scenario).hasSize(1);
+        assertThat(results.get(0).isSuccess()).as(scenario).isTrue();
+        assertThat(results.get(0).response().aiMessage().text()).as(scenario).isEqualTo("ok");
     }
 
     @Test
-    void should_fail_when_a_result_has_no_custom_id() {
-        stubCompletedBatchWithOutput(1, successLine(0, "ok").replace("\"custom_id\":\"request-0\",", ""));
+    void should_return_results_in_file_order_when_a_result_is_outside_the_submitted_range() {
+        stubCompletedBatchWithOutput(2, successLine(1, "second") + "\n" + successLine(5, "stray"));
 
-        assertThatThrownBy(() -> model().retrieve(BATCH_ID))
-                .isExactlyInstanceOf(IllegalStateException.class)
-                .hasMessage("Unexpected custom_id in batch result: null");
+        List<BatchItemResult<ChatResponse>> results = model().retrieve(BATCH_ID).results();
+
+        assertThat(results).hasSize(2);
+        assertThat(results.get(0).response().aiMessage().text()).isEqualTo("second");
+        assertThat(results.get(1).response().aiMessage().text()).isEqualTo("stray");
     }
 
     @Test
-    void should_fail_when_a_result_has_a_negative_custom_id() {
-        stubCompletedBatchWithOutput(
-                1, successLine(0, "ok").replace("\"custom_id\":\"request-0\"", "\"custom_id\":\"request--1\""));
-
-        assertThatThrownBy(() -> model().retrieve(BATCH_ID))
-                .isExactlyInstanceOf(IllegalStateException.class)
-                .hasMessage("Unexpected custom_id in batch result: request--1");
-    }
-
-    @Test
-    void should_fail_when_a_result_is_outside_the_submitted_range() {
-        stubCompletedBatchWithOutput(2, successLine(5, "stray"));
-
-        assertThatThrownBy(() -> model().retrieve(BATCH_ID))
-                .isExactlyInstanceOf(IllegalStateException.class)
-                .hasMessage("Batch result refers to request 5, but only 2 request(s) were submitted");
-    }
-
-    @Test
-    void should_fail_when_a_custom_id_is_duplicated() {
+    void should_return_both_results_in_file_order_when_a_custom_id_is_duplicated() {
         stubCompletedBatchWithOutput(2, successLine(0, "first") + "\n" + successLine(0, "again"));
 
-        assertThatThrownBy(() -> model().retrieve(BATCH_ID))
-                .isExactlyInstanceOf(IllegalStateException.class)
-                .hasMessage("Duplicate custom_id in batch result: request-0");
+        List<BatchItemResult<ChatResponse>> results = model().retrieve(BATCH_ID).results();
+
+        assertThat(results).hasSize(2);
+        assertThat(results.get(0).response().aiMessage().text()).isEqualTo("first");
+        assertThat(results.get(1).response().aiMessage().text()).isEqualTo("again");
+    }
+
+    @Test
+    void should_return_every_result_of_a_batch_submitted_elsewhere() {
+        stubCompletedBatchWithOutput(
+                2,
+                successLine(0, "alpha").replace("\"custom_id\":\"request-0\"", "\"custom_id\":\"task-a\"") + "\n"
+                        + successLine(1, "beta").replace("\"custom_id\":\"request-1\"", "\"custom_id\":\"task-b\""));
+
+        List<BatchItemResult<ChatResponse>> results = model().retrieve(BATCH_ID).results();
+
+        assertThat(results).hasSize(2);
+        assertThat(results).allMatch(BatchItemResult::isSuccess);
+        assertThat(results.get(0).response().aiMessage().text()).isEqualTo("alpha");
+        assertThat(results.get(1).response().aiMessage().text()).isEqualTo("beta");
     }
 
     @Test
@@ -463,6 +472,19 @@ class OpenAiOfficialBatchChatModelTest {
     }
 
     @Test
+    void should_use_microsoft_foundry_endpoint_when_it_is_detected_from_the_base_url() {
+        stubSubmit();
+
+        modelBuilder()
+                .baseUrl("https://example.openai.azure.com")
+                .microsoftFoundryDeploymentName("my-deployment")
+                .build()
+                .submit(batchOf("hi"));
+
+        assertThat(httpClient.requestTo(BATCHES_PATH).body()).contains("\"endpoint\":\"/chat/completions\"");
+    }
+
+    @Test
     void should_fail_when_used_with_github_models() {
         assertThatThrownBy(() -> OpenAiOfficialBatchChatModel.builder()
                         .apiKey("test-key")
@@ -540,7 +562,7 @@ class OpenAiOfficialBatchChatModelTest {
     void should_send_input_file_expiry_when_configured() {
         stubSubmit();
 
-        modelBuilder().inputFileExpiresAfterSeconds(1209600L).build().submit(batchOf("hi"));
+        modelBuilder().inputFileExpiresAfter(Duration.ofDays(14)).build().submit(batchOf("hi"));
 
         assertThat(httpClient.requestTo(FILES_PATH).body())
                 .contains("name=\"expires_after[anchor]\"")

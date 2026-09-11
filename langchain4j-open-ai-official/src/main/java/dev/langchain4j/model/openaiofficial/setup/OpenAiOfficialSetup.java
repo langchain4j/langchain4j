@@ -193,23 +193,21 @@ public class OpenAiOfficialSetup {
             String microsoftFoundryDeploymentName,
             AzureOpenAIServiceVersion azureOpenAIServiceVersion) {
 
-        String resolvedBaseUrl = detectBaseUrlFromEnv(baseUrl);
-
         if (isMicrosoftFoundry) {
             return ModelProvider.MICROSOFT_FOUNDRY; // Forced by the user
         }
         if (isGitHubModels) {
             return ModelProvider.GITHUB_MODELS; // Forced by the user
         }
-        if (resolvedBaseUrl != null) {
-            if (resolvedBaseUrl.endsWith("openai.azure.com")
-                    || resolvedBaseUrl.endsWith("openai.azure.com/")
-                    || resolvedBaseUrl.endsWith("cognitiveservices.azure.com")
-                    || resolvedBaseUrl.endsWith("cognitiveservices.azure.com/")
-                    || resolvedBaseUrl.endsWith("ai.azure.com")
-                    || resolvedBaseUrl.endsWith("ai.azure.com/")) {
+        if (baseUrl != null) {
+            if (baseUrl.endsWith("openai.azure.com")
+                    || baseUrl.endsWith("openai.azure.com/")
+                    || baseUrl.endsWith("cognitiveservices.azure.com")
+                    || baseUrl.endsWith("cognitiveservices.azure.com/")
+                    || baseUrl.endsWith("ai.azure.com")
+                    || baseUrl.endsWith("ai.azure.com/")) {
                 return ModelProvider.MICROSOFT_FOUNDRY;
-            } else if (resolvedBaseUrl.startsWith(GITHUB_MODELS_URL)) {
+            } else if (baseUrl.startsWith(GITHUB_MODELS_URL)) {
                 return ModelProvider.GITHUB_MODELS;
             }
         }

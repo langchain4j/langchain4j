@@ -4,6 +4,8 @@ import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
+import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialBatchHelper.NO_STATUS_CODE;
+import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialBatchHelper.UNKNOWN_ERROR_MESSAGE;
 import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialBatchHelper.toBatchState;
 import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialBatchHelper.toJsonl;
 import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialBatchHelper.toResultLines;
@@ -55,6 +57,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import org.jspecify.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Submits chat requests to the
@@ -63,8 +67,9 @@ import org.jspecify.annotations.Nullable;
  *
  * <p>Requests are serialized to a JSONL file, uploaded through the Files API with the {@code batch} purpose,
  * and submitted against the chat completions endpoint. Results are correlated back to the submitted requests
- * by {@code custom_id}, so {@link BatchResponse#results()} is always in submission order even though OpenAI
- * does not guarantee the order of the output file.</p>
+ * by {@code custom_id}, so {@link BatchResponse#results()} is in submission order even though OpenAI does
+ * not guarantee the order of the output file. See {@link #retrieve(String)} for the one case in which that
+ * correlation is not possible.</p>
  *
  * <p>Every request in a batch must use the same model, so submitting requests that resolve to different
  * models fails fast with an {@link IllegalArgumentException}.</p>
@@ -85,8 +90,9 @@ public final class OpenAiOfficialBatchChatModel extends OpenAiOfficialBaseChatMo
     private static final String INPUT_FILE_NAME = "batch.jsonl";
     private static final String INPUT_FILE_CONTENT_TYPE = "application/jsonl";
     private static final String EXPIRES_AFTER_ANCHOR = "created_at";
-    private static final String UNKNOWN_ERROR_MESSAGE = "unknown";
     private static final String MISSING_RESULT_MESSAGE = "No result was returned for this request";
+
+    private static final Logger log = LoggerFactory.getLogger(OpenAiOfficialBatchChatModel.class);
 
     private final BatchCreateParams.CompletionWindow completionWindow;
     private final BatchCreateParams.Endpoint endpoint;
@@ -96,16 +102,21 @@ public final class OpenAiOfficialBatchChatModel extends OpenAiOfficialBaseChatMo
     private final String microsoftFoundryDeploymentName;
 
     @Nullable
-    private final Long inputFileExpiresAfterSeconds;
+    private final Duration inputFileExpiresAfter;
 
     @Nullable
-    private final Long outputExpiresAfterSeconds;
+    private final Duration outputExpiresAfter;
 
     public OpenAiOfficialBatchChatModel(Builder builder) {
+        // The environment only decides the endpoint when this model builds the client from it; an injected
+        // client carries a base URL of its own, which the environment must not contradict.
+        String resolvedBaseUrl = builder.openAIClient == null
+                ? InternalOpenAiOfficialBatchHelper.resolveBaseUrl(builder.baseUrl)
+                : builder.baseUrl;
         ModelProvider detectedProvider = OpenAiOfficialSetup.detectModelProvider(
                 builder.isMicrosoftFoundry,
                 builder.isGitHubModels,
-                builder.baseUrl,
+                resolvedBaseUrl,
                 builder.microsoftFoundryDeploymentName,
                 builder.azureOpenAIServiceVersion);
         if (ModelProvider.GITHUB_MODELS.equals(detectedProvider)) {
@@ -163,18 +174,21 @@ public final class OpenAiOfficialBatchChatModel extends OpenAiOfficialBaseChatMo
                 null,
                 null,
                 false);
+        // init() detects the provider from the configured base URL only, while the batch request shape has
+        // to follow the endpoint the client was actually built against, which may come from the environment.
+        this.modelProvider = detectedProvider;
         this.modelName = defaultRequestParameters.modelName();
         this.completionWindow = BatchCreateParams.CompletionWindow.of(
                 getOrDefault(builder.completionWindow, DEFAULT_COMPLETION_WINDOW));
-        boolean isMicrosoftFoundry = ModelProvider.MICROSOFT_FOUNDRY.equals(this.modelProvider);
+        boolean isMicrosoftFoundry = ModelProvider.MICROSOFT_FOUNDRY.equals(detectedProvider);
         this.endpoint = isMicrosoftFoundry
                 ? BatchCreateParams.Endpoint.of(MICROSOFT_FOUNDRY_CHAT_COMPLETIONS_ENDPOINT)
                 : BatchCreateParams.Endpoint.V1_CHAT_COMPLETIONS;
         this.microsoftFoundryDeploymentName =
                 isMicrosoftFoundry ? getOrDefault(builder.microsoftFoundryDeploymentName, modelName) : null;
         this.batchMetadata = copy(builder.batchMetadata);
-        this.inputFileExpiresAfterSeconds = builder.inputFileExpiresAfterSeconds;
-        this.outputExpiresAfterSeconds = builder.outputExpiresAfterSeconds;
+        this.inputFileExpiresAfter = builder.inputFileExpiresAfter;
+        this.outputExpiresAfter = builder.outputExpiresAfter;
     }
 
     /**
@@ -183,7 +197,7 @@ public final class OpenAiOfficialBatchChatModel extends OpenAiOfficialBaseChatMo
      * <p>Submitting a batch uploads a JSONL input file through the provider's Files API before creating the
      * batch, so that API's storage, retention and quota limits apply in addition to the batch limits, and may
      * change independently of them. Uploaded input files are retained until they expire or are deleted, which
-     * {@link Builder#inputFileExpiresAfterSeconds(Long)} controls.</p>
+     * {@link Builder#inputFileExpiresAfter(Duration)} controls.</p>
      *
      * <p>OpenAI currently limits a batch to 50,000 requests and its input file to 200 MB; exceeding either is
      * rejected by the API.</p>
@@ -220,10 +234,10 @@ public final class OpenAiOfficialBatchChatModel extends OpenAiOfficialBaseChatMo
                         .contentType(INPUT_FILE_CONTENT_TYPE)
                         .build())
                 .purpose(FilePurpose.BATCH);
-        if (inputFileExpiresAfterSeconds != null) {
+        if (inputFileExpiresAfter != null) {
             fileCreateParams.expiresAfter(FileCreateParams.ExpiresAfter.builder()
                     .anchor(JsonValue.from(EXPIRES_AFTER_ANCHOR))
-                    .seconds(inputFileExpiresAfterSeconds)
+                    .seconds(inputFileExpiresAfter.toSeconds())
                     .build());
         }
         FileObject inputFile = client.files().create(fileCreateParams.build());
@@ -238,10 +252,10 @@ public final class OpenAiOfficialBatchChatModel extends OpenAiOfficialBaseChatMo
             batchMetadata.forEach((key, value) -> metadataBuilder.putAdditionalProperty(key, JsonValue.from(value)));
             batchCreateParams.metadata(metadataBuilder.build());
         }
-        if (outputExpiresAfterSeconds != null) {
+        if (outputExpiresAfter != null) {
             batchCreateParams.outputExpiresAfter(BatchCreateParams.OutputExpiresAfter.builder()
                     .anchor(JsonValue.from(EXPIRES_AFTER_ANCHOR))
-                    .seconds(outputExpiresAfterSeconds)
+                    .seconds(outputExpiresAfter.toSeconds())
                     .build());
         }
 
@@ -266,10 +280,13 @@ public final class OpenAiOfficialBatchChatModel extends OpenAiOfficialBaseChatMo
      * a batch close to OpenAI's 200 MB limit requires a correspondingly large heap. Results are returned as soon as OpenAI has
      * produced them, which includes the partial results of an expired or cancelled batch.</p>
      *
-     * <p>Results are correlated by {@code custom_id}. Because those identifiers are generated by
-     * {@link #submit(BatchRequest)}, a returned identifier that is malformed, duplicated, or outside the
-     * submitted range is an invariant violation rather than a normal outcome, and fails with an
-     * {@link IllegalStateException} instead of being reported as an extra result.</p>
+     * <p>Results are correlated by {@code custom_id}, using the identifiers that
+     * {@link #submit(BatchRequest)} generates. If any of them is missing, malformed, duplicated or outside
+     * the submitted range - which happens for a batch that was not submitted through this model, for example
+     * one created from the OpenAI dashboard - correlation is abandoned for the whole batch and the results
+     * are returned in the order the result files list them, with a warning logged. Results are never
+     * discarded, so a batch that was paid for is always readable; only their correspondence to the submitted
+     * requests is lost.</p>
      *
      * <p>{@link BatchError#code()} holds the HTTP status code for a request that OpenAI attempted and
      * rejected, and {@code 0} for a request that never ran (for example an expired one) or for a
@@ -336,22 +353,39 @@ public final class OpenAiOfficialBatchChatModel extends OpenAiOfficialBaseChatMo
         }
 
         int requestCount = requestCount(batch, resultLines);
+        List<BatchItemResult<ChatResponse>> correlated = correlateByRequestIndex(resultLines, requestCount);
+        if (correlated != null) {
+            return correlated;
+        }
+
+        log.warn(
+                "Batch {} returned custom_id values that this model did not generate, so its {} result(s) "
+                        + "cannot be matched to the submitted requests and are returned in result file order",
+                batch.id(),
+                resultLines.size());
+        return resultLines.stream().map(this::toBatchItemResult).toList();
+    }
+
+    /**
+     * @return the results at the position of the request each belongs to, with a failure standing in for
+     * every request that produced no result, or {@code null} if the {@code custom_id} values cannot be
+     * mapped onto the submitted requests one-to-one.
+     */
+    @Nullable
+    private List<BatchItemResult<ChatResponse>> correlateByRequestIndex(
+            List<InternalOpenAiOfficialBatchHelper.ResultLine> resultLines, int requestCount) {
+
         List<BatchItemResult<ChatResponse>> results = new ArrayList<>(Collections.nCopies(requestCount, null));
         for (InternalOpenAiOfficialBatchHelper.ResultLine resultLine : resultLines) {
-            int requestIndex = resultLine.requestIndex();
-            if (requestIndex >= requestCount) {
-                throw new IllegalStateException("Batch result refers to request " + requestIndex + ", but only "
-                        + requestCount + " request(s) were submitted");
-            }
-            if (results.get(requestIndex) != null) {
-                throw new IllegalStateException("Duplicate custom_id in batch result: "
-                        + InternalOpenAiOfficialBatchHelper.toCustomId(requestIndex));
+            Integer requestIndex = resultLine.requestIndex();
+            if (requestIndex == null || requestIndex >= requestCount || results.get(requestIndex) != null) {
+                return null;
             }
             results.set(requestIndex, toBatchItemResult(resultLine));
         }
         for (int i = 0; i < results.size(); i++) {
             if (results.get(i) == null) {
-                results.set(i, BatchItemResult.failure(new BatchError(0, MISSING_RESULT_MESSAGE, null)));
+                results.set(i, BatchItemResult.failure(new BatchError(NO_STATUS_CODE, MISSING_RESULT_MESSAGE, null)));
             }
         }
         return results;
@@ -364,7 +398,10 @@ public final class OpenAiOfficialBatchChatModel extends OpenAiOfficialBaseChatMo
         }
         int highestIndex = -1;
         for (InternalOpenAiOfficialBatchHelper.ResultLine resultLine : resultLines) {
-            highestIndex = Math.max(highestIndex, resultLine.requestIndex());
+            Integer requestIndex = resultLine.requestIndex();
+            if (requestIndex != null) {
+                highestIndex = Math.max(highestIndex, requestIndex);
+            }
         }
         return highestIndex + 1;
     }
@@ -392,7 +429,8 @@ public final class OpenAiOfficialBatchChatModel extends OpenAiOfficialBaseChatMo
             return BatchItemResult.success(toChatResponse(completion));
         }
         BatchError error = resultLine.error();
-        return BatchItemResult.failure(error != null ? error : new BatchError(0, UNKNOWN_ERROR_MESSAGE, null));
+        return BatchItemResult.failure(
+                error != null ? error : new BatchError(NO_STATUS_CODE, UNKNOWN_ERROR_MESSAGE, null));
     }
 
     private ChatResponse toChatResponse(ChatCompletion chatCompletion) {
@@ -472,8 +510,8 @@ public final class OpenAiOfficialBatchChatModel extends OpenAiOfficialBaseChatMo
 
         private String completionWindow;
         private Map<String, String> batchMetadata;
-        private Long inputFileExpiresAfterSeconds;
-        private Long outputExpiresAfterSeconds;
+        private Duration inputFileExpiresAfter;
+        private Duration outputExpiresAfter;
 
         private Duration timeout;
         private Integer maxRetries;
@@ -651,22 +689,23 @@ public final class OpenAiOfficialBatchChatModel extends OpenAiOfficialBaseChatMo
         }
 
         /**
-         * Sets the number of seconds after upload at which the JSONL input file expires. Not set by default,
-         * in which case the provider's own retention for batch input files applies. The accepted range is
-         * defined by the provider and differs between OpenAI and Azure OpenAI.
+         * Sets how long after upload the JSONL input file expires. Not set by default, in which case the
+         * provider's own retention for batch input files applies and the file is kept until it is deleted.
+         * The accepted range is defined by the provider and differs between OpenAI and Azure OpenAI. Values
+         * are sent with a whole-second resolution.
          */
-        public Builder inputFileExpiresAfterSeconds(Long inputFileExpiresAfterSeconds) {
-            this.inputFileExpiresAfterSeconds = inputFileExpiresAfterSeconds;
+        public Builder inputFileExpiresAfter(Duration inputFileExpiresAfter) {
+            this.inputFileExpiresAfter = inputFileExpiresAfter;
             return this;
         }
 
         /**
-         * Sets the number of seconds after the output file is created at which it, and the error file,
-         * expire. Not set by default, in which case the provider's own retention applies. The accepted
-         * range is defined by the provider and differs between OpenAI and Azure OpenAI.
+         * Sets how long after the output file is created it, and the error file, expire. Not set by default,
+         * in which case the provider's own retention applies. The accepted range is defined by the provider
+         * and differs between OpenAI and Azure OpenAI. Values are sent with a whole-second resolution.
          */
-        public Builder outputExpiresAfterSeconds(Long outputExpiresAfterSeconds) {
-            this.outputExpiresAfterSeconds = outputExpiresAfterSeconds;
+        public Builder outputExpiresAfter(Duration outputExpiresAfter) {
+            this.outputExpiresAfter = outputExpiresAfter;
             return this;
         }
 

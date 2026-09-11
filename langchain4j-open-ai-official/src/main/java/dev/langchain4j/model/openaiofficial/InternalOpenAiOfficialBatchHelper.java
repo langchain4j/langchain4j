@@ -25,39 +25,49 @@ import org.jspecify.annotations.Nullable;
 
 class InternalOpenAiOfficialBatchHelper {
 
-    static final String CUSTOM_ID_PREFIX = "request-";
+    static final int NO_STATUS_CODE = 0;
+    static final String UNKNOWN_ERROR_MESSAGE = "unknown";
 
+    private static final String CUSTOM_ID_PREFIX = "request-";
     private static final String CHAT_COMPLETIONS_URL = "/v1/chat/completions";
     private static final String POST_METHOD = "POST";
-    private static final String UNKNOWN_ERROR_MESSAGE = "unknown";
     private static final int HTTP_OK = 200;
-    private static final int NO_STATUS_CODE = 0;
 
     private static final JsonMapper JSON_MAPPER = ObjectMappers.jsonMapper();
 
     private InternalOpenAiOfficialBatchHelper() {}
 
-    static String toCustomId(int requestIndex) {
+    private static String toCustomId(int requestIndex) {
         return CUSTOM_ID_PREFIX + requestIndex;
     }
 
-    private static int toRequestIndex(@Nullable String customId) {
+    private static @Nullable Integer toRequestIndex(@Nullable String customId) {
         if (customId == null || !customId.startsWith(CUSTOM_ID_PREFIX)) {
-            throw invalidCustomId(customId, null);
+            return null;
         }
         try {
             int requestIndex = Integer.parseInt(customId.substring(CUSTOM_ID_PREFIX.length()));
-            if (requestIndex < 0) {
-                throw invalidCustomId(customId, null);
-            }
-            return requestIndex;
+            return requestIndex < 0 ? null : requestIndex;
         } catch (NumberFormatException e) {
-            throw invalidCustomId(customId, e);
+            return null;
         }
     }
 
-    private static IllegalStateException invalidCustomId(@Nullable String customId, @Nullable Throwable cause) {
-        return new IllegalStateException("Unexpected custom_id in batch result: " + customId, cause);
+    /**
+     * Mirrors the base URL resolution that {@code OpenAiOfficialSetup} applies when it builds the client, so
+     * that the provider this integration detects matches the endpoint the client actually talks to. The
+     * shared resolution is not visible from this package, and the batch request shape differs per provider,
+     * so an environment-configured endpoint has to be taken into account here too.
+     */
+    static @Nullable String resolveBaseUrl(@Nullable String baseUrl) {
+        if (baseUrl != null) {
+            return baseUrl;
+        }
+        String azureOpenAiBaseUrl = System.getenv("AZURE_OPENAI_BASE_URL");
+        if (azureOpenAiBaseUrl != null) {
+            return azureOpenAiBaseUrl;
+        }
+        return System.getenv("OPENAI_BASE_URL");
     }
 
     static byte[] toJsonl(List<ChatCompletionCreateParams> requests) {
@@ -109,7 +119,7 @@ class InternalOpenAiOfficialBatchHelper {
     }
 
     private static ResultLine toResultLine(JsonNode node) throws JsonProcessingException {
-        int requestIndex = toRequestIndex(text(node, "custom_id"));
+        Integer requestIndex = toRequestIndex(text(node, "custom_id"));
 
         JsonNode error = node.get("error");
         if (isPresent(error)) {
@@ -167,16 +177,21 @@ class InternalOpenAiOfficialBatchHelper {
         return node != null && !node.isNull();
     }
 
+    /**
+     * One line of a batch result file. {@code requestIndex} is the zero-based position of the request this
+     * line belongs to, decoded from its {@code custom_id}, or {@code null} when that {@code custom_id} was
+     * not produced by {@link #toJsonl(List)} and therefore cannot be correlated.
+     */
     record ResultLine(
-            int requestIndex,
+            @Nullable Integer requestIndex,
             @Nullable ChatCompletion completion,
             @Nullable BatchError error) {
 
-        static ResultLine success(int requestIndex, ChatCompletion completion) {
+        static ResultLine success(@Nullable Integer requestIndex, ChatCompletion completion) {
             return new ResultLine(requestIndex, completion, null);
         }
 
-        static ResultLine failure(int requestIndex, BatchError error) {
+        static ResultLine failure(@Nullable Integer requestIndex, BatchError error) {
             return new ResultLine(requestIndex, null, error);
         }
     }

@@ -27,12 +27,17 @@ class OpenAiOfficialBatchChatModelIT {
     private static final Duration COMPLETION_TIMEOUT = Duration.ofMinutes(15);
     private static final Duration POLL_INTERVAL = Duration.ofSeconds(15);
 
+    // Every submit uploads an input file that the Batch API never removes on its own, so each run of this
+    // test would otherwise leave one behind for good. Two days outlives the 24h completion window.
+    private static final Duration INPUT_FILE_RETENTION = Duration.ofDays(2);
+
     private final OpenAiOfficialBatchChatModel model = OpenAiOfficialBatchChatModel.builder()
             .apiKey(System.getenv("OPENAI_API_KEY"))
             .modelName(InternalOpenAiOfficialTestHelper.CHAT_MODEL_NAME)
             .maxCompletionTokens(20)
             .temperature(0.0)
             .batchMetadata(Map.of("source", "langchain4j-integration-test"))
+            .inputFileExpiresAfter(INPUT_FILE_RETENTION)
             .build();
 
     private static BatchRequest<ChatRequest> batchOf(String... prompts) {
@@ -75,12 +80,15 @@ class OpenAiOfficialBatchChatModelIT {
 
     @Test
     void should_list_batches() {
-        model.submit(batchOf("Reply with exactly one word: DELTA"));
+        BatchResponse<ChatResponse> submitted = model.submit(batchOf("Reply with exactly one word: DELTA"));
+        try {
+            BatchPage<ChatResponse> page = model.list(new BatchPagination(1, null));
 
-        BatchPage<ChatResponse> page = model.list(new BatchPagination(1, null));
-
-        assertThat(page.batches()).hasSize(1);
-        assertThat(page.batches().get(0).batchId()).isNotBlank();
+            assertThat(page.batches()).hasSize(1);
+            assertThat(page.batches().get(0).batchId()).isNotBlank();
+        } finally {
+            model.cancel(submitted.batchId()); // this batch only had to exist, not to be processed and billed
+        }
     }
 
     private BatchResponse<ChatResponse> awaitTerminalState(String batchId) {
