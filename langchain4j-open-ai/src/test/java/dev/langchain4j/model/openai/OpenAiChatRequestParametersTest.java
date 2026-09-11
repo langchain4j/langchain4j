@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
@@ -75,5 +76,72 @@ class OpenAiChatRequestParametersTest {
                 .build();
 
         assertThat(params.modelName()).isNull();
+    }
+
+    @Test
+    void should_override_prompt_cache_key_and_prompt_cache_options() {
+        OpenAiChatRequestParameters defaults = OpenAiChatRequestParameters.builder()
+                .modelName("gpt-5.6")
+                .promptCacheKey("default_key")
+                .promptCacheOptions(OpenAiPromptCacheOptions.implicit())
+                .build();
+
+        OpenAiChatRequestParameters override = OpenAiChatRequestParameters.builder()
+                .promptCacheKey("override_key")
+                .promptCacheOptions(OpenAiPromptCacheOptions.explicit())
+                .build();
+
+        OpenAiChatRequestParameters merged = defaults.overrideWith(override);
+        assertThat(merged.promptCacheKey()).isEqualTo("override_key");
+        assertThat(merged.promptCacheOptions()).isEqualTo(OpenAiPromptCacheOptions.explicit());
+
+        OpenAiChatRequestParameters notOverridden =
+                defaults.overrideWith(OpenAiChatRequestParameters.builder().build());
+        assertThat(notOverridden.promptCacheKey()).isEqualTo("default_key");
+        assertThat(notOverridden.promptCacheOptions()).isEqualTo(OpenAiPromptCacheOptions.implicit());
+    }
+
+    @Test
+    void should_include_prompt_cache_fields_in_equals_and_hash_code() {
+        OpenAiChatRequestParameters withPromptCache = OpenAiChatRequestParameters.builder()
+                .promptCacheKey("key")
+                .promptCacheOptions(OpenAiPromptCacheOptions.explicit())
+                .build();
+        OpenAiChatRequestParameters withoutPromptCache =
+                OpenAiChatRequestParameters.builder().build();
+
+        assertThat(withPromptCache)
+                .isNotEqualTo(withoutPromptCache)
+                .doesNotHaveSameHashCodeAs(withoutPromptCache)
+                .isEqualTo(OpenAiChatRequestParameters.builder()
+                        .promptCacheKey("key")
+                        .promptCacheOptions(OpenAiPromptCacheOptions.explicit())
+                        .build());
+        assertThat(withPromptCache.toString())
+                .contains("promptCacheKey=\"key\"")
+                .contains("promptCacheOptions=OpenAiPromptCacheOptions{mode=\"explicit\", ttl=null}");
+    }
+
+    @Test
+    void should_store_prompt_cache_fields_in_model_default_request_parameters() {
+        OpenAiChatModel chatModel = OpenAiChatModel.builder()
+                .apiKey("test")
+                .modelName("gpt-5.6")
+                .promptCacheKey("key")
+                .promptCacheOptions(OpenAiPromptCacheOptions.explicit())
+                .build();
+        OpenAiStreamingChatModel streamingChatModel = OpenAiStreamingChatModel.builder()
+                .apiKey("test")
+                .modelName("gpt-5.6")
+                .promptCacheKey("key")
+                .promptCacheOptions(OpenAiPromptCacheOptions.explicit())
+                .build();
+
+        for (OpenAiChatRequestParameters parameters : List.of(
+                (OpenAiChatRequestParameters) chatModel.defaultRequestParameters(),
+                (OpenAiChatRequestParameters) streamingChatModel.defaultRequestParameters())) {
+            assertThat(parameters.promptCacheKey()).isEqualTo("key");
+            assertThat(parameters.promptCacheOptions()).isEqualTo(OpenAiPromptCacheOptions.explicit());
+        }
     }
 }
