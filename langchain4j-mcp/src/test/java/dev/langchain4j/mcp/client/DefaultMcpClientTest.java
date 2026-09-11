@@ -35,9 +35,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -1050,6 +1052,85 @@ public class DefaultMcpClientTest {
         assertThat(client.isModernProtocol()).isFalse();
         verify(transport).initialize(any());
         verify(transport, never()).executeOperationWithResponse(any(McpCallContext.class));
+    }
+
+    @Test
+    public void legacy_health_check_restores_interrupt_status() throws Exception {
+        McpTransport transport = getMinimalMcpTransportMock();
+        CountDownLatch pingSent = new CountDownLatch(1);
+        when(transport.sendRequest(any(McpCallContext.class))).thenAnswer(invocation -> {
+            pingSent.countDown();
+            return new CompletableFuture<>();
+        });
+        DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion("2025-11-25")
+                .pingTimeout(java.time.Duration.ofSeconds(30))
+                .build();
+
+        assertInterruptStatusRestored(client::checkHealth, pingSent);
+    }
+
+    @Test
+    public void modern_health_check_restores_interrupt_status() throws Exception {
+        McpTransport transport = getModernStdioTransportMock();
+        CountDownLatch pingSent = new CountDownLatch(1);
+        when(transport.sendRequest(any(McpCallContext.class)))
+                .thenReturn(
+                        CompletableFuture.completedFuture(getDiscoverResult().toString()))
+                .thenAnswer(invocation -> {
+                    pingSent.countDown();
+                    return new CompletableFuture<>();
+                });
+        DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion("2026-07-28")
+                .pingTimeout(java.time.Duration.ofSeconds(30))
+                .subscribeToToolListChanges(false)
+                .subscribeToPromptListChanges(false)
+                .subscribeToResourceListChanges(false)
+                .build();
+
+        assertInterruptStatusRestored(client::checkHealth, pingSent);
+    }
+
+    @Test
+    public void paginated_list_restores_interrupt_status() throws Exception {
+        McpTransport transport = getMinimalMcpTransportMock();
+        CountDownLatch listSent = new CountDownLatch(1);
+        when(transport.sendRequest(any(McpCallContext.class))).thenAnswer(invocation -> {
+            listSent.countDown();
+            return new CompletableFuture<>();
+        });
+        DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion("2025-11-25")
+                .toolExecutionTimeout(java.time.Duration.ofSeconds(30))
+                .build();
+
+        assertInterruptStatusRestored(() -> client.listTools(), listSent);
+    }
+
+    private static void assertInterruptStatusRestored(Runnable operation, CountDownLatch requestSent) throws Exception {
+        CompletableFuture<Boolean> interruptStatus = new CompletableFuture<>();
+        Thread thread = new Thread(() -> {
+            try {
+                operation.run();
+                interruptStatus.completeExceptionally(new AssertionError("operation unexpectedly completed"));
+            } catch (RuntimeException expected) {
+                interruptStatus.complete(Thread.currentThread().isInterrupted());
+            }
+        });
+
+        thread.start();
+        try {
+            assertThat(requestSent.await(5, TimeUnit.SECONDS)).isTrue();
+            thread.interrupt();
+            assertThat(interruptStatus.get(5, TimeUnit.SECONDS)).isTrue();
+        } finally {
+            thread.interrupt();
+            thread.join(TimeUnit.SECONDS.toMillis(5));
+        }
     }
 
     private static McpTransport getMinimalMcpTransportMock() {
