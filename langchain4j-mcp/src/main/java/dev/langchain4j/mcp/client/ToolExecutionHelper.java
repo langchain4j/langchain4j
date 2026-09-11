@@ -36,7 +36,7 @@ class ToolExecutionHelper {
             if (result.getStructuredContent() != null) {
                 String resultText = McpJson.serialize(result.getStructuredContent());
                 if (applicationError && !ignoreApplicationLevelErrors) {
-                    throw new ToolExecutionException(resultText);
+                    throw new McpApplicationErrorException(resultText);
                 }
                 return ToolExecutionResult.builder()
                         .result(result.getStructuredContent())
@@ -50,7 +50,7 @@ class ToolExecutionHelper {
                 ToolExecutionResult toolExecutionResult =
                         toolResultConverter.convert(result.getContent(), applicationError);
                 if (applicationError && !ignoreApplicationLevelErrors) {
-                    throw new ToolExecutionException(errorMessage(toolExecutionResult, result.getContent()));
+                    throw new McpApplicationErrorException(errorMessage(toolExecutionResult, result.getContent()));
                 }
                 return withAttributes(toolExecutionResult, attributes);
             }

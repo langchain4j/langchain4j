@@ -793,7 +793,7 @@ public abstract class AiServices<T> {
      * and LLMs can typically self-correct when given a clear error message. Configuring a handler
      * that returns the error text via {@link ToolErrorHandlerResult#text(String)} lets the LLM retry,
      * which is more in line with how agentic systems are expected to behave.
-     * The default will change to "Return a text message" in LangChain4j 2.0.
+     * The default will change to "Return a text message" in one of the future releases.
      * <p>
      * Example:
      * <pre>{@code
@@ -840,7 +840,7 @@ public abstract class AiServices<T> {
      * and the LLM provider's logs. For production use, configure a handler that returns either a
      * generic message or a sanitized/curated description of the failure, and rely on logs/events for
      * the underlying detail.
-     * The default will change to "Throw an exception" in LangChain4j 2.0.
+     * The default will change to "Throw an exception" in one of the future releases.
      * <p>
      * Example:
      * <pre>{@code
@@ -1332,6 +1332,7 @@ public abstract class AiServices<T> {
         if (context.chatModel == null && context.streamingChatModel == null) {
             throw illegalConfiguration("Please specify either chatModel or streamingChatModel");
         }
+        ToolErrorHandlingNotice.logOnceIfNeeded(context);
     }
 
     public static List<ChatMessage> removeToolMessages(List<ChatMessage> messages) {

@@ -79,22 +79,9 @@ public class ToolService {
 
     private static final Logger log = LoggerFactory.getLogger(ToolService.class);
 
-    private static final ToolArgumentsErrorHandler RETHROW_ARGUMENTS_ERROR = (error, context) -> {
-        if (error instanceof RuntimeException re) {
-            throw re;
-        } else {
-            throw new RuntimeException(error);
-        }
-    };
-    private static final ToolExecutionErrorHandler RETHROW_EXECUTION_ERROR = (error, context) -> {
-        if (error instanceof RuntimeException re) {
-            throw re;
-        } else {
-            throw new RuntimeException(error);
-        }
-    };
-    private static final ToolArgumentsErrorHandler ARGUMENTS_ERROR_TO_LLM =
-            (error, context) -> ToolErrorHandlerResult.text(errorText(error));
+    private static final ToolArgumentsErrorHandler RETHROW_ARGUMENTS_ERROR = ToolArgumentsErrorHandler.failAiServiceInvocation();
+    private static final ToolExecutionErrorHandler RETHROW_EXECUTION_ERROR = ToolExecutionErrorHandler.failAiServiceInvocation();
+    private static final ToolArgumentsErrorHandler ARGUMENTS_ERROR_TO_LLM = ToolArgumentsErrorHandler.sendExceptionMessageToLlm();
     private static final ToolExecutionErrorHandler EXECUTION_ERROR_TO_LLM = (error, context) -> {
         String errorMessage = errorText(error);
         log.warn(
@@ -117,7 +104,7 @@ public class ToolService {
     private static final ToolArgumentsErrorHandler DEFAULT_ASYNC_TOOL_ARGUMENTS_ERROR_HANDLER = ARGUMENTS_ERROR_TO_LLM;
     private static final ToolExecutionErrorHandler DEFAULT_ASYNC_TOOL_EXECUTION_ERROR_HANDLER = RETHROW_EXECUTION_ERROR;
 
-    private static String errorText(Throwable error) {
+    static String errorText(Throwable error) {
         return isNullOrBlank(error.getMessage()) ? error.getClass().getName() : error.getMessage();
     }
 
@@ -484,6 +471,15 @@ public class ToolService {
     }
 
     /**
+     * @return {@code true} if a {@link ToolArgumentsErrorHandler} was configured explicitly,
+     * {@code false} if the default one is used.
+     * @since 1.21.0
+     */
+    public boolean hasExplicitArgumentsErrorHandler() {
+        return argumentsErrorHandler != null;
+    }
+
+    /**
      * @since 1.4.0
      */
     public void executionErrorHandler(ToolExecutionErrorHandler handler) {
@@ -495,6 +491,15 @@ public class ToolService {
      */
     public ToolExecutionErrorHandler executionErrorHandler() {
         return getOrDefault(executionErrorHandler, DEFAULT_TOOL_EXECUTION_ERROR_HANDLER);
+    }
+
+    /**
+     * @return {@code true} if a {@link ToolExecutionErrorHandler} was configured explicitly,
+     * {@code false} if the default one is used.
+     * @since 1.21.0
+     */
+    public boolean hasExplicitExecutionErrorHandler() {
+        return executionErrorHandler != null;
     }
 
     /**
