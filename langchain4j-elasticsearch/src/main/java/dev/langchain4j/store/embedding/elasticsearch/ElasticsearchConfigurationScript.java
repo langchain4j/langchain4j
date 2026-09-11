@@ -22,11 +22,14 @@ import java.io.IOException;
  * <br>
  * Supports storing {@link Metadata} and filtering by it using {@link Filter}
  * (provided inside {@link EmbeddingSearchRequest}).
+ * <p>Documents without a vector value are excluded before scoring. This allows text-only documents to coexist
+ * with embedded documents in the same index while remaining available to {@link ElasticsearchConfigurationFullText}.
  *
  * @see <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-script-score-query.html#vector-functions-cosine">vector-functions-cosine</a>
  */
 public class ElasticsearchConfigurationScript implements ElasticsearchConfiguration {
-    private final Json.JsonCodec codec = ProviderJson.codec(ProviderJsonSpec.builder().build());
+    private final Json.JsonCodec codec =
+            ProviderJson.codec(ProviderJsonSpec.builder().build());
     private final boolean includeVectorResponse;
 
     public static class Builder {
@@ -84,11 +87,13 @@ public class ElasticsearchConfigurationScript implements ElasticsearchConfigurat
 
     private ScriptScoreQuery buildDefaultScriptScoreQuery(float[] vector, float minScore, Filter filter) {
         JsonData queryVector = toJsonData(vector);
+        Query hasVector = Query.of(q -> q.exists(e -> e.field(VECTOR_FIELD)));
         Query query;
         if (filter == null) {
-            query = Query.of(q -> q.matchAll(m -> m));
+            query = hasVector;
         } else {
-            query = ElasticsearchMetadataFilterMapper.map(filter);
+            query = Query.of(
+                    q -> q.bool(b -> b.filter(hasVector).filter(ElasticsearchMetadataFilterMapper.map(filter))));
         }
         return ScriptScoreQuery.of(q -> q.minScore(minScore)
                 .query(query)
