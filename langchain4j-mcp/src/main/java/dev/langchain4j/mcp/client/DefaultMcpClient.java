@@ -1375,6 +1375,14 @@ public class DefaultMcpClient implements McpClient {
                     result -> {
                         McpListToolsResult.Result parsed = McpJson.deserialize(result, McpListToolsResult.class)
                                 .getResult();
+                        if (parsed == null) {
+                            log.warn("Result does not contain 'result' element: {}", result);
+                            throw new IllegalResponseException("Result does not contain 'result' element");
+                        }
+                        if (parsed.getTools() == null) {
+                            log.warn("Result does not contain 'tools' element: {}", result);
+                            throw new IllegalResponseException("Result does not contain 'tools' element");
+                        }
                         return new McpPage<>(
                                 ToolSpecificationHelper.toolSpecificationListFromMcpResponse(parsed.getTools()),
                                 parsed.getNextCursor());
