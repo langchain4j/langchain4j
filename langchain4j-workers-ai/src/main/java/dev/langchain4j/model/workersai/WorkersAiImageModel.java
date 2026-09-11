@@ -162,7 +162,7 @@ public class WorkersAiImageModel extends AbstractWorkersAIModel implements Image
     public Response<Image> edit(Image image, String prompt) {
         ensureNotBlank(prompt, "Prompt");
         ensureNotNull(image, "Image");
-        return new Response<>(convertAsImage(executeQuery(prompt, null, image)), null, FinishReason.STOP);
+        return new Response<>(convertAsImage(executeQuery(prompt, image, null)), null, FinishReason.STOP);
     }
 
     /** {@inheritDoc} */
@@ -170,7 +170,7 @@ public class WorkersAiImageModel extends AbstractWorkersAIModel implements Image
         ensureNotBlank(prompt, "Prompt");
         ensureNotNull(image, "Image");
         ensureNotNull(mask, "Mask");
-        return new Response<>(convertAsImage(executeQuery(prompt, mask, image)), null, FinishReason.STOP);
+        return new Response<>(convertAsImage(executeQuery(prompt, image, mask)), null, FinishReason.STOP);
     }
 
     /**
