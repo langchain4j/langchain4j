@@ -1052,6 +1052,36 @@ public class DefaultMcpClientTest {
         verify(transport, never()).executeOperationWithResponse(any(McpCallContext.class));
     }
 
+    @Test
+    public void tools_list_without_result_is_rejected() throws Exception {
+        McpTransport transport = getMinimalMcpTransportMock();
+        when(transport.sendRequest(any(McpCallContext.class)))
+                .thenReturn(CompletableFuture.completedFuture("{\"jsonrpc\":\"2.0\",\"id\":1}"));
+        DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion("2025-11-25")
+                .build();
+
+        assertThatThrownBy(client::listTools)
+                .isInstanceOf(IllegalResponseException.class)
+                .hasMessage("Result does not contain 'result' element");
+    }
+
+    @Test
+    public void tools_list_without_tools_element_is_rejected() throws Exception {
+        McpTransport transport = getMinimalMcpTransportMock();
+        when(transport.sendRequest(any(McpCallContext.class)))
+                .thenReturn(CompletableFuture.completedFuture("{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{}}"));
+        DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion("2025-11-25")
+                .build();
+
+        assertThatThrownBy(client::listTools)
+                .isInstanceOf(IllegalResponseException.class)
+                .hasMessage("Result does not contain 'tools' element");
+    }
+
     private static McpTransport getMinimalMcpTransportMock() {
         McpTransport transport = mock(McpTransport.class);
         // exercise the default bridge: a legacy transport that implements only the
