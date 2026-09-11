@@ -16,7 +16,13 @@ class GeminiSchema {
     @JsonProperty("enum")
     private List<String> enumeration;
 
+    private String minItems;
     private String maxItems;
+    private String minLength;
+    private String maxLength;
+    private String pattern;
+    private Double minimum;
+    private Double maximum;
     private Map<String, GeminiSchema> properties;
     private List<String> required;
     private GeminiSchema items;
@@ -28,7 +34,13 @@ class GeminiSchema {
             String description,
             Boolean nullable,
             List<String> enumeration,
+            String minItems,
             String maxItems,
+            String minLength,
+            String maxLength,
+            String pattern,
+            Double minimum,
+            Double maximum,
             Map<String, GeminiSchema> properties,
             List<String> required,
             GeminiSchema items,
@@ -38,7 +50,13 @@ class GeminiSchema {
         this.description = description;
         this.nullable = nullable;
         this.enumeration = enumeration;
+        this.minItems = minItems;
         this.maxItems = maxItems;
+        this.minLength = minLength;
+        this.maxLength = maxLength;
+        this.pattern = pattern;
+        this.minimum = minimum;
+        this.maximum = maximum;
         this.properties = properties;
         this.required = required;
         this.items = items;
@@ -70,8 +88,32 @@ class GeminiSchema {
         return this.enumeration;
     }
 
+    public String getMinItems() {
+        return this.minItems;
+    }
+
     public String getMaxItems() {
         return this.maxItems;
+    }
+
+    public String getMinLength() {
+        return this.minLength;
+    }
+
+    public String getMaxLength() {
+        return this.maxLength;
+    }
+
+    public String getPattern() {
+        return this.pattern;
+    }
+
+    public Double getMinimum() {
+        return this.minimum;
+    }
+
+    public Double getMaximum() {
+        return this.maximum;
     }
 
     public Map<String, GeminiSchema> getProperties() {
@@ -110,8 +152,32 @@ class GeminiSchema {
         this.enumeration = enumeration;
     }
 
+    public void setMinItems(String minItems) {
+        this.minItems = minItems;
+    }
+
     public void setMaxItems(String maxItems) {
         this.maxItems = maxItems;
+    }
+
+    public void setMinLength(String minLength) {
+        this.minLength = minLength;
+    }
+
+    public void setMaxLength(String maxLength) {
+        this.maxLength = maxLength;
+    }
+
+    public void setPattern(String pattern) {
+        this.pattern = pattern;
+    }
+
+    public void setMinimum(Double minimum) {
+        this.minimum = minimum;
+    }
+
+    public void setMaximum(Double maximum) {
+        this.maximum = maximum;
     }
 
     public void setProperties(Map<String, GeminiSchema> properties) {
@@ -152,9 +218,27 @@ class GeminiSchema {
         final Object other$enumeration = other.getEnumeration();
         if (this$enumeration == null ? other$enumeration != null : !this$enumeration.equals(other$enumeration))
             return false;
+        final Object this$minItems = this.getMinItems();
+        final Object other$minItems = other.getMinItems();
+        if (this$minItems == null ? other$minItems != null : !this$minItems.equals(other$minItems)) return false;
         final Object this$maxItems = this.getMaxItems();
         final Object other$maxItems = other.getMaxItems();
         if (this$maxItems == null ? other$maxItems != null : !this$maxItems.equals(other$maxItems)) return false;
+        final Object this$minLength = this.getMinLength();
+        final Object other$minLength = other.getMinLength();
+        if (this$minLength == null ? other$minLength != null : !this$minLength.equals(other$minLength)) return false;
+        final Object this$maxLength = this.getMaxLength();
+        final Object other$maxLength = other.getMaxLength();
+        if (this$maxLength == null ? other$maxLength != null : !this$maxLength.equals(other$maxLength)) return false;
+        final Object this$pattern = this.getPattern();
+        final Object other$pattern = other.getPattern();
+        if (this$pattern == null ? other$pattern != null : !this$pattern.equals(other$pattern)) return false;
+        final Object this$minimum = this.getMinimum();
+        final Object other$minimum = other.getMinimum();
+        if (this$minimum == null ? other$minimum != null : !this$minimum.equals(other$minimum)) return false;
+        final Object this$maximum = this.getMaximum();
+        final Object other$maximum = other.getMaximum();
+        if (this$maximum == null ? other$maximum != null : !this$maximum.equals(other$maximum)) return false;
         final Object this$properties = this.getProperties();
         final Object other$properties = other.getProperties();
         if (this$properties == null ? other$properties != null : !this$properties.equals(other$properties))
@@ -189,8 +273,20 @@ class GeminiSchema {
         result = result * PRIME + ($nullable == null ? 43 : $nullable.hashCode());
         final Object $enumeration = this.getEnumeration();
         result = result * PRIME + ($enumeration == null ? 43 : $enumeration.hashCode());
+        final Object $minItems = this.getMinItems();
+        result = result * PRIME + ($minItems == null ? 43 : $minItems.hashCode());
         final Object $maxItems = this.getMaxItems();
         result = result * PRIME + ($maxItems == null ? 43 : $maxItems.hashCode());
+        final Object $minLength = this.getMinLength();
+        result = result * PRIME + ($minLength == null ? 43 : $minLength.hashCode());
+        final Object $maxLength = this.getMaxLength();
+        result = result * PRIME + ($maxLength == null ? 43 : $maxLength.hashCode());
+        final Object $pattern = this.getPattern();
+        result = result * PRIME + ($pattern == null ? 43 : $pattern.hashCode());
+        final Object $minimum = this.getMinimum();
+        result = result * PRIME + ($minimum == null ? 43 : $minimum.hashCode());
+        final Object $maximum = this.getMaximum();
+        result = result * PRIME + ($maximum == null ? 43 : $maximum.hashCode());
         final Object $properties = this.getProperties();
         result = result * PRIME + ($properties == null ? 43 : $properties.hashCode());
         final Object $required = this.getRequired();
@@ -205,8 +301,11 @@ class GeminiSchema {
     public String toString() {
         return "GeminiSchema(type=" + this.getType() + ", format=" + this.getFormat() + ", description="
                 + this.getDescription() + ", nullable=" + this.getNullable() + ", enumeration=" + this.getEnumeration()
-                + ", maxItems=" + this.getMaxItems() + ", properties=" + this.getProperties() + ", required="
-                + this.getRequired() + ", items=" + this.getItems() + ", anyOf=" + this.getAnyOf() + ")";
+                + ", minItems=" + this.getMinItems() + ", maxItems=" + this.getMaxItems() + ", minLength="
+                + this.getMinLength() + ", maxLength=" + this.getMaxLength() + ", pattern=" + this.getPattern()
+                + ", minimum=" + this.getMinimum() + ", maximum=" + this.getMaximum() + ", properties="
+                + this.getProperties() + ", required=" + this.getRequired() + ", items=" + this.getItems() + ", anyOf="
+                + this.getAnyOf() + ")";
     }
 
     public static class GeminiSchemaBuilder {
@@ -215,7 +314,13 @@ class GeminiSchema {
         private String description;
         private Boolean nullable;
         private List<String> enumeration;
+        private String minItems;
         private String maxItems;
+        private String minLength;
+        private String maxLength;
+        private String pattern;
+        private Double minimum;
+        private Double maximum;
         private Map<String, GeminiSchema> properties;
         private List<String> required;
         private GeminiSchema items;
@@ -248,8 +353,38 @@ class GeminiSchema {
             return this;
         }
 
+        public GeminiSchemaBuilder minItems(String minItems) {
+            this.minItems = minItems;
+            return this;
+        }
+
         public GeminiSchemaBuilder maxItems(String maxItems) {
             this.maxItems = maxItems;
+            return this;
+        }
+
+        public GeminiSchemaBuilder minLength(String minLength) {
+            this.minLength = minLength;
+            return this;
+        }
+
+        public GeminiSchemaBuilder maxLength(String maxLength) {
+            this.maxLength = maxLength;
+            return this;
+        }
+
+        public GeminiSchemaBuilder pattern(String pattern) {
+            this.pattern = pattern;
+            return this;
+        }
+
+        public GeminiSchemaBuilder minimum(Double minimum) {
+            this.minimum = minimum;
+            return this;
+        }
+
+        public GeminiSchemaBuilder maximum(Double maximum) {
+            this.maximum = maximum;
             return this;
         }
 
@@ -280,7 +415,13 @@ class GeminiSchema {
                     this.description,
                     this.nullable,
                     this.enumeration,
+                    this.minItems,
                     this.maxItems,
+                    this.minLength,
+                    this.maxLength,
+                    this.pattern,
+                    this.minimum,
+                    this.maximum,
                     this.properties,
                     this.required,
                     this.items,
@@ -290,7 +431,9 @@ class GeminiSchema {
         public String toString() {
             return "GeminiSchema.GeminiSchemaBuilder(type=" + this.type + ", format=" + this.format + ", description="
                     + this.description + ", nullable=" + this.nullable + ", enumeration=" + this.enumeration
-                    + ", maxItems=" + this.maxItems + ", properties=" + this.properties + ", required=" + this.required
+                    + ", minItems=" + this.minItems + ", maxItems=" + this.maxItems + ", minLength=" + this.minLength
+                    + ", maxLength=" + this.maxLength + ", pattern=" + this.pattern + ", minimum=" + this.minimum
+                    + ", maximum=" + this.maximum + ", properties=" + this.properties + ", required=" + this.required
                     + ", items=" + this.items + ", anyOf=" + this.anyOf + ")";
         }
     }

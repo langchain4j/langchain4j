@@ -11,6 +11,7 @@ import static org.junit.jupiter.api.TestInstance.Lifecycle.PER_CLASS;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 
+import dev.langchain4j.internal.Json;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
@@ -1964,6 +1965,51 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
                                 .build())
                         .build());
         verify(model).supportedCapabilities();
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    @EnabledIf("supportsJsonSchemaValidationConstraints")
+    protected void should_accept_json_schema_with_validation_constraints(ChatModel model) {
+
+        // given
+        String text = "Extract the person's information from the following text: Klaus is 37 years old";
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(userMessage(text))
+                .responseFormat(ResponseFormat.builder()
+                        .type(JSON)
+                        .jsonSchema(JsonSchema.builder()
+                                .name("Person")
+                                .rootElement(JsonObjectSchema.builder()
+                                        .addProperty(
+                                                "name",
+                                                JsonStringSchema.builder()
+                                                        .minLength(1)
+                                                        .maxLength(50)
+                                                        .build())
+                                        .addProperty(
+                                                "age",
+                                                JsonIntegerSchema.builder()
+                                                        .minimum(0L)
+                                                        .maximum(150L)
+                                                        .build())
+                                        .required("name", "age")
+                                        .build())
+                                .build())
+                        .build())
+                .build();
+
+        // when
+        String json = model.chat(chatRequest).aiMessage().text();
+
+        // then
+        Map<String, Object> person = Json.fromJson(json, Map.class);
+        assertThat(person.get("name").toString()).contains("Klaus");
+        assertThat(((Number) person.get("age")).intValue()).isEqualTo(37);
+    }
+
+    protected boolean supportsJsonSchemaValidationConstraints() {
+        return true;
     }
 
     protected boolean supportsRecursion() {
