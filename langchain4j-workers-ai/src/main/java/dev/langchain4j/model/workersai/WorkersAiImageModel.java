@@ -1,5 +1,9 @@
 package dev.langchain4j.model.workersai;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.image.ImageModel;
@@ -8,18 +12,13 @@ import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.workersai.client.AbstractWorkersAIModel;
 import dev.langchain4j.model.workersai.client.WorkersAiImageGenerationRequest;
 import dev.langchain4j.model.workersai.spi.WorkersAiImageModelBuilderFactory;
-
-import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.URL;
 import java.util.Base64;
-
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+import javax.imageio.ImageIO;
 
 /**
  * WorkerAI Image model.
@@ -93,8 +92,7 @@ public class WorkersAiImageModel extends AbstractWorkersAIModel implements Image
         /**
          * Simple constructor.
          */
-        public Builder() {
-        }
+        public Builder() {}
 
         /**
          * Simple constructor.
@@ -283,7 +281,4 @@ public class WorkersAiImageModel extends AbstractWorkersAIModel implements Image
                 .mimeType(MIME_TYPE)
                 .build();
     }
-
 }
-
-

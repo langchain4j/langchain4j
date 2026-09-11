@@ -1,20 +1,19 @@
 package dev.langchain4j.model.workersai;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.http.client.MockHttpClient;
 import dev.langchain4j.http.client.MockHttpClientBuilder;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
-
-import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.nio.file.Path;
-
-import static org.assertj.core.api.Assertions.assertThat;
+import javax.imageio.ImageIO;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 class WorkersAiImageModelTest {
 
@@ -26,8 +25,10 @@ class WorkersAiImageModelTest {
     @Test
     void should_send_image_in_image_field_when_editing() throws Exception {
         File sourceImage = writePng("source");
-        MockHttpClient mockHttpClient = MockHttpClient.thatAlwaysResponds(
-                SuccessfulHttpResponse.builder().statusCode(200).body(new byte[] {1, 2, 3}).build());
+        MockHttpClient mockHttpClient = MockHttpClient.thatAlwaysResponds(SuccessfulHttpResponse.builder()
+                .statusCode(200)
+                .body(new byte[] {1, 2, 3})
+                .build());
         WorkersAiImageModel model = imageModel(mockHttpClient);
 
         model.edit(Image.builder().url(sourceImage.toURI()).build(), "make it blue");
@@ -44,8 +45,10 @@ class WorkersAiImageModelTest {
     void should_send_image_and_mask_in_distinct_fields_when_editing_with_mask() throws Exception {
         File sourceImage = writePng("source");
         File maskImage = writePng("mask");
-        MockHttpClient mockHttpClient = MockHttpClient.thatAlwaysResponds(
-                SuccessfulHttpResponse.builder().statusCode(200).body(new byte[] {1, 2, 3}).build());
+        MockHttpClient mockHttpClient = MockHttpClient.thatAlwaysResponds(SuccessfulHttpResponse.builder()
+                .statusCode(200)
+                .body(new byte[] {1, 2, 3})
+                .build());
         WorkersAiImageModel model = imageModel(mockHttpClient);
 
         model.edit(
@@ -64,8 +67,10 @@ class WorkersAiImageModelTest {
 
     @Test
     void should_send_no_image_nor_mask_when_generating() throws Exception {
-        MockHttpClient mockHttpClient = MockHttpClient.thatAlwaysResponds(
-                SuccessfulHttpResponse.builder().statusCode(200).body(new byte[] {1, 2, 3}).build());
+        MockHttpClient mockHttpClient = MockHttpClient.thatAlwaysResponds(SuccessfulHttpResponse.builder()
+                .statusCode(200)
+                .body(new byte[] {1, 2, 3})
+                .build());
         WorkersAiImageModel model = imageModel(mockHttpClient);
 
         model.generate("a blue bird");
