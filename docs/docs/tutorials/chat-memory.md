@@ -126,6 +126,13 @@ the following orphan `ToolExecutionResultMessage`(s) are also automatically evic
 to avoid problems with some LLM providers (such as OpenAI)
 that prohibit sending orphan `ToolExecutionResultMessage`(s) in the request.
 
+`MessageWindowChatMemory` and `TokenWindowChatMemory` also repair this kind of corruption when it is
+already present in the history loaded from the `ChatMemoryStore` (for example, left behind by an earlier
+session, an older library version, or a store that truncates old messages on its own). Every call to
+`messages()` or `messagesAsync()` drops any `ToolExecutionResultMessage` that no longer has a matching
+`AiMessage`, and drops (or completes) any `AiMessage` whose tool calls were never answered. As a result,
+`messages()` may return fewer messages than the store physically holds.
+
 :::note
 A `ChatMemory` or `ChatMemoryStore` that performs I/O can implement the asynchronous counterparts
 (`addAsync`/`messagesAsync`/`setAsync`, `getMessagesAsync`/`updateMessagesAsync`/`deleteMessagesAsync`) so that it
