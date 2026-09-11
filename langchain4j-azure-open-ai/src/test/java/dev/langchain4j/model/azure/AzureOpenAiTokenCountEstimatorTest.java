@@ -11,6 +11,7 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 @Execution(ExecutionMode.CONCURRENT)
 class AzureOpenAiTokenCountEstimatorTest {
@@ -102,5 +103,13 @@ class AzureOpenAiTokenCountEstimatorTest {
             result.add(strings);
         }
         return result;
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"gpt-5", "gpt-5-mini", "gpt-5-nano", "gpt-5-chat", "gpt-5.1"})
+    void should_support_gpt_5_model_names(String modelName) {
+        TokenCountEstimator tokenCountEstimator = new AzureOpenAiTokenCountEstimator(modelName);
+
+        assertThat(tokenCountEstimator.estimateTokenCountInText("Hello")).isEqualTo(1);
     }
 }
