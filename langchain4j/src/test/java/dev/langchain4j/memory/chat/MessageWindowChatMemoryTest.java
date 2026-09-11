@@ -7,6 +7,7 @@ import static java.util.Arrays.asList;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
@@ -723,5 +724,100 @@ class MessageWindowChatMemoryTest implements WithAssertions {
                 .build();
 
         assertThat(chatMemory.messages()).containsExactly(aiMessage, toolExecutionResultMessage);
+    }
+
+    @Test
+    void should_self_heal_AiMessage_left_with_unanswered_tool_calls_by_a_prior_corrupt_state() {
+
+        // given a store already holding a corrupt history: an AiMessage whose tool calls were never
+        // answered, e.g. because the application restarted mid tool execution (issue #3806)
+        // or two concurrent requests raced on the same memory id (issue #1966)
+        InMemoryChatMemoryStore store = new InMemoryChatMemoryStore();
+
+        ToolExecutionRequest request1 = ToolExecutionRequest.builder()
+                .id("1")
+                .name("weather")
+                .arguments("{}")
+                .build();
+        ToolExecutionRequest request2 = ToolExecutionRequest.builder()
+                .id("2")
+                .name("calculator")
+                .arguments("{}")
+                .build();
+        AiMessage partiallyAnswered = AiMessage.from(request1, request2);
+        ToolExecutionResultMessage result1 = ToolExecutionResultMessage.from(request1, "sunny");
+        // a subsequent turn proves the window is closed and request "2" is never getting answered
+        UserMessage nextTurn = userMessage("thanks, what about tomorrow?");
+
+        store.updateMessages("default", asList(partiallyAnswered, result1, nextTurn));
+
+        ChatMemory chatMemory = MessageWindowChatMemory.builder()
+                .maxMessages(10)
+                .chatMemoryStore(store)
+                .build();
+
+        // then the unanswered call ("2") is stripped, the answered call ("1") and its result are kept
+        List<ChatMessage> messages = chatMemory.messages();
+        assertThat(messages).hasSize(3);
+        AiMessage repaired = (AiMessage) messages.get(0);
+        assertThat(repaired.toolExecutionRequests()).containsExactly(request1);
+        assertThat(messages.get(1)).isEqualTo(result1);
+        assertThat(messages.get(2)).isEqualTo(nextTurn);
+    }
+
+    @Test
+    void should_self_heal_AiMessage_with_no_answered_tool_calls_and_no_text_by_dropping_it() {
+
+        InMemoryChatMemoryStore store = new InMemoryChatMemoryStore();
+
+        ToolExecutionRequest request = ToolExecutionRequest.builder()
+                .id("1")
+                .name("weather")
+                .arguments("{}")
+                .build();
+        AiMessage unanswered = AiMessage.from(request);
+        UserMessage nextTurn = userMessage("still there?");
+
+        store.updateMessages("default", asList(unanswered, nextTurn));
+
+        ChatMemory chatMemory = MessageWindowChatMemory.builder()
+                .maxMessages(10)
+                .chatMemoryStore(store)
+                .build();
+
+        assertThat(chatMemory.messages()).containsExactly(nextTurn);
+    }
+
+    @Test
+    void should_not_touch_a_pending_AiMessage_with_unanswered_tool_calls_at_the_tail_of_the_store() {
+
+        // an AiMessage with unanswered tool calls as the very last stored message is indistinguishable
+        // from one that is still awaiting its result(s) - e.g. a tool execution in progress, or parallel
+        // tool calls completing one by one - so it must be left completely untouched, not repaired
+        InMemoryChatMemoryStore store = new InMemoryChatMemoryStore();
+
+        ToolExecutionRequest request1 = ToolExecutionRequest.builder()
+                .id("1")
+                .name("weather")
+                .arguments("{}")
+                .build();
+        ToolExecutionRequest request2 = ToolExecutionRequest.builder()
+                .id("2")
+                .name("calculator")
+                .arguments("{}")
+                .build();
+        UserMessage userMessage = userMessage("what's the weather and what's 2+2?");
+        AiMessage pending = AiMessage.from(request1, request2);
+        ToolExecutionResultMessage result1 = ToolExecutionResultMessage.from(request1, "sunny");
+        // request2's result has not arrived yet, and nothing follows to prove it never will
+
+        store.updateMessages("default", asList(userMessage, pending, result1));
+
+        ChatMemory chatMemory = MessageWindowChatMemory.builder()
+                .maxMessages(10)
+                .chatMemoryStore(store)
+                .build();
+
+        assertThat(chatMemory.messages()).containsExactly(userMessage, pending, result1);
     }
 }

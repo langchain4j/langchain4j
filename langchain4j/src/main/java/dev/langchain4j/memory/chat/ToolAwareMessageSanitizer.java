@@ -12,107 +12,165 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Self-healing utility for chat message history stored in a {@link dev.langchain4j.store.memory.chat.ChatMemoryStore}.
- *
- * <h2>Problem (Issue #3133)</h2>
+ * Repairs a chat message history so that every {@link ToolExecutionRequest} made by an {@link AiMessage} is
+ * answered by exactly one {@link ToolExecutionResultMessage}, and every {@code ToolExecutionResultMessage}
+ * answers a tool call made by the {@code AiMessage} that precedes it. Most LLM providers reject a history that
+ * violates either rule.
  * <p>
- * When bulk tool execution pushes a large number of {@link ToolExecutionResultMessage}s into a bounded
- * memory window, the sliding-window eviction in {@link MessageWindowChatMemory} may evict the parent
- * {@link AiMessage} that contains the originating {@link ToolExecutionRequest}(s) before all
- * of its result messages have been added. The result is a persisted history in which orphaned
- * ToolExecutionResultMessages appear at the head of the list with no corresponding
- * AiMessage. Any subsequent call to the LLM then fails hard:
- * </p>
- * <pre>
- * InvalidRequestException: Invalid parameter: messages with role 'tool' must be
- * a response to a preceding message with 'tool_calls'.
- * </pre>
+ * Corruption can occur in either direction: an {@code AiMessage} whose tool calls were never (or only partially)
+ * answered - for example because the application restarted mid tool execution, or two concurrent requests raced
+ * on the same memory id - and a {@code ToolExecutionResultMessage} left without its parent {@code AiMessage} -
+ * for example because an external store truncated the persisted history.
  * <p>
- * The existing ensureCapacity eviction handles forward cascades correctly (when
- * an AiMessage is evicted its following results are also evicted). However, it
- * cannot repair state that was already persisted in corrupt form by an earlier session or
- * an older library version.
- * </p>
- *
- * <h2>Fix</h2>
+ * Matching is positional. A {@code ToolExecutionResultMessage} only answers calls made by the {@code AiMessage}
+ * that most recently opened, i.e. the nearest preceding {@code AiMessage}, provided no other message type
+ * appears in between. A result that shows up anywhere else - before any {@code AiMessage}, or after the window
+ * for one has already closed - is treated as orphaned and removed, even if some earlier {@code AiMessage}
+ * happens to declare a matching id.
  * <p>
- * {@link #sanitize(List)} performs a two-pass O(n) scan:
- * 1. Collect all tool-call IDs that are referenced by AiMessages still present in the list.
- * 2. Drop any ToolExecutionResultMessage whose ID has no match in that set.
- * The method is idempotent, allocation-free when no repair is needed (returns the original list),
- * and logs a WARN for each dropped message so operators can track memory corruption events.
- * </p>
+ * When an {@code AiMessage}'s tool calls are only partially answered, the unanswered calls are stripped from it
+ * and its text, thinking and attributes are preserved. If none of its calls are answered and it carries no text,
+ * the {@code AiMessage} is dropped entirely, since an empty assistant turn is not valid history either.
+ * <p>
+ * A {@code null} {@link ToolExecutionRequest#id()} or {@link ToolExecutionResultMessage#id()} cannot be reliably
+ * correlated with its counterpart, so such entries are left untouched wherever they occur: a null-id call is
+ * never considered unanswered and therefore never triggers repair of its message, a null-id result is never
+ * considered orphaned, and neither is allowed to match the other.
+ * <p>
+ * {@link #sanitize(List)} is idempotent and returns the original list instance when no repair is needed.
  *
  * @see MessageWindowChatMemory
- * @see <a href="https://github.com/langchain4j/langchain4j/issues/3133">langchain4j#3133</a>
+ * @see TokenWindowChatMemory
  */
-public final class ToolAwareMessageSanitizer {
+final class ToolAwareMessageSanitizer {
 
     private static final Logger log = LoggerFactory.getLogger(ToolAwareMessageSanitizer.class);
 
     private ToolAwareMessageSanitizer() {}
 
-    /**
-     * Returns a view of messages with all orphaned ToolExecutionResultMessages removed.
-     *
-     * A ToolExecutionResultMessage is considered orphaned when it has a non-null id()
-     * and no AiMessage currently in the list contains a ToolExecutionRequest whose id()
-     * matches it. A result with a null id() is never treated as orphaned: some providers
-     * (and several fixtures in this codebase) don't assign tool-call ids at all, and without
-     * an id there is no reliable way to tell a genuinely orphaned result apart from one that
-     * is correctly paired with a still-present, id-less AiMessage - so we only repair the
-     * corruption pattern described in issue #3133, which always involves real provider-issued
-     * ids, and leave id-less histories untouched.
-     *
-     * This method is O(n) in the number of messages and performs
-     * zero allocations when the list is already valid.
-     *
-     * @param messages the raw message list loaded from a ChatMemoryStore
-     * @return the original list (if valid) or a new sanitized list (if orphans were removed)
-     */
-    public static List<ChatMessage> sanitize(List<ChatMessage> messages) {
-        // Pass 1 - O(n): collect every tool-call ID that has a live AiMessage parent.
-        Set<String> coveredToolCallIds = new HashSet<>();
-        for (ChatMessage message : messages) {
+    static List<ChatMessage> sanitize(List<ChatMessage> messages) {
+        List<ChatMessage> sanitized = null;
+        int size = messages.size();
+
+        int i = 0;
+        while (i < size) {
+            ChatMessage message = messages.get(i);
+
             if (message instanceof AiMessage aiMessage && aiMessage.hasToolExecutionRequests()) {
+                int windowStart = i;
+
+                Set<String> unansweredCallIds = new HashSet<>();
                 for (ToolExecutionRequest request : aiMessage.toolExecutionRequests()) {
-                    String id = request.id();
-                    if (id != null) {
-                        coveredToolCallIds.add(id);
+                    if (request.id() != null) {
+                        unansweredCallIds.add(request.id());
                     }
                 }
-            }
-        }
 
-        // Pass 2 - O(n): build sanitized list, skipping orphaned tool results.
-        // Avoid allocating a new list when nothing needs to be removed (happy path).
-        List<ChatMessage> sanitized = null;
-        for (int i = 0; i < messages.size(); i++) {
-            ChatMessage message = messages.get(i);
-            if (message instanceof ToolExecutionResultMessage result) {
-                String id = result.id();
-                boolean isOrphaned = id != null && !coveredToolCallIds.contains(id);
-                if (isOrphaned) {
-                    log.warn(
-                            "[langchain4j] Removing orphaned ToolExecutionResultMessage (id={}) from chat memory. "
-                                    + "Its parent AiMessage with tool_calls was already evicted. "
-                                    + "This self-healing prevents a permanent corrupt-memory state. "
-                                    + "See https://github.com/langchain4j/langchain4j/issues/3133",
-                            id);
+                Set<String> answeredCallIds = new HashSet<>();
+                List<ToolExecutionResultMessage> keptResults = new ArrayList<>();
+                boolean orphanResultDropped = false;
+
+                int j = i + 1;
+                while (j < size && messages.get(j) instanceof ToolExecutionResultMessage result) {
+                    String resultId = result.id();
+                    if (resultId == null) {
+                        keptResults.add(result);
+                    } else if (unansweredCallIds.remove(resultId)) {
+                        answeredCallIds.add(resultId);
+                        keptResults.add(result);
+                    } else {
+                        log.warn("Dropping orphaned ToolExecutionResultMessage with id '{}'", resultId);
+                        orphanResultDropped = true;
+                    }
+                    j++;
+                }
+
+                // Reaching the end of the list does not close the window: an AiMessage with unanswered
+                // tool calls in tail position is indistinguishable from one that is still awaiting its
+                // result(s) (e.g. concurrent tool execution, or the result is about to be added on the
+                // next turn), so it must be left untouched. Only a subsequent message of a different type
+                // proves that no more results are coming and that the remaining calls were abandoned.
+                boolean windowClosedByAnotherMessage = j < size;
+                boolean aiMessageNeedsRepair = windowClosedByAnotherMessage && !unansweredCallIds.isEmpty();
+                if (aiMessageNeedsRepair || orphanResultDropped) {
                     if (sanitized == null) {
-                        // First orphan found - materialise the prefix we've passed already.
-                        sanitized = new ArrayList<>(messages.size());
+                        sanitized = new ArrayList<>(size);
+                        sanitized.addAll(messages.subList(0, windowStart));
+                    }
+                    if (aiMessageNeedsRepair) {
+                        AiMessage repaired = repair(aiMessage, answeredCallIds);
+                        if (repaired != null) {
+                            sanitized.add(repaired);
+                        }
+                    } else {
+                        sanitized.add(aiMessage);
+                    }
+                    sanitized.addAll(keptResults);
+                } else if (sanitized != null) {
+                    sanitized.add(aiMessage);
+                    sanitized.addAll(keptResults);
+                }
+
+                i = j;
+                continue;
+            }
+
+            if (message instanceof ToolExecutionResultMessage result) {
+                String resultId = result.id();
+                if (resultId != null) {
+                    log.warn("Dropping orphaned ToolExecutionResultMessage with id '{}'", resultId);
+                    if (sanitized == null) {
+                        sanitized = new ArrayList<>(size);
                         sanitized.addAll(messages.subList(0, i));
                     }
-                    // skip this message
-                    continue;
+                } else if (sanitized != null) {
+                    sanitized.add(message);
                 }
+                i++;
+                continue;
             }
+
             if (sanitized != null) {
                 sanitized.add(message);
             }
+            i++;
         }
 
         return sanitized != null ? sanitized : messages;
+    }
+
+    /**
+     * Returns a copy of {@code aiMessage} retaining only the tool calls whose id is either {@code null}
+     * (untrackable, always kept) or present in {@code answeredCallIds}. Returns {@code null} when nothing
+     * would be left to keep and the message has no text, since an assistant turn with neither text nor tool
+     * calls is not valid history.
+     */
+    private static AiMessage repair(AiMessage aiMessage, Set<String> answeredCallIds) {
+        List<ToolExecutionRequest> kept = new ArrayList<>();
+        int droppedCount = 0;
+        for (ToolExecutionRequest request : aiMessage.toolExecutionRequests()) {
+            String id = request.id();
+            if (id == null || answeredCallIds.contains(id)) {
+                kept.add(request);
+            } else {
+                droppedCount++;
+            }
+        }
+
+        if (kept.isEmpty()) {
+            if (hasText(aiMessage)) {
+                log.warn("Dropping {} unanswered tool call(s) from AiMessage, keeping its text", droppedCount);
+                return aiMessage.toBuilder().toolExecutionRequests(List.of()).build();
+            }
+            log.warn("Dropping AiMessage with {} unanswered tool call(s) and no text", droppedCount);
+            return null;
+        }
+
+        log.warn("Dropping {} unanswered tool call(s) from AiMessage", droppedCount);
+        return aiMessage.toBuilder().toolExecutionRequests(kept).build();
+    }
+
+    private static boolean hasText(AiMessage aiMessage) {
+        return aiMessage.text() != null && !aiMessage.text().isEmpty();
     }
 }
