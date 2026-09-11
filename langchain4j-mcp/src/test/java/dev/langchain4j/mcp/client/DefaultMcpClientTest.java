@@ -219,6 +219,36 @@ public class DefaultMcpClientTest {
     }
 
     @Test
+    public void should_reject_tool_list_response_without_result() throws Exception {
+        McpTransport transport = getMinimalMcpTransportMock();
+        DefaultMcpClient client =
+                new DefaultMcpClient.Builder().transport(transport).build();
+        ObjectNode response = JsonNodeFactory.instance.objectNode();
+        response.put("jsonrpc", "2.0").put("id", 1);
+        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
+                .thenReturn(CompletableFuture.completedFuture(response));
+
+        assertThatThrownBy(client::listTools)
+                .isInstanceOf(IllegalResponseException.class)
+                .hasMessage("Result does not contain 'result' element");
+    }
+
+    @Test
+    public void should_reject_tool_list_response_without_tools() throws Exception {
+        McpTransport transport = getMinimalMcpTransportMock();
+        DefaultMcpClient client =
+                new DefaultMcpClient.Builder().transport(transport).build();
+        ObjectNode response = JsonNodeFactory.instance.objectNode();
+        response.put("jsonrpc", "2.0").put("id", 1).putObject("result");
+        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
+                .thenReturn(CompletableFuture.completedFuture(response));
+
+        assertThatThrownBy(client::listTools)
+                .isInstanceOf(IllegalResponseException.class)
+                .hasMessage("Result does not contain 'tools' element");
+    }
+
+    @Test
     public void should_preserve_error_data_when_tool_list_is_refused() throws Exception {
         final McpTransport transport = getMinimalMcpTransportMock();
         final DefaultMcpClient client =
