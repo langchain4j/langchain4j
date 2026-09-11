@@ -13,24 +13,30 @@ import org.junit.jupiter.api.Test;
 
 class ElasticsearchConfigurationTest {
 
-    private static final FullTextSearchRequest REQUEST = FullTextSearchRequest.builder()
+    private static final FullTextSearchRequest FILTERED_REQUEST = FullTextSearchRequest.builder()
             .textQuery("search text")
             .maxResults(7)
             .minScore(0.5)
             .filter(new IsEqualTo("tenant", "acme"))
             .build();
 
+    private static final FullTextSearchRequest UNFILTERED_REQUEST = FullTextSearchRequest.builder()
+            .textQuery("search text")
+            .maxResults(7)
+            .minScore(0.5)
+            .build();
+
     /**
      * Configurations written before {@link FullTextSearchRequest} existed only implement the deprecated
-     * {@link ElasticsearchConfiguration#fullTextSearch(ElasticsearchClient, String, String)}. They must keep working,
-     * even though the constraints of the request cannot be applied.
+     * {@link ElasticsearchConfiguration#fullTextSearch(ElasticsearchClient, String, String)}. They must keep working
+     * for unfiltered requests, even though non-security constraints cannot be applied.
      */
     @Test
     @SuppressWarnings("removal")
     void should_fall_back_to_the_deprecated_full_text_search() throws IOException {
         LegacyConfiguration configuration = new LegacyConfiguration();
 
-        SearchResponse<Document> response = configuration.fullTextSearch(null, "articles", REQUEST);
+        SearchResponse<Document> response = configuration.fullTextSearch(null, "articles", UNFILTERED_REQUEST);
 
         assertThat(configuration.capturedIndexName).isEqualTo("articles");
         assertThat(configuration.capturedTextQuery).isEqualTo("search text");
@@ -38,10 +44,20 @@ class ElasticsearchConfigurationTest {
     }
 
     @Test
+    void should_fail_closed_when_legacy_configuration_cannot_apply_filter() {
+        LegacyConfiguration configuration = new LegacyConfiguration();
+
+        assertThatThrownBy(() -> configuration.fullTextSearch(null, "articles", FILTERED_REQUEST))
+                .isInstanceOf(UnsupportedOperationException.class)
+                .hasMessageContaining("cannot apply the requested filter")
+                .hasMessageContaining("Refusing to execute an unfiltered search");
+    }
+
+    @Test
     void should_fail_when_the_configuration_does_not_support_full_text_search() {
         ElasticsearchConfiguration configuration = new ElasticsearchConfiguration() {};
 
-        assertThatThrownBy(() -> configuration.fullTextSearch(null, "articles", REQUEST))
+        assertThatThrownBy(() -> configuration.fullTextSearch(null, "articles", UNFILTERED_REQUEST))
                 .isInstanceOf(UnsupportedOperationException.class)
                 .hasMessageContaining("does not support fulltext search");
     }

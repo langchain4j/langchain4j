@@ -69,10 +69,15 @@ public interface ElasticsearchConfiguration {
             ElasticsearchClient client, String indexName, FullTextSearchRequest request)
             throws ElasticsearchException, IOException {
         if (request.filter() != null) {
+            throw new UnsupportedOperationException(this.getClass().getName()
+                    + " does not implement fullTextSearch(ElasticsearchClient, String, FullTextSearchRequest), "
+                    + "so it cannot apply the requested filter. Refusing to execute an unfiltered search.");
+        }
+        if (request.maxResults() != 3 || request.minScore() != 0.0) {
             LoggerFactory.getLogger(ElasticsearchConfiguration.class)
                     .warn(
                             "[{}] does not implement fullTextSearch(ElasticsearchClient, String, FullTextSearchRequest), "
-                                    + "so the filter, maxResults and minScore are ignored and documents which do not match the filter can be returned.",
+                                    + "so maxResults and minScore are ignored.",
                             this.getClass().getName());
         }
         return fullTextSearch(client, indexName, request.textQuery());
