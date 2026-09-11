@@ -20,7 +20,6 @@ import static java.util.Collections.singletonMap;
 import static java.util.stream.Collectors.toMap;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import dev.langchain4j.model.anthropic.internal.client.Json;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -48,6 +47,7 @@ import dev.langchain4j.model.anthropic.internal.api.AnthropicTool;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicToolResultContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicToolSchema;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicToolUseContent;
+import dev.langchain4j.model.anthropic.internal.client.Json;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonReferenceSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
@@ -788,10 +788,8 @@ class AnthropicMapperTest {
     @Test
     void should_mark_only_last_system_message_with_cache_control_when_duplicate_system_messages_exist() {
         // given - value-equal duplicate system messages (see issue #6051)
-        List<ChatMessage> messages = asList(
-                SystemMessage.from("same"),
-                SystemMessage.from("same"),
-                UserMessage.from("hi"));
+        List<ChatMessage> messages =
+                asList(SystemMessage.from("same"), SystemMessage.from("same"), UserMessage.from("hi"));
 
         // when
         List<AnthropicTextContent> systemPrompt =
