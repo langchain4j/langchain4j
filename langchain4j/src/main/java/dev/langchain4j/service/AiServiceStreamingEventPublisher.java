@@ -22,6 +22,7 @@ import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.StreamingChatModelHelper;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.response.ChatModelStreamingEvent;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.CompleteResponse;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
@@ -29,13 +30,12 @@ import dev.langchain4j.model.chat.response.PartialResponse;
 import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.RawStreamingEvent;
-import dev.langchain4j.model.chat.response.ChatModelStreamingEvent;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.observability.api.event.AiServiceCompletedEvent;
 import dev.langchain4j.observability.api.event.AiServiceErrorEvent;
-import dev.langchain4j.observability.api.event.CompensationReason;
 import dev.langchain4j.observability.api.event.AiServiceRequestIssuedEvent;
 import dev.langchain4j.observability.api.event.AiServiceResponseReceivedEvent;
+import dev.langchain4j.observability.api.event.CompensationReason;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.service.AiServiceStreamingEvent.AfterToolExecutionEvent;
 import dev.langchain4j.service.AiServiceStreamingEvent.BeforeToolExecutionEvent;
@@ -194,49 +194,54 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
         TubeConfiguration config = new TubeConfiguration()
                 .withBackpressureStrategy(BackpressureStrategy.BUFFER)
                 .withBufferSize(bufferSize);
-        return ZeroPublisher.create(config, tube -> events.subscribe(new Flow.Subscriber<>() {
+        return ZeroPublisher.create(
+                config,
+                tube -> events.subscribe(new Flow.Subscriber<>() {
 
-            @Override
-            public void onSubscribe(Flow.Subscription subscription) {
-                if (tube.cancelled()) {
-                    subscription.cancel();
-                    return;
-                }
-                tube.whenTerminates(subscription::cancel);
-                subscription.request(Long.MAX_VALUE);
-            }
+                    @Override
+                    public void onSubscribe(Flow.Subscription subscription) {
+                        if (tube.cancelled()) {
+                            subscription.cancel();
+                            return;
+                        }
+                        tube.whenTerminates(subscription::cancel);
+                        subscription.request(Long.MAX_VALUE);
+                    }
 
-            @Override
-            public void onNext(AiServiceStreamingEvent event) {
-                if (tube.cancelled()) {
-                    return;
-                }
-                if (hasOutputGuardrails) {
-                    if (event instanceof FinalResponseEvent finalResponseEvent) {
-                        String text = finalResponseEvent.chatResponse().aiMessage().text();
-                        if (text != null) {
-                            tube.send(text);
+                    @Override
+                    public void onNext(AiServiceStreamingEvent event) {
+                        if (tube.cancelled()) {
+                            return;
+                        }
+                        if (hasOutputGuardrails) {
+                            if (event instanceof FinalResponseEvent finalResponseEvent) {
+                                String text = finalResponseEvent
+                                        .chatResponse()
+                                        .aiMessage()
+                                        .text();
+                                if (text != null) {
+                                    tube.send(text);
+                                }
+                            }
+                        } else if (event instanceof PartialResponseEvent partialResponseEvent) {
+                            tube.send(partialResponseEvent.partialResponse().text());
                         }
                     }
-                } else if (event instanceof PartialResponseEvent partialResponseEvent) {
-                    tube.send(partialResponseEvent.partialResponse().text());
-                }
-            }
 
-            @Override
-            public void onError(Throwable error) {
-                if (!tube.cancelled()) {
-                    tube.fail(error);
-                }
-            }
+                    @Override
+                    public void onError(Throwable error) {
+                        if (!tube.cancelled()) {
+                            tube.fail(error);
+                        }
+                    }
 
-            @Override
-            public void onComplete() {
-                if (!tube.cancelled()) {
-                    tube.complete();
-                }
-            }
-        }));
+                    @Override
+                    public void onComplete() {
+                        if (!tube.cancelled()) {
+                            tube.complete();
+                        }
+                    }
+                }));
     }
 
     /**
@@ -257,7 +262,7 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
         private final boolean hasOutputGuardrails = context.guardrailService().hasOutputGuardrails(methodKey);
         private ChatExecutor chatExecutor;
         private final Executor toolExecutor = context.toolService.effectiveToolExecutor();
-        private TokenUsage tokenUsage = new TokenUsage();
+        private TokenUsage tokenUsage;
         private int roundTripsLeft = context.toolService.maxToolCallingRoundTrips();
 
         private Loop(Tube<AiServiceStreamingEvent> tube) {
@@ -288,13 +293,14 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                 Map<ToolExecutionRequest, CompletableFuture<ToolExecutionResult>> startedTools =
                         (Map<ToolExecutionRequest, CompletableFuture<ToolExecutionResult>>) claimed[1];
                 if (round != null) {
-                    round.toolsFuture().whenComplete((combined, error) -> doCancellationCompensation(
-                            round.toolRequests(), combined != null ? combined.results() : null));
+                    round.toolsFuture()
+                            .whenComplete((combined, error) -> doCancellationCompensation(
+                                    round.toolRequests(), combined != null ? combined.results() : null));
                 } else if (startedTools != null && !startedTools.isEmpty()) {
                     List<ToolExecutionRequest> requests = new ArrayList<>(startedTools.keySet());
                     ToolService.combineToolResultsCollectingErrors(startedTools)
-                            .whenComplete((combined, error) -> doCancellationCompensation(
-                                    requests, combined != null ? combined.results() : null));
+                            .whenComplete((combined, error) ->
+                                    doCancellationCompensation(requests, combined != null ? combined.results() : null));
                 } else {
                     doCancellationCompensation(null, null);
                 }
@@ -310,7 +316,10 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                 ChatRequestParameters parameters =
                         chatRequestParameters(invocationContext.methodArguments(), effectiveTools);
                 ChatRequest chatRequest = context.chatRequestTransformer.apply(
-                        ChatRequest.builder().messages(messages).parameters(parameters).build(),
+                        ChatRequest.builder()
+                                .messages(messages)
+                                .parameters(parameters)
+                                .build(),
                         invocationContext.chatMemoryId());
 
                 chatExecutor = ChatExecutor.builder(context.streamingChatModel)
@@ -589,12 +598,7 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                 String preCollectedFailedToolName) {
 
             ToolService.ToolResultsOutcome outcome = context.toolService.processToolResults(
-                    context,
-                    toolRequests,
-                    toolResults,
-                    new ArrayList<>(),
-                    invocationContext,
-                    currentToolContext);
+                    context, toolRequests, toolResults, new ArrayList<>(), invocationContext, currentToolContext);
 
             CompletableFuture<Void> compensated = context.toolService.compensateIfNeededAsync(
                     toolRequests,
@@ -672,7 +676,8 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
             ChatResponse finalChatResponse = ChatResponse.builder()
                     .aiMessage(aiMessage)
                     .metadata(chatResponse.metadata().toBuilder()
-                            .tokenUsage(tokenUsage.add(chatResponse.metadata().tokenUsage()))
+                            .tokenUsage(TokenUsage.sum(
+                                    tokenUsage, chatResponse.metadata().tokenUsage()))
                             .build())
                     .build();
 
