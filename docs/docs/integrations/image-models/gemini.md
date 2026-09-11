@@ -210,6 +210,8 @@ Response<Image> edited = imageModel.edit(
 
 ## Batch Image Generation
 
+> For an in-depth description of batching see the [batching tutorial](/tutorials/batch-processing).
+
 For generating multiple images at scale with 50% cost reduction:
 
 ```java

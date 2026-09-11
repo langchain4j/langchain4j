@@ -135,6 +135,8 @@ Identical to the `AnthropicChatModel`, see above.
 
 ## Batch API
 
+> For an in-depth description of batching see the [batching tutorial](/tutorials/batch-processing).
+
 The [Message Batches API](https://docs.anthropic.com/en/api/creating-message-batches) processes many chat requests
 asynchronously at 50% of the standard per-token price. `AnthropicBatchChatModel` implements the core `BatchChatModel`
 interface (`submit`, `retrieve`, `cancel`, `list`). Each request is submitted with the same parameters an
