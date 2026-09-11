@@ -16,7 +16,7 @@
         <postgresql.version>42.7.12</postgresql.version>
         <db2.version>12.1.5.0</db2.version>
         <oracle.version>23.26.2.0.0</oracle.version>
-        <mariadb.version>3.5.9</mariadb.version>
+        <mariadb.version>3.5.10</mariadb.version>
         <mssql.version>13.4.0.jre11</mssql.version>
         <hibernate.version>7.4.2.Final</hibernate.version>
         <!-- TODO: remove enforcer.skipRules -->
