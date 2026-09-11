@@ -26,6 +26,7 @@ import org.slf4j.LoggerFactory;
  */
 public class ElasticsearchConfigurationHybrid implements ElasticsearchConfiguration {
     private static final Logger log = LoggerFactory.getLogger(ElasticsearchConfigurationHybrid.class);
+    private static final int DEFAULT_RRF_RANK_WINDOW_SIZE = 10;
     private final Integer numCandidates;
     private final boolean includeVectorResponse;
 
@@ -127,9 +128,13 @@ public class ElasticsearchConfigurationHybrid implements ElasticsearchConfigurat
                             return new SourceConfig.Builder().filter(f -> f);
                         })
                         .index(indexName)
-                        .retriever(r -> r.rrf(rf -> rf.retrievers(List.of(
-                                RRFRetrieverEntry.of(rre -> rre.retriever(rt -> rt.standard(standard))),
-                                RRFRetrieverEntry.of(rre -> rre.retriever(rt -> rt.knn(knn)))))))
+                        .retriever(r -> r.rrf(rf -> rf
+                                // Elasticsearch requires rank_window_size to be at least as large as size.
+                                .rankWindowSize(
+                                        Math.max(DEFAULT_RRF_RANK_WINDOW_SIZE, embeddingSearchRequest.maxResults()))
+                                .retrievers(List.of(
+                                        RRFRetrieverEntry.of(rre -> rre.retriever(rt -> rt.standard(standard))),
+                                        RRFRetrieverEntry.of(rre -> rre.retriever(rt -> rt.knn(knn)))))))
                         .size(embeddingSearchRequest.maxResults())
                         .minScore(embeddingSearchRequest.minScore()),
                 Document.class);
