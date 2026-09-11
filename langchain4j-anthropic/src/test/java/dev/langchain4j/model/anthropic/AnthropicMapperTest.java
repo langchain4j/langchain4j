@@ -4,6 +4,7 @@ import static dev.langchain4j.model.anthropic.internal.api.AnthropicRole.ASSISTA
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicRole.SYSTEM;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicRole.USER;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.SERVER_TOOL_RESULTS_KEY;
+import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.THINKING_SIGNATURE_KEY;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.retainKeys;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAiMessage;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicMessages;
@@ -19,6 +20,7 @@ import static java.util.Collections.singletonMap;
 import static java.util.stream.Collectors.toMap;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import dev.langchain4j.model.anthropic.internal.client.Json;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -41,6 +43,7 @@ import dev.langchain4j.model.anthropic.internal.api.AnthropicMessage;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicMessageContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicPdfContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicTextContent;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicThinkingContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicTool;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicToolResultContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicToolSchema;
@@ -58,11 +61,16 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
 
 class AnthropicMapperTest {
 
     static final String DICE_IMAGE_URL =
             "https://upload.wikimedia.org/wikipedia/commons/4/47/PNG_transparency_demonstration_1.png";
+
+    static final String BASE64_IMAGE_DATA = "iVBORw0KGgo=";
+
+    static final String BASE64_PDF_DATA = "JVBERi0xLjQK";
 
     @ParameterizedTest
     @MethodSource
@@ -279,7 +287,7 @@ class AnthropicMapperTest {
         Map<String, Object> map = toAnthropicSchema(jsonSchemaElement);
 
         // then
-        assertThat(new ObjectMapper().writeValueAsString(map)).isEqualToIgnoringWhitespace("""
+        assertThat(Json.toJson(map)).isEqualToIgnoringWhitespace("""
                         {
                           "type": "object",
                           "properties": {
@@ -315,7 +323,7 @@ class AnthropicMapperTest {
         Map<String, Object> map = toAnthropicSchema(rootSchema);
 
         // then
-        assertThat(new ObjectMapper().writeValueAsString(map)).isEqualToIgnoringWhitespace("""
+        assertThat(Json.toJson(map)).isEqualToIgnoringWhitespace("""
                         {
                           "type": "object",
                           "properties": {
@@ -410,7 +418,7 @@ class AnthropicMapperTest {
         Map<String, Object> map = toAnthropicSchema(bookRecord);
 
         // then
-        assertThat(new ObjectMapper().writeValueAsString(map)).isEqualToIgnoringWhitespace("""
+        assertThat(Json.toJson(map)).isEqualToIgnoringWhitespace("""
                         {
                           "type": "object",
                           "properties": {
@@ -875,6 +883,283 @@ class AnthropicMapperTest {
         // Then
         assertThat(cacheDiagnostics.cacheMissReasonType()).isEqualTo("system_changed");
         assertThat(cacheDiagnostics.cacheMissedInputTokens()).isEqualTo(41850);
+    }
+
+    @Test
+    void should_apply_cache_control_to_last_content_block_of_user_message_ending_with_image() {
+        // given
+        UserMessage userMessage = UserMessage.from(
+                TextContent.from("What is on this image?"),
+                ImageContent.from(
+                        Image.builder().url(URI.create(DICE_IMAGE_URL)).build()));
+        userMessage.attributes().put("cache_control", "ephemeral");
+
+        // when
+        List<AnthropicMessage> anthropicMessages = toAnthropicMessages(singletonList(userMessage));
+
+        // then
+        AnthropicTextContent textContent =
+                (AnthropicTextContent) anthropicMessages.get(0).content.get(0);
+        assertThat(textContent.cacheControl).isNull();
+
+        AnthropicImageContent imageContent =
+                (AnthropicImageContent) anthropicMessages.get(0).content.get(1);
+        assertThat(imageContent.cacheControl).isNotNull();
+        assertThat(imageContent.cacheControl).extracting("type").isEqualTo("ephemeral");
+    }
+
+    @Test
+    void should_apply_cache_control_to_last_content_block_of_user_message_ending_with_pdf() {
+        // given
+        UserMessage userMessage = UserMessage.from(
+                TextContent.from("What is in this document?"),
+                PdfFileContent.from(URI.create("https://example.com/document.pdf")));
+        userMessage.attributes().put("cache_control", "ephemeral");
+
+        // when
+        List<AnthropicMessage> anthropicMessages = toAnthropicMessages(singletonList(userMessage));
+
+        // then
+        AnthropicTextContent textContent =
+                (AnthropicTextContent) anthropicMessages.get(0).content.get(0);
+        assertThat(textContent.cacheControl).isNull();
+
+        AnthropicPdfContent pdfContent =
+                (AnthropicPdfContent) anthropicMessages.get(0).content.get(1);
+        assertThat(pdfContent.cacheControl).isNotNull();
+        assertThat(pdfContent.cacheControl).extracting("type").isEqualTo("ephemeral");
+    }
+
+    @Test
+    void should_not_apply_cache_control_to_image_content_when_not_last_item() {
+        // given
+        UserMessage userMessage = UserMessage.from(
+                ImageContent.from(
+                        Image.builder().url(URI.create(DICE_IMAGE_URL)).build()),
+                TextContent.from("What is on this image?"));
+        userMessage.attributes().put("cache_control", "ephemeral");
+
+        // when
+        List<AnthropicMessage> anthropicMessages = toAnthropicMessages(singletonList(userMessage));
+
+        // then
+        AnthropicImageContent imageContent =
+                (AnthropicImageContent) anthropicMessages.get(0).content.get(0);
+        assertThat(imageContent.cacheControl).isNull();
+
+        AnthropicTextContent textContent =
+                (AnthropicTextContent) anthropicMessages.get(0).content.get(1);
+        assertThat(textContent.cacheControl).isNotNull();
+    }
+
+    @Test
+    void should_apply_cache_control_to_base64_image_content() {
+        // given
+        UserMessage userMessage = UserMessage.from(ImageContent.from(BASE64_IMAGE_DATA, "image/png"));
+        userMessage.attributes().put("cache_control", "ephemeral");
+
+        // when
+        List<AnthropicMessage> anthropicMessages = toAnthropicMessages(singletonList(userMessage));
+
+        // then
+        AnthropicImageContent imageContent =
+                (AnthropicImageContent) anthropicMessages.get(0).content.get(0);
+        assertThat(imageContent.source.type).isEqualTo("base64");
+        assertThat(imageContent.cacheControl).isNotNull();
+        assertThat(imageContent.cacheControl).extracting("type").isEqualTo("ephemeral");
+    }
+
+    @Test
+    void should_apply_cache_control_to_base64_pdf_content() {
+        // given
+        UserMessage userMessage = UserMessage.from(PdfFileContent.from(BASE64_PDF_DATA, "application/pdf"));
+        userMessage.attributes().put("cache_control", "ephemeral");
+
+        // when
+        List<AnthropicMessage> anthropicMessages = toAnthropicMessages(singletonList(userMessage));
+
+        // then
+        AnthropicPdfContent pdfContent =
+                (AnthropicPdfContent) anthropicMessages.get(0).content.get(0);
+        assertThat(pdfContent.source.type).isEqualTo("base64");
+        assertThat(pdfContent.cacheControl).isNotNull();
+        assertThat(pdfContent.cacheControl).extracting("type").isEqualTo("ephemeral");
+    }
+
+    @Test
+    void should_not_apply_cache_control_to_image_content_without_cache_control_attribute() {
+        // given
+        UserMessage userMessage = UserMessage.from(ImageContent.from(
+                Image.builder().url(URI.create(DICE_IMAGE_URL)).build()));
+
+        // when
+        List<AnthropicMessage> anthropicMessages = toAnthropicMessages(singletonList(userMessage));
+
+        // then
+        AnthropicImageContent imageContent =
+                (AnthropicImageContent) anthropicMessages.get(0).content.get(0);
+        assertThat(imageContent.cacheControl).isNull();
+    }
+
+    @Test
+    void should_not_apply_cache_control_to_pdf_content_without_cache_control_attribute() {
+        // given
+        UserMessage userMessage = UserMessage.from(PdfFileContent.from(URI.create("https://example.com/document.pdf")));
+
+        // when
+        List<AnthropicMessage> anthropicMessages = toAnthropicMessages(singletonList(userMessage));
+
+        // then
+        AnthropicPdfContent pdfContent =
+                (AnthropicPdfContent) anthropicMessages.get(0).content.get(0);
+        assertThat(pdfContent.cacheControl).isNull();
+    }
+
+    @Test
+    void should_serialize_image_content_with_cache_control_next_to_source() throws JsonProcessingException {
+        // given
+        UserMessage userMessage = UserMessage.from(ImageContent.from(
+                Image.builder().url(URI.create(DICE_IMAGE_URL)).build()));
+        userMessage.attributes().put("cache_control", "ephemeral");
+
+        // when
+        List<AnthropicMessage> anthropicMessages = toAnthropicMessages(singletonList(userMessage));
+
+        // then
+        String json = Json.toJson(anthropicMessages.get(0).content.get(0));
+        assertThat(json).isEqualToIgnoringWhitespace("""
+                        {
+                          "type": "image",
+                          "cache_control": {"type": "ephemeral"},
+                          "source": {"type": "url", "url": "%s"}
+                        }
+                        """.formatted(DICE_IMAGE_URL));
+    }
+
+    @Test
+    void should_serialize_pdf_content_with_cache_control_next_to_source() throws JsonProcessingException {
+        // given
+        UserMessage userMessage = UserMessage.from(PdfFileContent.from(BASE64_PDF_DATA, "application/pdf"));
+        userMessage.attributes().put("cache_control", "ephemeral");
+
+        // when
+        List<AnthropicMessage> anthropicMessages = toAnthropicMessages(singletonList(userMessage));
+
+        // then
+        String json = Json.toJson(anthropicMessages.get(0).content.get(0));
+        assertThat(json).isEqualToIgnoringWhitespace("""
+                        {
+                          "type": "document",
+                          "cache_control": {"type": "ephemeral"},
+                          "source": {"type": "base64", "media_type": "application/pdf", "data": "%s"}
+                        }
+                        """.formatted(BASE64_PDF_DATA));
+    }
+
+    @Test
+    void should_send_thinking_block_that_has_only_a_signature() {
+        // given an assistant turn whose thinking text is empty and whose reasoning is carried entirely by the
+        // (encrypted) signature: this is what a model returns when "thinking.display" is "omitted",
+        // which is the default for claude-sonnet-5, claude-opus-5 and others
+        String signature = "EoAECpABCBEYAipARsBWFsXRge7q";
+
+        AnthropicContent thinking = AnthropicContent.builder()
+                .type("thinking")
+                .thinking("")
+                .signature(signature)
+                .build();
+
+        AnthropicContent toolUse = AnthropicContent.builder()
+                .type("tool_use")
+                .id("tool-1")
+                .name("getWeather")
+                .input(emptyMap())
+                .build();
+
+        AiMessage aiMessage = toAiMessage(asList(thinking, toolUse), true);
+        // "toAiMessage" turns the empty thinking text into null, so only the signature survives
+        assertThat(aiMessage.thinking()).isNull();
+        assertThat(aiMessage.attribute(THINKING_SIGNATURE_KEY, String.class)).isEqualTo(signature);
+
+        // when
+        List<AnthropicMessage> anthropicMessages = toAnthropicMessages(singletonList(aiMessage), true);
+
+        // then the block must still be echoed back: Anthropic requires the assistant turn to be sent back unchanged
+        assertThat(anthropicMessages).hasSize(1);
+        AnthropicMessageContent content = anthropicMessages.get(0).content.get(0);
+        assertThat(content).isInstanceOf(AnthropicThinkingContent.class);
+
+        AnthropicThinkingContent thinkingContent = (AnthropicThinkingContent) content;
+        // "" and not null: the field is required by the API and the class is @JsonInclude(NON_NULL)
+        assertThat(thinkingContent.thinking).isEmpty();
+        assertThat(thinkingContent.signature).isEqualTo(signature);
+    }
+
+    @Test
+    void should_send_thinking_block_that_has_only_a_signature_when_thinking_text_is_empty() {
+        // given an AiMessage that carries an empty instead of a null thinking text,
+        // for example one restored from a serialized chat memory
+        AiMessage aiMessage = AiMessage.builder()
+                .thinking("")
+                .attributes(singletonMap(THINKING_SIGNATURE_KEY, "sig-abc"))
+                .toolExecutionRequests(singletonList(ToolExecutionRequest.builder()
+                        .id("tool-1")
+                        .name("getWeather")
+                        .arguments("{}")
+                        .build()))
+                .build();
+
+        // when
+        List<AnthropicMessage> anthropicMessages = toAnthropicMessages(singletonList(aiMessage), true);
+
+        // then
+        AnthropicMessageContent content = anthropicMessages.get(0).content.get(0);
+        assertThat(content).isInstanceOf(AnthropicThinkingContent.class);
+
+        AnthropicThinkingContent thinkingContent = (AnthropicThinkingContent) content;
+        assertThat(thinkingContent.thinking).isEmpty();
+        assertThat(thinkingContent.signature).isEqualTo("sig-abc");
+    }
+
+    @Test
+    void should_send_thinking_block_with_both_text_and_signature() {
+        AiMessage aiMessage = AiMessage.builder()
+                .text("Hello")
+                .thinking("Let me think about this")
+                .attributes(singletonMap(THINKING_SIGNATURE_KEY, "sig-abc"))
+                .build();
+
+        List<AnthropicMessage> anthropicMessages = toAnthropicMessages(singletonList(aiMessage), true);
+
+        AnthropicMessageContent content = anthropicMessages.get(0).content.get(0);
+        assertThat(content).isInstanceOf(AnthropicThinkingContent.class);
+        AnthropicThinkingContent thinkingContent = (AnthropicThinkingContent) content;
+        assertThat(thinkingContent.thinking).isEqualTo("Let me think about this");
+        assertThat(thinkingContent.signature).isEqualTo("sig-abc");
+    }
+
+    @ParameterizedTest
+    @NullAndEmptySource
+    void should_not_send_thinking_block_when_there_is_neither_text_nor_signature(String thinking) {
+        AiMessage aiMessage =
+                AiMessage.builder().text("Hello").thinking(thinking).build();
+
+        List<AnthropicMessage> anthropicMessages = toAnthropicMessages(singletonList(aiMessage), true);
+
+        assertThat(anthropicMessages.get(0).content).noneMatch(AnthropicThinkingContent.class::isInstance);
+    }
+
+    @Test
+    void should_not_send_thinking_block_when_sendThinking_is_false() {
+        AiMessage aiMessage = AiMessage.builder()
+                .text("Hello")
+                .thinking("")
+                .attributes(singletonMap(THINKING_SIGNATURE_KEY, "sig-abc"))
+                .build();
+
+        List<AnthropicMessage> anthropicMessages = toAnthropicMessages(singletonList(aiMessage), false);
+
+        assertThat(anthropicMessages.get(0).content).noneMatch(AnthropicThinkingContent.class::isInstance);
     }
 
     @SafeVarargs

@@ -1,6 +1,7 @@
 package dev.langchain4j.store.embedding.azure.search;
 
 import static dev.langchain4j.internal.Utils.*;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.*;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
@@ -60,6 +61,8 @@ public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingSt
 
     protected AzureAiSearchFilterMapper filterMapper;
 
+    protected List<String> metadataFieldNames = List.of();
+
     protected void initialize(
             String endpoint,
             AzureKeyCredential keyCredential,
@@ -81,7 +84,7 @@ public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingSt
             // if the indexName is provided, it will be used when creating the default index
             throw new IllegalArgumentException("index and indexName cannot be both defined");
         }
-        if (createOrUpdateIndex && index != null) {
+        if (index != null) {
             this.indexName = index.getName();
         } else {
             this.indexName = getOrDefault(indexName, DEFAULT_INDEX_NAME);
@@ -260,7 +263,9 @@ public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingSt
 
     @Override
     public void removeAll(Collection<String> ids) {
-        ensureNotEmpty(ids, "ids");
+        if (isNullOrEmpty(ids)) {
+            return;
+        }
         List<IndexAction> actions = new ArrayList<>();
         for (String id : ids) {
             ensureNotBlank(id, "id");
@@ -332,21 +337,7 @@ public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingSt
             String embeddedContent = (String) searchDocument.get(DEFAULT_FIELD_CONTENT);
             EmbeddingMatch<TextSegment> embeddingMatch;
             if (isNotNullOrBlank(embeddedContent)) {
-                LinkedHashMap metadata = (LinkedHashMap) searchDocument.get(DEFAULT_FIELD_METADATA);
-                Metadata langChainMetadata;
-                if (metadata == null) {
-                    langChainMetadata = Metadata.from(Collections.emptyMap());
-                } else {
-                    List attributes = (List) metadata.get(DEFAULT_FIELD_METADATA_ATTRS);
-                    Map<String, String> attributesMap = new HashMap<>();
-                    for (Object attribute : attributes) {
-                        LinkedHashMap innerAttribute = (LinkedHashMap) attribute;
-                        String key = (String) innerAttribute.get("key");
-                        String value = (String) innerAttribute.get("value");
-                        attributesMap.put(key, value);
-                    }
-                    langChainMetadata = Metadata.from(attributesMap);
-                }
+                Metadata langChainMetadata = metadataFrom(searchDocument, metadataFieldNames);
                 TextSegment embedded = TextSegment.textSegment(embeddedContent, langChainMetadata);
                 embeddingMatch = new EmbeddingMatch<>(score, embeddingId, embedding, embedded);
             } else {
@@ -357,20 +348,64 @@ public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingSt
         return result;
     }
 
+    static Metadata metadataFrom(Map<String, Object> searchDocument, Collection<String> metadataFieldNames) {
+        Map<String, Object> metadata = new HashMap<>(
+                metadataFrom(searchDocument.get(DEFAULT_FIELD_METADATA)).toMap());
+        for (String fieldName : metadataFieldNames) {
+            if (isNullOrBlank(fieldName)) {
+                continue;
+            }
+            Object value = searchDocument.get(fieldName);
+            if (isSupportedMetadataValue(value)) {
+                metadata.put(fieldName, value);
+            }
+        }
+        return Metadata.from(metadata);
+    }
+
+    static Metadata metadataFrom(Object rawMetadata) {
+        if (!(rawMetadata instanceof Map<?, ?> metadata)) {
+            return Metadata.from(Collections.emptyMap());
+        }
+        if (!(metadata.get(DEFAULT_FIELD_METADATA_ATTRS) instanceof List<?> attributes)) {
+            return Metadata.from(Collections.emptyMap());
+        }
+        Map<String, String> attributesMap = new HashMap<>();
+        for (Object attribute : attributes) {
+            if (attribute instanceof Map<?, ?> keyValue) {
+                Object key = keyValue.get("key");
+                Object value = keyValue.get("value");
+                if (key != null && value != null) {
+                    String keyString = key.toString();
+                    if (isNullOrBlank(keyString)) {
+                        continue;
+                    }
+                    attributesMap.put(keyString, value.toString());
+                }
+            }
+        }
+        return Metadata.from(attributesMap);
+    }
+
+    private static boolean isSupportedMetadataValue(Object value) {
+        return value instanceof String
+                || value instanceof Integer
+                || value instanceof Long
+                || value instanceof Float
+                || value instanceof Double
+                || value instanceof UUID;
+    }
+
     private void addInternal(String id, Embedding embedding, TextSegment embedded) {
         addAll(singletonList(id), singletonList(embedding), embedded == null ? null : singletonList(embedded));
     }
 
     @Override
     public void addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
-        if (isNullOrEmpty(ids) || isNullOrEmpty(embeddings)) {
-            log.info("Empty embeddings - no ops");
+        ensureConsistentSizes(ids, embeddings, embedded);
+        if (isNullOrEmpty(embeddings)) {
             return;
         }
-        ensureTrue(ids.size() == embeddings.size(), "ids size is not equal to embeddings size");
-        ensureTrue(
-                embedded == null || embeddings.size() == embedded.size(),
-                "embeddings size is not equal to embedded size");
 
         List<Document> documents = new ArrayList<>();
         for (int i = 0; i < ids.size(); ++i) {

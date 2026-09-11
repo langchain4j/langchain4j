@@ -15,6 +15,7 @@ https://ai.google.dev/gemini-api/docs
     - [Configuring](#configuring)
     - [Default Request Parameters](#default-request-parameters)
 - [GoogleAiGeminiStreamingChatModel](#googleaigeministreamingchatmodel)
+- [Safety Settings and Safety Ratings](#safety-settings-and-safety-ratings)
 - [Tools](#tools)
 - [Structured Outputs](#structured-outputs)
 - [Python Code Execution](#python-code-execution)
@@ -25,6 +26,7 @@ https://ai.google.dev/gemini-api/docs
     - [Uploading Files](#uploading-files)
     - [Managing Files](#managing-files)
     - [File States](#file-states)
+- [Context Caching](#context-caching)
 - [Batch Processing](#batch-processing)
     - [GoogleAiBatchChatModel](#googleaibatchchatmodel)
     - [Creating Batch Jobs](#creating-batch-jobs)
@@ -39,7 +41,7 @@ https://ai.google.dev/gemini-api/docs
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-google-ai-gemini</artifactId>
-    <version>1.18.0</version>
+    <version>1.20.0</version>
 </dependency>
 ```
 
@@ -198,6 +200,67 @@ gemini.chat("Tell me a joke about Java", new StreamingChatResponseHandler() {
         futureResponse.join();
 ```
 
+## Safety Settings and Safety Ratings
+
+Gemini checks both the prompt you send and the content it generates against a set of harm categories, such as
+`HARM_CATEGORY_HARASSMENT` or `HARM_CATEGORY_DANGEROUS_CONTENT`.
+
+You control how strict those checks are with `safetySettings(...)` on the model builder:
+
+```java
+ChatModel model = GoogleAiGeminiChatModel.builder()
+    .apiKey(System.getenv("GEMINI_AI_KEY"))
+    .modelName("gemini-2.5-flash")
+    .safetySettings(Map.of(
+        GeminiHarmCategory.HARM_CATEGORY_HARASSMENT, GeminiHarmBlockThreshold.BLOCK_ONLY_HIGH,
+        GeminiHarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, GeminiHarmBlockThreshold.BLOCK_LOW_AND_ABOVE))
+    .build();
+```
+
+Gemini reports the outcome of those checks on the response. To read it, cast `ChatResponse.metadata()` to
+`GoogleAiGeminiChatResponseMetadata`:
+
+```java
+ChatResponse chatResponse = model.chat(ChatRequest.builder()
+    .messages(UserMessage.from("Hello!"))
+    .build());
+
+var metadata = (GoogleAiGeminiChatResponseMetadata) chatResponse.metadata();
+
+// how the generated content was rated
+for (GeminiSafetyRating rating : metadata.safetyRatings()) {
+    System.out.println(rating.category() + " -> " + rating.probability());
+}
+```
+
+Three pieces of information are available:
+
+| Method                  | Meaning                                                                            |
+|-------------------------|------------------------------------------------------------------------------------|
+| `safetyRatings()`       | How the **generated content** was rated, one entry per harm category. Empty if none. |
+| `promptSafetyRatings()` | How **your prompt** was rated. Empty if none.                                        |
+| `blockReason()`         | Why Gemini refused the prompt outright, or `null` if it did not.                     |
+
+When Gemini refuses a prompt it returns no content at all. In that case `blockReason()` is set (for example
+`"SAFETY"`, `"PROHIBITED_CONTENT"` or `"BLOCKLIST"`), the `AiMessage` carries no text, and `finishReason()` is
+`CONTENT_FILTER`:
+
+```java
+var metadata = (GoogleAiGeminiChatResponseMetadata) chatResponse.metadata();
+
+if (metadata.blockReason() != null) {
+    System.out.println("Prompt was rejected: " + metadata.blockReason());
+    metadata.promptSafetyRatings().forEach(rating ->
+            System.out.println("  " + rating.category() + ": " + rating.probability()));
+}
+```
+
+`GeminiSafetyRating.category()` and `probability()` are plain `String`s holding the raw API values, so harm
+categories that Google introduces later are passed through as-is instead of breaking your application.
+
+The same data is available from `GoogleAiGeminiStreamingChatModel` (on the `ChatResponse` passed to
+`onCompleteResponse`) and from `GoogleAiGeminiBatchChatModel`.
+
 ## Tools
 
 Tools (aka Function Calling) is supported, including parallel calls.
@@ -255,6 +318,51 @@ System.out.println("Gemini> " + tokyoWeather);
 // Gemini> The weather forecast for Tokyo is warm
 //         with a temperature of 32 degrees.
 ```
+
+### Tool Parameters Using `$ref`, `$defs` Or Raw JSON Schema
+
+Tool parameters are usually described with the Gemini `parameters` field, which understands a fixed set of
+schema keywords. Standard JSON Schema goes further than that: it can point one part of a document at another
+with `$ref` and `$defs`, and it has keywords such as `minimum` and `maximum` that `parameters` has no place for.
+
+When the tool parameters contain anything of that kind, LangChain4j sends them through `parametersJsonSchema`
+instead, the Gemini field that takes plain JSON Schema, and the schema reaches the API unchanged. There is
+nothing to configure and nothing to switch on:
+
+```java
+JsonObjectSchema priceRange = JsonObjectSchema.builder()
+        .addNumberProperty("min")
+        .addNumberProperty("max")
+        .build();
+
+ToolSpecification searchProducts = ToolSpecification.builder()
+        .name("search_products")
+        .description("Search the catalog")
+        .parameters(JsonObjectSchema.builder()
+                .definitions(Map.of("PriceRange", priceRange))
+                .addStringProperty("query")
+                // a reference to the definition above, resolved by Gemini
+                .addProperty("retail_price", JsonReferenceSchema.builder()
+                        .reference("PriceRange")
+                        .build())
+                // a fragment of JSON Schema, sent exactly as written
+                .addProperty("max_results", JsonRawSchema.from(
+                        "{\"type\":\"integer\",\"minimum\":1,\"maximum\":50}"))
+                .required("query")
+                .build())
+        .build();
+```
+
+This is not limited to schemas you write by hand. It also covers tools LangChain4j builds for you: a `@Tool`
+method whose parameter type refers to itself, and MCP tools whose schema uses `$ref`.
+
+Response schemas are treated the same way, see [Raw Response Schema](#raw-response-schema).
+
+:::note
+Gemini rejects the `$schema` keyword. Documents coming out of a schema generator usually start with
+`"$schema": "https://json-schema.org/draft/2020-12/schema"`, so drop that line before passing the document
+to `JsonRawSchema`, otherwise the request fails with a `400`.
+:::
 
 ## Structured Outputs
 
@@ -379,6 +487,7 @@ System.out.println(chatResponse.aiMessage().text());
 #### Raw Response Schema
 Another example shows how we can use the `responseJsonSchema` of the Gemini API to provide a raw JSON schema using `JsonRawSchema` class.  
 Please be cautious to use only the [supported types](https://ai.google.dev/gemini-api/docs/structured-output?example=recipe#json_schema_support) of the Gemini API.
+The same field is used whenever a response schema contains a `JsonRawSchema` or a `JsonReferenceSchema` anywhere inside it, so `$ref` and `$defs` work here too.
 ```
 String rawSchema = """
 {
@@ -809,6 +918,44 @@ if (file.isActive()) {
     System.out.println("File processing failed");
 }
 ```
+
+## Context Caching
+
+The [context caching API](https://ai.google.dev/gemini-api/docs/generate-content/caching) stores large, frequently reused context (a system instruction, long documents) on Google's servers once, so subsequent requests reference it by name instead of resending it, reducing input-token cost and latency.
+
+`GeminiCaches` manages the cache lifecycle (create / get / list / delete). The messages are cached using the same message mapping the chat models use, so you stay in the LangChain4j `ChatMessage` domain:
+
+```java
+GeminiCaches caches = GeminiCaches.builder()
+    .apiKey(System.getenv("GEMINI_AI_KEY"))
+    .build();
+
+// Cache a large, reusable context (a system instruction plus a long document)
+GeminiCachedContent cache = caches.createCache(
+    "gemini-2.5-flash",
+    List.of(
+        SystemMessage.from("You are a precise assistant answering questions about the attached document."),
+        UserMessage.from(longDocumentText)),
+    Duration.ofHours(1));
+
+// Reuse it across many requests via cachedContentName
+ChatModel gemini = GoogleAiGeminiChatModel.builder()
+    .apiKey(System.getenv("GEMINI_AI_KEY"))
+    .modelName("gemini-2.5-flash")
+    .cachedContentName(cache.name())
+    .build();
+
+String answer = gemini.chat("Summarize the cached document in 3 bullet points.");
+
+// Manage the cache lifecycle
+caches.getCache(cache.name());
+caches.listCaches();
+caches.deleteCache(cache.name());
+```
+
+`createCache` has three forms for expiration: with no expiration argument it uses the API default (currently 1 hour); with a `Duration` it sets a relative time-to-live; and with an `Instant` it sets an absolute expiry time.
+
+> Note: explicit context caching requires a paid tier; it is not available on the free tier.
 
 ## Batch Processing
 

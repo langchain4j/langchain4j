@@ -1,10 +1,16 @@
 package dev.langchain4j.model.jina;
 
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
+import static dev.langchain4j.internal.Utils.copy;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static java.time.Duration.ofSeconds;
+import static java.util.stream.Collectors.toList;
+
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.ContentType;
 import dev.langchain4j.data.message.ImageContent;
-import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.ModelProvider;
@@ -12,7 +18,10 @@ import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.listener.EmbeddingModelListener;
 import dev.langchain4j.model.embedding.request.EmbeddingInput;
+import dev.langchain4j.model.embedding.request.EmbeddingInputType;
+import dev.langchain4j.model.embedding.request.EmbeddingParameter;
 import dev.langchain4j.model.embedding.request.EmbeddingRequest;
+import dev.langchain4j.model.embedding.request.EmbeddingRequestParameters;
 import dev.langchain4j.model.embedding.response.EmbeddingResponse;
 import dev.langchain4j.model.embedding.response.EmbeddingResponseMetadata;
 import dev.langchain4j.model.jina.internal.api.JinaEmbeddingRequest;
@@ -20,20 +29,11 @@ import dev.langchain4j.model.jina.internal.api.JinaEmbeddingResponse;
 import dev.langchain4j.model.jina.internal.api.JinaMultimodalEmbeddingRequest;
 import dev.langchain4j.model.jina.internal.api.JinaMultimodalEmbeddingRequest.JinaMultimodalInput;
 import dev.langchain4j.model.jina.internal.client.JinaClient;
-import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
-import org.slf4j.Logger;
-
 import java.time.Duration;
 import java.util.List;
 import java.util.Set;
-
-import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
-import static dev.langchain4j.internal.Utils.copy;
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static java.time.Duration.ofSeconds;
-import static java.util.stream.Collectors.toList;
+import org.slf4j.Logger;
 
 /**
  * An implementation of an {@link EmbeddingModel} that uses
@@ -109,9 +109,12 @@ public class JinaEmbeddingModel extends DimensionAwareEmbeddingModel {
 
     @Override
     public Set<ContentType> supportedContentTypes() {
-        return isMultimodalModel(modelName)
-                ? Set.of(ContentType.TEXT, ContentType.IMAGE)
-                : Set.of(ContentType.TEXT);
+        return isMultimodalModel(modelName) ? Set.of(ContentType.TEXT, ContentType.IMAGE) : Set.of(ContentType.TEXT);
+    }
+
+    @Override
+    public Set<EmbeddingParameter<?>> supportedParameters() {
+        return isTaskAwareModel(modelName) ? Set.of(EmbeddingRequestParameters.INPUT_TYPE) : Set.of();
     }
 
     @Override
@@ -124,11 +127,7 @@ public class JinaEmbeddingModel extends DimensionAwareEmbeddingModel {
             JinaMultimodalEmbeddingRequest wireRequest = buildMultimodalRequest(request);
             response = withRetryMappingExceptions(() -> client.embedMultimodal(wireRequest), maxRetries);
         } else {
-            JinaEmbeddingRequest wireRequest = JinaEmbeddingRequest.builder()
-                    .model(modelName)
-                    .lateChunking(lateChunking)
-                    .input(request.inputs().stream().map(EmbeddingInput::text).collect(toList()))
-                    .build();
+            JinaEmbeddingRequest wireRequest = buildRequest(request);
             response = withRetryMappingExceptions(() -> client.embed(wireRequest), maxRetries);
         }
 
@@ -140,7 +139,10 @@ public class JinaEmbeddingModel extends DimensionAwareEmbeddingModel {
 
         TokenUsage tokenUsage = response.usage == null
                 ? null
-                : new TokenUsage(response.usage.promptTokens, 0, response.usage.totalTokens);
+                : new TokenUsage(
+                        getOrDefault(response.usage.promptTokens, response.usage.totalTokens),
+                        0,
+                        response.usage.totalTokens);
 
         return EmbeddingResponse.builder()
                 .embeddings(embeddings)
@@ -151,9 +153,36 @@ public class JinaEmbeddingModel extends DimensionAwareEmbeddingModel {
                 .build();
     }
 
+    JinaEmbeddingRequest buildRequest(EmbeddingRequest request) {
+        return JinaEmbeddingRequest.builder()
+                .model(modelName)
+                .task(toJinaTask(request.inputType()))
+                .lateChunking(lateChunking)
+                .input(request.inputs().stream().map(EmbeddingInput::text).collect(toList()))
+                .build();
+    }
+
     JinaMultimodalEmbeddingRequest buildMultimodalRequest(EmbeddingRequest request) {
         return new JinaMultimodalEmbeddingRequest(
-                modelName, request.inputs().stream().map(this::toMultimodalInput).collect(toList()));
+                modelName,
+                toJinaTask(request.inputType()),
+                lateChunking,
+                request.inputs().stream().map(this::toMultimodalInput).collect(toList()));
+    }
+
+    /**
+     * Maps a {@link EmbeddingInputType} to the corresponding Jina {@code task}, so that a query and the
+     * documents it is matched against are embedded asymmetrically. Returns {@code null} when no input type
+     * is requested, in which case {@code task} is omitted from the request and Jina applies its own default.
+     */
+    static String toJinaTask(EmbeddingInputType inputType) {
+        if (inputType == null) {
+            return null;
+        }
+        return switch (inputType) {
+            case QUERY -> "retrieval.query";
+            case DOCUMENT -> "retrieval.passage";
+        };
     }
 
     private JinaMultimodalInput toMultimodalInput(EmbeddingInput input) {
@@ -168,7 +197,8 @@ public class JinaEmbeddingModel extends DimensionAwareEmbeddingModel {
                 if (image.url() != null) {
                     imageValue = image.url().toString();
                 } else if (image.base64Data() != null) {
-                    imageValue = "data:" + getOrDefault(image.mimeType(), "image/png") + ";base64," + image.base64Data();
+                    imageValue =
+                            "data:" + getOrDefault(image.mimeType(), "image/png") + ";base64," + image.base64Data();
                 } else {
                     throw new UnsupportedFeatureException("ImageContent must have either a URL or base64 data");
                 }
@@ -191,6 +221,18 @@ public class JinaEmbeddingModel extends DimensionAwareEmbeddingModel {
         return modelName != null && (modelName.contains("clip") || modelName.contains("embeddings-v4"));
     }
 
+    /**
+     * Whether the model accepts Jina's {@code task} parameter. Only the jina-embeddings-v3, v4 and v5
+     * families are task-aware; jina-clip-*, jina-colbert-* and jina-embeddings-v2-* are not, and declaring
+     * {@code INPUT_TYPE} for them would send a parameter they cannot apply.
+     */
+    private static boolean isTaskAwareModel(String modelName) {
+        return modelName != null
+                && (modelName.contains("embeddings-v3")
+                        || modelName.contains("embeddings-v4")
+                        || modelName.contains("embeddings-v5"));
+    }
+
     public static class JinaEmbeddingModelBuilder {
         private String baseUrl;
         private String apiKey;
@@ -204,8 +246,7 @@ public class JinaEmbeddingModel extends DimensionAwareEmbeddingModel {
         private HttpClientBuilder httpClientBuilder;
         private List<EmbeddingModelListener> listeners;
 
-        JinaEmbeddingModelBuilder() {
-        }
+        JinaEmbeddingModelBuilder() {}
 
         public JinaEmbeddingModelBuilder listeners(List<EmbeddingModelListener> listeners) {
             this.listeners = listeners;
@@ -278,7 +319,10 @@ public class JinaEmbeddingModel extends DimensionAwareEmbeddingModel {
         }
 
         public String toString() {
-            return "JinaEmbeddingModel.JinaEmbeddingModelBuilder(baseUrl=" + this.baseUrl + ", apiKey=" + (this.apiKey == null ? null : "********") + ", modelName=" + this.modelName + ", timeout=" + this.timeout + ", maxRetries=" + this.maxRetries + ", lateChunking=" + this.lateChunking + ", logRequests=" + this.logRequests + ", logResponses=" + this.logResponses + ")";
+            return "JinaEmbeddingModel.JinaEmbeddingModelBuilder(baseUrl=" + this.baseUrl + ", apiKey="
+                    + (this.apiKey == null ? null : "********") + ", modelName=" + this.modelName + ", timeout="
+                    + this.timeout + ", maxRetries=" + this.maxRetries + ", lateChunking=" + this.lateChunking
+                    + ", logRequests=" + this.logRequests + ", logResponses=" + this.logResponses + ")";
         }
     }
 }

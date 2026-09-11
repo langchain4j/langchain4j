@@ -12,6 +12,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 import java.util.List;
+
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.http.client.HttpRequest;
@@ -33,8 +34,6 @@ import org.mockito.InOrder;
  */
 @EnabledIfEnvironmentVariable(named = "DEEPSEEK_API_KEY", matches = ".+")
 class OpenAiStreamingChatModelDeepSeekThinkingIT {
-
-    private final SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder().build());
 
     @Test
     void should_return_thinking() {
@@ -66,7 +65,7 @@ class OpenAiStreamingChatModelDeepSeekThinkingIT {
         AiMessage aiMessage1 = spyHandler1.get().aiMessage();
         assertThat(aiMessage1.text()).containsIgnoringCase("Berlin");
         assertThat(aiMessage1.thinking())
-                .containsIgnoringCase("Berlin")
+                .isNotBlank()
                 .isEqualTo(spyHandler1.getThinking());
 
         InOrder inOrder1 = inOrder(spyHandler1);

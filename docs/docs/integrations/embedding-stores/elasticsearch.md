@@ -13,7 +13,7 @@ https://www.elastic.co/
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-elasticsearch</artifactId>
-    <version>1.18.0-beta28</version>
+    <version>1.20.0-beta30</version>
 </dependency>
 ```
 
@@ -68,6 +68,24 @@ ElasticsearchEmbeddingStore store = ElasticsearchEmbeddingStore.builder()
     .indexName("default")
     .build();
 ```
+
+### Storing documents without an embedding
+
+Next to the usual `add(Embedding, TextSegment)` methods, the store can also index plain text, without computing an
+embedding for it:
+
+```java
+store.add("Printer troubleshooting guide");                    // generates an id
+store.add("my-id", "Printer troubleshooting guide");           // with your own id
+store.addAllText(List.of("First guide", "Second guide"));      // several at once
+```
+
+Because these documents have no vector, vector search never returns them, neither with
+[`ElasticsearchConfigurationKnn`](#elasticsearchconfigurationknn) nor with
+[`ElasticsearchConfigurationScript`](#elasticsearchconfigurationscript). They are still found by full text search, so a
+single index can hold both embedded and text-only documents, and you can search it both ways with
+[`ElasticsearchConfigurationFullText`](#elasticsearchconfigurationfulltext) or
+[`ElasticsearchConfigurationHybrid`](#elasticsearchconfigurationhybrid).
 
 ## ElasticsearchContentRetriever
 
@@ -245,9 +263,9 @@ public class MyElasticsearchConfiguration implements ElasticsearchConfiguration 
 
     @Override
     SearchResponse<Document> fullTextSearch(
-            ElasticsearchClient client, 
-            String indexName, 
-            String textQuery) {
+            ElasticsearchClient client,
+            String indexName,
+            FullTextSearchRequest request) {
         // Your optional custom full text search implementation here
     }
 
@@ -267,6 +285,15 @@ Please note that you can implement only the methods relevant to your use case:
 * `vectorSearch` for vector similarity search (used by both `ElasticsearchEmbeddingStore` and `ElasticsearchContentRetriever`).
 * `fullTextSearch` for full text search (used by `ElasticsearchContentRetriever` only).
 * `hybridSearch` for hybrid search (used by `ElasticsearchContentRetriever` only).
+
+The `FullTextSearchRequest` carries the `textQuery` to search for, together with the `maxResults`, `minScore` and
+`filter` configured on the `ElasticsearchContentRetriever`. Your implementation is responsible for applying them,
+otherwise documents which do not match the filter can be returned.
+
+> **Note:**
+> There is also a deprecated `fullTextSearch(ElasticsearchClient client, String indexName, String textQuery)` method.
+> Configurations which only implement that one keep working, but the `maxResults`, `minScore` and `filter` of the
+> retriever are ignored, and a warning is logged. Please implement the method taking a `FullTextSearchRequest` instead.
 
 ## Examples
 

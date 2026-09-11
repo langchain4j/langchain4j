@@ -5,6 +5,7 @@ import static dev.langchain4j.http.client.HttpMethod.POST;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -492,5 +493,67 @@ class HttpRequestTest {
         // then
         assertThat(builder.build().url()).isEqualTo("http://example.com/api");
         assertThat(builder.build().formDataFields()).isEmpty();
+    }
+
+    @Test
+    void should_look_up_headers_case_insensitively() {
+        HttpRequest request = HttpRequest.builder()
+                .method(GET)
+                .url("http://example.com/api")
+                .addHeader("Content-Type", "application/json")
+                .build();
+
+        assertThat(request.headers().get("content-type")).containsExactly("application/json");
+        assertThat(request.headers().get("CONTENT-TYPE")).containsExactly("application/json");
+        assertThat(request.headers().containsKey("content-type")).isTrue();
+    }
+
+    @Test
+    void should_not_be_affected_by_mutations_of_the_source_headers() {
+        Map<String, List<String>> headers = new LinkedHashMap<>();
+        headers.put("Content-Type", List.of("application/json"));
+
+        HttpRequest request = HttpRequest.builder()
+                .method(GET)
+                .url("http://example.com/api")
+                .headers(headers)
+                .build();
+
+        headers.put("X-Added-Later", List.of("value"));
+
+        assertThat(request.headers()).containsOnlyKeys("Content-Type");
+    }
+
+    @Test
+    void should_return_unmodifiable_headers() {
+        HttpRequest request = HttpRequest.builder()
+                .method(GET)
+                .url("http://example.com/api")
+                .addHeader("Content-Type", "application/json")
+                .build();
+
+        assertThatThrownBy(() -> request.headers().put("X-Added-Later", List.of("value")))
+                .isExactlyInstanceOf(UnsupportedOperationException.class);
+    }
+
+    @Test
+    void should_return_empty_headers_when_not_set() {
+        HttpRequest request =
+                HttpRequest.builder().method(GET).url("http://example.com/api").build();
+
+        assertThat(request.headers()).isEmpty();
+    }
+
+    @Test
+    void should_fail_with_clear_message_when_header_name_is_null() {
+        Map<String, List<String>> headers = new HashMap<>();
+        headers.put(null, List.of("value"));
+
+        HttpRequest.Builder builder =
+                HttpRequest.builder().method(GET).url("http://example.com/api").headers(headers);
+
+        assertThatThrownBy(builder::build)
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Header name cannot be null");
     }
 }

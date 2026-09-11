@@ -15,7 +15,7 @@ jobs:
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - id: set-matrix
         shell: bash
@@ -55,10 +55,10 @@ jobs:
       matrix: ${{ fromJson(needs.discover-modules.outputs.matrix) }}
 
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Set up JDK 17
-        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5
+        uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5
         with:
           java-version: 17
           distribution: 'temurin'
@@ -76,7 +76,24 @@ jobs:
         uses: jbangdev/setup-jbang@2b1b465a7b75f4222b81426f23a01e013aa7b95c # v0.1.1
         continue-on-error: true
 
-      - name: Build with JDK 17
+      - name: Decide whether tonight is the Jackson 3 run
+        id: jackson3
+        # The opt-in swaps the JSON codec, and unit tests can only prove so much about a wire
+        # format. One of the three nightlies runs the integration tests on Jackson 3 instead of
+        # Jackson 2, so every night exactly one does and each JDK takes its turn every third day.
+        # Deterministic rather than random: given the date you can tell which ran, and re-running
+        # the same day reproduces it.
+        run: |
+          if [ $(( 10#$(date -u +%j) % 3 )) -eq 0 ]; then
+            echo "profile=-Pjackson3" >> "$GITHUB_OUTPUT"
+            echo "label=Jackson 3" >> "$GITHUB_OUTPUT"
+            echo "::notice title=JSON codec::Integration tests are running on Jackson 3 tonight (JDK 17)."
+          else
+            echo "profile=" >> "$GITHUB_OUTPUT"
+            echo "label=Jackson 2" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build with JDK 17 on ${{ steps.jackson3.outputs.label }}
         run: |
           modules="${{ join(matrix.modules, ',') }}"
           exclude_modules="langchain4j-jlama,langchain4j-gpu-llama3"
@@ -88,7 +105,7 @@ jobs:
           ## compile and install ALL modules to avoid running integration tests on dependent modules in the step below
           mvn -B -U -T8C -DskipTests -DskipITs -DembeddingsSkipCache install
 
-          mvn -B -U verify \
+          mvn -B -U verify ${{ steps.jackson3.outputs.profile }} \
             -pl "${modules}" \
             -DskipAzureAiSearchITs -DskipJlamaITs -DskipLocalAiITs -DskipMilvusITs -DskipOllamaITs -DskipOracleITs -DskipVespaITs \
             --fail-at-end \
@@ -140,7 +157,6 @@ jobs:
           CI_DELAY_SECONDS_AZURE_AI_SEARCH: 4
           CI_DELAY_SECONDS_AZURE_OPENAI: 3
           CI_DELAY_SECONDS_BEDROCK: 3
-          CI_DELAY_SECONDS_GITHUB_MODELS: 7
           CI_DELAY_SECONDS_GOOGLE_AI_GEMINI: 20
           CI_DELAY_SECONDS_GOOGLE_AI_GEMINI_BATCH: 20
           CI_DELAY_SECONDS_VERTEX_AI: 5

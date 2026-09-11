@@ -62,7 +62,18 @@ class StringSetOutputParserTest {
                 Arguments.of("{\"values\":[\"CAT\",\"DOG\"]}", Set.of("CAT", "DOG")),
                 Arguments.of("{\"values\":[\"CAT\",\"DOG\",\"CAT\"]}", Set.of("CAT", "DOG")),
                 Arguments.of("{\"values\":[]}", Set.of()),
-                Arguments.of("  {\"values\":[\"CAT\",\"DOG\"]}  ", Set.of("CAT", "DOG")));
+                Arguments.of("  {\"values\":[\"CAT\",\"DOG\"]}  ", Set.of("CAT", "DOG")),
+
+                // Bare JSON array (a common shape returned by LLMs)
+                Arguments.of("[\"CAT\"]", Set.of("CAT")),
+                Arguments.of("[\"CAT\",\"DOG\"]", Set.of("CAT", "DOG")),
+                Arguments.of("[\"CAT\",\"DOG\",\"CAT\"]", Set.of("CAT", "DOG")),
+                Arguments.of("[]", Set.of()),
+                Arguments.of("  [\"CAT\",\"DOG\"]  ", Set.of("CAT", "DOG")),
+
+                // Text that only looks like a bare JSON array: still parsed line by line
+                Arguments.of("[CAT]\n[DOG]", Set.of("[CAT]", "[DOG]")),
+                Arguments.of("[1] CAT\n[2] DOG", Set.of("[1] CAT", "[2] DOG")));
     }
 
     @ParameterizedTest

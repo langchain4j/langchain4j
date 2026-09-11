@@ -11,6 +11,8 @@ import dev.langchain4j.agentic.agent.AgentInvocationException;
 import dev.langchain4j.service.TokenStream;
 import java.io.IOException;
 import java.util.concurrent.CompletionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import org.junit.jupiter.api.Test;
@@ -83,5 +85,42 @@ class DelayedResponseTest {
         response.complete("ok");
 
         assertThat(response.blockingGet()).isEqualTo("ok");
+    }
+
+    @Test
+    void timeout_overload_rethrows_original_runtime_exception_not_executionException() {
+        AgentInvocationException original = new AgentInvocationException("boom");
+        PendingResponse<String> response = new PendingResponse<>("id");
+        response.completeExceptionally(original);
+
+        assertThatThrownBy(() -> response.blockingGet(1, TimeUnit.SECONDS))
+                .isInstanceOf(AgentInvocationException.class)
+                .isSameAs(original);
+    }
+
+    @Test
+    void timeout_overload_leaves_checked_cause_wrapped() {
+        IOException checked = new IOException("io");
+        PendingResponse<String> response = new PendingResponse<>("id");
+        response.completeExceptionally(checked);
+
+        assertThatThrownBy(() -> response.blockingGet(1, TimeUnit.SECONDS))
+                .isInstanceOf(RuntimeException.class)
+                .hasCause(checked);
+    }
+
+    @Test
+    void timeout_overload_still_times_out_when_the_response_is_not_completed() {
+        PendingResponse<String> response = new PendingResponse<>("id");
+
+        assertThatThrownBy(() -> response.blockingGet(1, TimeUnit.MILLISECONDS)).isInstanceOf(TimeoutException.class);
+    }
+
+    @Test
+    void timeout_overload_returns_successful_response_unchanged() throws Exception {
+        PendingResponse<String> response = new PendingResponse<>("id");
+        response.complete("ok");
+
+        assertThat(response.blockingGet(1, TimeUnit.SECONDS)).isEqualTo("ok");
     }
 }

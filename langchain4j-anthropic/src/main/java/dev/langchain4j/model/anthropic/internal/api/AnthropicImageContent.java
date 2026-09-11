@@ -4,19 +4,21 @@ import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import java.util.Objects;
 
 @JsonInclude(NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
-@JsonNaming(SnakeCaseStrategy.class)
 public class AnthropicImageContent extends AnthropicMessageContent {
 
     public AnthropicImageContentSource source;
 
     public AnthropicImageContent(AnthropicImageContentSource source) {
         super("image");
+        this.source = source;
+    }
+
+    public AnthropicImageContent(AnthropicImageContentSource source, AnthropicCacheControl cacheControl) {
+        super("image", cacheControl);
         this.source = source;
     }
 
@@ -31,6 +33,14 @@ public class AnthropicImageContent extends AnthropicMessageContent {
 
     public static AnthropicImageContent fromUrl(String url) {
         return new AnthropicImageContent(AnthropicImageContentSource.fromUrl(url));
+    }
+
+    public static AnthropicImageContent fromBase64(String mediaType, String data, AnthropicCacheControl cacheControl) {
+        return new AnthropicImageContent(AnthropicImageContentSource.fromBase64(mediaType, data), cacheControl);
+    }
+
+    public static AnthropicImageContent fromUrl(String url, AnthropicCacheControl cacheControl) {
+        return new AnthropicImageContent(AnthropicImageContentSource.fromUrl(url), cacheControl);
     }
 
     @Override

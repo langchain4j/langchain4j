@@ -134,6 +134,10 @@ public final class GeminiFiles {
                 .build();
 
         HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        if (response.statusCode() != 200) {
+            throw new GeminiUploadFailureException("Failed to list files. Status code: " + response.statusCode());
+        }
+
         GeminiFilesListResponse listResponse = fromJson(response.body(), GeminiFilesListResponse.class);
 
         return listResponse.files() != null ? listResponse.files() : List.of();

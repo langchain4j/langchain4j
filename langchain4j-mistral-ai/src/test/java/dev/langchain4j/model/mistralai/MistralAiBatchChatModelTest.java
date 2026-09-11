@@ -18,6 +18,7 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.AfterEach;
@@ -69,6 +70,9 @@ class MistralAiBatchChatModelTest {
     private static final String ERROR_FILE_JSONL =
             "{\"custom_id\":\"request-2\",\"error\":{\"message\":\"rate limited\"}}\n";
 
+    private static final String STRING_ERROR_JSONL =
+            "{\"custom_id\":\"request-0\",\"error\":\"1 validation error for ChatCompletionStreamResponse\"}\n";
+
     private HttpServer server;
     private String baseUrl;
     private final AtomicReference<String> capturedCreateBody = new AtomicReference<>();
@@ -91,6 +95,8 @@ class MistralAiBatchChatModelTest {
                 resultsFileFetched.set(true);
                 if (path.contains("file_statusfail")) {
                     responseBody = STATUS_FAIL_JSONL;
+                } else if (path.contains("file_stringerr")) {
+                    responseBody = STRING_ERROR_JSONL;
                 } else if (path.contains("file_err_1")) {
                     responseBody = ERROR_FILE_JSONL;
                 } else {
@@ -106,6 +112,8 @@ class MistralAiBatchChatModelTest {
                 responseBody = RUNNING_RESPONSE;
             } else if (path.endsWith("batch_witherrors")) {
                 responseBody = SUCCESS_WITH_ERRORS_RESPONSE;
+            } else if (path.endsWith("batch_stringerr")) {
+                responseBody = SUCCESS_RESPONSE.replace("file_out_1", "file_stringerr");
             } else if (path.endsWith("batch_statusfail")) {
                 responseBody = SUCCESS_RESPONSE.replace("file_out_1", "file_statusfail");
             } else {
@@ -213,6 +221,18 @@ class MistralAiBatchChatModelTest {
         BatchItemResult<ChatResponse> result = response.results().get(0);
         assertThat(result.isSuccess()).isFalse();
         assertThat(result.error().code()).isEqualTo(400);
+    }
+
+    @Test
+    void retrieve_maps_result_line_with_plain_string_error_to_failure() {
+        BatchResponse<ChatResponse> response = model().retrieve("batch_stringerr");
+
+        assertThat(response.results()).hasSize(1);
+        BatchItemResult<ChatResponse> result = response.results().get(0);
+        assertThat(result.isSuccess()).isFalse();
+        assertThat(result.error().message()).isEqualTo("1 validation error for ChatCompletionStreamResponse");
+        assertThat(result.error().details())
+                .containsExactly(Map.of("message", "1 validation error for ChatCompletionStreamResponse"));
     }
 
     @Test

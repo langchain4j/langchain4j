@@ -1,7 +1,9 @@
 package dev.langchain4j.model.googleai;
 
+import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.googleai.Json.toJsonWithoutIndent;
+import static dev.langchain4j.model.googleai.SchemaMapper.canBeMapped;
 import static dev.langchain4j.model.googleai.SchemaMapper.fromJsonSchemaToGSchema;
 import static java.util.Collections.singletonList;
 
@@ -51,7 +53,11 @@ class FunctionMapper {
                     }
 
                     if (specification.parameters() != null) {
-                        fnBuilder.parameters(fromJsonSchemaToGSchema(specification.parameters()));
+                        if (canBeMapped(specification.parameters())) {
+                            fnBuilder.parameters(fromJsonSchemaToGSchema(specification.parameters()));
+                        } else {
+                            fnBuilder.parametersJsonSchema(toMap(specification.parameters()));
+                        }
                     }
 
                     return fnBuilder.build();

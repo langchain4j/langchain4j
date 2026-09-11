@@ -25,6 +25,7 @@ import dev.langchain4j.store.embedding.azure.search.AzureAiSearchRuntimeExceptio
 import dev.langchain4j.store.embedding.azure.search.Document;
 import dev.langchain4j.store.embedding.filter.Filter;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import org.slf4j.Logger;
@@ -305,6 +306,8 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
 
         private AzureAiSearchFilterMapper filterMapper;
 
+        private List<String> metadataFieldNames = List.of();
+
         /**
          * Sets the Azure AI Search endpoint. This is a mandatory parameter.
          *
@@ -451,8 +454,27 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
             return this;
         }
 
+        /**
+         * Sets the names of top-level index fields to copy into the {@link dev.langchain4j.data.document.Metadata} of
+         * each retrieved segment. Use this with a pre-existing (bring-your-own) index whose fields are stored at the
+         * document root rather than in the nested {@code metadata} field this store writes. A field is copied only if
+         * its value is a type {@link dev.langchain4j.data.document.Metadata} supports ({@code String}, {@code Integer},
+         * {@code Long}, {@code Float}, {@code Double}, or {@code UUID}); fields that are absent, {@code null} or of
+         * another type are skipped. Each field must be retrievable in the Azure index for its value to be returned.
+         * When a name matches a key already present in the nested {@code metadata} field, the top-level value takes
+         * precedence.
+         *
+         * @param metadataFieldNames The names of the index fields to expose as metadata; {@code null} is treated as no
+         *     configured fields.
+         * @return builder
+         */
+        public Builder metadataFieldNames(Collection<String> metadataFieldNames) {
+            this.metadataFieldNames = metadataFieldNames == null ? List.of() : List.copyOf(metadataFieldNames);
+            return this;
+        }
+
         public AzureAiSearchContentRetriever build() {
-            return new AzureAiSearchContentRetriever(
+            AzureAiSearchContentRetriever retriever = new AzureAiSearchContentRetriever(
                     endpoint,
                     keyCredential,
                     tokenCredential,
@@ -466,6 +488,8 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
                     azureAiSearchQueryType,
                     filterMapper,
                     filter);
+            retriever.metadataFieldNames = metadataFieldNames;
+            return retriever;
         }
     }
 }

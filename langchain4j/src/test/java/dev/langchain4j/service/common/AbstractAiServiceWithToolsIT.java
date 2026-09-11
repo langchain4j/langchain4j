@@ -1125,7 +1125,7 @@ public abstract class AbstractAiServiceWithToolsIT {
                 .tools(tool)
                 .build();
 
-        var text = "How much is 37 plus 87?";
+        var text = "How much is 37 plus 87? Use 'add' tool before answering.";
 
         assertThatThrownBy(() -> assistant.chat(text))
                 .isInstanceOf(IllegalConfigurationException.class)

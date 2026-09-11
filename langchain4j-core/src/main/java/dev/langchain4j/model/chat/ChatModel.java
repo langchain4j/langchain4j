@@ -1,5 +1,10 @@
 package dev.langchain4j.model.chat;
 
+import dev.langchain4j.Experimental;
+import dev.langchain4j.exception.AsyncNotSupportedException;
+import dev.langchain4j.internal.AsyncNotSupported;
+import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
+import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.ModelProvider.OTHER;
 import static dev.langchain4j.model.chat.ChatModelListenerUtils.onError;
@@ -17,6 +22,8 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -71,6 +78,99 @@ public interface ChatModel {
         throw new RuntimeException("Not implemented");
     }
 
+    /**
+     * Non-blocking counterpart of {@link #chat(ChatRequest)}: sends a chat request and returns a
+     * {@link CompletableFuture} that completes with the {@link ChatResponse} once the model responds.
+     * <p>
+     * Unlike {@link #chat(ChatRequest)}, this method does not block the calling thread. Operational
+     * failures (including unsupported-parameter validation) are delivered through the returned future
+     * (completed exceptionally), not thrown synchronously — the async analog of how the publisher API
+     * signals errors via {@code onError}.
+     * <p>
+     * Registered {@link ChatModelListener}s are invoked: {@code onRequest} when the request is initiated,
+     * then {@code onResponse} once the response is available, or {@code onError} on failure.
+     * <p>
+     * <b>Threading.</b> The returned future is completed on the model's own thread - for HTTP models, the
+     * transport's I/O worker that reads the response (the JDK HTTP client's {@code HttpClient-*} workers). A
+     * continuation attached without an explicit executor ({@code thenApply}, {@code thenAccept}, ...) therefore
+     * runs on that thread, where blocking is as harmful as blocking in a {@link ChatModelListener} callback: it
+     * stalls the worker and, under concurrency, degrades throughput for every in-flight call. Keep continuations
+     * non-blocking, or hand blocking work to your own {@link java.util.concurrent.Executor} via the
+     * {@code *Async} variants ({@code thenApplyAsync(fn, executor)}).
+     *
+     * @param chatRequest a {@link ChatRequest}, containing all the inputs to the LLM
+     * @return a {@link CompletableFuture} of the {@link ChatResponse}
+     * @since 1.20.0
+     */
+    @Experimental
+    default CompletableFuture<ChatResponse> chatAsync(ChatRequest chatRequest) {
+        return chatAsync(chatRequest, ChatRequestOptions.EMPTY);
+    }
+
+    /**
+     * Sends a non-blocking chat request with additional invocation options.
+     *
+     * @param chatRequest a {@link ChatRequest}, containing all the inputs to the LLM
+     * @param options     a {@link ChatRequestOptions} carrying listener attributes and other per-call metadata
+     * @return a {@link CompletableFuture} of the {@link ChatResponse}
+     * @see #chatAsync(ChatRequest)
+     * @since 1.20.0
+     */
+    @Experimental
+    default CompletableFuture<ChatResponse> chatAsync(ChatRequest chatRequest, ChatRequestOptions options) {
+
+        ChatRequestOptions effectiveOptions = getOrDefault(options, ChatRequestOptions.EMPTY);
+
+        ChatRequest finalChatRequest = ChatRequest.builder()
+                .messages(chatRequest.messages())
+                .parameters(defaultRequestParameters().overrideWith(chatRequest.parameters()))
+                .build();
+
+        List<ChatModelListener> listeners = listeners();
+        Map<Object, Object> attributes = new ConcurrentHashMap<>(effectiveOptions.listenerAttributes());
+
+        onRequest(finalChatRequest, provider(), attributes, listeners);
+
+        CompletableFuture<ChatResponse> source;
+        try {
+            source = doChatAsync(finalChatRequest);
+        } catch (Exception error) {
+            onError(error, finalChatRequest, provider(), attributes, listeners);
+            return CompletableFuture.failedFuture(error);
+        }
+
+        CompletableFuture<ChatResponse> result = source.whenComplete((chatResponse, error) -> {
+            if (error != null) {
+                Throwable cause = unwrapCompletionException(error);
+                if (!(cause instanceof CancellationException)) {
+                    onError(cause, finalChatRequest, provider(), attributes, listeners);
+                }
+            } else {
+                onResponse(chatResponse, finalChatRequest, provider(), attributes, listeners);
+            }
+        });
+
+        propagateCancellation(result, source);
+        return result;
+    }
+
+    /**
+     * SPI hook for a genuinely non-blocking chat implementation, invoked by {@link #chatAsync(ChatRequest)}.
+     * <p>
+     * The default returns a failed future carrying {@link AsyncNotSupportedException} to signal that this model has no native asynchronous
+     * implementation. Callers on the asynchronous and reactive path (for example the non-blocking RAG stages) detect
+     * this and either offload the blocking {@link #doChat(ChatRequest)} or fail loudly with an actionable message.
+     * A model backed by remote HTTP I/O overrides this with a genuinely asynchronous call (no thread parked).
+     *
+     * @param chatRequest a {@link ChatRequest}, containing all the inputs to the LLM
+     * @return a {@link CompletableFuture} of the {@link ChatResponse}
+     * @since 1.20.0
+     */
+    @Experimental
+    default CompletableFuture<ChatResponse> doChatAsync(ChatRequest chatRequest) {
+        return AsyncNotSupported.failedFuture(getClass(), "doChatAsync");
+    }
+
     default ChatRequestParameters defaultRequestParameters() {
         return DefaultChatRequestParameters.EMPTY;
     }
@@ -105,6 +205,46 @@ public interface ChatModel {
         ChatRequest chatRequest = ChatRequest.builder().messages(messages).build();
 
         return chat(chatRequest);
+    }
+
+    /**
+     * Non-blocking convenience counterpart of {@link #chat(String)}: completes with the text of the model's response.
+     *
+     * @since 1.20.0
+     */
+    @Experimental
+    default CompletableFuture<String> chatAsync(String userMessage) {
+
+        ChatRequest chatRequest =
+                ChatRequest.builder().messages(UserMessage.from(userMessage)).build();
+
+        return chatAsync(chatRequest).thenApply(chatResponse -> chatResponse.aiMessage().text());
+    }
+
+    /**
+     * Non-blocking convenience counterpart of {@link #chat(ChatMessage...)}.
+     *
+     * @since 1.20.0
+     */
+    @Experimental
+    default CompletableFuture<ChatResponse> chatAsync(ChatMessage... messages) {
+
+        ChatRequest chatRequest = ChatRequest.builder().messages(messages).build();
+
+        return chatAsync(chatRequest);
+    }
+
+    /**
+     * Non-blocking convenience counterpart of {@link #chat(List)}.
+     *
+     * @since 1.20.0
+     */
+    @Experimental
+    default CompletableFuture<ChatResponse> chatAsync(List<ChatMessage> messages) {
+
+        ChatRequest chatRequest = ChatRequest.builder().messages(messages).build();
+
+        return chatAsync(chatRequest);
     }
 
     default Set<Capability> supportedCapabilities() {

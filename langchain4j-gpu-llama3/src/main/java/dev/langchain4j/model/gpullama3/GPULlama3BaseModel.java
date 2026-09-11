@@ -153,10 +153,13 @@ abstract class GPULlama3BaseModel implements AutoCloseable {
         }
 
         if (stopToken == null) {
-            return "Ran out of context length...\n Increase context length with by passing to llama-tornado --max-tokens XXX";
-        } else {
-            return responseText;
+            log.warn(
+                    "Generation stopped after reaching maxTokens ({}), so the response is truncated. "
+                            + "Increase maxTokens(...) on the model builder to get a complete response.",
+                    maxTokens);
         }
+
+        return responseText;
     }
     // @formatter:on
 

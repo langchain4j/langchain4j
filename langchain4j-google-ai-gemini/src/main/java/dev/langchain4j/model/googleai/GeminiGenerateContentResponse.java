@@ -10,14 +10,17 @@ record GeminiGenerateContentResponse(
         @JsonProperty("modelVersion") String modelVersion,
         @JsonProperty("candidates") List<GeminiCandidate> candidates,
         @JsonProperty("usageMetadata") GeminiUsageMetadata usageMetadata,
-        @JsonProperty("groundingMetadata") GroundingMetadata groundingMetadata) {
+        @JsonProperty("groundingMetadata") GroundingMetadata groundingMetadata,
+        @JsonProperty("promptFeedback") GeminiPromptFeedback promptFeedback) {
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     record GeminiCandidate(
             @JsonProperty("content") GeminiContent content,
             @JsonProperty("finishReason") GeminiFinishReason finishReason,
             @JsonProperty("urlContextMetadata") GeminiUrlContextMetadata urlContextMetadata,
-            @JsonProperty("groundingMetadata") GroundingMetadata groundingMetadata) {
+            @JsonProperty("groundingMetadata") GroundingMetadata groundingMetadata,
+            @JsonProperty("safetyRatings") List<GeminiSafetyRating> safetyRatings) {
+
         enum GeminiFinishReason {
             FINISH_REASON_UNSPECIFIED,
             STOP,
@@ -30,9 +33,23 @@ record GeminiGenerateContentResponse(
             PROHIBITED_CONTENT,
             SPII,
             MALFORMED_FUNCTION_CALL,
-            IMAGE_RECITATION
+            IMAGE_RECITATION,
+            IMAGE_SAFETY,
+            IMAGE_PROHIBITED_CONTENT,
+            IMAGE_OTHER,
+            NO_IMAGE,
+            UNEXPECTED_TOOL_CALL,
+            TOO_MANY_TOOL_CALLS,
+            MISSING_THOUGHT_SIGNATURE,
+            MALFORMED_RESPONSE,
+            ESCALATION
         }
     }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    record GeminiPromptFeedback(
+            @JsonProperty("blockReason") String blockReason,
+            @JsonProperty("safetyRatings") List<GeminiSafetyRating> safetyRatings) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     record GeminiUrlContextMetadata(

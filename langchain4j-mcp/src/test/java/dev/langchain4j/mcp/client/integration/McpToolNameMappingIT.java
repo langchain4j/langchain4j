@@ -38,7 +38,10 @@ public class McpToolNameMappingIT {
                         getJBangCommand(), "--quiet", "--fresh", "run", getPathToScript("tools_mcp_server.java")))
                 .logEvents(true)
                 .build();
-        mcpClient = new DefaultMcpClient.Builder().transport(transport).build();
+        mcpClient = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion("2025-11-25")
+                .build();
         toolProvider = McpToolProvider.builder()
                 .mcpClients(mcpClient)
                 .toolNameMapper((client, toolSpec) -> {

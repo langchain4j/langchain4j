@@ -7,32 +7,40 @@ import static java.util.stream.Collectors.toList;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.http.client.HttpRequest;
-import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
 import org.slf4j.Logger;
 
 @Internal
 class HttpRequestLogger {
 
-    private static final Set<String> COMMON_SECRET_HEADERS =
-            new HashSet<>(asList("authorization", "x-api-key", "x-auth-token"));
+    /**
+     * A header whose name contains any of these is assumed to carry a credential.
+     * Matching deliberately errs towards masking too much: a masked value that turns out to be
+     * harmless costs one debugging round trip, an unmasked credential costs a key rotation.
+     */
+    private static final List<String> SECRET_HEADER_NAME_KEYWORDS = asList(
+            "auth",
+            "api-key",
+            "api_key",
+            "apikey",
+            "subscription-key",
+            "token",
+            "secret",
+            "password",
+            "credential",
+            "cookie");
 
     static void log(Logger log, HttpRequest httpRequest) {
         try {
-            log.info(
-                    """
+            log.info("""
                             HTTP request:
                             - method: {}
                             - url: {}
                             - headers: {}
                             - body: {}
-                            """,
-                    httpRequest.method(),
-                    httpRequest.url(),
-                    format(httpRequest.headers()),
-                    httpRequest.body());
+                            """, httpRequest.method(), httpRequest.url(), format(httpRequest.headers()), httpRequest.body());
         } catch (Exception e) {
             log.warn("Exception occurred while logging HTTP request: {}", e.getMessage());
         }
@@ -45,8 +53,7 @@ class HttpRequestLogger {
     }
 
     static String format(String headerKey, List<String> headerValues) {
-        if (COMMON_SECRET_HEADERS.contains(headerKey.toLowerCase())
-                || headerKey.toLowerCase().contains("api-key")) {
+        if (isSecretHeader(headerKey)) {
             headerValues =
                     headerValues.stream().map(HttpRequestLogger::maskSecretKey).collect(toList());
         }
@@ -56,6 +63,11 @@ class HttpRequestLogger {
         } else {
             return String.format("[%s: %s]", headerKey, headerValues);
         }
+    }
+
+    private static boolean isSecretHeader(String headerKey) {
+        String lowerCaseHeaderKey = headerKey.toLowerCase(Locale.ROOT);
+        return SECRET_HEADER_NAME_KEYWORDS.stream().anyMatch(lowerCaseHeaderKey::contains);
     }
 
     static String maskSecretKey(String key) {

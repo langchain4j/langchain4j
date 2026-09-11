@@ -9,6 +9,7 @@ import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.ContentMetadata;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.query.Query;
+import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.elasticsearch.AbstractElasticsearchEmbeddingStore;
@@ -17,6 +18,7 @@ import dev.langchain4j.store.embedding.elasticsearch.ElasticsearchConfigurationF
 import dev.langchain4j.store.embedding.elasticsearch.ElasticsearchConfigurationHybrid;
 import dev.langchain4j.store.embedding.elasticsearch.ElasticsearchConfigurationKnn;
 import dev.langchain4j.store.embedding.elasticsearch.ElasticsearchConfigurationScript;
+import dev.langchain4j.store.embedding.elasticsearch.FullTextSearchRequest;
 import dev.langchain4j.store.embedding.filter.Filter;
 import java.util.List;
 import java.util.Map;
@@ -37,6 +39,7 @@ import org.slf4j.LoggerFactory;
 public class ElasticsearchContentRetriever extends AbstractElasticsearchEmbeddingStore implements ContentRetriever {
 
     private static final Logger log = LoggerFactory.getLogger(ElasticsearchContentRetriever.class);
+    private static final int DEFAULT_MAX_RESULTS = 3;
     private final EmbeddingModel embeddingModel;
     private final int maxResults;
     private final double minScore;
@@ -103,14 +106,13 @@ public class ElasticsearchContentRetriever extends AbstractElasticsearchEmbeddin
     public List<Content> retrieve(final Query query) {
         if (configuration instanceof ElasticsearchConfigurationFullText) {
             log.debug("Using a full text search query");
-            return this.fullTextSearch(query.text()).stream()
-                    .map(t -> Content.from(
-                            t,
-                            Map.of(
-                                    ContentMetadata.SCORE, t.metadata().getDouble(ContentMetadata.SCORE.name()),
-                                    ContentMetadata.EMBEDDING_ID,
-                                            t.metadata().getString(ContentMetadata.EMBEDDING_ID.name()))))
-                    .toList();
+            FullTextSearchRequest request = FullTextSearchRequest.builder()
+                    .textQuery(query.text())
+                    .maxResults(maxResults)
+                    .minScore(minScore)
+                    .filter(filter)
+                    .build();
+            return toContentList(this.fullTextSearchMatches(request));
         }
         Embedding referenceEmbedding = embeddingModel.embed(query.text()).content();
         EmbeddingSearchRequest request = EmbeddingSearchRequest.builder()
@@ -128,13 +130,18 @@ public class ElasticsearchContentRetriever extends AbstractElasticsearchEmbeddin
     }
 
     private List<Content> mapResultsToContentList(EmbeddingSearchResult<TextSegment> searchResult) {
-        List<Content> result = searchResult.matches().stream()
-                .filter(f -> f.score() >= minScore)
-                .map(m -> Content.from(
-                        m.embedded(),
+        return toContentList(searchResult.matches().stream()
+                .filter(match -> match.score() >= minScore)
+                .toList());
+    }
+
+    private List<Content> toContentList(List<EmbeddingMatch<TextSegment>> matches) {
+        List<Content> result = matches.stream()
+                .map(match -> Content.from(
+                        match.embedded(),
                         Map.of(
-                                ContentMetadata.SCORE, m.score(),
-                                ContentMetadata.EMBEDDING_ID, m.embeddingId())))
+                                ContentMetadata.SCORE, match.score(),
+                                ContentMetadata.EMBEDDING_ID, match.embeddingId())))
                 .toList();
         log.debug("Found [{}] relevant documents in Elasticsearch index [{}].", result.size(), indexName);
         return result;
@@ -152,7 +159,7 @@ public class ElasticsearchContentRetriever extends AbstractElasticsearchEmbeddin
         private ElasticsearchConfiguration configuration =
                 ElasticsearchConfigurationKnn.builder().build();
         private EmbeddingModel embeddingModel;
-        private int maxResults;
+        private int maxResults = DEFAULT_MAX_RESULTS;
         private double minScore;
         private Filter filter;
 

@@ -20,6 +20,8 @@ import dev.langchain4j.model.anthropic.internal.api.AnthropicMetadata;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicOutputConfig;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicThinking;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicTool;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicToolChoice;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicToolChoiceType;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
@@ -159,10 +161,8 @@ class InternalAnthropicHelper {
             requestBuilder.tools(tools);
         }
 
-        if (chatRequest.toolChoice() != null) {
-            requestBuilder.toolChoice(
-                    toAnthropicToolChoice(chatRequest.toolChoice(), toolChoiceName, disableParallelToolUse));
-        }
+        requestBuilder.toolChoice(
+                resolveToolChoice(chatRequest, toolChoiceName, disableParallelToolUse, !tools.isEmpty()));
 
         if (!isNullOrEmpty(userId)) {
             requestBuilder.metadata(AnthropicMetadata.builder().userId(userId).build());
@@ -173,6 +173,30 @@ class InternalAnthropicHelper {
         }
 
         return requestBuilder.build();
+    }
+
+    private static AnthropicToolChoice resolveToolChoice(
+            ChatRequest chatRequest, String toolChoiceName, Boolean disableParallelToolUse, boolean hasTools) {
+
+        if (chatRequest.toolChoice() != null) {
+            return toAnthropicToolChoice(chatRequest.toolChoice(), toolChoiceName, disableParallelToolUse);
+        }
+
+        if (!hasTools) {
+            return null; // without tools Anthropic defaults to "none", and forcing a tool would be rejected
+        }
+
+        if (toolChoiceName != null) {
+            return AnthropicToolChoice.from(toolChoiceName, disableParallelToolUse);
+        }
+
+        if (Boolean.TRUE.equals(disableParallelToolUse)) {
+            // "disable_parallel_tool_use" can only be sent inside "tool_choice", and "auto" is what Anthropic
+            // already applies when tools are present, so the tool selection strategy stays the same
+            return AnthropicToolChoice.from(AnthropicToolChoiceType.AUTO, disableParallelToolUse);
+        }
+
+        return null;
     }
 
     public static AnthropicOutputConfig toAnthropicOutputConfig(ResponseFormat responseFormat) {

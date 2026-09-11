@@ -7,7 +7,7 @@ import java.util.Objects;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static dev.langchain4j.store.embedding.filter.comparison.NumberComparator.compareAsBigDecimals;
+import static dev.langchain4j.store.embedding.filter.comparison.NumberComparator.isGreaterThan;
 import static dev.langchain4j.store.embedding.filter.comparison.TypeChecker.ensureTypesAreCompatible;
 
 public class IsGreaterThan implements Filter {
@@ -42,7 +42,7 @@ public class IsGreaterThan implements Filter {
         ensureTypesAreCompatible(actualValue, comparisonValue, key);
 
         if (actualValue instanceof Number) {
-            return compareAsBigDecimals(actualValue, comparisonValue) > 0;
+            return isGreaterThan(actualValue, comparisonValue);
         }
 
         return ((Comparable) actualValue).compareTo(comparisonValue) > 0;

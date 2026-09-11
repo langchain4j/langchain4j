@@ -406,4 +406,64 @@ class ToolExecutionResultTest {
         assertThat(toolExecutionResult.resultContents()).containsExactly(TextContent.from(text));
         assertThat(toolExecutionResult.resultText()).isEqualTo(text);
     }
+
+    @Test
+    void should_copy_all_values_with_to_builder() {
+        // given
+        Object result = new Object();
+        ToolExecutionResult original = ToolExecutionResult.builder()
+                .isError(true)
+                .result(result)
+                .resultContents(List.of(TextContent.from("first"), TextContent.from("second")))
+                .attributes(Map.of("key", "value"))
+                .build();
+
+        // when
+        ToolExecutionResult copy = original.toBuilder().build();
+
+        // then
+        assertThat(copy).isEqualTo(original);
+        assertThat(copy.isError()).isTrue();
+        assertThat(copy.result()).isSameAs(result);
+        assertThat(copy.resultContents()).containsExactly(TextContent.from("first"), TextContent.from("second"));
+        assertThat(copy.attributes()).containsExactly(Map.entry("key", "value"));
+    }
+
+    @Test
+    void should_add_attributes_with_to_builder() {
+        // given
+        ToolExecutionResult original = ToolExecutionResult.builder()
+                .resultText("test result")
+                .attributes(Map.of("key", "value"))
+                .build();
+
+        // when
+        ToolExecutionResult copy =
+                original.toBuilder().attributes(Map.of("anotherKey", "anotherValue")).build();
+
+        // then
+        assertThat(copy.resultText()).isEqualTo("test result");
+        assertThat(copy.attributes()).containsExactly(Map.entry("anotherKey", "anotherValue"));
+        assertThat(original.attributes()).containsExactly(Map.entry("key", "value"));
+    }
+
+    @Test
+    void should_not_invoke_supplier_when_copying_with_to_builder() {
+        // given
+        AtomicInteger callCount = new AtomicInteger(0);
+        ToolExecutionResult original = ToolExecutionResult.builder()
+                .resultTextSupplier(() -> {
+                    callCount.incrementAndGet();
+                    return "lazy result";
+                })
+                .build();
+
+        // when
+        ToolExecutionResult copy = original.toBuilder().build();
+
+        // then
+        assertThat(callCount).hasValue(0);
+        assertThat(copy.resultText()).isEqualTo("lazy result");
+        assertThat(callCount).hasValue(1);
+    }
 }

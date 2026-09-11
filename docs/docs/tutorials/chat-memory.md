@@ -126,6 +126,13 @@ the following orphan `ToolExecutionResultMessage`(s) are also automatically evic
 to avoid problems with some LLM providers (such as OpenAI)
 that prohibit sending orphan `ToolExecutionResultMessage`(s) in the request.
 
+:::note
+A `ChatMemory` or `ChatMemoryStore` that performs I/O can implement the asynchronous counterparts
+(`addAsync`/`messagesAsync`/`setAsync`, `getMessagesAsync`/`updateMessagesAsync`/`deleteMessagesAsync`) so that it
+does not block a thread when the AI Service is used in a non-blocking mode.
+See [Non-blocking and Reactive](/tutorials/non-blocking).
+:::
+
 ## Examples
 - With `AiServices`:
   - [Chat memory](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithMemoryExample.java)

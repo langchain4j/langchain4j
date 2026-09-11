@@ -3,6 +3,7 @@ package dev.langchain4j.agentic.internal;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
@@ -66,10 +67,18 @@ public abstract class DeferredResponse<T> implements DelayedResponse<T> {
     public T blockingGet(long timeout, TimeUnit unit) throws TimeoutException {
         try {
             return futureResponse.get(timeout, unit);
-        } catch (TimeoutException e) {
-            throw e;
-        } catch (Exception e) {
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
             throw new RuntimeException(e);
+        } catch (ExecutionException e) {
+            Throwable cause = e.getCause();
+            if (cause instanceof RuntimeException runtimeException) {
+                throw runtimeException;
+            }
+            if (cause instanceof Error error) {
+                throw error;
+            }
+            throw new RuntimeException(cause);
         }
     }
 

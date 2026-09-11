@@ -96,14 +96,25 @@ public class AmazonS3DocumentLoader {
                 .filter(s3Object -> !s3Object.key().endsWith("/") && s3Object.size() > 0)
                 .collect(toList());
 
+        int failed = 0;
         for (S3Object s3Object : filteredS3Objects) {
             String key = s3Object.key();
             try {
                 Document document = loadDocument(bucket, key, parser);
                 documents.add(document);
             } catch (Exception e) {
+                failed++;
                 log.warn("Failed to load an object with key '{}' from bucket '{}', skipping it.", key, bucket, e);
             }
+        }
+
+        if (failed > 0) {
+            log.warn(
+                    "Loaded {} of {} documents from bucket '{}'. Skipped {} that failed to load.",
+                    documents.size(),
+                    documents.size() + failed,
+                    bucket,
+                    failed);
         }
 
         return documents;

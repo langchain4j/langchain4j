@@ -8,7 +8,6 @@ import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2Quantize
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingStoreIT;
-import org.assertj.core.data.Percentage;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
@@ -17,7 +16,6 @@ import org.slf4j.Logger;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.data.Percentage.withPercentage;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 abstract class CassandraEmbeddingStoreIT extends EmbeddingStoreIT {
@@ -41,11 +39,6 @@ abstract class CassandraEmbeddingStoreIT extends EmbeddingStoreIT {
     @Override
     protected void clearStore() {
         ((CassandraEmbeddingStore) embeddingStore()).clear();
-    }
-
-    @Override
-    protected Percentage percentage() {
-        return withPercentage(6); // TODO figure out why difference is so big
     }
 
     @Test

@@ -268,7 +268,7 @@ public class DeclarativeAgentIT {
                             if (ctx.agentServiceClass() == StyleEditor.class) {
                                 ctx.agentBuilder().outputKey("styledStory");
                             }
-                        }, null, null));
+                        }));
 
         String story = storyCreator.write("dragons and wizards", "fantasy", "young adults");
         assertThat(story).isNotBlank();
@@ -1192,5 +1192,49 @@ public class DeclarativeAgentIT {
         assertThat(result.result()).isNotBlank();
         assertThat(result.agenticScope().readState("cityData", "")).contains("Rome");
         assertThat(result.result()).containsIgnoringCase("Rome");
+    }
+
+    public interface ProducerAgent {
+
+        @UserMessage("Provide a brief analysis of: {{request}}")
+        @Agent(description = "A producer agent", outputKey = "analysis")
+        String produce(@V("request") String request);
+
+        @ChatModelSupplier
+        static ChatModel chatModel() {
+            return baseModel();
+        }
+    }
+
+    public interface ConsumerWithScopeDependentSupplier {
+
+        @UserMessage("You are an expert. The user request is {{request}}.")
+        @Agent(
+                description = "An expert that summarizes context from other agents",
+                outputKey = "response",
+                summarizedContext = {"produce"})
+        String consume(@V("request") String request);
+
+        @ChatModelSupplier
+        static ChatModel chatModel(AgenticScope scope) {
+            return baseModel();
+        }
+    }
+
+    public interface SummarizedContextWithScopeSupplierPipeline {
+
+        @SequenceAgent(
+                outputKey = "response",
+                subAgents = {ProducerAgent.class, ConsumerWithScopeDependentSupplier.class})
+        String process(@V("request") String request);
+    }
+
+    @Test
+    void summarizedContext_with_scope_dependent_chatModelSupplier_should_not_throw() {
+        SummarizedContextWithScopeSupplierPipeline pipeline =
+                AgenticServices.createAgenticSystem(SummarizedContextWithScopeSupplierPipeline.class);
+
+        String response = pipeline.process("test request");
+        assertThat(response).isNotBlank();
     }
 }

@@ -9,6 +9,7 @@ import com.ibm.watsonx.ai.chat.model.ThinkingEffort;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.watsonx.WatsonxChatModel;
+import dev.langchain4j.model.watsonx.WatsonxDeploymentChatModel;
 import java.time.Duration;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -27,7 +28,7 @@ public class WatsonxChatModelThinkingIT {
     @Test
     public void should_return_and_send_thinking() {
 
-        ChatModel chatModel = WatsonxChatModel.builder()
+        ChatModel chatModel = WatsonxDeploymentChatModel.builder()
                 .baseUrl(URL)
                 .apiKey(API_KEY)
                 .deploymentId(DEPLOYMENT_ID)
@@ -48,7 +49,7 @@ public class WatsonxChatModelThinkingIT {
     @Test
     void should_return_and_NOT_send_thinking() {
 
-        ChatModel chatModel = WatsonxChatModel.builder()
+        ChatModel chatModel = WatsonxDeploymentChatModel.builder()
                 .baseUrl(URL)
                 .apiKey(API_KEY)
                 .deploymentId(DEPLOYMENT_ID)

@@ -1,41 +1,45 @@
 package dev.langchain4j.model.openai.internal.chat;
 
+import static java.util.Collections.unmodifiableList;
+
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
-
 import java.util.List;
 import java.util.Objects;
 
-import static java.util.Collections.unmodifiableList;
-
 @JsonDeserialize(builder = Delta.Builder.class)
 @JsonInclude(JsonInclude.Include.NON_NULL)
-@JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public final class Delta {
 
     @JsonProperty
     private final String role;
+
     @JsonProperty
     private final String content;
+
     @JsonProperty
     private final String reasoningContent;
+
     @JsonProperty
     private final List<ToolCall> toolCalls;
+
     @JsonProperty
     @Deprecated
     private final FunctionCall functionCall;
 
+    @JsonCreator
     public Delta(Builder builder) {
         this.role = builder.role;
         this.content = builder.content;
         this.reasoningContent = builder.reasoningContent;
-        this.toolCalls = builder.toolCalls;
+        this.toolCalls = builder.toolCalls == null ? null : unmodifiableList(builder.toolCalls);
         this.functionCall = builder.functionCall;
     }
 
@@ -64,8 +68,7 @@ public final class Delta {
     @JacocoIgnoreCoverageGenerated
     public boolean equals(Object another) {
         if (this == another) return true;
-        return another instanceof Delta
-                && equalTo((Delta) another);
+        return another instanceof Delta && equalTo((Delta) another);
     }
 
     @JacocoIgnoreCoverageGenerated
@@ -107,13 +110,15 @@ public final class Delta {
 
     @JsonPOJOBuilder(withPrefix = "")
     @JsonIgnoreProperties(ignoreUnknown = true)
-    @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
+    @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
     public static final class Builder {
 
         private String role;
         private String content;
+        @JsonAlias("reasoning")
         private String reasoningContent;
         private List<ToolCall> toolCalls;
+
         @Deprecated
         private FunctionCall functionCall;
 
@@ -127,6 +132,7 @@ public final class Delta {
             return this;
         }
 
+        @JsonAlias("reasoning")
         public Builder reasoningContent(String reasoningContent) {
             this.reasoningContent = reasoningContent;
             return this;
@@ -134,7 +140,7 @@ public final class Delta {
 
         public Builder toolCalls(List<ToolCall> toolCalls) {
             if (toolCalls != null) {
-                this.toolCalls = unmodifiableList(toolCalls);
+                this.toolCalls = toolCalls;
             }
             return this;
         }

@@ -35,8 +35,12 @@ class DockerMcpTransportIT {
                 .dockerHost("unix:///var/run/docker.sock")
                 .logEvents(true)
                 .build();
+        // The protocol version is pinned because the mcp/time image ships a legacy server that
+        // terminates when it receives the server/discover request used to detect the version.
+        // This test is about the Docker transport, not about protocol negotiation.
         mcpClient = new DefaultMcpClient.Builder()
                 .transport(transport)
+                .protocolVersion("2025-11-25")
                 .toolExecutionTimeout(Duration.ofSeconds(4))
                 .build();
     }

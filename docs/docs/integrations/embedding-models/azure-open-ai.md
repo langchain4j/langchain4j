@@ -26,7 +26,7 @@ that can be used to transforms text or images into a dimensional vector space.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-azure-open-ai</artifactId>
-    <version>1.18.0</version>
+    <version>1.20.0</version>
 </dependency>
 ```
 
@@ -34,10 +34,15 @@ that can be used to transforms text or images into a dimensional vector space.
 ```xml
 <dependency>
     <groupId>dev.langchain4j</groupId>
-    <artifactId>langchain4j-azure-open-ai-spring-boot-starter</artifactId>
-    <version>1.18.0-beta28</version>
+    <artifactId>langchain4j-azure-open-ai-spring-boot4-starter</artifactId>
+    <version>1.20.0-beta30</version>
 </dependency>
 ```
+
+:::note
+This starter requires **Spring Boot 4**. On **Spring Boot 3**, use `langchain4j-azure-open-ai-spring-boot-starter` instead.
+See [Spring Boot Integration](/tutorials/spring-boot-integration#supported-versions) for details.
+:::
 
 
 ## Creating `AzureOpenAiEmbeddingModel`

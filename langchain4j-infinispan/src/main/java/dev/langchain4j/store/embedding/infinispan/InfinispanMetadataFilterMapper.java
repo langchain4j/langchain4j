@@ -14,7 +14,6 @@ import dev.langchain4j.store.embedding.filter.logical.And;
 import dev.langchain4j.store.embedding.filter.logical.Not;
 import dev.langchain4j.store.embedding.filter.logical.Or;
 import java.util.Collection;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -107,48 +106,38 @@ class InfinispanMetadataFilterMapper {
     }
 
     private String mapIn(IsIn filter) {
-        Optional<?> first = filter.comparisonValues().stream().findFirst();
-        if (first.isEmpty()) {
-            throw new UnsupportedOperationException("Infinispan metadata filter IN must contain values");
-        }
-        Object o = first.get();
-        String inStatement = formattedComparisonValues(filter.comparisonValues(), o instanceof Number);
-        String m = "m" + i + ".";
-        String filterQuery = m + "value IN (" + inStatement + ")";
-        if (o instanceof Integer || o instanceof Long) {
-            filterQuery = m + "value_int IN (" + inStatement + ")";
-        } else if (o instanceof Float || o instanceof Double) {
-            filterQuery = m + "value_float IN (" + inStatement + ")";
-        }
+        ensureNotEmpty(filter.comparisonValues());
+        String column = "m" + i + "." + valueColumn(filter.comparisonValues());
+        String inStatement = formattedComparisonValues(filter.comparisonValues());
 
-        return metadataKey(filter.key()) + filterQuery;
+        return metadataKey(filter.key()) + column + " IN (" + inStatement + ")";
     }
 
     private String mapNotIn(IsNotIn filter) {
-        Optional<?> first = filter.comparisonValues().stream().findFirst();
-        if (first.isEmpty()) {
+        ensureNotEmpty(filter.comparisonValues());
+        String m = "m" + i + ".";
+        String column = m + valueColumn(filter.comparisonValues());
+        String inStatement = formattedComparisonValues(filter.comparisonValues());
+
+        return "(" + column + " NOT IN (" + inStatement + ")" + metadataKeyLast(filter.key()) + ") " + "OR ("
+                + column + " IN (" + inStatement + ") and " + m + "name!='" + escape(filter.key()) + "')"
+                + addMetadataNullCheck();
+    }
+
+    private void ensureNotEmpty(Collection<?> comparisonValues) {
+        if (comparisonValues.isEmpty()) {
             throw new UnsupportedOperationException("Infinispan metadata filter IN must contain values");
         }
-        Object o = first.get();
-        String inStatement = formattedComparisonValues(filter.comparisonValues(), o instanceof Number);
-        String m = "m" + i + ".";
-        String filterQuery = m + "value NOT IN (" + inStatement + ")";
-        if (o instanceof Integer || o instanceof Long) {
-            filterQuery = m + "value_int NOT IN (" + inStatement + ")";
-        } else if (o instanceof Float || o instanceof Double) {
-            filterQuery = m + "value_float NOT IN (" + inStatement + ")";
-        }
+    }
 
-        String inFilterQuery = m + "value IN (" + inStatement + ")";
-        if (o instanceof Integer || o instanceof Long) {
-            inFilterQuery = m + "value_int IN (" + inStatement + ")";
-        } else if (o instanceof Float || o instanceof Double) {
-            inFilterQuery = m + "value_float IN (" + inStatement + ")";
+    private String valueColumn(Collection<?> comparisonValues) {
+        if (comparisonValues.stream().anyMatch(v -> v instanceof Float || v instanceof Double)) {
+            return "value_float";
         }
-
-        return "(" + filterQuery + metadataKeyLast(filter.key()) + ") " + "OR ("
-                + inFilterQuery + " and " + m + "name!='" + escape(filter.key()) + "')"
-                + addMetadataNullCheck();
+        if (comparisonValues.stream().allMatch(v -> v instanceof Integer || v instanceof Long)) {
+            return "value_int";
+        }
+        return "value";
     }
 
     private String computeFilter(String operator, Object value) {
@@ -198,14 +187,30 @@ class InfinispanMetadataFilterMapper {
         return "m" + i + ".name='" + escape(key) + "' and ";
     }
 
-    private String formattedComparisonValues(Collection<?> comparisonValues, boolean isNumeric) {
-        String inStatement = comparisonValues.stream()
-                .map(s -> isNumeric ? s.toString() : "'" + escape(String.valueOf(s)) + "'")
+    private String formattedComparisonValues(Collection<?> comparisonValues) {
+        boolean hasNumeric = comparisonValues.stream().anyMatch(v -> v instanceof Number);
+        boolean hasNonNumeric = comparisonValues.stream().anyMatch(v -> !(v instanceof Number));
+        if (hasNumeric && hasNonNumeric) {
+            throw new IllegalArgumentException(
+                    "Infinispan metadata filter IN/NOT IN cannot mix numeric and non-numeric values");
+        }
+        boolean asFloat = "value_float".equals(valueColumn(comparisonValues));
+        return comparisonValues.stream()
+                .map(s -> formattedComparisonValue(s, asFloat))
                 .collect(Collectors.joining(", "));
-        return inStatement;
+    }
+
+    private String formattedComparisonValue(Object value, boolean asFloat) {
+        if (!(value instanceof Number)) {
+            return "'" + escape(String.valueOf(value)) + "'";
+        }
+        if (asFloat && (value instanceof Integer || value instanceof Long)) {
+            return String.valueOf(((Number) value).doubleValue());
+        }
+        return value.toString();
     }
 
     private static String escape(String s) {
-        return s.replace("'", "''");
+        return s.replace("\\", "\\\\").replace("'", "''");
     }
 }

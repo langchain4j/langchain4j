@@ -3,6 +3,7 @@ package dev.langchain4j.service.tool;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -73,6 +74,19 @@ public class ToolExecution {
      */
     public Object resultObject() {
         return result.result();
+    }
+
+    /**
+     * Returns the attributes associated with the tool execution.
+     * Attributes can be set by the tool itself or, in case of MCP tools,
+     * originate from the {@code _meta} field of the tool call response.
+     * They are not sent to the LLM.
+     *
+     * @return an unmodifiable map of attributes, or an empty map if none were set.
+     * @since 1.19.0
+     */
+    public Map<String, Object> attributes() {
+        return result.attributes();
     }
 
     /**

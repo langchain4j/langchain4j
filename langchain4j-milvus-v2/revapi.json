@@ -1,0 +1,55 @@
+[
+  {
+    "extension": "revapi.differences",
+    "configuration": {
+      "ignore": true,
+      "differences": [
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.data.embedding.Embedding",
+          "justification": "Core langchain4j type intentionally exposed by the EmbeddingStore<TextSegment> API implemented by MilvusV2EmbeddingStore (add/addAll/search)."
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.data.segment.TextSegment",
+          "justification": "Core langchain4j type intentionally exposed by the EmbeddingStore<TextSegment> API implemented by MilvusV2EmbeddingStore."
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.store.embedding.EmbeddingSearchRequest",
+          "justification": "Core langchain4j type intentionally exposed by the EmbeddingStore search API; MilvusV2EmbeddingSearchRequest also extends it."
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.store.embedding.EmbeddingSearchResult",
+          "justification": "Core langchain4j type intentionally exposed by the EmbeddingStore search API (return type of search())."
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.store.embedding.filter.Filter",
+          "justification": "Core langchain4j type intentionally exposed by the EmbeddingStore filtering/removal API (removeAll(Filter), search filtering)."
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class io.milvus.v2.client.MilvusClientV2",
+          "justification": "Milvus SDK type intentionally exposed by the builder so callers can supply their own client (Builder.milvusClient(MilvusClientV2)); mirrors langchain4j-milvus (v1)."
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class io.milvus.v2.common.ConsistencyLevel",
+          "justification": "Milvus SDK type intentionally exposed by the builder for consistency-level configuration (Builder.consistencyLevel(...)); mirrors langchain4j-milvus (v1)."
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class io.milvus.v2.common.IndexParam.IndexType",
+          "justification": "Milvus SDK type intentionally exposed by the builder for index-type configuration (Builder.indexType(...)/sparseIndexType(...)); mirrors langchain4j-milvus (v1)."
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class io.milvus.v2.common.IndexParam.MetricType",
+          "justification": "Milvus SDK type intentionally exposed by the builder for metric-type configuration (Builder.metricType(...)/sparseMetricType(...)); mirrors langchain4j-milvus (v1)."
+        }
+      ]
+    }
+  }
+]

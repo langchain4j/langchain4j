@@ -3,6 +3,7 @@ package dev.langchain4j.model.anthropic.internal.mapper;
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
 import static dev.langchain4j.internal.ToolSpecificationUtils.isEffectivelyStrict;
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
@@ -194,22 +195,25 @@ public class AnthropicMapper {
                 }
             } else if (content instanceof ImageContent imageContent) {
                 Image image = imageContent.image();
+                AnthropicCacheControl cacheControl = applyCache ? AnthropicCacheType.EPHEMERAL.cacheControl() : null;
                 if (image.url() != null) {
                     anthropicContents.add(
-                            AnthropicImageContent.fromUrl(image.url().toString()));
+                            AnthropicImageContent.fromUrl(image.url().toString(), cacheControl));
                 } else {
                     anthropicContents.add(AnthropicImageContent.fromBase64(
                             ensureNotBlank(image.mimeType(), "mimeType"),
-                            ensureNotBlank(image.base64Data(), "base64Data")));
+                            ensureNotBlank(image.base64Data(), "base64Data"),
+                            cacheControl));
                 }
             } else if (content instanceof PdfFileContent pdfFileContent) {
                 PdfFile pdfFile = pdfFileContent.pdfFile();
+                AnthropicCacheControl cacheControl = applyCache ? AnthropicCacheType.EPHEMERAL.cacheControl() : null;
                 if (pdfFile.url() != null) {
                     anthropicContents.add(
-                            AnthropicPdfContent.fromUrl(pdfFile.url().toString()));
+                            AnthropicPdfContent.fromUrl(pdfFile.url().toString(), cacheControl));
                 } else {
                     anthropicContents.add(AnthropicPdfContent.fromBase64(
-                            pdfFile.mimeType(), ensureNotBlank(pdfFile.base64Data(), "base64Data")));
+                            pdfFile.mimeType(), ensureNotBlank(pdfFile.base64Data(), "base64Data"), cacheControl));
                 }
             } else {
                 throw illegalArgument("Unknown content type: " + content);
@@ -221,15 +225,18 @@ public class AnthropicMapper {
     private static List<AnthropicMessageContent> toAnthropicMessageContents(AiMessage message, boolean sendThinking) {
         List<AnthropicMessageContent> contents = new ArrayList<>();
 
-        if (sendThinking && isNotNullOrBlank(message.thinking())) {
+        if (sendThinking) {
             String signature = message.attribute(THINKING_SIGNATURE_KEY, String.class);
-            contents.add(new AnthropicThinkingContent(message.thinking(), signature));
-        }
+            if (isNotNullOrBlank(message.thinking()) || isNotNullOrBlank(signature)) {
+                // "thinking" is required by the API, so an empty string is sent when the model returned no text
+                contents.add(new AnthropicThinkingContent(getOrDefault(message.thinking(), ""), signature));
+            }
 
-        if (sendThinking && message.attributes().containsKey(REDACTED_THINKING_KEY)) {
-            List<String> redactedThinkings = message.attribute(REDACTED_THINKING_KEY, List.class);
-            for (String redactedThinking : redactedThinkings) {
-                contents.add(new AnthropicRedactedThinkingContent(redactedThinking));
+            if (message.attributes().containsKey(REDACTED_THINKING_KEY)) {
+                List<String> redactedThinkings = message.attribute(REDACTED_THINKING_KEY, List.class);
+                for (String redactedThinking : redactedThinkings) {
+                    contents.add(new AnthropicRedactedThinkingContent(redactedThinking));
+                }
             }
         }
 

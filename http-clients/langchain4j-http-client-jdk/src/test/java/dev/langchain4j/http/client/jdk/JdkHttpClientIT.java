@@ -10,6 +10,11 @@ import java.util.List;
 class JdkHttpClientIT extends HttpClientIT {
 
     @Override
+    protected boolean supportsExecuteAsync() {
+        return true;
+    }
+
+    @Override
     protected List<HttpClient> clients() {
         return List.of(
                 JdkHttpClient.builder().build()

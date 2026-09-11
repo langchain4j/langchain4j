@@ -3,6 +3,7 @@ package dev.langchain4j.model.google.genai;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
 import com.google.auth.oauth2.GoogleCredentials;
@@ -98,7 +99,8 @@ public class GoogleGenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
         this.titleMetadataKey = getOrDefault(builder.titleMetadataKey, "title");
         this.maxRetries = getOrDefault(builder.maxRetries, 3);
 
-        this.maxSegmentsPerBatch = getOrDefault(builder.maxSegmentsPerBatch, 100);
+        this.maxSegmentsPerBatch =
+                ensureGreaterThanZero(getOrDefault(builder.maxSegmentsPerBatch, 100), "maxSegmentsPerBatch");
         this.logRequests = getOrDefault(builder.logRequests, false);
         this.logResponses = getOrDefault(builder.logResponses, false);
         this.listeners = copy(builder.listeners);

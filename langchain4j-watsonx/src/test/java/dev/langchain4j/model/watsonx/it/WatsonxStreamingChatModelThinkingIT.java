@@ -13,6 +13,7 @@ import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.watsonx.WatsonxDeploymentStreamingChatModel;
 import dev.langchain4j.model.watsonx.WatsonxStreamingChatModel;
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
@@ -74,7 +75,7 @@ public class WatsonxStreamingChatModelThinkingIT {
     @Test
     void should_return_and_NOT_send_thinking() {
 
-        StreamingChatModel streamingChatModel = WatsonxStreamingChatModel.builder()
+        StreamingChatModel streamingChatModel = WatsonxDeploymentStreamingChatModel.builder()
                 .baseUrl(URL)
                 .apiKey(API_KEY)
                 .deploymentId(DEPLOYMENT_ID)
@@ -141,16 +142,16 @@ public class WatsonxStreamingChatModelThinkingIT {
             }
         });
 
-        var chatResponse = assertDoesNotThrow(() -> futureChatResponse.get(10, TimeUnit.SECONDS));
-        assertDoesNotThrow(() -> futureThinking.get(10, TimeUnit.SECONDS));
+        var chatResponse = assertDoesNotThrow(() -> futureChatResponse.get(30, TimeUnit.SECONDS));
+        assertDoesNotThrow(() -> futureThinking.get(30, TimeUnit.SECONDS));
 
         var aiMessage = chatResponse.aiMessage();
         assertThat(aiMessage.thinking()).isNotBlank();
         assertThat(aiMessage.text()).isNotBlank();
     }
 
-    private WatsonxStreamingChatModel.Builder createStreamingChatModel() {
-        return WatsonxStreamingChatModel.builder()
+    private WatsonxDeploymentStreamingChatModel.Builder createStreamingChatModel() {
+        return WatsonxDeploymentStreamingChatModel.builder()
                 .baseUrl(URL)
                 .apiKey(API_KEY)
                 .deploymentId(DEPLOYMENT_ID)

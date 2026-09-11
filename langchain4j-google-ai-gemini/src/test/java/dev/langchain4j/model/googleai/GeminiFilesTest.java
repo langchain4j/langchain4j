@@ -396,6 +396,25 @@ class GeminiFilesTest {
         }
 
         @Test
+        void should_throwExceptionWhenListFilesReturnsErrorStatusCode() throws IOException, InterruptedException {
+            // Given
+            when(mockHttpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
+                    .thenAnswer(invocation -> createFailedListFilesResponse());
+
+            var subject = GeminiFiles.builder()
+                    .apiKey(TEST_API_KEY)
+                    .httpClient(mockHttpClient)
+                    .baseUrl(TEST_BASE_URL)
+                    .build();
+
+            // When/Then
+            assertThatThrownBy(subject::listFiles)
+                    .isInstanceOf(GeminiUploadFailureException.class)
+                    .hasMessageContaining("Failed to list files")
+                    .hasMessageContaining("403");
+        }
+
+        @Test
         void should_throwGeminiUploadFailureExceptionWhenListFilesThrowsIOException()
                 throws IOException, InterruptedException {
             // Given
@@ -643,8 +662,7 @@ class GeminiFilesTest {
 
     private HttpResponse<String> createFileUploadResponseWithState(
             String uri, String displayName, String mimeType, Long sizeBytes, String state) {
-        var fileJson = String.format(
-                """
+        var fileJson = String.format("""
                         {
                           "file": {
                             "name": "files/%s",
@@ -659,16 +677,14 @@ class GeminiFilesTest {
                             "state": "%s"
                           }
                         }
-                        """,
-                displayName, displayName, mimeType, sizeBytes, uri, state);
+                        """, displayName, displayName, mimeType, sizeBytes, uri, state);
         HttpResponse<String> response = mock(HttpResponse.class);
         when(response.body()).thenReturn(fileJson);
         return response;
     }
 
     private HttpResponse<String> createListFilesResponse() {
-        var json =
-                """
+        var json = """
                 {
                   "files": [
                     {
@@ -699,13 +715,21 @@ class GeminiFilesTest {
                 }
                 """;
         HttpResponse<String> response = mock(HttpResponse.class);
+        when(response.statusCode()).thenReturn(200);
         when(response.body()).thenReturn(json);
         return response;
     }
 
     private HttpResponse<String> createEmptyListFilesResponse() {
         HttpResponse<String> response = mock(HttpResponse.class);
+        when(response.statusCode()).thenReturn(200);
         when(response.body()).thenReturn("{}");
+        return response;
+    }
+
+    private HttpResponse<String> createFailedListFilesResponse() {
+        HttpResponse<String> response = mock(HttpResponse.class);
+        when(response.statusCode()).thenReturn(403);
         return response;
     }
 

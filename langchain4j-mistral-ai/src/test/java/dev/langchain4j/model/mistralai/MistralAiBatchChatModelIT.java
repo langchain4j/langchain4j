@@ -2,6 +2,7 @@ package dev.langchain4j.model.mistralai;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assumptions.abort;
 
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.batch.BatchPage;
@@ -76,6 +77,10 @@ class MistralAiBatchChatModelIT {
         while (!response.state().isTerminal() && System.nanoTime() < deadline) {
             SECONDS.sleep(10);
             response = model.retrieve(batchId);
+        }
+        if (!response.state().isTerminal()) {
+            // a slow queue on the Mistral side is not a failure of this library, so the test is skipped instead
+            return abort("Batch %s was still in state %s after %s".formatted(batchId, response.state(), timeout));
         }
         return response;
     }
