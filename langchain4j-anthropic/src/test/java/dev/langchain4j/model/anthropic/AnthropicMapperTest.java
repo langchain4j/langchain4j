@@ -786,6 +786,26 @@ class AnthropicMapperTest {
     }
 
     @Test
+    void should_mark_only_last_system_message_with_cache_control_when_duplicate_system_messages_exist() {
+        // given - value-equal duplicate system messages (see issue #6051)
+        List<ChatMessage> messages = asList(
+                SystemMessage.from("same"),
+                SystemMessage.from("same"),
+                UserMessage.from("hi"));
+
+        // when
+        List<AnthropicTextContent> systemPrompt =
+                toAnthropicSystemPrompt(messages, AnthropicCacheType.EPHEMERAL, false);
+
+        // then - only the last occurrence carries cache_control, so only one cache breakpoint is spent
+        assertThat(systemPrompt).hasSize(2);
+        assertThat(systemPrompt.get(0).text).isEqualTo("same");
+        assertThat(systemPrompt.get(0).cacheControl).isNull();
+        assertThat(systemPrompt.get(1).text).isEqualTo("same");
+        assertThat(systemPrompt.get(1).cacheControl.getType()).isEqualTo("ephemeral");
+    }
+
+    @Test
     void mid_conversation_system_messages_enabled_keeps_only_leading_system_messages_in_top_level_system_prompt() {
         // given
         List<ChatMessage> messages = asList(
