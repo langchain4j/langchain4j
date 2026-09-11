@@ -31,7 +31,7 @@ LangChain4j provides 3 different integrations with OpenAI for using chat models,
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai</artifactId>
-    <version>1.19.0</version>
+    <version>1.20.0</version>
 </dependency>
 ```
 
@@ -39,10 +39,15 @@ LangChain4j provides 3 different integrations with OpenAI for using chat models,
 ```xml
 <dependency>
     <groupId>dev.langchain4j</groupId>
-    <artifactId>langchain4j-open-ai-spring-boot-starter</artifactId>
-    <version>1.19.0-beta29</version>
+    <artifactId>langchain4j-open-ai-spring-boot4-starter</artifactId>
+    <version>1.20.0-beta30</version>
 </dependency>
 ```
+
+:::note
+This starter requires **Spring Boot 4**. On **Spring Boot 3**, use `langchain4j-open-ai-spring-boot-starter` instead.
+See [Spring Boot Integration](/tutorials/spring-boot-integration#supported-versions) for details.
+:::
 
 ## API Key
 
@@ -420,6 +425,105 @@ Map<String, Object> customParameters = Map.of(
 );
 ```
 
+## Prompt Caching
+
+OpenAI caches long, repeated prompt prefixes and bills a cache read at a fraction of the input rate.
+The controls below work with both `OpenAiChatModel`/`OpenAiStreamingChatModel` (Chat Completions API)
+and `OpenAiResponsesChatModel`/`OpenAiResponsesStreamingChatModel` (Responses API).
+
+More info on prompt caching can be found [here](https://developers.openai.com/api/docs/guides/prompt-caching).
+
+### `promptCacheKey`
+
+`promptCacheKey` is an optional string that steers routing so that related requests are more likely to
+reach a machine holding the cache entry. It does not pin a request to a machine, nor guarantee a cache hit.
+
+```java
+OpenAiChatModel model = OpenAiChatModel.builder()
+        .apiKey(System.getenv("OPENAI_API_KEY"))
+        .modelName("gpt-5.6")
+        .promptCacheKey("satisfaction_judge_v1")
+        .build();
+```
+
+### `promptCacheOptions`
+
+`gpt-5.6` and later match a cached prefix exactly at a *breakpoint*, without falling back to a shorter
+unmarked prefix. `promptCacheOptions` controls where breakpoints come from:
+
+- `implicit` - OpenAI places a breakpoint at the end of the newest eligible message.
+- `explicit` - only the breakpoints you set are used. Without any breakpoint, nothing is cached.
+
+```java
+OpenAiChatModel model = OpenAiChatModel.builder()
+        .apiKey(System.getenv("OPENAI_API_KEY"))
+        .modelName("gpt-5.6")
+        .promptCacheOptions(OpenAiPromptCacheOptions.builder()
+                .mode(OpenAiPromptCacheOptions.MODE_EXPLICIT)
+                .ttl(OpenAiPromptCacheOptions.TTL_30M)
+                .build())
+        .build();
+```
+
+`OpenAiPromptCacheOptions.implicit()` and `OpenAiPromptCacheOptions.explicit()` are shorthands for
+options that only set the mode.
+
+`promptCacheOptions.ttl` supersedes `promptCacheRetention`, which applies to models older than `gpt-5.6`.
+OpenAI rejects a request that carries both.
+
+### `promptCacheBreakpoint`
+
+`SystemMessage`, `UserMessage` and `ToolExecutionResultMessage` can each be marked as a prompt cache
+breakpoint. Because prompt caching is prefix-based, the breakpoint is applied to the **last content
+block** of the marked message, so that everything up to and including that message forms the cached
+prefix.
+
+`OpenAiPromptCacheBreakpoint.mark()` returns a marked copy of the message, leaving the original
+untouched:
+
+```java
+SystemMessage systemMessage = OpenAiPromptCacheBreakpoint.mark(SystemMessage.from(SHARED_INSTRUCTIONS));
+
+UserMessage userMessage = OpenAiPromptCacheBreakpoint.mark(UserMessage.from(LONG_DOCUMENT));
+
+ToolExecutionResultMessage toolResult = OpenAiPromptCacheBreakpoint.mark(someToolExecutionResultMessage);
+```
+
+Marking is really just an attribute on the message, so it can also be done by hand — for example when
+you are already building the message anyway:
+
+```java
+SystemMessage systemMessage = SystemMessage.builder()
+        .text(SHARED_INSTRUCTIONS)
+        .attributes(Map.of(OpenAiPromptCacheBreakpoint.ATTRIBUTE_KEY,
+                           OpenAiPromptCacheBreakpoint.MODE_EXPLICIT))
+        .build();
+```
+
+Marking a message makes LangChain4j send that message's content as a list of content blocks, since the
+plain string form cannot carry a breakpoint.
+
+`AiMessage` cannot carry a breakpoint: assistant output blocks are not among the block types OpenAI
+accepts one on. Marking an `AiMessage`, or using any mode other than `explicit`, fails fast instead of
+producing an HTTP 400.
+
+Each request supports up to four cache writes, one of which is consumed by the `implicit` mode.
+
+### Reading cache token counts
+
+`OpenAiTokenUsage.InputTokensDetails` reports how many input tokens were read from and written to the
+prompt cache:
+
+```java
+OpenAiTokenUsage tokenUsage = (OpenAiTokenUsage) chatResponse.tokenUsage();
+
+tokenUsage.inputTokensDetails().cachedTokens();      // tokens read from the cache
+tokenUsage.inputTokensDetails().cacheWriteTokens();  // tokens written to the cache
+```
+
+`cacheWriteTokens()` returns `null` when the model provider did not report it, which is distinct from a
+reported zero.
+
 ## Accessing raw HTTP responses and Server-Sent Events (SSE)
 
 When using `OpenAiChatModel`, you can access the raw HTTP response:
@@ -447,7 +551,7 @@ You can customize it or use any other HTTP client of your choice.
 More information can be found [here](/tutorials/customizable-http-client).
 
 ### Spring Boot
-When using the `langchain4j-open-ai-spring-boot-starter` Spring Boot starter,
+When using the `langchain4j-open-ai-spring-boot4-starter`/`langchain4j-open-ai-spring-boot-starter` Spring Boot starter,
 the Spring's `RestClient` is used as the default HTTP client.
 
 You can customize it or use any other HTTP client of your choice.
@@ -510,8 +614,9 @@ The same applies to `OpenAiResponsesStreamingChatModel`.
 
 `OpenAiResponsesChatRequestParameters` extends `DefaultChatRequestParameters` with Responses API-specific fields:
 `previousResponseId`, `maxToolCalls`, `parallelToolCalls`, `topLogprobs`, `truncation`, `include`,
-`serviceTier`, `safetyIdentifier`, `promptCacheKey`, `promptCacheRetention`, `reasoningEffort`,
-`reasoningSummary`, `textVerbosity`, `streamIncludeObfuscation`, `store`, `strictTools`, `strictJsonSchema`.
+`serviceTier`, `safetyIdentifier`, `promptCacheKey`, `promptCacheRetention`, `promptCacheOptions`,
+`reasoningEffort`, `reasoningSummary`, `textVerbosity`, `streamIncludeObfuscation`, `store`, `strictTools`,
+`strictJsonSchema`.
 
 These parameters can be configured as defaults when creating the model (via `defaultRequestParameters` on the builder),
 or passed per-request via `ChatRequest` (per-request parameters override the defaults):

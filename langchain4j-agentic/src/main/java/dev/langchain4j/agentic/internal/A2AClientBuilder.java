@@ -1,5 +1,6 @@
 package dev.langchain4j.agentic.internal;
 
+import dev.langchain4j.agentic.observability.A2AStreamingClientListener;
 import dev.langchain4j.agentic.observability.AgentListener;
 import java.util.function.Consumer;
 
@@ -56,6 +57,25 @@ public interface A2AClientBuilder<T> {
      * @return this builder for method chaining
      */
     A2AClientBuilder<T> clientCustomizer(Consumer<?> clientCustomizer);
+
+    /**
+     * Sets an {@link A2AStreamingClientListener} for observing updates received
+     * from the remote agent during streaming invocation.
+     *
+     * <p>Like {@code DefaultA2AClientBuilder}, which uses {@code a2a-java}, can be used
+     * with the following example:
+     * <pre>{@code
+     * streamingClientListener((TaskUpdateEvent event) -> {
+     *     // handle the streaming event
+     * });
+     * }</pre>
+     *
+     * <p>The listener is invoked with task update events received from the remote agent.
+     *
+     * @param clientListener the listener to attach
+     * @return this builder for method chaining
+     */
+    A2AClientBuilder<T> streamingClientListener(A2AStreamingClientListener<?> clientListener);
 
     /**
      * Builds the A2A client proxy implementing the agent service interface.

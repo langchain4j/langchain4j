@@ -25,7 +25,7 @@ LangChain4j provides 3 different integrations with OpenAI for generating images,
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai</artifactId>
-    <version>1.19.0</version>
+    <version>1.20.0</version>
 </dependency>
 ```
 
@@ -33,10 +33,15 @@ LangChain4j provides 3 different integrations with OpenAI for generating images,
 ```xml
 <dependency>
     <groupId>dev.langchain4j</groupId>
-    <artifactId>langchain4j-open-ai-spring-boot-starter</artifactId>
-    <version>1.19.0-beta29</version>
+    <artifactId>langchain4j-open-ai-spring-boot4-starter</artifactId>
+    <version>1.20.0-beta30</version>
 </dependency>
 ```
+
+:::note
+This starter requires **Spring Boot 4**. On **Spring Boot 3**, use `langchain4j-open-ai-spring-boot-starter` instead.
+See [Spring Boot Integration](/tutorials/spring-boot-integration#supported-versions) for details.
+:::
 
 
 :::note

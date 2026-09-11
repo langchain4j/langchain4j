@@ -13,7 +13,7 @@ https://www.elastic.co/
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-elasticsearch</artifactId>
-    <version>1.19.0-beta29</version>
+    <version>1.20.0-beta30</version>
 </dependency>
 ```
 
@@ -68,6 +68,24 @@ ElasticsearchEmbeddingStore store = ElasticsearchEmbeddingStore.builder()
     .indexName("default")
     .build();
 ```
+
+### Storing documents without an embedding
+
+Next to the usual `add(Embedding, TextSegment)` methods, the store can also index plain text, without computing an
+embedding for it:
+
+```java
+store.add("Printer troubleshooting guide");                    // generates an id
+store.add("my-id", "Printer troubleshooting guide");           // with your own id
+store.addAllText(List.of("First guide", "Second guide"));      // several at once
+```
+
+Because these documents have no vector, vector search never returns them, neither with
+[`ElasticsearchConfigurationKnn`](#elasticsearchconfigurationknn) nor with
+[`ElasticsearchConfigurationScript`](#elasticsearchconfigurationscript). They are still found by full text search, so a
+single index can hold both embedded and text-only documents, and you can search it both ways with
+[`ElasticsearchConfigurationFullText`](#elasticsearchconfigurationfulltext) or
+[`ElasticsearchConfigurationHybrid`](#elasticsearchconfigurationhybrid).
 
 ## ElasticsearchContentRetriever
 

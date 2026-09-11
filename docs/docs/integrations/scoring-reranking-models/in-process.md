@@ -21,7 +21,7 @@ By default, scoring (reranking) model uses the CPU.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-onnx-scoring</artifactId>
-    <version>1.19.0-beta29</version>
+    <version>1.20.0-beta30</version>
 </dependency>
 ```
 ```java
@@ -33,13 +33,15 @@ Response<Double> response = scoringModel.score("query", "passage");
 Double score = response.content();
 ```
 
+`OnnxScoringModel` implements `AutoCloseable`; close it when it is no longer needed to release its native resources.
+
 If you want to use the GPU, `onnxruntime_gpu` version can be found
 [here](https://onnxruntime.ai/docs/execution-providers/CUDA-ExecutionProvider.html).
 ```xml
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-onnx-scoring</artifactId>
-    <version>1.19.0-beta29</version>
+    <version>1.20.0-beta30</version>
     <exclusions>
         <exclusion>
             <groupId>com.microsoft.onnxruntime</groupId>
@@ -48,11 +50,11 @@ If you want to use the GPU, `onnxruntime_gpu` version can be found
     </exclusions>
 </dependency>
 
-<!-- 1.19.0 support CUDA 12.x -->
+<!-- 1.20.0 support CUDA 12.x -->
 <dependency>
     <groupId>com.microsoft.onnxruntime</groupId>
     <artifactId>onnxruntime_gpu</artifactId>
-    <version>1.19.0</version>
+    <version>1.20.0</version>
 </dependency>
 ```
 

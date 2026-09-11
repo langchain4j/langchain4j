@@ -21,26 +21,26 @@ To use one of the [Spring Boot starters](https://github.com/langchain4j/langchai
 import the corresponding dependency.
 
 The naming convention for the Spring Boot starter dependency is:
-- `langchain4j-{integration-name}-spring-boot-starter` for **Spring Boot 3**
 - `langchain4j-{integration-name}-spring-boot4-starter` for **Spring Boot 4**
+- `langchain4j-{integration-name}-spring-boot-starter` for **Spring Boot 3**
 
 For example, for OpenAI (`langchain4j-open-ai`):
-
-**Spring Boot 3:**
- ```xml
- <dependency>
-     <groupId>dev.langchain4j</groupId>
-     <artifactId>langchain4j-open-ai-spring-boot-starter</artifactId>
-     <version>1.19.0-beta29</version>
- </dependency>
-```
 
 **Spring Boot 4:**
 ```xml
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai-spring-boot4-starter</artifactId>
-    <version>1.19.0-beta29</version>
+    <version>1.20.0-beta30</version>
+</dependency>
+```
+
+**Spring Boot 3:**
+```xml
+<dependency>
+    <groupId>dev.langchain4j</groupId>
+    <artifactId>langchain4j-open-ai-spring-boot-starter</artifactId>
+    <version>1.20.0-beta30</version>
 </dependency>
 ```
 
@@ -86,23 +86,23 @@ LangChain4j provides a Spring Boot starter for auto-configuring
 [AI Services](/tutorials/ai-services), [RAG](/tutorials/rag), [Tools](/tutorials/tools) etc.
 
 Assuming you have already imported one of the integrations starters (see above),
-import `langchain4j-spring-boot-starter` (Spring Boot 3) or `langchain4j-spring-boot4-starter` (Spring Boot 4):
-
-**Spring Boot 3:**
-```xml
-<dependency>
-    <groupId>dev.langchain4j</groupId>
-    <artifactId>langchain4j-spring-boot-starter</artifactId>
-    <version>1.19.0-beta29</version>
-</dependency>
-```
+import `langchain4j-spring-boot4-starter` (Spring Boot 4) or `langchain4j-spring-boot-starter` (Spring Boot 3):
 
 **Spring Boot 4:**
 ```xml
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-spring-boot4-starter</artifactId>
-    <version>1.19.0-beta29</version>
+    <version>1.20.0-beta30</version>
+</dependency>
+```
+
+**Spring Boot 3:**
+```xml
+<dependency>
+    <groupId>dev.langchain4j</groupId>
+    <artifactId>langchain4j-spring-boot-starter</artifactId>
+    <version>1.20.0-beta30</version>
 </dependency>
 ```
 
@@ -303,12 +303,12 @@ For Maven:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-micrometer-metrics</artifactId>
-    <version>1.19.0-beta29</version>
+    <version>1.20.0-beta30</version>
 </dependency>
 ```
 For Gradle:
 ```gradle
-implementation 'dev.langchain4j:langchain4j-micrometer-metrics:1.19.0-beta29'
+implementation 'dev.langchain4j:langchain4j-micrometer-metrics:1.20.0-beta30'
 ```
 
 #### Micrometer (Actuator) Configuration
@@ -433,8 +433,8 @@ For more details about the `langchain4j-observation` library, please check the [
 ## Supported versions
 
 LangChain4j Spring Boot integration requires Java 17 and supports both:
-- **Spring Boot 3** (3.5+) — use starters with the `-spring-boot-starter` suffix, in line with the [Spring Boot OSS support policy](https://spring.io/projects/spring-boot#support)
 - **Spring Boot 4** (4.0+) — use starters with the `-spring-boot4-starter` suffix
+- **Spring Boot 3** (3.5+) — use starters with the `-spring-boot-starter` suffix, in line with the [Spring Boot OSS support policy](https://spring.io/projects/spring-boot#support)
 
 Both families are released together and share the same version number. Choose the set of starters that matches the Spring Boot version in your project.
 

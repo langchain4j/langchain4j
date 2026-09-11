@@ -917,7 +917,7 @@ so it will reveal the nested sequence of agents invocations necessary to generat
 
 ```
 AgentInvocation{agent=Sequential, startTime=2026-03-18T17:27:28.099439515, finishTime=2026-03-18T17:27:38.683498783, duration=10584 ms, tokens=0, inputs={topic=dragons and wiz..., style=comedy}, output=In a realm wher...}
-|=> AgentInvocation{agent=generateStory, startTime=2026-03-18T17:27:28.1.19.0287, finishTime=2026-03-18T17:27:31.033561726, duration=2932 ms, tokens=127, inputs={topic=dragons and wiz...}, output=In a realm wher...}
+|=> AgentInvocation{agent=generateStory, startTime=2026-03-18T17:27:28.1.20.0287, finishTime=2026-03-18T17:27:31.033561726, duration=2932 ms, tokens=127, inputs={topic=dragons and wiz...}, output=In a realm wher...}
 |=> AgentInvocation{agent=reviewLoop, startTime=2026-03-18T17:27:31.035952285, finishTime=2026-03-18T17:27:38.683438433, duration=7647 ms, tokens=0, inputs={score=0.8, topic=dragons and wiz..., style=comedy, story=In a realm wher...}, output=null}
     |=> AgentInvocation{agent=scoreStyle, iteration=0, startTime=2026-03-18T17:27:31.036155107, finishTime=2026-03-18T17:27:31.671478699, duration=635 ms, tokens=152, inputs={style=comedy, story=In a realm wher...}, output=0.2}
     |=> AgentInvocation{agent=editStory, iteration=0, startTime=2026-03-18T17:27:31.671711250, finishTime=2026-03-18T17:27:38.182881941, duration=6511 ms, tokens=491, inputs={style=comedy, story=In a realm wher...}, output=In a realm wher...}
@@ -1418,7 +1418,7 @@ AgentInvocation{agentName='withdraw', arguments={user=Mario, amount=115.0}}
 
 AgentInvocation{agentName='credit', arguments={user=Georgios, amount=115.0}}
 
-AgentInvocation{agentName='done', arguments={response=The transfer of 100 EUR from Mario's account to Georgios' account has been completed. Mario's balance is 885.0 USD, and Georgios' balance is 1.19.0 USD. The conversion rate was 1.15 EUR to USD.}}
+AgentInvocation{agentName='done', arguments={response=The transfer of 100 EUR from Mario's account to Georgios' account has been completed. Mario's balance is 885.0 USD, and Georgios' balance is 1.20.0 USD. The conversion rate was 1.15 EUR to USD.}}
 ```
 
 The last invocation is a special one that signals the supervisor believes the task has been completed, and returns as a response a summary of all the operations performed.
@@ -3168,6 +3168,37 @@ ResultWithAgenticScope<String> result = workflow.converse("hello");
 
 In this sequence, the first agent sends a message with no `contextId`/`taskId` (they are `null` in the scope). The server creates a new task and context. The response IDs are written to the scope. When the second agent runs, it reads the now-populated `contextId` and `taskId` from the scope and sends them on the message envelope, continuing the same conversation.
 
+### Multi-tenant A2A agents
+
+In a multi-tenant A2A deployment, messages must be scoped to a specific tenant so the server can apply the correct routing, isolation, and policies. The `@A2ATenantId` annotation marks a method parameter whose value is set as the `tenant` field on the outgoing `MessageSendParams` — it is **not** included as a `TextPart` in the message content.
+
+```java
+public interface MyA2AAgent {
+
+    @A2AClientAgent(a2aServerUrl = "http://localhost:8080", outputKey = "response")
+    String chat(@V("question") String question,
+                @A2AContextId String contextId,
+                @A2ATenantId String tenant);
+}
+```
+
+When `null` or an empty string is passed for `tenant`, the field is omitted from `MessageSendParams` and the server applies its default tenant resolution.
+
+`@A2ATenantId` can be combined with `@A2AContextId` and `@A2ATaskId` freely:
+
+```java
+public interface MultiTenantChatAgent {
+
+    @A2AClientAgent(a2aServerUrl = "http://localhost:8080", outputKey = "response")
+    String chat(@V("question") String question,
+                @A2AContextId @V("contextId") String contextId,
+                @A2ATaskId   @V("taskId")    String taskId,
+                @A2ATenantId                 String tenant);
+}
+```
+
+Unlike `@A2AContextId` and `@A2ATaskId`, the tenant value is never written back to the `AgenticScope` by the server — the caller is responsible for supplying it on every invocation.
+
 ### Human-in-the-loop A2A agents
 
 An A2A server can pause a task in the `input-required` or `auth-required` state. When this happens inside an agentic system, the A2A client stores a `SuspendedResponse` in the `AgenticScope`, checkpoints the workflow, and releases the calling thread. The interruption contains the task and context IDs required to continue the same remote task.
@@ -3234,6 +3265,32 @@ public interface DeclarativeA2AWithCustomizer {
     }
 }
 ```
+
+### Streaming A2A Client Listener
+
+When invoking a remote A2A agent with streaming enabled, you can use `A2AStreamingClientListener` to observe events received from the remote agent and control when the client should stop consuming the stream.
+
+This is useful when you only need to react to specific events instead of waiting for the remote task to finish. For example, you can stop listening when the remote agent requests additional input and return the message to the caller immediately.
+
+```java
+UntypedAgent creativeWriter = AgenticServices.a2aBuilder(A2A_SERVER_URL)
+        .inputKeys("topic")
+        .outputKey("story")
+        .streamingClientListener((TaskUpdateEvent event) -> {
+            UpdateEvent updateEvent = event.getUpdateEvent();
+            if (updateEvent instanceof TaskStatusUpdateEvent taskStatusUpdateEvent
+                    && taskStatusUpdateEvent.status().state() == TaskState.TASK_STATE_WORKING) {
+                return A2AStreamingClientListenerResult.stopWithResponse(
+                        "stop when status update to TASK_STATE_WORKING, and return this message to the caller");
+            }
+            return A2AStreamingClientListenerResult.continueStreaming();
+        })
+        .build();
+```
+
+The listener is invoked for each event received from the remote A2A agent. Return `continueStreaming()` to keep consuming events, `stopWithResponse(response)` to stop consuming the stream and return the specified response to the caller, or `stopWithCurrentArtifacts()` to stop consuming the stream and return the artifacts received so far, using the default A2A client artifact-to-text extraction logic.
+
+Stopping the client-side stream does not cancel the remote A2A task. The remote task may continue executing asynchronously.
 
 ### Configuring the A2A server URL dynamically
 
