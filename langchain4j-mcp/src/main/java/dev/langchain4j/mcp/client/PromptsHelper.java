@@ -29,6 +29,16 @@ class PromptsHelper {
 
     static McpGetPromptResult parsePromptContents(JsonNode mcpMessage) {
         McpErrorHelper.checkForErrors(mcpMessage);
-        return McpJson.deserialize(mcpMessage, McpGetPromptResponse.class).getResult();
+        McpGetPromptResult result =
+                McpJson.deserialize(mcpMessage, McpGetPromptResponse.class).getResult();
+        if (result == null) {
+            log.warn("Result does not contain 'result' element: {}", mcpMessage);
+            throw new IllegalResponseException("Result does not contain 'result' element");
+        }
+        if (result.messages() == null) {
+            log.warn("Result does not contain 'messages' element: {}", mcpMessage);
+            throw new IllegalResponseException("Result does not contain 'messages' element");
+        }
+        return result;
     }
 }
