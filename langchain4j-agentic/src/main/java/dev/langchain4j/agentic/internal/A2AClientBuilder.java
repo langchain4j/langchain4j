@@ -62,6 +62,16 @@ public interface A2AClientBuilder<T> {
      * Sets an {@link A2AStreamingClientListener} for observing updates received
      * from the remote agent during streaming invocation.
      *
+     * <p>Like {@code DefaultA2AClientBuilder}, which uses {@code a2a-java}, can be used
+     * with the following example:
+     * <pre>{@code
+     * streamingClientListener((TaskUpdateEvent event) -> {
+     *     // handle the streaming event
+     * });
+     * }</pre>
+     *
+     * <p>The listener is invoked with task update events received from the remote agent.
+     *
      * @param clientListener the listener to attach
      * @return this builder for method chaining
      */

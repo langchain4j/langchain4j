@@ -13,8 +13,9 @@ package dev.langchain4j.agentic.observability;
  * response immediately, while the A2A server-side task may continue executing
  * asynchronously.
  *
- * <p>Consumers should use the provided factory methods {@link #continueStreaming()}
- * and {@link #stopWithResponse(String)} to clearly express the desired behavior.
+ * <p>Consumers should use the provided factory methods {@link #continueStreaming()},
+ * {@link #stopWithResponse(String)}, and {@link #stopWithCurrentArtifacts()} to
+ * clearly express the desired behavior.
  *
  * <p>Typical usage:
  * <pre>

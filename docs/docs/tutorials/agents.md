@@ -3276,7 +3276,7 @@ This is useful when you only need to react to specific events instead of waiting
 UntypedAgent creativeWriter = AgenticServices.a2aBuilder(A2A_SERVER_URL)
         .inputKeys("topic")
         .outputKey("story")
-        .streamingClientListener((TaskUpdateEvent event) ->{
+        .streamingClientListener((TaskUpdateEvent event) -> {
             UpdateEvent updateEvent = event.getUpdateEvent();
             if (updateEvent instanceof TaskStatusUpdateEvent taskStatusUpdateEvent
                     && taskStatusUpdateEvent.status().state() == TaskState.TASK_STATE_WORKING) {
