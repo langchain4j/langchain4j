@@ -27,8 +27,10 @@ class BedrockGuardrailConfigurationTest {
 
     @Test
     void should_not_be_equal_when_guardrail_version_differs() {
-        BedrockGuardrailConfiguration first = fullyPopulated().guardrailVersion("1").build();
-        BedrockGuardrailConfiguration second = fullyPopulated().guardrailVersion("2").build();
+        BedrockGuardrailConfiguration first =
+                fullyPopulated().guardrailVersion("1").build();
+        BedrockGuardrailConfiguration second =
+                fullyPopulated().guardrailVersion("2").build();
 
         assertThat(first).isNotEqualTo(second);
     }
@@ -54,6 +56,7 @@ class BedrockGuardrailConfigurationTest {
         return BedrockGuardrailConfiguration.builder()
                 .guardrailIdentifier("guardrail")
                 .guardrailVersion("1")
-                .streamProcessingMode(ProcessingMode.SYNC);
+                .streamProcessingMode(ProcessingMode.SYNC)
+                .guardContentPlacement(BedrockGuardContentPlacement.LAST_USER_MESSAGE);
     }
 }
