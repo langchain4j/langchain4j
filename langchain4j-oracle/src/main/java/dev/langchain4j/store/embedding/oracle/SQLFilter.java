@@ -1,5 +1,6 @@
 package dev.langchain4j.store.embedding.oracle;
 
+import dev.langchain4j.Internal;
 import dev.langchain4j.store.embedding.filter.Filter;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -44,7 +45,8 @@ import java.sql.SQLException;
  * }
  * }</pre>
  */
-interface SQLFilter {
+@Internal
+public interface SQLFilter {
 
     /**
      * <p>
