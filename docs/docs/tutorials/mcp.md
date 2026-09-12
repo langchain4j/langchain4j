@@ -1,5 +1,12 @@
 # Model Context Protocol (MCP)
 
+:::note
+An MCP client can execute tools without blocking a thread via `executeToolAsync(...)`, used by the asynchronous
+and reactive AI Service modes.
+See [Non-blocking and Reactive](/tutorials/non-blocking).
+:::
+
+
 LangChain4j supports the Model Context Protocol (MCP) to communicate with
 MCP compliant servers that can provide and execute tools. General
 information about the protocol can be found at the [MCP
@@ -413,7 +420,7 @@ callback for received log messages. If you create your own implementation of
 ```java
 McpClient mcpClient = new DefaultMcpClient.Builder()
     .transport(transport)
-    .logMessageHandler(new MyLogMessageHandler())
+    .logHandler(new MyLogMessageHandler())
     .build();
 ```
 
@@ -541,6 +548,23 @@ long subId = mcpClient.subscribeToResources(List.of("file:///status", "file:///c
 // later, unsubscribe using the subscription ID
 mcpClient.unsubscribeFromResources(subId);
 ```
+
+The server has to confirm a subscription before it may send anything on it, so
+`subscribeToResources` blocks until that confirmation arrives. If the server rejects the
+subscription, declines the requested URIs, or stays silent, the call throws instead of
+returning a subscription ID that would never deliver anything. Use `resourcesTimeout` to
+control how long the client waits for the confirmation:
+
+```java
+McpClient mcpClient = DefaultMcpClient.builder()
+    .transport(transport)
+    .resourcesTimeout(Duration.ofSeconds(10))  // default: 60 seconds
+    .build();
+```
+
+Because the call blocks, do not invoke it from inside an `onResourceUpdated` callback:
+those callbacks run on the thread that reads messages from the server, which is the same
+thread that would have to deliver the confirmation.
 
 For list-change notifications (tool list, prompt list, resource list changes),
 the client subscribes automatically by default. You can control this via

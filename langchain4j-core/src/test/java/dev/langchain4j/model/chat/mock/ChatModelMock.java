@@ -20,6 +20,7 @@ import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Queue;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.function.Function;
 
@@ -66,7 +67,21 @@ public class ChatModelMock implements ChatModel {
     @Override
     public ChatResponse doChat(ChatRequest chatRequest) {
         requests.add(chatRequest);
+        return respond(chatRequest);
+    }
 
+    /**
+     * Completes off the calling thread with the same configured response as {@link #doChat(ChatRequest)}.
+     * Does not delegate to {@link #doChat(ChatRequest)}, so a Mockito spy can verify
+     * that the blocking path is never invoked.
+     */
+    @Override
+    public CompletableFuture<ChatResponse> doChatAsync(ChatRequest chatRequest) {
+        requests.add(chatRequest);
+        return CompletableFuture.supplyAsync(() -> respond(chatRequest));
+    }
+
+    private ChatResponse respond(ChatRequest chatRequest) {
         if (exception != null) {
             throw exception;
         }

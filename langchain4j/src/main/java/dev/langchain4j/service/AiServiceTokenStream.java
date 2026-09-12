@@ -21,7 +21,6 @@ import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.PartialThinkingContext;
 import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.PartialToolCallContext;
-import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.observability.api.event.AiServiceRequestIssuedEvent;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.service.tool.BeforeToolExecution;
@@ -236,7 +235,7 @@ public class AiServiceTokenStream implements TokenStream {
                 completeResponseHandler,
                 errorHandler,
                 initTemporaryMemory(context, messages),
-                new TokenUsage(),
+                null,
                 toolServiceContext,
                 context.toolService.maxToolCallingRoundTrips(),
                 toolArgumentsErrorHandler,

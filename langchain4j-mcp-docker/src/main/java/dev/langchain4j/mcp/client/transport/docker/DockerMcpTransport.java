@@ -1,8 +1,6 @@
 package dev.langchain4j.mcp.client.transport.docker;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.api.command.CreateContainerCmd;
 import com.github.dockerjava.api.command.CreateContainerResponse;
@@ -18,6 +16,7 @@ import com.github.dockerjava.httpclient5.ApacheDockerHttpClient;
 import com.github.dockerjava.transport.DockerHttpClient;
 import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.mcp.client.McpCallContext;
+import dev.langchain4j.mcp.client.transport.McpJson;
 import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import dev.langchain4j.mcp.client.transport.McpTransport;
 import dev.langchain4j.mcp.protocol.McpClientMessage;
@@ -27,6 +26,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -37,7 +37,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class DockerMcpTransport implements McpTransport {
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final Logger log = LoggerFactory.getLogger(DockerMcpTransport.class);
 
     private final String dockerHost;
@@ -169,48 +168,44 @@ public class DockerMcpTransport implements McpTransport {
     }
 
     @Override
-    public CompletableFuture<JsonNode> initialize(McpInitializeRequest operation) {
+    public CompletableFuture<String> sendInitializeRequest(McpInitializeRequest operation) {
         try {
-            String requestString = OBJECT_MAPPER.writeValueAsString(operation);
-            String initializationNotification = OBJECT_MAPPER.writeValueAsString(new McpInitializationNotification());
-            final CompletableFuture<JsonNode> execute = execute(requestString, operation.getId());
+            String requestString = McpJson.serialize(operation);
+            String initializationNotification = McpJson.serialize(new McpInitializationNotification());
+            final CompletableFuture<String> execute = execute(requestString, operation.getId());
             return execute.thenCompose(originalResponse -> {
-                final CompletableFuture<JsonNode> execute1 = execute(initializationNotification, null);
+                final CompletableFuture<String> execute1 = execute(initializationNotification, null);
                 return execute1.thenCompose(nullNode -> CompletableFuture.completedFuture(originalResponse));
             });
-        } catch (JsonProcessingException e) {
+        } catch (IllegalArgumentException e) {
             return CompletableFuture.failedFuture(e);
         }
     }
 
     @Override
-    public CompletableFuture<JsonNode> executeOperationWithResponse(McpClientMessage operation) {
-        return executeOperationWithResponse(new McpCallContext(null, operation));
+    public CompletableFuture<String> sendRequest(McpClientMessage operation) {
+        return sendRequest(new McpCallContext(null, operation));
     }
 
     @Override
-    public CompletableFuture<JsonNode> executeOperationWithResponse(McpCallContext context) {
+    public CompletableFuture<String> sendRequest(McpCallContext context) {
         try {
-            String requestString = OBJECT_MAPPER.writeValueAsString(context.message());
+            String requestString = McpJson.serialize(context.message());
             return execute(requestString, context.message().getId());
-        } catch (JsonProcessingException e) {
+        } catch (IllegalArgumentException e) {
             return CompletableFuture.failedFuture(e);
         }
     }
 
     @Override
-    public void executeOperationWithoutResponse(McpClientMessage operation) {
-        executeOperationWithoutResponse(new McpCallContext(null, operation));
+    public void sendMessage(McpClientMessage operation) {
+        sendMessage(new McpCallContext(null, operation));
     }
 
     @Override
-    public void executeOperationWithoutResponse(McpCallContext context) {
-        try {
-            String requestString = OBJECT_MAPPER.writeValueAsString(context.message());
-            execute(requestString, null);
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
-        }
+    public void sendMessage(McpCallContext context) {
+        String requestString = McpJson.serialize(context.message());
+        execute(requestString, null);
     }
 
     @Override
@@ -241,10 +236,10 @@ public class DockerMcpTransport implements McpTransport {
         dockerClient.removeContainerCmd(containerId).exec();
     }
 
-    private CompletableFuture<JsonNode> execute(String request, Long id) {
-        CompletableFuture<JsonNode> future = new CompletableFuture<>();
+    private CompletableFuture<String> execute(String request, Long id) {
+        CompletableFuture<String> future = new CompletableFuture<>();
         if (id != null) {
-            messageHandler.startOperation(id, future);
+            messageHandler.expectResponse(id, future);
         }
 
         PipedOutputStream out = null;
@@ -261,7 +256,7 @@ public class DockerMcpTransport implements McpTransport {
                     .exec(new DockerResultCallback(logEvents, logger, messageHandler));
             callback.awaitStarted(attachTimeout.toMillis(), TimeUnit.MILLISECONDS);
 
-            out.write((request + "\n").getBytes());
+            out.write((request + "\n").getBytes(StandardCharsets.UTF_8));
             out.flush();
 
             if (id != null) {
@@ -294,7 +289,7 @@ public class DockerMcpTransport implements McpTransport {
     }
 
     private void awaitResponseAndDetach(
-            DockerResultCallback callback, CompletableFuture<JsonNode> future, Closeable... toClose) {
+            DockerResultCallback callback, CompletableFuture<String> future, Closeable... toClose) {
         try {
             if (!callback.awaitCompletion(responseTimeout.toMillis(), TimeUnit.MILLISECONDS)) {
                 String message = "The MCP server in container %s did not respond within %s"
@@ -483,5 +478,55 @@ public class DockerMcpTransport implements McpTransport {
             }
             return new DockerMcpTransport(this);
         }
+    }
+
+    /**
+     * @deprecated use {@link #sendInitializeRequest(McpInitializeRequest)} instead, which does not
+     * expose Jackson types.
+     */
+    @Deprecated(since = "1.20.0", forRemoval = true)
+    @Override
+    public CompletableFuture<JsonNode> initialize(McpInitializeRequest request) {
+        return McpJson.map(sendInitializeRequest(request), McpJson::parse);
+    }
+
+    /**
+     * @deprecated use {@link #sendRequest(McpClientMessage)} instead, which does not expose Jackson
+     * types.
+     */
+    @Deprecated(since = "1.20.0", forRemoval = true)
+    @Override
+    public CompletableFuture<JsonNode> executeOperationWithResponse(McpClientMessage request) {
+        return McpJson.map(sendRequest(request), McpJson::parse);
+    }
+
+    /**
+     * @deprecated use {@link #sendRequest(McpCallContext)} instead, which does not expose Jackson
+     * types.
+     */
+    @Deprecated(since = "1.20.0", forRemoval = true)
+    @Override
+    public CompletableFuture<JsonNode> executeOperationWithResponse(McpCallContext context) {
+        return McpJson.map(sendRequest(context), McpJson::parse);
+    }
+
+    /**
+     * @deprecated use {@link #sendMessage(McpClientMessage)} instead, which does not expose Jackson
+     * types.
+     */
+    @Deprecated(since = "1.20.0", forRemoval = true)
+    @Override
+    public void executeOperationWithoutResponse(McpClientMessage request) {
+        sendMessage(request);
+    }
+
+    /**
+     * @deprecated use {@link #sendMessage(McpCallContext)} instead, which does not expose Jackson
+     * types.
+     */
+    @Deprecated(since = "1.20.0", forRemoval = true)
+    @Override
+    public void executeOperationWithoutResponse(McpCallContext context) {
+        sendMessage(context);
     }
 }

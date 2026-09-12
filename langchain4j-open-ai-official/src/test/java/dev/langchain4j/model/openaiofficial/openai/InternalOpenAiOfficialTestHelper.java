@@ -55,12 +55,14 @@ public class InternalOpenAiOfficialTestHelper {
                     .baseUrl(System.getenv("OPENAI_BASE_URL"))
                     .apiKey(System.getenv("OPENAI_API_KEY"))
                     .modelName(CHAT_MODEL_NAME)
+                    .temperature(0.0)
                     .build();
 
             OPEN_AI_CHAT_MODEL_WITH_STRICT_TOOLS = OpenAiOfficialChatModel.builder()
                     .baseUrl(System.getenv("OPENAI_BASE_URL"))
                     .apiKey(System.getenv("OPENAI_API_KEY"))
                     .modelName(CHAT_MODEL_NAME)
+                    .temperature(0.0)
                     .strictTools(true)
                     .build();
 
@@ -68,6 +70,7 @@ public class InternalOpenAiOfficialTestHelper {
                     .baseUrl(System.getenv("OPENAI_BASE_URL"))
                     .apiKey(System.getenv("OPENAI_API_KEY"))
                     .modelName(CHAT_MODEL_NAME)
+                    .temperature(0.0)
                     .supportedCapabilities(Set.of(RESPONSE_FORMAT_JSON_SCHEMA))
                     .strictJsonSchema(false)
                     .build();
@@ -76,6 +79,7 @@ public class InternalOpenAiOfficialTestHelper {
                     .baseUrl(System.getenv("OPENAI_BASE_URL"))
                     .apiKey(System.getenv("OPENAI_API_KEY"))
                     .modelName(CHAT_MODEL_NAME)
+                    .temperature(0.0)
                     .supportedCapabilities(Set.of(RESPONSE_FORMAT_JSON_SCHEMA))
                     .strictJsonSchema(true)
                     .build();
@@ -84,6 +88,7 @@ public class InternalOpenAiOfficialTestHelper {
                     .baseUrl(System.getenv("OPENAI_BASE_URL"))
                     .apiKey(System.getenv("OPENAI_API_KEY"))
                     .modelName(CHAT_MODEL_NAME)
+                    .temperature(0.0)
                     .build();
 
             OPEN_AI_EMBEDDING_MODEL = OpenAiOfficialEmbeddingModel.builder()

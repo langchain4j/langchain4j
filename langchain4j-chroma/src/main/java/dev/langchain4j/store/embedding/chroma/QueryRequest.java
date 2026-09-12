@@ -1,5 +1,6 @@
 package dev.langchain4j.store.embedding.chroma;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import dev.langchain4j.Internal;
 
 import static java.util.Arrays.asList;
@@ -31,6 +32,7 @@ class QueryRequest {
         return queryEmbeddings;
     }
 
+    @JsonProperty("n_results")
     public int getnResults() {
         return nResults;
     }

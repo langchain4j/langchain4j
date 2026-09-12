@@ -38,7 +38,7 @@ It will also work with models supporting the OpenAI API, such as DeepSeek.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai-official</artifactId>
-    <version>1.19.0-beta29</version>
+    <version>1.20.0-beta30</version>
 </dependency>
 ```
 
@@ -254,6 +254,111 @@ StreamingChatModel model = OpenAiOfficialStreamingChatModel.builder()
 
 You can also use the specific `isAzure()` and `isGitHubModels()` methods to force the usage of Azure OpenAI or GitHub Models, as detailed in the non-streaming configuration section.
 
+## Prompt Caching
+
+OpenAI caches long, repeated prompt prefixes and bills a cache read at a fraction of the input rate.
+The controls below work with both the Chat Completions API models and the Responses API models.
+
+More info on prompt caching can be found [here](https://developers.openai.com/api/docs/guides/prompt-caching).
+
+### `promptCacheKey` and `promptCacheOptions`
+
+`promptCacheKey` is an optional string that steers routing so that related requests are more likely to
+reach a machine holding the cache entry. It does not pin a request to a machine, nor guarantee a cache hit.
+
+`gpt-5.6` and later match a cached prefix exactly at a *breakpoint*, without falling back to a shorter
+unmarked prefix. `promptCacheOptions` controls where breakpoints come from:
+
+- `implicit` - OpenAI places a breakpoint at the end of the newest eligible message.
+- `explicit` - only the breakpoints you set are used. Without any breakpoint, nothing is cached.
+
+For the Responses API models both are available on the model builder:
+
+```java
+OpenAiOfficialResponsesChatModel model = OpenAiOfficialResponsesChatModel.builder()
+        .apiKey(System.getenv("OPENAI_API_KEY"))
+        .modelName("gpt-5.6")
+        .promptCacheKey("satisfaction_judge_v1")
+        .promptCacheOptions(OpenAiOfficialPromptCacheOptions.builder()
+                .mode(OpenAiOfficialPromptCacheOptions.MODE_EXPLICIT)
+                .ttl(OpenAiOfficialPromptCacheOptions.TTL_30M)
+                .build())
+        .build();
+```
+
+For the Chat Completions API models they are set through `OpenAiOfficialChatRequestParameters`, either as
+model defaults or per request:
+
+```java
+OpenAiOfficialChatModel model = OpenAiOfficialChatModel.builder()
+        .apiKey(System.getenv("OPENAI_API_KEY"))
+        .modelName("gpt-5.6")
+        .defaultRequestParameters(OpenAiOfficialChatRequestParameters.builder()
+                .promptCacheKey("satisfaction_judge_v1")
+                .promptCacheOptions(OpenAiOfficialPromptCacheOptions.explicit())
+                .build())
+        .build();
+```
+
+`OpenAiOfficialPromptCacheOptions.implicit()` and `OpenAiOfficialPromptCacheOptions.explicit()` are
+shorthands for options that only set the mode.
+
+`promptCacheOptions.ttl` supersedes `promptCacheRetention`, which applies to models older than `gpt-5.6`.
+OpenAI rejects a request that carries both.
+
+### `promptCacheBreakpoint`
+
+`SystemMessage`, `UserMessage` and `ToolExecutionResultMessage` can each be marked as a prompt cache
+breakpoint. Because prompt caching is prefix-based, the breakpoint is applied to the **last content
+block** of the marked message, so that everything up to and including that message forms the cached
+prefix.
+
+`OpenAiOfficialPromptCacheBreakpoint.mark()` returns a marked copy of the message, leaving the original
+untouched:
+
+```java
+SystemMessage systemMessage = OpenAiOfficialPromptCacheBreakpoint.mark(SystemMessage.from(SHARED_INSTRUCTIONS));
+
+UserMessage userMessage = OpenAiOfficialPromptCacheBreakpoint.mark(UserMessage.from(LONG_DOCUMENT));
+
+ToolExecutionResultMessage toolResult = OpenAiOfficialPromptCacheBreakpoint.mark(someToolExecutionResultMessage);
+```
+
+Marking is really just an attribute on the message, so it can also be done by hand — for example when
+you are already building the message anyway:
+
+```java
+SystemMessage systemMessage = SystemMessage.builder()
+        .text(SHARED_INSTRUCTIONS)
+        .attributes(Map.of(OpenAiOfficialPromptCacheBreakpoint.ATTRIBUTE_KEY,
+                           OpenAiOfficialPromptCacheBreakpoint.MODE_EXPLICIT))
+        .build();
+```
+
+Marking a message makes LangChain4j send that message's content as a list of content blocks, since the
+plain string form cannot carry a breakpoint.
+
+`AiMessage` cannot carry a breakpoint: assistant output blocks are not among the block types OpenAI
+accepts one on. Marking an `AiMessage`, or using any mode other than `explicit`, fails fast instead of
+producing an HTTP 400.
+
+Each request supports up to four cache writes, one of which is consumed by the `implicit` mode.
+
+### Reading cache token counts
+
+`OpenAiOfficialTokenUsage.InputTokensDetails` reports how many input tokens were read from and written to
+the prompt cache:
+
+```java
+OpenAiOfficialTokenUsage tokenUsage = (OpenAiOfficialTokenUsage) chatResponse.tokenUsage();
+
+tokenUsage.inputTokensDetails().cachedTokens();      // tokens read from the cache
+tokenUsage.inputTokensDetails().cacheWriteTokens();  // tokens written to the cache
+```
+
+`cacheWriteTokens()` returns `null` when the model provider did not report it, which is distinct from a
+reported zero.
+
 ## OpenAI Responses API
 
 :::note
@@ -297,8 +402,9 @@ StreamingChatModel model = OpenAiOfficialResponsesStreamingChatModel.builder()
 
 `OpenAiOfficialResponsesChatRequestParameters` extends `DefaultChatRequestParameters` with Responses API-specific fields:
 `previousResponseId`, `maxToolCalls`, `parallelToolCalls`, `topLogprobs`, `truncation`, `include`,
-`serviceTier`, `safetyIdentifier`, `promptCacheKey`, `promptCacheRetention`, `reasoningEffort`,
-`reasoningSummary`, `textVerbosity`, `streamIncludeObfuscation`, `store`, `strictTools`, `strictJsonSchema`.
+`serviceTier`, `safetyIdentifier`, `promptCacheKey`, `promptCacheRetention`, `promptCacheOptions`,
+`reasoningEffort`, `reasoningSummary`, `textVerbosity`, `streamIncludeObfuscation`, `store`, `strictTools`,
+`strictJsonSchema`.
 
 These parameters can be configured as defaults when creating the model (via `defaultRequestParameters` on the builder),
 or passed per-request via `ChatRequest` (per-request parameters override the defaults):
@@ -412,9 +518,71 @@ OpenAiOfficialResponsesChatResponseMetadata metadata =
 
 metadata.id();               // Response ID (can be used as previousResponseId)
 metadata.modelName();        // Model name used for the request
-metadata.finishReason();     // Finish reason (STOP, LENGTH, TOOL_EXECUTION, OTHER)
+metadata.finishReason();     // Finish reason (STOP, LENGTH, TOOL_EXECUTION, CONTENT_FILTER, OTHER)
 metadata.tokenUsage();       // Returns OpenAiOfficialTokenUsage with detailed token counts
 metadata.createdAt();        // Timestamp when the response was created
 metadata.completedAt();      // Timestamp when the response was completed
 metadata.serviceTier();      // Service tier used for the request
+```
+
+## Batch Processing
+
+`OpenAiOfficialBatchChatModel` implements the core `BatchChatModel` interface to process many chat requests
+asynchronously via the [OpenAI Batch API](https://platform.openai.com/docs/guides/batch), at 50% of the
+standard per-token price. See [Batch Processing](/tutorials/batch-processing) for how batching works in
+LangChain4j.
+
+Requests are written to a JSONL file, uploaded through the Files API with the `batch` purpose, and run
+against the `/v1/chat/completions` endpoint. All requests in a batch must resolve to the same model. Results
+preserve submission order, so the i-th result corresponds to the i-th request, whether it succeeded
+or failed.
+
+```java
+OpenAiOfficialBatchChatModel batchModel = OpenAiOfficialBatchChatModel.builder()
+        .apiKey(System.getenv("OPENAI_API_KEY"))
+        .modelName("gpt-4o-mini")
+        .build();
+
+BatchResponse<ChatResponse> submitted = batchModel.submit(new BatchRequest<>(List.of(
+        ChatRequest.builder().messages(UserMessage.from("What is the capital of France?")).build(),
+        ChatRequest.builder().messages(UserMessage.from("What is the capital of Germany?")).build())));
+
+String batchId = submitted.batchId();
+
+// Poll until the batch reaches a terminal state (SUCCEEDED, FAILED, CANCELLED, EXPIRED).
+BatchResponse<ChatResponse> batch = batchModel.retrieve(batchId);
+while (!batch.state().isTerminal()) {
+    Thread.sleep(Duration.ofSeconds(30).toMillis());
+    batch = batchModel.retrieve(batchId);
+}
+
+for (BatchItemResult<ChatResponse> result : batch.results()) {
+    if (result.isSuccess()) {
+        System.out.println(result.response().aiMessage().text());
+    } else {
+        System.out.println("Failed: " + result.error().message());
+    }
+}
+```
+
+A running batch can be cancelled, and existing batches can be listed with pagination:
+```java
+batchModel.cancel(batchId);
+
+BatchPage<ChatResponse> page = batchModel.list(new BatchPagination(20, null));
+```
+
+Azure OpenAI is supported as well, where the model is identified by its batch deployment name, as is any
+OpenAI-compatible endpoint that implements the Files and Batch APIs.
+
+Batch-specific options can be set on the builder:
+```java
+OpenAiOfficialBatchChatModel batchModel = OpenAiOfficialBatchChatModel.builder()
+        .apiKey(System.getenv("OPENAI_API_KEY"))
+        .modelName("gpt-4o-mini")
+        .completionWindow("24h")                          // defaults to 24h
+        .batchMetadata(Map.of("owner", "nightly-job"))    // attached to the batch itself
+        .inputFileExpiresAfter(Duration.ofDays(14))
+        .outputExpiresAfter(Duration.ofDays(7))
+        .build();
 ```
