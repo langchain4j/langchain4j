@@ -208,6 +208,55 @@ class LanguageModelQueryRouterTest {
     }
 
     @Test
+    void should_route_when_LLM_adds_explanation_after_choices() {
+
+        // given
+        Query query = Query.from("Do Labradors shed?");
+
+        Map<ContentRetriever, String> retrieverToDescription = new LinkedHashMap<>();
+        retrieverToDescription.put(catArticlesRetriever, "articles about cats");
+        retrieverToDescription.put(dogArticlesRetriever, "articles about dogs");
+
+        ChatModelMock model = ChatModelMock.thatAlwaysResponds("""
+                2
+                Explanation: Retriever 2 is the best match for this query.
+                """);
+
+        QueryRouter router = LanguageModelQueryRouter.builder()
+                .chatModel(model)
+                .retrieverToDescription(retrieverToDescription)
+                .fallbackStrategy(FAIL)
+                .build();
+
+        // when
+        Collection<ContentRetriever> retrievers = router.route(query);
+
+        // then
+        assertThat(retrievers).containsExactly(dogArticlesRetriever);
+    }
+
+    @Test
+    void should_not_route_when_LLM_returns_prose_containing_a_number() {
+
+        // given
+        Query query = Query.from("Do Labradors shed?");
+
+        Map<ContentRetriever, String> retrieverToDescription = new LinkedHashMap<>();
+        retrieverToDescription.put(catArticlesRetriever, "articles about cats");
+        retrieverToDescription.put(dogArticlesRetriever, "articles about dogs");
+
+        ChatModelMock model = ChatModelMock.thatAlwaysResponds("I cannot choose between the 2 sources");
+
+        QueryRouter router = new LanguageModelQueryRouter(model, retrieverToDescription);
+
+        // when
+        Collection<ContentRetriever> retrievers = router.route(query);
+
+        // then
+        assertThat(retrievers).isEmpty();
+    }
+
+    @Test
     void should_route_to_multiple_retrievers_with_custom_prompt_template() {
 
         // given
