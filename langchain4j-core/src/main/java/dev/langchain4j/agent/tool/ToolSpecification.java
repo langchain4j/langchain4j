@@ -83,8 +83,8 @@ public class ToolSpecification {
      * When {@code false}, strict enforcement is explicitly disabled for this tool.
      * When {@code null} (default), the model-level strict setting is used.
      * <p>
-     * NOTE: Currently, per-tool strict is supported by the {@code langchain4j-anthropic}
-     * and {@code langchain4j-open-ai} modules.
+     * NOTE: Currently, per-tool strict is supported by the {@code langchain4j-anthropic},
+     * {@code langchain4j-bedrock}, and {@code langchain4j-open-ai} modules.
      *
      * @return {@code true} to enable strict enforcement, {@code false} to disable, or {@code null} to use the model default.
      */

@@ -244,6 +244,26 @@ class BedrockChatRequestParametersTest {
     }
 
     @Test
+    void should_build_with_strict_tools() {
+        // Given & When
+        BedrockChatRequestParameters params =
+                BedrockChatRequestParameters.builder().strictTools(true).build();
+
+        // Then
+        assertThat(params.strictTools()).isTrue();
+    }
+
+    @Test
+    void should_build_without_strict_tools() {
+        // Given & When
+        BedrockChatRequestParameters params =
+                BedrockChatRequestParameters.builder().temperature(0.7).build();
+
+        // Then
+        assertThat(params.strictTools()).isNull();
+    }
+
+    @Test
     void should_set_different_service_tiers() {
         // Test PRIORITY
         BedrockChatRequestParameters paramsPriority = BedrockChatRequestParameters.builder()
@@ -293,6 +313,27 @@ class BedrockChatRequestParametersTest {
         // Then
         assertThat(merged.temperature()).isEqualTo(0.8);
         assertThat(merged.serviceTier()).isEqualTo(BedrockServiceTier.PRIORITY);
+    }
+
+    @Test
+    void should_override_with_strict_tools_parameters() {
+        // Given
+        BedrockChatRequestParameters original = BedrockChatRequestParameters.builder()
+                .temperature(0.5)
+                .strictTools(true)
+                .build();
+
+        BedrockChatRequestParameters override = BedrockChatRequestParameters.builder()
+                .temperature(0.8)
+                .strictTools(false)
+                .build();
+
+        // When
+        BedrockChatRequestParameters merged = original.overrideWith(override);
+
+        // Then
+        assertThat(merged.temperature()).isEqualTo(0.8);
+        assertThat(merged.strictTools()).isFalse();
     }
 
     @Test
@@ -429,6 +470,16 @@ class BedrockChatRequestParametersTest {
     }
 
     @Test
+    void should_not_be_equal_when_strict_tools_differs() {
+        BedrockChatRequestParameters first =
+                BedrockChatRequestParameters.builder().strictTools(true).build();
+        BedrockChatRequestParameters second =
+                BedrockChatRequestParameters.builder().strictTools(false).build();
+
+        assertThat(first).isNotEqualTo(second);
+    }
+
+    @Test
     void should_not_be_equal_when_request_metadata_differs() {
         BedrockChatRequestParameters first = BedrockChatRequestParameters.builder()
                 .requestMetadata(Map.of("team", "platform"))
@@ -460,6 +511,7 @@ class BedrockChatRequestParametersTest {
                 .contains("cacheTtl=")
                 .contains("bedrockGuardrailConfiguration=")
                 .contains("serviceTier=DEFAULT")
+                .contains("strictTools=true")
                 .contains("requestMetadata=[REDACTED]")
                 .doesNotContain("platform");
     }
@@ -472,6 +524,7 @@ class BedrockChatRequestParametersTest {
                 .promptCaching(BedrockCachePointPlacement.AFTER_SYSTEM, CacheTTL.VALUE_5_M)
                 .guardrailConfiguration(guardrail())
                 .serviceTier(BedrockServiceTier.DEFAULT)
+                .strictTools(true)
                 .requestMetadata(Map.of("team", "platform"));
     }
 
