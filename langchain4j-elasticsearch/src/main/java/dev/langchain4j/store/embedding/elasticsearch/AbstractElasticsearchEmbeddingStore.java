@@ -261,6 +261,11 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
         removeByIds(ids);
     }
 
+    /**
+     * Refreshes the target index before matching the filter, including completed writes in the deletion.
+     * This adds a refresh request and requires the index's {@code maintenance} privilege.
+     * Concurrent writes are not isolated, and deletion visibility in searches still follows index refreshes.
+     */
     @Override
     public void removeAll(Filter filter) {
         ensureNotNull(filter, "filter");
@@ -361,6 +366,11 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
 
     private void removeByQuery(Query query) {
         try {
+            // Delete-by-query uses a search snapshot; a refresh after deletion cannot include pending writes.
+            var refreshResponse = client.indices().refresh(refresh -> refresh.index(indexName));
+            if (refreshResponse.shards().failed().intValue() > 0) {
+                throw new ElasticsearchRequestFailedException("Failed to refresh all shards before deletion");
+            }
             DeleteByQueryResponse response =
                     client.deleteByQuery(delete -> delete.index(indexName).query(query));
             if (!response.failures().isEmpty()) {
