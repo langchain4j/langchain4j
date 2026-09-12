@@ -31,6 +31,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.output.FinishReason;
 import java.io.IOException;
 import java.time.Duration;
@@ -297,6 +298,74 @@ class InternalAzureOpenAiHelperTest {
                 .contains("url")
                 .doesNotContain("data:image")
                 .doesNotContain("base64");
+    }
+
+    @Test
+    void toOpenAiMessages_shouldNotIncludeImageDetailLevelByDefault() {
+        // Given
+        String imageUrl = "https://example.com/image.png";
+        ImageContent imageContent = ImageContent.from(imageUrl, ImageContent.DetailLevel.HIGH);
+        UserMessage userMessage = UserMessage.from("Describe this image", imageContent);
+        List<ChatMessage> messages = List.of(userMessage);
+
+        // When
+        List<ChatRequestMessage> openAiMessages = InternalAzureOpenAiHelper.toOpenAiMessages(messages);
+
+        // Then
+        ChatRequestUserMessage requestMessage = (ChatRequestUserMessage) openAiMessages.get(0);
+        String contentJson = requestMessage.getContent().toString();
+
+        assertThat(contentJson).contains(imageUrl).doesNotContain("\"detail\"");
+    }
+
+    @Test
+    void toOpenAiMessages_shouldIgnoreUnsupportedImageDetailLevelByDefault() {
+        // Given
+        String imageUrl = "https://example.com/image.png";
+        ImageContent imageContent = ImageContent.from(imageUrl, ImageContent.DetailLevel.MEDIUM);
+        UserMessage userMessage = UserMessage.from("Describe this image", imageContent);
+        List<ChatMessage> messages = List.of(userMessage);
+
+        // When
+        List<ChatRequestMessage> openAiMessages = InternalAzureOpenAiHelper.toOpenAiMessages(messages);
+
+        // Then
+        ChatRequestUserMessage requestMessage = (ChatRequestUserMessage) openAiMessages.get(0);
+        String contentJson = requestMessage.getContent().toString();
+
+        assertThat(contentJson).contains(imageUrl).doesNotContain("\"detail\"");
+    }
+
+    @Test
+    void toOpenAiMessages_shouldIncludeImageDetailLevelWhenEnabled() {
+        // Given
+        String imageUrl = "https://example.com/image.png";
+        ImageContent imageContent = ImageContent.from(imageUrl, ImageContent.DetailLevel.HIGH);
+        UserMessage userMessage = UserMessage.from("Describe this image", imageContent);
+        List<ChatMessage> messages = List.of(userMessage);
+
+        // When
+        List<ChatRequestMessage> openAiMessages = InternalAzureOpenAiHelper.toOpenAiMessages(messages, true);
+
+        // Then
+        ChatRequestUserMessage requestMessage = (ChatRequestUserMessage) openAiMessages.get(0);
+        String contentJson = requestMessage.getContent().toString();
+
+        assertThat(contentJson).contains(imageUrl).contains("\"detail\":\"high\"");
+    }
+
+    @Test
+    void toOpenAiMessages_shouldThrowForUnsupportedImageDetailLevelWhenEnabled() {
+        // Given
+        String imageUrl = "https://example.com/image.png";
+        ImageContent imageContent = ImageContent.from(imageUrl, ImageContent.DetailLevel.MEDIUM);
+        UserMessage userMessage = UserMessage.from("Describe this image", imageContent);
+        List<ChatMessage> messages = List.of(userMessage);
+
+        // When/Then
+        assertThatThrownBy(() -> InternalAzureOpenAiHelper.toOpenAiMessages(messages, true))
+                .isInstanceOf(UnsupportedFeatureException.class)
+                .hasMessageContaining("Unsupported detail level: MEDIUM");
     }
 
     @Test
