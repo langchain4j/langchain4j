@@ -14,6 +14,8 @@ feature allows you to store your embeddings in MongoDB documents, create
 vector search indexes, and perform KNN search with an approximate
 nearest neighbor algorithm called Hierarchical Navigable Small Worlds.
 The MongoDB integration with LangChain4j implements Atlas Vector Search
+internally by using the
+[`$vectorSearch`](https://www.mongodb.com/docs/vector-search/query/aggregation-stages/vector-search-stage/?deployment-type=atlas&embedding=auto&interface=driver&language=nodejs#mongodb-pipeline-pipe.-vectorSearch)
 aggregation stage.
 
 You can use Atlas Vector Search with LangChain4j to perform semantic
