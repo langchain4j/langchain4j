@@ -11,6 +11,7 @@ import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.BulkIndexByScrollFailure;
 import co.elastic.clients.elasticsearch._types.ElasticsearchException;
 import co.elastic.clients.elasticsearch._types.ErrorCause;
+import co.elastic.clients.elasticsearch._types.Refresh;
 import co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import co.elastic.clients.elasticsearch.core.BulkRequest;
 import co.elastic.clients.elasticsearch.core.BulkResponse;
@@ -56,6 +57,7 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
     protected ElasticsearchConfiguration configuration;
     protected ElasticsearchClient client;
     protected String indexName;
+    protected Refresh refresh = Refresh.False;
 
     /**
      * Initialize using a RestClient
@@ -309,7 +311,7 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
             throws IOException {
         int size = ids.size();
         log.debug("calling bulkIndex with [{}] elements", size);
-        BulkRequest.Builder bulkBuilder = new BulkRequest.Builder();
+        BulkRequest.Builder bulkBuilder = new BulkRequest.Builder().refresh(refresh);
         for (int i = 0; i < size; i++) {
             int finalI = i;
             Document document = Document.builder()
@@ -329,7 +331,7 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
     private void bulkIndexText(List<String> ids, List<TextSegment> embedded) throws IOException {
         int size = ids.size();
         log.debug("calling bulkIndex with [{}] elements", size);
-        BulkRequest.Builder bulkBuilder = new BulkRequest.Builder();
+        BulkRequest.Builder bulkBuilder = new BulkRequest.Builder().refresh(refresh);
         for (int i = 0; i < size; i++) {
             int finalI = i;
             Document document = Document.builder()

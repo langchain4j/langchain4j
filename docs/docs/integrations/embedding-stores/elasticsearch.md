@@ -58,6 +58,7 @@ It comes with the following options:
 
 * `indexName`: the name of the Elasticsearch index to use. Default is `default`.
 * `configuration`: the `ElasticsearchConfiguration` to use. Default is `ElasticsearchConfigurationKnn`.
+* `refresh`: the refresh policy for vector and text writes. Default is `Refresh.False`.
 
 The previous code is equivalent to:
 
@@ -68,6 +69,29 @@ ElasticsearchEmbeddingStore store = ElasticsearchEmbeddingStore.builder()
     .indexName("default")
     .build();
 ```
+
+### Write refresh policy
+
+Elasticsearch writes are not necessarily visible to search when the write request returns. To wait for the written
+documents to become searchable, configure `Refresh.WaitFor`:
+
+```java
+import co.elastic.clients.elasticsearch._types.Refresh;
+
+ElasticsearchEmbeddingStore store = ElasticsearchEmbeddingStore.builder()
+    .client(client)
+    .refresh(Refresh.WaitFor)
+    .build();
+```
+
+`Refresh.False` preserves the default behavior and does not wait for search visibility. `Refresh.True` forces a refresh
+after writing, which can reduce indexing throughput. `Refresh.WaitFor` waits for a refresh; if automatic refreshing is
+disabled, another operation must trigger a refresh for the write to return.
+
+This option applies to both vector and text writes, including bulk writes. It does not change search or removal
+operations and does not isolate writes from concurrent changes. See the
+[Elasticsearch refresh parameter documentation](https://www.elastic.co/docs/reference/elasticsearch/rest-apis/refresh-parameter)
+for details.
 
 ### Storing documents without an embedding
 
