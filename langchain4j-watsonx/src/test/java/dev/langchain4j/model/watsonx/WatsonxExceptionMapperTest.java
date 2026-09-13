@@ -15,6 +15,7 @@ import dev.langchain4j.exception.RateLimitException;
 import dev.langchain4j.exception.TimeoutException;
 import java.net.http.HttpTimeoutException;
 import java.util.List;
+import java.util.Locale;
 import org.junit.jupiter.api.Test;
 
 public class WatsonxExceptionMapperTest {
@@ -90,6 +91,23 @@ public class WatsonxExceptionMapperTest {
         assertUnknownErrorCode(408, TimeoutException.class, "request timeout");
         assertUnknownErrorCode(429, RateLimitException.class, "too many requests");
         assertUnknownErrorCode(503, InternalServerException.class, "service unavailable");
+    }
+
+    @Test
+    void testErrorCodeMappingIsLocaleIndependent() {
+        Locale originalLocale = Locale.getDefault();
+        try {
+            // Under the Turkish locale, 'i'.toUpperCase() is 'İ', so a locale-sensitive
+            // conversion would fail to resolve the error code enum.
+            Locale.setDefault(Locale.forLanguageTag("tr"));
+
+            var details = createWatsonxError(Code.INVALID_INPUT_ARGUMENT, 500, "invalid input argument");
+            var ex = mapper.mapException(new WatsonxException(Code.INVALID_INPUT_ARGUMENT.value(), 500, details));
+            assertInstanceOf(InvalidRequestException.class, ex);
+            assertEquals("invalid input argument", ex.getMessage());
+        } finally {
+            Locale.setDefault(originalLocale);
+        }
     }
 
     private void assertUnknownErrorCode(int statusCode, Class<? extends Exception> expectedClass, String message) {

@@ -3,6 +3,7 @@ package dev.langchain4j.model.googleai;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
+import java.util.Locale;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -52,5 +53,25 @@ class GeminiWireFormatTest {
         assertThat(json)
                 .contains("\"category\":\"HARM_CATEGORY_HARASSMENT\"")
                 .contains("\"threshold\":\"BLOCK_ONLY_HIGH\"");
+    }
+
+    @Test
+    void should_write_enum_values_locale_independently() {
+        Locale originalLocale = Locale.getDefault();
+        try {
+            // Under the Turkish locale, 'i'.toLowerCase() is 'ı', which would corrupt
+            // the wire format (e.g. "type":"ınteger") sent to the Gemini API.
+            Locale.setDefault(Locale.forLanguageTag("tr"));
+
+            assertThat(GeminiType.INTEGER.toString()).isEqualTo("integer");
+            assertThat(GeminiType.OBJECT.toString()).isEqualTo("object");
+            assertThat(GeminiRole.USER.toString()).isEqualTo("user");
+            assertThat(GeminiContent.GeminiPart.GeminiExecutableCode.GeminiLanguage.PYTHON.toString())
+                    .isEqualTo("python");
+            assertThat(GeminiContent.GeminiPart.GeminiCodeExecutionResult.GeminiOutcome.OUTCOME_OK.toString())
+                    .isEqualTo("outcome_ok");
+        } finally {
+            Locale.setDefault(originalLocale);
+        }
     }
 }
