@@ -17,6 +17,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.net.HttpURLConnection;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -329,7 +330,7 @@ public class Utils {
      * Reads the content as bytes from the given URL as a GET request for HTTP/HTTPS resources,
      * and from files stored on the local filesystem.
      *
-     * @param url The URL to read from.
+     * @param url The URL or path to read from.
      * @return The content as bytes.
      * @throws RuntimeException if the request fails.
      */
@@ -369,8 +370,13 @@ public class Utils {
                     throw new RuntimeException("Error while reading: " + responseCode);
                 }
             } else {
-                // Handle files
-                return Files.readAllBytes(Path.of(new URI(url)));
+                // Handle files: either a URI (e.g. file:/tmp/cat.jpg) or a plain filesystem path (e.g. /tmp/cat.jpg)
+                try {
+                    return Files.readAllBytes(Path.of(new URI(url)));
+                } catch (URISyntaxException | IllegalArgumentException e) {
+                    // Not a URI, treat it as a plain filesystem path
+                    return Files.readAllBytes(Path.of(url));
+                }
             }
         } catch (Exception e) {
             throw new RuntimeException(e);
