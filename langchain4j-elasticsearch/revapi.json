@@ -8,6 +8,11 @@
           "code": "java.class.externalClassExposedInAPI",
           "new": "missing-class dev.langchain4j.store.embedding.EmbeddingMatch",
           "justification": "AbstractElasticsearchEmbeddingStore.fullTextSearchMatches() returns EmbeddingMatch, the same core type already returned by search() and hybridSearch() via EmbeddingSearchResult"
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class co.elastic.clients.elasticsearch._types.Refresh",
+          "justification": "Elasticsearch SDK enum intentionally exposed by Builder.refresh(Refresh) and the constructor to configure bulk write refresh behavior. The integration already depends on the Elasticsearch SDK; existing constructor signatures and the default Refresh.False behavior are preserved."
         }
       ]
     }
