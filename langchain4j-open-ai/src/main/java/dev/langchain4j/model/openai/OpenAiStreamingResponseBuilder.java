@@ -1,5 +1,6 @@
 package dev.langchain4j.model.openai;
 
+import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.finishReasonFrom;
@@ -10,6 +11,7 @@ import static java.util.stream.Collectors.toList;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.exception.ContentFilteredException;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -59,6 +61,7 @@ public class OpenAiStreamingResponseBuilder {
     private final AtomicReference<String> model = new AtomicReference<>();
     private final AtomicReference<String> serviceTier = new AtomicReference<>();
     private final AtomicReference<String> systemFingerprint = new AtomicReference<>();
+    private final AtomicReference<String> refusal = new AtomicReference<>();
     private final AtomicReference<TokenUsage> tokenUsage = new AtomicReference<>();
     private final AtomicReference<FinishReason> finishReason = new AtomicReference<>();
     private final AtomicReference<SuccessfulHttpResponse> rawHttpResponse = new AtomicReference<>();
@@ -155,6 +158,10 @@ public class OpenAiStreamingResponseBuilder {
             this.contentBuilder.append(content);
         }
 
+        if (!isNullOrBlank(delta.refusal())) {
+            this.refusal.set(delta.refusal());
+        }
+
         String reasoningContent = delta.reasoningContent();
         if (returnThinking && !isNullOrEmpty(reasoningContent)) {
             this.reasoningContentBuilder.append(reasoningContent);
@@ -246,7 +253,22 @@ public class OpenAiStreamingResponseBuilder {
         }
     }
 
+    /**
+     * Returns the refusal text accumulated from the streamed chunks, or {@code null} if the model did not refuse.
+     */
+    public String refusal() {
+        return refusal.get();
+    }
+
+    /**
+     * @throws ContentFilteredException if the model refused to answer (consistent with the non-streaming behavior)
+     */
     public ChatResponse build() {
+        String refusal = this.refusal.get();
+        if (isNotNullOrBlank(refusal)) {
+            throw new ContentFilteredException(refusal);
+        }
+
         return ChatResponse.builder()
                 .aiMessage(buildAiMessage())
                 .metadata(buildMetadata())
