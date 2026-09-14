@@ -15,7 +15,7 @@ vector search indexes, and perform KNN search with an approximate
 nearest neighbor algorithm called Hierarchical Navigable Small Worlds.
 The MongoDB integration with LangChain4j implements Atlas Vector Search
 internally by using the
-[`$vectorSearch`](https://www.mongodb.com/docs/atlas/atlas-vector-search/vector-search-stage/#mongodb-pipeline-pipe.-vectorSearch)
+[`$vectorSearch`](https://www.mongodb.com/docs/vector-search/query/aggregation-stages/vector-search-stage/?deployment-type=atlas&embedding=auto&interface=driver&language=nodejs#mongodb-pipeline-pipe.-vectorSearch)
 aggregation stage.
 
 You can use Atlas Vector Search with LangChain4j to perform semantic
@@ -29,7 +29,7 @@ tutorial in the MongoDB Atlas documentation.
 You must have a deployment running the following MongoDB Server versions
 to use Atlas Vector Search:
 
--   6.0.11 or later
+        <artifactId>langchain4j-mongodb</artifactId>
 -   7.0.2 or later
 
 MongoDB offers a free forever cluster. See the [Get Started with
@@ -52,7 +52,7 @@ functionality, such as [OpenAI](https://openai.com/api/) or models from
 ```xml
 <dependency>
     <groupId>dev.langchain4j</groupId>
-    <artifactId>langchain4j-mongodb-atlas</artifactId>
+        <artifactId>langchain4j-mongodb</artifactId>
 </dependency>
 <dependency>
     <groupId>org.mongodb</groupId>
@@ -78,7 +78,7 @@ We also recommend adding the LangChain4j BOM:
     <dependency>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-bom</artifactId>
-        <version>1.20.0-beta30</version>
+        <version>1.19.0-beta29</version>
         <type>pom</type>
     </dependency>
 </dependencyManagement>
