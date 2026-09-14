@@ -60,6 +60,9 @@ public class JacksonChatMessageJsonCodec implements ChatMessageJsonCodec {
 
     @Override
     public ChatMessage messageFromJson(String json) {
+        if (json == null || json.isBlank()) {
+            throw new IllegalArgumentException("JSON string is null or blank");
+        }
         try {
             return OBJECT_MAPPER.readValue(json, ChatMessage.class);
         } catch (JsonProcessingException e) {
