@@ -313,8 +313,9 @@ class OAuth2ClientCredentialsAuthProviderTest {
     }
 
     @Test
-    void builder_requires_endpoint_and_credentials() {
+    void builder_requires_credentials_and_rejects_a_blank_endpoint() {
         assertThatThrownBy(() -> OAuth2ClientCredentialsAuthProvider.builder()
+                        .tokenEndpoint(" ")
                         .clientId("id")
                         .clientSecret("secret")
                         .build())

@@ -136,6 +136,29 @@ McpTransport transport = StreamableHttpMcpTransport.builder()
         .build();
 ```
 
+The token endpoint does not have to be configured. Without one, the provider follows the discovery
+flow of the [MCP authorization specification](https://modelcontextprotocol.io/specification/latest/basic/authorization/authorization-server-discovery):
+the first request is sent without credentials, the server answers `401` with a `WWW-Authenticate`
+challenge, and the provider fetches the server's protected resource metadata (RFC 9728) from the
+`resource_metadata` URL of the challenge (or from the well-known URIs derived from the server URL),
+then the metadata of the authorization server it names (RFC 8414 or OpenID Connect Discovery, trying
+the well-known URIs in the order the specification prescribes). The token endpoint, the `resource`
+indicator and, unless configured, the scopes (from the challenge, else from `scopes_supported`) and
+the client authentication method come from what was discovered. Metadata is validated as the
+specification requires: the resource metadata must describe the MCP server it was fetched for, the
+authorization server metadata must declare the issuer it was fetched for, and authorization servers
+must be served over HTTPS (loopback addresses excepted, for development).
+
+```java
+McpAuthProvider auth = OAuth2ClientCredentialsAuthProvider.builder()
+        .clientId("my-agent")
+        .clientSecret(System.getenv("MCP_CLIENT_SECRET"))
+        .build(); // token endpoint, resource and scopes are discovered from the MCP server
+```
+
+`McpAuthorizationDiscovery` can also be used on its own, for example by a custom provider that
+implements another grant.
+
 Implement `McpAuthProvider` yourself to plug in another token source, for example an
 authorization-code flow or a framework's OAuth2 client. The `McpAuthChallenge` passed to
 `onChallenge` exposes the `WWW-Authenticate` parameters of the rejection (`resource_metadata`,
