@@ -1,5 +1,6 @@
 package dev.langchain4j.store.embedding.elasticsearch;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.randomUUID;
 import static dev.langchain4j.internal.ValidationUtils.ensureConsistentSizes;
@@ -57,7 +58,7 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
     protected ElasticsearchConfiguration configuration;
     protected ElasticsearchClient client;
     protected String indexName;
-    protected Refresh refresh = Refresh.False;
+    protected Refresh refresh;
 
     /**
      * Initialize using a RestClient
@@ -70,6 +71,23 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
      */
     @Deprecated(forRemoval = true)
     protected void initialize(ElasticsearchConfiguration configuration, RestClient restClient, String indexName) {
+        initialize(configuration, restClient, indexName, null);
+    }
+
+    /**
+     * Initialize using a RestClient
+     *
+     * @param configuration         Elasticsearch configuration to use (Knn, Script, FullText or Hybrid)
+     * @param restClient            Elasticsearch Rest Client (mandatory)
+     * @param indexName             Elasticsearch index name (optional). Default value: "default".
+     *                              Index will be created automatically if not exists.
+     * @param refresh               Refresh policy to apply to writes (optional).
+     *                              Default value: {@link Refresh#False}.
+     * @deprecated Use now {@link #initialize(ElasticsearchConfiguration, ElasticsearchClient, String, Refresh)}
+     */
+    @Deprecated(forRemoval = true)
+    protected void initialize(
+            ElasticsearchConfiguration configuration, RestClient restClient, String indexName, Refresh refresh) {
         JsonpMapper mapper = new JacksonJsonpMapper();
         ElasticsearchTransport transport = new RestClientTransport(restClient, mapper);
 
@@ -78,6 +96,7 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
         this.client = new ElasticsearchClient(transport)
                 .withTransportOptions(t -> t.addHeader("user-agent", "langchain4j elastic-java/" + version));
         this.indexName = ensureNotNull(indexName, "indexName");
+        this.refresh = getOrDefault(refresh, Refresh.False);
     }
 
     /**
@@ -89,11 +108,27 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
      *                              Index will be created automatically if not exists.
      */
     protected void initialize(ElasticsearchConfiguration configuration, ElasticsearchClient client, String indexName) {
+        initialize(configuration, client, indexName, null);
+    }
+
+    /**
+     * Initialize using an ElasticsearchClient
+     *
+     * @param configuration         Elasticsearch configuration to use (Knn or Script)
+     * @param client                Elasticsearch Client (mandatory)
+     * @param indexName             Elasticsearch index name (optional). Default value: "default".
+     *                              Index will be created automatically if not exists.
+     * @param refresh               Refresh policy to apply to writes (optional).
+     *                              Default value: {@link Refresh#False}.
+     */
+    protected void initialize(
+            ElasticsearchConfiguration configuration, ElasticsearchClient client, String indexName, Refresh refresh) {
         this.configuration = configuration;
         String version = Version.VERSION == null ? "Unknown" : Version.VERSION.toString();
         this.client =
                 client.withTransportOptions(t -> t.addHeader("user-agent", "langchain4j elastic-java/" + version));
         this.indexName = ensureNotNull(indexName, "indexName");
+        this.refresh = getOrDefault(refresh, Refresh.False);
     }
 
     @Override
@@ -384,7 +419,7 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
     }
 
     private void bulkRemove(Collection<String> ids) throws IOException {
-        BulkRequest.Builder bulkBuilder = new BulkRequest.Builder();
+        BulkRequest.Builder bulkBuilder = new BulkRequest.Builder().refresh(refresh);
         for (String id : ids) {
             bulkBuilder.operations(op -> op.delete(dlt -> dlt.index(indexName).id(id)));
         }

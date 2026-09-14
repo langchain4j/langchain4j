@@ -65,9 +65,7 @@ class ElasticsearchEmbeddingStoreRefreshIT {
 
     @Test
     void should_leave_search_visibility_to_index_refreshes_by_default() throws IOException {
-        HELPER.client
-                .indices()
-                .putSettings(p -> p.index(indexName).settings(s -> s.refreshInterval(t -> t.time("-1"))));
+        disableAutomaticRefresh();
         ElasticsearchEmbeddingStore store = ElasticsearchEmbeddingStore.builder()
                 .client(HELPER.client)
                 .indexName(indexName)
@@ -83,6 +81,28 @@ class ElasticsearchEmbeddingStoreRefreshIT {
 
         HELPER.refreshIndex(indexName);
         assertThat(HELPER.client.count(c -> c.index(indexName)).count()).isEqualTo(2);
+    }
+
+    @Test
+    void should_make_removal_by_id_searchable_before_returning() throws IOException {
+        disableAutomaticRefresh();
+        ElasticsearchEmbeddingStore store = ElasticsearchEmbeddingStore.builder()
+                .client(HELPER.client)
+                .indexName(indexName)
+                .refresh(Refresh.True)
+                .build();
+        writeDocuments(store);
+        assertThat(HELPER.client.count(c -> c.index(indexName)).count()).isEqualTo(2);
+
+        store.removeAll(List.of("vector", "text"));
+
+        assertThat(HELPER.client.count(c -> c.index(indexName)).count()).isZero();
+    }
+
+    private void disableAutomaticRefresh() throws IOException {
+        HELPER.client
+                .indices()
+                .putSettings(p -> p.index(indexName).settings(s -> s.refreshInterval(t -> t.time("-1"))));
     }
 
     private static void writeDocuments(ElasticsearchEmbeddingStore store) {

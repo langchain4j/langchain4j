@@ -12,7 +12,7 @@
         {
           "code": "java.class.externalClassExposedInAPI",
           "new": "missing-class co.elastic.clients.elasticsearch._types.Refresh",
-          "justification": "Elasticsearch SDK enum intentionally exposed by Builder.refresh(Refresh) and the constructor to configure bulk write refresh behavior. The integration already depends on the Elasticsearch SDK; existing constructor signatures and the default Refresh.False behavior are preserved."
+          "justification": "Elasticsearch SDK enum intentionally exposed by Builder.refresh(Refresh) on ElasticsearchEmbeddingStore and ElasticsearchContentRetriever, and by the protected initialize() overloads. The integration already exposes Elasticsearch SDK types (e.g. ElasticsearchClient) in its public API; this matches langchain4j-milvus-v2 exposing io.milvus.v2.common.ConsistencyLevel for the same purpose. All existing constructor signatures and the default Refresh.False behaviour are preserved."
         }
       ]
     }

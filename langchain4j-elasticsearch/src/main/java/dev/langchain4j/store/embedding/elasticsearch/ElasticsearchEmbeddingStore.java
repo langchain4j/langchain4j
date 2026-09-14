@@ -82,7 +82,7 @@ public class ElasticsearchEmbeddingStore extends AbstractElasticsearchEmbeddingS
             String userName,
             String password,
             String indexName) {
-        this(configuration, serverUrl, apiKey, userName, password, indexName, Refresh.False);
+        this(configuration, serverUrl, apiKey, userName, password, indexName, (Refresh) null);
     }
 
     private ElasticsearchEmbeddingStore(
@@ -93,8 +93,6 @@ public class ElasticsearchEmbeddingStore extends AbstractElasticsearchEmbeddingS
             String password,
             String indexName,
             Refresh refresh) {
-        this.refresh = ensureNotNull(refresh, "refresh");
-
         RestClientBuilder restClientBuilder =
                 RestClient.builder(HttpHost.create(ensureNotNull(serverUrl, "serverUrl")));
 
@@ -109,7 +107,7 @@ public class ElasticsearchEmbeddingStore extends AbstractElasticsearchEmbeddingS
             restClientBuilder.setDefaultHeaders(new Header[] {new BasicHeader("Authorization", "Apikey " + apiKey)});
         }
 
-        this.initialize(configuration, restClientBuilder.build(), ensureNotNull(indexName, "indexName"));
+        this.initialize(configuration, restClientBuilder.build(), ensureNotNull(indexName, "indexName"), refresh);
     }
 
     /**
@@ -124,13 +122,12 @@ public class ElasticsearchEmbeddingStore extends AbstractElasticsearchEmbeddingS
     @Deprecated(forRemoval = true)
     public ElasticsearchEmbeddingStore(
             ElasticsearchConfiguration configuration, RestClient restClient, String indexName) {
-        this(configuration, restClient, indexName, Refresh.False);
+        this.initialize(configuration, restClient, indexName);
     }
 
     private ElasticsearchEmbeddingStore(
             ElasticsearchConfiguration configuration, RestClient restClient, String indexName, Refresh refresh) {
-        this.initialize(configuration, restClient, indexName);
-        this.refresh = ensureNotNull(refresh, "refresh");
+        this.initialize(configuration, restClient, indexName, refresh);
     }
 
     /**
@@ -143,21 +140,12 @@ public class ElasticsearchEmbeddingStore extends AbstractElasticsearchEmbeddingS
      */
     public ElasticsearchEmbeddingStore(
             ElasticsearchConfiguration configuration, ElasticsearchClient client, String indexName) {
-        this(configuration, client, indexName, Refresh.False);
+        this.initialize(configuration, client, indexName);
     }
 
-    /**
-     * Creates an embedding store with a refresh policy for vector and text writes.
-     *
-     * @param configuration Elasticsearch configuration to use
-     * @param client Elasticsearch client
-     * @param indexName target index name
-     * @param refresh write refresh policy, as described in {@link Builder#refresh(Refresh)}
-     */
-    public ElasticsearchEmbeddingStore(
+    private ElasticsearchEmbeddingStore(
             ElasticsearchConfiguration configuration, ElasticsearchClient client, String indexName, Refresh refresh) {
-        this.initialize(configuration, client, indexName);
-        this.refresh = ensureNotNull(refresh, "refresh");
+        this.initialize(configuration, client, indexName, refresh);
     }
 
     public static Builder builder() {
@@ -173,7 +161,7 @@ public class ElasticsearchEmbeddingStore extends AbstractElasticsearchEmbeddingS
         private ElasticsearchClient client;
         private RestClient restClient;
         private String indexName = "default";
-        private Refresh refresh = Refresh.False;
+        private Refresh refresh;
         private ElasticsearchConfiguration configuration =
                 ElasticsearchConfigurationKnn.builder().build();
 
@@ -252,15 +240,16 @@ public class ElasticsearchEmbeddingStore extends AbstractElasticsearchEmbeddingS
         }
 
         /**
-         * Controls when vector and text writes become visible to search. Does not affect removal operations.
+         * Controls when documents written or removed by ID become visible to search.
+         * Searches and filtered removal are not affected.
          *
          * @param refresh {@link Refresh#False} (default) leaves refreshing to Elasticsearch,
-         *                {@link Refresh#True} refreshes immediately after writing, and
-         *                {@link Refresh#WaitFor} waits for a refresh before returning from the write.
+         *                {@link Refresh#True} refreshes immediately after the request, and
+         *                {@link Refresh#WaitFor} waits for a refresh before the request returns.
          * @return builder
          */
         public Builder refresh(Refresh refresh) {
-            this.refresh = ensureNotNull(refresh, "refresh");
+            this.refresh = refresh;
             return this;
         }
 

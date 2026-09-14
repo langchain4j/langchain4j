@@ -1,7 +1,6 @@
 package dev.langchain4j.store.embedding.elasticsearch;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.RETURNS_SELF;
 import static org.mockito.Mockito.mock;
@@ -15,6 +14,7 @@ import co.elastic.clients.elasticsearch._types.Refresh;
 import co.elastic.clients.elasticsearch.core.BulkRequest;
 import co.elastic.clients.elasticsearch.core.BulkResponse;
 import dev.langchain4j.data.embedding.Embedding;
+import dev.langchain4j.rag.content.retriever.elasticsearch.ElasticsearchContentRetriever;
 import java.io.IOException;
 import java.util.List;
 import org.apache.http.HttpHost;
@@ -44,18 +44,6 @@ class ElasticsearchEmbeddingStoreRefreshTest {
                 .indexName("refresh-test")
                 .refresh(refresh)
                 .build();
-
-        writeVectorsAndText(store);
-
-        assertWriteRequests(client, refresh);
-    }
-
-    @ParameterizedTest
-    @EnumSource(Refresh.class)
-    void should_apply_refresh_with_constructor(Refresh refresh) throws IOException {
-        ElasticsearchClient client = mockClient();
-        ElasticsearchEmbeddingStore store = new ElasticsearchEmbeddingStore(
-                ElasticsearchConfigurationKnn.builder().build(), client, "refresh-test", refresh);
 
         writeVectorsAndText(store);
 
@@ -114,19 +102,20 @@ class ElasticsearchEmbeddingStoreRefreshTest {
         }
     }
 
-    @Test
-    void should_not_apply_write_refresh_to_deletions() throws IOException {
+    @ParameterizedTest
+    @EnumSource(Refresh.class)
+    void should_apply_refresh_to_removal_by_id(Refresh refresh) throws IOException {
         ElasticsearchClient client = mockClient();
         ElasticsearchEmbeddingStore store = ElasticsearchEmbeddingStore.builder()
                 .client(client)
-                .refresh(Refresh.WaitFor)
+                .refresh(refresh)
                 .build();
 
         store.removeAll(List.of("old-chunk"));
 
         ArgumentCaptor<BulkRequest> request = ArgumentCaptor.forClass(BulkRequest.class);
         verify(client).bulk(request.capture());
-        assertThat(request.getValue().refresh()).isNull();
+        assertThat(request.getValue().refresh()).isEqualTo(refresh);
         assertThat(request.getValue().operations()).singleElement().satisfies(operation -> {
             assertThat(operation.isDelete()).isTrue();
             assertThat(operation.delete().id()).isEqualTo("old-chunk");
@@ -134,19 +123,32 @@ class ElasticsearchEmbeddingStoreRefreshTest {
     }
 
     @Test
-    void should_reject_null_refresh() {
-        assertThatThrownBy(() -> ElasticsearchEmbeddingStore.builder().refresh(null))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("refresh");
+    void should_fall_back_to_default_when_refresh_is_null() throws IOException {
+        ElasticsearchClient client = mockClient();
+        ElasticsearchEmbeddingStore store = ElasticsearchEmbeddingStore.builder()
+                .client(client)
+                .indexName("refresh-test")
+                .refresh(null)
+                .build();
+
+        writeVectorsAndText(store);
+
+        assertWriteRequests(client, Refresh.False);
     }
 
-    @Test
-    void should_reject_null_refresh_in_constructor() throws IOException {
+    @ParameterizedTest
+    @EnumSource(Refresh.class)
+    void should_apply_refresh_to_content_retriever_writes(Refresh refresh) throws IOException {
         ElasticsearchClient client = mockClient();
-        assertThatThrownBy(() -> new ElasticsearchEmbeddingStore(
-                        ElasticsearchConfigurationKnn.builder().build(), client, "refresh-test", null))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("refresh");
+        ElasticsearchContentRetriever retriever = ElasticsearchContentRetriever.builder()
+                .client(client)
+                .indexName("refresh-test")
+                .refresh(refresh)
+                .build();
+
+        writeVectorsAndText(retriever);
+
+        assertWriteRequests(client, refresh);
     }
 
     private static ElasticsearchClient mockClient() throws IOException {
@@ -169,7 +171,7 @@ class ElasticsearchEmbeddingStoreRefreshTest {
         return restClient;
     }
 
-    private static void writeVectorsAndText(ElasticsearchEmbeddingStore store) {
+    private static void writeVectorsAndText(AbstractElasticsearchEmbeddingStore store) {
         store.addAll(List.of(Embedding.from(new float[] {1, 0}), Embedding.from(new float[] {0, 1})));
         store.addAllText(List.of("first chunk", "second chunk"));
     }
