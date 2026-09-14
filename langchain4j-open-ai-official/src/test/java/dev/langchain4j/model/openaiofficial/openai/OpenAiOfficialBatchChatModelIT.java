@@ -31,7 +31,13 @@ class OpenAiOfficialBatchChatModelIT {
     // test would otherwise leave one behind for good. Two days outlives the 24h completion window.
     private static final Duration INPUT_FILE_RETENTION = Duration.ofDays(2);
 
+    // Unlike the other tests here, this one ignores OPENAI_BASE_URL and always talks to OpenAI directly:
+    // submitting a batch first uploads its input through the Files API, and a base URL that only forwards
+    // /chat/completions answers that upload with a 404.
+    private static final String OPENAI_DIRECT_BASE_URL = "https://api.openai.com/v1";
+
     private final OpenAiOfficialBatchChatModel model = OpenAiOfficialBatchChatModel.builder()
+            .baseUrl(OPENAI_DIRECT_BASE_URL)
             .apiKey(System.getenv("OPENAI_API_KEY"))
             .modelName(InternalOpenAiOfficialTestHelper.CHAT_MODEL_NAME)
             .maxCompletionTokens(20)
