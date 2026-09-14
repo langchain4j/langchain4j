@@ -1,0 +1,11 @@
+-Xms20g
+-Xmx20g
+-Djdk.module.showModuleResolution=false
+-Dtornado.tvm.maxbytecodesize=65536
+-Duse.tornadovm=true
+-Dtornado.device.memory=7GB
+-Dtornado.enable.fastMathOptimizations=true
+-Dtornado.enable.mathOptimizations=false
+-Dtornado.enable.nativeFunctions=fast
+-Dtornado.loop.interchange=true
+-Dtornado.eventpool.maxwaitevents=32000

@@ -3,14 +3,20 @@ package dev.langchain4j.model.gpullama3;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static java.util.Objects.requireNonNull;
 
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.internal.ChatRequestValidationUtils;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.output.FinishReason;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+import org.beehive.gpullama3.model.format.ToolCallExtract;
 
 /**
  * GPULlama3 implementation of the langchain4j StreamingChatModel interface.
@@ -57,6 +63,11 @@ public class GPULlama3StreamingChatModel extends GPULlama3BaseModel implements S
         ChatRequestValidationUtils.validate(parameters.responseFormat());
 
         try {
+            if (!chatRequest.toolSpecifications().isEmpty()) {
+                completeToolAwareChat(chatRequest, handler);
+                return;
+            }
+
             // Create streaming parser using the utility class
             GPULlama3ResponseParser.StreamingParser parser =
                     GPULlama3ResponseParser.createStreamingParser(handler, getModel());
@@ -78,6 +89,43 @@ public class GPULlama3StreamingChatModel extends GPULlama3BaseModel implements S
         } catch (Exception e) {
             handler.onError(e);
         }
+    }
+
+    private void completeToolAwareChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
+        String rawResponse = modelResponse(chatRequest, null);
+        List<ToolCallExtract> toolCalls = chatFormat.extractAllToolCalls(rawResponse);
+
+        if (!toolCalls.isEmpty()) {
+            List<ToolExecutionRequest> toolExecutionRequests = new ArrayList<>();
+            for (int index = 0; index < toolCalls.size(); index++) {
+                ToolCallExtract toolCall = toolCalls.get(index);
+                ToolExecutionRequest request = ToolExecutionRequest.builder()
+                        .id(toolCall.id().orElseGet(GPULlama3StreamingChatModel::generateCallId))
+                        .name(toolCall.name())
+                        .arguments(normalizeJson(toolCall.argumentsJson()))
+                        .build();
+                toolExecutionRequests.add(request);
+                handler.onCompleteToolCall(new CompleteToolCall(index, request));
+            }
+
+            handler.onCompleteResponse(ChatResponse.builder()
+                    .aiMessage(AiMessage.builder()
+                            .toolExecutionRequests(toolExecutionRequests)
+                            .build())
+                    .finishReason(FinishReason.TOOL_EXECUTION)
+                    .build());
+            return;
+        }
+
+        GPULlama3ResponseParser.ParsedResponse parsed = GPULlama3ResponseParser.parseResponse(rawResponse);
+        String text = parsed.getActualResponse();
+        text.codePoints().mapToObj(Character::toString).forEach(handler::onPartialResponse);
+        handler.onCompleteResponse(ChatResponse.builder()
+                .aiMessage(AiMessage.builder()
+                        .text(text)
+                        .thinking(parsed.getThinkingContent())
+                        .build())
+                .build());
     }
 
     public static class Builder {
