@@ -370,17 +370,23 @@ public class Utils {
                     throw new RuntimeException("Error while reading: " + responseCode);
                 }
             } else {
-                // Handle files: either a URI (e.g. file:/tmp/cat.jpg) or a plain filesystem path (e.g. /tmp/cat.jpg)
-                try {
-                    return Files.readAllBytes(Path.of(new URI(url)));
-                } catch (URISyntaxException | IllegalArgumentException e) {
-                    // Not a URI, treat it as a plain filesystem path
-                    return Files.readAllBytes(Path.of(url));
-                }
+                // Handle files
+                return Files.readAllBytes(toPath(url));
             }
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private static Path toPath(String url) {
+        try {
+            URI uri = new URI(url);
+            if (uri.isAbsolute()) {
+                return Path.of(uri);
+            }
+        } catch (URISyntaxException ignored) {
+        }
+        return Path.of(url);
     }
 
     private static InputStream decompress(InputStream inputStream, String contentEncoding) throws IOException {

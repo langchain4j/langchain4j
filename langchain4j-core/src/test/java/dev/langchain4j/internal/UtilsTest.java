@@ -29,6 +29,7 @@ import java.lang.reflect.Proxy;
 import java.net.HttpURLConnection;
 import java.net.InetSocketAddress;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -341,6 +342,27 @@ class UtilsTest {
 
         // a file:// URI keeps working
         assertThat(Utils.readBytes(file.toUri().toString())).isEqualTo("meow".getBytes());
+
+        // a plain filesystem path that is not a valid URI
+        Path fileWithSpace = tempDir.resolve("my cat.jpg");
+        Files.write(fileWithSpace, "purr".getBytes());
+        assertThat(Utils.readBytes(fileWithSpace.toString())).isEqualTo("purr".getBytes());
+    }
+
+    @Test
+    void read_bytes_from_local_file_system_should_fail(@TempDir Path tempDir) throws IOException {
+        Path missingFile = tempDir.resolve("missing.jpg");
+        assertThatThrownBy(() -> Utils.readBytes(missingFile.toString()))
+                .isExactlyInstanceOf(RuntimeException.class)
+                .hasCauseExactlyInstanceOf(NoSuchFileException.class);
+
+        // a malformed file URI is reported as such, not retried as a plain path
+        Path file = tempDir.resolve("cat.jpg");
+        Files.write(file, "meow".getBytes());
+        assertThatThrownBy(() -> Utils.readBytes(file.toUri() + "#fragment"))
+                .isExactlyInstanceOf(RuntimeException.class)
+                .hasCauseExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("URI has a fragment component");
     }
 
     @Test
@@ -673,8 +695,7 @@ class UtilsTest {
         Method interfaceMethod = MyInterface.class.getDeclaredMethod("myMethod");
 
         assertThat(getAnnotatedMethod(implementationMethod, MyAnnotation.class)).contains(interfaceMethod);
-        assertThat(getAnnotatedMethod(implementationMethod, AnotherAnnotation.class))
-                .isEmpty();
+        assertThat(getAnnotatedMethod(implementationMethod, AnotherAnnotation.class)).isEmpty();
     }
 
     @Test
