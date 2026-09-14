@@ -89,6 +89,7 @@ public class AzureOpenAiChatModel implements ChatModel {
     private final Boolean strictJsonSchema;
     private final Integer maxCompletionTokens;
     private final ReasoningEffortValue reasoningEffort;
+    private final boolean honorImageDetailLevel;
 
     private final List<ChatModelListener> listeners;
     private final Set<Capability> supportedCapabilities;
@@ -169,6 +170,7 @@ public class AzureOpenAiChatModel implements ChatModel {
         this.strictJsonSchema = getOrDefault(builder.strictJsonSchema, false);
         this.maxCompletionTokens = builder.maxCompletionTokens;
         this.reasoningEffort = builder.reasoningEffort;
+        this.honorImageDetailLevel = getOrDefault(builder.honorImageDetailLevel, false);
 
         this.listeners = copy(builder.listeners);
         this.supportedCapabilities = copy(builder.supportedCapabilities);
@@ -189,7 +191,8 @@ public class AzureOpenAiChatModel implements ChatModel {
         ChatRequestParameters parameters = request.parameters();
         validate(parameters);
 
-        ChatCompletionsOptions options = new ChatCompletionsOptions(toOpenAiMessages(request.messages()))
+        ChatCompletionsOptions options = new ChatCompletionsOptions(
+                        toOpenAiMessages(request.messages(), honorImageDetailLevel))
                 .setModel(parameters.modelName())
                 .setTemperature(parameters.temperature())
                 .setTopP(parameters.topP())
@@ -296,6 +299,7 @@ public class AzureOpenAiChatModel implements ChatModel {
         private Map<String, String> customHeaders;
         private Set<Capability> supportedCapabilities;
         private ReasoningEffortValue reasoningEffort;
+        private Boolean honorImageDetailLevel;
 
         public Builder defaultRequestParameters(ChatRequestParameters parameters) {
             this.defaultRequestParameters = parameters;
@@ -513,6 +517,17 @@ public class AzureOpenAiChatModel implements ChatModel {
 
         public Builder reasoningEffort(ReasoningEffortValue reasoningEffort) {
             this.reasoningEffort = reasoningEffort;
+            return this;
+        }
+
+        /**
+         * Whether to pass image detail levels to Azure OpenAI. Disabled by default to preserve existing behavior.
+         *
+         * @param honorImageDetailLevel whether to honor image detail levels
+         * @return builder
+         */
+        public Builder honorImageDetailLevel(Boolean honorImageDetailLevel) {
+            this.honorImageDetailLevel = honorImageDetailLevel;
             return this;
         }
 
