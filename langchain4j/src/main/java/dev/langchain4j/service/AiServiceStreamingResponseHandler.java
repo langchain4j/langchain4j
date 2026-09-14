@@ -376,48 +376,49 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
         } else {
             ChatResponse finalChatResponse = finalResponse(chatResponse, aiMessage);
 
-            if (completeResponseHandler != null) {
-                // Invoke output guardrails
-                if (hasOutputGuardrails) {
-                    if (commonGuardrailParams != null) {
-                        var newCommonParams = commonGuardrailParams.toBuilder()
-                                .chatMemory(getMemory())
-                                .build();
+            // Output guardrails must run, and the buffered partial responses must be
+            // replayed, whether or not the caller registered a complete-response handler:
+            // onCompleteResponse is optional (validateConfiguration only rejects registering
+            // it more than once), while onPartialResponse buffers unconditionally once
+            // guardrails are active.
+            if (hasOutputGuardrails) {
+                if (commonGuardrailParams != null) {
+                    var newCommonParams = commonGuardrailParams.toBuilder()
+                            .chatMemory(getMemory())
+                            .build();
 
-                        var outputGuardrailParams = OutputGuardrailRequest.builder()
-                                .responseFromLLM(finalChatResponse)
-                                .chatExecutor(ToolAwareRepromptExecutor.wrap(
-                                        chatExecutor,
-                                        context,
-                                        invocationContext.chatMemoryId(),
-                                        chatRequest.parameters(),
-                                        invocationContext,
-                                        toolServiceContext,
-                                        this::executeSynchronously))
-                                .requestParams(newCommonParams)
-                                .build();
+                    var outputGuardrailParams = OutputGuardrailRequest.builder()
+                            .responseFromLLM(finalChatResponse)
+                            .chatExecutor(ToolAwareRepromptExecutor.wrap(
+                                    chatExecutor,
+                                    context,
+                                    invocationContext.chatMemoryId(),
+                                    chatRequest.parameters(),
+                                    invocationContext,
+                                    toolServiceContext,
+                                    this::executeSynchronously))
+                            .requestParams(newCommonParams)
+                            .build();
 
-                        finalChatResponse =
-                                context.guardrailService().executeGuardrails(methodKey, outputGuardrailParams);
-                    }
-
-                    // If we have output guardrails, we should process all of the partial responses first before
-                    // completing
-                    if (partialResponseHandler != null) {
-                        responseBuffer.forEach(partialResponseHandler::accept);
-                    } else if (partialResponseWithContextHandler != null) {
-                        PartialResponseContext partialResponseContext =
-                                new PartialResponseContext(new CancellationUnsupportedStreamingHandle());
-                        responseBuffer.forEach(s -> partialResponseWithContextHandler.accept(
-                                new PartialResponse(s), partialResponseContext));
-                    }
-                    responseBuffer.clear();
+                    finalChatResponse = context.guardrailService().executeGuardrails(methodKey, outputGuardrailParams);
                 }
 
-                fireInvocationComplete(finalChatResponse);
+                // If we have output guardrails, we should process all of the partial responses first before
+                // completing
+                if (partialResponseHandler != null) {
+                    responseBuffer.forEach(partialResponseHandler::accept);
+                } else if (partialResponseWithContextHandler != null) {
+                    PartialResponseContext partialResponseContext =
+                            new PartialResponseContext(new CancellationUnsupportedStreamingHandle());
+                    responseBuffer.forEach(s ->
+                            partialResponseWithContextHandler.accept(new PartialResponse(s), partialResponseContext));
+                }
+                responseBuffer.clear();
+            }
+
+            fireInvocationComplete(finalChatResponse);
+            if (completeResponseHandler != null) {
                 completeResponseHandler.accept(finalChatResponse);
-            } else {
-                fireInvocationComplete(finalChatResponse);
             }
         }
     }
