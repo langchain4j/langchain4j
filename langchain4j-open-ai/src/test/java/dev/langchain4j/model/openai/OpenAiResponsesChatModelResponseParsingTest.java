@@ -39,13 +39,13 @@ class OpenAiResponsesChatModelResponseParsingTest {
                 .modelName("gpt-5.6")
                 .build();
 
-        return model.chat(ChatRequest.builder().messages(UserMessage.from("Hello")).build());
+        return model.chat(
+                ChatRequest.builder().messages(UserMessage.from("Hello")).build());
     }
 
     @Test
     void should_surface_only_the_final_answer_message_item() {
-        ChatResponse response = chatWith(
-                """
+        ChatResponse response = chatWith("""
                 [
                   {
                     "id": "msg_1",
@@ -70,8 +70,7 @@ class OpenAiResponsesChatModelResponseParsingTest {
 
     @Test
     void should_concatenate_message_items_when_they_carry_no_phase() {
-        ChatResponse response = chatWith(
-                """
+        ChatResponse response = chatWith("""
                 [
                   {
                     "id": "msg_1",

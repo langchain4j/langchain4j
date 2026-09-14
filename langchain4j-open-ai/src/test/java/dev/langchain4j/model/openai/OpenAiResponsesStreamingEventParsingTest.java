@@ -109,15 +109,21 @@ class OpenAiResponsesStreamingEventParsingTest {
         ChatResponse response = chatWith(
                 event(
                         "{\"type\":\"response.output_item.added\",\"output_index\":0,\"item\":{\"type\":\"function_call\",\"id\":\"fc_1\",\"call_id\":\"call_1\",\"name\":\"getWeather\"}}"),
-                event("{\"type\":\"response.function_call_arguments.delta\",\"item_id\":\"fc_1\",\"delta\":\"{\\\"city\\\":\"}"),
-                event("{\"type\":\"response.function_call_arguments.delta\",\"item_id\":\"fc_1\",\"delta\":\"\\\"Munich\\\"}\"}"),
+                event(
+                        "{\"type\":\"response.function_call_arguments.delta\",\"item_id\":\"fc_1\",\"delta\":\"{\\\"city\\\":\"}"),
+                event(
+                        "{\"type\":\"response.function_call_arguments.delta\",\"item_id\":\"fc_1\",\"delta\":\"\\\"Munich\\\"}\"}"),
                 event(
                         "{\"type\":\"response.function_call_arguments.done\",\"item_id\":\"fc_1\",\"arguments\":\"{\\\"city\\\":\\\"Munich\\\"}\"}"),
                 event(
                         "{\"type\":\"response.completed\",\"response\":{\"id\":\"resp_1\",\"model\":\"gpt-5.4-mini\",\"status\":\"completed\",\"output\":[]}}"));
 
         assertThat(partialToolCalls)
-                .extracting(PartialToolCall::index, PartialToolCall::id, PartialToolCall::name, PartialToolCall::partialArguments)
+                .extracting(
+                        PartialToolCall::index,
+                        PartialToolCall::id,
+                        PartialToolCall::name,
+                        PartialToolCall::partialArguments)
                 .containsExactly(
                         org.assertj.core.groups.Tuple.tuple(0, "call_1", "getWeather", "{\"city\":"),
                         org.assertj.core.groups.Tuple.tuple(0, "call_1", "getWeather", "\"Munich\"}"));
@@ -127,7 +133,9 @@ class OpenAiResponsesStreamingEventParsingTest {
                 .name("getWeather")
                 .arguments("{\"city\":\"Munich\"}")
                 .build();
-        assertThat(completeToolCalls).extracting(CompleteToolCall::toolExecutionRequest).containsExactly(expected);
+        assertThat(completeToolCalls)
+                .extracting(CompleteToolCall::toolExecutionRequest)
+                .containsExactly(expected);
         assertThat(response.aiMessage().toolExecutionRequests()).containsExactly(expected);
         assertThat(response.metadata().finishReason()).isEqualTo(FinishReason.TOOL_EXECUTION);
     }
@@ -151,9 +159,7 @@ class OpenAiResponsesStreamingEventParsingTest {
 
     @Test
     void should_read_the_metadata_of_the_completed_event() throws Exception {
-        ChatResponse response = chatWith(
-                event(
-                        """
+        ChatResponse response = chatWith(event("""
                         {"type":"response.completed","response":{
                           "id":"resp_1",
                           "model":"gpt-5.4-mini",
@@ -190,8 +196,9 @@ class OpenAiResponsesStreamingEventParsingTest {
 
     @Test
     void should_fail_with_the_error_message_of_the_failed_event() {
-        stream(event(
-                "{\"type\":\"response.failed\",\"response\":{\"id\":\"resp_1\",\"error\":{\"code\":\"server_error\",\"message\":\"Something went wrong\"}}}"));
+        stream(
+                event(
+                        "{\"type\":\"response.failed\",\"response\":{\"id\":\"resp_1\",\"error\":{\"code\":\"server_error\",\"message\":\"Something went wrong\"}}}"));
 
         assertThatThrownBy(() -> futureResponse.get(5, TimeUnit.SECONDS))
                 .isInstanceOf(ExecutionException.class)
@@ -209,15 +216,14 @@ class OpenAiResponsesStreamingEventParsingTest {
 
     @Test
     void should_ignore_events_that_do_not_belong_to_a_known_tool_call() throws Exception {
-        ChatResponse response = chatWith(
-                Stream.of(
-                                "{\"type\":\"response.output_item.added\",\"output_index\":0,\"item\":{\"type\":\"reasoning\",\"id\":\"rs_1\"}}",
-                                "{\"type\":\"response.function_call_arguments.delta\",\"item_id\":\"unknown\",\"delta\":\"{}\"}",
-                                "{\"type\":\"response.function_call_arguments.done\",\"item_id\":\"unknown\",\"arguments\":\"{}\"}",
-                                "{\"type\":\"response.output_item.done\",\"output_index\":0,\"item\":{\"type\":\"message\",\"id\":\"msg_1\"}}",
-                                "{\"type\":\"response.completed\",\"response\":{\"id\":\"resp_1\",\"model\":\"gpt-5.4-mini\",\"status\":\"completed\",\"output\":[]}}")
-                        .map(OpenAiResponsesStreamingEventParsingTest::event)
-                        .toArray(ServerSentEvent[]::new));
+        ChatResponse response = chatWith(Stream.of(
+                        "{\"type\":\"response.output_item.added\",\"output_index\":0,\"item\":{\"type\":\"reasoning\",\"id\":\"rs_1\"}}",
+                        "{\"type\":\"response.function_call_arguments.delta\",\"item_id\":\"unknown\",\"delta\":\"{}\"}",
+                        "{\"type\":\"response.function_call_arguments.done\",\"item_id\":\"unknown\",\"arguments\":\"{}\"}",
+                        "{\"type\":\"response.output_item.done\",\"output_index\":0,\"item\":{\"type\":\"message\",\"id\":\"msg_1\"}}",
+                        "{\"type\":\"response.completed\",\"response\":{\"id\":\"resp_1\",\"model\":\"gpt-5.4-mini\",\"status\":\"completed\",\"output\":[]}}")
+                .map(OpenAiResponsesStreamingEventParsingTest::event)
+                .toArray(ServerSentEvent[]::new));
 
         assertThat(partialToolCalls).isEmpty();
         assertThat(completeToolCalls).isEmpty();
@@ -228,22 +234,19 @@ class OpenAiResponsesStreamingEventParsingTest {
     void should_surface_only_the_final_answer_message_item() throws Exception {
         // reasoning models can emit a commentary message item whose text repeats
         // or precedes the final answer; concatenating both duplicates the reply
-        ChatResponse response = chatWith(event(
-                """
+        ChatResponse response = chatWith(event("""
                 {"type":"response.completed","response":{"id":"resp_1","model":"gpt-5.6","status":"completed","output":[
                   {"id":"msg_1","type":"message","phase":"commentary","role":"assistant","status":"completed",
                    "content":[{"type":"output_text","text":"Just to confirm, you'd like to make a payment of $40."}]},
                   {"id":"msg_2","type":"message","phase":"final_answer","role":"assistant","status":"completed",
                    "content":[{"type":"output_text","text":"Just to confirm, you'd like to make a payment of $40."}]}]}}"""));
 
-        assertThat(response.aiMessage().text())
-                .isEqualTo("Just to confirm, you'd like to make a payment of $40.");
+        assertThat(response.aiMessage().text()).isEqualTo("Just to confirm, you'd like to make a payment of $40.");
     }
 
     @Test
     void should_fall_back_to_commentary_text_when_no_final_answer_item_exists() throws Exception {
-        ChatResponse response = chatWith(event(
-                """
+        ChatResponse response = chatWith(event("""
                 {"type":"response.completed","response":{"id":"resp_1","model":"gpt-5.6","status":"completed","output":[
                   {"id":"msg_1","type":"message","phase":"commentary","role":"assistant","status":"completed",
                    "content":[{"type":"output_text","text":"Preamble only"}]}]}}"""));
@@ -253,8 +256,7 @@ class OpenAiResponsesStreamingEventParsingTest {
 
     @Test
     void should_concatenate_message_items_when_they_carry_no_phase() throws Exception {
-        ChatResponse response = chatWith(event(
-                """
+        ChatResponse response = chatWith(event("""
                 {"type":"response.completed","response":{"id":"resp_1","model":"gpt-5.4-mini","status":"completed","output":[
                   {"id":"msg_1","type":"message","role":"assistant","content":[{"type":"output_text","text":"Hello"}]},
                   {"id":"msg_2","type":"message","role":"assistant","content":[{"type":"output_text","text":", world"}]}]}}"""));
