@@ -82,7 +82,7 @@ class AllMiniLmL6V2EmbeddingModelIT {
     }
 
     @Test
-    void should_fail_to_embed_511_token_long_text() {
+    void should_embed_text_longer_than_510_tokens_by_splitting_and_averaging_embeddings_of_splits() {
 
         EmbeddingModel model = new AllMiniLmL6V2EmbeddingModel();
 
