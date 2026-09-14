@@ -1,5 +1,6 @@
 package dev.langchain4j.store.embedding.oracle.vecdb.mapper;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
@@ -12,11 +13,13 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.BiFunction;
 
 /**
  * Maps LangChain4j embeddings and text segments to the {@code vectors} JSON accepted by
@@ -34,39 +37,106 @@ public final class VecDbVectorJsonMapper {
      * Maps embeddings without text or metadata to VecDB vector records.
      */
     public static String toJson(List<String> ids, List<Embedding> embeddings) {
-        ensureNotNull(ids, "ids");
-        ensureNotNull(embeddings, "embeddings");
-        ensureSameSize(ids, "ids", embeddings, "embeddings");
-
-        ArrayNode vectors = OBJECT_MAPPER.createArrayNode();
-        for (int i = 0; i < ids.size(); i++) {
-            vectors.add(toJsonObject(
-                    ensureElementNotNull(ids, i, "ids"), ensureElementNotNull(embeddings, i, "embeddings")));
-        }
-        return vectors.toString();
+        return recordsToJson(toRecords(ids, embeddings, null));
     }
 
     /**
      * Maps embeddings, text, and metadata to VecDB vector records.
      */
     public static String toJson(List<String> ids, List<Embedding> embeddings, List<TextSegment> segments) {
+        ensureNotNull(segments, "segments");
+        return recordsToJson(toRecords(ids, embeddings, segments));
+    }
+
+    /** Returns JSON text for batches whose complete OSON encodings fit the database limit. */
+    public static List<String> toJsonBatches(List<String> ids, List<Embedding> embeddings) {
+        return toJsonBatches(ids, embeddings, null, VecDbJsonMapper.MAX_OSON_BYTES);
+    }
+
+    /** Returns JSON text for complete-record batches sized by their OSON encodings, not their text lengths. */
+    public static List<String> toJsonBatches(List<String> ids, List<Embedding> embeddings, List<TextSegment> segments) {
+        ensureNotNull(segments, "segments");
+        return toJsonBatches(ids, embeddings, segments, VecDbJsonMapper.MAX_OSON_BYTES);
+    }
+
+    /** Prepares ordered vector-only OSON requests that can be bound directly as {@code OracleType.JSON}. */
+    public static List<byte[]> toOsonBatches(List<String> ids, List<Embedding> embeddings) {
+        return toBatches(toRecords(ids, embeddings, null), VecDbJsonMapper.MAX_OSON_BYTES, (records, bytes) -> bytes);
+    }
+
+    /** Prepares all complete-record OSON requests before any database write, retaining the measured bytes. */
+    public static List<byte[]> toOsonBatches(List<String> ids, List<Embedding> embeddings, List<TextSegment> segments) {
+        ensureNotNull(segments, "segments");
+        return toBatches(
+                toRecords(ids, embeddings, segments), VecDbJsonMapper.MAX_OSON_BYTES, (records, bytes) -> bytes);
+    }
+
+    static List<String> toJsonBatches(
+            List<String> ids, List<Embedding> embeddings, List<TextSegment> segments, int maxBatchBytes) {
+        return toBatches(
+                toRecords(ids, embeddings, segments), maxBatchBytes, (records, bytes) -> recordsToJson(records));
+    }
+
+    private static List<JsonNode> toRecords(List<String> ids, List<Embedding> embeddings, List<TextSegment> segments) {
         ensureNotNull(ids, "ids");
         ensureNotNull(embeddings, "embeddings");
-        ensureNotNull(segments, "segments");
         ensureSameSize(ids, "ids", embeddings, "embeddings");
-        ensureSameSize(ids, "ids", segments, "segments");
-
-        ArrayNode vectors = OBJECT_MAPPER.createArrayNode();
-        for (int i = 0; i < ids.size(); i++) {
-            String id = ensureElementNotNull(ids, i, "ids");
-            Embedding embedding = ensureElementNotNull(embeddings, i, "embeddings");
-            TextSegment segment = ensureElementNotNull(segments, i, "segments");
-
-            ObjectNode vector = toJsonObject(id, embedding);
-            vector.set("metadata", toMetadataJson(segment));
-            vectors.add(vector);
+        if (segments != null) {
+            ensureSameSize(ids, "ids", segments, "segments");
         }
-        return vectors.toString();
+        List<JsonNode> records = new ArrayList<>(ids.size());
+        for (int i = 0; i < ids.size(); i++) {
+            ObjectNode record = toJsonObject(
+                    ensureElementNotNull(ids, i, "ids"), ensureElementNotNull(embeddings, i, "embeddings"));
+            if (segments != null) {
+                record.set("metadata", toMetadataJson(ensureElementNotNull(segments, i, "segments")));
+            }
+
+            records.add(record);
+        }
+        return records;
+    }
+
+    private static String recordsToJson(List<JsonNode> records) {
+        return OBJECT_MAPPER.createArrayNode().addAll(records).toString();
+    }
+
+    private static <T> List<T> toBatches(
+            List<JsonNode> records, int maxBatchBytes, BiFunction<List<JsonNode>, byte[], T> batchMapper) {
+        ensureGreaterThanZero(maxBatchBytes, "maxBatchBytes");
+        List<T> batches = new ArrayList<>();
+        if (!records.isEmpty()) {
+            try {
+                addBatches(records, 0, maxBatchBytes, batchMapper, batches);
+            } catch (SQLException exception) {
+                throw new IllegalArgumentException("Unable to encode VecDB upsert records as OSON", exception);
+            }
+        }
+        return List.copyOf(batches);
+    }
+
+    private static <T> void addBatches(
+            List<JsonNode> records,
+            int firstIndex,
+            int maxBatchBytes,
+            BiFunction<List<JsonNode>, byte[], T> batchMapper,
+            List<T> batches)
+            throws SQLException {
+        VecDbJsonMapper.EncodedArray encoded = VecDbJsonMapper.encodeArray(records, maxBatchBytes);
+        if (encoded.bytes() != null) {
+            batches.add(batchMapper.apply(records, encoded.bytes()));
+            return;
+        }
+        if (records.size() == 1) {
+            throw new IllegalArgumentException("VecDB vector at index " + firstIndex + " requires " + encoded.size()
+                    + " OSON bytes, exceeding the upsert batch limit of " + maxBatchBytes
+                    + " bytes. Reduce the text segment size or metadata for this record.");
+        }
+
+        // OSON headers, offsets, and shared field names make per-record size sums unreliable.
+        int middle = records.size() / 2;
+        addBatches(records.subList(0, middle), firstIndex, maxBatchBytes, batchMapper, batches);
+        addBatches(records.subList(middle, records.size()), firstIndex + middle, maxBatchBytes, batchMapper, batches);
     }
 
     private static ObjectNode toJsonObject(String id, Embedding embedding) {
@@ -75,6 +145,9 @@ public final class VecDbVectorJsonMapper {
 
         ArrayNode denseVector = vector.putArray("dense_vector");
         for (float value : embedding.vector()) {
+            if (!Float.isFinite(value)) {
+                throw new IllegalArgumentException("embedding vector values must be finite");
+            }
             denseVector.add(value);
         }
         return vector;

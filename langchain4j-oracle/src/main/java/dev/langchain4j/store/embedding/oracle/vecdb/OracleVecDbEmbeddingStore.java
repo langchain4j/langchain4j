@@ -36,6 +36,12 @@ import javax.sql.DataSource;
  * VecDB. Instances are immutable and safe to share between threads when the configured {@link DataSource} is
  * thread-safe.
  *
+ * <p>Ingestion splits vectors into ordered requests whose actual OSON encodings are smaller than 32 MiB. The measured
+ * bytes are bound directly as Oracle JSON. All records are encoded before the first request; a single oversized record
+ * is rejected. Batches share one connection, with a
+ * commit after all calls and a rollback attempt on failure. Package-level commits, if performed by the installed
+ * VecDB version, cannot be undone by JDBC rollback. Retrying after partial ingestion should reuse the same IDs.
+ *
  * <p>An optional store distance metric controls similarity search. It is independent from the vector-index metric. If
  * they differ, Oracle bypasses the index and performs an exact search. When the store metric is omitted, Oracle applies
  * its default metric-selection rules.
@@ -80,7 +86,8 @@ public final class OracleVecDbEmbeddingStore implements EmbeddingStore<TextSegme
         ensureNotNull(embedding, "embedding");
 
         String id = randomUUID();
-        upsert(VecDbVectorJsonMapper.toJson(Collections.singletonList(id), Collections.singletonList(embedding)));
+        upsert(VecDbVectorJsonMapper.toOsonBatches(
+                Collections.singletonList(id), Collections.singletonList(embedding)));
         return id;
     }
 
@@ -89,7 +96,8 @@ public final class OracleVecDbEmbeddingStore implements EmbeddingStore<TextSegme
         ensureNotBlank(id, "id");
         ensureNotNull(embedding, "embedding");
 
-        upsert(VecDbVectorJsonMapper.toJson(Collections.singletonList(id), Collections.singletonList(embedding)));
+        upsert(VecDbVectorJsonMapper.toOsonBatches(
+                Collections.singletonList(id), Collections.singletonList(embedding)));
     }
 
     @Override
@@ -98,7 +106,7 @@ public final class OracleVecDbEmbeddingStore implements EmbeddingStore<TextSegme
         ensureNotNull(embedded, "embedded");
 
         String id = randomUUID();
-        upsert(VecDbVectorJsonMapper.toJson(
+        upsert(VecDbVectorJsonMapper.toOsonBatches(
                 Collections.singletonList(id),
                 Collections.singletonList(embedding),
                 Collections.singletonList(embedded)));
@@ -113,17 +121,13 @@ public final class OracleVecDbEmbeddingStore implements EmbeddingStore<TextSegme
         }
 
         List<String> ids = generateIds(embeddings.size());
-        upsert(VecDbVectorJsonMapper.toJson(ids, embeddings));
+        upsert(VecDbVectorJsonMapper.toOsonBatches(ids, embeddings));
         return ids;
     }
 
     @Override
     public void addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
-        String vectorsJson = VecDbVectorJsonMapper.toJson(ids, embeddings, embedded);
-        if (ids.isEmpty()) {
-            return;
-        }
-        upsert(vectorsJson);
+        upsert(VecDbVectorJsonMapper.toOsonBatches(ids, embeddings, embedded));
     }
 
     @Override
@@ -192,9 +196,27 @@ public final class OracleVecDbEmbeddingStore implements EmbeddingStore<TextSegme
         }
     }
 
-    private void upsert(String vectorsJson) {
+    private void upsert(List<byte[]> batches) {
+        if (batches.isEmpty()) {
+            return;
+        }
         try (Connection connection = dataSource.getConnection()) {
-            queryExecutor.upsertVectors(connection, embeddingTable.name(), vectorsJson);
+            if (connection.getAutoCommit()) {
+                connection.setAutoCommit(false);
+            }
+            try {
+                for (byte[] vectorsOson : batches) {
+                    queryExecutor.upsertVectors(connection, embeddingTable.name(), vectorsOson);
+                }
+                connection.commit();
+            } catch (SQLException | RuntimeException exception) {
+                try {
+                    connection.rollback();
+                } catch (SQLException rollbackException) {
+                    exception.addSuppressed(rollbackException);
+                }
+                throw exception;
+            }
         } catch (SQLException exception) {
             throw unchecked(exception);
         }

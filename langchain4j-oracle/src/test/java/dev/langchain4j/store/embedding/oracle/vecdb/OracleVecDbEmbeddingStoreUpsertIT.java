@@ -6,8 +6,14 @@ import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
+import dev.langchain4j.store.embedding.oracle.vecdb.mapper.VecDbVectorJsonMapper;
+import java.sql.Connection;
+import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.Collections;
 import java.util.List;
+import java.util.stream.IntStream;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -55,6 +61,48 @@ class OracleVecDbEmbeddingStoreUpsertIT {
             assertThat(match.embedded().text()).isEqualTo("Updated content");
             assertThat(match.embedded().metadata().getInteger("revision")).isEqualTo(2);
         });
+    }
+
+    /** Large ONNX-generated ingestion uses OSON batches below 32 MiB and is visible after commit. */
+    @Test
+    void testLargeIngestionIsBatchedAndCommitted() throws SQLException {
+        TextSegment segment = TextSegment.from("Oracle VecDB batch ingestion", new Metadata().put("tenant", "acme"));
+        Embedding embedding =
+                VecDbTestOperations.embeddingModel().embed(segment).content();
+        int maxBatchBytes = 32 * 1024 * 1024 - 1;
+        int singleRecordBytes = VecDbVectorJsonMapper.toOsonBatches(
+                        List.of("batch-0"), List.of(embedding), List.of(segment))
+                .get(0)
+                .length;
+        // Oversize the fixture estimate, then verify actual batches because OSON shares structural overhead.
+        int count = 2 * (maxBatchBytes / singleRecordBytes + 1);
+        List<String> ids = IntStream.range(0, count).mapToObj(i -> "batch-" + i).toList();
+        List<Embedding> embeddings = Collections.nCopies(count, embedding);
+        List<TextSegment> segments = Collections.nCopies(count, segment);
+
+        assertThat(VecDbVectorJsonMapper.toOsonBatches(ids, embeddings, segments))
+                .hasSizeGreaterThan(1)
+                .allSatisfy(batch -> assertThat(batch.length).isPositive().isLessThanOrEqualTo(maxBatchBytes));
+
+        embeddingStore.addAll(ids, embeddings, segments);
+
+        try (Connection connection = VecDbTestOperations.dataSource().getConnection();
+                Statement statement = connection.createStatement();
+                ResultSet rows = statement.executeQuery("SELECT COUNT(*) FROM " + TABLE_NAME)) {
+            assertThat(rows.next()).isTrue();
+            assertThat(rows.getInt(1)).isEqualTo(count);
+        }
+        assertThat(embeddingStore
+                        .search(EmbeddingSearchRequest.builder()
+                                .queryEmbedding(embedding)
+                                .maxResults(1)
+                                .build())
+                        .matches())
+                .singleElement()
+                .satisfies(match -> {
+                    assertThat(match.embeddingId()).isIn(ids);
+                    assertThat(match.embedded()).isEqualTo(segment);
+                });
     }
 
     @AfterAll

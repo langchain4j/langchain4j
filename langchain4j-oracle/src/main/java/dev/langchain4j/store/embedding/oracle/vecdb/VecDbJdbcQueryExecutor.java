@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.store.embedding.oracle.SQLFilter;
 import dev.langchain4j.store.embedding.oracle.vecdb.enums.VecDbApiVersion;
 import dev.langchain4j.store.embedding.oracle.vecdb.mapper.VecDbEmbeddingTableJsonMapper;
+import dev.langchain4j.store.embedding.oracle.vecdb.mapper.VecDbJsonMapper;
 import java.io.IOException;
 import java.io.Reader;
 import java.sql.CallableStatement;
@@ -22,9 +23,6 @@ import java.util.Map;
 import java.util.Set;
 import oracle.jdbc.OracleType;
 import oracle.jdbc.OracleTypes;
-import oracle.sql.json.OracleJsonArray;
-import oracle.sql.json.OracleJsonFactory;
-import oracle.sql.json.OracleJsonObject;
 import oracle.sql.json.OracleJsonValue;
 
 /**
@@ -32,7 +30,6 @@ import oracle.sql.json.OracleJsonValue;
  */
 final class VecDbJdbcQueryExecutor implements VecDbQueryExecutor {
 
-    private static final OracleJsonFactory JSON_FACTORY = new OracleJsonFactory();
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     @Override
@@ -171,6 +168,17 @@ final class VecDbJdbcQueryExecutor implements VecDbQueryExecutor {
     }
 
     @Override
+    public String upsertVectors(Connection connection, String tableName, byte[] vectorsOson) throws SQLException {
+        return call(
+                connection,
+                "BEGIN ? := DBMS_VECTOR_DATABASE.UPSERT_VECTORS(table_name => ?, vectors => ?); END;",
+                statement -> {
+                    statement.setString(2, tableName);
+                    statement.setObject(3, vectorsOson, OracleType.JSON);
+                });
+    }
+
+    @Override
     public String listVectors(Connection connection, String tableName, String idsJson, int limit, int offset)
             throws SQLException {
         return call(
@@ -258,59 +266,7 @@ final class VecDbJdbcQueryExecutor implements VecDbQueryExecutor {
     }
 
     static OracleJsonValue toOracleJsonValue(String json) throws SQLException {
-        JsonNode jsonNode;
-        try {
-            jsonNode = OBJECT_MAPPER.readTree(json);
-        } catch (JsonProcessingException exception) {
-            throw new SQLException("Invalid JSON parameter", exception);
-        }
-        if (jsonNode == null || jsonNode.isMissingNode()) {
-            throw new SQLException("Invalid JSON parameter: a JSON value is required");
-        }
-        return toOracleJsonValue(jsonNode);
-    }
-
-    private static OracleJsonValue toOracleJsonValue(JsonNode jsonNode) throws SQLException {
-        if (jsonNode.isObject()) {
-            OracleJsonObject object = JSON_FACTORY.createObject();
-            for (Map.Entry<String, JsonNode> property : jsonNode.properties()) {
-                object.put(property.getKey(), toOracleJsonValue(property.getValue()));
-            }
-            return object;
-        }
-        if (jsonNode.isArray()) {
-            OracleJsonArray array = JSON_FACTORY.createArray();
-            for (JsonNode element : jsonNode) {
-                array.add(toOracleJsonValue(element));
-            }
-            return array;
-        }
-        if (jsonNode.isTextual()) {
-            return JSON_FACTORY.createString(jsonNode.textValue());
-        }
-        if (jsonNode.isIntegralNumber()) {
-            if (jsonNode.canConvertToInt()) {
-                return JSON_FACTORY.createDecimal(jsonNode.intValue());
-            }
-            if (jsonNode.canConvertToLong()) {
-                return JSON_FACTORY.createDecimal(jsonNode.longValue());
-            }
-            return JSON_FACTORY.createDecimal(jsonNode.decimalValue());
-        }
-        if (jsonNode.isFloatingPointNumber()) {
-            double value = jsonNode.doubleValue();
-            if (!Double.isFinite(value)) {
-                throw new SQLException("Invalid JSON parameter: floating-point values must be finite");
-            }
-            return JSON_FACTORY.createDouble(value);
-        }
-        if (jsonNode.isBoolean()) {
-            return JSON_FACTORY.createBoolean(jsonNode.booleanValue());
-        }
-        if (jsonNode.isNull()) {
-            return JSON_FACTORY.createNull();
-        }
-        throw new SQLException("Invalid JSON parameter: unsupported JSON node type " + jsonNode.getNodeType());
+        return VecDbJsonMapper.toOracleJsonValue(json);
     }
 
     private static String readClob(Clob clob) throws SQLException {

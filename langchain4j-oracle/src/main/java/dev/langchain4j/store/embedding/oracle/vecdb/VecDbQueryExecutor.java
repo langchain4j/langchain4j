@@ -54,6 +54,9 @@ interface VecDbQueryExecutor {
     /** Upserts one or more vectors and returns the VecDB response JSON. */
     String upsertVectors(Connection connection, String tableName, String vectorsJson) throws SQLException;
 
+    /** Upserts a pre-encoded OSON array without converting it back to JSON text. */
+    String upsertVectors(Connection connection, String tableName, byte[] vectorsOson) throws SQLException;
+
     /** Lists vectors by ID or pagination and returns the VecDB response JSON. */
     String listVectors(Connection connection, String tableName, String idsJson, int limit, int offset)
             throws SQLException;

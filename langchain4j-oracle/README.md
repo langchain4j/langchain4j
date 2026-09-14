@@ -121,6 +121,31 @@ OracleEmbeddingStore.builder()
 
 For more information about Oracle AI Vector Search refer to the [documentation](https://docs.oracle.com/en/database/oracle/oracle-database/23/vecse/overview-ai-vector-search.html).
 
+## VecDB Ingestion Batching
+
+`OracleVecDbEmbeddingStore` encodes each candidate `UPSERT_VECTORS` array using
+Oracle's OSON binary JSON generator. Requests must be strictly smaller than
+32 MiB (at most 33,554,431 encoded bytes). The measurement includes the complete
+OSON representation, not UTF-8 text length or the sum of individual record sizes.
+
+An oversized candidate is split into two ordered groups of complete records,
+and each group is encoded again until every request fits. Accepted requests retain
+their OSON bytes, which JDBC binds directly as `OracleType.JSON` without encoding
+them again. This bounds each submitted JSON value; it does not measure or control
+additional JSON values the installed database package may construct internally.
+
+IDs and input order are preserved. All records are validated and encoded
+before the first database write. If one record exceeds the budget, ingestion
+fails locally with its position, encoded size, and advice to reduce its text or
+metadata. Preparing all requests before writing retains their binary payloads in
+memory; ingestion is not fully streaming.
+
+Batches use one connection and are committed after all calls succeed. On failure,
+the store attempts rollback and propagates the error. A package-level commit by
+the installed VecDB version cannot be rolled back by JDBC, so do not assume
+cross-batch atomicity. For retryable ingestion, supply stable IDs to `addAll` and
+reuse those IDs when retrying; methods that generate IDs create new ones per call.
+
 ## Chat Memory Store
 
 This module also provides `OracleChatMemoryStore`, a simple persistent implementation of `ChatMemoryStore`.
