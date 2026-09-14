@@ -62,7 +62,7 @@ public class PromptTemplate {
      * @param name the template name of the prompt.
      */
     public PromptTemplate(String template, String name) {
-        this(template, name, Clock.systemDefaultZone());
+        this(template, name, false);
     }
 
     /**
@@ -83,23 +83,50 @@ public class PromptTemplate {
      * @param clock    the clock to use for the special variables.
      */
     public PromptTemplate(String template, String name, Clock clock) {
+        this(template, name, false, clock);
+    }
+
+    /**
+     * Create a new PromptTemplate.
+     *
+     * <p>The {@code Clock} will be the system clock.</p>
+     *
+     * @param template the template string of the prompt.
+     * @param name     the template name of the prompt.
+     * @param lenient  when {@code true}, unresolved template variables are left as-is instead of throwing an exception.
+     */
+    public PromptTemplate(String template, String name, boolean lenient) {
+        this(template, name, lenient, Clock.systemDefaultZone());
+    }
+
+    /**
+     * Create a new PromptTemplate.
+     *
+     * @param template the template string of the prompt.
+     * @param name     the template name of the prompt.
+     * @param lenient  when {@code true}, unresolved template variables are left as-is instead of throwing an exception.
+     * @param clock    the clock to use for the special variables.
+     */
+    public PromptTemplate(String template, String name, boolean lenient, Clock clock) {
         this.templateString = ensureNotBlank(template, "template");
-        if (name == null) {
-            this.template = FACTORY.create(() -> template);
-        } else {
-            this.template = FACTORY.create(new PromptTemplateFactory.Input() {
+        PromptTemplateFactory.Input input = new PromptTemplateFactory.Input() {
 
-                @Override
-                public String getTemplate() {
-                    return template;
-                }
+            @Override
+            public String getTemplate() {
+                return template;
+            }
 
-                @Override
-                public String getName() {
-                    return name;
-                }
-            });
-        }
+            @Override
+            public String getName() {
+                return name != null ? name : "template";
+            }
+
+            @Override
+            public boolean isLenient() {
+                return lenient;
+            }
+        };
+        this.template = FACTORY.create(input);
         this.clock = ensureNotNull(clock, "clock");
     }
 
@@ -152,7 +179,7 @@ public class PromptTemplate {
      * @return the PromptTemplate.
      */
     public static PromptTemplate from(String template) {
-        return from(template, null, null);
+        return new PromptTemplate(template);
     }
 
     /**
@@ -163,7 +190,7 @@ public class PromptTemplate {
      * @return the PromptTemplate.
      */
     public static PromptTemplate from(String template, String name) {
-        return from(template, name, null);
+        return new PromptTemplate(template, name);
     }
 
     /**
@@ -174,7 +201,7 @@ public class PromptTemplate {
      * @return the PromptTemplate.
      */
     public static PromptTemplate from(String template, Clock clock) {
-        return from(template, null, clock);
+        return new PromptTemplate(template, clock);
     }
 
     /**
@@ -187,5 +214,28 @@ public class PromptTemplate {
      */
     public static PromptTemplate from(String template, String name, Clock clock) {
         return new PromptTemplate(template, name, clock != null ? clock : Clock.systemDefaultZone());
+    }
+
+    /**
+     * Create a new PromptTemplate.
+     *
+     * @param template the template string of the prompt.
+     * @param lenient  when {@code true}, unresolved template variables are left as-is instead of throwing an exception.
+     * @return the PromptTemplate.
+     */
+    public static PromptTemplate from(String template, boolean lenient) {
+        return new PromptTemplate(template, null, lenient);
+    }
+
+    /**
+     * Create a new PromptTemplate.
+     *
+     * @param template the template string of the prompt.
+     * @param name     the template name of the prompt.
+     * @param lenient  when {@code true}, unresolved template variables are left as-is instead of throwing an exception.
+     * @return the PromptTemplate.
+     */
+    public static PromptTemplate from(String template, String name, boolean lenient) {
+        return new PromptTemplate(template, name, lenient);
     }
 }

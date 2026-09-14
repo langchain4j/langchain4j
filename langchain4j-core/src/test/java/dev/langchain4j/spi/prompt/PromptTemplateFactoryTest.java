@@ -8,5 +8,6 @@ class PromptTemplateFactoryTest implements WithAssertions {
     void input_defaults() {
         PromptTemplateFactory.Input input = () -> "template";
         assertThat(input.getName()).isEqualTo("template");
+        assertThat(input.isLenient()).isFalse();
     }
 }
