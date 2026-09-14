@@ -593,9 +593,9 @@ class OpenAiResponsesClient {
                 otherPhaseItems.add(item);
             }
         }
-        List<Object> messageItems = !finalAnswerItems.isEmpty() ? finalAnswerItems
-                : !phaselessItems.isEmpty() ? phaselessItems
-                : otherPhaseItems;
+        List<Object> messageItems = !finalAnswerItems.isEmpty()
+                ? finalAnswerItems
+                : !phaselessItems.isEmpty() ? phaselessItems : otherPhaseItems;
         StringBuilder textBuilder = new StringBuilder();
         for (Object item : messageItems) {
             for (Object c : arr(at(item, FIELD_CONTENT))) {
