@@ -7,8 +7,8 @@ package dev.langchain4j.exception;
  * By implementing this interface, you take that decision yourself for a particular exception:
  * {@link #messageForLlm()} is sent to the LLM as the result of the tool execution, and the LLM can
  * react to it, for example by trying something else or by explaining the problem to the user.
- * Exceptions that do not implement this interface are treated as failures of the application
- * and are not shown to the LLM.
+ * With the handlers that are aware of this interface, exceptions that do not implement it are treated
+ * as failures of the application and are not shown to the LLM.
  * <p>
  * Implement it on your own exception:
  * <pre>{@code
@@ -42,9 +42,19 @@ package dev.langchain4j.exception;
  * }
  * }</pre>
  * <p>
+ * The marker is looked for on the exception as it was thrown by the tool, and on the error the handler
+ * receives after LangChain4j has unwrapped its own wrappers. It is not searched for further down the cause
+ * chain: an exception that wraps a marked one is the last word on what the LLM should be told, so wrapping
+ * a marked exception deliberately hides it.
+ * <p>
  * For this to have an effect, the AI Service must use a tool execution error handler that is aware of
  * this interface: {@code ToolExecutionErrorHandler.failInvocationUnlessVisibleToLlm()} or
  * {@code ToolExecutionErrorHandler.sendExceptionMessageToLlmFor(Class...)}.
+ *
+ * Note that {@link ToolErrorVisibleToLlmException} does not extend {@link ToolExecutionException}:
+ * the latter is the wrapper LangChain4j puts around a failing tool, while this one is thrown by the tool
+ * itself. {@code catch (ToolExecutionException e)} therefore does not catch it; catch this interface,
+ * or {@link LangChain4jException}, instead.
  *
  * @since 1.21.0
  */

@@ -6,32 +6,17 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
-import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.service.tool.ToolArgumentsErrorHandler;
 import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
 import dev.langchain4j.service.tool.ToolProviderResult;
-import java.io.ByteArrayOutputStream;
-import java.io.PrintStream;
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.function.Supplier;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.parallel.Execution;
-import org.junit.jupiter.api.parallel.ExecutionMode;
-import org.junit.jupiter.api.parallel.Isolated;
 
 /**
- * Verifies the one-time notice logged when an AI Service is built with tools but without explicitly
- * configured tool error handlers.
- * <p>
- * The tests that assert on the log output capture {@link System#err} (the default tinylog destination
- * for WARN), so the whole class runs {@link Isolated} and single-threaded to avoid races with the
- * otherwise parallel test suite.
+ * When the notice is logged, and what it says. Whether it reaches the log is covered by
+ * {@link ToolErrorHandlingNoticeLoggingTest}.
  */
-@Isolated
-@Execution(ExecutionMode.SAME_THREAD)
 class ToolErrorHandlingNoticeTest {
 
     interface Assistant {
@@ -44,6 +29,13 @@ class ToolErrorHandlingNoticeTest {
         CompletableFuture<String> chat(String userMessage);
     }
 
+    interface PartiallyAsyncAssistant {
+
+        String chat(String userMessage);
+
+        CompletableFuture<String> chatAsync(String userMessage);
+    }
+
     static class Tools {
 
         @Tool("Returns the weather in the given city")
@@ -52,85 +44,58 @@ class ToolErrorHandlingNoticeTest {
         }
     }
 
-    private static final ChatModel CHAT_MODEL = new ChatModel() {};
-
-    @BeforeEach
-    void resetNotice() {
-        ToolErrorHandlingNotice.ALREADY_LOGGED.set(false);
-    }
-
     @Test
-    void should_warn_when_tools_are_configured_without_error_handlers() {
+    void should_name_the_service_and_recommend_the_behavior_the_defaults_are_planned_to_change_to() {
 
-        String logOutput = captureStdErr(() -> AiServices.builder(Assistant.class)
-                .chatModel(CHAT_MODEL)
-                .tools(new Tools())
-                .build());
+        String message = ToolErrorHandlingNotice.message(
+                Assistant.class, List.of(TOOL_ARGUMENTS_ERROR, TOOL_EXECUTION_ERROR));
 
-        assertThat(logOutput)
-                .as("names the AI Service and states that the defaults are going to change")
-                .contains("WARN")
-                .contains(Assistant.class.getName())
-                .contains("are planned to change");
-        assertThat(logOutput)
+        assertThat(message).contains(Assistant.class.getName()).contains("are planned to change");
+        assertThat(message)
                 .as("recommends the behavior the defaults are planned to change to")
                 .contains(".toolArgumentsErrorHandler(ToolArgumentsErrorHandler.sendExceptionMessageToLlm())")
                 .contains(".toolExecutionErrorHandler(ToolExecutionErrorHandler.failInvocationUnlessVisibleToLlm())");
-        assertThat(logOutput)
+        assertThat(message)
                 .as("explains how a tool tells the LLM about a failure under the recommended setting")
                 .contains("ToolErrorVisibleToLlm");
-        assertThat(logOutput)
+        assertThat(message)
                 .as("also shows how to keep the current behavior")
                 .contains(".toolArgumentsErrorHandler(ToolArgumentsErrorHandler.failInvocation())")
                 .contains(".toolExecutionErrorHandler(ToolExecutionErrorHandler.sendExceptionMessageToLlm())");
-        assertThat(logOutput)
+        assertThat(message)
                 .contains("https://docs.langchain4j.dev/tutorials/tools#error-handling")
                 .contains(ToolErrorHandlingNotice.class.getName());
     }
 
     @Test
-    void should_warn_about_leaking_only_when_the_tool_execution_default_is_used() {
+    void should_mention_only_the_defaults_that_were_not_chosen_explicitly() {
 
-        String logOutput = captureStdErr(() -> AiServices.builder(Assistant.class)
-                .chatModel(CHAT_MODEL)
-                .tools(new Tools())
-                .toolExecutionErrorHandler(ToolExecutionErrorHandler.failInvocation())
-                .build());
+        String message = ToolErrorHandlingNotice.message(Assistant.class, List.of(TOOL_ARGUMENTS_ERROR));
 
-        assertThat(logOutput)
+        assertThat(message)
                 .as("the tool execution default was chosen explicitly, so nothing is sent to the LLM")
                 .doesNotContain("credentials embedded in error messages")
                 .doesNotContain(".toolExecutionErrorHandler(");
-        assertThat(logOutput).contains(".toolArgumentsErrorHandler(ToolArgumentsErrorHandler.failInvocation())");
-    }
-
-    @Test
-    void should_log_the_notice_only_once_per_jvm() {
-
-        String firstLogOutput = captureStdErr(() -> AiServices.builder(Assistant.class)
-                .chatModel(CHAT_MODEL)
-                .tools(new Tools())
-                .build());
-        String secondLogOutput = captureStdErr(() -> AiServices.builder(Assistant.class)
-                .chatModel(CHAT_MODEL)
-                .tools(new Tools())
-                .build());
-
-        assertThat(firstLogOutput).contains(Assistant.class.getName());
-        assertThat(secondLogOutput).doesNotContain(ToolErrorHandlingNotice.class.getName());
+        assertThat(message).contains(".toolArgumentsErrorHandler(ToolArgumentsErrorHandler.failInvocation())");
     }
 
     @Test
     void should_not_warn_when_both_error_handlers_are_configured() {
 
-        String logOutput = captureStdErr(() -> AiServices.builder(Assistant.class)
-                .chatModel(CHAT_MODEL)
-                .tools(new Tools())
-                .toolArgumentsErrorHandler(ToolArgumentsErrorHandler.sendExceptionMessageToLlm())
-                .toolExecutionErrorHandler(ToolExecutionErrorHandler.failInvocation())
-                .build());
+        AiServiceContext context = withTools(Assistant.class);
+        context.toolService.argumentsErrorHandler(ToolArgumentsErrorHandler.sendExceptionMessageToLlm());
+        context.toolService.executionErrorHandler(ToolExecutionErrorHandler.failInvocation());
 
-        assertThat(logOutput).doesNotContain(ToolErrorHandlingNotice.class.getName());
+        assertThat(ToolErrorHandlingNotice.unconfirmedDefaults(context)).isEmpty();
+    }
+
+    @Test
+    void should_warn_only_about_the_handler_that_is_missing() {
+
+        AiServiceContext context = withTools(Assistant.class);
+        context.toolService.executionErrorHandler(ToolExecutionErrorHandler.failInvocation());
+
+        assertThat(ToolErrorHandlingNotice.unconfirmedDefaults(context)).containsExactly(TOOL_ARGUMENTS_ERROR);
     }
 
     @Test
@@ -156,41 +121,21 @@ class ToolErrorHandlingNoticeTest {
     @Test
     void should_not_warn_when_all_methods_are_asynchronous() {
 
-        AiServiceContext context = AiServiceContext.create(AsyncAssistant.class);
-        context.toolService.tools(List.of(new Tools()));
-
-        assertThat(ToolErrorHandlingNotice.unconfirmedDefaults(context))
-                .as("asynchronous and reactive modes already fail on a tool execution error "
-                        + "and send a tool arguments error to the LLM")
+        assertThat(ToolErrorHandlingNotice.unconfirmedDefaults(withTools(AsyncAssistant.class)))
+                .as("asynchronous and reactive modes already behave the way the defaults are planned to behave")
                 .isEmpty();
     }
 
     @Test
     void should_warn_when_at_least_one_method_is_blocking() {
 
-        AiServiceContext context = AiServiceContext.create(PartiallyAsyncAssistant.class);
-        context.toolService.tools(List.of(new Tools()));
-
-        assertThat(ToolErrorHandlingNotice.unconfirmedDefaults(context))
+        assertThat(ToolErrorHandlingNotice.unconfirmedDefaults(withTools(PartiallyAsyncAssistant.class)))
                 .containsExactly(TOOL_ARGUMENTS_ERROR, TOOL_EXECUTION_ERROR);
     }
 
-    interface PartiallyAsyncAssistant {
-
-        String chat(String userMessage);
-
-        CompletableFuture<String> chatAsync(String userMessage);
-    }
-
-    private static String captureStdErr(Supplier<?> action) {
-        PrintStream originalErr = System.err;
-        ByteArrayOutputStream captured = new ByteArrayOutputStream();
-        System.setErr(new PrintStream(captured, true, StandardCharsets.UTF_8));
-        try {
-            action.get();
-        } finally {
-            System.setErr(originalErr);
-        }
-        return captured.toString(StandardCharsets.UTF_8);
+    private static AiServiceContext withTools(Class<?> aiServiceClass) {
+        AiServiceContext context = AiServiceContext.create(aiServiceClass);
+        context.toolService.tools(List.of(new Tools()));
+        return context;
     }
 }

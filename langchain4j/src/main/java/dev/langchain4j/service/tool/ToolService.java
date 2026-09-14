@@ -2166,6 +2166,7 @@ public class ToolService {
     public ToolExecutionResult applyToolHallucinationStrategy(ToolExecutionRequest toolRequest) {
         ToolExecutionResultMessage toolResultMessage = toolHallucinationStrategy.apply(toolRequest);
         return ToolExecutionResult.builder()
+                .isError(true)
                 .resultText(toolResultMessage.text())
                 .build();
     }

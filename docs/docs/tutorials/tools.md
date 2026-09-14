@@ -1599,7 +1599,7 @@ Assistant assistant = AiServices.builder(Assistant.class)
 For anything else - sending a fixed generic message, sanitizing the error before the LLM sees it,
 or deciding based on the type of the error - write the handler yourself, as described in the sections below.
 
-:::warning `sendExceptionMessageToLlm()` can expose sensitive data
+:::warning Sending exception messages to the LLM can expose sensitive data
 The message of an exception is usually written for developers, not for the LLM: it can contain internal
 application details such as file paths, SQL, credentials embedded in error strings, responses of downstream
 services or personal data. Everything sent to the LLM reaches the LLM provider, is stored in the chat memory
@@ -1695,7 +1695,7 @@ Argument errors usually come from the LLM, and LLMs can typically self-correct w
 error message. Configure a `ToolArgumentsErrorHandler` that returns the error text so the LLM can
 retry with corrected arguments.
 
-We are planning to change the default to this behaviour in one of the future releases. If this planned
+We are planning to change the default to this behaviour in an upcoming release. If this planned
 change would affect your use case, please [open an issue](https://github.com/langchain4j/langchain4j/issues)
 so we can hear your feedback before it lands.
 :::
@@ -1790,7 +1790,7 @@ description of the failure, and rely on your own logs and observability events f
 Note that once you configure a handler, LangChain4j stops logging tool failures for you - that log exists
 only to warn you about the default behaviour.
 
-We are planning to change the default in one of the future releases, to
+We are planning to change the default in an upcoming release, to
 [`failInvocationUnlessVisibleToLlm()`](#deciding-per-exception-what-the-llm-sees): the AI Service invocation fails,
 unless the exception itself says what the LLM may be told. If this planned change would affect your use
 case, please [open an issue](https://github.com/langchain4j/langchain4j/issues) so we can hear your
@@ -1912,6 +1912,18 @@ Assistant assistant = AiServices.builder(Assistant.class)
 Subtypes of the listed types are matched as well, and exceptions implementing `ToolErrorVisibleToLlm`
 are still sent using their own `messageForLlm()`.
 
+This sends the message of the listed exception as it is. To tell the LLM something else for a specific
+exception type, write the handler yourself:
+
+```java
+.toolExecutionErrorHandler((error, errorContext) -> {
+    if (error instanceof EntityNotFoundException) {
+        return ToolErrorHandlerResult.text("That record does not exist.");
+    }
+    throw new RuntimeException(error);
+})
+```
+
 :::warning
 For the listed types, the **message of the exception** is sent to the LLM, exactly as with
 `sendExceptionMessageToLlm()`. List only types whose messages you know to be safe for the LLM
@@ -1919,7 +1931,7 @@ provider to see.
 :::
 
 :::note
-`failInvocationUnlessVisibleToLlm()` is the behavior we are planning to make the default in one of the future
+`failInvocationUnlessVisibleToLlm()` is the behavior we are planning to make the default in an upcoming
 releases. Configuring it explicitly today means the change will not affect your application.
 :::
 

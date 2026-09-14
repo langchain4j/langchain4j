@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.exception.ToolErrorVisibleToLlm;
 import dev.langchain4j.invocation.InvocationContext;
 import java.io.IOException;
@@ -250,5 +251,21 @@ class ToolErrorHandlerFactoriesTest {
         assertThatThrownBy(() ->
                         ToolArgumentsErrorHandler.failInvocationUnlessVisibleToLlm().handle(error, CONTEXT))
                 .isSameAs(error);
+    }
+
+    @Test
+    void hallucinated_tool_name_result_should_be_flagged_as_an_error() {
+
+        ToolService toolService = new ToolService();
+        toolService.hallucinatedToolNameStrategy(request ->
+                ToolExecutionResultMessage.from(request, "There is no tool called " + request.name()));
+
+        ToolExecutionResult result = toolService.applyToolHallucinationStrategy(
+                ToolExecutionRequest.builder().name("noSuchTool").arguments("{}").build());
+
+        assertThat(result.isError())
+                .as("a hallucinated tool name is an error, like every other failed tool call")
+                .isTrue();
+        assertThat(result.resultText()).isEqualTo("There is no tool called noSuchTool");
     }
 }

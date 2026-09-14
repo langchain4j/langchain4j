@@ -1,20 +1,12 @@
 package dev.langchain4j.service;
 
-import static dev.langchain4j.service.TypeUtils.typeHasRawClass;
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.lang.reflect.Modifier.isStatic;
 
 import dev.langchain4j.service.tool.ToolService;
-import dev.langchain4j.spi.services.CompletableFutureAdapter;
-import dev.langchain4j.spi.services.PublisherAdapter;
 import java.lang.reflect.Method;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
-import java.util.concurrent.Flow;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,14 +17,15 @@ import org.slf4j.LoggerFactory;
  * <p>
  * Nothing is logged for AI Services whose methods are all asynchronous or reactive: those modes
  * already behave the way the defaults are expected to behave in the future.
+ * <p>
+ * The fully qualified name of this class is part of the public contract: the notice tells users to silence
+ * it by setting the log level of this logger, so applications put it in their logging configuration.
+ * Renaming or moving this class breaks that configuration silently.
  */
 class ToolErrorHandlingNotice {
 
     private static final Logger log = LoggerFactory.getLogger(ToolErrorHandlingNotice.class);
 
-    private static final Collection<CompletableFutureAdapter> COMPLETABLE_FUTURE_ADAPTERS =
-            loadFactories(CompletableFutureAdapter.class);
-    private static final Collection<PublisherAdapter> PUBLISHER_ADAPTERS = loadFactories(PublisherAdapter.class);
 
     /**
      * Package-private so that tests can log the notice more than once per JVM.
@@ -80,33 +73,15 @@ class ToolErrorHandlingNotice {
                     || method.getDeclaringClass() == Object.class) {
                 continue;
             }
-            if (!isAsynchronousOrReactive(method.getGenericReturnType())) {
+            if (!ReturnTypeAdapters.isAsynchronousOrReactive(method.getGenericReturnType())) {
                 return true;
             }
         }
         return false;
     }
 
-    private static boolean isAsynchronousOrReactive(Type returnType) {
-        if (typeHasRawClass(returnType, CompletableFuture.class)
-                || typeHasRawClass(returnType, CompletionStage.class)
-                || typeHasRawClass(returnType, Flow.Publisher.class)) {
-            return true;
-        }
-        for (CompletableFutureAdapter adapter : COMPLETABLE_FUTURE_ADAPTERS) {
-            if (adapter.canAdapt(returnType)) {
-                return true;
-            }
-        }
-        for (PublisherAdapter adapter : PUBLISHER_ADAPTERS) {
-            if (adapter.canAdapt(returnType)) {
-                return true;
-            }
-        }
-        return false;
-    }
 
-    private static String message(Class<?> aiServiceClass, List<Default> unconfirmedDefaults) {
+    static String message(Class<?> aiServiceClass, List<Default> unconfirmedDefaults) {
         StringBuilder message = new StringBuilder()
                 .append("AI Service '")
                 .append(aiServiceClass.getName())
@@ -126,8 +101,8 @@ class ToolErrorHandlingNotice {
                     + "and to whoever can see the output of the AI Service.");
         }
 
-        message.append("\nThese defaults are planned to change in one of the future releases. "
-                + "To avoid breaking changes in the future releases, "
+        message.append("\nThese defaults are planned to change in an upcoming release. "
+                + "To avoid a breaking change when that happens, "
                 + "we recommend specifying error handlers explicitly.");
 
         message.append("\nRecommended (this is also the behavior the defaults are planned to change to):");

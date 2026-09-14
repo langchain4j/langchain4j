@@ -24,6 +24,11 @@ import java.util.function.Function;
 @FunctionalInterface
 public interface ToolArgumentsErrorHandler {
 
+    // There is deliberately no sendExceptionMessageToLlmFor(Class...) here, unlike on
+    // ToolExecutionErrorHandler: that one exists for exceptions thrown by libraries a tool calls, which
+    // the application cannot change. Argument errors are raised by LangChain4j itself while preparing the
+    // arguments, so there is no third-party exception type to list.
+
     /**
      * Handles an error that occurred during the parsing and preparation of tool arguments.
      * <p>

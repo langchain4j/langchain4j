@@ -794,7 +794,7 @@ public abstract class AiServices<T> {
      * that returns the error text via {@link ToolErrorHandlerResult#text(String)} lets the LLM retry,
      * which is more in line with how agentic systems are expected to behave.
      * The default will change to {@link ToolArgumentsErrorHandler#sendExceptionMessageToLlm()}
-     * in one of the future releases.
+     * in an upcoming release.
      * <p>
      * Example:
      * <pre>{@code
@@ -844,7 +844,7 @@ public abstract class AiServices<T> {
      * generic message or a sanitized/curated description of the failure, and rely on logs/events for
      * the underlying detail.
      * The default will change to {@link ToolExecutionErrorHandler#failInvocationUnlessVisibleToLlm()}
-     * in one of the future releases: the invocation fails, unless the exception itself says what
+     * in an upcoming release: the invocation fails, unless the exception itself says what
      * the LLM may be told (see {@link dev.langchain4j.exception.ToolErrorVisibleToLlm}).
      * <p>
      * Example:
@@ -1341,7 +1341,6 @@ public abstract class AiServices<T> {
         if (context.chatModel == null && context.streamingChatModel == null) {
             throw illegalConfiguration("Please specify either chatModel or streamingChatModel");
         }
-        ToolErrorHandlingNotice.logOnceIfNeeded(context);
     }
 
     public static List<ChatMessage> removeToolMessages(List<ChatMessage> messages) {
