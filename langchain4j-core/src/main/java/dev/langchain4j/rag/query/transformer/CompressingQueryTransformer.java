@@ -1,11 +1,5 @@
 package dev.langchain4j.rag.query.transformer;
 
-import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static java.util.Collections.singletonList;
-import static java.util.stream.Collectors.joining;
-
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
@@ -16,12 +10,19 @@ import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.rag.query.Metadata;
 import dev.langchain4j.rag.query.Query;
+
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
+
+import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static java.util.Collections.singletonList;
+import static java.util.stream.Collectors.joining;
 
 /**
  * A {@link QueryTransformer} that leverages a {@link ChatModel} to condense a given {@link Query}
@@ -39,19 +40,21 @@ import java.util.concurrent.CompletableFuture;
  */
 public class CompressingQueryTransformer implements QueryTransformer {
 
-    public static final PromptTemplate DEFAULT_PROMPT_TEMPLATE = PromptTemplate.from("""
+    public static final PromptTemplate DEFAULT_PROMPT_TEMPLATE = PromptTemplate.from(
+            """
                     Read and understand the conversation between the User and the AI. \
                     Then, analyze the new query from the User. \
                     Identify all relevant details, terms, and context from both the conversation and the new query. \
                     Reformulate this query into a clear, concise, and self-contained format suitable for information retrieval.
-
+                    
                     Conversation:
                     {{chatMemory}}
-
+                    
                     User query: {{query}}
-
+                    
                     It is very important that you provide only reformulated query and nothing else! \
-                    Do not prepend a query with anything!""");
+                    Do not prepend a query with anything!"""
+    );
 
     protected final PromptTemplate promptTemplate;
     protected final ChatModel chatModel;
@@ -93,10 +96,9 @@ public class CompressingQueryTransformer implements QueryTransformer {
         }
         List<ChatMessage> chatMemory = metadata.chatMemory();
         Prompt prompt = createPrompt(query, format(chatMemory));
-        var chatFuture = chatModel.chatAsync(
-                ChatRequest.builder().messages(prompt.toUserMessage()).build());
-        CompletableFuture<Collection<Query>> result = chatFuture.thenApply(
-                response -> singletonList(toQuery(query, response.aiMessage().text())));
+        var chatFuture = chatModel.chatAsync(ChatRequest.builder().messages(prompt.toUserMessage()).build());
+        CompletableFuture<Collection<Query>> result =
+                chatFuture.thenApply(response -> singletonList(toQuery(query, response.aiMessage().text())));
         // Link the caller-facing derived stage back to the raw chat call so cancellation reaches the in-flight I/O.
         propagateCancellation(result, chatFuture);
         return result;
@@ -109,7 +111,10 @@ public class CompressingQueryTransformer implements QueryTransformer {
     }
 
     protected String format(List<ChatMessage> chatMemory) {
-        return chatMemory.stream().map(this::format).filter(Objects::nonNull).collect(joining("\n"));
+        return chatMemory.stream()
+                .map(this::format)
+                .filter(Objects::nonNull)
+                .collect(joining("\n"));
     }
 
     protected String format(ChatMessage message) {
@@ -136,7 +141,8 @@ public class CompressingQueryTransformer implements QueryTransformer {
         private ChatModel chatModel;
         private PromptTemplate promptTemplate;
 
-        CompressingQueryTransformerBuilder() {}
+        CompressingQueryTransformerBuilder() {
+        }
 
         public CompressingQueryTransformerBuilder chatModel(ChatModel chatModel) {
             this.chatModel = chatModel;

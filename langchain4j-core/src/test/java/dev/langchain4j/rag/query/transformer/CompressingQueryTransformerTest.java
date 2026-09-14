@@ -54,7 +54,9 @@ class CompressingQueryTransformerTest {
         // then
         assertThat(queries).containsExactly(Query.from(expectedCompressedQuery, metadata));
 
-        assertThat(model.userMessageText()).isEqualTo("""
+        assertThat(model.userMessageText())
+                .isEqualTo(
+                        """
                 Read and understand the conversation between the User and the AI. \
                 Then, analyze the new query from the User. \
                 Identify all relevant details, terms, and context from both the conversation \
@@ -174,7 +176,9 @@ class CompressingQueryTransformerTest {
         // then
         assertThat(queries).containsExactly(Query.from(expectedCompressedQuery, metadata));
 
-        assertThat(model.userMessageText()).isEqualTo("""
+        assertThat(model.userMessageText())
+                .isEqualTo(
+                        """
                 Given the following conversation: \
                 User: Tell me about Klaus Heisler
                 AI: He is a cool guy \
@@ -209,7 +213,9 @@ class CompressingQueryTransformerTest {
         // then
         assertThat(queries).containsExactly(Query.from(expectedCompressedQuery, metadata));
 
-        assertThat(model.userMessageText()).isEqualTo("""
+        assertThat(model.userMessageText())
+                .isEqualTo(
+                        """
                 Given the following conversation: \
                 User: Tell me about Klaus Heisler
                 AI: He is a cool guy \
