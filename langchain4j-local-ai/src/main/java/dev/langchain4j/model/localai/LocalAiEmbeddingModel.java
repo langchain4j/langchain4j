@@ -1,5 +1,12 @@
 package dev.langchain4j.model.localai;
 
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+import static java.time.Duration.ofSeconds;
+import static java.util.stream.Collectors.toList;
+
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
@@ -8,17 +15,9 @@ import dev.langchain4j.model.openai.internal.OpenAiClient;
 import dev.langchain4j.model.openai.internal.embedding.EmbeddingRequest;
 import dev.langchain4j.model.openai.internal.embedding.EmbeddingResponse;
 import dev.langchain4j.model.output.Response;
-import org.slf4j.Logger;
-
 import java.time.Duration;
 import java.util.List;
-
-import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
-import static java.time.Duration.ofSeconds;
-import static java.util.stream.Collectors.toList;
+import org.slf4j.Logger;
 
 /**
  * See <a href="https://localai.io/features/embeddings/">LocalAI documentation</a> for more details.
@@ -30,12 +29,13 @@ public class LocalAiEmbeddingModel extends DimensionAwareEmbeddingModel {
     private final Integer maxRetries;
 
     @Deprecated(forRemoval = true, since = "1.5.0")
-    public LocalAiEmbeddingModel(String baseUrl,
-                                 String modelName,
-                                 Duration timeout,
-                                 Integer maxRetries,
-                                 Boolean logRequests,
-                                 Boolean logResponses) {
+    public LocalAiEmbeddingModel(
+            String baseUrl,
+            String modelName,
+            Duration timeout,
+            Integer maxRetries,
+            Boolean logRequests,
+            Boolean logResponses) {
 
         timeout = timeout == null ? ofSeconds(60) : timeout;
         maxRetries = maxRetries == null ? 3 : maxRetries;
@@ -67,16 +67,13 @@ public class LocalAiEmbeddingModel extends DimensionAwareEmbeddingModel {
     @Override
     public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
 
-        List<String> texts = textSegments.stream()
-                .map(TextSegment::text)
-                .collect(toList());
+        List<String> texts = textSegments.stream().map(TextSegment::text).collect(toList());
 
-        EmbeddingRequest request = EmbeddingRequest.builder()
-                .input(texts)
-                .model(modelName)
-                .build();
+        EmbeddingRequest request =
+                EmbeddingRequest.builder().input(texts).model(modelName).build();
 
-        EmbeddingResponse response = withRetryMappingExceptions(() -> client.embedding(request).execute(), maxRetries);
+        EmbeddingResponse response =
+                withRetryMappingExceptions(() -> client.embedding(request).execute(), maxRetries);
 
         List<Embedding> embeddings = response.data().stream()
                 .map(openAiEmbedding -> Embedding.from(openAiEmbedding.embedding()))
@@ -110,31 +107,67 @@ public class LocalAiEmbeddingModel extends DimensionAwareEmbeddingModel {
             // This is public so it can be extended
         }
 
+        /**
+         * Sets the base URL of the LocalAI server, e.g. {@code "http://localhost:8080"}.
+         *
+         * @param baseUrl the base URL
+         * @return {@code this}
+         */
         public LocalAiEmbeddingModelBuilder baseUrl(String baseUrl) {
             this.baseUrl = baseUrl;
             return this;
         }
 
+        /**
+         * Sets the name of the embedding model loaded in the LocalAI server.
+         *
+         * @param modelName the model name
+         * @return {@code this}
+         */
         public LocalAiEmbeddingModelBuilder modelName(String modelName) {
             this.modelName = modelName;
             return this;
         }
 
+        /**
+         * Sets the HTTP request timeout. Defaults to 60 seconds.
+         *
+         * @param timeout the request timeout
+         * @return {@code this}
+         */
         public LocalAiEmbeddingModelBuilder timeout(Duration timeout) {
             this.timeout = timeout;
             return this;
         }
 
+        /**
+         * Sets the maximum number of retries on transient errors. Defaults to {@code 3}.
+         *
+         * @param maxRetries the maximum number of retries
+         * @return {@code this}
+         */
         public LocalAiEmbeddingModelBuilder maxRetries(Integer maxRetries) {
             this.maxRetries = maxRetries;
             return this;
         }
 
+        /**
+         * Enables debug logging of request bodies sent to the LocalAI server.
+         *
+         * @param logRequests {@code true} to enable request logging
+         * @return {@code this}
+         */
         public LocalAiEmbeddingModelBuilder logRequests(Boolean logRequests) {
             this.logRequests = logRequests;
             return this;
         }
 
+        /**
+         * Enables debug logging of response bodies received from the LocalAI server.
+         *
+         * @param logResponses {@code true} to enable response logging
+         * @return {@code this}
+         */
         public LocalAiEmbeddingModelBuilder logResponses(Boolean logResponses) {
             this.logResponses = logResponses;
             return this;
@@ -154,7 +187,9 @@ public class LocalAiEmbeddingModel extends DimensionAwareEmbeddingModel {
         }
 
         public String toString() {
-            return "LocalAiEmbeddingModel.LocalAiEmbeddingModelBuilder(baseUrl=" + this.baseUrl + ", modelName=" + this.modelName + ", timeout=" + this.timeout + ", maxRetries=" + this.maxRetries + ", logRequests=" + this.logRequests + ", logResponses=" + this.logResponses + ")";
+            return "LocalAiEmbeddingModel.LocalAiEmbeddingModelBuilder(baseUrl=" + this.baseUrl + ", modelName="
+                    + this.modelName + ", timeout=" + this.timeout + ", maxRetries=" + this.maxRetries
+                    + ", logRequests=" + this.logRequests + ", logResponses=" + this.logResponses + ")";
         }
     }
 }
