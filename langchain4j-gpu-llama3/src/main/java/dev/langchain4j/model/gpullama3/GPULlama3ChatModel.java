@@ -86,31 +86,67 @@ public class GPULlama3ChatModel extends GPULlama3BaseModel implements ChatModel 
             // This is public so it can be extended
         }
 
+        /**
+         * Sets the path to the GGUF model file.
+         *
+         * @param modelPath the path to the model file
+         * @return {@code this}
+         */
         public Builder modelPath(Path modelPath) {
             this.modelPath = modelPath;
             return this;
         }
 
+        /**
+         * Controls whether to run inference on the GPU. Defaults to {@code true}.
+         *
+         * @param onGPU {@code true} to use GPU, {@code false} for CPU
+         * @return {@code this}
+         */
         public Builder onGPU(Boolean onGPU) {
             this.onGPU = onGPU;
             return this;
         }
 
+        /**
+         * Sets the sampling temperature. Defaults to {@code 0.1}.
+         *
+         * @param temperature the sampling temperature
+         * @return {@code this}
+         */
         public Builder temperature(Double temperature) {
             this.temperature = temperature;
             return this;
         }
 
+        /**
+         * Sets the nucleus sampling probability. Defaults to {@code 1.0}.
+         *
+         * @param topP the top-P value
+         * @return {@code this}
+         */
         public Builder topP(Double topP) {
             this.topP = topP;
             return this;
         }
 
+        /**
+         * Sets the maximum number of tokens to generate. Defaults to {@code 512}.
+         *
+         * @param maxTokens the maximum number of tokens
+         * @return {@code this}
+         */
         public Builder maxTokens(Integer maxTokens) {
             this.maxTokens = maxTokens;
             return this;
         }
 
+        /**
+         * Sets the random seed for deterministic output. Defaults to {@code 12345}.
+         *
+         * @param seed the random seed
+         * @return {@code this}
+         */
         public Builder seed(Integer seed) {
             this.seed = seed;
             return this;
