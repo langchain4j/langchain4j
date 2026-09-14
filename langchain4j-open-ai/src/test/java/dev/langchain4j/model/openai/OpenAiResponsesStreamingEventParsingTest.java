@@ -223,4 +223,42 @@ class OpenAiResponsesStreamingEventParsingTest {
         assertThat(completeToolCalls).isEmpty();
         assertThat(response.aiMessage().toolExecutionRequests()).isEmpty();
     }
+
+    @Test
+    void should_surface_only_the_final_answer_message_item() throws Exception {
+        // reasoning models can emit a commentary message item whose text repeats
+        // or precedes the final answer; concatenating both duplicates the reply
+        ChatResponse response = chatWith(event(
+                """
+                {"type":"response.completed","response":{"id":"resp_1","model":"gpt-5.6","status":"completed","output":[
+                  {"id":"msg_1","type":"message","phase":"commentary","role":"assistant","status":"completed",
+                   "content":[{"type":"output_text","text":"Just to confirm, you'd like to make a payment of $40."}]},
+                  {"id":"msg_2","type":"message","phase":"final_answer","role":"assistant","status":"completed",
+                   "content":[{"type":"output_text","text":"Just to confirm, you'd like to make a payment of $40."}]}]}}"""));
+
+        assertThat(response.aiMessage().text())
+                .isEqualTo("Just to confirm, you'd like to make a payment of $40.");
+    }
+
+    @Test
+    void should_fall_back_to_commentary_text_when_no_final_answer_item_exists() throws Exception {
+        ChatResponse response = chatWith(event(
+                """
+                {"type":"response.completed","response":{"id":"resp_1","model":"gpt-5.6","status":"completed","output":[
+                  {"id":"msg_1","type":"message","phase":"commentary","role":"assistant","status":"completed",
+                   "content":[{"type":"output_text","text":"Preamble only"}]}]}}"""));
+
+        assertThat(response.aiMessage().text()).isEqualTo("Preamble only");
+    }
+
+    @Test
+    void should_concatenate_message_items_when_they_carry_no_phase() throws Exception {
+        ChatResponse response = chatWith(event(
+                """
+                {"type":"response.completed","response":{"id":"resp_1","model":"gpt-5.4-mini","status":"completed","output":[
+                  {"id":"msg_1","type":"message","role":"assistant","content":[{"type":"output_text","text":"Hello"}]},
+                  {"id":"msg_2","type":"message","role":"assistant","content":[{"type":"output_text","text":", world"}]}]}}"""));
+
+        assertThat(response.aiMessage().text()).isEqualTo("Hello, world");
+    }
 }
