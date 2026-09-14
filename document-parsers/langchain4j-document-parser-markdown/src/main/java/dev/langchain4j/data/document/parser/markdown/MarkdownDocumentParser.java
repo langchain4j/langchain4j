@@ -14,8 +14,8 @@ import org.commonmark.parser.Parser;
 import org.commonmark.renderer.text.TextContentRenderer;
 
 /**
- * Parses Markdown file into a {@link Document}.
- * please refer to the <a href="https://www.markdownguide.org/">official Markdown website</a>.
+ * Parses a Markdown file into a {@link Document}.
+ * Please refer to the <a href="https://www.markdownguide.org/">official Markdown website</a>.
  */
 public class MarkdownDocumentParser implements DocumentParser {
 
