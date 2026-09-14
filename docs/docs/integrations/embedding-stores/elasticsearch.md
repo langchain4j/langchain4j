@@ -102,6 +102,10 @@ The option applies to `add`, `addAll` and `removeAll(Collection<String> ids)`. I
 not isolate you from writes made concurrently by someone else. The same option is available on
 `ElasticsearchContentRetriever.builder()`.
 
+Filtered removal (`removeAll(Filter)`) is a delete-by-query, so it too only matches documents that are already
+visible to search: embeddings added moments earlier can survive it. If you add embeddings and then immediately remove
+them by filter, configure `Refresh.WaitFor` so the writes are searchable before the removal runs.
+
 See the
 [Elasticsearch refresh parameter documentation](https://www.elastic.co/docs/reference/elasticsearch/rest-apis/refresh-parameter)
 for details.
