@@ -45,9 +45,13 @@ import java.util.function.Function;
  * to avoid problems with some LLM providers (such as OpenAI)
  * that prohibit sending orphan {@code ToolExecutionResultMessage}(s) in the request.
  * Additionally, every time {@link #messages()} or {@link #messagesAsync()} loads messages from the
- * {@link ChatMemoryStore}, {@link ToolAwareMessageSanitizer} repairs any already-corrupt tool call/result
- * pairing in the persisted state (e.g. left behind by an earlier session or an older library version), so a
- * corrupt history self-heals rather than failing every subsequent call.
+ * {@link ChatMemoryStore}, any already-corrupt tool call/result pairing in the persisted state (e.g. left
+ * behind by an earlier session or an older library version) is repaired, so a corrupt history self-heals
+ * rather than failing every subsequent call. An {@link AiMessage} whose tool calls are still unanswered
+ * when it is the last message is left untouched, since it cannot be told apart from one still awaiting its
+ * result: a request interrupted mid tool call (e.g. by a restart) therefore still fails on the next
+ * request, and only the one after that self-heals, once that failed request's own message has closed the
+ * window.
  * <p>
  * The state of chat memory is stored in {@link ChatMemoryStore} ({@link SingleSlotChatMemoryStore} is used by default).
  */

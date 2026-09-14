@@ -906,6 +906,10 @@ class TokenWindowChatMemoryTest implements WithAssertions {
 
         // then the orphan is dropped and the rest of the history is untouched
         assertThat(chatMemory.messages()).containsExactly(followUp);
+
+        // and the next add() writes the repaired, shorter list back, deleting the orphan from the store itself
+        chatMemory.add(userMessage("thanks"));
+        assertThat(store.getMessages("default")).containsExactly(followUp, userMessage("thanks"));
     }
 
     @Test

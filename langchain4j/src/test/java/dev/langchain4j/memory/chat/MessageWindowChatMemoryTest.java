@@ -677,9 +677,10 @@ class MessageWindowChatMemoryTest implements WithAssertions {
     @Test
     void should_self_heal_orphaned_ToolExecutionResultMessage_left_by_a_prior_corrupt_state() {
 
-        // given a store already holding a corrupt history: a ToolExecutionResultMessage
-        // whose parent AiMessage was evicted (or dropped) by an earlier session, e.g. bulk
-        // tool execution outrunning ensureCapacity's forward-eviction cascade (issue #3133)
+        // given a store already holding a corrupt history: a ToolExecutionResultMessage whose parent
+        // AiMessage is missing because something below ChatMemory truncated the head of the history
+        // (e.g. a persistence layer enforcing its own message cap, issue #3133), not because
+        // ensureCapacity's own forward-eviction cascade failed to evict it alongside its AiMessage
         InMemoryChatMemoryStore store = new InMemoryChatMemoryStore();
 
         ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
@@ -700,6 +701,10 @@ class MessageWindowChatMemoryTest implements WithAssertions {
 
         // then the orphan is dropped and the rest of the history is untouched
         assertThat(chatMemory.messages()).containsExactly(followUp);
+
+        // and the next add() writes the repaired, shorter list back, deleting the orphan from the store itself
+        chatMemory.add(userMessage("thanks"));
+        assertThat(store.getMessages("default")).containsExactly(followUp, userMessage("thanks"));
     }
 
     @Test

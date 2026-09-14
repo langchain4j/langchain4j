@@ -217,17 +217,18 @@ class ToolAwareMessageSanitizerTest implements WithAssertions {
     }
 
     @Test
-    void should_never_treat_a_null_id_result_as_orphaned() {
+    void should_drop_a_null_id_result_as_orphaned_when_outside_any_window() {
+        // position alone proves this is orphaned; a null id cannot prove otherwise, only fail to disprove it
         ToolExecutionResultMessage nullIdResult = ToolExecutionResultMessage.from(null, "calculator", "4");
         UserMessage userMessage = userMessage("hi");
 
-        List<ChatMessage> messages = asList(nullIdResult, userMessage);
+        List<ChatMessage> sanitized = ToolAwareMessageSanitizer.sanitize(asList(nullIdResult, userMessage));
 
-        assertThat(ToolAwareMessageSanitizer.sanitize(messages)).isSameAs(messages);
+        assertThat(sanitized).containsExactly(userMessage);
     }
 
     @Test
-    void should_never_treat_a_null_id_result_as_orphaned_even_when_other_repairs_happen() {
+    void should_drop_a_null_id_result_alongside_other_orphans_outside_any_window() {
         ToolExecutionResultMessage danglingOrphan = ToolExecutionResultMessage.from(toolExecutionRequest("1"), "4");
         ToolExecutionResultMessage nullIdResult = ToolExecutionResultMessage.from(null, "calculator", "9");
         UserMessage userMessage = userMessage("hi");
@@ -235,7 +236,23 @@ class ToolAwareMessageSanitizerTest implements WithAssertions {
         List<ChatMessage> sanitized =
                 ToolAwareMessageSanitizer.sanitize(asList(danglingOrphan, nullIdResult, userMessage));
 
-        assertThat(sanitized).containsExactly(nullIdResult, userMessage);
+        assertThat(sanitized).containsExactly(userMessage);
+    }
+
+    @Test
+    void should_keep_a_null_id_result_that_is_inside_a_closed_window() {
+        // unlike outside a window, position alone cannot prove this is orphaned here: it may be answering
+        // one of the AiMessage's calls, so it is kept even once the window closes and repair runs for real
+        ToolExecutionRequest request1 = toolExecutionRequest("1");
+        AiMessage aiMessage = AiMessage.from(request1);
+        ToolExecutionResultMessage nullIdResult = ToolExecutionResultMessage.from(null, "calculator", "9");
+        ToolExecutionResultMessage result1 = ToolExecutionResultMessage.from(request1, "4");
+        UserMessage nextTurn = userMessage("thanks");
+
+        List<ChatMessage> sanitized =
+                ToolAwareMessageSanitizer.sanitize(asList(aiMessage, nullIdResult, result1, nextTurn));
+
+        assertThat(sanitized).containsExactly(aiMessage, nullIdResult, result1, nextTurn);
     }
 
     @Test
@@ -294,10 +311,15 @@ class ToolAwareMessageSanitizerTest implements WithAssertions {
         ToolExecutionRequest request2 = toolExecutionRequest("2");
         AiMessage aiMessage = AiMessage.from(request1, request2);
         ToolExecutionResultMessage result1 = ToolExecutionResultMessage.from(request1, "4");
+        // a subsequent message closes the window, so the first pass actually strips request2 for real
+        UserMessage nextTurn = userMessage("thanks");
 
-        List<ChatMessage> once = ToolAwareMessageSanitizer.sanitize(asList(aiMessage, result1));
+        List<ChatMessage> once = ToolAwareMessageSanitizer.sanitize(asList(aiMessage, result1, nextTurn));
         List<ChatMessage> twice = ToolAwareMessageSanitizer.sanitize(once);
 
+        assertThat(once).hasSize(3);
+        AiMessage repaired = (AiMessage) once.get(0);
+        assertThat(repaired.toolExecutionRequests()).containsExactly(request1);
         assertThat(twice).isSameAs(once);
     }
 }

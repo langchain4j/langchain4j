@@ -33,9 +33,12 @@ import org.slf4j.LoggerFactory;
  * the {@code AiMessage} is dropped entirely, since an empty assistant turn is not valid history either.
  * <p>
  * A {@code null} {@link ToolExecutionRequest#id()} or {@link ToolExecutionResultMessage#id()} cannot be reliably
- * correlated with its counterpart, so such entries are left untouched wherever they occur: a null-id call is
- * never considered unanswered and therefore never triggers repair of its message, a null-id result is never
- * considered orphaned, and neither is allowed to match the other.
+ * correlated with its counterpart, so a null-id call is never considered unanswered and therefore never
+ * triggers repair of its message, and neither a null id call nor result is ever allowed to match the other.
+ * A null-id result is kept while inside a window, same as one with an id that matches an open call, since
+ * there is no way to tell whether it answers one of that window's still-unanswered calls. Outside a window
+ * it is dropped as orphaned regardless of its id, since position alone already proves no call is open for
+ * it to answer.
  * <p>
  * {@link #sanitize(List)} is idempotent and returns the original list instance when no repair is needed.
  *
@@ -116,15 +119,14 @@ final class ToolAwareMessageSanitizer {
             }
 
             if (message instanceof ToolExecutionResultMessage result) {
-                String resultId = result.id();
-                if (resultId != null) {
-                    log.warn("Dropping orphaned ToolExecutionResultMessage with id '{}'", resultId);
-                    if (sanitized == null) {
-                        sanitized = new ArrayList<>(size);
-                        sanitized.addAll(messages.subList(0, i));
-                    }
-                } else if (sanitized != null) {
-                    sanitized.add(message);
+                // Position alone proves this result is orphaned here, regardless of id: it is not inside
+                // any AiMessage's window, so no call it could answer is open. A null id cannot be matched
+                // to a call either way, but that only matters inside a window; outside one it is dropped
+                // the same as a result with an id.
+                log.warn("Dropping orphaned ToolExecutionResultMessage with id '{}'", result.id());
+                if (sanitized == null) {
+                    sanitized = new ArrayList<>(size);
+                    sanitized.addAll(messages.subList(0, i));
                 }
                 i++;
                 continue;
