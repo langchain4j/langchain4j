@@ -1,12 +1,12 @@
 package dev.langchain4j.store.embedding.pinecone;
 
-import io.pinecone.clients.Pinecone;
-import org.openapitools.db_control.client.model.DeletionProtection;
-
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static org.openapitools.db_control.client.model.DeletionProtection.ENABLED;
+
+import io.pinecone.clients.Pinecone;
+import org.openapitools.db_control.client.model.DeletionProtection;
 
 public class PineconeServerlessIndexConfig implements PineconeIndexConfig {
 
@@ -15,10 +15,8 @@ public class PineconeServerlessIndexConfig implements PineconeIndexConfig {
     private final String region;
     private final DeletionProtection deletionProtection;
 
-    PineconeServerlessIndexConfig(Integer dimension,
-                                  String cloud,
-                                  String region,
-                                  DeletionProtection deletionProtection) {
+    PineconeServerlessIndexConfig(
+            Integer dimension, String cloud, String region, DeletionProtection deletionProtection) {
         this.dimension = ensureNotNull(dimension, "dimension");
         this.cloud = ensureNotBlank(cloud, "cloud");
         this.region = ensureNotBlank(region, "region");
@@ -29,9 +27,7 @@ public class PineconeServerlessIndexConfig implements PineconeIndexConfig {
      * @deprecated please use {@link #PineconeServerlessIndexConfig(Integer, String, String, DeletionProtection)} instead
      */
     @Deprecated(since = "1.0.0-beta1", forRemoval = true)
-    PineconeServerlessIndexConfig(Integer dimension,
-                                  String cloud,
-                                  String region) {
+    PineconeServerlessIndexConfig(Integer dimension, String cloud, String region) {
         this(dimension, cloud, region, null);
     }
 
@@ -53,26 +49,58 @@ public class PineconeServerlessIndexConfig implements PineconeIndexConfig {
         private String region;
         private DeletionProtection deletionProtection;
 
+        /**
+         * Sets the vector dimension of the index (required).
+         *
+         * @param dimension the number of dimensions for stored vectors
+         * @return {@code this}
+         */
         public Builder dimension(Integer dimension) {
             this.dimension = dimension;
             return this;
         }
 
+        /**
+         * Sets the cloud provider for the serverless index (required).
+         * Common values: {@code "aws"}, {@code "gcp"}, {@code "azure"}.
+         *
+         * @param cloud the cloud provider name
+         * @return {@code this}
+         */
         public Builder cloud(String cloud) {
             this.cloud = cloud;
             return this;
         }
 
+        /**
+         * Sets the cloud region for the serverless index (required).
+         * Example: {@code "us-east-1"}.
+         *
+         * @param region the cloud region
+         * @return {@code this}
+         */
         public Builder region(String region) {
             this.region = region;
             return this;
         }
 
+        /**
+         * Sets the deletion protection setting for the index.
+         * Defaults to {@link DeletionProtection#ENABLED} when not set.
+         *
+         * @param deletionProtection the deletion protection configuration
+         * @return {@code this}
+         */
         public Builder deletionProtection(DeletionProtection deletionProtection) {
             this.deletionProtection = deletionProtection;
             return this;
         }
 
+        /**
+         * Builds the {@link PineconeServerlessIndexConfig}.
+         *
+         * @return the configured {@link PineconeServerlessIndexConfig}
+         */
         public PineconeServerlessIndexConfig build() {
             return new PineconeServerlessIndexConfig(dimension, cloud, region, deletionProtection);
         }

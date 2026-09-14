@@ -1,5 +1,8 @@
 package dev.langchain4j.chain;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.ChatMemory;
@@ -12,9 +15,6 @@ import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.query.Metadata;
 import dev.langchain4j.service.AiServices;
-
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
  * A chain for conversing with a specified {@link ChatModel}
@@ -31,21 +31,17 @@ public class ConversationalRetrievalChain implements Chain<String, String> {
     private final ChatMemory chatMemory;
     private final RetrievalAugmentor retrievalAugmentor;
 
-    public ConversationalRetrievalChain(ChatModel chatModel,
-                                        ChatMemory chatMemory,
-                                        ContentRetriever contentRetriever) {
+    public ConversationalRetrievalChain(ChatModel chatModel, ChatMemory chatMemory, ContentRetriever contentRetriever) {
         this(
                 chatModel,
                 chatMemory,
                 DefaultRetrievalAugmentor.builder()
                         .contentRetriever(contentRetriever)
-                        .build()
-        );
+                        .build());
     }
 
-    public ConversationalRetrievalChain(ChatModel chatModel,
-                                        ChatMemory chatMemory,
-                                        RetrievalAugmentor retrievalAugmentor) {
+    public ConversationalRetrievalChain(
+            ChatModel chatModel, ChatMemory chatMemory, RetrievalAugmentor retrievalAugmentor) {
         this.chatModel = ensureNotNull(chatModel, "chatModel");
         this.chatMemory = getOrDefault(chatMemory, () -> MessageWindowChatMemory.withMaxMessages(10));
         this.retrievalAugmentor = ensureNotNull(retrievalAugmentor, "retrievalAugmentor");
@@ -84,16 +80,37 @@ public class ConversationalRetrievalChain implements Chain<String, String> {
         private ChatMemory chatMemory;
         private RetrievalAugmentor retrievalAugmentor;
 
+        /**
+         * Sets the {@link ChatModel} used to generate responses.
+         *
+         * @param chatModel the chat model
+         * @return {@code this}
+         */
         public Builder chatModel(ChatModel chatModel) {
             this.chatModel = chatModel;
             return this;
         }
 
+        /**
+         * Sets the {@link ChatMemory} used to store conversation history.
+         * Defaults to a {@link MessageWindowChatMemory} with a maximum of 10 messages when not set.
+         *
+         * @param chatMemory the chat memory
+         * @return {@code this}
+         */
         public Builder chatMemory(ChatMemory chatMemory) {
             this.chatMemory = chatMemory;
             return this;
         }
 
+        /**
+         * Sets the {@link ContentRetriever} used to fetch relevant content for each query.
+         * Wraps the retriever in a {@link DefaultRetrievalAugmentor}. Mutually exclusive with
+         * {@link #retrievalAugmentor(RetrievalAugmentor)}.
+         *
+         * @param contentRetriever the content retriever
+         * @return {@code this}
+         */
         public Builder contentRetriever(ContentRetriever contentRetriever) {
             if (contentRetriever != null) {
                 this.retrievalAugmentor = DefaultRetrievalAugmentor.builder()
@@ -103,11 +120,23 @@ public class ConversationalRetrievalChain implements Chain<String, String> {
             return this;
         }
 
+        /**
+         * Sets a custom {@link RetrievalAugmentor} for full control over RAG behavior.
+         * Takes precedence over any value set via {@link #contentRetriever(ContentRetriever)}.
+         *
+         * @param retrievalAugmentor the retrieval augmentor
+         * @return {@code this}
+         */
         public Builder retrievalAugmentor(RetrievalAugmentor retrievalAugmentor) {
             this.retrievalAugmentor = retrievalAugmentor;
             return this;
         }
 
+        /**
+         * Builds the {@link ConversationalRetrievalChain}.
+         *
+         * @return the configured {@link ConversationalRetrievalChain}
+         */
         public ConversationalRetrievalChain build() {
             return new ConversationalRetrievalChain(chatModel, chatMemory, retrievalAugmentor);
         }
