@@ -62,13 +62,16 @@ class ContentTest {
         Content content1 = Content.from(TextSegment.from("content"), Map.of(SCORE, 1.0));
         Content content2 = Content.from("content 2");
         Content content3 = Content.from("content");
+        Content content4 = Content.from(TextSegment.from("content"), Map.of(SCORE, 1.0));
 
         // then
         assertThat(content1)
                 .isNotEqualTo(content2)
                 .doesNotHaveSameHashCodeAs(content2)
-                .isEqualTo(content3) // Content.metadata() is not taken into account
-                .hasSameHashCodeAs(content3); // Content.metadata() is not taken into account
+                .isNotEqualTo(content3)
+                .doesNotHaveSameHashCodeAs(content3)
+                .isEqualTo(content4)
+                .hasSameHashCodeAs(content4);
     }
 
     @Test
@@ -196,7 +199,7 @@ class ContentTest {
     }
 
     @Test
-    void should_ignore_metadata_in_equality_with_different_metadata() {
+    void should_include_metadata_in_equality() {
         // given
         TextSegment segment = TextSegment.from("test");
         Content content1 = Content.from(segment, Map.of(SCORE, 0.1));
@@ -205,8 +208,9 @@ class ContentTest {
 
         // then
         assertThat(content1).isEqualTo(content2);
-        assertThat(content1).isEqualTo(content3);
-        assertThat(content2).isEqualTo(content3);
+        assertThat(content1).hasSameHashCodeAs(content2);
+        assertThat(content1).isNotEqualTo(content3);
+        assertThat(content2).isNotEqualTo(content3);
     }
 
     @Test
