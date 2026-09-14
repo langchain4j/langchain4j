@@ -1,9 +1,11 @@
 package dev.langchain4j.store.embedding.milvus.v2;
 
+import static dev.langchain4j.store.embedding.milvus.v2.Mapper.toRelevanceScore;
 import static dev.langchain4j.store.embedding.milvus.v2.Mapper.toSparseVectors;
 import static dev.langchain4j.store.embedding.milvus.v2.Mapper.toVectors;
 
 import dev.langchain4j.data.embedding.Embedding;
+import dev.langchain4j.store.embedding.RelevanceScore;
 import java.util.Arrays;
 import java.util.List;
 import java.util.SortedMap;
@@ -11,6 +13,25 @@ import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
 
 class MapperTest implements WithAssertions {
+
+    @Test
+    void should_use_hybrid_score_as_is_for_hybrid_search() {
+        // given - an RRF (rank-based) score returned by Milvus hybrid search
+        double rrfScore = 0.0328;
+
+        // when
+        double relevanceScore = toRelevanceScore(rrfScore, true);
+
+        // then - the RRF score must not be mapped as if it were a cosine similarity
+        assertThat(relevanceScore).isEqualTo(rrfScore);
+    }
+
+    @Test
+    void should_convert_cosine_score_to_relevance_score_for_vector_search() {
+        assertThat(toRelevanceScore(0.6, false)).isEqualTo(RelevanceScore.fromCosineSimilarity(0.6));
+        assertThat(toRelevanceScore(-1.0, false)).isEqualTo(0.0);
+        assertThat(toRelevanceScore(1.0, false)).isEqualTo(1.0);
+    }
 
     @Test
     void should_convert_embeddings_to_vectors() {
