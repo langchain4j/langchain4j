@@ -298,6 +298,12 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
         removeByIds(ids);
     }
 
+    /**
+     * Elasticsearch deletes by running a search, so this removes only the documents that are already visible to
+     * search. A document added moments earlier may not be visible yet, and would survive this call. Configure the
+     * store with a {@code refresh} policy of {@link Refresh#WaitFor} if you need writes to be searchable by the
+     * time they are acknowledged.
+     */
     @Override
     public void removeAll(Filter filter) {
         ensureNotNull(filter, "filter");
