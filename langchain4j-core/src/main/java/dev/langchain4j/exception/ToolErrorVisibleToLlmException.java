@@ -11,7 +11,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
  *
  * @since 1.21.0
  */
-public class ToolErrorVisibleToLlmException extends LangChain4jException implements ToolErrorVisibleToLlm {
+public class ToolErrorVisibleToLlmException extends RuntimeException implements ToolErrorVisibleToLlm {
 
     public ToolErrorVisibleToLlmException(String message) {
         super(ensureNotBlank(message, "message"));

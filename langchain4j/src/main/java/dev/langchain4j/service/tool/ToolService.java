@@ -80,18 +80,19 @@ public class ToolService {
     private static final Logger log = LoggerFactory.getLogger(ToolService.class);
 
     private static final ToolArgumentsErrorHandler RETHROW_ARGUMENTS_ERROR = ToolArgumentsErrorHandler.failInvocation();
-    private static final ToolExecutionErrorHandler RETHROW_EXECUTION_ERROR = ToolExecutionErrorHandler.failInvocation();
     private static final ToolArgumentsErrorHandler ARGUMENTS_ERROR_TO_LLM = ToolArgumentsErrorHandler.sendExceptionMessageToLlm();
     private static final ToolExecutionErrorHandler EXECUTION_ERROR_TO_LLM = (error, context) -> {
-        String errorMessage = errorText(error);
+        // the same handler users are told to configure to keep this behavior, so that the two cannot drift,
+        // and so that an exception that says what the LLM may be told is honored here too
+        ToolErrorHandlerResult result = ToolExecutionErrorHandler.sendExceptionMessageToLlm().handle(error, context);
         log.warn(
                 "Tool '{}' execution failed. The error message is being returned to the LLM. "
                         + "To customize this behavior (and silence this log), configure a custom "
                         + "ToolExecutionErrorHandler via AiServices.toolExecutionErrorHandler(...). Error: {}",
                 context.toolExecutionRequest().name(),
-                errorMessage,
+                result.text(),
                 error);
-        return ToolErrorHandlerResult.text(errorMessage);
+        return result;
     };
 
     // Default tool-error handling differs by AI Service mode:
@@ -105,7 +106,7 @@ public class ToolService {
     private static final ToolExecutionErrorHandler DEFAULT_ASYNC_TOOL_EXECUTION_ERROR_HANDLER =
             ToolExecutionErrorHandler.failInvocationUnlessVisibleToLlm();
 
-    static String errorText(Throwable error) {
+    private static String errorText(Throwable error) {
         return ToolErrors.errorText(error);
     }
 
@@ -2142,6 +2143,10 @@ public class ToolService {
                 ? argumentsErrorHandler.handle(getCause(e), errorContext)
                 : executionErrorHandler.handle(getCause(e), errorContext);
 
+        // the handler turned the error into a result, so the AI Service invocation continues and nothing
+        // else would report what actually went wrong
+        log.debug("Tool '{}' failed and the error was handled", toolRequest.name(), e);
+
         return ToolExecutionResult.builder()
                 .isError(true)
                 .resultText(errorHandlerResult.text())
@@ -2166,7 +2171,6 @@ public class ToolService {
     public ToolExecutionResult applyToolHallucinationStrategy(ToolExecutionRequest toolRequest) {
         ToolExecutionResultMessage toolResultMessage = toolHallucinationStrategy.apply(toolRequest);
         return ToolExecutionResult.builder()
-                .isError(true)
                 .resultText(toolResultMessage.text())
                 .build();
     }

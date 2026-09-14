@@ -21,8 +21,8 @@ import dev.langchain4j.exception.ToolExecutionException;
 public class McpApplicationErrorException extends ToolExecutionException implements ToolErrorVisibleToLlm {
 
     public McpApplicationErrorException(String message) {
-        // (Throwable) null on purpose: ToolExecutionException(String) synthesises a cause, and the error
-        // handlers are given the cause of the exception, which would drop the ToolErrorVisibleToLlm marker
+        // (Throwable) null on purpose: ToolExecutionException(String) synthesises a RuntimeException cause,
+        // which would show up as the cause of an error that has none
         super(message, (Throwable) null);
     }
 

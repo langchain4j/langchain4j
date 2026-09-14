@@ -21,7 +21,7 @@ class ToolErrorHandlerFactoriesTest {
             .build();
 
     @Test
-    void fail_ai_service_invocation_should_propagate_runtime_exception_as_is() {
+    void fail_invocation_should_propagate_runtime_exception_as_is() {
 
         RuntimeException error = new IllegalStateException("boom");
 
@@ -32,7 +32,7 @@ class ToolErrorHandlerFactoriesTest {
     }
 
     @Test
-    void fail_ai_service_invocation_should_wrap_checked_exception() {
+    void fail_invocation_should_wrap_checked_exception() {
 
         Exception error = new IOException("boom");
 
@@ -79,20 +79,6 @@ class ToolErrorHandlerFactoriesTest {
         }
     }
 
-    static class LibraryException extends RuntimeException {
-
-        LibraryException(String message) {
-            super(message);
-        }
-    }
-
-    static class LibrarySubException extends LibraryException {
-
-        LibrarySubException(String message) {
-            super(message);
-        }
-    }
-
     @Test
     void fail_unless_visible_to_llm_should_send_the_message_written_for_the_llm() {
 
@@ -120,45 +106,6 @@ class ToolErrorHandlerFactoriesTest {
         assertThatThrownBy(() ->
                         ToolExecutionErrorHandler.failInvocationUnlessVisibleToLlm().handle(error, CONTEXT))
                 .isSameAs(error);
-    }
-
-    @Test
-    void send_exception_message_to_llm_for_should_send_the_message_of_the_listed_types() {
-
-        ToolExecutionErrorHandler handler =
-                ToolExecutionErrorHandler.sendExceptionMessageToLlmFor(LibraryException.class);
-
-        assertThat(handler.handle(new LibraryException("not found"), CONTEXT))
-                .isEqualTo(ToolErrorHandlerResult.text("not found"));
-        assertThat(handler.handle(new LibrarySubException("also not found"), CONTEXT))
-                .as("subtypes of a listed type are visible as well")
-                .isEqualTo(ToolErrorHandlerResult.text("also not found"));
-    }
-
-    @Test
-    void send_exception_message_to_llm_for_should_fail_for_types_that_are_not_listed() {
-
-        RuntimeException error = new IllegalStateException("boom");
-
-        assertThatThrownBy(() -> ToolExecutionErrorHandler.sendExceptionMessageToLlmFor(LibraryException.class)
-                        .handle(error, CONTEXT))
-                .isSameAs(error);
-    }
-
-    @Test
-    void send_exception_message_to_llm_for_should_still_honor_the_marker() {
-
-        assertThat(ToolExecutionErrorHandler.sendExceptionMessageToLlmFor(LibraryException.class)
-                        .handle(new OrderNotFoundException(), CONTEXT))
-                .as("a marked exception is sent even when it is not listed, using the text written for the LLM")
-                .isEqualTo(ToolErrorHandlerResult.text("There is no order with this ID."));
-    }
-
-    @Test
-    void send_exception_message_to_llm_for_should_reject_an_empty_list_of_types() {
-
-        assertThatThrownBy(ToolExecutionErrorHandler::sendExceptionMessageToLlmFor)
-                .isInstanceOf(IllegalArgumentException.class);
     }
 
     static class Tools {
@@ -241,31 +188,57 @@ class ToolErrorHandlerFactoriesTest {
     }
 
     @Test
-    void arguments_handler_should_honor_the_marker_too() {
+    void default_handler_should_honor_the_marker_for_a_tool_method() {
 
-        assertThat(ToolArgumentsErrorHandler.failInvocationUnlessVisibleToLlm()
-                        .handle(new OrderNotFoundException(), CONTEXT))
-                .isEqualTo(ToolErrorHandlerResult.text("There is no order with this ID."));
+        ToolExecutor executor = (request, context) -> {
+            throw new OrderNotFoundException();
+        };
 
-        RuntimeException error = new IllegalStateException("boom");
-        assertThatThrownBy(() ->
-                        ToolArgumentsErrorHandler.failInvocationUnlessVisibleToLlm().handle(error, CONTEXT))
-                .isSameAs(error);
+        ToolExecutionResult result = executeWithDefaultHandlers(executor);
+
+        assertThat(result.resultText())
+                .as("without any configuration, an exception that says what the LLM may be told is honored")
+                .isEqualTo("There is no order with this ID.");
     }
 
     @Test
-    void hallucinated_tool_name_result_should_be_flagged_as_an_error() {
+    void default_handler_should_not_send_the_cause_of_a_marked_exception() {
+
+        ToolExecutor executor = (request, context) -> {
+            throw ToolErrorVisibleToLlm.of(
+                    "The order service is temporarily unavailable.",
+                    new IllegalStateException("jdbc:postgresql://db:5432/prod?password=hunter2"));
+        };
+
+        ToolExecutionResult result = executeWithDefaultHandlers(executor);
+
+        assertThat(result.resultText()).isEqualTo("The order service is temporarily unavailable.");
+        assertThat(result.resultText())
+                .as("the cause must never reach the LLM, not even without a configured handler")
+                .doesNotContain("hunter2");
+    }
+
+    private static ToolExecutionResult executeWithDefaultHandlers(ToolExecutor executor) {
+        ToolService toolService = new ToolService();
+        return ToolService.executeWithErrorHandling(
+                ToolExecutionRequest.builder().name("orderStatus").arguments("{}").build(),
+                executor,
+                InvocationContext.builder().build(),
+                toolService.argumentsErrorHandler(),
+                toolService.executionErrorHandler());
+    }
+
+    @Test
+    void asynchronous_default_should_honor_the_marker() {
 
         ToolService toolService = new ToolService();
-        toolService.hallucinatedToolNameStrategy(request ->
-                ToolExecutionResultMessage.from(request, "There is no tool called " + request.name()));
 
-        ToolExecutionResult result = toolService.applyToolHallucinationStrategy(
-                ToolExecutionRequest.builder().name("noSuchTool").arguments("{}").build());
+        assertThat(toolService.asyncExecutionErrorHandler().handle(new OrderNotFoundException(), CONTEXT))
+                .as("an MCP server error, or any marked exception, reaches the LLM in the asynchronous modes too")
+                .isEqualTo(ToolErrorHandlerResult.text("There is no order with this ID."));
 
-        assertThat(result.isError())
-                .as("a hallucinated tool name is an error, like every other failed tool call")
-                .isTrue();
-        assertThat(result.resultText()).isEqualTo("There is no tool called noSuchTool");
+        RuntimeException unmarked = new IllegalStateException("boom");
+        assertThatThrownBy(() -> toolService.asyncExecutionErrorHandler().handle(unmarked, CONTEXT))
+                .isSameAs(unmarked);
     }
 }

@@ -101,6 +101,9 @@ class DefaultAiServices<T> extends AiServices<T> {
 
     private final ServiceOutputParser serviceOutputParser = new ServiceOutputParser();
     private final Collection<TokenStreamAdapter> tokenStreamAdapters = loadFactories(TokenStreamAdapter.class);
+    private final Collection<CompletableFutureAdapter> completableFutureAdapters =
+            loadFactories(CompletableFutureAdapter.class);
+    private final Collection<PublisherAdapter> publisherAdapters = loadFactories(PublisherAdapter.class);
 
     private static final Set<Class<? extends Annotation>> VALID_PARAM_ANNOTATIONS =
             Set.of(dev.langchain4j.service.UserMessage.class, V.class, MemoryId.class, UserName.class);
@@ -128,9 +131,39 @@ class DefaultAiServices<T> extends AiServices<T> {
         };
     }
 
+    private CompletableFutureAdapter findCompletableFutureAdapter(Type returnType) {
+        for (CompletableFutureAdapter adapter : completableFutureAdapters) {
+            if (adapter.canAdapt(returnType)) {
+                return adapter;
+            }
+        }
+        return null;
+    }
+
+    private PublisherAdapter findPublisherAdapter(Type returnType) {
+        for (PublisherAdapter adapter : publisherAdapters) {
+            if (adapter.canAdapt(returnType)) {
+                return adapter;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Whether a method with this return type is served by the asynchronous or the reactive path,
+     * rather than by the blocking one.
+     */
+    private boolean isAsynchronousOrReactive(Type returnType) {
+        return typeHasRawClass(returnType, CompletableFuture.class)
+                || typeHasRawClass(returnType, CompletionStage.class)
+                || typeHasRawClass(returnType, Flow.Publisher.class)
+                || findCompletableFutureAdapter(returnType) != null
+                || findPublisherAdapter(returnType) != null;
+    }
+
     public T build() {
         validate();
-        ToolErrorHandlingNotice.logOnceIfNeeded(context);
+        ToolErrorHandlingNotice.logOnceIfNeeded(context, this::isAsynchronousOrReactive);
 
         context.streamingBufferSize = ensureGreaterThanZero(
                 getOrDefault(context.streamingBufferSize, AiServiceStreamingEventPublisher.DEFAULT_BUFFER_SIZE),
@@ -214,7 +247,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                         Type declaredReturnType =
                                 context.returnType != null ? context.returnType : method.getGenericReturnType();
                         CompletableFutureAdapter completableFutureAdapter =
-                                ReturnTypeAdapters.findCompletableFutureAdapter(declaredReturnType);
+                                findCompletableFutureAdapter(declaredReturnType);
                         boolean asyncReturnType = typeHasRawClass(declaredReturnType, CompletableFuture.class)
                                 || typeHasRawClass(declaredReturnType, CompletionStage.class)
                                 || completableFutureAdapter != null;
@@ -229,7 +262,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     : failed);
                         }
 
-                        PublisherAdapter publisherAdapter = ReturnTypeAdapters.findPublisherAdapter(returnType);
+                        PublisherAdapter publisherAdapter = findPublisherAdapter(returnType);
                         boolean reactiveStreaming =
                                 typeHasRawClass(returnType, Flow.Publisher.class) || publisherAdapter != null;
                         if (reactiveStreaming) {
@@ -294,7 +327,7 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         Type declaredReturnType =
                                 context.returnType != null ? context.returnType : method.getGenericReturnType();
-                        CompletableFutureAdapter completableFutureAdapter = ReturnTypeAdapters.findCompletableFutureAdapter(declaredReturnType);
+                        CompletableFutureAdapter completableFutureAdapter = findCompletableFutureAdapter(declaredReturnType);
                         boolean asyncReturnType = typeHasRawClass(declaredReturnType, CompletableFuture.class)
                                 || typeHasRawClass(declaredReturnType, CompletionStage.class)
                                 || completableFutureAdapter != null;
@@ -310,7 +343,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     method.getName());
                         }
 
-                        PublisherAdapter publisherAdapter = ReturnTypeAdapters.findPublisherAdapter(returnType);
+                        PublisherAdapter publisherAdapter = findPublisherAdapter(returnType);
                         boolean reactiveStreaming =
                                 typeHasRawClass(returnType, Flow.Publisher.class) || publisherAdapter != null;
                         if (asyncReturnType && reactiveStreaming) {

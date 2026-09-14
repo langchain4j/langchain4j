@@ -37,6 +37,7 @@ package dev.langchain4j.exception;
  *         return orderService.status(orderId);
  *     } catch (SQLException e) {
  *         // the LLM is told only what it needs to know; the cause is not sent to it
+ *         log.warn("Could not read the order database", e);
  *         throw ToolErrorVisibleToLlm.of("The order database is temporarily unavailable.", e);
  *     }
  * }
@@ -47,14 +48,14 @@ package dev.langchain4j.exception;
  * chain: an exception that wraps a marked one is the last word on what the LLM should be told, so wrapping
  * a marked exception deliberately hides it.
  * <p>
- * For this to have an effect, the AI Service must use a tool execution error handler that is aware of
- * this interface: {@code ToolExecutionErrorHandler.failInvocationUnlessVisibleToLlm()} or
- * {@code ToolExecutionErrorHandler.sendExceptionMessageToLlmFor(Class...)}.
+ * Every ready-made {@code ToolExecutionErrorHandler} honors this interface, including the one used when
+ * no handler is configured, so implementing it is enough. A handler you write yourself decides for itself
+ * whether to look at it.
  *
- * Note that {@link ToolErrorVisibleToLlmException} does not extend {@link ToolExecutionException}:
- * the latter is the wrapper LangChain4j puts around a failing tool, while this one is thrown by the tool
- * itself. {@code catch (ToolExecutionException e)} therefore does not catch it; catch this interface,
- * or {@link LangChain4jException}, instead.
+ * <p>
+ * Note that {@link ToolErrorVisibleToLlmException} is a plain {@link RuntimeException} and not a
+ * {@link ToolExecutionException}: the latter is the wrapper LangChain4j puts around a failing tool, while
+ * this one is thrown by the tool itself, so {@code catch (ToolExecutionException e)} does not catch it.
  *
  * @since 1.21.0
  */
@@ -68,8 +69,9 @@ public interface ToolErrorVisibleToLlm {
      * (for example {@code return cause.getMessage()}): such messages are written for developers
      * and often contain internal details that should not reach the LLM provider.
      * <p>
-     * Must not be blank. If it is, the AI Service invocation fails instead,
-     * as if the exception did not implement this interface.
+     * Must not be blank. A blank text is ignored, and the exception is treated as if it did not implement
+     * this interface: a handler that fails the invocation fails it, and a handler that sends the message of
+     * the exception to the LLM sends that instead.
      */
     String messageForLlm();
 
@@ -87,9 +89,9 @@ public interface ToolErrorVisibleToLlm {
      * so that the technical details are still available in your logs.
      *
      * @param message the text to send to the LLM, written for the LLM. Must not be blank.
-     * @param cause   the original error. It is not sent to the LLM. LangChain4j does not log it either:
-     *                once the error is handled, the AI Service invocation continues normally, so log it
-     *                yourself if you need it, for example from an {@code afterToolExecution} listener.
+     * @param cause   the original error. It is not sent to the LLM, and LangChain4j only logs it at
+     *                {@code DEBUG}: once the error is handled, the AI Service invocation continues
+     *                normally. Log it yourself, before throwing, if you need it in your own logs.
      */
     static ToolErrorVisibleToLlmException of(String message, Throwable cause) {
         return new ToolErrorVisibleToLlmException(message, cause);

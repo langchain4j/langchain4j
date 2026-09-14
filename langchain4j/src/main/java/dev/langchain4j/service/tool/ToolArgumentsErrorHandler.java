@@ -1,7 +1,6 @@
 package dev.langchain4j.service.tool;
 
 import dev.langchain4j.exception.ToolArgumentsException;
-import dev.langchain4j.exception.ToolErrorVisibleToLlm;
 import dev.langchain4j.service.AiServices;
 import java.util.function.Function;
 
@@ -23,11 +22,6 @@ import java.util.function.Function;
  */
 @FunctionalInterface
 public interface ToolArgumentsErrorHandler {
-
-    // There is deliberately no sendExceptionMessageToLlmFor(Class...) here, unlike on
-    // ToolExecutionErrorHandler: that one exists for exceptions thrown by libraries a tool calls, which
-    // the application cannot change. Argument errors are raised by LangChain4j itself while preparing the
-    // arguments, so there is no third-party exception type to list.
 
     /**
      * Handles an error that occurred during the parsing and preparation of tool arguments.
@@ -54,29 +48,6 @@ public interface ToolArgumentsErrorHandler {
         };
     }
 
-    /**
-     * Returns a handler that sends {@link ToolErrorVisibleToLlm#messageForLlm()} to the LLM when the error
-     * implements {@link ToolErrorVisibleToLlm}, and fails the AI Service invocation for every other error.
-     * <p>
-     * Most argument errors are produced by LangChain4j itself and do not implement that interface, so this
-     * handler mainly matters when your own code takes part in preparing the arguments, for example
-     * a custom deserializer or a validating tool parameter type.
-     * <p>
-     * If {@link ToolErrorVisibleToLlm#messageForLlm()} returns a blank text,
-     * the AI Service invocation fails as well.
-     *
-     * @see ToolErrorVisibleToLlm
-     * @since 1.21.0
-     */
-    static ToolArgumentsErrorHandler failInvocationUnlessVisibleToLlm() {
-        return (error, context) -> {
-            ToolErrorHandlerResult result = ToolErrors.messageForLlm(error, context);
-            if (result == null) {
-                throw ToolErrors.asRuntimeException(error);
-            }
-            return result;
-        };
-    }
 
     /**
      * Returns a handler that sends the message of the error to the LLM as the result of the tool execution,
@@ -90,16 +61,10 @@ public interface ToolArgumentsErrorHandler {
      * but an error can also come from your own code (for example, from a custom deserializer or a validation
      * check inside a tool parameter type). Such a message reaches the LLM provider, is stored in the chat
      * memory and can end up in the answer the user reads.
-     * <p>
-     * An error implementing {@link ToolErrorVisibleToLlm} is an exception: for those, the text written in
-     * {@link ToolErrorVisibleToLlm#messageForLlm()} is sent instead of the message of the exception.
      *
      * @since 1.21.0
      */
     static ToolArgumentsErrorHandler sendExceptionMessageToLlm() {
-        return (error, context) -> {
-            ToolErrorHandlerResult authored = ToolErrors.messageForLlm(error, context);
-            return authored != null ? authored : ToolErrorHandlerResult.text(ToolErrors.errorText(error));
-        };
+        return (error, context) -> ToolErrorHandlerResult.text(ToolErrors.errorText(error));
     }
 }

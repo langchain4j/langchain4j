@@ -2,11 +2,14 @@ package dev.langchain4j.service;
 
 import static java.lang.reflect.Modifier.isStatic;
 
+import dev.langchain4j.service.memory.ChatMemoryAccess;
 import dev.langchain4j.service.tool.ToolService;
 import java.lang.reflect.Method;
 import java.lang.reflect.Type;
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Predicate;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,8 +37,8 @@ class ToolErrorHandlingNotice {
 
     private ToolErrorHandlingNotice() {}
 
-    static void logOnceIfNeeded(AiServiceContext context) {
-        List<Default> unconfirmedDefaults = unconfirmedDefaults(context);
+    static void logOnceIfNeeded(AiServiceContext context, Predicate<Type> asynchronousOrReactive) {
+        List<Default> unconfirmedDefaults = unconfirmedDefaults(context, asynchronousOrReactive);
         if (unconfirmedDefaults.isEmpty()) {
             return;
         }
@@ -48,11 +51,11 @@ class ToolErrorHandlingNotice {
     /**
      * The defaults this AI Service relies on without having chosen them explicitly.
      */
-    static List<Default> unconfirmedDefaults(AiServiceContext context) {
+    static List<Default> unconfirmedDefaults(AiServiceContext context, Predicate<Type> asynchronousOrReactive) {
         ToolService toolService = context.toolService;
         boolean hasTools =
                 !toolService.toolSpecifications().isEmpty() || !toolService.toolProviders().isEmpty();
-        if (!hasTools || !hasBlockingMethod(context.aiServiceClass)) {
+        if (!hasTools || !hasBlockingMethod(context.aiServiceClass, asynchronousOrReactive)) {
             return List.of();
         }
 
@@ -66,14 +69,15 @@ class ToolErrorHandlingNotice {
         return defaults;
     }
 
-    private static boolean hasBlockingMethod(Class<?> aiServiceClass) {
+    private static boolean hasBlockingMethod(Class<?> aiServiceClass, Predicate<Type> asynchronousOrReactive) {
         for (Method method : aiServiceClass.getMethods()) {
             if (isStatic(method.getModifiers())
                     || method.isDefault()
-                    || method.getDeclaringClass() == Object.class) {
+                    || method.getDeclaringClass() == Object.class
+                    || method.getDeclaringClass() == ChatMemoryAccess.class) {
                 continue;
             }
-            if (!ReturnTypeAdapters.isAsynchronousOrReactive(method.getGenericReturnType())) {
+            if (!asynchronousOrReactive.test(method.getGenericReturnType())) {
                 return true;
             }
         }

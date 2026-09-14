@@ -346,7 +346,8 @@ If the tool returns an application-level error, the call ends with a `ToolExecut
 and the `_meta` of the failed response is not available.
 It is still delivered to `McpClientListener.afterExecuteTool()`, which receives the complete raw response.
 
-An application-level error (`"isError": true` in the tool result) is how an MCP server tells the *model*
+An application-level error (`"isError": true` in the tool result) ends the call with an
+`McpApplicationErrorException`, a subclass of `ToolExecutionException`. It is how an MCP server tells the *model*
 that a tool did not succeed, so the text of such an error is written for the LLM. The exception therefore
 implements `ToolErrorVisibleToLlm`: with a tool execution error handler that honors it, such as
 `ToolExecutionErrorHandler.failInvocationUnlessVisibleToLlm()`, the server's text is sent to the LLM and it can react

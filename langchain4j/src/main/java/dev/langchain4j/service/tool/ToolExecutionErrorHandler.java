@@ -1,8 +1,5 @@
 package dev.langchain4j.service.tool;
 
-import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-
 import dev.langchain4j.exception.ToolErrorVisibleToLlm;
 import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.service.AiServices;
@@ -96,7 +93,6 @@ public interface ToolExecutionErrorHandler {
      * the AI Service invocation fails as well.
      *
      * @see ToolErrorVisibleToLlm
-     * @see #sendExceptionMessageToLlmFor(Class[])
      * @since 1.21.0
      */
     static ToolExecutionErrorHandler failInvocationUnlessVisibleToLlm() {
@@ -109,43 +105,4 @@ public interface ToolExecutionErrorHandler {
         };
     }
 
-    /**
-     * Returns a handler that behaves like {@link #failInvocationUnlessVisibleToLlm()}, but additionally sends the message
-     * of the exception to the LLM when the exception is an instance of one of the given types (subtypes included).
-     * <p>
-     * Use it for exceptions you cannot change, for example those thrown by a library:
-     * <pre>{@code
-     * .toolExecutionErrorHandler(ToolExecutionErrorHandler.sendExceptionMessageToLlmFor(EntityNotFoundException.class))
-     * }</pre>
-     * <p>
-     * <b>WARNING: for the given types, this option can expose sensitive data.</b>
-     * The message of an exception is usually written for developers, not for the LLM, so list only types
-     * whose messages you know to be safe for the LLM provider to see. Exceptions implementing
-     * {@link ToolErrorVisibleToLlm} are not affected: for those, the text you wrote in
-     * {@link ToolErrorVisibleToLlm#messageForLlm()} is sent instead.
-     *
-     * @param types the exception types whose message may be sent to the LLM. Must not be empty.
-     * @see ToolErrorVisibleToLlm
-     * @see #failInvocationUnlessVisibleToLlm()
-     * @since 1.21.0
-     */
-    @SafeVarargs
-    static ToolExecutionErrorHandler sendExceptionMessageToLlmFor(Class<? extends Throwable>... types) {
-        Class<? extends Throwable>[] visibleTypes = ensureNotEmpty(types, "types").clone();
-        for (Class<? extends Throwable> type : visibleTypes) {
-            ensureNotNull(type, "type");
-        }
-        return (error, context) -> {
-            ToolErrorHandlerResult result = ToolErrors.messageForLlm(error, context);
-            if (result != null) {
-                return result;
-            }
-            for (Class<? extends Throwable> type : visibleTypes) {
-                if (type.isInstance(error)) {
-                    return ToolErrorHandlerResult.text(ToolErrors.errorText(error));
-                }
-            }
-            throw ToolErrors.asRuntimeException(error);
-        };
-    }
 }
