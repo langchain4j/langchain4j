@@ -79,8 +79,8 @@ public class ToolService {
 
     private static final Logger log = LoggerFactory.getLogger(ToolService.class);
 
-    private static final ToolArgumentsErrorHandler RETHROW_ARGUMENTS_ERROR = ToolArgumentsErrorHandler.failAiServiceInvocation();
-    private static final ToolExecutionErrorHandler RETHROW_EXECUTION_ERROR = ToolExecutionErrorHandler.failAiServiceInvocation();
+    private static final ToolArgumentsErrorHandler RETHROW_ARGUMENTS_ERROR = ToolArgumentsErrorHandler.failInvocation();
+    private static final ToolExecutionErrorHandler RETHROW_EXECUTION_ERROR = ToolExecutionErrorHandler.failInvocation();
     private static final ToolArgumentsErrorHandler ARGUMENTS_ERROR_TO_LLM = ToolArgumentsErrorHandler.sendExceptionMessageToLlm();
     private static final ToolExecutionErrorHandler EXECUTION_ERROR_TO_LLM = (error, context) -> {
         String errorMessage = errorText(error);
@@ -102,10 +102,11 @@ public class ToolService {
     private static final ToolArgumentsErrorHandler DEFAULT_TOOL_ARGUMENTS_ERROR_HANDLER = RETHROW_ARGUMENTS_ERROR;
     private static final ToolExecutionErrorHandler DEFAULT_TOOL_EXECUTION_ERROR_HANDLER = EXECUTION_ERROR_TO_LLM;
     private static final ToolArgumentsErrorHandler DEFAULT_ASYNC_TOOL_ARGUMENTS_ERROR_HANDLER = ARGUMENTS_ERROR_TO_LLM;
-    private static final ToolExecutionErrorHandler DEFAULT_ASYNC_TOOL_EXECUTION_ERROR_HANDLER = RETHROW_EXECUTION_ERROR;
+    private static final ToolExecutionErrorHandler DEFAULT_ASYNC_TOOL_EXECUTION_ERROR_HANDLER =
+            ToolExecutionErrorHandler.failInvocationUnlessVisibleToLlm();
 
     static String errorText(Throwable error) {
-        return isNullOrBlank(error.getMessage()) ? error.getClass().getName() : error.getMessage();
+        return ToolErrors.errorText(error);
     }
 
     private final List<ToolSpecification> toolSpecifications = new ArrayList<>();

@@ -9,7 +9,11 @@ import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.service.tool.ToolErrorContext;
 import dev.langchain4j.service.tool.ToolErrorHandlerResult;
+import dev.langchain4j.service.tool.ToolArgumentsErrorHandler;
 import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
+import dev.langchain4j.service.tool.ToolExecutionResult;
+import dev.langchain4j.service.tool.ToolExecutor;
+import dev.langchain4j.service.tool.ToolService;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -104,7 +108,7 @@ class McpApplicationErrorTest {
                 }
                 """);
 
-        ToolExecutionErrorHandler handler = ToolExecutionErrorHandler.failUnlessVisibleToLlm();
+        ToolExecutionErrorHandler handler = ToolExecutionErrorHandler.failInvocationUnlessVisibleToLlm();
 
         assertThat(handler.handle(applicationError, errorContext()))
                 .isEqualTo(ToolErrorHandlerResult.text("There is no order with this ID."));
@@ -130,5 +134,64 @@ class McpApplicationErrorTest {
                         .build())
                 .invocationContext(InvocationContext.builder().build())
                 .build();
+    }
+
+    @Test
+    void application_level_error_should_reach_the_llm_through_the_tool_service() {
+
+        Throwable applicationError = catchError(
+                """
+                {
+                  "jsonrpc": "2.0",
+                  "id": 1,
+                  "result": {
+                    "isError": true,
+                    "content": [{"type": "text", "text": "There is no order with this ID."}]
+                  }
+                }
+                """);
+        // an MCP tool is executed by a custom ToolExecutor that propagates the exception of the client
+        ToolExecutor executor = (request, context) -> {
+            throw (RuntimeException) applicationError;
+        };
+
+        ToolExecutionResult result = ToolService.executeWithErrorHandling(
+                ToolExecutionRequest.builder().name("orderStatus").arguments("{}").build(),
+                executor,
+                InvocationContext.builder().build(),
+                ToolArgumentsErrorHandler.failInvocation(),
+                ToolExecutionErrorHandler.failInvocationUnlessVisibleToLlm());
+
+        assertThat(result.isError()).isTrue();
+        assertThat(result.resultText())
+                .as("ToolService unwraps the cause before calling the handler; the marker must survive that")
+                .isEqualTo("There is no order with this ID.");
+    }
+
+    @Test
+    void protocol_error_should_fail_the_invocation_through_the_tool_service() {
+
+        Throwable protocolError = catchError(
+                """
+                {
+                  "jsonrpc": "2.0",
+                  "id": 1,
+                  "error": {"code": -32000, "message": "Internal server error at /opt/mcp/orders.py:88"}
+                }
+                """);
+        ToolExecutor executor = (request, context) -> {
+            throw (RuntimeException) protocolError;
+        };
+
+        assertThatThrownBy(() -> ToolService.executeWithErrorHandling(
+                        ToolExecutionRequest.builder()
+                                .name("orderStatus")
+                                .arguments("{}")
+                                .build(),
+                        executor,
+                        InvocationContext.builder().build(),
+                        ToolArgumentsErrorHandler.failInvocation(),
+                        ToolExecutionErrorHandler.failInvocationUnlessVisibleToLlm()))
+                .hasMessageContaining("Internal server error");
     }
 }

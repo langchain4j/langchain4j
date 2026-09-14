@@ -349,7 +349,7 @@ It is still delivered to `McpClientListener.afterExecuteTool()`, which receives 
 An application-level error (`"isError": true` in the tool result) is how an MCP server tells the *model*
 that a tool did not succeed, so the text of such an error is written for the LLM. The exception therefore
 implements `ToolErrorVisibleToLlm`: with a tool execution error handler that honors it, such as
-`ToolExecutionErrorHandler.failUnlessVisibleToLlm()`, the server's text is sent to the LLM and it can react
+`ToolExecutionErrorHandler.failInvocationUnlessVisibleToLlm()`, the server's text is sent to the LLM and it can react
 to it. A protocol error, which means the call itself went wrong, fails the AI Service invocation instead.
 See [Error Handling](/tutorials/tools#error-handling).
 

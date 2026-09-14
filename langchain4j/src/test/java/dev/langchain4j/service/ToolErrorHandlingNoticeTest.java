@@ -75,13 +75,13 @@ class ToolErrorHandlingNoticeTest {
         assertThat(logOutput)
                 .as("recommends the behavior the defaults are planned to change to")
                 .contains(".toolArgumentsErrorHandler(ToolArgumentsErrorHandler.sendExceptionMessageToLlm())")
-                .contains(".toolExecutionErrorHandler(ToolExecutionErrorHandler.failUnlessVisibleToLlm())");
+                .contains(".toolExecutionErrorHandler(ToolExecutionErrorHandler.failInvocationUnlessVisibleToLlm())");
         assertThat(logOutput)
                 .as("explains how a tool tells the LLM about a failure under the recommended setting")
                 .contains("ToolErrorVisibleToLlm");
         assertThat(logOutput)
                 .as("also shows how to keep the current behavior")
-                .contains(".toolArgumentsErrorHandler(ToolArgumentsErrorHandler.failAiServiceInvocation())")
+                .contains(".toolArgumentsErrorHandler(ToolArgumentsErrorHandler.failInvocation())")
                 .contains(".toolExecutionErrorHandler(ToolExecutionErrorHandler.sendExceptionMessageToLlm())");
         assertThat(logOutput)
                 .contains("https://docs.langchain4j.dev/tutorials/tools#error-handling")
@@ -94,14 +94,14 @@ class ToolErrorHandlingNoticeTest {
         String logOutput = captureStdErr(() -> AiServices.builder(Assistant.class)
                 .chatModel(CHAT_MODEL)
                 .tools(new Tools())
-                .toolExecutionErrorHandler(ToolExecutionErrorHandler.failAiServiceInvocation())
+                .toolExecutionErrorHandler(ToolExecutionErrorHandler.failInvocation())
                 .build());
 
         assertThat(logOutput)
                 .as("the tool execution default was chosen explicitly, so nothing is sent to the LLM")
                 .doesNotContain("credentials embedded in error messages")
                 .doesNotContain(".toolExecutionErrorHandler(");
-        assertThat(logOutput).contains(".toolArgumentsErrorHandler(ToolArgumentsErrorHandler.failAiServiceInvocation())");
+        assertThat(logOutput).contains(".toolArgumentsErrorHandler(ToolArgumentsErrorHandler.failInvocation())");
     }
 
     @Test
@@ -127,7 +127,7 @@ class ToolErrorHandlingNoticeTest {
                 .chatModel(CHAT_MODEL)
                 .tools(new Tools())
                 .toolArgumentsErrorHandler(ToolArgumentsErrorHandler.sendExceptionMessageToLlm())
-                .toolExecutionErrorHandler(ToolExecutionErrorHandler.failAiServiceInvocation())
+                .toolExecutionErrorHandler(ToolExecutionErrorHandler.failInvocation())
                 .build());
 
         assertThat(logOutput).doesNotContain(ToolErrorHandlingNotice.class.getName());

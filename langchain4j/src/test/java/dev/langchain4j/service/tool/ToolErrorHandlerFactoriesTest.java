@@ -24,9 +24,9 @@ class ToolErrorHandlerFactoriesTest {
 
         RuntimeException error = new IllegalStateException("boom");
 
-        assertThatThrownBy(() -> ToolExecutionErrorHandler.failAiServiceInvocation().handle(error, CONTEXT))
+        assertThatThrownBy(() -> ToolExecutionErrorHandler.failInvocation().handle(error, CONTEXT))
                 .isSameAs(error);
-        assertThatThrownBy(() -> ToolArgumentsErrorHandler.failAiServiceInvocation().handle(error, CONTEXT))
+        assertThatThrownBy(() -> ToolArgumentsErrorHandler.failInvocation().handle(error, CONTEXT))
                 .isSameAs(error);
     }
 
@@ -35,7 +35,7 @@ class ToolErrorHandlerFactoriesTest {
 
         Exception error = new IOException("boom");
 
-        assertThatThrownBy(() -> ToolExecutionErrorHandler.failAiServiceInvocation().handle(error, CONTEXT))
+        assertThatThrownBy(() -> ToolExecutionErrorHandler.failInvocation().handle(error, CONTEXT))
                 .isExactlyInstanceOf(RuntimeException.class)
                 .hasCause(error);
     }
@@ -95,7 +95,7 @@ class ToolErrorHandlerFactoriesTest {
     @Test
     void fail_unless_visible_to_llm_should_send_the_message_written_for_the_llm() {
 
-        assertThat(ToolExecutionErrorHandler.failUnlessVisibleToLlm()
+        assertThat(ToolExecutionErrorHandler.failInvocationUnlessVisibleToLlm()
                         .handle(new OrderNotFoundException(), CONTEXT))
                 .as("the LLM sees the authored text, not the message of the exception")
                 .isEqualTo(ToolErrorHandlerResult.text("There is no order with this ID."));
@@ -107,7 +107,7 @@ class ToolErrorHandlerFactoriesTest {
         RuntimeException error = new IllegalStateException("jdbc:postgresql://db:5432/prod?password=hunter2");
 
         assertThatThrownBy(() ->
-                        ToolExecutionErrorHandler.failUnlessVisibleToLlm().handle(error, CONTEXT))
+                        ToolExecutionErrorHandler.failInvocationUnlessVisibleToLlm().handle(error, CONTEXT))
                 .isSameAs(error);
     }
 
@@ -117,7 +117,7 @@ class ToolErrorHandlerFactoriesTest {
         RuntimeException error = new BlankMessageException();
 
         assertThatThrownBy(() ->
-                        ToolExecutionErrorHandler.failUnlessVisibleToLlm().handle(error, CONTEXT))
+                        ToolExecutionErrorHandler.failInvocationUnlessVisibleToLlm().handle(error, CONTEXT))
                 .isSameAs(error);
     }
 
@@ -187,12 +187,68 @@ class ToolErrorHandlerFactoriesTest {
                         .build(),
                 executor,
                 InvocationContext.builder().build(),
-                ToolArgumentsErrorHandler.failAiServiceInvocation(),
-                ToolExecutionErrorHandler.failUnlessVisibleToLlm());
+                ToolArgumentsErrorHandler.failInvocation(),
+                ToolExecutionErrorHandler.failInvocationUnlessVisibleToLlm());
 
         assertThat(result.isError()).isTrue();
         assertThat(result.resultText())
                 .as("the exception is wrapped in a ToolExecutionException and unwrapped again before the handler sees it")
                 .isEqualTo("There is no order with this ID.");
+    }
+
+    @Test
+    void marker_should_survive_a_custom_tool_executor_that_throws_it_with_a_cause() {
+
+        // a custom ToolExecutor (MCP, a ToolProvider, or a hand-written one) throws the marked exception
+        // directly, so ToolService unwraps it down to the cause before the handler sees it
+        ToolExecutor executor = (request, context) -> {
+            throw ToolErrorVisibleToLlm.of(
+                    "The order service is temporarily unavailable.",
+                    new IllegalStateException("jdbc:postgresql://db:5432/prod?password=hunter2"));
+        };
+
+        ToolExecutionResult result = ToolService.executeWithErrorHandling(
+                ToolExecutionRequest.builder().name("orderStatus").arguments("{}").build(),
+                executor,
+                InvocationContext.builder().build(),
+                ToolArgumentsErrorHandler.failInvocation(),
+                ToolExecutionErrorHandler.failInvocationUnlessVisibleToLlm());
+
+        assertThat(result.resultText()).isEqualTo("The order service is temporarily unavailable.");
+        assertThat(result.resultText())
+                .as("the cause must never reach the LLM")
+                .doesNotContain("hunter2");
+    }
+
+    @Test
+    void send_exception_message_to_llm_should_not_send_the_cause_of_a_marked_exception() {
+
+        ToolExecutor executor = (request, context) -> {
+            throw ToolErrorVisibleToLlm.of(
+                    "The order service is temporarily unavailable.",
+                    new IllegalStateException("jdbc:postgresql://db:5432/prod?password=hunter2"));
+        };
+
+        ToolExecutionResult result = ToolService.executeWithErrorHandling(
+                ToolExecutionRequest.builder().name("orderStatus").arguments("{}").build(),
+                executor,
+                InvocationContext.builder().build(),
+                ToolArgumentsErrorHandler.failInvocation(),
+                ToolExecutionErrorHandler.sendExceptionMessageToLlm());
+
+        assertThat(result.resultText()).doesNotContain("hunter2");
+    }
+
+    @Test
+    void arguments_handler_should_honor_the_marker_too() {
+
+        assertThat(ToolArgumentsErrorHandler.failInvocationUnlessVisibleToLlm()
+                        .handle(new OrderNotFoundException(), CONTEXT))
+                .isEqualTo(ToolErrorHandlerResult.text("There is no order with this ID."));
+
+        RuntimeException error = new IllegalStateException("boom");
+        assertThatThrownBy(() ->
+                        ToolArgumentsErrorHandler.failInvocationUnlessVisibleToLlm().handle(error, CONTEXT))
+                .isSameAs(error);
     }
 }

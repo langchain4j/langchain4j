@@ -13,12 +13,17 @@ import dev.langchain4j.exception.ToolExecutionException;
  * implements {@link ToolErrorVisibleToLlm}: error handlers that honor that interface send the
  * text to the LLM instead of failing the AI Service invocation.
  * <p>
- * It remains a {@link ToolExecutionException}, so existing code that catches that type is unaffected.
+ * It remains a {@link ToolExecutionException}, so existing code that catches that type is unaffected,
+ * while catching this type distinguishes an application-level error from a protocol error.
+ *
+ * @since 1.21.0
  */
-class McpApplicationErrorException extends ToolExecutionException implements ToolErrorVisibleToLlm {
+public class McpApplicationErrorException extends ToolExecutionException implements ToolErrorVisibleToLlm {
 
-    McpApplicationErrorException(String message) {
-        super(message);
+    public McpApplicationErrorException(String message) {
+        // (Throwable) null on purpose: ToolExecutionException(String) synthesises a cause, and the error
+        // handlers are given the cause of the exception, which would drop the ToolErrorVisibleToLlm marker
+        super(message, (Throwable) null);
     }
 
     @Override

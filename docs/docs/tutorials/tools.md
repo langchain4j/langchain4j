@@ -1581,18 +1581,18 @@ so for those you do not have to write a handler yourself:
 | Handler | What happens when a tool fails |
 |---------|--------------------------------|
 | `ToolArgumentsErrorHandler.sendExceptionMessageToLlm()` | The message of the error is sent to the LLM, so that it can correct the arguments and try again. The AI Service invocation continues. ⚠️ See the warning below. |
-| `ToolArgumentsErrorHandler.failAiServiceInvocation()` | The error is rethrown: the AI Service invocation fails and nothing is sent to the LLM. |
+| `ToolArgumentsErrorHandler.failInvocation()` | The error is rethrown: the AI Service invocation fails and nothing is sent to the LLM. |
 | `ToolExecutionErrorHandler.sendExceptionMessageToLlm()` | The message of the exception thrown by the tool is sent to the LLM, so that it can react to it. The AI Service invocation continues. ⚠️ See the warning below. |
-| `ToolExecutionErrorHandler.failUnlessVisibleToLlm()` | Only exceptions implementing `ToolErrorVisibleToLlm` are shown to the LLM, using the text they provide. Every other exception fails the AI Service invocation. See [Deciding per exception what the LLM sees](#deciding-per-exception-what-the-llm-sees). |
+| `ToolExecutionErrorHandler.failInvocationUnlessVisibleToLlm()` | Only exceptions implementing `ToolErrorVisibleToLlm` are shown to the LLM, using the text they provide. Every other exception fails the AI Service invocation. See [Deciding per exception what the LLM sees](#deciding-per-exception-what-the-llm-sees). |
 | `ToolExecutionErrorHandler.sendExceptionMessageToLlmFor(Class...)` | The same, and additionally the message of the listed exception types is sent to the LLM. ⚠️ See the warning below. |
-| `ToolExecutionErrorHandler.failAiServiceInvocation()` | The exception is rethrown: the AI Service invocation fails and nothing is sent to the LLM. |
+| `ToolExecutionErrorHandler.failInvocation()` | The exception is rethrown: the AI Service invocation fails and nothing is sent to the LLM. |
 
 ```java
 Assistant assistant = AiServices.builder(Assistant.class)
         .chatModel(chatModel)
         .tools(tools)
         .toolArgumentsErrorHandler(ToolArgumentsErrorHandler.sendExceptionMessageToLlm())
-        .toolExecutionErrorHandler(ToolExecutionErrorHandler.failAiServiceInvocation())
+        .toolExecutionErrorHandler(ToolExecutionErrorHandler.failInvocation())
         .build();
 ```
 
@@ -1617,6 +1617,51 @@ on this page) removes that warning and makes your application immune to the plan
 The warning can also be turned off by setting the log level of the
 `dev.langchain4j.service.ToolErrorHandlingNotice` logger to `OFF`.
 :::
+
+##### Configuring the handlers in Quarkus and Spring Boot
+
+The examples on this page use `AiServices.builder(...)`. If you declare your AI Services
+declaratively, configure the handlers the way your framework does.
+
+**Quarkus** - a static method on the AI Service interface, per service:
+
+```java
+@RegisterAiService
+public interface Assistant {
+
+    String chat(String userMessage);
+
+    @HandleToolExecutionError
+    static ToolErrorHandlerResult onToolError(Throwable error) {
+        return ToolErrorHandlerResult.text("The tool failed.");
+    }
+
+    @HandleToolArgumentError
+    static ToolErrorHandlerResult onArgumentError(Throwable error) {
+        return ToolErrorHandlerResult.text(error.getMessage());
+    }
+}
+```
+
+For the whole application, declare a `ToolExecutionErrorHandler` bean annotated with
+`@DefaultToolExecutionErrorHandler`.
+
+**Spring Boot** - declare the handlers as beans, and they are wired into every AI Service:
+
+```java
+@Bean
+ToolExecutionErrorHandler toolExecutionErrorHandler() {
+    return ToolExecutionErrorHandler.failInvocationUnlessVisibleToLlm();
+}
+
+@Bean
+ToolArgumentsErrorHandler toolArgumentsErrorHandler() {
+    return ToolArgumentsErrorHandler.sendExceptionMessageToLlm();
+}
+```
+
+When there is more than one bean of a handler type, name the one you want on the AI Service:
+`@AiService(wiringMode = EXPLICIT, toolExecutionErrorHandler = "myHandler")`.
 
 
 #### Handling Tool Name Errors
@@ -1687,7 +1732,7 @@ Assistant assistant = AiServices.builder(Assistant.class)
 Assistant assistant = AiServices.builder(Assistant.class)
         .chatModel(chatModel)
         .tools(tools)
-        .toolArgumentsErrorHandler(ToolArgumentsErrorHandler.failAiServiceInvocation())
+        .toolArgumentsErrorHandler(ToolArgumentsErrorHandler.failInvocation())
         .build();
 ```
 
@@ -1741,23 +1786,36 @@ Once fed to the LLM, this content can flow into responses, chat history, observa
 and the LLM provider's logs.
 
 Configure a `ToolExecutionErrorHandler` that returns either a generic message or a curated/sanitized
-description of the failure, and rely on logs and observability events for the underlying detail.
+description of the failure, and rely on your own logs and observability events for the underlying detail.
+Note that once you configure a handler, LangChain4j stops logging tool failures for you - that log exists
+only to warn you about the default behaviour.
 
-We are planning to change the default to "Throw an exception and abort AI Service invocation" in
-one of the future releases. If this planned change would affect your use case, please
-[open an issue](https://github.com/langchain4j/langchain4j/issues) so we can hear your feedback
-before it lands.
+We are planning to change the default in one of the future releases, to
+[`failInvocationUnlessVisibleToLlm()`](#deciding-per-exception-what-the-llm-sees): the AI Service invocation fails,
+unless the exception itself says what the LLM may be told. If this planned change would affect your use
+case, please [open an issue](https://github.com/langchain4j/langchain4j/issues) so we can hear your
+feedback before it lands.
 :::
 
 You can customize this behaviour by configuring a `ToolExecutionErrorHandler` on the AI Service.
 
-**Recommended (fail instead of telling the LLM about the error):**
+**Recommended (let each exception decide, see [below](#deciding-per-exception-what-the-llm-sees)):**
 
 ```java
 Assistant assistant = AiServices.builder(Assistant.class)
         .chatModel(chatModel)
         .tools(tools)
-        .toolExecutionErrorHandler(ToolExecutionErrorHandler.failAiServiceInvocation())
+        .toolExecutionErrorHandler(ToolExecutionErrorHandler.failInvocationUnlessVisibleToLlm())
+        .build();
+```
+
+**Strict (no failure ever reaches the LLM):**
+
+```java
+Assistant assistant = AiServices.builder(Assistant.class)
+        .chatModel(chatModel)
+        .tools(tools)
+        .toolExecutionErrorHandler(ToolExecutionErrorHandler.failInvocation())
         .build();
 ```
 
@@ -1820,7 +1878,7 @@ String orderStatus(String orderId) {
     try {
         return orderService.status(orderId);
     } catch (SQLException e) {
-        // the LLM is told only what it needs to know, the cause is kept for your logs
+        // the LLM is told only what it needs to know; the cause is not sent to it
         throw ToolErrorVisibleToLlm.of("The order service is temporarily unavailable.", e);
     }
 }
@@ -1832,7 +1890,7 @@ Then configure the handler that honors it:
 Assistant assistant = AiServices.builder(Assistant.class)
         .chatModel(chatModel)
         .tools(tools)
-        .toolExecutionErrorHandler(ToolExecutionErrorHandler.failUnlessVisibleToLlm())
+        .toolExecutionErrorHandler(ToolExecutionErrorHandler.failInvocationUnlessVisibleToLlm())
         .build();
 ```
 
@@ -1861,7 +1919,7 @@ provider to see.
 :::
 
 :::note
-`failUnlessVisibleToLlm()` is the behavior we are planning to make the default in one of the future
+`failInvocationUnlessVisibleToLlm()` is the behavior we are planning to make the default in one of the future
 releases. Configuring it explicitly today means the change will not affect your application.
 :::
 

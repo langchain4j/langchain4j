@@ -1,6 +1,5 @@
 package dev.langchain4j.service.tool;
 
-import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
@@ -50,9 +49,9 @@ public interface ToolExecutionErrorHandler {
      *
      * @since 1.21.0
      */
-    static ToolExecutionErrorHandler failAiServiceInvocation() {
+    static ToolExecutionErrorHandler failInvocation() {
         return (error, context) -> {
-            throw asRuntimeException(error);
+            throw ToolErrors.asRuntimeException(error);
         };
     }
 
@@ -70,11 +69,17 @@ public interface ToolExecutionErrorHandler {
      * Use this only when you know that the exception messages of all your tools are written with that in mind.
      * Otherwise, prefer a handler that returns a generic or sanitized description of the failure,
      * and keep the details in your logs.
+     * <p>
+     * An error implementing {@link ToolErrorVisibleToLlm} is an exception: for those, the text written in
+     * {@link ToolErrorVisibleToLlm#messageForLlm()} is sent instead of the message of the exception.
      *
      * @since 1.21.0
      */
     static ToolExecutionErrorHandler sendExceptionMessageToLlm() {
-        return (error, context) -> ToolErrorHandlerResult.text(ToolService.errorText(error));
+        return (error, context) -> {
+            ToolErrorHandlerResult authored = ToolErrors.messageForLlm(error, context);
+            return authored != null ? authored : ToolErrorHandlerResult.text(ToolErrors.errorText(error));
+        };
     }
 
     /**
@@ -94,18 +99,18 @@ public interface ToolExecutionErrorHandler {
      * @see #sendExceptionMessageToLlmFor(Class[])
      * @since 1.21.0
      */
-    static ToolExecutionErrorHandler failUnlessVisibleToLlm() {
+    static ToolExecutionErrorHandler failInvocationUnlessVisibleToLlm() {
         return (error, context) -> {
-            ToolErrorHandlerResult result = messageForLlm(error);
+            ToolErrorHandlerResult result = ToolErrors.messageForLlm(error, context);
             if (result == null) {
-                throw asRuntimeException(error);
+                throw ToolErrors.asRuntimeException(error);
             }
             return result;
         };
     }
 
     /**
-     * Returns a handler that behaves like {@link #failUnlessVisibleToLlm()}, but additionally sends the message
+     * Returns a handler that behaves like {@link #failInvocationUnlessVisibleToLlm()}, but additionally sends the message
      * of the exception to the LLM when the exception is an instance of one of the given types (subtypes included).
      * <p>
      * Use it for exceptions you cannot change, for example those thrown by a library:
@@ -121,7 +126,7 @@ public interface ToolExecutionErrorHandler {
      *
      * @param types the exception types whose message may be sent to the LLM. Must not be empty.
      * @see ToolErrorVisibleToLlm
-     * @see #failUnlessVisibleToLlm()
+     * @see #failInvocationUnlessVisibleToLlm()
      * @since 1.21.0
      */
     @SafeVarargs
@@ -131,36 +136,16 @@ public interface ToolExecutionErrorHandler {
             ensureNotNull(type, "type");
         }
         return (error, context) -> {
-            ToolErrorHandlerResult result = messageForLlm(error);
+            ToolErrorHandlerResult result = ToolErrors.messageForLlm(error, context);
             if (result != null) {
                 return result;
             }
             for (Class<? extends Throwable> type : visibleTypes) {
                 if (type.isInstance(error)) {
-                    return ToolErrorHandlerResult.text(ToolService.errorText(error));
+                    return ToolErrorHandlerResult.text(ToolErrors.errorText(error));
                 }
             }
-            throw asRuntimeException(error);
+            throw ToolErrors.asRuntimeException(error);
         };
-    }
-
-    /**
-     * The result to send to the LLM when the error decides itself what the LLM should see,
-     * or {@code null} when it does not.
-     */
-    private static ToolErrorHandlerResult messageForLlm(Throwable error) {
-        if (error instanceof ToolErrorVisibleToLlm visibleError) {
-            String message = visibleError.messageForLlm();
-            if (!isNullOrBlank(message)) {
-                return ToolErrorHandlerResult.text(message);
-            }
-        }
-        return null;
-    }
-
-    private static RuntimeException asRuntimeException(Throwable error) {
-        return error instanceof RuntimeException runtimeException
-                ? runtimeException
-                : new RuntimeException(error);
     }
 }

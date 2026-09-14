@@ -36,14 +36,14 @@ package dev.langchain4j.exception;
  *     try {
  *         return orderService.status(orderId);
  *     } catch (SQLException e) {
- *         // the LLM is told what it needs to know, the cause is kept for your logs
+ *         // the LLM is told only what it needs to know; the cause is not sent to it
  *         throw ToolErrorVisibleToLlm.of("The order database is temporarily unavailable.", e);
  *     }
  * }
  * }</pre>
  * <p>
  * For this to have an effect, the AI Service must use a tool execution error handler that is aware of
- * this interface: {@code ToolExecutionErrorHandler.failUnlessVisibleToLlm()} or
+ * this interface: {@code ToolExecutionErrorHandler.failInvocationUnlessVisibleToLlm()} or
  * {@code ToolExecutionErrorHandler.sendExceptionMessageToLlmFor(Class...)}.
  *
  * @since 1.21.0
@@ -77,7 +77,9 @@ public interface ToolErrorVisibleToLlm {
      * so that the technical details are still available in your logs.
      *
      * @param message the text to send to the LLM, written for the LLM. Must not be blank.
-     * @param cause   the original error. It is not sent to the LLM.
+     * @param cause   the original error. It is not sent to the LLM. LangChain4j does not log it either:
+     *                once the error is handled, the AI Service invocation continues normally, so log it
+     *                yourself if you need it, for example from an {@code afterToolExecution} listener.
      */
     static ToolErrorVisibleToLlmException of(String message, Throwable cause) {
         return new ToolErrorVisibleToLlmException(message, cause);

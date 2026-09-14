@@ -793,7 +793,8 @@ public abstract class AiServices<T> {
      * and LLMs can typically self-correct when given a clear error message. Configuring a handler
      * that returns the error text via {@link ToolErrorHandlerResult#text(String)} lets the LLM retry,
      * which is more in line with how agentic systems are expected to behave.
-     * The default will change to "Return a text message" in one of the future releases.
+     * The default will change to {@link ToolArgumentsErrorHandler#sendExceptionMessageToLlm()}
+     * in one of the future releases.
      * <p>
      * Example:
      * <pre>{@code
@@ -813,6 +814,8 @@ public abstract class AiServices<T> {
      *
      * @param handler The handler responsible for processing tool argument errors
      * @return builder
+     * @see ToolArgumentsErrorHandler#sendExceptionMessageToLlm()
+     * @see ToolArgumentsErrorHandler#failInvocation()
      * @see #hallucinatedToolNameStrategy(Function)
      * @see #toolExecutionErrorHandler(ToolExecutionErrorHandler)
      */
@@ -840,7 +843,9 @@ public abstract class AiServices<T> {
      * and the LLM provider's logs. For production use, configure a handler that returns either a
      * generic message or a sanitized/curated description of the failure, and rely on logs/events for
      * the underlying detail.
-     * The default will change to "Throw an exception" in one of the future releases.
+     * The default will change to {@link ToolExecutionErrorHandler#failInvocationUnlessVisibleToLlm()}
+     * in one of the future releases: the invocation fails, unless the exception itself says what
+     * the LLM may be told (see {@link dev.langchain4j.exception.ToolErrorVisibleToLlm}).
      * <p>
      * Example:
      * <pre>{@code
@@ -860,6 +865,10 @@ public abstract class AiServices<T> {
      *
      * @param handler The handler responsible for processing tool execution errors
      * @return builder
+     * @see ToolExecutionErrorHandler#failInvocationUnlessVisibleToLlm()
+     * @see ToolExecutionErrorHandler#failInvocation()
+     * @see ToolExecutionErrorHandler#sendExceptionMessageToLlm()
+     * @see dev.langchain4j.exception.ToolErrorVisibleToLlm
      * @see #hallucinatedToolNameStrategy(Function)
      * @see #toolArgumentsErrorHandler(ToolArgumentsErrorHandler)
      */
