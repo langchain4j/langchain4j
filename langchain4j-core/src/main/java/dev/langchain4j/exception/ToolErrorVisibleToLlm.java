@@ -29,7 +29,7 @@ package dev.langchain4j.exception;
  * }</pre>
  * <p>
  * Or, when you do not want to declare an exception class, throw a ready-made one
- * with {@link #of(String)} or {@link #of(String, Throwable)}:
+ * with {@link #from(String)} or {@link #from(String, Throwable)}:
  * <pre>{@code
  * @Tool("Returns the status of an order")
  * String orderStatus(String orderId) {
@@ -38,7 +38,7 @@ package dev.langchain4j.exception;
  *     } catch (SQLException e) {
  *         // the LLM is told only what it needs to know; the cause is not sent to it
  *         log.warn("Could not read the order database", e);
- *         throw ToolErrorVisibleToLlm.of("The order database is temporarily unavailable.", e);
+ *         throw ToolErrorVisibleToLlm.from("The order database is temporarily unavailable.", e);
  *     }
  * }
  * }</pre>
@@ -80,7 +80,7 @@ public interface ToolErrorVisibleToLlm {
      *
      * @param message the text to send to the LLM, written for the LLM. Must not be blank.
      */
-    static ToolErrorVisibleToLlmException of(String message) {
+    static ToolErrorVisibleToLlmException from(String message) {
         return new ToolErrorVisibleToLlmException(message);
     }
 
@@ -89,11 +89,11 @@ public interface ToolErrorVisibleToLlm {
      * so that the technical details are still available in your logs.
      *
      * @param message the text to send to the LLM, written for the LLM. Must not be blank.
-     * @param cause   the original error. It is not sent to the LLM, and LangChain4j only logs it at
-     *                {@code DEBUG}: once the error is handled, the AI Service invocation continues
-     *                normally. Log it yourself, before throwing, if you need it in your own logs.
+     * @param cause   the original error. It is not sent to the LLM, and LangChain4j does not log it:
+     *                once the error is handled, the AI Service invocation continues normally.
+     *                Log it yourself, before throwing, if you need it in your own logs.
      */
-    static ToolErrorVisibleToLlmException of(String message, Throwable cause) {
+    static ToolErrorVisibleToLlmException from(String message, Throwable cause) {
         return new ToolErrorVisibleToLlmException(message, cause);
     }
 }

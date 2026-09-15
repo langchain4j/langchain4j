@@ -2143,10 +2143,6 @@ public class ToolService {
                 ? argumentsErrorHandler.handle(getCause(e), errorContext)
                 : executionErrorHandler.handle(getCause(e), errorContext);
 
-        // the handler turned the error into a result, so the AI Service invocation continues and nothing
-        // else would report what actually went wrong
-        log.debug("Tool '{}' failed and the error was handled", toolRequest.name(), e);
-
         return ToolExecutionResult.builder()
                 .isError(true)
                 .resultText(errorHandlerResult.text())

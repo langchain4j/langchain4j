@@ -1857,7 +1857,7 @@ String orderStatus(String orderId) {
         return orderService.status(orderId);
     } catch (SQLException e) {
         // the LLM is told only what it needs to know; the cause is not sent to it
-        throw ToolErrorVisibleToLlm.of("The order service is temporarily unavailable.", e);
+        throw ToolErrorVisibleToLlm.from("The order service is temporarily unavailable.", e);
     }
 }
 ```

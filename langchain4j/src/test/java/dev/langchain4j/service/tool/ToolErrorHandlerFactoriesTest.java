@@ -112,7 +112,7 @@ class ToolErrorHandlerFactoriesTest {
 
         @Tool("Returns the status of an order")
         String orderStatus(String orderId) {
-            throw ToolErrorVisibleToLlm.of("There is no order with this ID.", new IllegalStateException("ORA-00942"));
+            throw ToolErrorVisibleToLlm.from("There is no order with this ID.", new IllegalStateException("ORA-00942"));
         }
     }
 
@@ -150,7 +150,7 @@ class ToolErrorHandlerFactoriesTest {
         // a custom ToolExecutor (MCP, a ToolProvider, or a hand-written one) throws the marked exception
         // directly, so ToolService unwraps it down to the cause before the handler sees it
         ToolExecutor executor = (request, context) -> {
-            throw ToolErrorVisibleToLlm.of(
+            throw ToolErrorVisibleToLlm.from(
                     "The order service is temporarily unavailable.",
                     new IllegalStateException("jdbc:postgresql://db:5432/prod?password=hunter2"));
         };
@@ -172,7 +172,7 @@ class ToolErrorHandlerFactoriesTest {
     void send_exception_message_to_llm_should_not_send_the_cause_of_a_marked_exception() {
 
         ToolExecutor executor = (request, context) -> {
-            throw ToolErrorVisibleToLlm.of(
+            throw ToolErrorVisibleToLlm.from(
                     "The order service is temporarily unavailable.",
                     new IllegalStateException("jdbc:postgresql://db:5432/prod?password=hunter2"));
         };
@@ -205,7 +205,7 @@ class ToolErrorHandlerFactoriesTest {
     void default_handler_should_not_send_the_cause_of_a_marked_exception() {
 
         ToolExecutor executor = (request, context) -> {
-            throw ToolErrorVisibleToLlm.of(
+            throw ToolErrorVisibleToLlm.from(
                     "The order service is temporarily unavailable.",
                     new IllegalStateException("jdbc:postgresql://db:5432/prod?password=hunter2"));
         };

@@ -13,7 +13,7 @@ class ToolErrorVisibleToLlmTest {
     @Test
     void of_should_create_an_exception_carrying_the_message_to_the_llm() {
 
-        ToolErrorVisibleToLlmException exception = ToolErrorVisibleToLlm.of("There is no order with this ID.");
+        ToolErrorVisibleToLlmException exception = ToolErrorVisibleToLlm.from("There is no order with this ID.");
 
         assertThat(exception.messageForLlm()).isEqualTo("There is no order with this ID.");
         assertThat(exception.getMessage()).isEqualTo("There is no order with this ID.");
@@ -26,7 +26,7 @@ class ToolErrorVisibleToLlmTest {
         Throwable cause = new IllegalStateException("jdbc:postgresql://db:5432/prod?password=hunter2");
 
         ToolErrorVisibleToLlmException exception =
-                ToolErrorVisibleToLlm.of("The order database is temporarily unavailable.", cause);
+                ToolErrorVisibleToLlm.from("The order database is temporarily unavailable.", cause);
 
         assertThat(exception.messageForLlm()).isEqualTo("The order database is temporarily unavailable.");
         assertThat(exception.getCause()).isSameAs(cause);
@@ -37,8 +37,8 @@ class ToolErrorVisibleToLlmTest {
     @ValueSource(strings = {" ", "\n"})
     void of_should_reject_a_blank_message(String message) {
 
-        assertThatThrownBy(() -> ToolErrorVisibleToLlm.of(message)).isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> ToolErrorVisibleToLlm.of(message, new RuntimeException()))
+        assertThatThrownBy(() -> ToolErrorVisibleToLlm.from(message)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> ToolErrorVisibleToLlm.from(message, new RuntimeException()))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 }

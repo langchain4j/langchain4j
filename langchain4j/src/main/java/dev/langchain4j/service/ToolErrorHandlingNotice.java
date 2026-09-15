@@ -117,7 +117,7 @@ class ToolErrorHandlingNotice {
         if (unconfirmedDefaults.contains(Default.TOOL_EXECUTION_ERROR)) {
             message.append("\nWith the recommended setting, a tool tells the LLM about a failure by throwing an "
                     + "exception that implements dev.langchain4j.exception.ToolErrorVisibleToLlm, for example:"
-                    + "\n  throw ToolErrorVisibleToLlm.of(\"There is no order with this ID.\");");
+                    + "\n  throw ToolErrorVisibleToLlm.from(\"There is no order with this ID.\");");
         }
 
         message.append("\nTo keep the current behavior:");
