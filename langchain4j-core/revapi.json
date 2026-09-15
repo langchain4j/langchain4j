@@ -13,6 +13,26 @@
           "code": "java.class.nonFinalClassInheritsFromNewClass",
           "old": "class dev.langchain4j.exception.UnsupportedFeatureException",
           "justification": "UnsupportedFeatureException now extends NonRetriableException instead of extending LangChain4jException directly. NonRetriableException is itself a LangChain4jException, so the type is still assignable everywhere it was before and every existing catch clause keeps compiling and catching; only an intermediate supertype is inserted. The behavioural effect is that RetryUtils stops retrying it, which is the intended fix: a provider that does not support a feature will not begin to support it on a retry, so the retries only added latency before the same failure."
+        },
+        {
+          "code": "java.method.parameterTypeParameterChanged",
+          "new": "parameter dev.langchain4j.model.output.Response<dev.langchain4j.model.moderation.Moderation> dev.langchain4j.model.moderation.ModerationModel::moderate(===java.util.List<java.lang.String>===)",
+          "justification": "ModerationModel.moderate(List<ChatMessage>) was replaced by moderate(List<String>) due to Java type erasure: both signatures erase to moderate(List) and cannot coexist. Callers should map ChatMessages to text via ChatMessage.text() before moderating."
+        },
+        {
+          "code": "java.method.parameterTypeParameterChanged",
+          "new": "parameter dev.langchain4j.model.output.Response<dev.langchain4j.model.moderation.Moderation> dev.langchain4j.model.moderation.DisabledModerationModel::moderate(===java.util.List<java.lang.String>===)",
+          "justification": "DisabledModerationModel.moderate(List<ChatMessage>) was replaced by moderate(List<String>) to match the ModerationModel interface change."
+        },
+        {
+          "code": "java.method.removed",
+          "old": "method java.lang.String dev.langchain4j.model.moderation.ModerationModel::toText(dev.langchain4j.data.message.ChatMessage)",
+          "justification": "ModerationModel.toText(ChatMessage) was removed; the equivalent logic now lives as a default method ChatMessage.text() with overrides in SystemMessage, UserMessage, AiMessage, and ToolExecutionResultMessage."
+        },
+        {
+          "code": "java.method.addedToInterface",
+          "new": "method java.lang.String dev.langchain4j.data.message.ChatMessage::text()",
+          "justification": "ChatMessage.text() is a new default method with a safe default that throws UnsupportedOperationException. SystemMessage, AiMessage, and ToolExecutionResultMessage already had a text() method with the same signature, so they override cleanly. UserMessage adds an override returning singleText(). External implementations of ChatMessage that do not have a text() method will get the default (throw), preserving backward compatibility."
         }
       ]
     }
