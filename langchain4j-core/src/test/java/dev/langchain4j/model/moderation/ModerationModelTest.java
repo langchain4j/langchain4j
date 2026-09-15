@@ -36,6 +36,13 @@ class ModerationModelTest implements WithAssertions {
     }
 
     @Test
+    void moderate_list_of_strings() {
+        ModerationModel model = new FlagEverythingModel();
+        Response<Moderation> response = model.moderate(List.of("hello", "world"));
+        assertThat(response).isEqualTo(Response.from(Moderation.flagged("hello")));
+    }
+
+    @Test
     void moderate_text_segment() {
         ModerationModel model = new FlagEverythingModel();
         Response<Moderation> response = model.moderate(TextSegment.from("Hello, world!"));

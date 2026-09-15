@@ -24,6 +24,7 @@ class UserMessageTest implements WithAssertions {
         UserMessage m = new UserMessage("name", "text");
         assertThat(m.type()).isEqualTo(ChatMessageType.USER);
         assertThat(m.singleText()).isEqualTo("text");
+        assertThat(m.text()).isEqualTo("text");
         assertThat(m.contents()).containsExactly(TextContent.from("text"));
         assertThat(m.name()).isEqualTo("name");
         assertThat(m)
