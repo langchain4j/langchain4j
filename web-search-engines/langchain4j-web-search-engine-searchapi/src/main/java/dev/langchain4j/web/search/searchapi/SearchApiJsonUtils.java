@@ -1,8 +1,8 @@
 package dev.langchain4j.web.search.searchapi;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.langchain4j.internal.Json;
+import dev.langchain4j.internal.ProviderJson;
+import dev.langchain4j.internal.ProviderJsonSpec;
 
 class SearchApiJsonUtils {
 
@@ -10,14 +10,10 @@ class SearchApiJsonUtils {
         throw new InstantiationException("Can't instantiate this utility class.");
     }
 
-    private static final ObjectMapper OBJECT_MAPPER =
-            new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+    private static final Json.JsonCodec CODEC = ProviderJson.codec(
+            ProviderJsonSpec.builder().propertyNaming(ProviderJsonSpec.PropertyNaming.SNAKE_CASE).build());
 
     static <T> T fromJson(String jsonStr, Class<T> clazz) {
-        try {
-            return OBJECT_MAPPER.readValue(jsonStr, clazz);
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
-        }
+        return CODEC.fromJson(jsonStr, clazz);
     }
 }

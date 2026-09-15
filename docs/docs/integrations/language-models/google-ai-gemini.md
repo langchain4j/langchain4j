@@ -15,6 +15,7 @@ https://ai.google.dev/gemini-api/docs
     - [Configuring](#configuring)
     - [Default Request Parameters](#default-request-parameters)
 - [GoogleAiGeminiStreamingChatModel](#googleaigeministreamingchatmodel)
+- [Safety Settings and Safety Ratings](#safety-settings-and-safety-ratings)
 - [Tools](#tools)
 - [Structured Outputs](#structured-outputs)
 - [Python Code Execution](#python-code-execution)
@@ -40,7 +41,7 @@ https://ai.google.dev/gemini-api/docs
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-google-ai-gemini</artifactId>
-    <version>1.19.0</version>
+    <version>1.20.0</version>
 </dependency>
 ```
 
@@ -198,6 +199,67 @@ gemini.chat("Tell me a joke about Java", new StreamingChatResponseHandler() {
 
         futureResponse.join();
 ```
+
+## Safety Settings and Safety Ratings
+
+Gemini checks both the prompt you send and the content it generates against a set of harm categories, such as
+`HARM_CATEGORY_HARASSMENT` or `HARM_CATEGORY_DANGEROUS_CONTENT`.
+
+You control how strict those checks are with `safetySettings(...)` on the model builder:
+
+```java
+ChatModel model = GoogleAiGeminiChatModel.builder()
+    .apiKey(System.getenv("GEMINI_AI_KEY"))
+    .modelName("gemini-2.5-flash")
+    .safetySettings(Map.of(
+        GeminiHarmCategory.HARM_CATEGORY_HARASSMENT, GeminiHarmBlockThreshold.BLOCK_ONLY_HIGH,
+        GeminiHarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, GeminiHarmBlockThreshold.BLOCK_LOW_AND_ABOVE))
+    .build();
+```
+
+Gemini reports the outcome of those checks on the response. To read it, cast `ChatResponse.metadata()` to
+`GoogleAiGeminiChatResponseMetadata`:
+
+```java
+ChatResponse chatResponse = model.chat(ChatRequest.builder()
+    .messages(UserMessage.from("Hello!"))
+    .build());
+
+var metadata = (GoogleAiGeminiChatResponseMetadata) chatResponse.metadata();
+
+// how the generated content was rated
+for (GeminiSafetyRating rating : metadata.safetyRatings()) {
+    System.out.println(rating.category() + " -> " + rating.probability());
+}
+```
+
+Three pieces of information are available:
+
+| Method                  | Meaning                                                                            |
+|-------------------------|------------------------------------------------------------------------------------|
+| `safetyRatings()`       | How the **generated content** was rated, one entry per harm category. Empty if none. |
+| `promptSafetyRatings()` | How **your prompt** was rated. Empty if none.                                        |
+| `blockReason()`         | Why Gemini refused the prompt outright, or `null` if it did not.                     |
+
+When Gemini refuses a prompt it returns no content at all. In that case `blockReason()` is set (for example
+`"SAFETY"`, `"PROHIBITED_CONTENT"` or `"BLOCKLIST"`), the `AiMessage` carries no text, and `finishReason()` is
+`CONTENT_FILTER`:
+
+```java
+var metadata = (GoogleAiGeminiChatResponseMetadata) chatResponse.metadata();
+
+if (metadata.blockReason() != null) {
+    System.out.println("Prompt was rejected: " + metadata.blockReason());
+    metadata.promptSafetyRatings().forEach(rating ->
+            System.out.println("  " + rating.category() + ": " + rating.probability()));
+}
+```
+
+`GeminiSafetyRating.category()` and `probability()` are plain `String`s holding the raw API values, so harm
+categories that Google introduces later are passed through as-is instead of breaking your application.
+
+The same data is available from `GoogleAiGeminiStreamingChatModel` (on the `ChatResponse` passed to
+`onCompleteResponse`) and from `GoogleAiGeminiBatchChatModel`.
 
 ## Tools
 

@@ -17,6 +17,10 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 @EnabledIfEnvironmentVariable(named = "TAVILY_API_KEY", matches = ".+")
 class TavilyWebSearchEngineIT extends WebSearchEngineIT {
 
+    // Tavily's server-side default for "max_results" is not stable, so every test that asserts on the number of
+    // results has to request an explicit maximum instead of relying on that default.
+    private static final int MAX_RESULTS = 5;
+
     WebSearchEngine webSearchEngine = TavilyWebSearchEngine.withApiKey(System.getenv("TAVILY_API_KEY"));
 
     @Test
@@ -46,7 +50,8 @@ class TavilyWebSearchEngineIT extends WebSearchEngineIT {
             assertThat(result.metadata()).containsOnlyKeys("score");
         });
 
-        assertThat(results).anyMatch(result -> result.content() != null && result.content().contains("LangChain4j"));
+        assertThat(results)
+                .anyMatch(result -> result.content() != null && result.content().contains("LangChain4j"));
     }
 
     @Test
@@ -58,12 +63,17 @@ class TavilyWebSearchEngineIT extends WebSearchEngineIT {
                 .includeAnswer(true)
                 .build();
 
+        WebSearchRequest request = WebSearchRequest.builder()
+                .searchTerms("What is LangChain4j?")
+                .maxResults(MAX_RESULTS)
+                .build();
+
         // when
-        WebSearchResults webSearchResults = tavilyWebSearchEngine.search("What is LangChain4j?");
+        WebSearchResults webSearchResults = tavilyWebSearchEngine.search(request);
 
         // then
         List<WebSearchOrganicResult> results = webSearchResults.results();
-        assertThat(results).hasSize(5 + 1); // +1 for answer
+        assertThat(results).hasSize(MAX_RESULTS + 1); // +1 for answer
 
         WebSearchOrganicResult answerResult = results.get(0);
         assertThat(answerResult.title()).isEqualTo("Tavily Search API");
@@ -90,12 +100,17 @@ class TavilyWebSearchEngineIT extends WebSearchEngineIT {
                 .includeAnswer(true)
                 .build();
 
+        WebSearchRequest request = WebSearchRequest.builder()
+                .searchTerms("Release notes for ADP Workforce Now")
+                .maxResults(MAX_RESULTS)
+                .build();
+
         // when
-        WebSearchResults webSearchResults = tavilyWebSearchEngine.search("Release notes for ADP Workforce Now");
+        WebSearchResults webSearchResults = tavilyWebSearchEngine.search(request);
 
         // then
         List<WebSearchOrganicResult> results = webSearchResults.results();
-        assertThat(results).hasSize(5 + 1); // +1 for answer
+        assertThat(results).hasSize(MAX_RESULTS + 1); // +1 for answer
     }
 
     @Test
@@ -107,13 +122,18 @@ class TavilyWebSearchEngineIT extends WebSearchEngineIT {
                 .includeAnswer(true)
                 .build();
 
+        WebSearchRequest request = WebSearchRequest.builder()
+                .searchTerms("What is LangChain4j?")
+                .maxResults(MAX_RESULTS)
+                .build();
+
         // when
         WebSearchResults webSearchResults =
-                tavilyWebSearchEngine.searchAsync(WebSearchRequest.from("What is LangChain4j?")).get(30, TimeUnit.SECONDS);
+                tavilyWebSearchEngine.searchAsync(request).get(30, TimeUnit.SECONDS);
 
         // then
         List<WebSearchOrganicResult> results = webSearchResults.results();
-        assertThat(results).hasSize(5 + 1); // +1 for answer
+        assertThat(results).hasSize(MAX_RESULTS + 1); // +1 for answer
 
         WebSearchOrganicResult answerResult = results.get(0);
         assertThat(answerResult.title()).isEqualTo("Tavily Search API");

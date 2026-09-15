@@ -178,9 +178,11 @@ class GoogleGenAiContentMapperTest {
                 .build();
         AiMessage message = AiMessage.from(toolRequest);
 
+        // Not asserted by exception type: the configured JSON codec decides that, and this module
+        // is also run against the Jackson 3 codec, which reports a different one.
         assertThatThrownBy(() -> GoogleGenAiContentMapper.toContent(message))
                 .isInstanceOf(RuntimeException.class)
-                .hasCauseInstanceOf(com.fasterxml.jackson.core.JsonProcessingException.class);
+                .hasCauseInstanceOf(Exception.class);
     }
 
     @Test
@@ -779,5 +781,242 @@ class GoogleGenAiContentMapperTest {
         assertThat(parts).hasSize(1);
         assertThat(parts.get(0).text()).hasValue("");
         assertThat(parts.get(0).thought()).isEmpty();
+    }
+
+    @Test
+    void should_map_cached_content_and_thoughts_token_counts() {
+        GenerateContentResponse response = GenerateContentResponse.builder()
+                .candidates(List.of(Candidate.builder()
+                        .content(Content.builder()
+                                .parts(Part.builder().text("42").build())
+                                .build())
+                        .build()))
+                .usageMetadata(GenerateContentResponseUsageMetadata.builder()
+                        .promptTokenCount(10)
+                        .candidatesTokenCount(5)
+                        .totalTokenCount(40)
+                        .cachedContentTokenCount(7)
+                        .thoughtsTokenCount(25)
+                        .toolUsePromptTokenCount(3)
+                        .build())
+                .build();
+
+        ChatResponse result = GoogleGenAiContentMapper.toChatResponse(response, "test-model");
+
+        GoogleGenAiTokenUsage tokenUsage = (GoogleGenAiTokenUsage) result.tokenUsage();
+        assertThat(tokenUsage.inputTokenCount()).isEqualTo(10);
+        assertThat(tokenUsage.outputTokenCount()).isEqualTo(5);
+        assertThat(tokenUsage.totalTokenCount()).isEqualTo(40);
+        assertThat(tokenUsage.cachedContentTokenCount()).isEqualTo(7);
+        assertThat(tokenUsage.thoughtsTokenCount()).isEqualTo(25);
+        assertThat(tokenUsage.toolUsePromptTokenCount()).isEqualTo(3);
+    }
+
+    @Test
+    void should_map_usage_metadata_when_candidates_are_empty() {
+        GenerateContentResponse response = GenerateContentResponse.builder()
+                .usageMetadata(GenerateContentResponseUsageMetadata.builder()
+                        .promptTokenCount(10)
+                        .candidatesTokenCount(0)
+                        .totalTokenCount(35)
+                        .cachedContentTokenCount(7)
+                        .thoughtsTokenCount(25)
+                        .build())
+                .build();
+
+        ChatResponse result = GoogleGenAiContentMapper.toChatResponse(response, "test-model");
+
+        GoogleGenAiTokenUsage tokenUsage = (GoogleGenAiTokenUsage) result.tokenUsage();
+        assertThat(tokenUsage.inputTokenCount()).isEqualTo(10);
+        assertThat(tokenUsage.totalTokenCount()).isEqualTo(35);
+        assertThat(tokenUsage.cachedContentTokenCount()).isEqualTo(7);
+        assertThat(tokenUsage.thoughtsTokenCount()).isEqualTo(25);
+    }
+
+    @Test
+    void should_include_thoughts_and_tool_use_tokens_in_the_fallback_total() {
+        GenerateContentResponse response = GenerateContentResponse.builder()
+                .candidates(List.of(Candidate.builder()
+                        .content(Content.builder()
+                                .parts(Part.builder().text("42").build())
+                                .build())
+                        .build()))
+                .usageMetadata(GenerateContentResponseUsageMetadata.builder()
+                        .promptTokenCount(10)
+                        .candidatesTokenCount(5)
+                        .thoughtsTokenCount(25)
+                        .toolUsePromptTokenCount(3)
+                        .build())
+                .build();
+
+        ChatResponse result = GoogleGenAiContentMapper.toChatResponse(response, "test-model");
+
+        assertThat(result.tokenUsage().totalTokenCount()).isEqualTo(43);
+    }
+
+    @Test
+    void should_leave_cached_content_and_thoughts_token_counts_null_when_not_reported() {
+        GenerateContentResponse response = GenerateContentResponse.builder()
+                .candidates(List.of(Candidate.builder()
+                        .content(Content.builder()
+                                .parts(Part.builder().text("42").build())
+                                .build())
+                        .build()))
+                .usageMetadata(GenerateContentResponseUsageMetadata.builder()
+                        .promptTokenCount(10)
+                        .candidatesTokenCount(5)
+                        .build())
+                .build();
+
+        ChatResponse result = GoogleGenAiContentMapper.toChatResponse(response, "test-model");
+
+        GoogleGenAiTokenUsage tokenUsage = (GoogleGenAiTokenUsage) result.tokenUsage();
+        assertThat(tokenUsage.cachedContentTokenCount()).isNull();
+        assertThat(tokenUsage.thoughtsTokenCount()).isNull();
+        assertThat(tokenUsage.toolUsePromptTokenCount()).isNull();
+        assertThat(tokenUsage.totalTokenCount()).isEqualTo(15);
+    }
+
+    @Test
+    void should_capture_thought_signature_from_a_text_part() {
+        byte[] signature = "text-signature".getBytes();
+        GenerateContentResponse response = GenerateContentResponse.builder()
+                .candidates(List.of(Candidate.builder()
+                        .content(Content.builder()
+                                .parts(List.of(
+                                        Part.builder()
+                                                .text("Working it out.")
+                                                .thought(true)
+                                                .build(),
+                                        Part.builder()
+                                                .text("42")
+                                                .thoughtSignature(signature)
+                                                .build()))
+                                .build())
+                        .build()))
+                .build();
+
+        ChatResponse result = GoogleGenAiContentMapper.toChatResponse(response, "test-model");
+
+        assertThat(result.aiMessage().attribute("thought_signature", String.class))
+                .isEqualTo(Base64.getEncoder().encodeToString(signature));
+    }
+
+    @Test
+    void should_send_back_the_thought_signature_on_the_text_part() {
+        byte[] signature = "text-signature".getBytes();
+        AiMessage message = AiMessage.builder()
+                .text("42")
+                .attributes(Map.of("thought_signature", Base64.getEncoder().encodeToString(signature)))
+                .build();
+
+        Content result = GoogleGenAiContentMapper.toContent(message, true);
+
+        List<Part> parts = result.parts().orElseThrow();
+        assertThat(parts).hasSize(1);
+        assertThat(parts.get(0).text()).hasValue("42");
+        assertThat(parts.get(0).thoughtSignature()).hasValue(signature);
+    }
+
+    @Test
+    void should_not_send_back_the_thought_signature_when_thinking_is_not_sent() {
+        String signature = Base64.getEncoder().encodeToString("text-signature".getBytes());
+        AiMessage message = AiMessage.builder()
+                .text("42")
+                .attributes(Map.of("thought_signature", signature))
+                .build();
+
+        Content result = GoogleGenAiContentMapper.toContent(message, false);
+
+        List<Part> parts = result.parts().orElseThrow();
+        assertThat(parts).hasSize(1);
+        assertThat(parts.get(0).text()).hasValue("42");
+        assertThat(parts.get(0).thoughtSignature()).isEmpty();
+    }
+
+    @Test
+    void should_round_trip_the_thought_signature_of_a_text_part() {
+        byte[] signature = "text-signature".getBytes();
+        GenerateContentResponse response = GenerateContentResponse.builder()
+                .candidates(List.of(Candidate.builder()
+                        .content(Content.builder()
+                                .parts(Part.builder()
+                                        .text("42")
+                                        .thoughtSignature(signature)
+                                        .build())
+                                .build())
+                        .build()))
+                .build();
+
+        AiMessage aiMessage =
+                GoogleGenAiContentMapper.toChatResponse(response, "test-model").aiMessage();
+        Content result = GoogleGenAiContentMapper.toContent(aiMessage, true);
+
+        assertThat(result.parts().orElseThrow().get(0).thoughtSignature()).hasValue(signature);
+    }
+
+    @Test
+    void should_not_capture_a_thought_signature_from_a_part_that_is_not_the_last() {
+        byte[] signature = "thinking-signature".getBytes();
+        GenerateContentResponse response = GenerateContentResponse.builder()
+                .candidates(List.of(Candidate.builder()
+                        .content(Content.builder()
+                                .parts(List.of(
+                                        Part.builder()
+                                                .text("Working it out.")
+                                                .thought(true)
+                                                .thoughtSignature(signature)
+                                                .build(),
+                                        Part.builder().text("42").build()))
+                                .build())
+                        .build()))
+                .build();
+
+        AiMessage aiMessage = GoogleGenAiContentMapper.toChatResponse(response, "test-model", true)
+                .aiMessage();
+
+        assertThat(aiMessage.attributes()).doesNotContainKey("thought_signature");
+        assertThat(GoogleGenAiContentMapper.toContent(aiMessage, true).parts().orElseThrow())
+                .allSatisfy(part -> assertThat(part.thoughtSignature()).isEmpty());
+    }
+
+    @Test
+    void should_not_capture_a_thought_signature_when_the_part_has_none() {
+        GenerateContentResponse response = GenerateContentResponse.builder()
+                .candidates(List.of(Candidate.builder()
+                        .content(Content.builder()
+                                .parts(Part.builder().text("42").build())
+                                .build())
+                        .build()))
+                .build();
+
+        ChatResponse result = GoogleGenAiContentMapper.toChatResponse(response, "test-model");
+
+        assertThat(result.aiMessage().attributes()).doesNotContainKey("thought_signature");
+    }
+
+    @Test
+    void should_keep_the_function_call_thought_signature_keyed_by_tool_call_id() {
+        byte[] signature = "call-signature".getBytes();
+        GenerateContentResponse response = GenerateContentResponse.builder()
+                .candidates(List.of(Candidate.builder()
+                        .content(Content.builder()
+                                .parts(Part.builder()
+                                        .functionCall(FunctionCall.builder()
+                                                .id("call-1")
+                                                .name("getWeather")
+                                                .args(Map.of())
+                                                .build())
+                                        .thoughtSignature(signature)
+                                        .build())
+                                .build())
+                        .build()))
+                .build();
+
+        ChatResponse result = GoogleGenAiContentMapper.toChatResponse(response, "test-model");
+
+        assertThat(result.aiMessage().attribute("thought_signature_call-1", String.class))
+                .isEqualTo(Base64.getEncoder().encodeToString(signature));
+        assertThat(result.aiMessage().attributes()).doesNotContainKey("thought_signature");
     }
 }

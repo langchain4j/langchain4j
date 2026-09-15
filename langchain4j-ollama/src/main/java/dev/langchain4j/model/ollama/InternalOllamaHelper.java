@@ -6,10 +6,10 @@ import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.ollama.OllamaJsonUtils.fromJson;
-import static dev.langchain4j.model.ollama.OllamaJsonUtils.toJson;
 import static dev.langchain4j.model.ollama.OllamaJsonUtils.toJsonWithoutIdent;
 
-import com.fasterxml.jackson.core.type.TypeReference;
+import java.lang.reflect.Type;
+import dev.langchain4j.internal.Types;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -44,6 +44,8 @@ import java.util.stream.Collectors;
 
 @Internal
 class InternalOllamaHelper {
+
+    private static final Type MAP_OF_OBJECT = Types.parameterized(HashMap.class, String.class, Object.class);
 
     private static final Predicate<ChatMessage> isUserMessage = UserMessage.class::isInstance;
     private static final Predicate<UserMessage> hasImages =
@@ -97,13 +99,13 @@ class InternalOllamaHelper {
                 .collect(Collectors.toList());
     }
 
-    static String toOllamaResponseFormat(ResponseFormat responseFormat) {
+    static Object toOllamaResponseFormat(ResponseFormat responseFormat) {
         if (responseFormat == null || responseFormat.type() == ResponseFormatType.TEXT) {
             return null;
         } else if (responseFormat.type() == ResponseFormatType.JSON && responseFormat.jsonSchema() == null) {
             return "json";
         } else {
-            return toJson(toMap(responseFormat.jsonSchema().rootElement()));
+            return toMap(responseFormat.jsonSchema().rootElement());
         }
     }
 
@@ -246,11 +248,9 @@ class InternalOllamaHelper {
             toolCalls = Optional.ofNullable(toolExecutionRequests)
                     .map(reqs -> reqs.stream()
                             .map(toolExecutionRequest -> {
-                                TypeReference<HashMap<String, Object>> typeReference =
-                                        new TypeReference<HashMap<String, Object>>() {};
                                 FunctionCall functionCall = FunctionCall.builder()
                                         .name(toolExecutionRequest.name())
-                                        .arguments(fromJson(toolExecutionRequest.arguments(), typeReference))
+                                        .arguments(fromJson(toolExecutionRequest.arguments(), MAP_OF_OBJECT))
                                         .build();
                                 return ToolCall.builder()
                                         .id(toolExecutionRequest.id())
