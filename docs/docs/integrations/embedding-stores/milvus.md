@@ -42,7 +42,7 @@ Built on the current Milvus Java SDK v2. Supports dense vector search, sparse ve
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-milvus-v2</artifactId>
-    <version>1.19.0-beta29</version>
+    <version>1.20.0-beta30</version>
 </dependency>
 ```
 
@@ -168,7 +168,7 @@ Built on the Milvus Java SDK v1. Supports dense vector search only. It will be r
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-milvus</artifactId>
-    <version>1.19.0-beta29</version>
+    <version>1.20.0-beta30</version>
 </dependency>
 ```
 

@@ -5,15 +5,12 @@ import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
 @JsonInclude(NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
-@JsonNaming(SnakeCaseStrategy.class)
 public class AnthropicToolSchema {
 
     public String type = "object";

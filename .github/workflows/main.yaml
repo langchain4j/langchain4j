@@ -133,6 +133,53 @@ jobs:
             echo '```'
           } >> $GITHUB_STEP_SUMMARY
 
+  jackson3_unit_test:
+    # Re-runs the unit tests with langchain4j-core-jackson3 on the test classpath of every
+    # module that declares the jackson3 profile, so the JSON SPI resolves to Jackson 3 instead
+    # of the Jackson 2 default. Without this, a DTO that only Jackson 2 can read goes unnoticed
+    # until a user opts in. The whole reactor is built so that a profile which makes the module
+    # graph cyclic fails here rather than in someone's local build.
+    runs-on: ubuntu-latest
+    steps:
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5
+        with:
+          java-version: 21
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Check that the profile is still declared somewhere
+        run: |
+          set -euo pipefail
+          count=$(grep -rl --include=pom.xml '<id>jackson3</id>' . | wc -l)
+          if [ "$count" -eq 0 ]; then
+            echo '::error::No module declares the jackson3 profile - this job would pass without testing the opt-in.'
+            exit 1
+          fi
+          echo "$count modules declare the jackson3 profile."
+
+      - name: Unit test with the Jackson 3 codec
+        run: |
+          set -o pipefail
+          mvn -B -U -DembeddingsSkipDownload -T8C test -Pjackson3 2>&1 | tee maven-output.log
+
+      - name: Surface build errors
+        if: failure()
+        run: |
+          {
+            echo '## Jackson 3 opt-in failures'
+            echo ''
+            echo 'These modules pass on Jackson 2. A failure here means something behaves'
+            echo 'differently once `langchain4j-core-jackson3` is on the classpath.'
+            echo ''
+            echo '```'
+            grep '^\[ERROR\]' maven-output.log | head -50
+            echo '```'
+          } >> $GITHUB_STEP_SUMMARY
+
   integration_test:
     needs: compile_and_unit_test
     runs-on: ubuntu-latest

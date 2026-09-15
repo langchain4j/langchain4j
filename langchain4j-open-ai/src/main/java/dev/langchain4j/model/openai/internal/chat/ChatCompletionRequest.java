@@ -5,15 +5,16 @@ import static java.util.Collections.unmodifiableList;
 import static java.util.Collections.unmodifiableMap;
 
 import com.fasterxml.jackson.annotation.JsonAnyGetter;
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonSetter;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
+import dev.langchain4j.model.openai.internal.shared.PromptCacheOptions;
 import dev.langchain4j.model.openai.internal.shared.StreamOptions;
 import java.util.ArrayList;
 import java.util.List;
@@ -22,7 +23,6 @@ import java.util.Objects;
 
 @JsonDeserialize(builder = ChatCompletionRequest.Builder.class)
 @JsonInclude(JsonInclude.Include.NON_EMPTY)
-@JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public final class ChatCompletionRequest {
 
     @JsonProperty
@@ -95,6 +95,12 @@ public final class ChatCompletionRequest {
     private final String serviceTier;
 
     @JsonProperty
+    private final String promptCacheKey;
+
+    @JsonProperty
+    private final PromptCacheOptions promptCacheOptions;
+
+    @JsonProperty
     private final Boolean logprobs;
 
     @JsonProperty
@@ -110,33 +116,36 @@ public final class ChatCompletionRequest {
 
     private final Map<String, Object> customParameters;
 
+    @JsonCreator
     public ChatCompletionRequest(Builder builder) {
         this.model = builder.model;
-        this.messages = builder.messages;
+        this.messages = builder.messages == null ? null : unmodifiableList(builder.messages);
         this.temperature = builder.temperature;
         this.topP = builder.topP;
         this.n = builder.n;
         this.stream = builder.stream;
         this.streamOptions = builder.streamOptions;
-        this.stop = builder.stop;
+        this.stop = builder.stop == null ? null : unmodifiableList(builder.stop);
         this.maxTokens = builder.maxTokens;
         this.maxCompletionTokens = builder.maxCompletionTokens;
         this.presencePenalty = builder.presencePenalty;
         this.frequencyPenalty = builder.frequencyPenalty;
-        this.logitBias = builder.logitBias;
+        this.logitBias = builder.logitBias == null ? null : unmodifiableMap(builder.logitBias);
         this.user = builder.user;
         this.responseFormat = builder.responseFormat;
         this.seed = builder.seed;
-        this.tools = builder.tools;
+        this.tools = builder.tools == null ? null : unmodifiableList(builder.tools);
         this.toolChoice = builder.toolChoice;
         this.parallelToolCalls = builder.parallelToolCalls;
         this.store = builder.store;
-        this.metadata = builder.metadata;
+        this.metadata = builder.metadata == null ? null : unmodifiableMap(builder.metadata);
         this.reasoningEffort = builder.reasoningEffort;
         this.serviceTier = builder.serviceTier;
+        this.promptCacheKey = builder.promptCacheKey;
+        this.promptCacheOptions = builder.promptCacheOptions;
         this.logprobs = builder.logprobs;
         this.topLogprobs = builder.topLogprobs;
-        this.functions = builder.functions;
+        this.functions = builder.functions == null ? null : unmodifiableList(builder.functions);
         this.functionCall = builder.functionCall;
         this.customParameters = builder.customParameters;
     }
@@ -233,6 +242,14 @@ public final class ChatCompletionRequest {
         return serviceTier;
     }
 
+    public String promptCacheKey() {
+        return promptCacheKey;
+    }
+
+    public PromptCacheOptions promptCacheOptions() {
+        return promptCacheOptions;
+    }
+
     public Boolean logprobs() {
         return logprobs;
     }
@@ -288,6 +305,8 @@ public final class ChatCompletionRequest {
                 && Objects.equals(metadata, another.metadata)
                 && Objects.equals(reasoningEffort, another.reasoningEffort)
                 && Objects.equals(serviceTier, another.serviceTier)
+                && Objects.equals(promptCacheKey, another.promptCacheKey)
+                && Objects.equals(promptCacheOptions, another.promptCacheOptions)
                 && Objects.equals(logprobs, another.logprobs)
                 && Objects.equals(topLogprobs, another.topLogprobs)
                 && Objects.equals(functions, another.functions)
@@ -322,6 +341,8 @@ public final class ChatCompletionRequest {
         h += (h << 5) + Objects.hashCode(metadata);
         h += (h << 5) + Objects.hashCode(reasoningEffort);
         h += (h << 5) + Objects.hashCode(serviceTier);
+        h += (h << 5) + Objects.hashCode(promptCacheKey);
+        h += (h << 5) + Objects.hashCode(promptCacheOptions);
         h += (h << 5) + Objects.hashCode(logprobs);
         h += (h << 5) + Objects.hashCode(topLogprobs);
         h += (h << 5) + Objects.hashCode(functions);
@@ -357,6 +378,8 @@ public final class ChatCompletionRequest {
                 + ", metadata=" + metadata
                 + ", reasoningEffort=" + reasoningEffort
                 + ", serviceTier=" + serviceTier
+                + ", promptCacheKey=" + promptCacheKey
+                + ", promptCacheOptions=" + promptCacheOptions
                 + ", logprobs=" + logprobs
                 + ", topLogprobs=" + topLogprobs
                 + ", functions=" + functions
@@ -371,7 +394,7 @@ public final class ChatCompletionRequest {
 
     @JsonPOJOBuilder(withPrefix = "")
     @JsonIgnoreProperties(ignoreUnknown = true)
-    @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
+    @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
     public static final class Builder {
 
         private String model;
@@ -397,6 +420,8 @@ public final class ChatCompletionRequest {
         private Map<String, String> metadata;
         private String reasoningEffort;
         private String serviceTier;
+        private String promptCacheKey;
+        private PromptCacheOptions promptCacheOptions;
         private Boolean logprobs;
         private Integer topLogprobs;
 
@@ -432,6 +457,8 @@ public final class ChatCompletionRequest {
             metadata(instance.metadata);
             reasoningEffort(instance.reasoningEffort);
             serviceTier(instance.serviceTier);
+            promptCacheKey(instance.promptCacheKey);
+            promptCacheOptions(instance.promptCacheOptions);
             logprobs(instance.logprobs);
             topLogprobs(instance.topLogprobs);
             functions(instance.functions);
@@ -448,7 +475,7 @@ public final class ChatCompletionRequest {
         @JsonSetter
         public Builder messages(List<Message> messages) {
             if (messages != null) {
-                this.messages = unmodifiableList(messages);
+                this.messages = messages;
             }
             return this;
         }
@@ -517,7 +544,7 @@ public final class ChatCompletionRequest {
         @JsonSetter
         public Builder stop(List<String> stop) {
             if (stop != null) {
-                this.stop = unmodifiableList(stop);
+                this.stop = stop;
             }
             return this;
         }
@@ -548,7 +575,7 @@ public final class ChatCompletionRequest {
 
         public Builder logitBias(Map<String, Integer> logitBias) {
             if (logitBias != null) {
-                this.logitBias = unmodifiableMap(logitBias);
+                this.logitBias = logitBias;
             }
             return this;
         }
@@ -580,7 +607,7 @@ public final class ChatCompletionRequest {
         @JsonSetter
         public Builder tools(List<Tool> tools) {
             if (tools != null) {
-                this.tools = unmodifiableList(tools);
+                this.tools = tools;
             }
             return this;
         }
@@ -615,7 +642,7 @@ public final class ChatCompletionRequest {
 
         public Builder metadata(Map<String, String> metadata) {
             if (metadata != null) {
-                this.metadata = unmodifiableMap(metadata);
+                this.metadata = metadata;
             }
             return this;
         }
@@ -627,6 +654,16 @@ public final class ChatCompletionRequest {
 
         public Builder serviceTier(String serviceTier) {
             this.serviceTier = serviceTier;
+            return this;
+        }
+
+        public Builder promptCacheKey(String promptCacheKey) {
+            this.promptCacheKey = promptCacheKey;
+            return this;
+        }
+
+        public Builder promptCacheOptions(PromptCacheOptions promptCacheOptions) {
+            this.promptCacheOptions = promptCacheOptions;
             return this;
         }
 
@@ -649,7 +686,7 @@ public final class ChatCompletionRequest {
         @Deprecated
         public Builder functions(List<Function> functions) {
             if (functions != null) {
-                this.functions = unmodifiableList(functions);
+                this.functions = functions;
             }
             return this;
         }

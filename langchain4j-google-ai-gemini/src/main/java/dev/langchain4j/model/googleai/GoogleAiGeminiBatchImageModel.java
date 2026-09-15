@@ -4,7 +4,7 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.googleai.GeminiResponseModality.IMAGE;
 import static dev.langchain4j.model.googleai.GeminiService.BatchOperationType.BATCH_GENERATE_CONTENT;
 
-import com.fasterxml.jackson.core.type.TypeReference;
+import dev.langchain4j.internal.Types;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.http.client.HttpClientBuilder;
@@ -23,6 +23,7 @@ import dev.langchain4j.model.googleai.jsonl.JsonLinesWriter;
 import dev.langchain4j.model.image.BatchImageModel;
 import dev.langchain4j.model.output.Response;
 import java.io.IOException;
+import java.lang.reflect.Type;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -453,10 +454,9 @@ public final class GoogleAiGeminiBatchImageModel implements BatchImageModel {
     private class ImageRequestPreparer
             implements GeminiBatchProcessor.RequestPreparer<
                     String, GeminiGenerateContentRequest, GeminiGenerateContentResponse, Response<@NonNull Image>> {
-        private static final TypeReference<GeminiGenerateContentResponse> responseWrapperType =
-                new TypeReference<>() {};
-        private static final TypeReference<BatchCreateResponse.InlinedResponseWrapper<GeminiGenerateContentResponse>>
-                inlinedResponseWrapperType = new TypeReference<>() {};
+        private static final Type responseWrapperType = GeminiGenerateContentResponse.class;
+        private static final Type inlinedResponseWrapperType = Types.parameterized(
+                BatchCreateResponse.InlinedResponseWrapper.class, GeminiGenerateContentResponse.class);
 
         @Override
         public String prepareRequest(String prompt) {
@@ -487,9 +487,11 @@ public final class GoogleAiGeminiBatchImageModel implements BatchImageModel {
             List<BatchItemResult<Response<@NonNull Image>>> results = new ArrayList<>();
 
             for (Object wrapper : response.inlinedResponses().inlinedResponses()) {
-                var typed = Json.convertValue(wrapper, inlinedResponseWrapperType);
+                BatchCreateResponse.InlinedResponseWrapper<GeminiGenerateContentResponse> typed =
+                        Json.convertValue(wrapper, inlinedResponseWrapperType);
                 if (typed.response() != null) {
-                    var geminiResponse = Json.convertValue(typed.response(), responseWrapperType);
+                    GeminiGenerateContentResponse geminiResponse =
+                            Json.convertValue(typed.response(), responseWrapperType);
                     results.add(BatchItemResult.success(extractImage(geminiResponse)));
                 }
                 var error = typed.error();

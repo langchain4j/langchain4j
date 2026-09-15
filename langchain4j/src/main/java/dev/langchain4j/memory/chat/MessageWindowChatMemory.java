@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 
 /**
@@ -67,12 +68,38 @@ public class MessageWindowChatMemory implements ChatMemory {
     @Override
     public void add(ChatMessage message) {
         List<ChatMessage> messages = messages();
+        if (appendMessage(messages, message)) {
+            store.updateMessages(id, messages);
+        }
+    }
 
+    @Override
+    public CompletableFuture<Void> addAsync(List<ChatMessage> messagesToAdd) {
+        return store.getMessagesAsync(id).thenCompose(stored -> {
+            List<ChatMessage> messages = windowed(stored);
+            boolean changed = false;
+            for (ChatMessage message : messagesToAdd) {
+                changed |= appendMessage(messages, message);
+            }
+            if (changed) {
+                return store.updateMessagesAsync(id, messages);
+            }
+            return CompletableFuture.completedFuture(null);
+        });
+    }
+
+    /**
+     * Appends {@code message} to {@code messages} applying the sliding-window and {@link SystemMessage} rules.
+     *
+     * @return {@code true} if the messages were modified and should be persisted, {@code false} if the message was
+     *         ignored (a {@code SystemMessage} identical to the existing one).
+     */
+    private boolean appendMessage(List<ChatMessage> messages, ChatMessage message) {
         if (message instanceof SystemMessage) {
             Optional<SystemMessage> systemMessage = SystemMessage.findFirst(messages);
             if (systemMessage.isPresent()) {
                 if (systemMessage.get().equals(message)) {
-                    return; // do not add the same system message
+                    return false; // do not add the same system message
                 } else {
                     messages.remove(systemMessage.get()); // need to replace existing system message
                 }
@@ -89,7 +116,7 @@ public class MessageWindowChatMemory implements ChatMemory {
         ensureGreaterThanZero(maxMessages, "maxMessages");
         ensureCapacity(messages, maxMessages);
 
-        store.updateMessages(id, messages);
+        return true;
     }
 
     @Override
@@ -112,10 +139,34 @@ public class MessageWindowChatMemory implements ChatMemory {
     }
 
     @Override
+    public CompletableFuture<Void> setAsync(List<ChatMessage> messages) {
+        // Deliver validation/windowing failures through the returned stage rather than throwing synchronously,
+        // consistent with addAsync and the async error contract.
+        try {
+            Integer maxMessages = this.maxMessagesProvider.apply(this.id);
+            ensureGreaterThanZero(maxMessages, "maxMessages");
+            List<ChatMessage> windowed = new ArrayList<>(messages);
+            ensureCapacity(windowed, maxMessages);
+            return store.updateMessagesAsync(id, windowed);
+        } catch (Throwable t) {
+            return CompletableFuture.failedFuture(t);
+        }
+    }
+
+    @Override
     public List<ChatMessage> messages() {
+        return windowed(store.getMessages(id));
+    }
+
+    @Override
+    public CompletableFuture<List<ChatMessage>> messagesAsync() {
+        return store.getMessagesAsync(id).thenApply(this::windowed);
+    }
+
+    private List<ChatMessage> windowed(List<ChatMessage> stored) {
         Integer maxMessages = this.maxMessagesProvider.apply(this.id);
         ensureGreaterThanZero(maxMessages, "maxMessages");
-        List<ChatMessage> messages = new LinkedList<>(store.getMessages(id));
+        List<ChatMessage> messages = new LinkedList<>(stored);
         ensureCapacity(messages, maxMessages);
         return messages;
     }

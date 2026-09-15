@@ -1,11 +1,11 @@
 package dev.langchain4j.model.openai.internal.completion;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
 import dev.langchain4j.model.openai.internal.shared.StreamOptions;
@@ -19,7 +19,6 @@ import static java.util.Collections.unmodifiableMap;
 
 @JsonDeserialize(builder = CompletionRequest.Builder.class)
 @JsonInclude(JsonInclude.Include.NON_NULL)
-@JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public final class CompletionRequest {
 
     @JsonProperty
@@ -57,6 +56,7 @@ public final class CompletionRequest {
     @JsonProperty
     private final String user;
 
+    @JsonCreator
     public CompletionRequest(Builder builder) {
         this.model = builder.model;
         this.prompt = builder.prompt;
@@ -69,11 +69,11 @@ public final class CompletionRequest {
         this.streamOptions = builder.streamOptions;
         this.logprobs = builder.logprobs;
         this.echo = builder.echo;
-        this.stop = builder.stop;
+        this.stop = builder.stop == null ? null : unmodifiableList(builder.stop);
         this.presencePenalty = builder.presencePenalty;
         this.frequencyPenalty = builder.frequencyPenalty;
         this.bestOf = builder.bestOf;
-        this.logitBias = builder.logitBias;
+        this.logitBias = builder.logitBias == null ? null : unmodifiableMap(builder.logitBias);
         this.user = builder.user;
     }
 
@@ -228,7 +228,7 @@ public final class CompletionRequest {
 
     @JsonPOJOBuilder(withPrefix = "")
     @JsonIgnoreProperties(ignoreUnknown = true)
-    @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
+    @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
     public static final class Builder {
 
         private String model;
@@ -327,7 +327,7 @@ public final class CompletionRequest {
 
         public Builder stop(List<String> stop) {
             if (stop != null) {
-                this.stop = unmodifiableList(stop);
+                this.stop = stop;
             }
             return this;
         }
@@ -349,7 +349,7 @@ public final class CompletionRequest {
 
         public Builder logitBias(Map<String, Integer> logitBias) {
             if (logitBias != null) {
-                this.logitBias = unmodifiableMap(logitBias);
+                this.logitBias = logitBias;
             }
             return this;
         }

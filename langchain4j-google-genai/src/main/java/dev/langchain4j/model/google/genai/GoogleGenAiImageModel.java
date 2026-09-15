@@ -6,8 +6,6 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.genai.Client;
 import com.google.genai.types.Candidate;
@@ -22,6 +20,9 @@ import com.google.genai.types.SafetySetting;
 import com.google.genai.types.Tool;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.image.Image;
+import dev.langchain4j.internal.Json;
+import dev.langchain4j.internal.ProviderJson;
+import dev.langchain4j.internal.ProviderJsonSpec;
 import dev.langchain4j.model.image.ImageModel;
 import dev.langchain4j.model.output.Response;
 import java.time.Duration;
@@ -191,7 +192,7 @@ public class GoogleGenAiImageModel implements ImageModel {
         return Part.fromBytes(imageBytes, mimeType);
     }
 
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final Json.JsonCodec CODEC = ProviderJson.codec(ProviderJsonSpec.builder().build());
 
     private Response<Image> toResponse(GenerateContentResponse response) {
         if (response.parts() == null || response.parts().isEmpty()) {
@@ -205,7 +206,7 @@ public class GoogleGenAiImageModel implements ImageModel {
                 GroundingMetadata gm = candidate.groundingMetadata().get();
                 try {
                     Map<String, Object> groundingMap =
-                            OBJECT_MAPPER.readValue(gm.toJson(), new TypeReference<Map<String, Object>>() {});
+                            CODEC.fromJson(gm.toJson(), Map.class);
                     metadata.put("groundingMetadata", groundingMap);
                 } catch (Exception e) {
                     throw new RuntimeException("Failed to parse grounding metadata", e);
