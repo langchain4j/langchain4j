@@ -5,10 +5,12 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import dev.langchain4j.exception.HttpException;
-import dev.langchain4j.exception.JsonException;
 import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.mcp.client.McpCallContext;
 import dev.langchain4j.mcp.client.McpHeadersSupplier;
+import dev.langchain4j.mcp.client.auth.McpAuthChallenge;
+import dev.langchain4j.mcp.client.auth.McpAuthProvider;
+import dev.langchain4j.mcp.client.auth.McpAuthRequest;
 import dev.langchain4j.mcp.client.logging.McpLoggers;
 import dev.langchain4j.mcp.client.transport.McpHeaderEncoding;
 import dev.langchain4j.mcp.client.transport.McpJson;
@@ -45,7 +47,9 @@ public class StreamableHttpMcpTransport implements McpTransport {
     private static final Logger LOG = LoggerFactory.getLogger(StreamableHttpMcpTransport.class);
     private static final long DEFAULT_SUBSIDIARY_RETRY_MS = 5000;
     private final String url;
+    private final URI serverUri;
     private final McpHeadersSupplier customHeadersSupplier;
+    private final McpAuthProvider authProvider;
     private final boolean logResponses;
     private final boolean logRequests;
     private final Logger trafficLog;
@@ -72,6 +76,8 @@ public class StreamableHttpMcpTransport implements McpTransport {
 
     public StreamableHttpMcpTransport(StreamableHttpMcpTransport.Builder builder) {
         url = ensureNotNull(builder.url, "Missing server endpoint URL");
+        serverUri = URI.create(url);
+        authProvider = builder.authProvider;
         logRequests = builder.logRequests;
         logResponses = builder.logResponses;
         trafficLog = getOrDefault(builder.logger, McpLoggers.traffic());
@@ -170,7 +176,8 @@ public class StreamableHttpMcpTransport implements McpTransport {
         if (headers != null) {
             headers.forEach(builder::header);
         }
-        return builder.uri(URI.create(url))
+        applyAuthorization(builder, "POST", callContext);
+        return builder.uri(serverUri)
                 .header("Content-Type", "application/json")
                 .header("Accept", "application/json,text/event-stream")
                 .POST(bodyPublisher)
@@ -252,6 +259,14 @@ public class StreamableHttpMcpTransport implements McpTransport {
     }
 
     private CompletableFuture<String> execute(McpCallContext context, boolean isRetry) {
+        return execute(context, isRetry, false);
+    }
+
+    /**
+     * @param isRetry     whether this is the retry after a 404-triggered re-initialization (legacy protocol)
+     * @param isAuthRetry whether this is the retry after the {@link McpAuthProvider} handled a 401/403 challenge
+     */
+    private CompletableFuture<String> execute(McpCallContext context, boolean isRetry, boolean isAuthRetry) {
         Long id = context.message().getId();
         if (!(context.message() instanceof McpInitializeRequest)) {
             CompletableFuture<String> reinitializeInProgress = this.initializeInProgress.get();
@@ -262,7 +277,8 @@ public class StreamableHttpMcpTransport implements McpTransport {
         HttpRequest request = null;
         try {
             request = createRequest(context.message(), context);
-        } catch (JsonException | IllegalArgumentException e) {
+        } catch (RuntimeException e) {
+            // malformed message, or the auth provider could not obtain credentials
             return CompletableFuture.failedFuture(e);
         }
         CompletableFuture<String> future = new CompletableFuture<>();
@@ -298,6 +314,12 @@ public class StreamableHttpMcpTransport implements McpTransport {
                                         "Session expired again after reinitialization: server returned status code "
                                                 + responseInfo.statusCode()));
                             }
+                        } else if (authProvider != null && !isAuthRetry && isAuthChallenge(responseInfo.statusCode())) {
+                            McpAuthChallenge challenge = McpAuthChallenge.parse(
+                                    responseInfo.statusCode(),
+                                    serverUri,
+                                    responseInfo.headers().allValues("WWW-Authenticate"));
+                            retryAfterChallenge(context, isRetry, challenge, future);
                         } else {
                             future.completeExceptionally(new HttpException(
                                     responseInfo.statusCode(), "Unexpected status code: " + responseInfo.statusCode()));
@@ -366,6 +388,13 @@ public class StreamableHttpMcpTransport implements McpTransport {
      * @return a future that completes when the channel setup attempt finishes
      */
     private CompletableFuture<Void> startSubsidiaryChannel(boolean firstAttempt) {
+        return startSubsidiaryChannel(firstAttempt, false);
+    }
+
+    /**
+     * @param isAuthRetry whether this is the retry after the {@link McpAuthProvider} handled a 401/403 challenge
+     */
+    private CompletableFuture<Void> startSubsidiaryChannel(boolean firstAttempt, boolean isAuthRetry) {
         if (closed.get()) {
             return CompletableFuture.completedFuture(null);
         }
@@ -385,9 +414,17 @@ public class StreamableHttpMcpTransport implements McpTransport {
         if (headers != null) {
             headers.forEach(requestBuilder::header);
         }
-        HttpRequest request = requestBuilder.build();
-
         CompletableFuture<Void> result = new CompletableFuture<>();
+        HttpRequest request;
+        try {
+            applyAuthorization(requestBuilder, "GET", null);
+            request = requestBuilder.build();
+        } catch (RuntimeException e) {
+            LOG.warn("Failed to open subsidiary SSE channel: could not obtain credentials", e);
+            result.complete(null);
+            return result;
+        }
+
         SseSubscriber subscriber = new SseSubscriber(
                 logResponses,
                 operationHandler,
@@ -409,26 +446,21 @@ public class StreamableHttpMcpTransport implements McpTransport {
                         LOG.debug("Subsidiary SSE channel established");
                         result.complete(null);
                         return HttpResponse.BodySubscribers.fromLineSubscriber(subscriber);
-                    } else {
-                        if (firstAttempt) {
-                            LOG.warn(
-                                    "Failed to open subsidiary SSE channel (status={}, contentType={}), will not re-attempt",
-                                    statusCode,
-                                    contentType.orElse("absent"));
-                        } else {
-                            LOG.debug(
-                                    "Failed to reconnect subsidiary SSE channel (status={}, contentType={}), scheduling retry",
-                                    statusCode,
-                                    contentType.orElse("absent"));
-                            if (!closed.get()) {
-                                scheduleSubsidiaryReconnect();
-                            }
-                        }
-                        result.complete(null);
-                        return HttpResponse.BodySubscribers.discarding();
                     }
+                    // the channel could not be opened: this subscriber will never receive anything
+                    activeStreamSubscribers.remove(subscriber);
+                    if (authProvider != null && !isAuthRetry && isAuthChallenge(statusCode)) {
+                        McpAuthChallenge challenge = McpAuthChallenge.parse(
+                                statusCode, serverUri, responseInfo.headers().allValues("WWW-Authenticate"));
+                        retrySubsidiaryChannelAfterChallenge(firstAttempt, challenge, contentType, result);
+                    } else {
+                        subsidiaryChannelFailed(firstAttempt, statusCode, contentType);
+                        result.complete(null);
+                    }
+                    return HttpResponse.BodySubscribers.discarding();
                 })
                 .exceptionally(t -> {
+                    activeStreamSubscribers.remove(subscriber);
                     if (!closed.get()) {
                         if (firstAttempt) {
                             LOG.warn("Failed to open subsidiary SSE channel", t);
@@ -441,6 +473,55 @@ public class StreamableHttpMcpTransport implements McpTransport {
                     return null;
                 });
         return result;
+    }
+
+    private void subsidiaryChannelFailed(boolean firstAttempt, int statusCode, Optional<String> contentType) {
+        if (firstAttempt) {
+            LOG.warn(
+                    "Failed to open subsidiary SSE channel (status={}, contentType={}), will not re-attempt",
+                    statusCode,
+                    contentType.orElse("absent"));
+        } else {
+            LOG.debug(
+                    "Failed to reconnect subsidiary SSE channel (status={}, contentType={}), scheduling retry",
+                    statusCode,
+                    contentType.orElse("absent"));
+            if (!closed.get()) {
+                scheduleSubsidiaryReconnect();
+            }
+        }
+    }
+
+    /**
+     * Hands a 401/403 on the subsidiary SSE channel to the {@link McpAuthProvider} and reopens the
+     * channel once if the provider says it has fresh credentials; otherwise the failure is handled
+     * like any other. Runs on the transport executor because the provider may block.
+     */
+    private void retrySubsidiaryChannelAfterChallenge(
+            boolean firstAttempt,
+            McpAuthChallenge challenge,
+            Optional<String> contentType,
+            CompletableFuture<Void> result) {
+        CompletableFuture.runAsync(
+                () -> {
+                    boolean retry;
+                    try {
+                        retry = authProvider.onChallenge(challenge);
+                    } catch (RuntimeException e) {
+                        LOG.warn("Failed to obtain credentials for the subsidiary SSE channel", e);
+                        retry = false;
+                    }
+                    if (!retry || closed.get()) {
+                        subsidiaryChannelFailed(firstAttempt, challenge.statusCode(), contentType);
+                        result.complete(null);
+                        return;
+                    }
+                    LOG.debug(
+                            "MCP server returned status code {} for the subsidiary SSE channel, retrying with fresh credentials",
+                            challenge.statusCode());
+                    startSubsidiaryChannel(firstAttempt, true).whenComplete((v, t) -> result.complete(null));
+                },
+                executor);
     }
 
     private void scheduleSubsidiaryReconnect() {
@@ -461,6 +542,60 @@ public class StreamableHttpMcpTransport implements McpTransport {
 
     private boolean isExpectedStatusCode(int statusCode) {
         return statusCode >= 200 && statusCode < 300;
+    }
+
+    private static boolean isAuthChallenge(int statusCode) {
+        return statusCode == 401 || statusCode == 403;
+    }
+
+    /**
+     * Sets the {@code Authorization} header from the {@link McpAuthProvider}, if one is configured.
+     * The provider wins over an {@code Authorization} header supplied via custom headers.
+     */
+    private void applyAuthorization(HttpRequest.Builder builder, String method, McpCallContext callContext) {
+        if (authProvider == null) {
+            return;
+        }
+        String authorization = authProvider.getAuthorization(new McpAuthRequest(method, serverUri, callContext));
+        if (authorization != null) {
+            builder.setHeader("Authorization", authorization);
+        }
+    }
+
+    /**
+     * Hands a 401/403 to the {@link McpAuthProvider} and retries the request once if the provider
+     * says it has fresh credentials. Runs on the transport executor because the provider may block
+     * on a token request, which must not happen on the HTTP client thread.
+     */
+    private void retryAfterChallenge(
+            McpCallContext context, boolean isRetry, McpAuthChallenge challenge, CompletableFuture<String> future) {
+        CompletableFuture.runAsync(
+                () -> {
+                    if (future.isDone()) {
+                        // the caller gave up (timeout, cancellation) while the rejection was in flight
+                        return;
+                    }
+                    boolean retry;
+                    try {
+                        retry = authProvider.onChallenge(challenge);
+                    } catch (RuntimeException e) {
+                        future.completeExceptionally(e);
+                        return;
+                    }
+                    if (!retry) {
+                        future.completeExceptionally(new HttpException(
+                                challenge.statusCode(), "Unexpected status code: " + challenge.statusCode()));
+                        return;
+                    }
+                    LOG.debug(
+                            "MCP server returned status code {}, retrying the request with fresh credentials",
+                            challenge.statusCode());
+                    execute(context, isRetry, true).thenAccept(future::complete).exceptionally(t -> {
+                        future.completeExceptionally(t);
+                        return null;
+                    });
+                },
+                executor);
     }
 
     @Override
@@ -492,6 +627,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
         private Executor executor;
         private String url;
         private McpHeadersSupplier customHeadersSupplier;
+        private McpAuthProvider authProvider;
         private Duration timeout;
         private boolean logRequests = false;
         private boolean logResponses = false;
@@ -532,6 +668,20 @@ public class StreamableHttpMcpTransport implements McpTransport {
          */
         public StreamableHttpMcpTransport.Builder customHeaders(McpHeadersSupplier customHeadersSupplier) {
             this.customHeadersSupplier = customHeadersSupplier;
+            return this;
+        }
+
+        /**
+         * Supplies the {@code Authorization} header for every request to the MCP server (including
+         * the subsidiary SSE channel) and handles {@code 401}/{@code 403} challenges, see
+         * {@link McpAuthProvider}. For a fixed token use {@link McpAuthProvider#bearer(String)};
+         * for a service acting on its own behalf use
+         * {@link dev.langchain4j.mcp.client.auth.OAuth2ClientCredentialsAuthProvider}.
+         * An {@code Authorization} header from {@link #customHeaders(Map)} is replaced by the
+         * provider's value.
+         */
+        public StreamableHttpMcpTransport.Builder authProvider(McpAuthProvider authProvider) {
+            this.authProvider = authProvider;
             return this;
         }
 
