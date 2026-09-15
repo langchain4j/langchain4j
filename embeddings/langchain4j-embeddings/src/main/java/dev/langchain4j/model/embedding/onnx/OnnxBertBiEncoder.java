@@ -14,6 +14,7 @@ import ai.onnxruntime.OrtEnvironment;
 import ai.onnxruntime.OrtException;
 import ai.onnxruntime.OrtSession;
 import ai.onnxruntime.OrtSession.Result;
+import dev.langchain4j.model.embedding.onnx.internal.VectorUtils;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -99,7 +100,7 @@ public class OnnxBertBiEncoder {
 
         List<Integer> weights = partitions.stream().map(List::size).collect(toList());
 
-        float[] embedding = normalize(weightedAverage(embeddings, weights));
+        float[] embedding = VectorUtils.normalize(weightedAverage(embeddings, weights));
 
         return new EmbeddingAndTokenCount(embedding, tokens.size());
     }
@@ -147,7 +148,10 @@ public class OnnxBertBiEncoder {
                 OnnxTensor tokenTypeIdsTensor = createTensor(environment, wrap(tokenTypeIds), shape)) {
             Map<String, OnnxTensor> inputs = new HashMap<>();
             inputs.put("input_ids", inputIdsTensor);
-            inputs.put("attention_mask", attentionMaskTensor);
+
+            if (expectedInputs.contains("attention_mask")) {
+                inputs.put("attention_mask", attentionMaskTensor);
+            }
 
             if (expectedInputs.contains("token_type_ids")) {
                 inputs.put("token_type_ids", tokenTypeIdsTensor);
@@ -174,8 +178,16 @@ public class OnnxBertBiEncoder {
     }
 
     private float[] toEmbedding(Result result) throws OrtException {
-        float[][] vectors = ((float[][][]) result.get(0).getValue())[0];
-        return pool(vectors);
+        Object output = result.get(0).getValue();
+        if (output instanceof float[][] pooled) {
+            return pooled[0]; // [1, dimension]: the model pooled internally, nothing left to pool
+        } else if (output instanceof float[][][] sequence) {
+            return pool(sequence[0]); // [1, sequenceLength, dimension]
+        } else {
+            throw illegalArgument("Expected the ONNX model to output [1, dimension] or "
+                    + "[1, sequenceLength, dimension], but got: "
+                    + output.getClass().getSimpleName());
+        }
     }
 
     private float[] pool(float[][] vectors) {
@@ -237,22 +249,6 @@ public class OnnxBertBiEncoder {
         }
 
         return averagedEmbedding;
-    }
-
-    private static float[] normalize(float[] vector) {
-
-        float sumSquare = 0;
-        for (float v : vector) {
-            sumSquare += v * v;
-        }
-        float norm = (float) Math.sqrt(sumSquare);
-
-        float[] normalizedVector = new float[vector.length];
-        for (int i = 0; i < vector.length; i++) {
-            normalizedVector[i] = vector[i] / norm;
-        }
-
-        return normalizedVector;
     }
 
     int countTokens(String text) {
