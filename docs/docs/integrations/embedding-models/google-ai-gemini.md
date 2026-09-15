@@ -315,7 +315,7 @@ For advanced use cases, you can write batch requests to a JSONL file and upload 
 // Create a JSONL file with batch requests
 Path batchFile = Files.createTempFile("batch", ".jsonl");
 
-try (JsonLinesWriter writer = new StreamingJsonLinesWriter(batchFile)) {
+try (JsonLinesWriter writer = JsonLinesWriters.streaming(batchFile)) {
     List<BatchFileRequest<TextSegment>> fileRequests = List.of(
         new BatchFileRequest<>("segment-1", TextSegment.from("First document")),
         new BatchFileRequest<>("segment-2", TextSegment.from("Second document")),

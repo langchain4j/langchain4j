@@ -4,6 +4,10 @@ sidebar_position: 15
 
 # Batch Processing
 
+:::note
+Experimental. The batch API is annotated `@Experimental` and may change in future releases.
+:::
+
 Batch processing lets you submit many requests to a model at once and have them executed
 asynchronously in the background, rather than making one request at a time and waiting for each
 result synchronously.
@@ -16,17 +20,17 @@ the results later, often within a defined Service Level Objective (SLO) such as 
 
 While the exact mechanics differ from provider to provider, the typical flow looks the same:
 
-1. **Build a batch model** - construct one of the `*Batch*Model` implementations (e.g.
-   `GoogleAiGeminiBatchChatModel`).
-2. **Submit a batch** - hand the model a list of requests (chat messages, text segments, or image
-   prompts). The provider returns a `BatchResponse` with a `batchId` and an initial `state`.
+1. **Build a batch model** - construct the batch model of a provider (e.g.
+   `GoogleAiGeminiBatchChatModel` or `AnthropicBatchChatModel`).
+2. **Submit a batch** - hand the model a `BatchRequest` with a list of requests (chat requests, text
+   segments, or image prompts). The provider returns a `BatchResponse` with a `batchId` and an initial `state`.
 3. **Poll for completion** - the batch starts out in a non-terminal state (`PENDING` or `RUNNING`).
    You repeatedly call `retrieve(batchId)` until `state().isTerminal()` is true.
-4. **Process the results** - once the batch `SUCCEEDED`, iterate the responses. Each request maps to
-   a result in order, and you can also see which individual requests failed.
-5. **Manage (optional)** - cancel, delete, or list batch jobs as needed.
+4. **Process the results** - once the batch has `SUCCEEDED`, read its `results()`: one entry per request,
+   in the order the requests were submitted, each either a success or a failure.
+5. **Manage (optional)** - cancel a batch that is still in progress, or list your batches.
 
-Typically, all requests within a single batch must use the **same model**.
+Most providers run all requests of a batch against a single model; Anthropic lets each request choose its own model.
 
 ## Why Use Batch Processing?
 
@@ -35,13 +39,20 @@ is acceptable. It is the wrong tool when you need an answer immediately for a si
 
 ### Pros and Cons
 
-| Pros                                                                                                           | Cons                                                                                                                              |
-|----------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------|
-| **Lower cost** - providers typically discount batch requests (Most providers offer ~50% off standard pricing). | **Latency** - results are not immediate; you must poll and wait (up to a 24-hour SLO).                                            |
-| **Higher throughput** - process thousands of requests without hitting per-request rate limits.                 | **Asynchronous complexity** - you need to handle polling, terminal states, and job lifecycle management.                          |
-| **Retries handled by the provider** - transient errors are retried for you.                                    | **Partial failures** - a "succeeded" batch can still contain some failed individual requests you must inspect.                    |
-| **Simpler orchestration for bulk jobs** - reason about one job instead of thousands of calls.                  | **Not for interactive use** - batch results are unusable for real-time, user-facing responses.                                    |
-| **Off-peak scheduling** - many providers process batches when demand is lower, smoothing load.                 | **Stricter size limits per batch** (e.g. 20 MB inline for Gemini) require chunking very large workloads or using file upload APIs |
+Pros:
+
+- **Lower cost** - providers typically charge 50% of the standard price for batch requests.
+- **Higher throughput** - most providers apply separate, higher rate limits to batch jobs than to regular requests.
+- **Simpler orchestration for bulk jobs** - you track one batch instead of thousands of individual calls.
+
+Cons:
+
+- **Latency** - results are not immediate; you must poll and wait (typically up to 24 hours).
+- **Asynchronous complexity** - you need to handle polling, terminal states, and job lifecycle management.
+- **Partial failures** - a "succeeded" batch can still contain individual requests that failed, which you must inspect.
+- **Not for interactive use** - batch results are unusable for real-time, user-facing responses.
+- **Size limits** - providers limit the size of a batch (e.g. 20 MB of inline requests for Gemini), so very large
+  workloads have to be split into several batches or submitted as a file where the provider supports it.
 
 ### Good Use Cases vs. Bad Use Cases
 
@@ -53,45 +64,49 @@ is acceptable. It is the wrong tool when you need an answer immediately for a si
 
 ## Provider Support
 
-Batch processing is supported across several LangChain4j providers. Each exposes the generic
-`BatchChatModel`, `BatchEmbeddingModel`, and `BatchImageModel` interfaces, so the code you write is
-largely portable:
+Batch models implement one of three provider-independent interfaces: `BatchChatModel`, `BatchEmbeddingModel`,
+or `BatchImageModel`. Each of them offers the same four operations: `submit`, `retrieve`, `cancel`, and `list`.
+Code written against these interfaces works with any provider that supports the same request type;
+switching providers only means building a different model.
 
-- **OpenAI** and **OpenAI Official** - support OpenAI's Batch API.
-- **Anthropic** - supports the Message Batches API via `AnthropicBatchChatModel`.
-- **Mistral** - supports the Mistral Batch API via `MistralAiBatchChatModel`.
-- **Google AI Gemini** - the `GoogleAi*Batch*` models (Google AI Studio / AI Gemini key).
-- **Google Gen AI** - the `GoogleGenAi*Batch*` models (the newer Google Gen AI SDK).
+| Provider                                                                               | `BatchChatModel`               | `BatchEmbeddingModel`                                                                                             | `BatchImageModel`                                                                           |
+|----------------------------------------------------------------------------------------|--------------------------------|-------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------|
+| [Anthropic](/integrations/language-models/anthropic#batch-api)                         | `AnthropicBatchChatModel`      |                                                                                                                   |                                                                                             |
+| [Google AI Gemini](/integrations/language-models/google-ai-gemini#batch-processing)    | `GoogleAiGeminiBatchChatModel` | [`GoogleAiGeminiBatchEmbeddingModel`](/integrations/embedding-models/google-ai-gemini#batch-embedding-processing) | [`GoogleAiGeminiBatchImageModel`](/integrations/image-models/gemini#batch-image-generation) |
+| [Google Gen AI](/integrations/language-models/google-genai#batch-api)                  | `GoogleGenAiBatchChatModel`    | `GoogleGenAiBatchEmbeddingModel`                                                                                  | `GoogleGenAiBatchImageModel`                                                                |
+| [Mistral AI](/integrations/language-models/mistral-ai#batch-processing)                | `MistralAiBatchChatModel`      |                                                                                                                   |                                                                                             |
+| [OpenAI Official SDK](/integrations/language-models/open-ai-official#batch-processing) | `OpenAiOfficialBatchChatModel` |                                                                                                                   |                                                                                             |
 
 ## Examples
 
-The following examples walk through the full batch lifecycle for each request type:
+The following examples walk through the full batch lifecycle for each request type. They use Google AI Gemini,
+because it supports all three, but only the builder is provider-specific:
 
 - [Chat Batching (Text)](#example-chat-batching-text) - submitting and polling a simple chat batch.
 - [Embedding Batching](#example-embedding-batching) - bulk embedding of many text segments.
 - [Image Batching](#example-image-batching) - generating many images from a batch of prompts.
-- [Larger Batches and File-Based Input](#larger-batches-and-file-based-input) - writing requests to
-  a JSONL file for very large workloads.
 - [Listing Batches (Pagination)](#example-listing-batches-pagination) - paging through all batch jobs
   with `BatchPage` and `BatchPagination`.
-- [Cleaning Up Batches](#cleaning-up-batches) - deleting finished batches to free up limits.
+- [Cancelling a Batch](#cancelling-a-batch) - stopping a batch that is still in progress.
 
 ## Example: Chat Batching (Text)
 
-Here we build an example model and batch a few simple chat questions. The pattern is identical for
-OpenAI, OpenAI Official, and Anthropic - only the builder class (and model name) changes.
+Here we build a batch chat model and batch a few simple chat questions.
 
 ```java
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.batch.BatchItemResult;
 import dev.langchain4j.model.batch.BatchRequest;
 import dev.langchain4j.model.batch.BatchResponse;
 import dev.langchain4j.model.batch.BatchState;
+import dev.langchain4j.model.chat.BatchChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.googleai.GoogleAiGeminiBatchChatModel;
+import java.util.List;
 
-// Build the batch chat model - Swap the class and model name for other providers.
-GoogleAiGeminiBatchChatModel batchChatModel = GoogleAiGeminiBatchChatModel.builder()
+// Build the batch chat model - swap the builder for another provider, the rest of the code stays the same
+BatchChatModel batchChatModel = GoogleAiGeminiBatchChatModel.builder()
         .apiKey(System.getenv("GEMINI_AI_KEY"))
         .modelName("gemini-2.5-flash")
         .build();
@@ -109,44 +124,48 @@ System.out.println("Batch ID: " + batchId);
 
 // 3. Poll until the batch reaches a terminal state
 while (!response.state().isTerminal()) {
-    Thread.sleep(5000); // wait 5 seconds between polls
+    Thread.sleep(30_000); // wait 30 seconds between polls
     response = batchChatModel.retrieve(batchId);
 }
 
-// 4. Process the results
+// 4. Process the results: the i-th result belongs to the i-th request
 if (response.state() == BatchState.SUCCEEDED) {
-    for (ChatResponse chatResponse : response.responses()) {
-        System.out.println(chatResponse.aiMessage().text());
-    }
-    if (!response.errors().isEmpty()) {
-        System.err.println("Some requests failed: " + response.errors());
+    List<BatchItemResult<ChatResponse>> results = response.results();
+    for (int i = 0; i < results.size(); i++) {
+        BatchItemResult<ChatResponse> result = results.get(i);
+        if (result.isSuccess()) {
+            System.out.println("Request #" + i + ": " + result.response().aiMessage().text());
+        } else {
+            System.err.println("Request #" + i + " failed: " + result.error().message());
+        }
     }
 } else {
     System.err.println("Batch did not succeed: " + response.state());
 }
-
-// 5. Clean up the batch once you are done with it
-batchChatModel.deleteBatchJob(batchId);
 ```
 
-For provider-specific options (such as a Gemini display name or priority), pass a provider-specific request wrapper
-instead of the generic `BatchRequest`. 
+If you only need the successful responses, `response.responses()` returns them without the failures,
+and `response.errors()` returns only the failures. Neither tells you which request an entry belongs to.
 
 ## Example: Embedding Batching
 
-For bulk embedding workloads (e.g. backfilling a vector store), submit a batch of `TextSegment` objects.
+For bulk embedding workloads (e.g. backfilling an embedding store), submit a batch of `TextSegment` objects.
 Each successful result is a `Response<Embedding>` wrapping the computed vector.
 
 ```java
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.model.batch.BatchItemResult;
 import dev.langchain4j.model.batch.BatchRequest;
 import dev.langchain4j.model.batch.BatchResponse;
+import dev.langchain4j.model.batch.BatchState;
+import dev.langchain4j.model.embedding.BatchEmbeddingModel;
 import dev.langchain4j.model.googleai.GoogleAiGeminiBatchEmbeddingModel;
 import dev.langchain4j.model.output.Response;
+import java.util.List;
 
 // Build the batch embedding model
-GoogleAiGeminiBatchEmbeddingModel batchEmbeddingModel = GoogleAiGeminiBatchEmbeddingModel.builder()
+BatchEmbeddingModel batchEmbeddingModel = GoogleAiGeminiBatchEmbeddingModel.builder()
         .apiKey(System.getenv("GEMINI_AI_KEY"))
         .modelName("gemini-embedding-001")
         .build();
@@ -158,21 +177,28 @@ List<TextSegment> segments = List.of(
         TextSegment.from("Embeddings capture the meaning of a piece of text."));
 
 // 2. Submit the batch
-BatchResponse<Response<Embedding>> response =
-        batchEmbeddingModel.submit(new BatchRequest<>(segments));
+BatchResponse<Response<Embedding>> response = batchEmbeddingModel.submit(new BatchRequest<>(segments));
 String batchId = response.batchId();
 
 // 3. Poll for completion
 while (!response.state().isTerminal()) {
-    Thread.sleep(5000);
+    Thread.sleep(30_000);
     response = batchEmbeddingModel.retrieve(batchId);
 }
 
-// 4. Collect the embeddings. results() preserves the order of the submitted segments,
-// so the i-th result corresponds to the i-th TextSegment.
-for (Response<Embedding> embeddingResponse : response.responses()) {
-    Embedding embedding = embeddingResponse.content();
-    System.out.println("Embedding dimension: " + embedding.dimension());
+// 4. Match each embedding to its segment: the i-th result belongs to the i-th segment
+if (response.state() == BatchState.SUCCEEDED) {
+    List<BatchItemResult<Response<Embedding>>> results = response.results();
+    for (int i = 0; i < results.size(); i++) {
+        TextSegment segment = segments.get(i);
+        BatchItemResult<Response<Embedding>> result = results.get(i);
+        if (result.isSuccess()) {
+            Embedding embedding = result.response().content();
+            System.out.println(segment.text() + " -> dimension " + embedding.dimension());
+        } else {
+            System.err.println("Failed to embed '" + segment.text() + "': " + result.error().message());
+        }
+    }
 }
 ```
 
@@ -184,14 +210,20 @@ thumbnails or asset variations. Prompts are submitted as plain `String` objects 
 
 ```java
 import dev.langchain4j.data.image.Image;
+import dev.langchain4j.model.batch.BatchItemResult;
 import dev.langchain4j.model.batch.BatchRequest;
 import dev.langchain4j.model.batch.BatchResponse;
 import dev.langchain4j.model.batch.BatchState;
 import dev.langchain4j.model.googleai.GoogleAiGeminiBatchImageModel;
+import dev.langchain4j.model.image.BatchImageModel;
 import dev.langchain4j.model.output.Response;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Base64;
+import java.util.List;
 
 // Build the batch image generation model
-GoogleAiGeminiBatchImageModel batchImageModel = GoogleAiGeminiBatchImageModel.builder()
+BatchImageModel batchImageModel = GoogleAiGeminiBatchImageModel.builder()
         .apiKey(System.getenv("GEMINI_AI_KEY"))
         .modelName("gemini-2.5-flash-image")
         .aspectRatio("16:9")
@@ -209,105 +241,85 @@ String batchId = response.batchId();
 
 // 3. Poll for completion
 while (!response.state().isTerminal()) {
-    Thread.sleep(5000);
+    Thread.sleep(30_000);
     response = batchImageModel.retrieve(batchId);
 }
 
 // 4. Save each generated image
 if (response.state() == BatchState.SUCCEEDED) {
-    response.responses().stream()
-            .filter(res -> res.content() != null && res.content().url() != null)
-            .forEach(res -> System.out.println("Image URL: " + res.content().url()));
+    List<BatchItemResult<Response<Image>>> results = response.results();
+    for (int i = 0; i < results.size(); i++) {
+        BatchItemResult<Response<Image>> result = results.get(i);
+        if (result.isSuccess()) {
+            Image image = result.response().content();
+            Files.write(Path.of("image-" + i + ".png"), Base64.getDecoder().decode(image.base64Data()));
+        } else {
+            System.err.println("Prompt '" + prompts.get(i) + "' failed: " + result.error().message());
+        }
+    }
 }
 ```
 
-## Larger Batches and File-Based Input
-
-The inline API used above is convenient but limited in size (For example Gemini only allows up to ~20 MB inline).
-For very large workloads you can write requests to a JSONL file, upload it, and create a batch from
-that file:
-
-```java
-import dev.langchain4j.model.batch.BatchFileRequest;
-import dev.langchain4j.model.googleai.GeminiFiles;
-import dev.langchain4j.model.googleai.jsonl.JsonLinesWriter;
-import dev.langchain4j.model.googleai.jsonl.StreamingJsonLinesWriter;
-import java.nio.file.Files;
-import java.nio.file.Path;
-
-// 1. Write the requests to a JSONL file
-Path batchFile = Files.createTempFile("batch", ".jsonl");
-try (JsonLinesWriter writer = new StreamingJsonLinesWriter(batchFile)) {
-    batchChatModel.writeBatchToFile(writer, List.of(
-            new BatchFileRequest<>("r1", ChatRequest.builder()
-                    .messages(UserMessage.from("Question 1")).build()),
-            new BatchFileRequest<>("r2", ChatRequest.builder()
-                    .messages(UserMessage.from("Question 2")).build())));
-}
-
-// 2. Upload the file
-GeminiFiles filesApi = GeminiFiles.builder()
-        .apiKey(System.getenv("GEMINI_AI_KEY"))
-        .build();
-GeminiFiles.GeminiFile uploadedFile = filesApi.uploadFile(batchFile, "Batch Chat Requests");
-
-// 3. Create a batch from the uploaded file
-batchChatModel.submit("File-Based Chat Batch", uploadedFile);
-```
+Depending on the provider, a generated `Image` contains either `base64Data()` or a `url()`.
+Both Google AI Gemini and Google Gen AI return `base64Data()`.
 
 ## Example: Listing Batches (Pagination)
 
 When you have submitted many batches, use `list(...)` to page through them instead of tracking every
-`batchId` yourself. Each page is a `BatchPage<ChatResponse>` holding the `batches()` on that page and
-a `nextPageToken()` if there are more pages to fetch.
+`batchId` yourself. Each page is a `BatchPage` holding the `batches()` on that page and
+a `nextPageToken()`, which is `null` on the last page.
 
 ```java
-import dev.langchain4j.model.batch.BatchPagination;
 import dev.langchain4j.model.batch.BatchPage;
+import dev.langchain4j.model.batch.BatchPagination;
+import dev.langchain4j.model.batch.BatchResponse;
 import dev.langchain4j.model.chat.response.ChatResponse;
 
-// Fetch the first page (up to 10 batches per page)
-BatchPage<ChatResponse> page = batchChatModel.list(new BatchPagination(10, null));
-
-for (BatchResponse<ChatResponse> batch : page.batches()) {
-    System.out.println("Batch: " + batch.batchId() + " - " + batch.state());
-}
-
-// If there are more pages, fetch them until nextPageToken() is null
-String nextPageToken = page.nextPageToken();
-while (nextPageToken != null) {
-    page = batchChatModel.list(new BatchPagination(10, nextPageToken));
+String pageToken = null;
+do {
+    // Fetch up to 10 batches per page
+    BatchPage<ChatResponse> page = batchChatModel.list(new BatchPagination(10, pageToken));
     for (BatchResponse<ChatResponse> batch : page.batches()) {
         System.out.println("Batch: " + batch.batchId() + " - " + batch.state());
     }
-    nextPageToken = page.nextPageToken();
-}
+    pageToken = page.nextPageToken();
+} while (pageToken != null);
 ```
 
-## Cleaning Up Batches
+## Cancelling a Batch
 
-Once a batch has reached a terminal state, **delete it** so you do not hold onto it longer than
-necessary. Providers differ in how many active batches you can have at once, and a batch that you
-do not consume or delete simply sits around until the provider's expiry time passes, after which it
-is reported as `BatchState.EXPIRED`. Deleting the job immediately after you have read its results:
-
-- frees up your allowance of active/batchable jobs,
-- avoids consumers counting stale batches toward provider limits,
-- removes results you no longer need and stops the record lingering in `list(...)` output.
-
-Deleting a job does **not** cancel it if it is still running: cancel first with `cancel(batchId)`, then delete. The 
-exact delete method name varies slightly by provider, e.g. `deleteBatchJob(batchId)` on the Gemini batch models:
+A batch that is still `PENDING` or `RUNNING` can be cancelled. It then ends in the `CANCELLED` state:
 
 ```java
-// After the batch has SUCCEEDED and you have processed the results
-batchChatModel.deleteBatchJob(batchId);
+batchChatModel.cancel(batchId);
 ```
+
+Depending on the provider, a cancelled batch can still contain results for the requests that
+completed before the cancellation took effect.
+
+## Provider-Specific Features
+
+Some features are not part of the provider-independent interfaces. To use them, work with the concrete
+batch model class of the provider. They are described on the provider pages linked in [Provider Support](#provider-support):
+
+- **File-based input** - Google AI Gemini and Google Gen AI can create a batch from an uploaded file,
+  for workloads that are too large to submit inline.
+- **Deleting batch jobs** - the Google AI Gemini and Google Gen AI batch models provide `deleteBatchJob(batchId)`
+  to remove a finished batch job. Cancel a batch that is still running before deleting it.
+- **Batch options** - for example a display name and priority for Google AI Gemini, or a completion window
+  and batch metadata for the OpenAI Official SDK.
 
 ## Key API Concepts
 
+- **`BatchChatModel`**, **`BatchEmbeddingModel`**, **`BatchImageModel`** are the provider-independent
+  interfaces with the `submit`, `retrieve`, `cancel`, and `list` operations.
 - **`BatchRequest<T>`** wraps a list of requests to process together.
 - **`BatchResponse<T>`** holds the `batchId()`, the current `state()`, and the per-request
-  `results()`. Use `responses()` and `errors()` as convenience views.
+  `results()`. `responses()` and `errors()` are convenience views that contain only the successful
+  responses or only the errors.
+- **`BatchItemResult<T>`** is the outcome of a single request: either a success with a `response()`, or a failure
+  with an `error()`. Check `isSuccess()` to tell them apart.
+- **`BatchError`** describes why a request (or the whole batch) failed, with a `code()` and a `message()`.
 - **`BatchState`** describes the job lifecycle: `PENDING`, `RUNNING`, `SUCCEEDED`, `FAILED`,
   `CANCELLED`, `EXPIRED`, `UNSPECIFIED`. Use `state().isTerminal()` to know when to stop polling.
 - **`results()`** preserve submission order, so the i-th result corresponds to the i-th request -
