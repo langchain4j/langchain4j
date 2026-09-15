@@ -11,6 +11,7 @@ import static java.util.Arrays.asList;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.agent.tool.ToolSpecifications;
 import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.declarative.TypedKey;
 import dev.langchain4j.agentic.internal.AgentUtil;
@@ -39,6 +40,15 @@ import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.json.JsonAnyOfSchema;
+import dev.langchain4j.model.chat.request.json.JsonArraySchema;
+import dev.langchain4j.model.chat.request.json.JsonBooleanSchema;
+import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
+import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
+import dev.langchain4j.model.chat.request.json.JsonNumberSchema;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
+import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.observability.api.listener.AiServiceResponseReceivedListener;
@@ -57,6 +67,7 @@ import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -82,6 +93,9 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
                     + "The actual model is provided dynamically via the streamingChatModel(Function) provider.");
         }
     };
+
+    private static final String TOOLS_HEADER = "The following tools exist:";
+    private static final String UNCALLABLE_TOOLS_HEADER = "The following tools exist, but you cannot call them:";
 
     final Class<T> agentServiceClass;
     final Method agenticMethod;
@@ -120,6 +134,7 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
     private OutputGuardrail[] outputGuardrails;
 
     private Object[] objectsWithTools;
+    private Object[] objectsWithToolSpecifications;
     private Map<ToolSpecification, ToolExecutor> toolsMap;
     private Set<String> immediateReturnToolNames;
     private final List<ToolProvider> toolProviders = new ArrayList<>();
@@ -208,8 +223,16 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
         if (retrievalAugmentor != null) {
             aiServices.retrievalAugmentor(retrievalAugmentor);
         }
-        if (systemMessageTransformer != null) {
-            aiServices.systemMessageTransformer(systemMessageTransformer);
+
+        String toolSpecifications = objectsWithToolSpecifications == null
+                ? null
+                : toolSpecificationsText(objectsWithToolSpecifications, toolsAreCallable());
+
+        BiFunction<String, InvocationContext, String> transformer = toolSpecifications == null
+                ? systemMessageTransformer
+                : withToolSpecifications(systemMessageTransformer, toolSpecifications);
+        if (transformer != null) {
+            aiServices.systemMessageTransformer(transformer);
         }
 
         setupGuardrails(aiServices);
@@ -380,6 +403,127 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
     }
 
     /**
+     * Renders the specifications of the given tool objects as a text block suitable for the system message,
+     * or returns {@code null} if none of them declares a {@code @Tool}-annotated method.
+     */
+    private static String toolSpecificationsText(Object[] objectsWithTools, boolean toolsAreCallable) {
+        List<String> describedTools = new ArrayList<>();
+        for (Object objectWithTools : objectsWithTools) {
+            for (ToolSpecification toolSpecification : ToolSpecifications.toolSpecificationsFrom(objectWithTools)) {
+                describedTools.add(describeTool(toolSpecification));
+            }
+        }
+        if (describedTools.isEmpty()) {
+            return null;
+        }
+        String header = toolsAreCallable ? TOOLS_HEADER : UNCALLABLE_TOOLS_HEADER;
+        return header + "\n" + String.join("\n", describedTools);
+    }
+
+    /**
+     * Whether this agent makes any tool callable, in which case the tools described to the model must not be
+     * announced as uncallable.
+     */
+    private boolean toolsAreCallable() {
+        return objectsWithTools != null || toolsMap != null || !toolProviders.isEmpty();
+    }
+
+    /**
+     * Wraps the given transformer so that the tool specifications are appended to whatever system message
+     * it produces, or returned on their own when it produces none.
+     */
+    private static BiFunction<String, InvocationContext, String> withToolSpecifications(
+            BiFunction<String, InvocationContext, String> userSystemMessageTransformer, String toolSpecifications) {
+        return (systemMessage, invocationContext) -> {
+            String transformedSystemMessage = userSystemMessageTransformer != null
+                    ? userSystemMessageTransformer.apply(systemMessage, invocationContext)
+                    : systemMessage;
+            return isNullOrBlank(transformedSystemMessage)
+                    ? toolSpecifications
+                    : transformedSystemMessage + "\n\n" + toolSpecifications;
+        };
+    }
+
+    private static String describeTool(ToolSpecification toolSpecification) {
+        StringBuilder description = new StringBuilder()
+                .append("- ")
+                .append(toolSpecification.name())
+                .append("(")
+                .append(describeParameters(toolSpecification.parameters()))
+                .append(")");
+        if (!isNullOrBlank(toolSpecification.description())) {
+            description.append(" - ").append(toolSpecification.description());
+        }
+        return description.toString();
+    }
+
+    private static String describeParameters(JsonObjectSchema parameters) {
+        if (parameters == null
+                || parameters.properties() == null
+                || parameters.properties().isEmpty()) {
+            return "";
+        }
+        return describeProperties(parameters.properties(), parameters.required());
+    }
+
+    private static String describeProperties(
+            Map<String, JsonSchemaElement> properties, List<String> requiredProperties) {
+        Set<String> required = requiredProperties == null ? Set.of() : new HashSet<>(requiredProperties);
+
+        List<String> describedProperties = new ArrayList<>();
+        for (Map.Entry<String, JsonSchemaElement> property : properties.entrySet()) {
+            describedProperties.add(property.getKey()
+                    + ": "
+                    + describeSchemaElement(property.getValue())
+                    + (required.contains(property.getKey()) ? "" : "?"));
+        }
+        return String.join(", ", describedProperties);
+    }
+
+    private static String describeSchemaElement(JsonSchemaElement schemaElement) {
+        if (schemaElement instanceof JsonStringSchema) {
+            return "string";
+        }
+        if (schemaElement instanceof JsonIntegerSchema) {
+            return "integer";
+        }
+        if (schemaElement instanceof JsonNumberSchema) {
+            return "number";
+        }
+        if (schemaElement instanceof JsonBooleanSchema) {
+            return "boolean";
+        }
+        if (schemaElement instanceof JsonEnumSchema enumSchema) {
+            List<String> values = enumSchema.enumValues();
+            return values == null || values.isEmpty() ? "enum" : "enum(" + String.join(", ", values) + ")";
+        }
+        if (schemaElement instanceof JsonArraySchema arraySchema) {
+            return describeSchemaElement(arraySchema.items()) + "[]";
+        }
+        if (schemaElement instanceof JsonObjectSchema objectSchema) {
+            // a free form object, for instance a Map<String, Object> parameter, declares no properties
+            return objectSchema.properties() == null
+                            || objectSchema.properties().isEmpty()
+                    ? "object"
+                    : "{" + describeProperties(objectSchema.properties(), objectSchema.required()) + "}";
+        }
+        if (schemaElement instanceof JsonAnyOfSchema anyOfSchema) {
+            List<JsonSchemaElement> options = anyOfSchema.anyOf();
+            if (options == null || options.isEmpty()) {
+                return "object";
+            }
+            List<String> describedOptions = new ArrayList<>();
+            for (JsonSchemaElement option : options) {
+                describedOptions.add(describeSchemaElement(option));
+            }
+            return String.join(" | ", describedOptions);
+        }
+        // a schema with no type worth naming to the model. A recursive schema lands here as well: it is
+        // referenced rather than expanded, and the reference is an opaque key rather than a type name.
+        return "object";
+    }
+
+    /**
      * Sets the {@link ChatModel} used by this agent.
      *
      * @param model the chat model
@@ -485,6 +629,28 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
     public B tools(Map<ToolSpecification, ToolExecutor> toolsMap, Set<String> immediateReturnToolNames) {
         this.toolsMap = toolsMap;
         this.immediateReturnToolNames = immediateReturnToolNames;
+        return (B) this;
+    }
+
+    /**
+     * Includes the specifications of the given tools, that is their names, descriptions and parameters,
+     * in the system message sent to the model, <b>without making them callable</b>.
+     *
+     * <p>Use this when the model only has to know which tools exist, for instance to generate a plan that a
+     * subsequent agent with tool calling enabled will execute. Unlike {@link #tools(Object...)}, the tools
+     * are not available for the model to call.
+     *
+     * <p>The same object may be passed to both this method and {@link #tools(Object...)}, in which case the
+     * tool specifications are both included in the system message and callable.
+     *
+     * <p>The specifications are appended to whatever system message the agent already has, one tool per
+     * line, for example {@code - getWeather(city: string) - Gets the weather for a city}.
+     *
+     * @param objectsWithTools the objects containing the {@code @Tool}-annotated methods to describe
+     * @return {@code this}
+     */
+    public B includeToolSpecifications(Object... objectsWithTools) {
+        this.objectsWithToolSpecifications = objectsWithTools;
         return (B) this;
     }
 
