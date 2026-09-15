@@ -6,6 +6,7 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonReferenceSchema;
 import dev.langchain4j.model.vertexai.anthropic.internal.api.AnthropicTool;
+import java.util.Locale;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
@@ -59,5 +60,21 @@ class AnthropicRequestMapperTest {
         @SuppressWarnings("unchecked")
         Map<String, Object> inputSchema = (Map<String, Object>) tool.inputSchema;
         assertThat(inputSchema).doesNotContainKey("$defs");
+    }
+
+    @Test
+    void should_derive_default_description_in_a_locale_with_its_own_case_rules() {
+        Locale previous = Locale.getDefault();
+        try {
+            // in Turkish, "TIME".toLowerCase() is "tıme" with a dotless i, so it misses the branch
+            Locale.setDefault(Locale.forLanguageTag("tr"));
+
+            AnthropicTool tool = AnthropicRequestMapper.toAnthropicTool(
+                    ToolSpecification.builder().name("TIME").build());
+
+            assertThat(tool.description).isEqualTo("Gets the current time");
+        } finally {
+            Locale.setDefault(previous);
+        }
     }
 }

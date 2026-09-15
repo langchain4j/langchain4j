@@ -16,6 +16,7 @@ import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Locale;
 import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.expression.*;
 import net.sf.jsqlparser.expression.operators.arithmetic.Addition;
@@ -302,7 +303,7 @@ public class SqlFilterParser implements FilterParser {
                 if (timeKeyExpression.getStringValue().equalsIgnoreCase("CURRENT_DATE")
                         || timeKeyExpression.getStringValue().equalsIgnoreCase("CURRENT_TIME")
                         || timeKeyExpression.getStringValue().equalsIgnoreCase("CURRENT_TIMESTAMP")) {
-                    String field = extractExpression.getName().toUpperCase();
+                    String field = extractExpression.getName().toUpperCase(Locale.ROOT);
                     switch (field) {
                         case "YEAR":
                             return currentYear();

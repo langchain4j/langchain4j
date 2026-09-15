@@ -23,6 +23,7 @@ import dev.langchain4j.model.vertexai.anthropic.internal.api.*;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 public class AnthropicRequestMapper {
@@ -215,7 +216,7 @@ public class AnthropicRequestMapper {
             description = toolSpecification.description();
         } else {
             // Provide intelligent default descriptions based on tool name
-            description = switch (toolSpecification.name().toLowerCase()) {
+            description = switch (toolSpecification.name().toLowerCase(Locale.ROOT)) {
                 case "get_current_time", "current_time", "time" -> "Gets the current time";
                 case "get_weather", "weather" -> "Gets weather information";
                 case "calculator", "calculate" -> "Performs mathematical calculations";
