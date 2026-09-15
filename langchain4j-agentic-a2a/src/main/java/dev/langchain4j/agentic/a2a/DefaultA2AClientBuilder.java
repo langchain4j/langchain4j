@@ -352,14 +352,14 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
             }
 
             if (event instanceof TaskEvent taskEvent) {
-                captureContextId(taskEvent.getTask(), responseContextId);
+                responseContextId.set(taskEvent.getTask().contextId());
                 handleTaskEvent(taskEvent, messageResponse);
             } else if (event instanceof MessageEvent messageEvent) {
                 Message msg = messageEvent.getMessage();
                 responseContextId.set(msg.contextId());
                 handleMessageEvent(msg, messageResponse);
             } else if (event instanceof TaskUpdateEvent updateEvent) {
-                captureContextId(updateEvent.getTask(), responseContextId);
+                responseContextId.set(updateEvent.getTask().contextId());
                 handleUpdateEvent(updateEvent, messageResponse, stopped);
             } else {
                 messageResponse.completeExceptionally(
@@ -368,10 +368,6 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
         };
 
         return List.of(defaultEventConsumer);
-    }
-
-    private static void captureContextId(Task task, AtomicReference<String> contextId) {
-        contextId.set(task.contextId());
     }
 
     static void handleStreamEnd(Throwable error, CompletableFuture<String> messageResponse) {
