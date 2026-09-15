@@ -757,7 +757,7 @@ public class DefaultMcpClient implements McpClient {
             // built on demand, not once at construction: a custom converter must not be invoked
             // for a tool call that never happened
             return toolResultConverter.convert(
-                    List.of(Map.of("type", "text", "text", toolExecutionTimeoutErrorMessage)), false);
+                    List.of(Map.of("type", "text", "text", toolExecutionTimeoutErrorMessage)), true);
         } catch (ExecutionException e) {
             notifyListeners(l -> l.onExecuteToolError(context, e));
             throw new ToolExecutionException(e.getCause());
