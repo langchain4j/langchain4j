@@ -99,6 +99,14 @@ class UserMessageTest implements WithAssertions {
     }
 
     @Test
+    void text_throws_when_multiple_contents() {
+        UserMessage message = new UserMessage("name", listOf(new TextContent("abc"), new TextContent("def")));
+        assertThatExceptionOfType(RuntimeException.class)
+                .isThrownBy(message::text)
+                .withMessageContaining("Expecting single text content, but got:");
+    }
+
+    @Test
     void builders() {
         assertThat(new UserMessage("text"))
                 .isEqualTo(UserMessage.from("text"))

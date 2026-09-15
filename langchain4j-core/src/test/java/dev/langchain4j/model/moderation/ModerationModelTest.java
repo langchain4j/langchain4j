@@ -43,6 +43,12 @@ class ModerationModelTest implements WithAssertions {
     }
 
     @Test
+    void moderate_list_of_strings_empty_throws() {
+        ModerationModel model = new FlagEverythingModel();
+        assertThatIllegalArgumentException().isThrownBy(() -> model.moderate(List.of()));
+    }
+
+    @Test
     void moderate_text_segment() {
         ModerationModel model = new FlagEverythingModel();
         Response<Moderation> response = model.moderate(TextSegment.from("Hello, world!"));
