@@ -17,7 +17,6 @@ import dev.langchain4j.guardrail.ChatExecutor;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
 import dev.langchain4j.invocation.InvocationContext;
-import dev.langchain4j.internal.DemandDecouplingPublisher;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.StreamingChatModelHelper;
@@ -156,9 +155,7 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
         TubeConfiguration config = new TubeConfiguration()
                 .withBackpressureStrategy(BackpressureStrategy.BUFFER)
                 .withBufferSize(bufferSize);
-        Flow.Publisher<AiServiceStreamingEvent> events = ZeroPublisher.create(config, tube -> new Loop(tube).start());
-        // Wrapped so that downstream demand never reaches the tube: see DemandDecouplingPublisher.
-        this.delegate = new DemandDecouplingPublisher<>(events, bufferSize);
+        this.delegate = ZeroPublisher.create(config, tube -> new Loop(tube).start());
     }
 
     @Override
@@ -197,7 +194,7 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
         TubeConfiguration config = new TubeConfiguration()
                 .withBackpressureStrategy(BackpressureStrategy.BUFFER)
                 .withBufferSize(bufferSize);
-        Flow.Publisher<String> texts = ZeroPublisher.create(config, tube -> events.subscribe(new Flow.Subscriber<>() {
+        return ZeroPublisher.create(config, tube -> events.subscribe(new Flow.Subscriber<>() {
 
             @Override
             public void onSubscribe(Flow.Subscription subscription) {
@@ -240,8 +237,6 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                 }
             }
         }));
-        // Wrapped so that downstream demand never reaches the tube: see DemandDecouplingPublisher.
-        return new DemandDecouplingPublisher<>(texts, bufferSize);
     }
 
     /**

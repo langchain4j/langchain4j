@@ -229,9 +229,10 @@ public abstract class AbstractBaseChatModelIT<M> {
         // given
         ChatRequest chatRequest = ChatRequest.builder()
                 .messages(
-                        UserMessage.from("Hi, my favorite color is green"),
-                        AiMessage.from("Hi, nice to meet you"),
-                        UserMessage.from("What is my favorite color?"))
+                        // Amazon Nova refuses to repeat "personal information", e.g. "What is my favorite color?"
+                        UserMessage.from("Please remember this word: green"),
+                        AiMessage.from("OK, I will remember it"),
+                        UserMessage.from("Which word did I ask you to remember?"))
                 .build();
 
         // when

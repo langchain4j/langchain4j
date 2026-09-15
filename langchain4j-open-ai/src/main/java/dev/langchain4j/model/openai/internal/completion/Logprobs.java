@@ -1,12 +1,12 @@
 package dev.langchain4j.model.openai.internal.completion;
 
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
 
@@ -20,7 +20,6 @@ import static java.util.Collections.unmodifiableMap;
 
 @JsonDeserialize(builder = Logprobs.Builder.class)
 @JsonInclude(JsonInclude.Include.NON_NULL)
-@JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public final class Logprobs {
 
     @JsonProperty
@@ -32,11 +31,12 @@ public final class Logprobs {
     @JsonProperty
     private final List<Integer> textOffset;
 
+    @JsonCreator
     public Logprobs(Builder builder) {
-        this.tokens = builder.tokens;
-        this.tokenLogprobs = builder.tokenLogprobs;
-        this.topLogprobs = builder.topLogprobs;
-        this.textOffset = builder.textOffset;
+        this.tokens = builder.tokens == null ? null : unmodifiableList(builder.tokens);
+        this.tokenLogprobs = builder.tokenLogprobs == null ? null : unmodifiableList(builder.tokenLogprobs);
+        this.topLogprobs = builder.topLogprobs == null ? null : unmodifiableList(builder.topLogprobs);
+        this.textOffset = builder.textOffset == null ? null : unmodifiableList(builder.textOffset);
     }
 
     public List<String> tokens() {
@@ -99,7 +99,7 @@ public final class Logprobs {
 
     @JsonPOJOBuilder(withPrefix = "")
     @JsonIgnoreProperties(ignoreUnknown = true)
-    @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
+    @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
     public static final class Builder {
 
         private List<String> tokens;
@@ -109,14 +109,14 @@ public final class Logprobs {
 
         public Builder tokens(List<String> tokens) {
             if (tokens != null) {
-                this.tokens = unmodifiableList(tokens);
+                this.tokens = tokens;
             }
             return this;
         }
 
         public Builder tokenLogprobs(List<Double> tokenLogprobs) {
             if (tokenLogprobs != null) {
-                this.tokenLogprobs = unmodifiableList(tokenLogprobs);
+                this.tokenLogprobs = tokenLogprobs;
             }
             return this;
         }
@@ -127,7 +127,7 @@ public final class Logprobs {
                 for (Map<String, Double> map : topLogprobs) {
                     topLogprobsCopy.add(unmodifiableMap(map));
                 }
-                this.topLogprobs = unmodifiableList(topLogprobsCopy);
+                this.topLogprobs = topLogprobsCopy;
             }
 
             return this;
@@ -135,7 +135,7 @@ public final class Logprobs {
 
         public Builder textOffset(List<Integer> textOffset) {
             if (textOffset != null) {
-                this.textOffset = unmodifiableList(textOffset);
+                this.textOffset = textOffset;
             }
             return this;
         }

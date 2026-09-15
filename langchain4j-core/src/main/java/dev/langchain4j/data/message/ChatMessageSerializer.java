@@ -11,6 +11,9 @@ public class ChatMessageSerializer {
     static final ChatMessageJsonCodec CODEC = loadCodec();
 
     private static ChatMessageJsonCodec loadCodec() {
+        // Substituted by quarkus-langchain4j for native image (@TargetClass/@Substitute in its
+        // Substitutions), so this name and signature are depended on from outside despite being
+        // private. Renaming it breaks that build with no compile error here.
         for (ChatMessageJsonCodecFactory factory : loadFactories(ChatMessageJsonCodecFactory.class)) {
             return factory.create();
         }
