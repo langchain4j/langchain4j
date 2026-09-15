@@ -24,6 +24,7 @@ class UserMessageTest implements WithAssertions {
         UserMessage m = new UserMessage("name", "text");
         assertThat(m.type()).isEqualTo(ChatMessageType.USER);
         assertThat(m.singleText()).isEqualTo("text");
+        assertThat(m.text()).isEqualTo("text");
         assertThat(m.contents()).containsExactly(TextContent.from("text"));
         assertThat(m.name()).isEqualTo("name");
         assertThat(m)
@@ -94,6 +95,14 @@ class UserMessageTest implements WithAssertions {
         assertThatExceptionOfType(RuntimeException.class)
                 .isThrownBy(() ->
                         new UserMessage("name", listOf(new TextContent("abc"), new TextContent("def"))).singleText())
+                .withMessageContaining("Expecting single text content, but got:");
+    }
+
+    @Test
+    void text_throws_when_multiple_contents() {
+        UserMessage message = new UserMessage("name", listOf(new TextContent("abc"), new TextContent("def")));
+        assertThatExceptionOfType(RuntimeException.class)
+                .isThrownBy(message::text)
                 .withMessageContaining("Expecting single text content, but got:");
     }
 

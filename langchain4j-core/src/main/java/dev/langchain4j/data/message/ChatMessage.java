@@ -21,4 +21,14 @@ public interface ChatMessage {
      * @return the type of the message
      */
     ChatMessageType type();
+
+    /**
+     * Returns the text representation of this message.
+     *
+     * @return the text of this message.
+     * @throws UnsupportedOperationException if this message type does not have a text representation.
+     */
+    default String text() {
+        throw new UnsupportedOperationException("Not implemented for message type: " + type());
+    }
 }
