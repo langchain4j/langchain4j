@@ -14,7 +14,10 @@ class McpErrorHelper {
         McpErrorResponse.Error error =
                 McpJson.deserialize(mcpMessage, McpErrorResponse.class).getError();
         if (error != null) {
-            throw new McpException(error.getCode(), error.getMessage());
+            throw McpException.withErrorData(
+                    error.getCode(),
+                    error.getMessage(),
+                    error.getData() == null ? null : McpJson.serialize(error.getData()));
         }
     }
 }
