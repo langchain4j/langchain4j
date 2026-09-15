@@ -65,8 +65,7 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
     static final String INTERRUPTION_STATE_PREFIX = "a2a.interruption.";
     private static final String RESPONSE_STATE_PREFIX = "a2a.response.";
 
-    private record A2AInvocationResult(
-            Object parsedResult, String contextIdKey, String contextId, String taskIdKey, String taskId) {}
+    private record A2AInvocationResult(Object parsedResult, String contextIdKey, String contextId) {}
 
     private final ServiceOutputParser serviceOutputParser = new ServiceOutputParser();
 
@@ -184,9 +183,6 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
         if (result.contextIdKey != null && result.contextId != null) {
             scope.writeState(result.contextIdKey, result.contextId);
         }
-        if (result.taskIdKey != null && result.taskId != null) {
-            scope.writeState(result.taskIdKey, result.taskId);
-        }
 
         return method.getReturnType() == ResultWithAgenticScope.class
                 ? new ResultWithAgenticScope<>(scope, result.parsedResult)
@@ -215,7 +211,6 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
         // Distinct from the instance field 'tenant', which is used only during agent-card discovery.
         String callTenant = null;
         String contextIdKey = null;
-        String taskIdKey = null;
 
         if (agentServiceClass == UntypedAgent.class) {
             Map<String, Object> params = (Map<String, Object>) args[0];
@@ -232,9 +227,6 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
                     }
                 } else if (parameters[i].getAnnotation(A2ATaskId.class) != null) {
                     taskId = args[i] != null ? args[i].toString() : null;
-                    if (ParameterNameResolver.hasName(parameters[i])) {
-                        taskIdKey = ParameterNameResolver.name(parameters[i]);
-                    }
                 } else if (parameters[i].getAnnotation(A2ATenantId.class) != null) {
                     callTenant = args[i] != null && !args[i].toString().isEmpty() ? args[i].toString() : null;
                 } else {
@@ -278,11 +270,10 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
 
         LOG.debug("Response: {}", response.text);
         Object parsedResult = serviceOutputParser.parseText(returnType, response.text);
-        return new A2AInvocationResult(parsedResult, contextIdKey, response.contextId, taskIdKey, response.taskId);
+        return new A2AInvocationResult(parsedResult, contextIdKey, response.contextId);
     }
 
-    private record A2AResponse(
-            String text, String contextId, String taskId, A2ATaskInterruptedException interruption) {}
+    private record A2AResponse(String text, String contextId, A2ATaskInterruptedException interruption) {}
 
     static void suspend(AgenticScope scope, String agentId, A2ATaskInterruptedException interruption) {
         String responseId = agentId + ":" + interruption.taskId();
@@ -316,9 +307,7 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
     private A2AResponse sendMessage(Message message, String callTenant) throws A2AClientException {
         final CompletableFuture<String> messageResponse = new CompletableFuture<>();
         AtomicReference<String> responseContextId = new AtomicReference<>();
-        AtomicReference<String> responseTaskId = new AtomicReference<>();
-        List<BiConsumer<ClientEvent, AgentCard>> consumers =
-                getEventConsumers(responseContextId, responseTaskId, messageResponse);
+        List<BiConsumer<ClientEvent, AgentCard>> consumers = getEventConsumers(responseContextId, messageResponse);
         Consumer<Throwable> streamingErrorHandler = error -> handleStreamEnd(error, messageResponse);
         if (callTenant != null) {
             a2aClient.sendMessage(
@@ -335,14 +324,14 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
 
         try {
             String responseText = messageResponse.get();
-            return new A2AResponse(responseText, responseContextId.get(), responseTaskId.get(), null);
+            return new A2AResponse(responseText, responseContextId.get(), null);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             LOG.error("Failed to get response: {}", e.getMessage(), e);
             throw new RuntimeException("Failed to get response: " + e.getMessage(), e);
         } catch (ExecutionException e) {
             if (e.getCause() instanceof A2ATaskInterruptedException interruption) {
-                return new A2AResponse(null, interruption.contextId(), interruption.taskId(), interruption);
+                return new A2AResponse(null, interruption.contextId(), interruption);
             }
             LOG.error("Failed to get response: {}", e.getMessage(), e);
             if (e.getCause() instanceof RuntimeException runtimeException) {
@@ -353,9 +342,7 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
     }
 
     private List<BiConsumer<ClientEvent, AgentCard>> getEventConsumers(
-            AtomicReference<String> responseContextId,
-            AtomicReference<String> responseTaskId,
-            CompletableFuture<String> messageResponse) {
+            AtomicReference<String> responseContextId, CompletableFuture<String> messageResponse) {
 
         AtomicBoolean stopped = new AtomicBoolean(false);
 
@@ -365,15 +352,14 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
             }
 
             if (event instanceof TaskEvent taskEvent) {
-                captureTaskIds(taskEvent.getTask(), responseContextId, responseTaskId);
+                responseContextId.set(taskEvent.getTask().contextId());
                 handleTaskEvent(taskEvent, messageResponse);
             } else if (event instanceof MessageEvent messageEvent) {
                 Message msg = messageEvent.getMessage();
                 responseContextId.set(msg.contextId());
-                responseTaskId.set(msg.taskId());
                 handleMessageEvent(msg, messageResponse);
             } else if (event instanceof TaskUpdateEvent updateEvent) {
-                captureTaskIds(updateEvent.getTask(), responseContextId, responseTaskId);
+                responseContextId.set(updateEvent.getTask().contextId());
                 handleUpdateEvent(updateEvent, messageResponse, stopped);
             } else {
                 messageResponse.completeExceptionally(
@@ -382,11 +368,6 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
         };
 
         return List.of(defaultEventConsumer);
-    }
-
-    private static void captureTaskIds(Task task, AtomicReference<String> contextId, AtomicReference<String> taskId) {
-        contextId.set(task.contextId());
-        taskId.set(task.id());
     }
 
     static void handleStreamEnd(Throwable error, CompletableFuture<String> messageResponse) {
