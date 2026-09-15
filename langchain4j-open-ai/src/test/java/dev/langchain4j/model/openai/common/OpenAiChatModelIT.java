@@ -37,6 +37,11 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
 
     // TODO https://github.com/langchain4j/langchain4j/issues/2219
 
+    @Override
+    protected boolean supportsChatAsync() {
+        return true;
+    }
+
     public static OpenAiChatModel.OpenAiChatModelBuilder defaultModelBuilder() {
         return OpenAiChatModel.builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))

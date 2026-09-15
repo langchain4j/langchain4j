@@ -33,7 +33,26 @@ jobs:
           server-username: MAVEN_CENTRAL_USERNAME
           server-password: MAVEN_CENTRAL_PASSWORD
 
+      # Every push to main runs this, including the "Release versions x.y.z" commits, where the
+      # version is not a SNAPSHOT. Deploying those re-publishes a release: it normally fails on
+      # "already exists", but would push an unsigned release if a release ever died before deploying.
+      - name: Check the version is a SNAPSHOT
+        id: snapshot-check
+        run: |
+          VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
+          case "$VERSION" in
+            *-SNAPSHOT)
+              echo "proceed=true" >> "$GITHUB_OUTPUT"
+              echo "Version is $VERSION."
+              ;;
+            *)
+              echo "proceed=false" >> "$GITHUB_OUTPUT"
+              echo "::warning::Version is $VERSION, not a SNAPSHOT; skipping the snapshot deploy. If main is meant to be in development, run 'Update versions for next dev iteration'."
+              ;;
+          esac
+
       - name: snapshot_release
+        if: steps.snapshot-check.outputs.proceed == 'true'
         env:
           MAVEN_CENTRAL_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
           MAVEN_CENTRAL_PASSWORD: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}

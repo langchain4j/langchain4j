@@ -10,6 +10,7 @@ import dev.langchain4j.http.client.sse.ServerSentEventParser;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 @Internal
 public class MockHttpClient implements HttpClient {
@@ -53,6 +54,12 @@ public class MockHttpClient implements HttpClient {
     public SuccessfulHttpResponse execute(HttpRequest request) {
         requests.add(request);
         return response;
+    }
+
+    @Override
+    public CompletableFuture<SuccessfulHttpResponse> executeAsync(HttpRequest request) {
+        requests.add(request);
+        return CompletableFuture.completedFuture(response);
     }
 
     @Override

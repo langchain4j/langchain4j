@@ -20,7 +20,7 @@ public class AgenticScopeSerializer {
         for (AgenticScopeJsonCodec codec : ServiceLoader.load(AgenticScopeJsonCodec.class)) {
             return codec;
         }
-        return new JacksonAgenticScopeJsonCodec();
+        return new DefaultAgenticScopeJsonCodec();
     }
 
     /**

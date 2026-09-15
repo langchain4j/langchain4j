@@ -1,9 +1,11 @@
 package dev.langchain4j.model.watsonx;
 
+import com.ibm.watsonx.ai.chat.exception.ModerationException;
 import com.ibm.watsonx.ai.core.exception.WatsonxException;
 import com.ibm.watsonx.ai.core.exception.model.WatsonxError;
 import dev.langchain4j.Internal;
 import dev.langchain4j.exception.AuthenticationException;
+import dev.langchain4j.exception.ContentFilteredException;
 import dev.langchain4j.exception.InternalServerException;
 import dev.langchain4j.exception.InvalidRequestException;
 import dev.langchain4j.exception.LangChain4jException;
@@ -12,6 +14,7 @@ import dev.langchain4j.exception.RateLimitException;
 import dev.langchain4j.exception.TimeoutException;
 import dev.langchain4j.internal.ExceptionMapper;
 import java.net.http.HttpTimeoutException;
+import java.util.Locale;
 
 @Internal
 class WatsonxExceptionMapper extends ExceptionMapper.DefaultExceptionMapper {
@@ -31,7 +34,7 @@ class WatsonxExceptionMapper extends ExceptionMapper.DefaultExceptionMapper {
             WatsonxError.Error error = details.errors().get(0);
 
             try {
-                return switch (WatsonxError.Code.valueOf(error.code().toUpperCase())) {
+                return switch (WatsonxError.Code.valueOf(error.code().toUpperCase(Locale.ROOT))) {
                     case AUTHENTICATION_TOKEN_EXPIRED, AUTHORIZATION_REJECTED ->
                         new AuthenticationException(error.message(), watsonxException);
                     case INVALID_INPUT_ARGUMENT, INVALID_REQUEST_ENTITY, JSON_TYPE_ERROR, JSON_VALIDATION_ERROR ->
@@ -46,6 +49,8 @@ class WatsonxExceptionMapper extends ExceptionMapper.DefaultExceptionMapper {
 
         } else if (t instanceof HttpTimeoutException || t instanceof java.util.concurrent.TimeoutException) {
             return new TimeoutException(t);
+        } else if (t instanceof ModerationException moderationException) {
+            return new ContentFilteredException(moderationException.getMessage(), moderationException);
         }
 
         return t instanceof RuntimeException re ? re : new LangChain4jException(t);
