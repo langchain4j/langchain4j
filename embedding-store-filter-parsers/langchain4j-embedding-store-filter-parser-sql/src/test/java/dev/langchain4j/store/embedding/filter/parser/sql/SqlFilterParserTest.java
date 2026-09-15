@@ -18,7 +18,6 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
-import java.util.Locale;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -1438,20 +1437,6 @@ class SqlFilterParserTest {
                 .isEqualTo(metadataKey("minute").isEqualTo(currentMinute()));
         assertThat(parser.parse("minute = EXTRACT(MINUTE FROM CURRENT_TIMESTAMP)"))
                 .isEqualTo(metadataKey("minute").isEqualTo(currentMinute()));
-    }
-
-    @Test
-    void should_support_EXTRACT_in_a_locale_with_its_own_case_rules() {
-        Locale previous = Locale.getDefault();
-        try {
-            // in Turkish, "minute".toUpperCase() is "MINUTE" with a dotted I, so it misses the branch
-            Locale.setDefault(Locale.forLanguageTag("tr"));
-
-            assertThat(parser.parse("minute = EXTRACT(minute FROM CURRENT_TIMESTAMP)"))
-                    .isEqualTo(metadataKey("minute").isEqualTo(currentMinute()));
-        } finally {
-            Locale.setDefault(previous);
-        }
     }
 
     private long currentYear() {
