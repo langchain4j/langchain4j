@@ -3096,7 +3096,7 @@ The remote A2A agent must return a [Task](https://a2a-protocol.org/latest/specif
 
 ### Multi-turn conversations with A2A servers
 
-The A2A protocol supports multi-turn conversations through `contextId` and `taskId` fields on the message envelope. A `contextId` groups related tasks into a conversation, while a `taskId` references a specific task within that conversation. When omitted, the A2A server generates new values; when provided, the server continues the existing conversation.
+The A2A protocol supports multi-turn conversations through `contextId` and `taskId` fields on the message envelope. A `contextId` groups related tasks into a conversation, while a `taskId` references a specific task within that conversation. When omitted, the A2A server generates new values; when a `taskId` is provided, the server continues that existing task instead of creating a new one.
 
 To pass these fields on the outgoing message envelope, annotate method parameters with `@A2AContextId` and `@A2ATaskId`. These parameters are **not** sent as message content — they are set on the message envelope instead.
 
@@ -3112,9 +3112,13 @@ public interface ChatAgent {
 
 When `null` is passed for `contextId` or `taskId`, the field is omitted from the envelope and the server creates new values.
 
-When the `@A2AContextId` or `@A2ATaskId` parameters also have recognizable names, possibly configured through the `@V` annotation, the server-assigned values from the response are automatically written back to the `AgenticScope` under that name. This enables multi-turn flows where the first call captures the IDs and subsequent calls reuse them.
+When the `@A2AContextId` parameter also has a recognizable name, possibly configured through the `@V` annotation, the server-assigned value from the response is automatically written back to the `AgenticScope` under that name. This enables multi-turn flows, where the first call captures the context and subsequent calls continue the same conversation: the server keeps the context and creates a new task in it for every invocation.
 
-If the method returns `ResultWithAgenticScope`, the IDs are accessible directly:
+The `taskId`, on the other hand, is never written back to the `AgenticScope`. A task is already in a terminal state when an invocation returns, and the A2A server rejects any further message sent to such a task.
+
+The `taskId` is instead taken from the invocation context: pass `null` (or omit the parameter) to let the server create a new task, or pass the identifier of an interrupted task to resume it, as described in the [Human-in-the-loop A2A agents](#human-in-the-loop-a2a-agents) section.
+
+If the method returns `ResultWithAgenticScope`, the context is accessible directly:
 
 ```java
 public interface ChatAgent {
@@ -3129,13 +3133,13 @@ public interface ChatAgent {
 // First turn — server generates contextId and taskId
 ResultWithAgenticScope<String> first = chatAgent.chat("hello", null, null);
 String contextId = (String) first.agenticScope().readState("contextId");
-String taskId = (String) first.agenticScope().readState("taskId");
 
-// Second turn — reuse the server-generated IDs to continue the conversation
-ResultWithAgenticScope<String> second = chatAgent.chat("follow-up", contextId, taskId);
+// Second turn — reuse the server-generated context to continue the conversation,
+// while letting the server create a new task for this invocation
+ResultWithAgenticScope<String> second = chatAgent.chat("follow-up", contextId, null);
 ```
 
-In this way, when an A2A agent is used in an agentic system, the `contextId` and `taskId` are automatically propagated through the shared `AgenticScope`. This means a sequence of two A2A calls to the same server will naturally form a multi-turn conversation:
+In this way, when an A2A agent is used in an agentic system, the `contextId` is automatically propagated through the shared `AgenticScope`. This means a sequence of two A2A calls to the same server will naturally form a multi-turn conversation:
 
 ```java
 public interface EchoSubAgent {
@@ -3166,7 +3170,7 @@ MultiTurnWorkflow workflow = AgenticServices.sequenceBuilder(MultiTurnWorkflow.c
 ResultWithAgenticScope<String> result = workflow.converse("hello");
 ```
 
-In this sequence, the first agent sends a message with no `contextId`/`taskId` (they are `null` in the scope). The server creates a new task and context. The response IDs are written to the scope. When the second agent runs, it reads the now-populated `contextId` and `taskId` from the scope and sends them on the message envelope, continuing the same conversation.
+In this sequence, the first agent sends a message with no `contextId`/`taskId` (they are `null` in the scope). The server creates a new context and a new task, and then the `contextId` is written to the scope. When the second agent runs, it reads the now-populated `contextId` from the scope and sends it on the message envelope, so the conversation continues. As the task completed by the first agent cannot accept further messages, the second agent leaves the `taskId` unset and the server creates a new task in the same context.
 
 ### Multi-tenant A2A agents
 
@@ -3197,7 +3201,7 @@ public interface MultiTenantChatAgent {
 }
 ```
 
-Unlike `@A2AContextId` and `@A2ATaskId`, the tenant value is never written back to the `AgenticScope` by the server — the caller is responsible for supplying it on every invocation.
+Unlike `@A2AContextId`, the tenant value is never written back to the `AgenticScope`; like `@A2ATaskId`, the caller is responsible for supplying it on every invocation.
 
 ### Human-in-the-loop A2A agents
 
