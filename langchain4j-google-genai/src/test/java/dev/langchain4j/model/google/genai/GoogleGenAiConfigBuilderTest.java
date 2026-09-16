@@ -3,6 +3,7 @@ package dev.langchain4j.model.google.genai;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.google.genai.types.AudioTranscriptionConfig;
 import com.google.genai.types.Content;
 import com.google.genai.types.GenerateContentConfig;
 import com.google.genai.types.HarmCategory;
@@ -655,5 +656,66 @@ class GoogleGenAiConfigBuilderTest {
         assertThat(config.thinkingConfig().get().thinkingLevel().get().toString())
                 .contains("MEDIUM");
         assertThat(config.thinkingConfig().get().includeThoughts()).hasValue(true);
+    }
+
+    @Test
+    void should_set_audio_transcription_config() {
+        ChatRequestParameters parameters =
+                DefaultChatRequestParameters.builder().build();
+
+        AudioTranscriptionConfig transcriptionConfig = AudioTranscriptionConfig.builder()
+                .mode("VERBATIM")
+                .languageCodes(List.of("en", "fr"))
+                .build();
+
+        GenerateContentConfig config = GoogleGenAiConfigBuilder.buildConfig(
+                parameters,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                false,
+                false,
+                false,
+                null,
+                null,
+                null,
+                null,
+                transcriptionConfig,
+                null);
+
+        assertThat(config.audioTranscriptionConfig()).isPresent();
+        assertThat(config.audioTranscriptionConfig().get().mode().get().toString())
+                .contains("VERBATIM");
+        assertThat(config.audioTranscriptionConfig().get().languageCodes().get())
+                .containsExactly("en", "fr");
+    }
+
+    @Test
+    void should_not_set_audio_transcription_config_when_not_provided() {
+        ChatRequestParameters parameters =
+                DefaultChatRequestParameters.builder().build();
+
+        GenerateContentConfig config = GoogleGenAiConfigBuilder.buildConfig(
+                parameters,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                false,
+                false,
+                false,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null);
+
+        assertThat(config.audioTranscriptionConfig()).isEmpty();
     }
 }
