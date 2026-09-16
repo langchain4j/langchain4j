@@ -707,10 +707,13 @@ public class GoogleGenAiChatModel implements ChatModel {
         }
 
         /**
-         * Sets the {@link AudioTranscriptionConfig} for audio inputs.
+         * Sets the {@link AudioTranscriptionConfig} applied when the model transcribes audio input:
+         * the transcription mode ({@code VERBATIM} or {@code SMART}), the spoken languages, a custom vocabulary,
+         * word-level timestamps and speaker diarization.
          * <p>
-         * Allows configuring transcription modes (e.g. {@code VERBATIM}, {@code SMART}),
-         * language codes, custom vocabulary, and timestamps for audio inputs.
+         * It only takes effect with models built for audio transcription, such as {@code gemini-3.5-transcribe}.
+         * The transcript is returned as the text of the {@link AiMessage}. Word-level timestamps and speaker labels
+         * are not part of that text; read them from the parts of {@link GoogleGenAiChatResponseMetadata#rawResponse()}.
          *
          * @param audioTranscriptionConfig the audio transcription configuration
          * @return {@code this}

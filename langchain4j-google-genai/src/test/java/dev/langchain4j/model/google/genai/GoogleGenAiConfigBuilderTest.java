@@ -692,4 +692,30 @@ class GoogleGenAiConfigBuilderTest {
         assertThat(config.audioTranscriptionConfig().get().languageCodes().get())
                 .containsExactly("en", "fr");
     }
+
+    @Test
+    void should_not_set_audio_transcription_config_when_not_provided() {
+        ChatRequestParameters parameters =
+                DefaultChatRequestParameters.builder().build();
+
+        GenerateContentConfig config = GoogleGenAiConfigBuilder.buildConfig(
+                parameters,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                false,
+                false,
+                false,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null);
+
+        assertThat(config.audioTranscriptionConfig()).isEmpty();
+    }
 }

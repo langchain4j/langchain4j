@@ -256,6 +256,44 @@ class GoogleGenAiChatModelTest {
     }
 
     @Test
+    void should_send_audio_transcription_config() throws Exception {
+        Client client = mock(Client.class);
+        Models models = mock(Models.class);
+        Field modelsField = Client.class.getDeclaredField("models");
+        modelsField.setAccessible(true);
+        modelsField.set(client, models);
+
+        GenerateContentResponse mockResponse = GenerateContentResponse.builder()
+                .candidates(List.of(Candidate.builder()
+                        .content(Content.builder()
+                                .role("model")
+                                .parts(List.of(Part.builder().text("transcript").build()))
+                                .build())
+                        .build()))
+                .build();
+
+        ArgumentCaptor<GenerateContentConfig> configCaptor = ArgumentCaptor.forClass(GenerateContentConfig.class);
+
+        when(models.generateContent(any(String.class), anyList(), configCaptor.capture()))
+                .thenReturn(mockResponse);
+
+        AudioTranscriptionConfig audioTranscriptionConfig = AudioTranscriptionConfig.builder()
+                .mode("SMART")
+                .languageCodes(List.of("en-US"))
+                .build();
+
+        GoogleGenAiChatModel model = GoogleGenAiChatModel.builder()
+                .client(client)
+                .modelName("gemini-3.5-transcribe")
+                .audioTranscriptionConfig(audioTranscriptionConfig)
+                .build();
+
+        model.chat(ChatRequest.builder().messages(UserMessage.from("Hello")).build());
+
+        assertThat(configCaptor.getValue().audioTranscriptionConfig()).contains(audioTranscriptionConfig);
+    }
+
+    @Test
     void global_cached_content_should_be_reflected_in_default_request_parameters() {
         GoogleGenAiChatModel model = GoogleGenAiChatModel.builder()
                 .client(mock(Client.class))
