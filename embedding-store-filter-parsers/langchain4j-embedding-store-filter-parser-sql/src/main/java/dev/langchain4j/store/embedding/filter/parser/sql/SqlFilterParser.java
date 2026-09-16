@@ -110,7 +110,7 @@ public class SqlFilterParser implements FilterParser {
     @Override
     public Filter parse(String sql) {
 
-        if (!sql.toUpperCase().startsWith("SELECT")) {
+        if (!sql.toUpperCase(Locale.ROOT).startsWith("SELECT")) {
             sql = "SELECT * FROM fake_table WHERE " + sql;
         }
 
