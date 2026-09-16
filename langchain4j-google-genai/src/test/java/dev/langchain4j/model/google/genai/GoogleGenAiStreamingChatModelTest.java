@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 import com.google.genai.Client;
 import com.google.genai.Models;
 import com.google.genai.ResponseStream;
+import com.google.genai.types.AudioTranscriptionConfig;
 import com.google.genai.types.Candidate;
 import com.google.genai.types.Content;
 import com.google.genai.types.FunctionCall;
@@ -196,6 +197,9 @@ class GoogleGenAiStreamingChatModelTest {
         assertThat(builder.allowedFunctionNames(List.of("fn1"))).isSameAs(builder);
         assertThat(builder.listeners(List.of())).isSameAs(builder);
         assertThat(builder.executor(mock(ExecutorService.class))).isSameAs(builder);
+        assertThat(builder.audioTranscriptionConfig(
+                        AudioTranscriptionConfig.builder().build()))
+                .isSameAs(builder);
     }
 
     @Test

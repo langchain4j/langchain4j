@@ -7,6 +7,7 @@ import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.genai.Client;
+import com.google.genai.types.AudioTranscriptionConfig;
 import com.google.genai.types.Content;
 import com.google.genai.types.GenerateContentConfig;
 import com.google.genai.types.SafetySetting;
@@ -55,6 +56,7 @@ public class GoogleGenAiChatModel implements ChatModel {
     private final List<String> allowedFunctionNames;
     private final String vertexSearchDatastore;
     private final Map<String, String> labels;
+    private final AudioTranscriptionConfig audioTranscriptionConfig;
     private final Consumer<GenerateContentConfig.Builder> generateContentConfigCustomizer;
 
     private GoogleGenAiChatModel(Builder builder) {
@@ -75,6 +77,7 @@ public class GoogleGenAiChatModel implements ChatModel {
         this.safetySettings = copy(builder.safetySettings);
         this.vertexSearchDatastore = builder.vertexSearchDatastore;
         this.labels = builder.labels != null ? new HashMap<>(builder.labels) : null;
+        this.audioTranscriptionConfig = builder.audioTranscriptionConfig;
         this.generateContentConfigCustomizer = builder.generateContentConfigCustomizer;
 
         this.client = builder.client != null
@@ -134,6 +137,7 @@ public class GoogleGenAiChatModel implements ChatModel {
                 vertexSearchDatastore,
                 labels,
                 parameters.cachedContent(),
+                audioTranscriptionConfig,
                 generateContentConfigCustomizer);
 
         if (logRequests) {
@@ -221,6 +225,7 @@ public class GoogleGenAiChatModel implements ChatModel {
         private String cachedContent;
         private Boolean logRequests;
         private Boolean logResponses;
+        private AudioTranscriptionConfig audioTranscriptionConfig;
         private Consumer<GenerateContentConfig.Builder> generateContentConfigCustomizer;
 
         /**
@@ -698,6 +703,20 @@ public class GoogleGenAiChatModel implements ChatModel {
         public Builder generateContentConfigCustomizer(
                 Consumer<GenerateContentConfig.Builder> generateContentConfigCustomizer) {
             this.generateContentConfigCustomizer = generateContentConfigCustomizer;
+            return this;
+        }
+
+        /**
+         * Sets the {@link AudioTranscriptionConfig} for audio inputs.
+         * <p>
+         * Allows configuring transcription modes (e.g. {@code VERBATIM}, {@code SMART}),
+         * language codes, custom vocabulary, and timestamps for audio inputs.
+         *
+         * @param audioTranscriptionConfig the audio transcription configuration
+         * @return {@code this}
+         */
+        public Builder audioTranscriptionConfig(AudioTranscriptionConfig audioTranscriptionConfig) {
+            this.audioTranscriptionConfig = audioTranscriptionConfig;
             return this;
         }
 
