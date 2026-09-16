@@ -60,7 +60,7 @@ jobs:
       - name: Set up JDK 21
         uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
         with:
-          java-version: 21
+          java-version: 21.0.12+101.0.LTS
           distribution: 'temurin'
           cache: 'maven'
 
