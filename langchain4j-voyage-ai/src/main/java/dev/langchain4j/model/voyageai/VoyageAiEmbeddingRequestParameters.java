@@ -9,9 +9,15 @@ import dev.langchain4j.model.embedding.request.EmbeddingRequestParameters;
  * Voyage AI-specific {@link dev.langchain4j.model.embedding.request.EmbeddingRequestParameters}, adding the
  * parameters accepted by the Voyage AI embeddings API on top of the common {@code inputType}.
  * <p>
- * {@link #ENCODING_FORMAT} is carried only by the text embeddings request, so a multimodal model does not
- * declare it in {@link dev.langchain4j.model.embedding.EmbeddingModel#supportedParameters()} and rejects it
- * rather than accepting a value that would be dropped.
+ * {@link #TRUNCATION} controls what happens to an input that is longer than the model's context: it is
+ * truncated ({@code true}, the default on Voyage's side) or the call fails ({@code false}).
+ * <p>
+ * {@link #ENCODING_FORMAT} ({@code "base64"}) only asks Voyage to compress the embeddings in the response;
+ * the embeddings handed back to the caller are the same either way. It is carried only by the text
+ * embeddings request - Voyage's multimodal endpoint has an equivalent {@code output_encoding} field, which
+ * this integration does not send - so a multimodal model does not declare it in
+ * {@link dev.langchain4j.model.embedding.EmbeddingModel#supportedParameters()} and rejects it rather than
+ * accepting a value that would be dropped.
  *
  * @since 1.21.0
  */

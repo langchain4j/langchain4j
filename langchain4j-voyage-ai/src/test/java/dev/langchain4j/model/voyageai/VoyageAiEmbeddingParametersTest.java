@@ -133,12 +133,12 @@ class VoyageAiEmbeddingParametersTest {
                         .input("hello")
                         .parameters(VoyageAiEmbeddingRequestParameters.builder()
                                 .truncation(false)
-                                .encodingFormat("float")
                                 .build())
                         .build());
 
         assertThat(requestBody(mock).get("truncation").booleanValue()).isFalse();
-        assertThat(requestBody(mock).get("encoding_format").textValue()).isEqualTo("float");
+        // the parameter that was not set per call keeps the builder value
+        assertThat(requestBody(mock).get("encoding_format").textValue()).isEqualTo("base64");
     }
 
     @Test

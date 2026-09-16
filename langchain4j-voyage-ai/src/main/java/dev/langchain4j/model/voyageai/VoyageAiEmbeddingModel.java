@@ -114,20 +114,22 @@ public class VoyageAiEmbeddingModel extends DimensionAwareEmbeddingModel {
 
     @Override
     public Set<EmbeddingParameter<?>> supportedParameters() {
-        if (supportsEncodingFormat()) {
+        if (multimodal) {
             return Set.of(
                     EmbeddingRequestParameters.INPUT_TYPE,
-                    VoyageAiEmbeddingRequestParameters.TRUNCATION,
-                    VoyageAiEmbeddingRequestParameters.ENCODING_FORMAT);
+                    VoyageAiEmbeddingRequestParameters.TRUNCATION); // the multimodal request has no encoding_format
         }
-        return Set.of(EmbeddingRequestParameters.INPUT_TYPE, VoyageAiEmbeddingRequestParameters.TRUNCATION);
+        return Set.of(
+                EmbeddingRequestParameters.INPUT_TYPE,
+                VoyageAiEmbeddingRequestParameters.TRUNCATION,
+                VoyageAiEmbeddingRequestParameters.ENCODING_FORMAT);
     }
 
     @Override
     public EmbeddingRequestParameters defaultRequestParameters() {
         return VoyageAiEmbeddingRequestParameters.builder()
                 .truncation(truncation)
-                .encodingFormat(supportsEncodingFormat() ? encodingFormat : null)
+                .encodingFormat(multimodal ? null : encodingFormat)
                 .build();
     }
 
@@ -222,10 +224,6 @@ public class VoyageAiEmbeddingModel extends DimensionAwareEmbeddingModel {
 
     private static boolean isMultimodalModel(String modelName) {
         return modelName != null && modelName.contains("multimodal");
-    }
-
-    private boolean supportsEncodingFormat() {
-        return !multimodal;
     }
 
     @Override

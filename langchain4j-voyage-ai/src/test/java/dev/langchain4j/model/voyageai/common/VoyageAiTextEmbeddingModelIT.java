@@ -8,9 +8,9 @@ import java.util.List;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 /**
- * IT for {@code voyage-3}, a text-only model. It exercises the text embeddings endpoint, which carries
- * {@code encoding_format}; the sibling {@link VoyageAiEmbeddingModelIT} covers the multimodal
- * {@code voyage-multimodal-3.5}, which does not.
+ * IT for {@code voyage-3}, a text-only model served on the text embeddings endpoint. The sibling
+ * {@link VoyageAiEmbeddingModelIT} covers the multimodal {@code voyage-multimodal-3.5}, which is served on
+ * the multimodal endpoint.
  */
 @EnabledIfEnvironmentVariable(named = "VOYAGE_API_KEY", matches = ".+")
 class VoyageAiTextEmbeddingModelIT extends AbstractEmbeddingModelIT {
