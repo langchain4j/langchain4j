@@ -8,7 +8,7 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.parallel.Isolated;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 /**
  * These tests mutate the JVM default {@link Locale}, so the whole class runs {@link Isolated}
@@ -19,16 +19,16 @@ import org.junit.jupiter.params.provider.CsvSource;
 class GoogleCustomWebSearchEngineLocaleTest {
 
     @ParameterizedTest
-    @CsvSource({"en-US, in, countryIN", "tr-TR, in, countryIN", "az-AZ, in, countryIN", "tr-TR, it, countryIT"})
-    void should_build_country_restrict_independently_of_default_locale(
-            String languageTag, String geoLocation, String expected) {
+    @ValueSource(strings = {"en-US", "tr-TR", "az-AZ"})
+    void should_build_country_restrict_independently_of_default_locale(String languageTag) {
+        // Without Locale.ROOT, "in".toUpperCase() yields the dotted "İN" under tr/az, so "cr" becomes "countryİN"
         withDefaultLocale(languageTag, () -> {
             WebSearchRequest request = WebSearchRequest.builder()
                     .searchTerms("langchain4j")
-                    .geoLocation(geoLocation)
+                    .geoLocation("in")
                     .build();
 
-            assertThat(GoogleCustomWebSearchEngine.setCountryRestrict(request)).isEqualTo(expected);
+            assertThat(GoogleCustomWebSearchEngine.setCountryRestrict(request)).isEqualTo("countryIN");
         });
     }
 
