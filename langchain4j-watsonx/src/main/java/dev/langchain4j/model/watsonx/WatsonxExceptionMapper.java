@@ -14,6 +14,7 @@ import dev.langchain4j.exception.RateLimitException;
 import dev.langchain4j.exception.TimeoutException;
 import dev.langchain4j.internal.ExceptionMapper;
 import java.net.http.HttpTimeoutException;
+import java.util.Locale;
 
 @Internal
 class WatsonxExceptionMapper extends ExceptionMapper.DefaultExceptionMapper {
@@ -33,7 +34,7 @@ class WatsonxExceptionMapper extends ExceptionMapper.DefaultExceptionMapper {
             WatsonxError.Error error = details.errors().get(0);
 
             try {
-                return switch (WatsonxError.Code.valueOf(error.code().toUpperCase())) {
+                return switch (WatsonxError.Code.valueOf(error.code().toUpperCase(Locale.ROOT))) {
                     case AUTHENTICATION_TOKEN_EXPIRED, AUTHORIZATION_REJECTED ->
                         new AuthenticationException(error.message(), watsonxException);
                     case INVALID_INPUT_ARGUMENT, INVALID_REQUEST_ENTITY, JSON_TYPE_ERROR, JSON_VALIDATION_ERROR ->

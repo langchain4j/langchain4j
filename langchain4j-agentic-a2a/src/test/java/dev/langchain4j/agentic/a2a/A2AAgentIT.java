@@ -11,11 +11,13 @@ import dev.langchain4j.agentic.a2a.Agents.DeclarativeA2ACreativeWriter;
 import dev.langchain4j.agentic.a2a.Agents.StoryCreatorWithCustomizedWriter;
 import dev.langchain4j.agentic.a2a.Agents.StoryCreatorWithReview;
 import dev.langchain4j.agentic.a2a.Agents.StoryCreatorWithUrlSupplier;
+import dev.langchain4j.agentic.a2a.Agents.StreamingA2ATester;
 import dev.langchain4j.agentic.a2a.Agents.StyleEditor;
 import dev.langchain4j.agentic.a2a.Agents.StyleReviewLoop;
 import dev.langchain4j.agentic.a2a.Agents.StyleScorer;
 import dev.langchain4j.agentic.a2a.Agents.StyledWriter;
 import dev.langchain4j.agentic.declarative.A2AClientAgent;
+import dev.langchain4j.agentic.observability.A2AStreamingClientListenerResult;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.observability.AgentRequest;
 import dev.langchain4j.agentic.scope.AgentInvocation;
@@ -26,15 +28,109 @@ import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.agentic.supervisor.SupervisorAgent;
 import dev.langchain4j.service.V;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.a2aproject.sdk.client.ClientBuilder;
+import org.a2aproject.sdk.client.TaskUpdateEvent;
 import org.a2aproject.sdk.client.transport.jsonrpc.JSONRPCTransport;
 import org.a2aproject.sdk.client.transport.jsonrpc.JSONRPCTransportConfigBuilder;
+import org.a2aproject.sdk.spec.Task;
+import org.a2aproject.sdk.spec.TaskArtifactUpdateEvent;
+import org.a2aproject.sdk.spec.TaskState;
+import org.a2aproject.sdk.spec.TaskStatusUpdateEvent;
+import org.a2aproject.sdk.spec.UpdateEvent;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 public class A2AAgentIT {
 
     static final String A2A_SERVER_URL = "http://localhost:8080";
+
+    @Test
+    @Disabled("Requires streaming A2A server to be running")
+    void streaming_a2a_agent_TaskStatusUpdateEvent_tests() {
+        ResultWithAgenticScope<String> result = AgenticServices.a2aBuilder(A2A_SERVER_URL, StreamingA2ATester.class)
+                .outputKey("result")
+                .streamingClientListener((TaskUpdateEvent event) -> {
+                    UpdateEvent updateEvent = event.getUpdateEvent();
+                    if (updateEvent instanceof TaskStatusUpdateEvent taskStatusUpdateEvent
+                            && taskStatusUpdateEvent.status().state() == TaskState.TASK_STATE_WORKING) {
+                        return A2AStreamingClientListenerResult.stopWithResponse(
+                                "stop when status update to TASK_STATE_WORKING");
+                    }
+                    return A2AStreamingClientListenerResult.continueStreaming();
+                })
+                .build()
+                .test("test");
+        String s = result.agenticScope().readState("result", "");
+
+        assertThat(s).isEqualTo("stop when status update to TASK_STATE_WORKING");
+    }
+
+    @Test
+    @Disabled("Requires streaming A2A server to be running")
+    void streaming_a2a_agent_TaskArtifactUpdateEvent_tests() {
+        ResultWithAgenticScope<String> result = AgenticServices.a2aBuilder(A2A_SERVER_URL, StreamingA2ATester.class)
+                .outputKey("result")
+                .streamingClientListener((TaskUpdateEvent event) -> {
+                    UpdateEvent updateEvent = event.getUpdateEvent();
+                    Task task = event.getTask();
+                    if (updateEvent instanceof TaskArtifactUpdateEvent
+                            && task.artifacts() != null
+                            && task.artifacts().size() >= 2) {
+                        return A2AStreamingClientListenerResult.stopWithCurrentArtifacts();
+                    }
+                    return A2AStreamingClientListenerResult.continueStreaming();
+                })
+                .build()
+                .test("test");
+        String s = result.agenticScope().readState("result", "");
+
+        assertThat(s).isEqualTo("artifact1\nartifact2");
+    }
+
+    @Test
+    @Disabled("Requires streaming A2A server to be running")
+    void streaming_a2a_agent_stopWithResponse_tests() {
+        AtomicInteger taskArtifactUpdateEventCount = new AtomicInteger(0);
+        ResultWithAgenticScope<String> result = AgenticServices.a2aBuilder(A2A_SERVER_URL, StreamingA2ATester.class)
+                .outputKey("result")
+                .streamingClientListener((TaskUpdateEvent event) -> {
+                    UpdateEvent updateEvent = event.getUpdateEvent();
+                    if (updateEvent instanceof TaskArtifactUpdateEvent) {
+                        taskArtifactUpdateEventCount.incrementAndGet();
+                        return A2AStreamingClientListenerResult.stopWithResponse("get artifact, stop streaming");
+                    }
+                    return A2AStreamingClientListenerResult.continueStreaming();
+                })
+                .build()
+                .test("test");
+        String s = result.agenticScope().readState("result", "");
+
+        assertThat(s).isEqualTo("get artifact, stop streaming");
+        assertThat(taskArtifactUpdateEventCount).hasValue(1);
+    }
+
+    @Test
+    @Disabled("Requires streaming A2A server to be running")
+    void streaming_a2a_agent_stopWithNullResponse_tests() {
+        AtomicInteger taskArtifactUpdateEventCount = new AtomicInteger(0);
+        ResultWithAgenticScope<String> result = AgenticServices.a2aBuilder(A2A_SERVER_URL, StreamingA2ATester.class)
+                .outputKey("result")
+                .streamingClientListener((TaskUpdateEvent event) -> {
+                    UpdateEvent updateEvent = event.getUpdateEvent();
+                    if (updateEvent instanceof TaskArtifactUpdateEvent) {
+                        taskArtifactUpdateEventCount.incrementAndGet();
+                        return A2AStreamingClientListenerResult.stopWithResponse(null);
+                    }
+                    return A2AStreamingClientListenerResult.continueStreaming();
+                })
+                .build()
+                .test("test");
+
+        assertThat(result.result()).isEqualTo("");
+        assertThat(result.agenticScope().readState("result", "")).isEmpty();
+        assertThat(taskArtifactUpdateEventCount).hasValue(1);
+    }
 
     @Test
     @Disabled("Requires A2A server to be running")

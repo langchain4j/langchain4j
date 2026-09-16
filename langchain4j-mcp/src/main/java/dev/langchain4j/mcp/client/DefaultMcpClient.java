@@ -242,6 +242,7 @@ public class DefaultMcpClient implements McpClient {
                     try {
                         TimeUnit.MILLISECONDS.sleep(reconnectInterval.toMillis());
                     } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
                         throw new RuntimeException(e);
                     }
                     log.info("Trying to reconnect...");
@@ -1000,7 +1001,12 @@ public class DefaultMcpClient implements McpClient {
             CompletableFuture<String> resultFuture = executeViaTransport(context);
             resultFuture.get(pingTimeout.toMillis(), TimeUnit.MILLISECONDS);
             notifyListeners(l -> l.afterPing(context));
-        } catch (ExecutionException | InterruptedException | TimeoutException e) {
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            RuntimeException re = new RuntimeException(e);
+            notifyListeners(l -> l.onPingError(context, re));
+            throw re;
+        } catch (ExecutionException | TimeoutException e) {
             RuntimeException re = new RuntimeException(e);
             notifyListeners(l -> l.onPingError(context, re));
             throw re;
@@ -1019,7 +1025,12 @@ public class DefaultMcpClient implements McpClient {
             CompletableFuture<String> resultFuture = executeViaTransport(context);
             resultFuture.get(pingTimeout.toMillis(), TimeUnit.MILLISECONDS);
             notifyListeners(l -> l.afterPing(context));
-        } catch (ExecutionException | InterruptedException | TimeoutException e) {
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            RuntimeException re = new RuntimeException(e);
+            notifyListeners(l -> l.onPingError(context, re));
+            throw re;
+        } catch (ExecutionException | TimeoutException e) {
             RuntimeException re = new RuntimeException(e);
             notifyListeners(l -> l.onPingError(context, re));
             throw re;
@@ -1375,6 +1386,14 @@ public class DefaultMcpClient implements McpClient {
                     result -> {
                         McpListToolsResult.Result parsed = McpJson.deserialize(result, McpListToolsResult.class)
                                 .getResult();
+                        if (parsed == null) {
+                            log.warn("Result does not contain 'result' element: {}", result);
+                            throw new IllegalResponseException("Result does not contain 'result' element");
+                        }
+                        if (parsed.getTools() == null) {
+                            log.warn("Result does not contain 'tools' element: {}", result);
+                            throw new IllegalResponseException("Result does not contain 'tools' element");
+                        }
                         return new McpPage<>(
                                 ToolSpecificationHelper.toolSpecificationListFromMcpResponse(parsed.getTools()),
                                 parsed.getNextCursor());
@@ -1467,6 +1486,9 @@ public class DefaultMcpClient implements McpClient {
     private void triggerReconnection() {
         if (initializationLock.tryLock()) {
             try {
+                if (closed) {
+                    return;
+                }
                 initialize();
             } catch (Exception e) {
                 log.warn("mcp server reconnection failed", e);
@@ -1496,7 +1518,10 @@ public class DefaultMcpClient implements McpClient {
             } catch (TimeoutException e) {
                 cancelTimedOutOperation(e, operation.getId(), resultFuture);
                 throw new RuntimeException(e);
-            } catch (ExecutionException | InterruptedException e) {
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new RuntimeException(e);
+            } catch (ExecutionException e) {
                 throw new RuntimeException(e);
             } finally {
                 pendingOperations.remove(operation.getId());

@@ -33,6 +33,8 @@ Response<Double> response = scoringModel.score("query", "passage");
 Double score = response.content();
 ```
 
+`OnnxScoringModel` implements `AutoCloseable`; close it when it is no longer needed to release its native resources.
+
 If you want to use the GPU, `onnxruntime_gpu` version can be found
 [here](https://onnxruntime.ai/docs/execution-providers/CUDA-ExecutionProvider.html).
 ```xml
