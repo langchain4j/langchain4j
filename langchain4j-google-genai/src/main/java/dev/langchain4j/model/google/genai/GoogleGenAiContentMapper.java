@@ -376,10 +376,12 @@ class GoogleGenAiContentMapper {
     }
 
     private static void appendTranscription(StringBuilder textBuilder, Transcription transcription) {
-        String text = transcription.text().orElseGet(() -> transcription.words().orElse(List.of()).stream()
-                .map(word -> word.word().orElse(""))
-                .filter(word -> !word.isEmpty())
-                .collect(Collectors.joining(" ")));
+        String text = transcription
+                .text()
+                .orElseGet(() -> transcription.words().orElse(List.of()).stream()
+                        .map(word -> word.word().orElse(""))
+                        .filter(word -> !word.isEmpty())
+                        .collect(Collectors.joining(" ")));
         if (text.isEmpty()) {
             return;
         }

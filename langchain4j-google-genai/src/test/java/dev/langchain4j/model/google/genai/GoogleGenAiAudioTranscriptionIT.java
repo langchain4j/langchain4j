@@ -114,7 +114,9 @@ class GoogleGenAiAudioTranscriptionIT {
                 .flatMap(Optional::stream)
                 .toList();
         assertThat(transcriptions).isNotEmpty();
-        assertThat(transcriptions).anySatisfy(transcription -> assertThat(transcription.speakerLabel()).isPresent());
+        assertThat(transcriptions)
+                .anySatisfy(transcription ->
+                        assertThat(transcription.speakerLabel()).isPresent());
 
         List<WordInfo> words = transcriptions.stream()
                 .flatMap(transcription -> transcription.words().orElse(List.of()).stream())
