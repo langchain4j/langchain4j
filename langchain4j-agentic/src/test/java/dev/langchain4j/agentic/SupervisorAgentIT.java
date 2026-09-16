@@ -1167,8 +1167,18 @@ public class SupervisorAgentIT {
 
     public interface InvoiceRegistrationAgent {
 
+        // Asking a model with no tools to "register" something gets a description of how one would
+        // register an invoice, never a confirmation that one was registered. The supervisor reads
+        // that as the request still being open and calls this agent again until it hits
+        // maxAgentsInvocations, which surfaces as a wrong invocation count. Giving it a role it can
+        // play and asking for the confirmation explicitly is what the banker agents above do with
+        // "and return the new balance".
+        @SystemMessage("""
+                You are an invoice registry: you record every invoice you are given.
+                """)
         @UserMessage("""
-                Register the invoice described as '{{invoice}}'.
+                Record the invoice described as '{{invoice}}', then confirm in a single sentence
+                that it has been registered, repeating its author and its amount.
                 """)
         @Agent("An agent that registers invoices")
         String register(@V("invoice") Invoice invoice);

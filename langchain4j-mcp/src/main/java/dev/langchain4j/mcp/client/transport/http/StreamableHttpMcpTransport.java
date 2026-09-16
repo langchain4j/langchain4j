@@ -4,6 +4,7 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.exception.JsonException;
 import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.mcp.client.McpCallContext;
@@ -292,13 +293,14 @@ public class StreamableHttpMcpTransport implements McpTransport {
                                         });
                             } else {
                                 // Reinitialization did not help; fail instead of leaving the caller hanging
-                                future.completeExceptionally(new RuntimeException(
+                                future.completeExceptionally(new HttpException(
+                                        responseInfo.statusCode(),
                                         "Session expired again after reinitialization: server returned status code "
                                                 + responseInfo.statusCode()));
                             }
                         } else {
-                            future.completeExceptionally(
-                                    new RuntimeException("Unexpected status code: " + responseInfo.statusCode()));
+                            future.completeExceptionally(new HttpException(
+                                    responseInfo.statusCode(), "Unexpected status code: " + responseInfo.statusCode()));
                         }
                         return HttpResponse.BodySubscribers.discarding();
                     } else {

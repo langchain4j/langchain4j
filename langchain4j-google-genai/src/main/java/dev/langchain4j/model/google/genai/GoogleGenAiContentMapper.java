@@ -29,7 +29,6 @@ import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.internal.Json;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.FinishReason;
-import dev.langchain4j.model.output.TokenUsage;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Base64;
@@ -41,7 +40,6 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 class GoogleGenAiContentMapper {
-
 
     private static final Map<String, String> EXTENSION_TO_MIME_TYPE = new HashMap<>();
 
@@ -100,8 +98,13 @@ class GoogleGenAiContentMapper {
     private static final String MODEL_ROLE = "model";
     private static final String FUNCTION_ROLE = "function";
 
+    // Signature of a part carrying a function call, keyed by the id of that function call.
     private static final String THOUGHT_SIGNATURE_KEY_PREFIX =
             "thought_signature_"; // do not change, will break backward compatibility!
+
+    // Signature of the last part of a response that carries no function call.
+    private static final String THOUGHT_SIGNATURE_KEY =
+            "thought_signature"; // do not change, will break backward compatibility!
 
     static Content toSystemInstruction(List<ChatMessage> messages) {
         String systemInstructions = messages.stream()
@@ -188,7 +191,14 @@ class GoogleGenAiContentMapper {
                 parts.add(Part.builder().text(aiMsg.thinking()).thought(true).build());
             }
             if (aiMsg.text() != null) {
-                parts.add(Part.builder().text(aiMsg.text()).build());
+                Part.Builder textPartBuilder = Part.builder().text(aiMsg.text());
+                if (sendThinking) {
+                    String textSignature = aiMsg.attribute(THOUGHT_SIGNATURE_KEY, String.class);
+                    if (textSignature != null) {
+                        textPartBuilder.thoughtSignature(Base64.getDecoder().decode(textSignature));
+                    }
+                }
+                parts.add(textPartBuilder.build());
             }
             if (aiMsg.toolExecutionRequests() != null) {
                 for (ToolExecutionRequest req : aiMsg.toolExecutionRequests()) {
@@ -224,15 +234,45 @@ class GoogleGenAiContentMapper {
         return toChatResponse(response, modelName, false);
     }
 
+    private static GoogleGenAiTokenUsage toTokenUsage(GenerateContentResponse response) {
+        return response.usageMetadata()
+                .map(meta -> {
+                    int promptTokenCount = meta.promptTokenCount().orElse(0);
+                    int candidatesTokenCount = meta.candidatesTokenCount().orElse(0);
+                    Integer toolUsePromptTokenCount =
+                            meta.toolUsePromptTokenCount().orElse(null);
+                    Integer thoughtsTokenCount = meta.thoughtsTokenCount().orElse(null);
+                    return GoogleGenAiTokenUsage.builder()
+                            .inputTokenCount(promptTokenCount)
+                            .outputTokenCount(candidatesTokenCount)
+                            .totalTokenCount(meta.totalTokenCount()
+                                    .orElse(promptTokenCount
+                                            + candidatesTokenCount
+                                            + getOrDefault(toolUsePromptTokenCount, 0)
+                                            + getOrDefault(thoughtsTokenCount, 0)))
+                            .cachedContentTokenCount(
+                                    meta.cachedContentTokenCount().orElse(null))
+                            .thoughtsTokenCount(thoughtsTokenCount)
+                            .toolUsePromptTokenCount(toolUsePromptTokenCount)
+                            .build();
+                })
+                .orElse(GoogleGenAiTokenUsage.builder()
+                        .inputTokenCount(0)
+                        .outputTokenCount(0)
+                        .totalTokenCount(0)
+                        .build());
+    }
+
     static ChatResponse toChatResponse(GenerateContentResponse response, String modelName, boolean returnThinking) {
         List<Candidate> candidates = response.candidates().orElse(List.of());
+        GoogleGenAiTokenUsage usage = toTokenUsage(response);
 
         if (candidates.isEmpty()) {
             return ChatResponse.builder()
                     .aiMessage(AiMessage.from("Empty response"))
                     .metadata(GoogleGenAiChatResponseMetadata.builder()
                             .modelName(modelName)
-                            .tokenUsage(new TokenUsage(0, 0))
+                            .tokenUsage(usage)
                             .finishReason(FinishReason.OTHER)
                             .build())
                     .build();
@@ -281,6 +321,17 @@ class GoogleGenAiContentMapper {
                             .build());
                 }
             }
+
+            if (!parts.isEmpty()) {
+                Part lastPart = parts.get(parts.size() - 1);
+                if (lastPart.functionCall().isEmpty()
+                        && lastPart.thoughtSignature().isPresent()) {
+                    attributes.put(
+                            THOUGHT_SIGNATURE_KEY,
+                            Base64.getEncoder()
+                                    .encodeToString(lastPart.thoughtSignature().get()));
+                }
+            }
         }
 
         String text = textBuilder.toString();
@@ -303,21 +354,6 @@ class GoogleGenAiContentMapper {
             aiMessageBuilder.attributes(attributes);
         }
         AiMessage aiMessage = aiMessageBuilder.build();
-
-        TokenUsage usage = response.usageMetadata()
-                .map(meta -> {
-                    int promptTokenCount = meta.promptTokenCount().isPresent()
-                            ? meta.promptTokenCount().get()
-                            : 0;
-                    int candidatesTokenCount = meta.candidatesTokenCount().isPresent()
-                            ? meta.candidatesTokenCount().get()
-                            : 0;
-                    int totalTokenCount = meta.totalTokenCount().isPresent()
-                            ? meta.totalTokenCount().get()
-                            : promptTokenCount + candidatesTokenCount;
-                    return new TokenUsage(promptTokenCount, candidatesTokenCount, totalTokenCount);
-                })
-                .orElse(new TokenUsage(0, 0));
 
         FinishReason finishReason = !toolRequests.isEmpty()
                 ? FinishReason.TOOL_EXECUTION

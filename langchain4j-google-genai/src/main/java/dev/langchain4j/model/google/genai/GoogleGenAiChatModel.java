@@ -442,7 +442,10 @@ public class GoogleGenAiChatModel implements ChatModel {
          * Controls whether to send thinking/reasoning text to the LLM in follow-up requests.
          * <p>
          * Disabled by default.
-         * If enabled, the contents of {@link AiMessage#thinking()} will be sent in the API request.
+         * If enabled, the contents of {@link AiMessage#thinking()} will be sent in the API request,
+         * together with the thought signature that Gemini returned for the answer, if there was one.
+         * A thought signature is an opaque token that lets the model resume its own reasoning
+         * on the next turn; sending it back keeps reasoning continuous across turns.
          * <p>
          * Thought signatures required for function calling are handled independently of this setting.
          *

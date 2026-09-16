@@ -11,11 +11,13 @@ import dev.langchain4j.agentic.declarative.ChatModelSupplier;
 import dev.langchain4j.agentic.declarative.Output;
 import dev.langchain4j.agentic.declarative.SupervisorRequest;
 import dev.langchain4j.agentic.internal.AbstractServiceBuilder;
+import dev.langchain4j.agentic.internal.Context;
 import dev.langchain4j.agentic.planner.AgenticService;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.service.IllegalConfigurationException;
 import java.lang.reflect.Method;
 import java.util.function.Function;
 
@@ -33,6 +35,8 @@ public class SupervisorAgentServiceImpl<T> extends AbstractServiceBuilder<T, Sup
 
     private Function<AgenticScope, String> requestGenerator;
     private String supervisorContext;
+    private ChatModel contextSummarizerModel;
+    private Context.ContextSummarizer contextSummarizer;
 
     public SupervisorAgentServiceImpl(Class<T> agentServiceClass, Method agenticMethod) {
         this(agentServiceClass, agenticMethod, null);
@@ -46,13 +50,20 @@ public class SupervisorAgentServiceImpl<T> extends AbstractServiceBuilder<T, Sup
     public T build() {
         if (supervisorContext != null) {
             this.beforeCall(this.beforeCall.andThen(agenticScope ->
-                    agenticScope.writeStateIfAbsent(SupervisorPlanner.SUPERVISOR_CONTEXT_KEY, supervisorContext)
-            ));
+                    agenticScope.writeStateIfAbsent(SupervisorPlanner.SUPERVISOR_CONTEXT_KEY, supervisorContext)));
         }
 
-        return build(() -> new SupervisorPlanner(chatModel, chatMemoryProvider, maxAgentsInvocations,
-                contextStrategy, responseStrategy, requestGenerator,
-                outputKey, output));
+        Context.ContextSummarizer summarizer = contextSummarizer();
+        return build(() -> new SupervisorPlanner(
+                chatModel,
+                chatMemoryProvider,
+                maxAgentsInvocations,
+                contextStrategy,
+                responseStrategy,
+                requestGenerator,
+                outputKey,
+                output,
+                summarizer));
     }
 
     public static SupervisorAgentService<SupervisorAgent> builder() {
@@ -115,27 +126,42 @@ public class SupervisorAgentServiceImpl<T> extends AbstractServiceBuilder<T, Sup
         return "Supervisor";
     }
 
+    private synchronized Context.ContextSummarizer contextSummarizer() {
+        if (contextStrategy == SupervisorContextStrategy.CHAT_MEMORY) {
+            return null;
+        }
+        if (contextSummarizer == null || contextSummarizerModel != chatModel) {
+            if (chatModel == null) {
+                throw new IllegalConfigurationException(
+                        "A ChatModel is required to summarize context for a supervisor agent.");
+            }
+            contextSummarizerModel = chatModel;
+            contextSummarizer = Context.createSummarizer(chatModel);
+        }
+        return contextSummarizer;
+    }
+
     private void configureSupervisor(Class<T> agentServiceClass, ChatModel chatModel) {
         selectMethod(
-                agentServiceClass,
-                method -> method.isAnnotationPresent(SupervisorRequest.class)
-                        && method.getReturnType() == String.class)
+                        agentServiceClass,
+                        method -> method.isAnnotationPresent(SupervisorRequest.class)
+                                && method.getReturnType() == String.class)
                 .map(m -> agenticScopeFunction(m, String.class))
                 .ifPresent(this::requestGenerator);
 
         selectMethod(
-                agentServiceClass,
-                method -> method.isAnnotationPresent(ChatModelSupplier.class)
-                        && method.getReturnType() == ChatModel.class
-                        && method.getParameterCount() == 0)
+                        agentServiceClass,
+                        method -> method.isAnnotationPresent(ChatModelSupplier.class)
+                                && method.getReturnType() == ChatModel.class
+                                && method.getParameterCount() == 0)
                 .map(method -> (ChatModel) invokeStatic(method))
                 .ifPresentOrElse(this::chatModel, () -> this.chatModel(chatModel));
 
         selectMethod(
-                agentServiceClass,
-                method -> method.isAnnotationPresent(ChatMemoryProviderSupplier.class)
-                        && method.getReturnType() == ChatMemory.class
-                        && method.getParameterCount() == 1)
+                        agentServiceClass,
+                        method -> method.isAnnotationPresent(ChatMemoryProviderSupplier.class)
+                                && method.getReturnType() == ChatMemory.class
+                                && method.getParameterCount() == 1)
                 .map(method -> (ChatMemoryProvider) memoryId -> invokeStatic(method, memoryId))
                 .ifPresent(this::chatMemoryProvider);
 
