@@ -36,6 +36,7 @@ import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.guardrail.ChatExecutor;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.guardrail.InputGuardrailRequest;
+import dev.langchain4j.guardrail.OutputGuardrailException;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
 import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.internal.InternalFlowUtils;
@@ -196,10 +197,12 @@ class DefaultAiServices<T> extends AiServices<T> {
                         try {
                             return invoke(method, args, invocationContext);
                         } catch (Exception ex) {
-                            try {
-                                restoreChatMemory(chatMemory, chatMemorySnapshot);
-                            } catch (RuntimeException restoreException) {
-                                ex.addSuppressed(restoreException);
+                            if (!(ex instanceof OutputGuardrailException)) {
+                                try {
+                                    restoreChatMemory(chatMemory, chatMemorySnapshot);
+                                } catch (RuntimeException restoreException) {
+                                    ex.addSuppressed(restoreException);
+                                }
                             }
                             context.eventListenerRegistrar.fireEvent(AiServiceErrorEvent.builder()
                                     .invocationContext(invocationContext)
