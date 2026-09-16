@@ -72,9 +72,6 @@ public final class MistralAiBatchChatModel implements BatchChatModel {
 
     private final MistralAiClient client;
     private final ChatRequestParameters defaultRequestParameters;
-    private final Boolean safePrompt;
-    private final Integer randomSeed;
-    private final boolean sendThinking;
     private final boolean returnThinking;
     private final boolean strictJsonSchema;
     private final int maxRetries;
@@ -91,9 +88,7 @@ public final class MistralAiBatchChatModel implements BatchChatModel {
                 .logger(builder.logger)
                 .customHeaders(builder.customHeadersSupplier)
                 .build();
-        this.safePrompt = builder.safePrompt;
-        this.randomSeed = builder.randomSeed;
-        this.sendThinking = getOrDefault(builder.sendThinking, false);
+
         this.returnThinking = getOrDefault(builder.returnThinking, false);
         this.strictJsonSchema = getOrDefault(builder.strictJsonSchema, false);
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
@@ -101,7 +96,7 @@ public final class MistralAiBatchChatModel implements BatchChatModel {
         this.defaultRequestParameters = initDefaultRequestParameters(builder);
     }
 
-    private static ChatRequestParameters initDefaultRequestParameters(Builder builder) {
+    private static MistralAiChatRequestParameters initDefaultRequestParameters(Builder builder) {
         ChatRequestParameters commonParameters;
         if (builder.defaultRequestParameters != null) {
             validate(builder.defaultRequestParameters);
@@ -109,7 +104,11 @@ public final class MistralAiBatchChatModel implements BatchChatModel {
         } else {
             commonParameters = DefaultChatRequestParameters.EMPTY;
         }
-        return DefaultChatRequestParameters.builder()
+
+        MistralAiChatRequestParameters mistralParameters =
+                commonParameters instanceof MistralAiChatRequestParameters m ? m : MistralAiChatRequestParameters.EMPTY;
+
+        return MistralAiChatRequestParameters.builder()
                 .modelName(getOrDefault(builder.modelName, commonParameters.modelName()))
                 .temperature(getOrDefault(builder.temperature, commonParameters.temperature()))
                 .topP(getOrDefault(builder.topP, commonParameters.topP()))
@@ -120,6 +119,13 @@ public final class MistralAiBatchChatModel implements BatchChatModel {
                 .toolSpecifications(commonParameters.toolSpecifications())
                 .toolChoice(commonParameters.toolChoice())
                 .responseFormat(getOrDefault(builder.responseFormat, commonParameters.responseFormat()))
+                .safePrompt(getOrDefault(builder.safePrompt, mistralParameters.safePrompt()))
+                .randomSeed(getOrDefault(builder.randomSeed, mistralParameters.randomSeed()))
+                .sendThinking(getOrDefault(builder.sendThinking, mistralParameters.sendThinking()))
+                .returnThinking(getOrDefault(builder.returnThinking, mistralParameters.returnThinking()))
+                .serviceTier(getOrDefault(builder.serviceTier, mistralParameters.serviceTier()))
+                .reasoningEffort(getOrDefault(builder.reasoningEffort, mistralParameters.reasoningEffort()))
+                .promptCacheKey(getOrDefault(builder.promptCacheKey, mistralParameters.promptCacheKey()))
                 .build();
     }
 
@@ -206,7 +212,8 @@ public final class MistralAiBatchChatModel implements BatchChatModel {
                 .messages(chatRequest.messages())
                 .parameters(merged)
                 .build();
-        return createMistralAiRequest(effectiveRequest, safePrompt, randomSeed, false, sendThinking, strictJsonSchema);
+
+        return createMistralAiRequest(effectiveRequest, false, strictJsonSchema);
     }
 
     private ChatResponse toChatResponse(MistralAiChatCompletionResponse response) {
@@ -312,8 +319,11 @@ public final class MistralAiBatchChatModel implements BatchChatModel {
         private Boolean logRequests;
         private Boolean logResponses;
         private Logger logger;
-        private Supplier<Map<String, String>> customHeadersSupplier;
+        private String promptCacheKey;
+        private String reasoningEffort;
+        private String serviceTier;
         private ChatRequestParameters defaultRequestParameters;
+        private Supplier<Map<String, String>> customHeadersSupplier;
 
         private Builder() {}
 
@@ -534,6 +544,40 @@ public final class MistralAiBatchChatModel implements BatchChatModel {
          */
         public Builder defaultRequestParameters(ChatRequestParameters defaultRequestParameters) {
             this.defaultRequestParameters = defaultRequestParameters;
+            return this;
+        }
+
+        /**
+         * A cache key for prompt caching. Use the same key for requests with shared prompt prefixes,
+         * such as multi-turn conversations or repeated system prompts, to increase cache hits.
+         *
+         * @param promptCacheKey the cache key used for prompt caching.
+         * @return {@code this}.
+         */
+        public Builder promptCacheKey(String promptCacheKey) {
+            this.promptCacheKey = promptCacheKey;
+            return this;
+        }
+
+        /**
+         * The reasoning effort level to use for the request.
+         *
+         * @param reasoningEffort the level of reasoning to use for the request.
+         * @return {@code this}.
+         */
+        public Builder reasoningEffort(String reasoningEffort) {
+            this.reasoningEffort = reasoningEffort;
+            return this;
+        }
+
+        /**
+         * Determines whether to serve the request using priority or standard capacity.
+         *
+         * @param serviceTier the service tier to use for the request.
+         * @return {@code this}.
+         */
+        public Builder serviceTier(String serviceTier) {
+            this.serviceTier = serviceTier;
             return this;
         }
 

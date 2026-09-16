@@ -90,6 +90,9 @@ public class MistralAiStreamingChatModel implements StreamingChatModel {
                 .randomSeed(getOrDefault(builder.randomSeed, mistralParameters.randomSeed()))
                 .sendThinking(getOrDefault(builder.sendThinking, mistralParameters.sendThinking()))
                 .returnThinking(getOrDefault(builder.returnThinking, mistralParameters.returnThinking()))
+                .promptCacheKey(getOrDefault(builder.promptCacheKey, mistralParameters.promptCacheKey()))
+                .reasoningEffort(getOrDefault(builder.reasoningEffort, mistralParameters.reasoningEffort()))
+                .serviceTier(getOrDefault(builder.serviceTier, mistralParameters.serviceTier()))
                 .build();
     }
 
@@ -99,13 +102,7 @@ public class MistralAiStreamingChatModel implements StreamingChatModel {
         MistralAiChatRequestParameters parameters = (MistralAiChatRequestParameters) chatRequest.parameters();
         validate(parameters);
 
-        MistralAiChatCompletionRequest request = createMistralAiRequest(
-                chatRequest,
-                parameters.safePrompt(),
-                parameters.randomSeed(),
-                true,
-                getOrDefault(parameters.sendThinking(), false),
-                strictJsonSchema);
+        MistralAiChatCompletionRequest request = createMistralAiRequest(chatRequest, true, strictJsonSchema);
         client.streamingChatCompletion(request, handler, getOrDefault(parameters.returnThinking(), false));
     }
 
@@ -161,6 +158,9 @@ public class MistralAiStreamingChatModel implements StreamingChatModel {
         private List<ChatModelListener> listeners;
         private Set<Capability> supportedCapabilities;
         private Boolean strictJsonSchema;
+        private String promptCacheKey;
+        private String reasoningEffort;
+        private String serviceTier;
         private ChatRequestParameters defaultRequestParameters;
         private Supplier<Map<String, String>> customHeadersSupplier;
 
@@ -290,8 +290,8 @@ public class MistralAiStreamingChatModel implements StreamingChatModel {
 
         /**
          * @param timeout the timeout duration for API requests
-         * <p>
-         * The default value is 60 seconds
+         *                <p>
+         *                The default value is 60 seconds
          * @return {@code this}.
          */
         public MistralAiStreamingChatModelBuilder timeout(Duration timeout) {
@@ -363,6 +363,40 @@ public class MistralAiStreamingChatModel implements StreamingChatModel {
 
         public MistralAiStreamingChatModelBuilder defaultRequestParameters(ChatRequestParameters parameters) {
             this.defaultRequestParameters = parameters;
+            return this;
+        }
+
+        /**
+         * A cache key for prompt caching. Use the same key for requests with shared prompt prefixes,
+         * such as multi-turn conversations or repeated system prompts, to increase cache hits.
+         *
+         * @param promptCacheKey the cache key used for prompt caching.
+         * @return {@code this}.
+         */
+        public MistralAiStreamingChatModelBuilder promptCacheKey(String promptCacheKey) {
+            this.promptCacheKey = promptCacheKey;
+            return this;
+        }
+
+        /**
+         * The reasoning effort level to use for the request.
+         *
+         * @param reasoningEffort the level of reasoning to use for the request.
+         * @return {@code this}.
+         */
+        public MistralAiStreamingChatModelBuilder reasoningEffort(String reasoningEffort) {
+            this.reasoningEffort = reasoningEffort;
+            return this;
+        }
+
+        /**
+         * Determines whether to serve the request using priority or standard capacity.
+         *
+         * @param serviceTier the service tier to use for the request.
+         * @return {@code this}.
+         */
+        public MistralAiStreamingChatModelBuilder serviceTier(String serviceTier) {
+            this.serviceTier = serviceTier;
             return this;
         }
 
