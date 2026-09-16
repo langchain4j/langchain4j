@@ -371,7 +371,7 @@ jobs:
       - name: Set up JDK 17
         uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
         with:
-          java-version: '17'
+          java-version: '17.0.20+101'
           distribution: 'temurin'
           cache: 'maven'
         # Check we only rely on permissive licenses in the main parts of the library:
@@ -403,7 +403,7 @@ jobs:
       - name: Set up JDK 17
         uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
         with:
-          java-version: '17'
+          java-version: '17.0.20+101'
           distribution: 'temurin'
           cache: 'maven'
       - name: Spotless Check
