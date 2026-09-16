@@ -297,6 +297,8 @@ class GoogleGenAiContentMapper {
                     } else {
                         textBuilder.append(part.text().get());
                     }
+                } else if (part.audioTranscription().isPresent()) {
+                    part.audioTranscription().get().text().ifPresent(textBuilder::append);
                 }
 
                 if (part.functionCall().isPresent()) {

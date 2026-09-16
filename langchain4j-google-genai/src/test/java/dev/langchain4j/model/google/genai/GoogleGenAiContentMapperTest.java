@@ -16,6 +16,7 @@ import com.google.genai.types.FunctionCall;
 import com.google.genai.types.GenerateContentResponse;
 import com.google.genai.types.GenerateContentResponseUsageMetadata;
 import com.google.genai.types.Part;
+import com.google.genai.types.Transcription;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.AiMessage;
@@ -1018,5 +1019,24 @@ class GoogleGenAiContentMapperTest {
         assertThat(result.aiMessage().attribute("thought_signature_call-1", String.class))
                 .isEqualTo(Base64.getEncoder().encodeToString(signature));
         assertThat(result.aiMessage().attributes()).doesNotContainKey("thought_signature");
+    }
+
+    @Test
+    void should_extract_text_from_audio_transcription_part() {
+        GenerateContentResponse response = GenerateContentResponse.builder()
+                .candidates(List.of(Candidate.builder()
+                        .content(Content.builder()
+                                .parts(Part.builder()
+                                        .audioTranscription(Transcription.builder()
+                                                .text("Hello world transcription")
+                                                .build())
+                                        .build())
+                                .build())
+                        .build()))
+                .build();
+
+        ChatResponse result = GoogleGenAiContentMapper.toChatResponse(response, "gemini-3.5-transcribe");
+
+        assertThat(result.aiMessage().text()).isEqualTo("Hello world transcription");
     }
 }
