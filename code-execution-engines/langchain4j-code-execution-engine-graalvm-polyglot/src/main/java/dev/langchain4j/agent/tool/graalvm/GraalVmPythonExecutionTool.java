@@ -14,7 +14,8 @@ public class GraalVmPythonExecutionTool {
     private final CodeExecutionEngine engine = new GraalVmPythonExecutionEngine();
 
     @Tool("MUST be used for accurate calculations: math, sorting, filtering, aggregating, string processing, etc")
-    public String executePythonCode(@P("Python code to execute, result MUST be returned by the code") String code) {
+    public String executePythonCode(
+            @P("Python code to execute, result MUST be returned or printed by the code") String code) {
         return engine.execute(code);
     }
 }

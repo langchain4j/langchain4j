@@ -1,0 +1,20 @@
+[
+  {
+    "extension": "revapi.differences",
+    "configuration": {
+      "ignore": true,
+      "differences": [
+        {
+          "code": "java.annotation.attributeValueChanged",
+          "new": "parameter java.lang.String dev.langchain4j.agent.tool.graalvm.GraalVmJavaScriptExecutionTool::executeJavaScriptCode(===java.lang.String===)",
+          "justification": "@P carries the natural-language description sent to the LLM, not a Java API contract; it now also tells the model that printing the result is accepted"
+        },
+        {
+          "code": "java.annotation.attributeValueChanged",
+          "new": "parameter java.lang.String dev.langchain4j.agent.tool.graalvm.GraalVmPythonExecutionTool::executePythonCode(===java.lang.String===)",
+          "justification": "@P carries the natural-language description sent to the LLM, not a Java API contract; it now also tells the model that printing the result is accepted"
+        }
+      ]
+    }
+  }
+]

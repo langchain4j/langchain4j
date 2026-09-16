@@ -6,6 +6,8 @@ import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.internal.A2AClientBuilder;
 import dev.langchain4j.agentic.internal.InternalAgent;
 import dev.langchain4j.agentic.internal.SuspendedResponse;
+import dev.langchain4j.agentic.observability.A2AStreamingClientListener;
+import dev.langchain4j.agentic.observability.A2AStreamingClientListenerResult;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
@@ -30,6 +32,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
@@ -47,6 +50,7 @@ import org.a2aproject.sdk.client.transport.jsonrpc.JSONRPCTransportConfigBuilder
 import org.a2aproject.sdk.spec.A2AClientError;
 import org.a2aproject.sdk.spec.A2AClientException;
 import org.a2aproject.sdk.spec.AgentCard;
+import org.a2aproject.sdk.spec.Artifact;
 import org.a2aproject.sdk.spec.Message;
 import org.a2aproject.sdk.spec.MessageSendParams;
 import org.a2aproject.sdk.spec.Part;
@@ -82,6 +86,7 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
     private boolean async;
 
     private AgentListener agentListener;
+    private A2AStreamingClientListener<TaskUpdateEvent> streamingClientListener;
 
     DefaultA2AClientBuilder(String a2aServerUrl, Class<T> agentServiceClass) {
         this(a2aServerUrl, agentServiceClass, null);
@@ -312,24 +317,8 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
         final CompletableFuture<String> messageResponse = new CompletableFuture<>();
         AtomicReference<String> responseContextId = new AtomicReference<>();
         AtomicReference<String> responseTaskId = new AtomicReference<>();
-
-        List<BiConsumer<ClientEvent, AgentCard>> consumers = List.of((event, card) -> {
-            if (event instanceof MessageEvent messageEvent) {
-                Message msg = messageEvent.getMessage();
-                responseContextId.set(msg.contextId());
-                responseTaskId.set(msg.taskId());
-                messageResponse.complete(extractTextFromParts(msg.parts()));
-            } else if (event instanceof TaskEvent taskEvent) {
-                captureTaskIds(taskEvent.getTask(), responseContextId, responseTaskId);
-                completeFromTask(taskEvent.getTask(), messageResponse);
-            } else if (event instanceof TaskUpdateEvent updateEvent) {
-                captureTaskIds(updateEvent.getTask(), responseContextId, responseTaskId);
-                completeFromTask(updateEvent.getTask(), messageResponse);
-            } else {
-                messageResponse.completeExceptionally(
-                        new IllegalArgumentException("The event expected should be of type " + event.getClass()));
-            }
-        });
+        List<BiConsumer<ClientEvent, AgentCard>> consumers =
+                getEventConsumers(responseContextId, responseTaskId, messageResponse);
         Consumer<Throwable> streamingErrorHandler = error -> handleStreamEnd(error, messageResponse);
         if (callTenant != null) {
             a2aClient.sendMessage(
@@ -363,6 +352,38 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
         }
     }
 
+    private List<BiConsumer<ClientEvent, AgentCard>> getEventConsumers(
+            AtomicReference<String> responseContextId,
+            AtomicReference<String> responseTaskId,
+            CompletableFuture<String> messageResponse) {
+
+        AtomicBoolean stopped = new AtomicBoolean(false);
+
+        BiConsumer<ClientEvent, AgentCard> defaultEventConsumer = (event, card) -> {
+            if (stopped.get()) {
+                return;
+            }
+
+            if (event instanceof TaskEvent taskEvent) {
+                captureTaskIds(taskEvent.getTask(), responseContextId, responseTaskId);
+                handleTaskEvent(taskEvent, messageResponse);
+            } else if (event instanceof MessageEvent messageEvent) {
+                Message msg = messageEvent.getMessage();
+                responseContextId.set(msg.contextId());
+                responseTaskId.set(msg.taskId());
+                handleMessageEvent(msg, messageResponse);
+            } else if (event instanceof TaskUpdateEvent updateEvent) {
+                captureTaskIds(updateEvent.getTask(), responseContextId, responseTaskId);
+                handleUpdateEvent(updateEvent, messageResponse, stopped);
+            } else {
+                messageResponse.completeExceptionally(
+                        new IllegalArgumentException("The event expected should be of type " + event.getClass()));
+            }
+        };
+
+        return List.of(defaultEventConsumer);
+    }
+
     private static void captureTaskIds(Task task, AtomicReference<String> contextId, AtomicReference<String> taskId) {
         contextId.set(task.contextId());
         taskId.set(task.id());
@@ -386,8 +407,49 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
         }
     }
 
+    private void handleTaskEvent(TaskEvent taskEvent, CompletableFuture<String> messageResponse) {
+        // The agent MAY create a new Task to process the provided message asynchronously or MAY return
+        // a direct Message response for simple interactions. The operation MUST return immediately with
+        // either task information or response message. Task processing MAY continue asynchronously after
+        // the response when a Task is returned.
+        completeFromTask(taskEvent.getTask(), messageResponse);
+    }
+
+    private void handleMessageEvent(Message message, CompletableFuture<String> messageResponse) {
+        // Message-only stream: If the agent returns a Message, the stream MUST contain exactly one
+        // Message object and then close immediately. No task tracking or updates are provided.
+        messageResponse.complete(extractTextFromParts(message.parts()));
+    }
+
+    private void handleUpdateEvent(
+            TaskUpdateEvent taskUpdateEvent, CompletableFuture<String> messageResponse, AtomicBoolean stopped) {
+        // Task lifecycle stream: If the agent returns a Task, the stream MUST begin with the Task
+        // object, followed by zero or more TaskStatusUpdateEvent or TaskArtifactUpdateEvent objects.
+        // The stream MUST close when the task reaches a terminal state
+        // (TASK_STATE_COMPLETED, TASK_STATE_FAILED, TASK_STATE_CANCELED, TASK_STATE_REJECTED).
+        if (streamingClientListener != null) {
+            A2AStreamingClientListenerResult listenerResult = streamingClientListener.onUpdateEvent(taskUpdateEvent);
+            if (listenerResult.stop()) {
+                if (listenerResult.withCurrentArtifacts()) {
+                    completeArtifact(taskUpdateEvent.getTask().artifacts(), messageResponse);
+                } else {
+                    String response = listenerResult.response();
+                    messageResponse.complete(response == null ? "" : response);
+                }
+                stopped.set(true);
+                return;
+            }
+        }
+        completeFromTask(taskUpdateEvent.getTask(), messageResponse);
+    }
+
     static void completeFromTask(Task task, CompletableFuture<String> messageResponse) {
         TaskState state = task.status().state();
+
+        if (!state.isInterrupted() && !state.isFinal()) {
+            return;
+        }
+
         if (state.isInterrupted()) {
             // The remote agent paused the task (input-required/auth-required) and will not advance it
             // on its own, so this must complete exceptionally rather than being left pending forever.
@@ -397,9 +459,6 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
                     new A2ATaskInterruptedException(task.id(), task.contextId(), state, reason));
             return;
         }
-        if (!isTerminalState(state) && task.artifacts().isEmpty()) {
-            return;
-        }
         if (isFailureState(state)) {
             Message statusMessage = task.status().message();
             String reason = statusMessage != null ? extractTextFromParts(statusMessage.parts()) : "";
@@ -407,19 +466,21 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
                     + " ended in terminal state " + state + (reason.isEmpty() ? "" : ": " + reason)));
             return;
         }
-        messageResponse.complete(extractTextFromParts(
-                task.artifacts().stream().flatMap(a -> a.parts().stream()).toList()));
+        completeArtifact(task.artifacts(), messageResponse);
+    }
+
+    private static void completeArtifact(List<Artifact> artifacts, CompletableFuture<String> messageResponse) {
+        if (artifacts == null || artifacts.isEmpty()) {
+            messageResponse.complete("");
+            return;
+        }
+        messageResponse.complete(extractTextFromParts(artifacts.stream()
+                .flatMap(artifact -> artifact.parts().stream())
+                .toList()));
     }
 
     private static boolean isFailureState(TaskState state) {
         return state == TaskState.TASK_STATE_FAILED
-                || state == TaskState.TASK_STATE_CANCELED
-                || state == TaskState.TASK_STATE_REJECTED;
-    }
-
-    private static boolean isTerminalState(TaskState state) {
-        return state == TaskState.TASK_STATE_COMPLETED
-                || state == TaskState.TASK_STATE_FAILED
                 || state == TaskState.TASK_STATE_CANCELED
                 || state == TaskState.TASK_STATE_REJECTED;
     }
@@ -462,6 +523,13 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
         if (clientCustomizer != null) {
             this.clientCustomizer = (Consumer<ClientBuilder>) clientCustomizer;
         }
+        return this;
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public A2AClientBuilder<T> streamingClientListener(A2AStreamingClientListener<?> clientListener) {
+        this.streamingClientListener = (A2AStreamingClientListener<TaskUpdateEvent>) clientListener;
         return this;
     }
 
