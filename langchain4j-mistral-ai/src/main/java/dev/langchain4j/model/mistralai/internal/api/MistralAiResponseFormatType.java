@@ -4,6 +4,7 @@ import static dev.langchain4j.model.chat.request.ResponseFormat.JSON;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import dev.langchain4j.model.chat.request.ResponseFormat;
+import java.util.Locale;
 
 /**
  * Represents the value of the 'type' field in the response_format parameter of the MistralAi Chat completions request.
@@ -34,6 +35,6 @@ public enum MistralAiResponseFormatType {
      */
     @Override
     public String toString() {
-        return this.name().toLowerCase();
+        return this.name().toLowerCase(Locale.ROOT);
     }
 }
