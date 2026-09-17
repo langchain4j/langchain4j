@@ -1,5 +1,6 @@
 package dev.langchain4j.store.embedding.oracle;
 
+import dev.langchain4j.Internal;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.store.embedding.filter.Filter;
 import dev.langchain4j.store.embedding.filter.comparison.*;
@@ -19,7 +20,8 @@ import oracle.jdbc.OracleType;
  * A factory for {@link SQLFilter} implementations. The {@link #create(Filter, BiFunction)} creates a SQLFilter that
  * is equivalent to a given {@link Filter}.
  */
-final class SQLFilters {
+@Internal
+public final class SQLFilters {
 
     /**
      * The SQL filter which does nothing. The SQLFilter interface is implemented to return an empty string from methods
@@ -92,7 +94,7 @@ final class SQLFilters {
      *
      * @throws UnsupportedOperationException If the class of the Filter is not recognized.
      */
-    static SQLFilter create(Filter filter, BiFunction<String, OracleType, String> keyMapper) {
+    public static SQLFilter create(Filter filter, BiFunction<String, OracleType, String> keyMapper) {
         if (filter == null) return EMPTY;
 
         Class<? extends Filter> filterClass = filter.getClass();
