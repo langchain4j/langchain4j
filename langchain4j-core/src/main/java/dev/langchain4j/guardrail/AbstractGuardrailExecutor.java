@@ -3,12 +3,6 @@ package dev.langchain4j.guardrail;
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
-import java.time.Duration;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.concurrent.CancellationException;
-import java.util.concurrent.CompletableFuture;
 import dev.langchain4j.Internal;
 import dev.langchain4j.guardrail.GuardrailResult.Failure;
 import dev.langchain4j.guardrail.config.GuardrailsConfig;
@@ -16,6 +10,12 @@ import dev.langchain4j.internal.CancellationChain;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.observability.api.event.GuardrailExecutedEvent;
 import dev.langchain4j.observability.api.event.GuardrailExecutedEvent.GuardrailExecutedEventBuilder;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Abstract base class for {@link GuardrailExecutor}s.
