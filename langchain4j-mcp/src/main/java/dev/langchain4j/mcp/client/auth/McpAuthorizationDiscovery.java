@@ -1,6 +1,7 @@
 package dev.langchain4j.mcp.client.auth;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.Experimental;
@@ -14,8 +15,11 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -68,11 +72,13 @@ public class McpAuthorizationDiscovery {
     private final Duration timeout;
     private final int maxResponseBytes;
     private final boolean allowInsecureHttp;
+    private final Set<String> allowedIssuers;
 
     private McpAuthorizationDiscovery(Builder builder) {
         this.timeout = getOrDefault(builder.timeout, Duration.ofSeconds(10));
         this.maxResponseBytes = getOrDefault(builder.maxResponseBytes, 1024 * 1024);
         this.allowInsecureHttp = builder.allowInsecureHttp;
+        this.allowedIssuers = Set.copyOf(builder.allowedIssuers);
         this.httpClient = builder.httpClient != null
                 ? builder.httpClient
                 : HttpClient.newBuilder()
@@ -161,6 +167,12 @@ public class McpAuthorizationDiscovery {
         }
         if (!isSecure(issuerUri)) {
             failures.add("authorization server " + issuer + " is not served over HTTPS");
+            return null;
+        }
+        if (!isAllowedIssuer(issuer)) {
+            // the MCP server names its authorization server: an application that does not trust it
+            // to do so can restrict the issuers, and one it did not allow is never contacted
+            failures.add("authorization server " + issuer + " is not one of the allowed issuers " + allowedIssuers);
             return null;
         }
         for (URI candidate : authorizationServerMetadataCandidates(issuerUri)) {
@@ -302,6 +314,26 @@ public class McpAuthorizationDiscovery {
         }
     }
 
+    /**
+     * Whether {@code issuer} may be used: either no issuers were configured, or it is one of them.
+     * The comparison is the simple string comparison RFC 8414 prescribes for issuer identifiers.
+     *
+     * @param issuer the issuer identifier from the protected resource metadata
+     * @return whether the issuer may be used
+     */
+    public boolean isAllowedIssuer(String issuer) {
+        return allowedIssuers.isEmpty() || allowedIssuers.contains(issuer);
+    }
+
+    /**
+     * The issuers this instance accepts, empty when any issuer is accepted.
+     *
+     * @return the allowed issuer identifiers
+     */
+    public Set<String> allowedIssuers() {
+        return allowedIssuers;
+    }
+
     private boolean isSecure(URI uri) {
         String scheme = uri.getScheme() == null ? "" : uri.getScheme().toLowerCase(Locale.ROOT);
         if ("https".equals(scheme)) {
@@ -369,6 +401,7 @@ public class McpAuthorizationDiscovery {
         private Duration timeout;
         private Integer maxResponseBytes;
         private boolean allowInsecureHttp;
+        private final Set<String> allowedIssuers = new LinkedHashSet<>();
 
         /**
          * The HTTP client used to fetch metadata documents. Optional; a default one that follows
@@ -393,6 +426,36 @@ public class McpAuthorizationDiscovery {
         public Builder maxResponseBytes(int maxResponseBytes) {
             this.maxResponseBytes = maxResponseBytes;
             return this;
+        }
+
+        /**
+         * Restricts the authorization servers that may be used to the given issuer identifiers.
+         * <p>
+         * The authorization server of an MCP server is whatever its protected resource metadata
+         * names. An application that does not trust the MCP server to name it, for example because
+         * the provider authenticates with a client secret that must not be presented anywhere else,
+         * can list the issuers it expects here; any other issuer is refused and never contacted.
+         * By default no restriction is applied.
+         *
+         * @param allowedIssuers the issuer identifiers to accept, compared as exact strings
+         * @return {@code this}
+         */
+        public Builder allowedIssuers(Collection<String> allowedIssuers) {
+            for (String issuer : ensureNotNull(allowedIssuers, "allowedIssuers")) {
+                this.allowedIssuers.add(ensureNotBlank(issuer, "allowedIssuers entry"));
+            }
+            return this;
+        }
+
+        /**
+         * Restricts the authorization servers that may be used to the given issuer identifiers.
+         *
+         * @param allowedIssuers the issuer identifiers to accept, compared as exact strings
+         * @return {@code this}
+         * @see #allowedIssuers(Collection)
+         */
+        public Builder allowedIssuers(String... allowedIssuers) {
+            return allowedIssuers(List.of(allowedIssuers));
         }
 
         /**

@@ -10,6 +10,7 @@ import java.net.InetSocketAddress;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -77,6 +78,62 @@ class McpAuthorizationDiscoveryTest {
                 + "\"grant_types_supported\":[\"client_credentials\",\"authorization_code\"],"
                 + "\"token_endpoint_auth_methods_supported\":[\"client_secret_basic\",\"client_secret_post\"],"
                 + "\"code_challenge_methods_supported\":[\"S256\"]}";
+    }
+
+    @Test
+    void an_issuer_that_is_not_allowed_is_refused_without_being_contacted() {
+        documents.put("/.well-known/oauth-protected-resource/mcp", prm(base + "/mcp", base + "/rogue"));
+        documents.put("/.well-known/oauth-authorization-server/rogue", asMetadata(base + "/rogue"));
+        McpAuthorizationDiscovery discovery = McpAuthorizationDiscovery.builder()
+                .timeout(Duration.ofSeconds(5))
+                .allowedIssuers(base + "/expected")
+                .build();
+
+        assertThatThrownBy(() -> discovery.discover(URI.create(base + "/mcp"), null))
+                .isInstanceOf(McpAuthorizationDiscoveryException.class)
+                .hasMessageContaining("not one of the allowed issuers");
+
+        assertThat(requestedPaths).doesNotContain("/.well-known/oauth-authorization-server/rogue");
+        assertThat(discovery.isAllowedIssuer(base + "/rogue")).isFalse();
+        assertThat(discovery.isAllowedIssuer(base + "/expected")).isTrue();
+    }
+
+    @Test
+    void every_issuer_is_allowed_when_none_are_configured() {
+        McpAuthorizationDiscovery discovery = discovery();
+
+        assertThat(discovery.allowedIssuers()).isEmpty();
+        assertThat(discovery.isAllowedIssuer(base + "/anything")).isTrue();
+    }
+
+    @Test
+    void a_blank_or_missing_allowed_issuer_is_rejected_rather_than_blocking_every_issuer() {
+        assertThatThrownBy(() -> McpAuthorizationDiscovery.builder().allowedIssuers(""))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("allowedIssuers entry");
+        assertThatThrownBy(() -> McpAuthorizationDiscovery.builder().allowedIssuers(Arrays.asList("https://as", null)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("allowedIssuers entry");
+        assertThatThrownBy(() -> McpAuthorizationDiscovery.builder().allowedIssuers((List<String>) null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("allowedIssuers");
+    }
+
+    @Test
+    void an_allowed_issuer_among_several_is_used() {
+        documents.put(
+                "/.well-known/oauth-protected-resource/mcp", prm(base + "/mcp", base + "/rogue", base + "/expected"));
+        documents.put("/.well-known/oauth-authorization-server/rogue", asMetadata(base + "/rogue"));
+        documents.put("/.well-known/oauth-authorization-server/expected", asMetadata(base + "/expected"));
+        McpAuthorizationDiscovery discovery = McpAuthorizationDiscovery.builder()
+                .timeout(Duration.ofSeconds(5))
+                .allowedIssuers(base + "/expected")
+                .build();
+
+        McpAuthorizationDiscovery.Result result = discovery.discover(URI.create(base + "/mcp"), null);
+
+        assertThat(result.authorizationServer().issuer()).isEqualTo(base + "/expected");
+        assertThat(requestedPaths).doesNotContain("/.well-known/oauth-authorization-server/rogue");
     }
 
     @Test

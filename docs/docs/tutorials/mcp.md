@@ -156,6 +156,28 @@ McpAuthProvider auth = OAuth2ClientCredentialsAuthProvider.builder()
         .build(); // token endpoint, resource and scopes are discovered from the MCP server
 ```
 
+:::note
+The authorization server is whatever the MCP server's metadata names, and the provider presents its
+client credentials to that server's token endpoint. The client secret therefore goes wherever the MCP
+server points, which matters if the server is not fully trusted: unlike an access token, which is
+bound to that one server through the `resource` parameter, the secret can obtain tokens for every
+resource and scope the client is allowed. Applications that do not want to rely on the MCP server for
+this can list the issuers they expect, and no token is ever requested from an authorization server
+that is not among them (when the provider performs the discovery itself, such a server is not
+contacted at all). The token endpoint remains the one the accepted issuer's own metadata names, which
+may be on another host:
+
+```java
+McpAuthProvider auth = OAuth2ClientCredentialsAuthProvider.builder()
+        .clientId("my-agent")
+        .clientSecret(System.getenv("MCP_CLIENT_SECRET"))
+        .allowedIssuers("https://auth.example.com") // compared as exact strings
+        .build();
+```
+
+Configuring `tokenEndpoint` explicitly has the same effect, since no discovery takes place then.
+:::
+
 `McpAuthorizationDiscovery` can also be used on its own, for example by a custom provider that
 implements another grant.
 

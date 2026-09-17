@@ -234,6 +234,77 @@ class OAuth2ClientCredentialsAuthProviderDiscoveryTest {
     }
 
     @Test
+    void an_issuer_the_application_did_not_allow_is_never_contacted_and_no_token_is_requested() {
+        publish("/rogue", null, ",\"grant_types_supported\":[\"client_credentials\"]");
+        OAuth2ClientCredentialsAuthProvider provider =
+                provider().allowedIssuers(base + "/expected").build();
+
+        assertThatThrownBy(() -> provider.onChallenge(challenge(Map.of("resource_metadata", base + "/prm"))))
+                .isInstanceOf(McpAuthorizationDiscoveryException.class)
+                .hasMessageContaining(base + "/rogue");
+
+        // the client secret was never presented anywhere, and the rogue issuer was not even asked for its metadata
+        assertThat(tokenRequests).isEmpty();
+        assertThat(provider.tokenEndpoint()).isNull();
+        assertThat(requestedPaths).doesNotContain("/.well-known/oauth-authorization-server/rogue");
+    }
+
+    @Test
+    void an_allowed_issuer_is_used_as_usual() {
+        publish("/expected", null, ",\"grant_types_supported\":[\"client_credentials\"]");
+        OAuth2ClientCredentialsAuthProvider provider =
+                provider().allowedIssuers(List.of(base + "/expected")).build();
+
+        assertThat(provider.onChallenge(challenge(Map.of("resource_metadata", base + "/prm"))))
+                .isTrue();
+        assertThat(provider.getAuthorization(REQUEST)).isEqualTo("Bearer tok-/expected/token");
+        assertThat(tokenRequests).hasSize(1);
+    }
+
+    @Test
+    void a_refused_challenge_leaves_the_token_and_the_scopes_untouched() {
+        publish("/expected", null, ",\"grant_types_supported\":[\"client_credentials\"]");
+        documents.put(
+                "/prm-elsewhere",
+                "{\"resource\":\"" + base + "/mcp\",\"authorization_servers\":[\"" + base + "/rogue\"]}");
+        documents.put(
+                "/.well-known/oauth-authorization-server/rogue",
+                "{\"issuer\":\"" + base + "/rogue\",\"token_endpoint\":\"" + base + "/rogue/token\"}");
+        OAuth2ClientCredentialsAuthProvider provider =
+                provider().allowedIssuers(base + "/expected").build();
+        provider.onChallenge(challenge(Map.of("resource_metadata", base + "/prm")));
+        String token = provider.getAuthorization(REQUEST);
+
+        assertThatThrownBy(() -> provider.onChallenge(
+                        challenge(Map.of("resource_metadata", base + "/prm-elsewhere", "scope", "admin:everything"))))
+                .isInstanceOf(McpAuthorizationDiscoveryException.class);
+
+        // the refused challenge must not discard the token, widen the scopes or move the endpoint
+        assertThat(provider.getAuthorization(REQUEST)).isEqualTo(token);
+        assertThat(provider.requestedScopes()).doesNotContain("admin:everything");
+        assertThat(provider.tokenEndpoint()).isEqualTo(URI.create(base + "/expected/token"));
+        assertThat(tokenRequests).hasSize(1);
+    }
+
+    @Test
+    void the_allowed_issuers_are_enforced_even_with_a_caller_supplied_discovery() {
+        publish("/rogue", null, ",\"grant_types_supported\":[\"client_credentials\"]");
+        OAuth2ClientCredentialsAuthProvider provider = provider()
+                // a discovery instance that knows nothing about the allowed issuers
+                .discovery(McpAuthorizationDiscovery.builder()
+                        .timeout(Duration.ofSeconds(5))
+                        .build())
+                .allowedIssuers(base + "/expected")
+                .build();
+
+        assertThatThrownBy(() -> provider.onChallenge(challenge(Map.of("resource_metadata", base + "/prm"))))
+                .isInstanceOf(McpAuthorizationDiscoveryException.class)
+                .hasMessageContaining("not one of the allowed issuers");
+
+        assertThat(tokenRequests).isEmpty();
+    }
+
+    @Test
     void sends_nothing_before_discovery_then_discovers_from_the_challenge() {
         publish("/auth", "[\"mcp:tools\"]", ",\"grant_types_supported\":[\"client_credentials\"]");
         OAuth2ClientCredentialsAuthProvider provider = provider().build();

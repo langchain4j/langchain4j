@@ -20,6 +20,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -127,6 +128,7 @@ public class OAuth2ClientCredentialsAuthProvider implements McpAuthProvider {
     private final HttpClient httpClient;
     private final Clock clock;
     private final McpAuthorizationDiscovery discovery;
+    private final Set<String> allowedIssuers;
 
     private final ReentrantLock lock = new ReentrantLock();
     private final Set<String> scopes;
@@ -149,6 +151,7 @@ public class OAuth2ClientCredentialsAuthProvider implements McpAuthProvider {
         this.httpClient = builder.httpClient != null
                 ? builder.httpClient
                 : HttpClient.newBuilder().connectTimeout(this.timeout).build();
+        this.allowedIssuers = Set.copyOf(builder.allowedIssuers);
         if (builder.discovery != null) {
             this.discovery = builder.discovery;
         } else {
@@ -158,6 +161,9 @@ public class OAuth2ClientCredentialsAuthProvider implements McpAuthProvider {
                     McpAuthorizationDiscovery.builder().timeout(this.timeout);
             if (builder.httpClient != null) {
                 discoveryBuilder.httpClient(builder.httpClient);
+            }
+            if (!this.allowedIssuers.isEmpty()) {
+                discoveryBuilder.allowedIssuers(this.allowedIssuers);
             }
             this.discovery = discoveryBuilder.build();
         }
@@ -252,6 +258,12 @@ public class OAuth2ClientCredentialsAuthProvider implements McpAuthProvider {
         }
         McpAuthorizationDiscovery.Result discovered = discovery.discover(challenge.uri(), resourceMetadataUrl);
         McpAuthorizationServerMetadata server = discovered.authorizationServer();
+        if (!allowedIssuers.isEmpty() && !allowedIssuers.contains(server.issuer())) {
+            // defence in depth: a caller-supplied McpAuthorizationDiscovery may not know the list
+            throw new McpAuthorizationDiscoveryException("MCP server " + challenge.uri()
+                    + " names authorization server " + server.issuer() + ", which is not one of the allowed issuers "
+                    + allowedIssuers + "; refusing to request a token from it");
+        }
         if (!server.supportsGrantType(GRANT_TYPE)) {
             throw new McpAuthorizationDiscoveryException("Authorization server " + server.issuer()
                     + " does not support the " + GRANT_TYPE + " grant (grant_types_supported: "
@@ -434,6 +446,7 @@ public class OAuth2ClientCredentialsAuthProvider implements McpAuthProvider {
         private HttpClient httpClient;
         private Clock clock;
         private McpAuthorizationDiscovery discovery;
+        private final Set<String> allowedIssuers = new LinkedHashSet<>();
 
         /**
          * The token endpoint of the authorization server. Optional: when absent, the provider
@@ -535,6 +548,39 @@ public class OAuth2ClientCredentialsAuthProvider implements McpAuthProvider {
         public Builder httpClient(HttpClient httpClient) {
             this.httpClient = httpClient;
             return this;
+        }
+
+        /**
+         * Restricts the authorization servers a token may be requested from to the given issuer
+         * identifiers.
+         * <p>
+         * With discovery, the authorization server is whatever the MCP server's protected resource
+         * metadata names, and this provider presents its client credentials to that server's token
+         * endpoint. An application that does not trust the MCP server to name its authorization
+         * server can list the issuers it expects here; any other issuer is refused, and it is never
+         * contacted when this provider performs the discovery itself. Has no effect when
+         * {@link #tokenEndpoint(String)} is configured. By default no restriction is applied.
+         *
+         * @param allowedIssuers the issuer identifiers to accept, compared as exact strings
+         * @return {@code this}
+         */
+        public Builder allowedIssuers(Collection<String> allowedIssuers) {
+            for (String issuer : ensureNotNull(allowedIssuers, "allowedIssuers")) {
+                this.allowedIssuers.add(ensureNotBlank(issuer, "allowedIssuers entry"));
+            }
+            return this;
+        }
+
+        /**
+         * Restricts the authorization servers a token may be requested from to the given issuer
+         * identifiers.
+         *
+         * @param allowedIssuers the issuer identifiers to accept, compared as exact strings
+         * @return {@code this}
+         * @see #allowedIssuers(Collection)
+         */
+        public Builder allowedIssuers(String... allowedIssuers) {
+            return allowedIssuers(List.of(allowedIssuers));
         }
 
         /**
