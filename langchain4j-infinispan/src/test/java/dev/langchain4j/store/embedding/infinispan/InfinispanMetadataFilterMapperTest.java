@@ -133,10 +133,10 @@ class InfinispanMetadataFilterMapperTest {
                         new IsIn("status", Arrays.asList(1, 2, 3)),
                         "m0.name='status' and m0.value_int IN (1, 2, 3)",
                         " join i.metadata m0"),
-                // Float IsIn
+                // Float IsIn - literals are widened to double, matching the value_float column
                 Arguments.of(
                         new IsIn("scores", Arrays.asList(1.1f, 2.2f, 3.3f)),
-                        "m0.name='scores' and m0.value_float IN (3.3, 1.1, 2.2)",
+                        "m0.name='scores' and m0.value_float IN (3.299999952316284, 1.100000023841858, 2.200000047683716)",
                         " join i.metadata m0"));
     }
 
@@ -365,6 +365,22 @@ class InfinispanMetadataFilterMapperTest {
 
         // then
         assertThat(result.query).isEqualTo("m0.name='score' and m0.value_float = " + Double.MIN_VALUE);
+    }
+
+    @Test
+    void should_render_float_in_literals_as_doubles_matching_the_equal_filter() {
+        // given - 1.1f is not exactly representable as a double
+        Filter in = new IsIn("score", Arrays.asList(1.1f));
+        Filter eq = new IsEqualTo("score", 1.1f);
+
+        // when - a fresh mapper per mapping: the mapper's join alias counter is stateful
+        InfinispanMetadataFilterMapper.FilterResult inResult = new InfinispanMetadataFilterMapper().map(in);
+        InfinispanMetadataFilterMapper.FilterResult eqResult = new InfinispanMetadataFilterMapper().map(eq);
+
+        // then - the IN literal must equal the = literal, which stores the Float as a double
+        String doubleLiteral = String.valueOf(((Float) 1.1f).doubleValue());
+        assertThat(inResult.query).isEqualTo("m0.name='score' and m0.value_float IN (" + doubleLiteral + ")");
+        assertThat(eqResult.query).isEqualTo("m0.name='score' and m0.value_float = " + doubleLiteral);
     }
 
     @Test
