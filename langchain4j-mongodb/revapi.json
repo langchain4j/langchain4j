@@ -1,0 +1,25 @@
+[
+  {
+    "extension": "revapi.differences",
+    "configuration": {
+      "ignore": true,
+      "differences": [
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class com.mongodb.client.MongoClient",
+          "justification": "MongoClient is intentionally exposed by MongoDbEmbeddingStore as the connection entry point to a MongoDB deployment; this is the natural public configuration surface for the integration."
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class com.mongodb.client.model.CreateCollectionOptions",
+          "justification": "CreateCollectionOptions is intentionally exposed by MongoDbEmbeddingStore builder/configuration APIs for custom collection setup."
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class org.bson.conversions.Bson",
+          "justification": "Bson is intentionally exposed by MongoDbEmbeddingStore's filter configuration API, allowing callers to pass driver-native MongoDB filters without introducing a second abstraction layer."
+        }
+      ]
+    }
+  }
+]

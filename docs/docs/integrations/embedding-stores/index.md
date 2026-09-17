@@ -29,7 +29,7 @@ sidebar_position: 0
 | [JVector](/integrations/embedding-stores/jvector)                                     |                  |                       | ✅                   |
 | [Mariadb](/integrations/embedding-stores/mariadb)                                     | ✅                | ✅                     | ✅                   |
 | [Milvus](/integrations/embedding-stores/milvus)                                       | ✅                | ✅                     | ✅                   |
-| [MongoDB Atlas](/integrations/embedding-stores/mongodb-atlas)                         | ✅                | ✅                     | ✅                   |
+| [MongoDB](/integrations/embedding-stores/mongodb)                                       | ✅                | ✅                     | ✅                   |
 | [Neo4j](/integrations/embedding-stores/neo4j)                                         | ✅                |                       |                     |
 | [OceanBase](/integrations/embedding-stores/oceanbase)                                 | ✅                | ✅                     | ✅                   |
 | [OpenSearch](/integrations/embedding-stores/opensearch)                               | ✅                | ✅                     | ✅                   |

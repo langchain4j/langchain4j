@@ -1,20 +1,19 @@
 package dev.langchain4j.store.embedding.mongodb;
 
-import org.bson.codecs.pojo.annotations.BsonId;
-
 import java.util.List;
 import java.util.Map;
+import org.bson.codecs.pojo.annotations.BsonId;
 
 public class MongoDbDocument {
 
     @BsonId
     private String id;
+
     private List<Float> embedding;
     private String text;
     private Map<String, Object> metadata;
 
-    public MongoDbDocument() {
-    }
+    public MongoDbDocument() {}
 
     public MongoDbDocument(String id, List<Float> embedding, String text, Map<String, Object> metadata) {
         this.id = id;
@@ -89,6 +88,5 @@ public class MongoDbDocument {
         public MongoDbDocument build() {
             return new MongoDbDocument(id, embedding, text, metadata);
         }
-
     }
 }
