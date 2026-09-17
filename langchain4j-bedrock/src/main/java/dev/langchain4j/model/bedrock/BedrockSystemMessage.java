@@ -126,6 +126,7 @@ public class BedrockSystemMessage implements ChatMessage {
      *
      * @return combined text from all blocks
      */
+    @Override
     public String text() {
         return contents.stream()
                 .filter(c -> c instanceof BedrockSystemTextContent)

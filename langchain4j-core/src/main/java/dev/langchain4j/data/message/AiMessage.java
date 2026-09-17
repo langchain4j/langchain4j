@@ -106,6 +106,7 @@ public class AiMessage implements ChatMessage {
      *
      * @return the text of the message.
      */
+    @Override
     public String text() {
         return text;
     }

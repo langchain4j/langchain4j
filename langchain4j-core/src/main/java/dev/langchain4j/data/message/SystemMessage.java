@@ -49,6 +49,7 @@ public class SystemMessage implements ChatMessage {
      * Returns the message text.
      * @return the message text.
      */
+    @Override
     public String text() {
         return text;
     }

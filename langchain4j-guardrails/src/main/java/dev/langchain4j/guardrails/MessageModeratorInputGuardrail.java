@@ -26,7 +26,6 @@ import dev.langchain4j.service.ModerationException;
  */
 public class MessageModeratorInputGuardrail implements InputGuardrail {
 
-
     private final ModerationModel moderationModel;
 
     /**
@@ -53,10 +52,12 @@ public class MessageModeratorInputGuardrail implements InputGuardrail {
      */
     @Override
     public InputGuardrailResult validate(UserMessage userMessage) {
-        Response<Moderation> response = moderationModel.moderate(userMessage);
+        Response<Moderation> response = moderationModel.moderate(userMessage.text());
 
         if (response.content().flagged()) {
-            return fatal("User message has been flagged", new ModerationException("User message has been flagged", response.content()));
+            return fatal(
+                    "User message has been flagged",
+                    new ModerationException("User message has been flagged", response.content()));
         } else {
             return success();
         }
