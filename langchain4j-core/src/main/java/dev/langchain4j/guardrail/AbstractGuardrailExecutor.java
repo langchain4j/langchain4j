@@ -3,6 +3,12 @@ package dev.langchain4j.guardrail;
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.CompletableFuture;
 import dev.langchain4j.Internal;
 import dev.langchain4j.guardrail.GuardrailResult.Failure;
 import dev.langchain4j.guardrail.config.GuardrailsConfig;
@@ -10,12 +16,6 @@ import dev.langchain4j.internal.CancellationChain;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.observability.api.event.GuardrailExecutedEvent;
 import dev.langchain4j.observability.api.event.GuardrailExecutedEvent.GuardrailExecutedEventBuilder;
-import java.time.Duration;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.concurrent.CancellationException;
-import java.util.concurrent.CompletableFuture;
 
 /**
  * Abstract base class for {@link GuardrailExecutor}s.
@@ -236,7 +236,20 @@ public abstract sealed class AbstractGuardrailExecutor<
         });
     }
 
+    /**
+     * Composes an accumulated result with the result of the guardrail that just ran.
+     * <p>
+     *     When both results are successful, a rewrite carried by the newer result wins, otherwise any rewrite
+     *     carried by the older result is preserved. Failures take precedence over successes and are merged when
+     *     both results failed.
+     * </p>
+     */
     protected R composeResult(R oldResult, R newResult) {
+        if (oldResult.isSuccess() && newResult.isSuccess()) {
+            // Both succeeded, so a rewrite from the newer result wins, otherwise keep any earlier rewrite
+            return (!newResult.hasRewrittenResult() && oldResult.hasRewrittenResult()) ? oldResult : newResult;
+        }
+
         if (oldResult.isSuccess()) {
             return newResult;
         }
