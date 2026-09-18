@@ -109,7 +109,7 @@ abstract class AbstractBedrockChatModel {
 
     private static final Logger log = LoggerFactory.getLogger(AbstractBedrockChatModel.class);
 
-    private static final String THINKING_SIGNATURE_KEY =
+    static final String THINKING_SIGNATURE_KEY =
             "thinking_signature"; // do not change, will break backward compatibility!
 
     /**
