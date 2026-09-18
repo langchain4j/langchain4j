@@ -26,12 +26,25 @@ public class DefaultMcpToolResultConverter implements McpToolResultConverter {
 
     private String extractText(Map<String, Object> contentItem) {
         Object type = contentItem.get("type");
-        if (!"text".equals(type)) {
-            // Preserve the historical error message format from ToolExecutionHelper,
-            // where the JSON string value is rendered with quotes.
+        if ("text".equals(type)) {
+            Object text = contentItem.get("text");
+            return text == null ? "" : String.valueOf(text);
+        } else if ("image".equals(type)) {
+            Object data = contentItem.get("data");
+            Object mimeType = contentItem.get("mimeType");
+            if (data != null && mimeType != null) {
+                return "data:" + mimeType + ";base64," + data;
+            }
+            return "[image: missing data or mimeType]";
+        } else if ("resource".equals(type)) {
+            Object resource = contentItem.get("resource");
+            if (resource instanceof Map) {
+                Object text = ((Map<?, ?>) resource).get("text");
+                return text == null ? "" : String.valueOf(text);
+            }
+            return "";
+        } else {
             throw new RuntimeException("Unsupported content type: \"" + type + "\"");
         }
-        Object text = contentItem.get("text");
-        return text == null ? "" : String.valueOf(text);
     }
 }
