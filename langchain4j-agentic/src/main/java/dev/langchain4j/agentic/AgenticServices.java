@@ -4,6 +4,7 @@ import static dev.langchain4j.agentic.declarative.DeclarativeUtil.agenticScopePr
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.checkReturnType;
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.configureAgent;
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.invokeStatic;
+import static dev.langchain4j.agentic.declarative.DeclarativeUtil.invokeSupplierWithResolvers;
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.predicateMethod;
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.selectMethod;
 import static dev.langchain4j.agentic.internal.AgentUtil.agentInvocationArguments;
@@ -802,9 +803,8 @@ public class AgenticServices {
 
         Object mcpClient = selectMethod(
                         agentServiceClass,
-                        method ->
-                                method.isAnnotationPresent(McpClientSupplier.class) && method.getParameterCount() == 0)
-                .map(method -> invokeStatic(method))
+                        method -> method.isAnnotationPresent(McpClientSupplier.class))
+                .map(method -> invokeSupplierWithResolvers(agentServiceClass, method, Object.class))
                 .orElseThrow(
                         () -> new IllegalArgumentException(
                                 "An MCP client agent requires a method annotated with @McpClientSupplier that returns the McpClient instance."));
