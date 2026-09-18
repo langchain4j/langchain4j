@@ -1,6 +1,7 @@
 package dev.langchain4j.model.cohere;
 
 import static dev.langchain4j.http.client.HttpMethod.POST;
+import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.Utils.ensureTrailingForwardSlash;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
@@ -16,6 +17,7 @@ import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.http.client.log.LoggingHttpClient;
 import java.net.Proxy;
 import java.time.Duration;
+import java.util.concurrent.CompletableFuture;
 import org.slf4j.Logger;
 
 class CohereClient {
@@ -95,6 +97,23 @@ class CohereClient {
         SuccessfulHttpResponse response = httpClient.execute(httpRequest);
 
         return fromJson(response.body(), RerankResponse.class);
+    }
+
+    CompletableFuture<RerankResponse> rerankAsync(RerankRequest request) {
+        HttpRequest httpRequest = HttpRequest.builder()
+                .method(POST)
+                .url(baseUrl + "rerank")
+                .addHeader("Content-Type", "application/json")
+                .addHeader("Accept", "application/json")
+                .addHeader("Authorization", authorizationHeader)
+                .body(toJson(request))
+                .build();
+
+        CompletableFuture<SuccessfulHttpResponse> httpFuture = httpClient.executeAsync(httpRequest);
+        CompletableFuture<RerankResponse> result =
+                httpFuture.thenApply(response -> fromJson(response.body(), RerankResponse.class));
+        propagateCancellation(result, httpFuture);
+        return result;
     }
 
     public static class CohereClientBuilder {

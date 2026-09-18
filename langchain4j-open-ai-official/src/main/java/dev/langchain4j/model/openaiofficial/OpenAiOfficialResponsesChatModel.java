@@ -16,6 +16,7 @@ import static dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesStream
 import static dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesStreamingChatModel.extractToolExecutionRequests;
 import static dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesStreamingChatModel.mapStatusToFinishReason;
 import static dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesStreamingChatModel.validate;
+import static dev.langchain4j.model.openaiofficial.setup.OpenAiOfficialSetup.detectModelProvider;
 import static dev.langchain4j.model.openaiofficial.setup.OpenAiOfficialSetup.setupSyncClient;
 import static java.util.Arrays.asList;
 
@@ -58,6 +59,7 @@ public class OpenAiOfficialResponsesChatModel implements ChatModel {
     private final OpenAIClient client;
     private final OpenAiOfficialResponsesChatRequestParameters defaultRequestParameters;
     private final List<ChatModelListener> listeners;
+    private final ModelProvider modelProvider;
 
     private OpenAiOfficialResponsesChatModel(Builder builder) {
         this.client = builder.client != null
@@ -109,6 +111,7 @@ public class OpenAiOfficialResponsesChatModel implements ChatModel {
                 .promptCacheKey(getOrDefault(builder.promptCacheKey, responsesParameters.promptCacheKey()))
                 .promptCacheRetention(
                         getOrDefault(builder.promptCacheRetention, responsesParameters.promptCacheRetention()))
+                .promptCacheOptions(getOrDefault(builder.promptCacheOptions, responsesParameters.promptCacheOptions()))
                 .reasoningEffort(getOrDefault(builder.reasoningEffort, responsesParameters.reasoningEffort()))
                 .reasoningSummary(getOrDefault(builder.reasoningSummary, responsesParameters.reasoningSummary()))
                 .textVerbosity(getOrDefault(builder.textVerbosity, responsesParameters.textVerbosity()))
@@ -119,6 +122,12 @@ public class OpenAiOfficialResponsesChatModel implements ChatModel {
                 .build();
 
         this.listeners = copy(builder.listeners);
+        this.modelProvider = detectModelProvider(
+                builder.isMicrosoftFoundry,
+                builder.isGitHubModels,
+                builder.baseUrl,
+                builder.microsoftFoundryDeploymentName,
+                builder.azureOpenAIServiceVersion);
     }
 
     public static Builder builder() {
@@ -176,7 +185,7 @@ public class OpenAiOfficialResponsesChatModel implements ChatModel {
 
     @Override
     public ModelProvider provider() {
-        return ModelProvider.OPEN_AI;
+        return modelProvider;
     }
 
     @Override
@@ -214,6 +223,7 @@ public class OpenAiOfficialResponsesChatModel implements ChatModel {
         private String safetyIdentifier;
         private String promptCacheKey;
         private String promptCacheRetention;
+        private OpenAiOfficialPromptCacheOptions promptCacheOptions;
         private ReasoningEffort reasoningEffort;
         private Reasoning.Summary reasoningSummary;
         private String textVerbosity;
@@ -358,6 +368,14 @@ public class OpenAiOfficialResponsesChatModel implements ChatModel {
 
         public Builder promptCacheKey(String promptCacheKey) {
             this.promptCacheKey = promptCacheKey;
+            return this;
+        }
+
+        /**
+         * @since 1.21.0
+         */
+        public Builder promptCacheOptions(OpenAiOfficialPromptCacheOptions promptCacheOptions) {
+            this.promptCacheOptions = promptCacheOptions;
             return this;
         }
 

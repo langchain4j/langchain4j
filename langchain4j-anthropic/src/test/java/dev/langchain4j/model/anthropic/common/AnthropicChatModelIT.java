@@ -41,6 +41,11 @@ class AnthropicChatModelIT extends AbstractChatModelIT {
             .build();
 
     @Override
+    protected boolean supportsChatAsync() {
+        return true;
+    }
+
+    @Override
     protected List<ChatModel> models() {
         return List.of(ANTHROPIC_CHAT_MODEL);
     }

@@ -3,18 +3,17 @@ package dev.langchain4j.model.mistralai.internal.api;
 import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import java.util.Map;
 
 @JsonInclude(NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
-@JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 @JsonDeserialize(builder = MistralAiJsonSchema.Builder.class)
 public class MistralAiJsonSchema {
 
@@ -23,6 +22,7 @@ public class MistralAiJsonSchema {
     private final Map<String, Object> schema;
     private final boolean strict;
 
+    @JsonCreator
     public MistralAiJsonSchema(Builder builder) {
         this.name = builder.name;
         this.description = builder.description;
@@ -52,7 +52,7 @@ public class MistralAiJsonSchema {
 
     @JsonPOJOBuilder(withPrefix = "")
     @JsonIgnoreProperties(ignoreUnknown = true)
-    @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
+    @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
     public static class Builder {
 
         private String name;

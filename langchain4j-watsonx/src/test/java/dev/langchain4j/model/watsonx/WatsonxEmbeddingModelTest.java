@@ -1,7 +1,9 @@
 package dev.langchain4j.model.watsonx;
 
+import static dev.langchain4j.model.ModelProvider.WATSONX;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.Mockito.mock;
@@ -19,6 +21,10 @@ import com.ibm.watsonx.ai.embedding.EmbeddingService;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.embedding.listener.EmbeddingModelListener;
+import dev.langchain4j.model.embedding.listener.EmbeddingModelRequestContext;
+import dev.langchain4j.model.embedding.listener.EmbeddingModelResponseContext;
+import dev.langchain4j.model.embedding.request.EmbeddingRequest;
 import dev.langchain4j.model.watsonx.utils.HttpUtils;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -27,6 +33,7 @@ import java.net.http.HttpResponse;
 import java.net.http.HttpResponse.BodyHandler;
 import java.time.Duration;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -175,6 +182,125 @@ public class WatsonxEmbeddingModelTest {
             assertEquals(0, embeddingModel.embedAll(null).content().size());
             assertEquals(0, embeddingModel.embedAll(List.of()).content().size());
         });
+    }
+
+    @Test
+    void should_return_the_model_name_and_the_token_usage() {
+
+        List<EmbeddingResponse.Result> results = List.of(new EmbeddingResponse.Result(List.of(0f, 1f), "test1"));
+
+        when(mockEmbeddingService.embed(List.of("test1"), null))
+                .thenReturn(new EmbeddingResponse("modelId", "createdAt", results, 10));
+
+        withEmbeddingServiceMock(() -> {
+            EmbeddingModel embeddingModel = createEmbeddingModel().build();
+
+            var response = embeddingModel.embed(
+                    EmbeddingRequest.builder().input("test1").build());
+
+            assertEquals(WATSONX, embeddingModel.provider());
+            assertEquals("modelId", response.metadata().modelName());
+            assertEquals(10, response.metadata().tokenUsage().inputTokenCount());
+        });
+    }
+
+    @Test
+    void should_notify_the_listeners_when_embedding_with_the_watsonx_parameters() {
+
+        var parameters = EmbeddingParameters.builder().truncateInputTokens(10).build();
+        List<EmbeddingResponse.Result> results = List.of(new EmbeddingResponse.Result(List.of(0f, 1f), "test1"));
+
+        when(mockEmbeddingService.embed(List.of("test1"), parameters))
+                .thenReturn(new EmbeddingResponse("modelId", "createdAt", results, 10));
+
+        var requestContext = new AtomicReference<EmbeddingModelRequestContext>();
+        var responseContext = new AtomicReference<EmbeddingModelResponseContext>();
+
+        EmbeddingModelListener listener = new EmbeddingModelListener() {
+            @Override
+            public void onRequest(EmbeddingModelRequestContext context) {
+                requestContext.set(context);
+            }
+
+            @Override
+            public void onResponse(EmbeddingModelResponseContext context) {
+                responseContext.set(context);
+            }
+        };
+
+        withEmbeddingServiceMock(() -> {
+            WatsonxEmbeddingModel embeddingModel =
+                    createEmbeddingModel().listeners(List.of(listener)).build();
+
+            var response = embeddingModel.embedAll(List.of(TextSegment.from("test1")), parameters);
+
+            assertEquals(1, response.content().size());
+
+            assertNotNull(requestContext.get());
+            assertEquals(WATSONX, requestContext.get().modelProvider());
+            assertEquals(
+                    List.of("test1"),
+                    requestContext.get().textSegments().stream()
+                            .map(TextSegment::text)
+                            .toList());
+
+            assertNotNull(responseContext.get());
+            assertEquals(
+                    1, responseContext.get().embeddingResponse().embeddings().size());
+            assertEquals(10, responseContext.get().response().tokenUsage().inputTokenCount());
+        });
+    }
+
+    @Test
+    void should_notify_the_listeners() {
+
+        List<EmbeddingResponse.Result> results = List.of(new EmbeddingResponse.Result(List.of(0f, 1f), "test1"));
+
+        when(mockEmbeddingService.embed(List.of("test1"), null))
+                .thenReturn(new EmbeddingResponse("modelId", "createdAt", results, 10));
+
+        var requestContext = new AtomicReference<EmbeddingModelRequestContext>();
+        var responseContext = new AtomicReference<EmbeddingModelResponseContext>();
+
+        EmbeddingModelListener listener = new EmbeddingModelListener() {
+            @Override
+            public void onRequest(EmbeddingModelRequestContext context) {
+                requestContext.set(context);
+            }
+
+            @Override
+            public void onResponse(EmbeddingModelResponseContext context) {
+                responseContext.set(context);
+            }
+        };
+
+        withEmbeddingServiceMock(() -> {
+            EmbeddingModel embeddingModel =
+                    createEmbeddingModel().listeners(List.of(listener)).build();
+
+            embeddingModel.embed("test1");
+
+            assertNotNull(requestContext.get());
+            assertEquals(WATSONX, requestContext.get().modelProvider());
+            assertEquals(
+                    List.of("test1"),
+                    requestContext.get().textSegments().stream()
+                            .map(TextSegment::text)
+                            .toList());
+
+            assertNotNull(responseContext.get());
+            assertEquals(
+                    1, responseContext.get().embeddingResponse().embeddings().size());
+            assertEquals(10, responseContext.get().response().tokenUsage().inputTokenCount());
+        });
+    }
+
+    private WatsonxEmbeddingModel.Builder createEmbeddingModel() {
+        return WatsonxEmbeddingModel.builder()
+                .baseUrl("https://test.com")
+                .projectId("projectId")
+                .modelName("modelName")
+                .apiKey("apiKey");
     }
 
     private void withEmbeddingServiceMock(Runnable action) {

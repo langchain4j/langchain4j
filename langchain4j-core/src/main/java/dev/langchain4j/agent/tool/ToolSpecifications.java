@@ -138,7 +138,7 @@ public class ToolSpecifications {
             Method method, boolean includeInheritedFields, boolean respectJsonIgnoreAnnotations) {
         Tool tool = method.getAnnotation(Tool.class);
         return ToolSpecification.builder()
-                .name(getName(tool, method))
+                .name(toolNameFrom(method))
                 .description(getDescription(tool))
                 .parameters(
                         parametersFrom(method.getParameters(), includeInheritedFields, respectJsonIgnoreAnnotations))
@@ -146,7 +146,28 @@ public class ToolSpecifications {
                 .build();
     }
 
-    private static String getName(Tool tool, Method method) {
+    /**
+     * Returns the name under which the given method is exposed to the LLM.
+     * <p>
+     * A tool is named after the Java method that implements it:
+     * <pre>{@code
+     * @Tool
+     * String currentTime() { ... } // the LLM sees a tool named "currentTime"
+     * }</pre>
+     * unless the {@link Tool#name()} attribute is set, in which case that name is used instead:
+     * <pre>{@code
+     * @Tool(name = "current_time")
+     * String currentTime() { ... } // the LLM sees a tool named "current_time"
+     * }</pre>
+     * This is the name the LLM uses when it asks for the tool to be executed, so it is also
+     * the name carried by the resulting {@link ToolExecutionRequest}.
+     *
+     * @param method the method annotated with @{@link Tool}.
+     * @return the name of the tool.
+     * @since 1.21.0
+     */
+    public static String toolNameFrom(Method method) {
+        Tool tool = method.getAnnotation(Tool.class);
         return isNullOrBlank(tool.name()) ? method.getName() : tool.name();
     }
 

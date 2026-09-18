@@ -5,8 +5,6 @@ import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.knuddels.jtokkit.Encodings;
 import com.knuddels.jtokkit.api.Encoding;
 import com.knuddels.jtokkit.api.EncodingRegistry;
@@ -19,6 +17,7 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.internal.Json;
 import dev.langchain4j.model.TokenCountEstimator;
 import java.util.Map;
 import java.util.function.Supplier;
@@ -31,7 +30,6 @@ import java.util.function.Supplier;
 public class AzureOpenAiTokenCountEstimator implements TokenCountEstimator {
 
     private static final EncodingRegistry ENCODING_REGISTRY = Encodings.newDefaultEncodingRegistry();
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private final String modelName;
     private final Encoding encoding;
@@ -165,15 +163,11 @@ public class AzureOpenAiTokenCountEstimator implements TokenCountEstimator {
                         continue;
                     }
 
-                    try {
-                        Map<?, ?> arguments = OBJECT_MAPPER.readValue(toolExecutionRequest.arguments(), Map.class);
-                        for (Map.Entry<?, ?> argument : arguments.entrySet()) {
-                            tokenCount += 2;
-                            tokenCount += estimateTokenCountInText(String.valueOf(argument.getKey()));
-                            tokenCount += estimateTokenCountInText(String.valueOf(argument.getValue()));
-                        }
-                    } catch (JsonProcessingException e) {
-                        throw new RuntimeException(e);
+                    Map<?, ?> arguments = Json.fromJson(toolExecutionRequest.arguments(), Map.class);
+                    for (Map.Entry<?, ?> argument : arguments.entrySet()) {
+                        tokenCount += 2;
+                        tokenCount += estimateTokenCountInText(String.valueOf(argument.getKey()));
+                        tokenCount += estimateTokenCountInText(String.valueOf(argument.getValue()));
                     }
                 }
             }
