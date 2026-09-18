@@ -16,7 +16,6 @@ import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
-import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -138,7 +137,7 @@ public class BedrockCohereEmbeddingModel extends DimensionAwareEmbeddingModel {
     private InvokeModelResponse invoke(String body) {
         InvokeModelRequest invokeModelRequest = InvokeModelRequest.builder()
                 .modelId(model)
-                .body(SdkBytes.fromString(body, Charset.defaultCharset()))
+                .body(SdkBytes.fromUtf8String(body))
                 .build();
         return client.invokeModel(invokeModelRequest);
     }
