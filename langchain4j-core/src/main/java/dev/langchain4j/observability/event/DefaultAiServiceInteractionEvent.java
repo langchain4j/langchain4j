@@ -1,6 +1,6 @@
 package dev.langchain4j.observability.event; 
 
-
+import java.util.List;
 import dev.langchain4j.observability.api.event.AiServiceEvent;
 import dev.langchain4j.observability.api.event.AiServiceInteractionEvent;
 
@@ -16,5 +16,10 @@ public class DefaultAiServiceInteractionEvent
 
     public DefaultAiServiceInteractionEvent(AiServiceInteractionEvent.AiServiceInteractionEventBuilder builder){
         super(builder);
+        this.events = builder.events();
     }
+    @Override
+        public List<AiServiceEvent> events() {
+        return events;
+}
 }
