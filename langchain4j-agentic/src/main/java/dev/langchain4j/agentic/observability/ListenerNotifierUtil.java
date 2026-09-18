@@ -70,4 +70,14 @@ public class ListenerNotifierUtil {
             }
         }
     }
+
+    public static void onAgenticSystemSuspended(AgentListener listener, AgenticScope agenticScope) {
+        if (listener != null) {
+            try {
+                listener.onAgenticSystemSuspended(agenticScope);
+            } catch (Exception e) {
+                LOG.error("onAgenticSystemSuspended listener failed: " + e.getMessage(), e);
+            }
+        }
+    }
 }

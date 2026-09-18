@@ -10,13 +10,13 @@ import static dev.langchain4j.mcp.client.integration.McpServerHelper.getPathToSc
 import static dev.langchain4j.mcp.client.integration.McpServerHelper.skipTestsIfJbangNotAvailable;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.util.List;
-import java.util.Map;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.mcp.client.DefaultMcpClient;
 import dev.langchain4j.mcp.client.McpClient;
 import dev.langchain4j.mcp.client.transport.McpTransport;
 import dev.langchain4j.mcp.client.transport.stdio.StdioMcpTransport;
+import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -40,6 +40,7 @@ public class McpToolMetadataIT {
                 .build();
         client = new DefaultMcpClient.Builder()
                 .transport(transport)
+                .protocolVersion("2025-11-25")
                 .build();
     }
 
@@ -60,5 +61,4 @@ public class McpToolMetadataIT {
             client.close();
         }
     }
-
 }

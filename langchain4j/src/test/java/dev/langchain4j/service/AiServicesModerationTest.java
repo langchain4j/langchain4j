@@ -9,13 +9,18 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.exception.InternalServerException;
+import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.moderation.Moderation;
+import dev.langchain4j.model.moderation.ModerationModel;
+import dev.langchain4j.model.moderation.ModerationRequest;
+import dev.langchain4j.model.moderation.ModerationResponse;
 import dev.langchain4j.model.openai.internal.chat.AssistantMessage;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionChoice;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionResponse;
 import dev.langchain4j.model.openai.internal.chat.FunctionCall;
 import java.util.Collections;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Flow;
 import org.junit.jupiter.api.Test;
 
 class AiServicesModerationTest {
@@ -90,6 +95,54 @@ class AiServicesModerationTest {
         // When/Then - same future can be checked multiple times
         assertDoesNotThrow(() -> AiServices.verifyModerationIfNeeded(moderationFuture));
         assertDoesNotThrow(() -> AiServices.verifyModerationIfNeeded(moderationFuture));
+    }
+
+    interface AsyncAssistant {
+
+        @Moderate
+        CompletableFuture<String> chat(String userMessage);
+    }
+
+    interface ReactiveAssistant {
+
+        @Moderate
+        Flow.Publisher<String> chat(String userMessage);
+    }
+
+    private static ModerationModel moderationModelReturning(Moderation moderation) {
+        return new ModerationModel() {
+
+            @Override
+            public ModerationResponse doModerate(ModerationRequest moderationRequest) {
+                return ModerationResponse.builder().moderation(moderation).build();
+            }
+        };
+    }
+
+    @Test
+    void should_reject_moderation_on_async_return_type() {
+        // moderation is not supported on the new asynchronous (CompletableFuture) return type: fail fast
+        AsyncAssistant assistant = AiServices.builder(AsyncAssistant.class)
+                .chatModel(ChatModelMock.thatAlwaysResponds("Hello"))
+                .moderationModel(moderationModelReturning(Moderation.notFlagged()))
+                .build();
+
+        assertThatThrownBy(() -> assistant.chat("Hi"))
+                .isInstanceOf(IllegalConfigurationException.class)
+                .hasMessageContaining("@Moderate");
+    }
+
+    @Test
+    void should_reject_moderation_on_reactive_return_type() {
+        // moderation is not supported on the reactive (Flow.Publisher) path: fail fast at invocation time
+        ReactiveAssistant assistant = AiServices.builder(ReactiveAssistant.class)
+                .streamingChatModel(StreamingEventChatModelMock.thatStreams(AiMessage.from("Hello")))
+                .moderationModel(moderationModelReturning(Moderation.notFlagged()))
+                .build();
+
+        assertThatThrownBy(() -> assistant.chat("Hi"))
+                .isInstanceOf(IllegalConfigurationException.class)
+                .hasMessageContaining("@Moderate");
     }
 
     @Test

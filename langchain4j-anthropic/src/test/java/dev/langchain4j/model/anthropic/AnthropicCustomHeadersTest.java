@@ -6,11 +6,14 @@ import com.sun.net.httpserver.HttpServer;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.AfterEach;
@@ -32,6 +35,12 @@ class AnthropicCustomHeadersTest {
             }
             """;
 
+    /**
+     * Generous on purpose: this only bounds the failure path. CI runs the reactor with a high {@code -T} thread
+     * count, so an async callback can be starved for several seconds without anything being wrong.
+     */
+    private static final int RESPONSE_TIMEOUT_SECONDS = 30;
+
     private HttpServer server;
     private AtomicReference<Map<String, String>> capturedHeaders;
     private String baseUrl;
@@ -39,7 +48,10 @@ class AnthropicCustomHeadersTest {
     @BeforeEach
     void setUp() throws Exception {
         capturedHeaders = new AtomicReference<>();
-        server = HttpServer.create(new InetSocketAddress(0), 0);
+        // Bind to the loopback address rather than the wildcard: "localhost" can resolve to both ::1 and 127.0.0.1,
+        // and the client may then dial an address the server is not reachable on.
+        InetAddress loopback = InetAddress.getLoopbackAddress();
+        server = HttpServer.create(new InetSocketAddress(loopback, 0), 0);
         server.createContext("/v1/messages", exchange -> {
             Map<String, String> headers = new java.util.HashMap<>();
             exchange.getRequestHeaders().forEach((name, values) -> headers.put(name.toLowerCase(), values.get(0)));
@@ -52,7 +64,8 @@ class AnthropicCustomHeadersTest {
             exchange.getResponseBody().close();
         });
         server.start();
-        baseUrl = "http://localhost:" + server.getAddress().getPort() + "/v1";
+        baseUrl = "http://" + loopback.getHostAddress() + ":"
+                + server.getAddress().getPort() + "/v1";
     }
 
     @AfterEach
@@ -117,7 +130,7 @@ class AnthropicCustomHeadersTest {
 
     @Test
     void should_send_custom_headers_with_streaming_chat_model() throws Exception {
-        CountDownLatch latch = new CountDownLatch(1);
+        CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
 
         // language=json
         String sseResponse = """
@@ -162,22 +175,24 @@ class AnthropicCustomHeadersTest {
                 .customHeaders(Map.of("x-streaming-header", "streaming-value"))
                 .build();
 
-        model.chat(java.util.List.of(UserMessage.from("Hi")), new StreamingChatResponseHandler() {
+        model.chat(List.of(UserMessage.from("Hi")), new StreamingChatResponseHandler() {
             @Override
             public void onPartialResponse(String partialResponse) {}
 
             @Override
-            public void onCompleteResponse(dev.langchain4j.model.chat.response.ChatResponse response) {
-                latch.countDown();
+            public void onCompleteResponse(ChatResponse response) {
+                futureResponse.complete(response);
             }
 
             @Override
             public void onError(Throwable error) {
-                latch.countDown();
+                futureResponse.completeExceptionally(error);
             }
         });
 
-        assertThat(latch.await(5, TimeUnit.SECONDS)).isTrue();
+        ChatResponse response = futureResponse.get(RESPONSE_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+
+        assertThat(response).isNotNull();
         assertThat(capturedHeaders.get()).containsEntry("x-streaming-header", "streaming-value");
     }
 }

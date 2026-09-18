@@ -203,11 +203,13 @@ public class OpenAiStreamingResponseBuilder {
                 }
 
                 FunctionCall functionCall = toolCall.function();
-                if (functionCall.name() != null) {
-                    builder.nameBuilder.append(functionCall.name());
-                }
-                if (functionCall.arguments() != null) {
-                    builder.argumentsBuilder.append(functionCall.arguments());
+                if (functionCall != null) {
+                    if (functionCall.name() != null) {
+                        builder.nameBuilder.append(functionCall.name());
+                    }
+                    if (functionCall.arguments() != null) {
+                        builder.argumentsBuilder.append(functionCall.arguments());
+                    }
                 }
             }
         }

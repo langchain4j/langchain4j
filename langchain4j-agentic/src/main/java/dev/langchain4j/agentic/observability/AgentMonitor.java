@@ -115,22 +115,33 @@ public class AgentMonitor implements AgentListener {
         Object memoryId = agentResponse.agenticScope().memoryId();
         MonitoredExecution execution = ongoingExecutions.get(memoryId);
         execution.afterAgentInvocation(agentResponse);
-        if (execution.done()) {
-            ongoingExecutions.remove(memoryId, execution);
-            synchronized (successfulExecutions) {
-                successfulExecutions
-                        .computeIfAbsent(memoryId, k -> new ArrayList<>())
-                        .add(execution);
-            }
-        }
+        finalizeExecution(memoryId, execution);
     }
 
     @Override
     public void onAgentInvocationError(AgentInvocationError agentInvocationError) {
         Object memoryId = agentInvocationError.agenticScope().memoryId();
-        MonitoredExecution execution = ongoingExecutions.remove(memoryId);
+        MonitoredExecution execution = ongoingExecutions.get(memoryId);
         if (execution != null) {
             execution.onAgentInvocationError(agentInvocationError);
+            finalizeExecution(memoryId, execution);
+        }
+    }
+
+    private void finalizeExecution(Object memoryId, MonitoredExecution execution) {
+        if (!execution.ongoingInvocations().isEmpty() || (!execution.done() && !execution.hasError())) {
+            return;
+        }
+        if (!ongoingExecutions.remove(memoryId, execution)) {
+            return;
+        }
+        if (execution.done()) {
+            synchronized (successfulExecutions) {
+                successfulExecutions
+                        .computeIfAbsent(memoryId, k -> new ArrayList<>())
+                        .add(execution);
+            }
+        } else {
             synchronized (failedExecutions) {
                 failedExecutions
                         .computeIfAbsent(memoryId, k -> new ArrayList<>())

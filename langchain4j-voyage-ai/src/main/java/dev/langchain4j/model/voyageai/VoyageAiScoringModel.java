@@ -1,19 +1,23 @@
 package dev.langchain4j.model.voyageai;
 
+import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.voyageai.VoyageAiClient.DEFAULT_BASE_URL;
+import static java.lang.String.format;
 import static java.time.Duration.ofSeconds;
-import static java.util.Comparator.comparingInt;
 import static java.util.stream.Collectors.toList;
 
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.exception.InternalServerException;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.model.scoring.ScoringModel;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
@@ -84,6 +88,14 @@ public class VoyageAiScoringModel implements ScoringModel {
 
     @Override
     public Response<List<Double>> scoreAll(List<TextSegment> segments, String query) {
+        if (topK != null && topK < segments.size()) {
+            throw illegalArgument(
+                    "'topK' (%s) must be greater than or equal to the number of segments (%s) because "
+                            + "ScoringModel must return one score per segment. Use "
+                            + "ReRankingContentAggregator.builder().maxResults(...) to limit the final results.",
+                    topK, segments.size());
+        }
+
         RerankRequest request = RerankRequest.builder()
                 .model(modelName)
                 .query(query)
@@ -94,10 +106,31 @@ public class VoyageAiScoringModel implements ScoringModel {
 
         RerankResponse response = withRetryMappingExceptions(() -> client.rerank(request), maxRetries);
 
-        List<Double> scores = response.getData().stream()
-                .sorted(comparingInt(RerankResponse.RerankData::getIndex))
-                .map(RerankResponse.RerankData::getRelevanceScore)
-                .collect(toList());
+        List<RerankResponse.RerankData> results = response.getData();
+        if (results == null || results.size() != segments.size()) {
+            throw new InternalServerException(format(
+                    "Re-ranking failed: expected %s scores, but got %s",
+                    segments.size(), results == null ? 0 : results.size()));
+        }
+
+        List<Double> scores = new ArrayList<>(Collections.nCopies(segments.size(), null));
+        for (RerankResponse.RerankData result : results) {
+            Integer index = result.getIndex();
+            if (index == null || index < 0 || index >= segments.size()) {
+                throw new InternalServerException(
+                        format("Re-ranking failed: got an out-of-range document index: %s", index));
+            }
+            if (scores.get(index) != null) {
+                throw new InternalServerException(
+                        format("Re-ranking failed: got a duplicate document index: %s", index));
+            }
+            Double relevanceScore = result.getRelevanceScore();
+            if (relevanceScore == null) {
+                throw new InternalServerException(
+                        format("Re-ranking failed: got no relevance score for document index: %s", index));
+            }
+            scores.set(index, relevanceScore);
+        }
 
         return Response.from(scores, new TokenUsage(response.getUsage().getTotalTokens()));
     }
@@ -220,10 +253,25 @@ public class VoyageAiScoringModel implements ScoringModel {
         }
 
         /**
-         * The number of most relevant documents to return. If not specified, the reranking results of all documents will be returned.
+         * The number of most relevant documents Voyage AI should return.
          *
          * @param topK the number of most relevant documents to return.
+         * @deprecated {@code topK} cannot be used together with {@link ScoringModel}, which requires exactly one
+         * score per input segment (see {@link VoyageAiScoringModel#scoreAll(List, String)}). Asking Voyage AI for
+         * fewer documents than were sent makes it impossible to tell which segment each returned score belongs to,
+         * so {@code scoreAll} now throws an {@link IllegalArgumentException} when {@code topK} is smaller than the
+         * number of segments. Any other value has no effect. To limit how many results a RAG pipeline keeps after
+         * re-ranking, use
+         * {@link dev.langchain4j.rag.content.aggregator.ReRankingContentAggregator.ReRankingContentAggregatorBuilder#maxResults(Integer)}
+         * instead:
+         * <pre>{@code
+         * ReRankingContentAggregator.builder()
+         *         .scoringModel(scoringModel)
+         *         .maxResults(3)
+         *         .build();
+         * }</pre>
          */
+        @Deprecated(forRemoval = true, since = "1.20.0")
         public Builder topK(Integer topK) {
             this.topK = topK;
             return this;

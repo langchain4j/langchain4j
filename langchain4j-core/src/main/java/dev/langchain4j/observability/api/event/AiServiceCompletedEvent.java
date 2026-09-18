@@ -50,7 +50,7 @@ public interface AiServiceCompletedEvent extends AiServiceEvent {
          */
         protected AiServiceCompletedEventBuilder(AiServiceCompletedEvent src) {
             super(src);
-            result(src.result());
+            result(src.result().orElse(null));
         }
 
         /**

@@ -2,10 +2,7 @@ package dev.langchain4j.model.workersai.client;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 
-import okhttp3.ResponseBody;
-import org.slf4j.Logger;
-
-import java.io.IOException;
+import dev.langchain4j.http.client.HttpClientBuilder;
 
 /**
  * Abstract class for WorkerAI models as they are all initialized the same way.
@@ -13,7 +10,6 @@ import java.io.IOException;
  */
 public abstract class AbstractWorkersAIModel {
 
-    private static final Logger log = org.slf4j.LoggerFactory.getLogger(AbstractWorkersAIModel.class);
     /**
      * Account identifier, provided by the WorkerAI platform.
      */
@@ -25,9 +21,9 @@ public abstract class AbstractWorkersAIModel {
     protected String modelName;
 
     /**
-     * OkHttpClient for the WorkerAI API.
+     * Client for the WorkerAI API.
      */
-    protected WorkersAiApi workerAiClient;
+    protected WorkersAiClient client;
 
     /**
      * Simple constructor.
@@ -37,37 +33,27 @@ public abstract class AbstractWorkersAIModel {
      * @param apiToken  api apiToken from .
      */
     public AbstractWorkersAIModel(String accountId, String modelName, String apiToken) {
+        this(accountId, modelName, apiToken, null);
+    }
+
+    /**
+     * Constructor allowing to customize the underlying HTTP client.
+     *
+     * @param accountId         account identifier.
+     * @param modelName         model name.
+     * @param apiToken          api token.
+     * @param httpClientBuilder the HTTP client builder to use, may be {@code null} to use the default one.
+     */
+    public AbstractWorkersAIModel(
+            String accountId, String modelName, String apiToken, HttpClientBuilder httpClientBuilder) {
         ensureNotEmpty(accountId, "%s", "Account identifier should not be null or empty");
         this.accountId = accountId;
         ensureNotEmpty(modelName, "%s", "Model name should not be null or empty");
         this.modelName = modelName;
         ensureNotEmpty(apiToken, "%s", "Token should not be null or empty");
-        this.workerAiClient = WorkersAiClient.createService(apiToken);
+        this.client = WorkersAiClient.builder()
+                .apiToken(apiToken)
+                .httpClientBuilder(httpClientBuilder)
+                .build();
     }
-
-    /**
-     * Process errors from the API.
-     *
-     * @param res    response
-     * @param errors errors body from retrofit
-     * @throws IOException error occurred during invocation
-     */
-    protected void processErrors(ApiResponse<?> res, ResponseBody errors)
-            throws IOException {
-        if (res == null || !res.isSuccess()) {
-            StringBuilder errorMessage = new StringBuilder("Failed to generate chat message:");
-            if (res == null) {
-                errorMessage.append(errors.string());
-            } else if (res.getErrors() != null) {
-                errorMessage.append(res.getErrors().stream()
-                        .map(ApiResponse.Error::getMessage)
-                        .reduce((a, b) -> a + "\n" + b)
-                        .orElse(""));
-            }
-            log.error(errorMessage.toString());
-            throw new RuntimeException(errorMessage.toString());
-        }
-    }
-
-
 }

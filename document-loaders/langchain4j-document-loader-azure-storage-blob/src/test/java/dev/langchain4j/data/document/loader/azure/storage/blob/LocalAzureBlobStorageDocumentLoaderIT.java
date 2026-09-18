@@ -93,6 +93,25 @@ class LocalAzureBlobStorageDocumentLoaderIT {
                 .isEqualTo("https://" + TEST_ACCOUNT + ".blob.core.windows.net/" + TEST_CONTAINER + "/" + TEST_BLOB);
     }
 
+    @Test
+    void should_load_documents_with_prefix() {
+        AzureBlobStorageDocumentLoader loader = new AzureBlobStorageDocumentLoader(blobServiceClient);
+        List<Document> documents = loader.loadDocuments(TEST_CONTAINER, "test-directory/", parser);
+
+        assertThat(documents).hasSize(1);
+        assertThat(documents.get(0).text()).isEqualTo(TEST_CONTENT_2);
+        assertThat(documents.get(0).metadata().getString("source"))
+                .isEqualTo("https://" + TEST_ACCOUNT + ".blob.core.windows.net/" + TEST_CONTAINER + "/" + TEST_BLOB_2);
+    }
+
+    @Test
+    void should_return_empty_list_when_prefix_matches_no_blobs() {
+        AzureBlobStorageDocumentLoader loader = new AzureBlobStorageDocumentLoader(blobServiceClient);
+        List<Document> documents = loader.loadDocuments(TEST_CONTAINER, "no-such-prefix/", parser);
+
+        assertThat(documents).isEmpty();
+    }
+
     @AfterAll
     static void afterAll() {
         blobServiceClient.getBlobContainerClient(TEST_CONTAINER).delete();

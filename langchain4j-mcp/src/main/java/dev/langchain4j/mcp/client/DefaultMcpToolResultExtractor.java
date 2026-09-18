@@ -12,7 +12,12 @@ import java.util.stream.StreamSupport;
  * {@code content} items of type {@code text}, joins multiple text fragments with
  * newline characters, and stores the result in {@link ToolExecutionResult#resultText()}.
  * It does not apply to responses that contain {@code structuredContent}.
+ *
+ * @deprecated use {@link DefaultMcpToolResultConverter} instead, which does not expose Jackson
+ * types.
  */
+@Deprecated(since = "1.20.0", forRemoval = true)
+@SuppressWarnings("removal")
 public class DefaultMcpToolResultExtractor implements McpToolResultExtractor {
 
     @Override

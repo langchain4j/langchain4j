@@ -1,7 +1,5 @@
 package dev.langchain4j.mcp.client.transport.http;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
 import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Flow;
@@ -16,12 +14,12 @@ class SseSubscriber implements Flow.Subscriber<String> {
      * Future for the result of the operation that this SSE subscriber was created for.
      * If this is a subsidiary SSE subscriber for the long-lived GET channel (therefore, no operation), this will be null.
      */
-    private final CompletableFuture<JsonNode> future;
+    private final CompletableFuture<String> future;
 
     private final Logger logger;
     private final boolean logResponses;
     private final McpOperationHandler operationHandler;
-    private Flow.Subscription subscription;
+    private volatile Flow.Subscription subscription;
     private final boolean subsidiary;
     private final AtomicReference<String> lastEventId;
     private final AtomicLong retryMs;
@@ -32,10 +30,11 @@ class SseSubscriber implements Flow.Subscriber<String> {
      * Constructor for a regular (non-subsidiary) SSE subscriber, used for POST response streams.
      */
     SseSubscriber(
-            CompletableFuture<JsonNode> future,
+            CompletableFuture<String> future,
             boolean logResponses,
             McpOperationHandler operationHandler,
-            Logger logger) {
+            Logger logger,
+            Runnable onStreamEnd) {
         this.future = future;
         this.logResponses = logResponses;
         this.operationHandler = operationHandler;
@@ -43,7 +42,7 @@ class SseSubscriber implements Flow.Subscriber<String> {
         this.subsidiary = false;
         this.lastEventId = null;
         this.retryMs = null;
-        this.onStreamEnd = null;
+        this.onStreamEnd = onStreamEnd;
         // in a regular subscriber, we don't really need this information that the transport is closed
         this.transportClosed = new AtomicBoolean(false);
     }
@@ -73,20 +72,39 @@ class SseSubscriber implements Flow.Subscriber<String> {
     @Override
     public void onSubscribe(Flow.Subscription subscription) {
         this.subscription = subscription;
+        if (future != null) {
+            future.whenComplete((r, t) -> {
+                if (future.isCancelled()) {
+                    subscription.cancel();
+                }
+            });
+        }
         subscription.request(1);
+    }
+
+    void cancel() {
+        Flow.Subscription s = this.subscription;
+        if (s != null) {
+            s.cancel();
+        }
     }
 
     @Override
     public void onNext(String item) {
+        if (future != null && future.isCancelled()) {
+            // the operation was cancelled (e.g. by unsubscribeFromResources), so events that are
+            // still in flight on this stream must not reach the operation handler anymore
+            return;
+        }
         if (logResponses && !item.trim().isEmpty()) {
             logger.info("SSE event received: " + item);
         }
         subscription.request(1);
         if (item.startsWith("data:")) {
             try {
-                operationHandler.handle(StreamableHttpMcpTransport.OBJECT_MAPPER.readTree(item.substring(5)));
-            } catch (JsonProcessingException e) {
-                logger.warn("Failed to parse SSE event: " + item, e);
+                operationHandler.onMessage(item.substring(5));
+            } catch (RuntimeException e) {
+                logger.warn("Failed to handle SSE event: " + item, e);
             }
         } else if (item.startsWith("id:") && lastEventId != null) {
             lastEventId.set(item.substring(3).trim());
@@ -101,13 +119,16 @@ class SseSubscriber implements Flow.Subscriber<String> {
 
     @Override
     public void onError(Throwable throwable) {
-        if (subsidiary && !transportClosed.get()) {
+        if (subsidiary) {
             logger.debug("Subsidiary SSE channel error", throwable);
-            if (onStreamEnd != null) {
+            if (onStreamEnd != null && !transportClosed.get()) {
                 onStreamEnd.run();
             }
         } else {
             future.completeExceptionally(throwable);
+            if (onStreamEnd != null) {
+                onStreamEnd.run();
+            }
         }
     }
 
@@ -120,6 +141,9 @@ class SseSubscriber implements Flow.Subscriber<String> {
             }
         } else {
             logger.debug("SSE channel closed");
+            if (onStreamEnd != null) {
+                onStreamEnd.run();
+            }
         }
     }
 }

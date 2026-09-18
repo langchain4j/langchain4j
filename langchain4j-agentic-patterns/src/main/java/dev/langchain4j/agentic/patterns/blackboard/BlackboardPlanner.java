@@ -26,12 +26,13 @@ import static java.util.stream.Collectors.toMap;
  * can contribute next. When multiple agents are ready, a {@link ConflictResolutionStrategy} determines
  * which one fires; if no strategy is provided, declaration order is used.
  * <p>
- * The planner terminates when:
+ * The planner terminates successfully when:
  * <ul>
  *   <li>The goal predicate is satisfied (by default, when the planner's outputKey is present in scope)</li>
  *   <li>No agent can fire (quiescence)</li>
- *   <li>The maximum number of invocations is reached</li>
  * </ul>
+ * If the maximum number of invocations is reached before the goal is satisfied, the planner throws an
+ * {@link IllegalStateException}.
  */
 public class BlackboardPlanner implements Planner {
 
@@ -106,8 +107,9 @@ public class BlackboardPlanner implements Planner {
         }
 
         if (invocationCounter >= maxInvocations) {
-            LOG.warn("Maximum invocations ({}) reached without satisfying goal", maxInvocations);
-            return done();
+            throw new IllegalStateException(
+                    "Maximum invocations (" + maxInvocations + ") reached without satisfying goal. " +
+                    "Increase maxInvocations or check goal predicate.");
         }
 
         return selectAndCall(scope);

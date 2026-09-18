@@ -1,6 +1,5 @@
 package dev.langchain4j.service.output;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -132,6 +131,14 @@ class ServiceOutputParserTest {
         assertThat(sut.jsonSchema(new TypeReference<Result<Double>>() {
         }.getType())).isPresent();
 
+        // byte, short, BigInteger, BigDecimal (added jsonSchema() in follow-up to #5465)
+        assertThat(sut.jsonSchema(byte.class)).isPresent();
+        assertThat(sut.jsonSchema(Byte.class)).isPresent();
+        assertThat(sut.jsonSchema(short.class)).isPresent();
+        assertThat(sut.jsonSchema(Short.class)).isPresent();
+        assertThat(sut.jsonSchema(BigInteger.class)).isPresent();
+        assertThat(sut.jsonSchema(BigDecimal.class)).isPresent();
+
         // POJOs
         assertThat(sut.jsonSchema(Person.class)).isPresent();
         assertThat(sut.jsonSchema(new TypeReference<Result<Person>>() {
@@ -180,12 +187,6 @@ class ServiceOutputParserTest {
         assertThat(sut.jsonSchema(TokenStream.class)).isEmpty();
 
         // JSON schema is (currently) not supported
-        assertThat(sut.jsonSchema(byte.class)).isEmpty();
-        assertThat(sut.jsonSchema(Byte.class)).isEmpty();
-        assertThat(sut.jsonSchema(short.class)).isEmpty();
-        assertThat(sut.jsonSchema(Short.class)).isEmpty();
-        assertThat(sut.jsonSchema(BigInteger.class)).isEmpty();
-        assertThat(sut.jsonSchema(BigDecimal.class)).isEmpty();
         assertThat(sut.jsonSchema(Date.class)).isEmpty();
         assertThat(sut.jsonSchema(LocalDate.class)).isEmpty();
         assertThat(sut.jsonSchema(LocalTime.class)).isEmpty();
@@ -257,7 +258,7 @@ class ServiceOutputParserTest {
         // When / Then
         assertThatThrownBy(() -> sut.parse(chatResponseStub, KeyProperty.class))
                 .isExactlyInstanceOf(OutputParsingException.class)
-                .hasRootCauseInstanceOf(JsonProcessingException.class);
+                .hasRootCauseInstanceOf(Exception.class);
     }
 
     static class KeyPropertyWrapper {

@@ -177,10 +177,13 @@ abstract class AbstractBedrockChatModel {
                 .stopSequences(commonParameters.stopSequences())
                 .toolSpecifications(commonParameters.toolSpecifications())
                 .toolChoice(commonParameters.toolChoice())
+                .responseFormat(commonParameters.responseFormat())
                 // Bedrock-specific parameters
                 .additionalModelRequestFields(bedrockParameters.additionalModelRequestFields())
                 .promptCaching(bedrockParameters.cachePointPlacement(), bedrockParameters.cacheTtl())
                 .guardrailConfiguration(bedrockParameters.bedrockGuardrailConfiguration())
+                .serviceTier(bedrockParameters.serviceTier())
+                .requestMetadata(bedrockParameters.requestMetadata())
                 .build();
     }
 
@@ -718,11 +721,15 @@ abstract class AbstractBedrockChatModel {
     }
 
     protected FinishReason finishReasonFrom(StopReason stopReason) {
+        if (stopReason == null) {
+            return null;
+        }
+
         if (stopReason == StopReason.END_TURN || stopReason == StopReason.STOP_SEQUENCE) {
             return FinishReason.STOP;
         }
 
-        if (stopReason == StopReason.MAX_TOKENS) {
+        if (stopReason == StopReason.MAX_TOKENS || stopReason == StopReason.MODEL_CONTEXT_WINDOW_EXCEEDED) {
             return FinishReason.LENGTH;
         }
 
@@ -734,7 +741,7 @@ abstract class AbstractBedrockChatModel {
             return FinishReason.CONTENT_FILTER;
         }
 
-        throw new IllegalArgumentException("Unknown stop reason: " + stopReason);
+        return FinishReason.OTHER;
     }
 
     protected InferenceConfiguration inferenceConfigFrom(ChatRequestParameters parameters) {
@@ -801,6 +808,10 @@ abstract class AbstractBedrockChatModel {
         return ServiceTier.builder().type(serviceTierType).build();
     }
 
+    protected Map<String, String> requestMetadataFrom(BedrockChatRequestParameters parameters) {
+        return isNullOrEmpty(parameters.requestMetadata()) ? null : parameters.requestMetadata();
+    }
+
     protected Document additionalRequestModelFieldsFrom(ChatRequestParameters chatRequestParameters) {
         Map<String, Object> additionalModelRequestFieldsMap =
                 new HashMap<>(this.defaultRequestParameters.additionalModelRequestFields());
@@ -819,7 +830,7 @@ abstract class AbstractBedrockChatModel {
 
     protected GuardrailAssessmentSummary guardrailAssessmentSummaryFrom(ConverseTrace trace) {
 
-        if (trace == null) {
+        if (trace == null || trace.guardrail() == null) {
             return null;
         }
 

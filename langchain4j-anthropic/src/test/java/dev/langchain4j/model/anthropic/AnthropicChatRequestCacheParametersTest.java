@@ -178,6 +178,87 @@ class AnthropicChatRequestCacheParametersTest {
     }
 
     @Test
+    void should_send_disable_parallel_tool_use_when_tool_choice_is_not_set() {
+        AnthropicChatModel model = modelBuilder().disableParallelToolUse(true).build();
+
+        ChatRequest request = ChatRequest.builder()
+                .messages(UserMessage.from("What is the weather?"))
+                .parameters(AnthropicChatRequestParameters.builder()
+                        .toolSpecifications(weatherTool())
+                        .build())
+                .build();
+
+        model.chat(request);
+
+        String body = lastRequestBody();
+        assertThat(body).contains("\"tool_choice\"");
+        assertThat(body).contains("\"type\" : \"auto\"");
+        assertThat(body).contains("\"disable_parallel_tool_use\" : true");
+    }
+
+    @Test
+    void should_not_send_tool_choice_when_no_tools_are_present() {
+        // Anthropic defaults tool_choice to "none" when no tools are sent, so the fallback above must not
+        // add a tool_choice to a request without tools.
+        AnthropicChatModel model = modelBuilder().disableParallelToolUse(true).build();
+
+        model.chat(ChatRequest.builder().messages(UserMessage.from("Hi")).build());
+
+        assertThat(lastRequestBody()).doesNotContain("\"tool_choice\"");
+    }
+
+    @Test
+    void should_send_tool_choice_name_when_tool_choice_is_not_set() {
+        AnthropicChatModel model = modelBuilder().toolChoiceName("weather_tool").build();
+
+        ChatRequest request = ChatRequest.builder()
+                .messages(UserMessage.from("What is the weather?"))
+                .parameters(AnthropicChatRequestParameters.builder()
+                        .toolSpecifications(weatherTool())
+                        .build())
+                .build();
+
+        model.chat(request);
+
+        String body = lastRequestBody();
+        assertThat(body).contains("\"tool_choice\"");
+        assertThat(body).contains("\"type\" : \"tool\"");
+        assertThat(body).contains("\"name\" : \"weather_tool\"");
+    }
+
+    @Test
+    void should_send_tool_choice_name_together_with_disable_parallel_tool_use_when_tool_choice_is_not_set() {
+        AnthropicChatModel model = modelBuilder()
+                .toolChoiceName("weather_tool")
+                .disableParallelToolUse(true)
+                .build();
+
+        ChatRequest request = ChatRequest.builder()
+                .messages(UserMessage.from("What is the weather?"))
+                .parameters(AnthropicChatRequestParameters.builder()
+                        .toolSpecifications(weatherTool())
+                        .build())
+                .build();
+
+        model.chat(request);
+
+        String body = lastRequestBody();
+        assertThat(body).contains("\"type\" : \"tool\"");
+        assertThat(body).contains("\"name\" : \"weather_tool\"");
+        assertThat(body).contains("\"disable_parallel_tool_use\" : true");
+    }
+
+    @Test
+    void should_not_send_tool_choice_name_when_no_tools_are_present() {
+        // Anthropic rejects a request that forces a tool which is not in the (here absent) tools list.
+        AnthropicChatModel model = modelBuilder().toolChoiceName("weather_tool").build();
+
+        model.chat(ChatRequest.builder().messages(UserMessage.from("Hi")).build());
+
+        assertThat(lastRequestBody()).doesNotContain("\"tool_choice\"");
+    }
+
+    @Test
     void should_override_user_id_per_request() {
         AnthropicChatModel model = modelBuilder().userId("model-user").build();
 
@@ -193,6 +274,117 @@ class AnthropicChatRequestCacheParametersTest {
         String body = lastRequestBody();
         assertThat(body).contains("\"user_id\"");
         assertThat(body).contains("request-user");
+    }
+
+    @Test
+    void should_not_send_diagnostics_when_not_requested() {
+        AnthropicChatModel model = modelBuilder().build();
+
+        model.chat(ChatRequest.builder().messages(UserMessage.from("Hi")).build());
+
+        assertThat(lastRequestBody()).doesNotContain("\"diagnostics\"");
+    }
+
+    @Test
+    void should_opt_in_to_cache_diagnostics_with_null_previous_message_id_on_first_turn() {
+        AnthropicChatModel model = modelBuilder().build();
+
+        ChatRequest request = ChatRequest.builder()
+                .messages(UserMessage.from("Hi"))
+                .parameters(AnthropicChatRequestParameters.builder()
+                        .returnCacheDiagnostics(true)
+                        .build())
+                .build();
+
+        model.chat(request);
+
+        String body = lastRequestBody();
+        assertThat(body).contains("\"diagnostics\"");
+        assertThat(body).contains("\"previous_message_id\" : null");
+    }
+
+    @Test
+    void should_send_previous_message_id_on_subsequent_turn() {
+        AnthropicChatModel model = modelBuilder().build();
+
+        ChatRequest request = ChatRequest.builder()
+                .messages(UserMessage.from("Hi"))
+                .parameters(AnthropicChatRequestParameters.builder()
+                        .returnCacheDiagnostics(true)
+                        .previousMessageId("msg_previous")
+                        .build())
+                .build();
+
+        model.chat(request);
+
+        assertThat(lastRequestBody()).contains("\"previous_message_id\" : \"msg_previous\"");
+    }
+
+    @Test
+    void should_clear_previous_message_id_per_request_even_when_model_default_is_set() {
+        // Regression test: previousMessageId is a per-request value and is never carried as a
+        // model-level default, so a stale id placed on defaultRequestParameters must not leak into a
+        // request that opts in fresh with previousMessageId == null (a meaningful first-turn value).
+        AnthropicChatModel model = modelBuilder()
+                .defaultRequestParameters(AnthropicChatRequestParameters.builder()
+                        .previousMessageId("msg_stale_default")
+                        .build())
+                .build();
+
+        ChatRequest request = ChatRequest.builder()
+                .messages(UserMessage.from("Hi"))
+                .parameters(AnthropicChatRequestParameters.builder()
+                        .returnCacheDiagnostics(true)
+                        .previousMessageId(null)
+                        .build())
+                .build();
+
+        model.chat(request);
+
+        String body = lastRequestBody();
+        assertThat(body).contains("\"previous_message_id\" : null");
+        assertThat(body).doesNotContain("msg_stale_default");
+    }
+
+    @Test
+    void should_not_pair_unrelated_default_previous_message_id_with_model_level_diagnostics_toggle() {
+        // Regression test: a previousMessageId carried on an unrelated defaultRequestParameters() object
+        // must not leak onto the wire just because returnCacheDiagnostics(true) is toggled on at the model
+        // level -- previousMessageId is per-request only and is never sourced from a model-level default.
+        AnthropicChatModel model = modelBuilder()
+                .returnCacheDiagnostics(true)
+                .defaultRequestParameters(AnthropicChatRequestParameters.builder()
+                        .previousMessageId("msg_unrelated")
+                        .build())
+                .build();
+
+        model.chat(ChatRequest.builder().messages(UserMessage.from("Hi")).build());
+
+        String body = lastRequestBody();
+        assertThat(body).contains("\"diagnostics\"");
+        assertThat(body).contains("\"previous_message_id\" : null");
+        assertThat(body).doesNotContain("msg_unrelated");
+    }
+
+    @Test
+    void should_send_per_request_previous_message_id_when_diagnostics_enabled_at_model_level() {
+        // The ergonomic path: enable diagnostics once on the model, then only vary previousMessageId
+        // per request (without re-stating returnCacheDiagnostics every turn). The per-request id must
+        // reach the wire instead of being silently dropped in favour of a null previous_message_id.
+        AnthropicChatModel model = modelBuilder().returnCacheDiagnostics(true).build();
+
+        ChatRequest request = ChatRequest.builder()
+                .messages(UserMessage.from("Hi"))
+                .parameters(AnthropicChatRequestParameters.builder()
+                        .previousMessageId("msg_previous")
+                        .build())
+                .build();
+
+        model.chat(request);
+
+        String body = lastRequestBody();
+        assertThat(body).contains("\"diagnostics\"");
+        assertThat(body).contains("\"previous_message_id\" : \"msg_previous\"");
     }
 
     private static ToolSpecification weatherTool() {

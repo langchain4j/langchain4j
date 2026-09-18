@@ -2,8 +2,6 @@ package dev.langchain4j.model.ollama;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
 
 import java.util.List;
 
@@ -11,11 +9,11 @@ import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonInclude(NON_NULL)
-@JsonNaming(SnakeCaseStrategy.class)
 class EmbeddingResponse {
 
     private String model;
     private List<float[]> embeddings;
+    private Integer promptEvalCount;
 
     EmbeddingResponse() {
     }
@@ -43,6 +41,14 @@ class EmbeddingResponse {
 
     public void setEmbeddings(List<float[]> embeddings) {
         this.embeddings = embeddings;
+    }
+
+    public Integer getPromptEvalCount() {
+        return promptEvalCount;
+    }
+
+    public void setPromptEvalCount(Integer promptEvalCount) {
+        this.promptEvalCount = promptEvalCount;
     }
 
     static class Builder {

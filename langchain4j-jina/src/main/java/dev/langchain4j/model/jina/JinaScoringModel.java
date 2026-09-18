@@ -8,6 +8,7 @@ import static java.util.Comparator.comparingInt;
 import static java.util.stream.Collectors.toList;
 
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.jina.internal.api.JinaRerankingRequest;
 import dev.langchain4j.model.jina.internal.api.JinaRerankingResponse;
 import dev.langchain4j.model.jina.internal.client.JinaClient;
@@ -52,6 +53,7 @@ public class JinaScoringModel implements ScoringModel {
 
     public JinaScoringModel(JinaScoringModelBuilder builder) {
         this.client = JinaClient.builder()
+                .httpClientBuilder(builder.httpClientBuilder)
                 .baseUrl(getOrDefault(builder.baseUrl, DEFAULT_BASE_URL))
                 .apiKey(ensureNotBlank(builder.apiKey, "apiKey"))
                 .timeout(getOrDefault(builder.timeout, ofSeconds(60)))
@@ -97,6 +99,7 @@ public class JinaScoringModel implements ScoringModel {
         private Boolean logRequests;
         private Boolean logResponses;
         private Logger logger;
+        private HttpClientBuilder httpClientBuilder;
 
         JinaScoringModelBuilder() {}
 
@@ -141,6 +144,18 @@ public class JinaScoringModel implements ScoringModel {
          */
         public JinaScoringModelBuilder logger(Logger logger) {
             this.logger = logger;
+            return this;
+        }
+
+        /**
+         * Sets a custom HTTP client builder, allowing fine-grained control over the HTTP client
+         * configuration such as timeouts and proxy settings.
+         *
+         * @param httpClientBuilder the HTTP client builder
+         * @return {@code this}
+         */
+        public JinaScoringModelBuilder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
+            this.httpClientBuilder = httpClientBuilder;
             return this;
         }
 

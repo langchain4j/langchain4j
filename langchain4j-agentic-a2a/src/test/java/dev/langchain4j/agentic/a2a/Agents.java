@@ -4,6 +4,8 @@ import static dev.langchain4j.agentic.a2a.A2AAgentIT.A2A_SERVER_URL;
 
 import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.declarative.A2AClientAgent;
+import dev.langchain4j.agentic.declarative.A2AClientCustomizer;
+import dev.langchain4j.agentic.declarative.A2AServerUrlSupplier;
 import dev.langchain4j.agentic.declarative.ExitCondition;
 import dev.langchain4j.agentic.declarative.LoopAgent;
 import dev.langchain4j.agentic.declarative.SequenceAgent;
@@ -11,6 +13,9 @@ import dev.langchain4j.agentic.scope.AgenticScopeAccess;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
+import org.a2aproject.sdk.client.ClientBuilder;
+import org.a2aproject.sdk.client.transport.jsonrpc.JSONRPCTransport;
+import org.a2aproject.sdk.client.transport.jsonrpc.JSONRPCTransportConfigBuilder;
 
 public class Agents {
 
@@ -28,8 +33,7 @@ public class Agents {
 
     public interface StyleEditor {
 
-        @UserMessage(
-                """
+        @UserMessage("""
                 You are a professional editor.
                 Analyze and rewrite the following story to better fit and be more coherent with the {{style}} style.
                 Return only the story and nothing else.
@@ -41,8 +45,7 @@ public class Agents {
 
     public interface StyleScorer {
 
-        @UserMessage(
-                """
+        @UserMessage("""
                 You are a critical reviewer.
                 Give a review score between 0.0 and 1.0 for the following story based on how well it aligns with the style '{{style}}'.
                 Return only the score and nothing else.
@@ -77,8 +80,7 @@ public class Agents {
                 description = "Review and score the given story to ensure it aligns with the specified style",
                 outputKey = "story",
                 maxIterations = 5,
-                subAgents = { StyleScorer.class, StyleEditor.class }
-        )
+                subAgents = {StyleScorer.class, StyleEditor.class})
         String reviewAndScore(@V("story") String story);
 
         @ExitCondition
@@ -91,8 +93,54 @@ public class Agents {
 
         @SequenceAgent(
                 outputKey = "story",
-                subAgents = { DeclarativeA2ACreativeWriter.class, StyleReviewLoopAgent.class }
-    )
+                subAgents = {DeclarativeA2ACreativeWriter.class, StyleReviewLoopAgent.class})
         ResultWithAgenticScope<String> write(@V("topic") String topic, @V("style") String style);
+    }
+
+    public interface DeclarativeA2AWithCustomizer {
+
+        @A2AClientAgent(a2aServerUrl = A2A_SERVER_URL, outputKey = "story")
+        String generateStory(@V("topic") String topic);
+
+        @A2AClientCustomizer
+        static void customizer(ClientBuilder cb) {
+            cb.withTransport(JSONRPCTransport.class, new JSONRPCTransportConfigBuilder());
+        }
+    }
+
+    public interface StoryCreatorWithCustomizedWriter {
+
+        @SequenceAgent(
+                outputKey = "story",
+                subAgents = {DeclarativeA2AWithCustomizer.class, StyleReviewLoopAgent.class})
+        ResultWithAgenticScope<String> write(@V("topic") String topic, @V("style") String style);
+    }
+
+    public interface DeclarativeA2AWithUrlSupplier {
+
+        @A2AClientAgent(outputKey = "story")
+        String generateStory(@V("topic") String topic);
+
+        @A2AServerUrlSupplier
+        static String serverUrl() {
+            return A2A_SERVER_URL;
+        }
+    }
+
+    public interface StoryCreatorWithUrlSupplier {
+
+        @SequenceAgent(
+                outputKey = "story",
+                subAgents = {DeclarativeA2AWithUrlSupplier.class, StyleReviewLoopAgent.class})
+        ResultWithAgenticScope<String> write(@V("topic") String topic, @V("style") String style);
+    }
+
+    public interface StreamingA2ATester {
+
+        @UserMessage("""
+                You are a streaming A2A server tester, just return simple a2a update event.
+                """)
+        @Agent(description = "streaming A2A server tester", outputKey = "result")
+        ResultWithAgenticScope<String> test(@V("test") String testArg);
     }
 }

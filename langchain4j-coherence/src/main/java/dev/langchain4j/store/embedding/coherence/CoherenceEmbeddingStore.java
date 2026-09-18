@@ -1,9 +1,8 @@
 package dev.langchain4j.store.embedding.coherence;
 
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
+import static dev.langchain4j.internal.ValidationUtils.ensureConsistentSizes;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
 import static java.util.stream.Collectors.toSet;
 
 import com.oracle.coherence.ai.DocumentChunk;
@@ -12,7 +11,6 @@ import com.oracle.coherence.ai.QueryResult;
 import com.oracle.coherence.ai.Vector;
 import com.oracle.coherence.ai.VectorIndexExtractor;
 import com.oracle.coherence.ai.search.SimilaritySearch;
-import com.oracle.coherence.common.base.Logger;
 import com.tangosol.internal.util.processor.CacheProcessors;
 import com.tangosol.net.Coherence;
 import com.tangosol.net.NamedMap;
@@ -108,7 +106,9 @@ public class CoherenceEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     @Override
     public void removeAll(Collection<String> ids) {
-        ensureNotEmpty(ids, "ids");
+        if (isNullOrEmpty(ids)) {
+            return;
+        }
 
         Set<DocumentChunk.Id> chunkIds =
                 ids.stream().map(DocumentChunk.Id::parse).collect(toSet());
@@ -174,17 +174,12 @@ public class CoherenceEmbeddingStore implements EmbeddingStore<TextSegment> {
      */
     @Override
     public void addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> segments) {
-        if (isNullOrEmpty(ids) || isNullOrEmpty(embeddings)) {
-            Logger.info("Skipped adding empty embeddings");
+        ensureConsistentSizes(ids, embeddings, segments);
+        if (isNullOrEmpty(embeddings)) {
             return;
         }
 
-        boolean hasEmbedded = segments != null && !segments.isEmpty();
-
-        ensureTrue(ids.size() == embeddings.size(), "ids size is not equal to embeddings size");
-        if (hasEmbedded) {
-            ensureTrue(embeddings.size() == segments.size(), "embeddings size is not equal to embedded size");
-        }
+        boolean hasEmbedded = !isNullOrEmpty(segments);
 
         Map<DocumentChunk.Id, DocumentChunk> map = new HashMap<>();
         for (int i = 0; i < embeddings.size(); i++) {

@@ -4,6 +4,7 @@ import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.internal.Utils.randomString;
 import static dev.langchain4j.internal.Utils.readBytes;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_HAIKU_4_5_20251001;
+import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_OPUS_4_8;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_SONNET_4_5_20250929;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static java.util.Arrays.asList;
@@ -625,6 +626,44 @@ class AnthropicChatModelIT {
     }
 
     @Test
+    void should_support_skills() {
+
+        // given
+        SpyingHttpClient spyingHttpClient =
+                new SpyingHttpClient(JdkHttpClient.builder().build());
+
+        ChatModel model = AnthropicChatModel.builder()
+                .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
+                .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+                .modelName(CLAUDE_SONNET_4_5_20250929)
+                .skills(AnthropicSkill.XLSX)
+                .returnServerToolResults(true)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(UserMessage.from("Create an Excel spreadsheet with the numbers 1 to 5 in column A"))
+                .build();
+
+        // when
+        ChatResponse chatResponse = model.chat(chatRequest);
+
+        // then: the request was wired up automatically (container.skills block + code_execution server tool)
+        String requestBody = spyingHttpClient.request().body();
+        assertThat(requestBody).contains("\"container\"").contains("\"skill_id\" : \"xlsx\"");
+        assertThat(requestBody).contains("code_execution_20250825");
+
+        // and: the skill actually ran, surfacing its results (e.g. generated file ids)
+        AiMessage aiMessage = chatResponse.aiMessage();
+        assertThat(aiMessage.text()).isNotBlank();
+
+        List<AnthropicServerToolResult> results = aiMessage.attribute("server_tool_results", List.class);
+        assertThat(results).isNotEmpty();
+    }
+
+    @Test
     void should_support_web_search_tool() {
 
         // given
@@ -819,5 +858,40 @@ class AnthropicChatModelIT {
         assertThat(result.type()).isEqualTo("web_search_tool_result");
         assertThat(result.toolUseId()).isNotBlank();
         assertThat(result.content()).isNotNull();
+    }
+
+    @Test
+    void should_apply_mid_conversation_system_message() {
+
+        // given - mid-conversation system messages are supported by Claude Opus 4.8 only
+        boolean midConversationSystemMessages = true;
+        AnthropicChatModelName modelName = CLAUDE_OPUS_4_8;
+
+        ChatModel model = AnthropicChatModel.builder()
+                .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+                .modelName(modelName)
+                .midConversationSystemMessages(midConversationSystemMessages)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        // a leading system message (goes to the top-level "system" field) followed by a mid-conversation
+        // system message (sent inline) that adds an instruction partway through the conversation. Anthropic
+        // requires an inline system message to immediately follow a "user" turn, so it is placed right after
+        // the last user message, as the final entry, where the model's next reply must honor it.
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(
+                        SystemMessage.from("You are a helpful assistant."),
+                        UserMessage.from("Hello"),
+                        AiMessage.from("Hi! How can I help you today?"),
+                        UserMessage.from("What is the capital of France?"),
+                        SystemMessage.from("Include the exact word BANANA somewhere in your ryeply."))
+                .build();
+
+        // when - the request is accepted (no 400 for an invalid placement) ...
+        ChatResponse response = model.chat(chatRequest);
+
+        // then - ... and the inline system instruction takes effect on the reply
+        assertThat(response.aiMessage().text()).containsIgnoringCase("banana");
     }
 }

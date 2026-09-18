@@ -33,8 +33,10 @@ class McpClientClosingIT {
                 .command(List.of(
                         getJBangCommand(), "--quiet", "--fresh", "run", getPathToScript("tools_mcp_server.java")))
                 .build();
-        DefaultMcpClient mcpClient =
-                new DefaultMcpClient.Builder().transport(transport).build();
+        DefaultMcpClient mcpClient = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion("2025-11-25")
+                .build();
         Process process = transport.getProcess();
         mcpClient.listTools();
         mcpClient.close();
@@ -52,7 +54,10 @@ class McpClientClosingIT {
                         getJBangCommand(), "--quiet", "--fresh", "run", getPathToScript("tools_mcp_server.java")))
                 .build();
         DefaultMcpClient mcpClient;
-        mcpClient = new DefaultMcpClient.Builder().transport(transport).build();
+        mcpClient = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion("2025-11-25")
+                .build();
         mcpClient.close();
         assertThatThrownBy(mcpClient::listTools).isInstanceOf(IllegalStateException.class);
         assertThatThrownBy(() -> mcpClient.executeTool(

@@ -1,7 +1,6 @@
 package dev.langchain4j.agentic.scope;
 
 import dev.langchain4j.agentic.Agents;
-import dev.langchain4j.agentic.agent.AgentInvocationException;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -11,6 +10,8 @@ public class AgenticScopeJsonSerializationIT {
 
     @Test
     void agenticScope_pojo_serialization_test() {
+        AgenticScopeSerializer.allowDeserializationType(Person.class);
+
         DefaultAgenticScope agenticScope = new DefaultAgenticScope(DefaultAgenticScope.Kind.PERSISTENT);
 
         Person person = new Person();
@@ -35,29 +36,111 @@ public class AgenticScopeJsonSerializationIT {
         assertThat(deserPerson.isAdult()).isTrue();
     }
 
-    public static class EvilGadget {
-        public EvilGadget() throws Exception {
-            System.out.println("PWNED! Arbitrary Class Instantiated!");
+    public static class ConstructorBomb {
+        public ConstructorBomb() {
+            throw new SecurityException("Arbitrary class instantiated during deserialization");
         }
     }
 
     @Test
-    void agenticScope_secure_serialization_test() throws Exception {
-        // Payload targeting the vulnerable codec
-        String payload = "[\"" + DefaultAgenticScope.class.getName() + "\", {" +
-                "\"state\": [\"java.util.HashMap\", {" +
-                "  \"exploit\": [\"" + EvilGadget.class.getName() + "\", {}]" +
-                "}]" +
-                "}]";
+    void agenticScope_should_reject_arbitrary_class_in_state() {
+        // ConstructorBomb is NOT in the allowlist, so the type validator
+        // blocks it before instantiation — the constructor never runs.
+        String payload = "{" +
+                "\"memoryId\": \"test-id\"," +
+                "\"kind\": \"PERSISTENT\"," +
+                "\"state\": [\"java.util.concurrent.ConcurrentHashMap\", {" +
+                "  \"exploit\": [\"" + ConstructorBomb.class.getName() + "\", {}]" +
+                "}]," +
+                "\"agentInvocations\": [\"java.util.Collections$SynchronizedRandomAccessList\", []]," +
+                "\"context\": [\"java.util.Collections$SynchronizedRandomAccessList\", []]" +
+                "}";
 
-        Class<?> codecClass = JacksonAgenticScopeJsonCodec.class;
-        var constructor = codecClass.getDeclaredConstructor();
-        constructor.setAccessible(true);
-        Object codecInstance = constructor.newInstance();
+        UnserializableAgenticScopeException ex = assertThrows(UnserializableAgenticScopeException.class,
+                () -> AgenticScopeSerializer.fromJson(payload));
 
-        var method = codecClass.getDeclaredMethod("fromJson", String.class);
-        method.setAccessible(true);
-        assertThat(assertThrows(Exception.class, () -> method.invoke(codecInstance, payload)))
-                .cause().hasMessageContaining("Failed to deserialize");
+        assertThat(ex.getMessage())
+                .contains(ConstructorBomb.class.getName())
+                .contains("allowDeserializationType");
+    }
+
+    @Test
+    void agenticScope_should_reject_array_wrapped_class_in_state() {
+        // Same gadget as above, but smuggled as an array type id ("[L...;"): the element type must
+        // still be validated, so a disallowed class cannot be instantiated by wrapping it in an array.
+        String payload = "{" +
+                "\"memoryId\": \"test-id\"," +
+                "\"kind\": \"PERSISTENT\"," +
+                "\"state\": [\"java.util.concurrent.ConcurrentHashMap\", {" +
+                "  \"exploit\": [\"[L" + ConstructorBomb.class.getName() + ";\", [ {} ]]" +
+                "}]," +
+                "\"agentInvocations\": [\"java.util.Collections$SynchronizedRandomAccessList\", []]," +
+                "\"context\": [\"java.util.Collections$SynchronizedRandomAccessList\", []]" +
+                "}";
+
+        UnserializableAgenticScopeException ex = assertThrows(UnserializableAgenticScopeException.class,
+                () -> AgenticScopeSerializer.fromJson(payload));
+
+        assertThat(ex.getMessage()).contains(ConstructorBomb.class.getName());
+    }
+
+    @Test
+    void agenticScope_should_reject_unregistered_type() {
+        String payload = "{" +
+                "\"memoryId\": \"test-id\"," +
+                "\"kind\": \"PERSISTENT\"," +
+                "\"state\": [\"java.util.concurrent.ConcurrentHashMap\", {" +
+                "  \"exploit\": [\"javax.naming.InitialContext\", {}]" +
+                "}]," +
+                "\"agentInvocations\": [\"java.util.Collections$SynchronizedRandomAccessList\", []]," +
+                "\"context\": [\"java.util.Collections$SynchronizedRandomAccessList\", []]" +
+                "}";
+
+        UnserializableAgenticScopeException ex = assertThrows(UnserializableAgenticScopeException.class,
+                () -> AgenticScopeSerializer.fromJson(payload));
+
+        assertThat(ex.getMessage())
+                .contains("javax.naming.InitialContext")
+                .contains("allowDeserializationType");
+    }
+
+    @Test
+    void agenticScope_should_allow_registered_user_type() {
+        AgenticScopeSerializer.allowDeserializationType(Person.class);
+
+        DefaultAgenticScope scope = new DefaultAgenticScope(DefaultAgenticScope.Kind.PERSISTENT);
+        Person person = new Person();
+        person.setName("Mario");
+        person.setAge(51);
+        person.setAdult(true);
+        scope.writeState("person", person);
+
+        String json = AgenticScopeSerializer.toJson(scope);
+        DefaultAgenticScope deserialized = AgenticScopeSerializer.fromJson(json);
+
+        Person p = (Person) deserialized.readState("person");
+        assertThat(p.getName()).isEqualTo("Mario");
+        assertThat(p.getAge()).isEqualTo(51);
+        assertThat(p.isAdult()).isTrue();
+    }
+
+    @Test
+    void agenticScope_should_reject_class_from_non_allowed_langchain4j_package() {
+        String payload = "{" +
+                "\"memoryId\": \"test-id\"," +
+                "\"kind\": \"PERSISTENT\"," +
+                "\"state\": [\"java.util.concurrent.ConcurrentHashMap\", {" +
+                "  \"exploit\": [\"" + AgenticScopeSerializer.class.getName() + "\", {}]" +
+                "}]," +
+                "\"agentInvocations\": [\"java.util.Collections$SynchronizedRandomAccessList\", []]," +
+                "\"context\": [\"java.util.Collections$SynchronizedRandomAccessList\", []]" +
+                "}";
+
+        UnserializableAgenticScopeException ex = assertThrows(UnserializableAgenticScopeException.class,
+                () -> AgenticScopeSerializer.fromJson(payload));
+
+        assertThat(ex.getMessage())
+                .contains(AgenticScopeSerializer.class.getName())
+                .contains("allowDeserializationType");
     }
 }

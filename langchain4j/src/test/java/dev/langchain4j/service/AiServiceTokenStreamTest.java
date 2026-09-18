@@ -66,8 +66,7 @@ class AiServiceTokenStreamTest {
 
     List<ChatMessage> messages = new ArrayList<>();
 
-    @Mock
-    List<Content> content;
+    List<Content> content = new ArrayList<>();
 
     @Mock
     Object memoryId;

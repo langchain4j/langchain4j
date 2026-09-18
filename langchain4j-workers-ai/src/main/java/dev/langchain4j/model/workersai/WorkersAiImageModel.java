@@ -1,21 +1,19 @@
 package dev.langchain4j.model.workersai;
 
 import dev.langchain4j.data.image.Image;
+import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.image.ImageModel;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.workersai.client.AbstractWorkersAIModel;
 import dev.langchain4j.model.workersai.client.WorkersAiImageGenerationRequest;
 import dev.langchain4j.model.workersai.spi.WorkersAiImageModelBuilderFactory;
-import okhttp3.ResponseBody;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.URL;
 import java.util.Base64;
 
@@ -40,7 +38,7 @@ public class WorkersAiImageModel extends AbstractWorkersAIModel implements Image
      *      builder.
      */
     public WorkersAiImageModel(Builder builder) {
-        this(builder.accountId, builder.modelName, builder.apiToken);
+        super(builder.accountId, builder.modelName, builder.apiToken, builder.httpClientBuilder);
     }
 
     /**
@@ -87,6 +85,10 @@ public class WorkersAiImageModel extends AbstractWorkersAIModel implements Image
          * ModelName, preferred as enum for extensibility.
          */
         public String modelName;
+        /**
+         * The HTTP client builder used to create the underlying HTTP client.
+         */
+        public HttpClientBuilder httpClientBuilder;
 
         /**
          * Simple constructor.
@@ -126,6 +128,17 @@ public class WorkersAiImageModel extends AbstractWorkersAIModel implements Image
          */
         public Builder modelName(String modelName) {
             this.modelName = modelName;
+            return this;
+        }
+
+        /**
+         * Sets the {@link HttpClientBuilder} used to create the underlying HTTP client.
+         *
+         * @param httpClientBuilder The HTTP client builder to set.
+         * @return The current instance of {@link Builder}.
+         */
+        public Builder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
+            this.httpClientBuilder = httpClientBuilder;
             return this;
         }
 
@@ -208,22 +221,7 @@ public class WorkersAiImageModel extends AbstractWorkersAIModel implements Image
                 }
             }
 
-            retrofit2.Response<ResponseBody> response = workerAiClient
-                    .generateImage(imgReq, accountId, modelName)
-                    .execute();
-
-            if (response.isSuccessful() && response.body() != null) {
-                InputStream inputStream = response.body().byteStream();
-                ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-                int nRead;
-                byte[] data = new byte[1024];
-                while ((nRead = inputStream.read(data, 0, data.length)) != -1) {
-                    buffer.write(data, 0, nRead);
-                }
-                buffer.flush();
-                return buffer.toByteArray();
-            }
-            throw new IllegalStateException("An error occurred while generating image.");
+            return client.generateImage(imgReq, accountId, modelName);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

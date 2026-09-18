@@ -1,54 +1,61 @@
 package dev.langchain4j.model.openai.internal.chat;
 
+import static dev.langchain4j.model.openai.internal.chat.Role.ASSISTANT;
+import static java.util.Arrays.asList;
+import static java.util.Collections.unmodifiableList;
+
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonAnyGetter;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonSetter;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
-
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-import static dev.langchain4j.model.openai.internal.chat.Role.ASSISTANT;
-import static java.util.Arrays.asList;
-import static java.util.Collections.unmodifiableList;
-
 @JsonDeserialize(builder = AssistantMessage.Builder.class)
 @JsonInclude(JsonInclude.Include.NON_NULL)
-@JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public final class AssistantMessage implements Message {
 
     @JsonProperty
     private final Role role = ASSISTANT;
+
     @JsonProperty
     private final String content;
+
     @JsonProperty
     private final String reasoningContent;
+
     @JsonProperty
     private final String name;
+
     @JsonProperty
     private final List<ToolCall> toolCalls;
+
     @JsonProperty
     private final String refusal;
+
     @JsonProperty
     @Deprecated
     private final FunctionCall functionCall;
+
     @JsonIgnore
     private final Map<String, Object> customParameters;
 
+    @JsonCreator
     public AssistantMessage(Builder builder) {
         this.content = builder.content;
         this.reasoningContent = builder.reasoningContent;
         this.name = builder.name;
-        this.toolCalls = builder.toolCalls;
+        this.toolCalls = builder.toolCalls == null ? null : unmodifiableList(builder.toolCalls);
         this.refusal = builder.refusal;
         this.functionCall = builder.functionCall;
         this.customParameters = builder.customParameters;
@@ -93,8 +100,7 @@ public final class AssistantMessage implements Message {
     @JacocoIgnoreCoverageGenerated
     public boolean equals(Object another) {
         if (this == another) return true;
-        return another instanceof AssistantMessage
-                && equalTo((AssistantMessage) another);
+        return another instanceof AssistantMessage && equalTo((AssistantMessage) another);
     }
 
     @JacocoIgnoreCoverageGenerated
@@ -140,9 +146,7 @@ public final class AssistantMessage implements Message {
     }
 
     public static AssistantMessage from(String content) {
-        return AssistantMessage.builder()
-                .content(content)
-                .build();
+        return AssistantMessage.builder().content(content).build();
     }
 
     public static Builder builder() {
@@ -151,16 +155,19 @@ public final class AssistantMessage implements Message {
 
     @JsonPOJOBuilder(withPrefix = "")
     @JsonIgnoreProperties(ignoreUnknown = true)
-    @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
+    @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
     public static final class Builder {
 
         private String content;
+        @JsonAlias("reasoning")
         private String reasoningContent;
         private String name;
         private List<ToolCall> toolCalls;
         private String refusal;
+
         @Deprecated
         private FunctionCall functionCall;
+
         private Map<String, Object> customParameters;
 
         public Builder content(String content) {
@@ -168,6 +175,7 @@ public final class AssistantMessage implements Message {
             return this;
         }
 
+        @JsonAlias("reasoning")
         public Builder reasoningContent(String reasoningContent) {
             this.reasoningContent = reasoningContent;
             return this;
@@ -181,7 +189,7 @@ public final class AssistantMessage implements Message {
         @JsonSetter
         public Builder toolCalls(List<ToolCall> toolCalls) {
             if (toolCalls != null) {
-                this.toolCalls = unmodifiableList(toolCalls);
+                this.toolCalls = toolCalls;
             }
             return this;
         }

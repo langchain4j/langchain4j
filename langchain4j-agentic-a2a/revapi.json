@@ -12,6 +12,12 @@
         },
         {
           "ignore": true,
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class org.a2aproject.sdk.spec.TaskState",
+          "justification": "A2ATaskInterruptedException deliberately reports the A2A task state it was interrupted in; like AgentCard above, this module exposes A2A protocol types as part of its integration API"
+        },
+        {
+          "ignore": true,
           "code": "java.method.returnTypeChanged",
           "old": "method io.a2a.spec.AgentCard dev.langchain4j.agentic.a2a.A2AClientInstance::agentCard()",
           "new": "method org.a2aproject.sdk.spec.AgentCard dev.langchain4j.agentic.a2a.A2AClientInstance::agentCard()",

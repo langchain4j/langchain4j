@@ -20,10 +20,13 @@ public class AnthropicChatRequestParameters extends DefaultChatRequestParameters
     private final String thinkingType;
     private final Integer thinkingBudgetTokens;
     private final Boolean sendThinking;
+    private final Boolean midConversationSystemMessages;
     private final Boolean returnThinking;
     private final String toolChoiceName;
     private final Boolean disableParallelToolUse;
     private final String userId;
+    private final Boolean returnCacheDiagnostics;
+    private final String previousMessageId;
 
     private AnthropicChatRequestParameters(Builder builder) {
         super(builder);
@@ -32,10 +35,13 @@ public class AnthropicChatRequestParameters extends DefaultChatRequestParameters
         this.thinkingType = builder.thinkingType;
         this.thinkingBudgetTokens = builder.thinkingBudgetTokens;
         this.sendThinking = builder.sendThinking;
+        this.midConversationSystemMessages = builder.midConversationSystemMessages;
         this.returnThinking = builder.returnThinking;
         this.toolChoiceName = builder.toolChoiceName;
         this.disableParallelToolUse = builder.disableParallelToolUse;
         this.userId = builder.userId;
+        this.returnCacheDiagnostics = builder.returnCacheDiagnostics;
+        this.previousMessageId = builder.previousMessageId;
     }
 
     public Boolean cacheSystemMessages() {
@@ -58,6 +64,10 @@ public class AnthropicChatRequestParameters extends DefaultChatRequestParameters
         return sendThinking;
     }
 
+    public Boolean midConversationSystemMessages() {
+        return midConversationSystemMessages;
+    }
+
     public Boolean returnThinking() {
         return returnThinking;
     }
@@ -72,6 +82,32 @@ public class AnthropicChatRequestParameters extends DefaultChatRequestParameters
 
     public String userId() {
         return userId;
+    }
+
+    /**
+     * Whether to request a (beta) cache-diagnostics comparison for this request.
+     *
+     * @see AnthropicCacheDiagnostics
+     */
+    public Boolean returnCacheDiagnostics() {
+        return returnCacheDiagnostics;
+    }
+
+    /**
+     * The {@code id} of the previous response to compare against when {@link #returnCacheDiagnostics()}
+     * is enabled. Pass {@code null} on the first turn of a conversation to opt in without a prior
+     * message to compare, and the {@code id} of the previous {@link AnthropicChatResponseMetadata} on
+     * every subsequent turn.
+     * <p>
+     * This is a per-request value: it changes on every turn and there is intentionally no model-level
+     * setter for it. It can therefore be varied per request on its own, while
+     * {@link #returnCacheDiagnostics()} is enabled once on the model builder — the per-request
+     * {@code previousMessageId} is not paired with, or gated on, {@code returnCacheDiagnostics}.
+     *
+     * @see AnthropicCacheDiagnostics
+     */
+    public String previousMessageId() {
+        return previousMessageId;
     }
 
     @Override
@@ -101,10 +137,13 @@ public class AnthropicChatRequestParameters extends DefaultChatRequestParameters
                 && Objects.equals(thinkingType, that.thinkingType)
                 && Objects.equals(thinkingBudgetTokens, that.thinkingBudgetTokens)
                 && Objects.equals(sendThinking, that.sendThinking)
+                && Objects.equals(midConversationSystemMessages, that.midConversationSystemMessages)
                 && Objects.equals(returnThinking, that.returnThinking)
                 && Objects.equals(toolChoiceName, that.toolChoiceName)
                 && Objects.equals(disableParallelToolUse, that.disableParallelToolUse)
-                && Objects.equals(userId, that.userId);
+                && Objects.equals(userId, that.userId)
+                && Objects.equals(returnCacheDiagnostics, that.returnCacheDiagnostics)
+                && Objects.equals(previousMessageId, that.previousMessageId);
     }
 
     @Override
@@ -116,10 +155,13 @@ public class AnthropicChatRequestParameters extends DefaultChatRequestParameters
                 thinkingType,
                 thinkingBudgetTokens,
                 sendThinking,
+                midConversationSystemMessages,
                 returnThinking,
                 toolChoiceName,
                 disableParallelToolUse,
-                userId);
+                userId,
+                returnCacheDiagnostics,
+                previousMessageId);
     }
 
     @Override
@@ -141,10 +183,13 @@ public class AnthropicChatRequestParameters extends DefaultChatRequestParameters
                 + ", thinkingType=" + thinkingType
                 + ", thinkingBudgetTokens=" + thinkingBudgetTokens
                 + ", sendThinking=" + sendThinking
+                + ", midConversationSystemMessages=" + midConversationSystemMessages
                 + ", returnThinking=" + returnThinking
                 + ", toolChoiceName=" + toolChoiceName
                 + ", disableParallelToolUse=" + disableParallelToolUse
                 + ", userId=" + userId
+                + ", returnCacheDiagnostics=" + returnCacheDiagnostics
+                + ", previousMessageId=" + previousMessageId
                 + '}';
     }
 
@@ -163,10 +208,13 @@ public class AnthropicChatRequestParameters extends DefaultChatRequestParameters
         private String thinkingType;
         private Integer thinkingBudgetTokens;
         private Boolean sendThinking;
+        private Boolean midConversationSystemMessages;
         private Boolean returnThinking;
         private String toolChoiceName;
         private Boolean disableParallelToolUse;
         private String userId;
+        private Boolean returnCacheDiagnostics;
+        private String previousMessageId;
 
         @Override
         public Builder overrideWith(ChatRequestParameters parameters) {
@@ -177,11 +225,16 @@ public class AnthropicChatRequestParameters extends DefaultChatRequestParameters
                 thinkingType(getOrDefault(anthropicParameters.thinkingType(), thinkingType));
                 thinkingBudgetTokens(getOrDefault(anthropicParameters.thinkingBudgetTokens(), thinkingBudgetTokens));
                 sendThinking(getOrDefault(anthropicParameters.sendThinking(), sendThinking));
+                midConversationSystemMessages(getOrDefault(
+                        anthropicParameters.midConversationSystemMessages(), midConversationSystemMessages));
                 returnThinking(getOrDefault(anthropicParameters.returnThinking(), returnThinking));
                 toolChoiceName(getOrDefault(anthropicParameters.toolChoiceName(), toolChoiceName));
                 disableParallelToolUse(
                         getOrDefault(anthropicParameters.disableParallelToolUse(), disableParallelToolUse));
                 userId(getOrDefault(anthropicParameters.userId(), userId));
+                returnCacheDiagnostics(
+                        getOrDefault(anthropicParameters.returnCacheDiagnostics(), returnCacheDiagnostics));
+                previousMessageId(getOrDefault(anthropicParameters.previousMessageId(), previousMessageId));
             }
             return this;
         }
@@ -215,6 +268,11 @@ public class AnthropicChatRequestParameters extends DefaultChatRequestParameters
             return this;
         }
 
+        public Builder midConversationSystemMessages(Boolean midConversationSystemMessages) {
+            this.midConversationSystemMessages = midConversationSystemMessages;
+            return this;
+        }
+
         public Builder returnThinking(Boolean returnThinking) {
             this.returnThinking = returnThinking;
             return this;
@@ -232,6 +290,34 @@ public class AnthropicChatRequestParameters extends DefaultChatRequestParameters
 
         public Builder userId(String userId) {
             this.userId = userId;
+            return this;
+        }
+
+        /**
+         * Enables Anthropic's (beta) cache diagnostics for this request, requesting a comparison
+         * against the request identified by {@link #previousMessageId(String)}.
+         * Requires the {@code cache-diagnosis-2026-04-07} beta header to be set on the model
+         * (see {@code beta(String)} on {@link AnthropicChatModel.AnthropicChatModelBuilder} /
+         * {@link AnthropicStreamingChatModel.AnthropicStreamingChatModelBuilder}).
+         *
+         * @see AnthropicCacheDiagnostics
+         */
+        public Builder returnCacheDiagnostics(Boolean returnCacheDiagnostics) {
+            this.returnCacheDiagnostics = returnCacheDiagnostics;
+            return this;
+        }
+
+        /**
+         * The {@code id} of the previous response to compare against; see
+         * {@link AnthropicChatRequestParameters#previousMessageId()} for the full contract. Pass
+         * {@code null} (the default) on the first turn of a conversation to opt in without a prior
+         * message to compare, and the {@code id} of the previous {@link AnthropicChatResponseMetadata}
+         * on every subsequent turn.
+         *
+         * @see AnthropicCacheDiagnostics
+         */
+        public Builder previousMessageId(String previousMessageId) {
+            this.previousMessageId = previousMessageId;
             return this;
         }
 

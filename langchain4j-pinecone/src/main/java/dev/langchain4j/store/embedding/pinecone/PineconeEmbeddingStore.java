@@ -2,8 +2,7 @@ package dev.langchain4j.store.embedding.pinecone;
 
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.randomUUID;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
-import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
+import static dev.langchain4j.internal.ValidationUtils.ensureConsistentSizes;
 import static dev.langchain4j.store.embedding.pinecone.PineconeHelper.metadataToStruct;
 import static dev.langchain4j.store.embedding.pinecone.PineconeHelper.structToMetadata;
 import static io.pinecone.commons.IndexInterface.buildUpsertVectorWithUnsignedIndices;
@@ -35,8 +34,6 @@ import java.util.Map;
 import java.util.Objects;
 import org.openapitools.db_control.client.model.IndexList;
 import org.openapitools.db_control.client.model.IndexModel;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Represents a <a href="https://www.pinecone.io/">Pinecone</a> index as an embedding store.
@@ -51,8 +48,6 @@ import org.slf4j.LoggerFactory;
  * Please note that in this case metadata filtering might not work properly!</b>
  */
 public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
-
-    private static final Logger log = LoggerFactory.getLogger(PineconeEmbeddingStore.class);
 
     private static final String DEFAULT_NAMESPACE = "default"; // do not change, will break backward compatibility!
     private static final String DEFAULT_METADATA_TEXT_KEY =
@@ -127,7 +122,9 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     @Override
     public void removeAll(Collection<String> ids) {
-        ensureNotEmpty(ids, "ids");
+        if (isNullOrEmpty(ids)) {
+            return;
+        }
         index.deleteByIds(new ArrayList<>(ids), nameSpace);
     }
 
@@ -168,14 +165,10 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     @Override
     public void addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> textSegments) {
-        if (isNullOrEmpty(ids) || isNullOrEmpty(embeddings)) {
-            log.info("Empty embeddings - no ops");
+        ensureConsistentSizes(ids, embeddings, textSegments);
+        if (isNullOrEmpty(embeddings)) {
             return;
         }
-        ensureTrue(ids.size() == embeddings.size(), "ids size is not equal to embeddings size");
-        ensureTrue(
-                textSegments == null || embeddings.size() == textSegments.size(),
-                "embeddings size is not equal to textSegments size");
         List<VectorWithUnsignedIndices> vectors = new ArrayList<>(embeddings.size());
 
         for (int i = 0; i < embeddings.size(); i++) {

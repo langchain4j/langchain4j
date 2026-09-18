@@ -30,7 +30,9 @@ https://github.com/googleapis/java-genai
 - [File API](#file-api)
 - [Cached Content Support](#cached-content-support)
 - [Thinking Models (Gemini 3.0+)](#thinking-models-gemini-30)
+- [Token Usage](#token-usage)
 - [Multimodality (Audio, Video, PDF)](#multimodality-audio-video-pdf)
+- [Audio Transcription](#audio-transcription)
 - [Token Count Estimator](#token-count-estimator)
 - [Model Catalog](#model-catalog)
 
@@ -40,7 +42,7 @@ https://github.com/googleapis/java-genai
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-google-genai</artifactId>
-    <version>1.17.0-beta27</version>
+    <version>1.20.0-beta30</version>
 </dependency>
 ```
 
@@ -136,6 +138,24 @@ ChatModel gemini = GoogleGenAiChatModel.builder()
     .listeners(...)
     .build();
 ```
+
+### Advanced: customizing the `GenerateContentConfig`
+
+The builder methods cover the most common options. To set an option of the underlying Google Gen AI Java SDK
+that is not (yet) exposed by a builder method, register a `generateContentConfigCustomizer`. It receives the
+`GenerateContentConfig.Builder` after this integration has populated it (generation parameters, tools, system
+instruction, etc.) and just before the config is built, so it can set additional options or override existing
+ones while the per-request tools and system instruction are preserved.
+
+```java
+ChatModel gemini = GoogleGenAiChatModel.builder()
+    .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
+    .modelName("gemini-2.5-flash")
+    .generateContentConfigCustomizer(config -> config.responseLogprobs(true).logprobs(5))
+    .build();
+```
+
+This works the same way on `GoogleGenAiStreamingChatModel`.
 
 ## Request & Response Logging
 
@@ -372,6 +392,40 @@ String response = gemini.chat("Summarize the cached document in 3 bullet points.
 
 This feature is available on `GoogleGenAiChatModel`, `GoogleGenAiStreamingChatModel`, and `GoogleGenAiBatchChatModel`.
 
+### Creating and managing caches
+
+Instead of creating the cache out-of-band, you can create and manage it directly from LangChain4j with `GoogleGenAiCaches`, which wraps the SDK's cache lifecycle (create / get / list / update TTL / delete). The messages are cached using the same `GoogleGenAiContentMapper` the chat models use, so you stay in the LangChain4j `ChatMessage` domain.
+
+```java
+GoogleGenAiCaches caches = GoogleGenAiCaches.builder()
+    .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
+    .build();
+
+// Cache a large, reusable context (a system instruction plus a long document)
+CachedContent cache = caches.createCache(
+    "gemini-2.5-flash",
+    List.of(
+        SystemMessage.from("You are a precise assistant answering questions about the attached document."),
+        UserMessage.from(longDocumentText)),
+    Duration.ofHours(1));
+
+// Reuse it across many requests via cachedContent
+ChatModel gemini = GoogleGenAiChatModel.builder()
+    .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
+    .modelName("gemini-2.5-flash")
+    .cachedContent(cache.name().orElseThrow())
+    .build();
+
+String answer = gemini.chat("Summarize the cached document in 3 bullet points.");
+
+// Manage the cache lifecycle
+caches.updateCacheTtl(cache.name().orElseThrow(), Duration.ofHours(2));
+caches.listCaches();
+caches.deleteCache(cache.name().orElseThrow());
+```
+
+> Note: explicit context caching requires a paid tier; it is not available on the free tier.
+
 ## Thinking Models (Gemini 3.0+)
 
 Gemini 3.0 models (like `gemini-3.0-pro` and `gemini-3.0-flash`) support advanced reasoning (thinking) capabilities. 
@@ -390,6 +444,55 @@ ChatModel gemini = GoogleGenAiChatModel.builder()
 
 > [!TIP]
 > The LangChain4j `google-genai` integration seamlessly manages the complex state required for multi-turn tool execution with thinking models. It automatically persists and injects the necessary hidden `thought_signature` tokens across conversation turns, ensuring robust and uninterrupted agentic workflows!
+
+### Thought summaries
+
+Set `includeThoughts(true)` to ask the model to return
+[thought summaries](https://ai.google.dev/gemini-api/docs/generate-content/thinking) along with the answer,
+and `returnThinking(true)` to have them mapped to `AiMessage.thinking()`:
+
+```java
+ChatModel gemini = GoogleGenAiChatModel.builder()
+    .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
+    .modelName("gemini-3.1-pro-preview")
+    .thinkingLevel("MEDIUM")
+    .includeThoughts(true)
+    .returnThinking(true)
+    .build();
+
+ChatResponse response = gemini.chat(UserMessage.from("What is 6 times 7?"));
+
+String thinking = response.aiMessage().thinking();
+String answer = response.aiMessage().text();
+```
+
+When streaming, thought summaries are delivered through `StreamingChatResponseHandler.onPartialThinking()`
+while the answer continues to arrive through `onPartialResponse()`.
+
+To send thought summaries back to the model in follow-up requests, set `sendThinking(true)`. The
+`thought_signature` tokens required for multi-turn tool execution are handled independently and are always
+preserved, regardless of this setting.
+
+> [!NOTE]
+> `returnThinking` is disabled by default. Thought summaries returned by the model are then discarded and
+> never appear in `AiMessage.text()`.
+
+## Token Usage
+
+Responses carry a `GoogleGenAiTokenUsage`, which adds the token counts Gemini reports for thinking, cached
+content and tool results to the standard input, output and total counts:
+
+```java
+GoogleGenAiTokenUsage tokenUsage = (GoogleGenAiTokenUsage) response.metadata().tokenUsage();
+
+Integer thoughtsTokenCount = tokenUsage.thoughtsTokenCount();
+Integer cachedContentTokenCount = tokenUsage.cachedContentTokenCount();
+Integer toolUsePromptTokenCount = tokenUsage.toolUsePromptTokenCount();
+```
+
+Each is `null` when the model does not report it. `cachedContentTokenCount` is a subset of
+`inputTokenCount()`, whereas `toolUsePromptTokenCount` and `thoughtsTokenCount` are counted on top of it:
+Gemini defines the total as `inputTokenCount + outputTokenCount + toolUsePromptTokenCount + thoughtsTokenCount`.
 
 ## GoogleGenAiEmbeddingModel
 
@@ -564,6 +667,59 @@ ChatResponse response = gemini.chat(ChatRequest.builder()
     ))
     .build());
 ```
+
+## Audio Transcription
+
+Models built for speech recognition, such as `gemini-3.5-transcribe`, turn audio into text.
+Send the audio as an `AudioContent`; no text instruction is needed. The transcript is returned as the text of the `AiMessage`.
+
+Use `audioTranscriptionConfig` to control how the audio is transcribed:
+
+```java
+ChatModel transcriber = GoogleGenAiChatModel.builder()
+    .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
+    .modelName("gemini-3.5-transcribe")
+    .audioTranscriptionConfig(AudioTranscriptionConfig.builder()
+        .mode(AudioTranscriptionConfigMode.Known.VERBATIM)
+        .languageCodes("en-US")
+        .customVocabulary("LangChain4j", "Gemini")
+        .wordTimestamp(true)
+        .diarization(true)
+        .build())
+    .build();
+
+ChatResponse response = transcriber.chat(ChatRequest.builder()
+    .messages(UserMessage.from(AudioContent.from("https://example.com/meeting.mp3")))
+    .build());
+
+String transcript = response.aiMessage().text();
+```
+
+- `mode`: `VERBATIM` (the default) keeps every word, including filler words, repetitions and false starts.
+  `SMART` removes them and lightly formats the text. Word timestamps and diarization cannot be used with `SMART`.
+- `languageCodes`: BCP-47 codes of the languages spoken in the audio. When omitted, the language is detected automatically.
+- `customVocabulary`: words and phrases the model should recognize, such as product or people names.
+- `wordTimestamp`: returns the start and end offset of every word.
+- `diarization`: labels which speaker said what.
+
+Word timestamps and speaker labels are not part of the `AiMessage` text. Read them from the raw response:
+
+```java
+GoogleGenAiChatResponseMetadata metadata = (GoogleGenAiChatResponseMetadata) response.metadata();
+
+for (Part part : metadata.rawResponse().parts()) {
+    part.audioTranscription().ifPresent(transcription -> {
+        String speaker = transcription.speakerLabel().orElse("");
+        for (WordInfo word : transcription.words().orElse(List.of())) {
+            System.out.printf("[%s] %s - %s %s%n",
+                speaker, word.startOffset().orElse(""), word.endOffset().orElse(""), word.word().orElse(""));
+        }
+    });
+}
+```
+
+`GoogleGenAiStreamingChatModel` accepts the same `audioTranscriptionConfig`, but its raw response only holds the last streamed chunk,
+so use `GoogleGenAiChatModel` when you need word timestamps or speaker labels.
 
 ## Token Count Estimator
 

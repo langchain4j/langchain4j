@@ -60,7 +60,7 @@ class OpenAiResponsesStreamingChatModelThinkingIT {
     void should_return_reasoning_summary() {
 
         // given
-        String reasoningSummary = "auto";
+        String reasoningSummary = "detailed";
 
         StreamingChatModel model = OpenAiResponsesStreamingChatModel.builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))

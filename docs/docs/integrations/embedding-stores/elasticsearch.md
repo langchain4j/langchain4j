@@ -13,7 +13,7 @@ https://www.elastic.co/
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-elasticsearch</artifactId>
-    <version>1.17.0-beta27</version>
+    <version>1.20.0-beta30</version>
 </dependency>
 ```
 
@@ -58,6 +58,7 @@ It comes with the following options:
 
 * `indexName`: the name of the Elasticsearch index to use. Default is `default`.
 * `configuration`: the `ElasticsearchConfiguration` to use. Default is `ElasticsearchConfigurationKnn`.
+* `refresh`: when documents written or removed by ID become visible to search. Default is `Refresh.False`.
 
 The previous code is equivalent to:
 
@@ -68,6 +69,64 @@ ElasticsearchEmbeddingStore store = ElasticsearchEmbeddingStore.builder()
     .indexName("default")
     .build();
 ```
+
+### Refresh policy
+
+Elasticsearch does not make a document searchable the moment the write request returns. By default a document becomes
+visible to search on the next periodic index refresh (once per second, unless the index says otherwise). Until then the
+document is safely stored and can be fetched by ID, but it will not show up in a search.
+
+This matters when you add documents and then immediately do something that searches for them. The `refresh` option lets
+you wait for search visibility instead:
+
+```java
+import co.elastic.clients.elasticsearch._types.Refresh;
+
+ElasticsearchEmbeddingStore store = ElasticsearchEmbeddingStore.builder()
+    .client(client)
+    .refresh(Refresh.WaitFor)
+    .build();
+```
+
+The three values are:
+
+* `Refresh.False` (default) returns as soon as the document is stored, and leaves refreshing to Elasticsearch. This is
+  the fastest option.
+* `Refresh.WaitFor` returns once the document is visible to search. It does not force extra refreshes, so it is usually
+  the right choice when you need visibility. Note that if the index has automatic refreshing turned off
+  (`index.refresh_interval: -1`), the call waits until something else triggers a refresh.
+* `Refresh.True` forces a refresh immediately. This gives visibility without waiting, but creating a new segment on
+  every request reduces indexing throughput, so avoid it on write-heavy indices.
+
+The option applies to `add`, `addAll` and `removeAll(Collection<String> ids)`. It does not change searches, and it does
+not isolate you from writes made concurrently by someone else. The same option is available on
+`ElasticsearchContentRetriever.builder()`.
+
+Filtered removal (`removeAll(Filter)`) is a delete-by-query, so it too only matches documents that are already
+visible to search: embeddings added moments earlier can survive it. If you add embeddings and then immediately remove
+them by filter, configure `Refresh.WaitFor` so the writes are searchable before the removal runs.
+
+See the
+[Elasticsearch refresh parameter documentation](https://www.elastic.co/docs/reference/elasticsearch/rest-apis/refresh-parameter)
+for details.
+
+### Storing documents without an embedding
+
+Next to the usual `add(Embedding, TextSegment)` methods, the store can also index plain text, without computing an
+embedding for it:
+
+```java
+store.add("Printer troubleshooting guide");                    // generates an id
+store.add("my-id", "Printer troubleshooting guide");           // with your own id
+store.addAllText(List.of("First guide", "Second guide"));      // several at once
+```
+
+Because these documents have no vector, vector search never returns them, neither with
+[`ElasticsearchConfigurationKnn`](#elasticsearchconfigurationknn) nor with
+[`ElasticsearchConfigurationScript`](#elasticsearchconfigurationscript). They are still found by full text search, so a
+single index can hold both embedded and text-only documents, and you can search it both ways with
+[`ElasticsearchConfigurationFullText`](#elasticsearchconfigurationfulltext) or
+[`ElasticsearchConfigurationHybrid`](#elasticsearchconfigurationhybrid).
 
 ## ElasticsearchContentRetriever
 
@@ -245,9 +304,9 @@ public class MyElasticsearchConfiguration implements ElasticsearchConfiguration 
 
     @Override
     SearchResponse<Document> fullTextSearch(
-            ElasticsearchClient client, 
-            String indexName, 
-            String textQuery) {
+            ElasticsearchClient client,
+            String indexName,
+            FullTextSearchRequest request) {
         // Your optional custom full text search implementation here
     }
 
@@ -267,6 +326,15 @@ Please note that you can implement only the methods relevant to your use case:
 * `vectorSearch` for vector similarity search (used by both `ElasticsearchEmbeddingStore` and `ElasticsearchContentRetriever`).
 * `fullTextSearch` for full text search (used by `ElasticsearchContentRetriever` only).
 * `hybridSearch` for hybrid search (used by `ElasticsearchContentRetriever` only).
+
+The `FullTextSearchRequest` carries the `textQuery` to search for, together with the `maxResults`, `minScore` and
+`filter` configured on the `ElasticsearchContentRetriever`. Your implementation is responsible for applying them,
+otherwise documents which do not match the filter can be returned.
+
+> **Note:**
+> There is also a deprecated `fullTextSearch(ElasticsearchClient client, String indexName, String textQuery)` method.
+> Configurations which only implement that one keep working, but the `maxResults`, `minScore` and `filter` of the
+> retriever are ignored, and a warning is logged. Please implement the method taking a `FullTextSearchRequest` instead.
 
 ## Examples
 

@@ -21,6 +21,7 @@ import java.nio.file.PathMatcher;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -364,7 +365,10 @@ public class ClassPathDocumentLoader {
             Path pathMatcherRoot,
             PathMatcher pathMatcher,
             DocumentParser documentParser) {
-        return pathStream
+        AtomicInteger blank = new AtomicInteger();
+        AtomicInteger failed = new AtomicInteger();
+
+        List<Document> documents = pathStream
                 .filter(Files::isRegularFile)
                 // converting absolute pathMatcherRoot into relative before using pathMatcher
                 // because patterns defined in pathMatcher are relative to pathMatcherRoot (directoryPath)
@@ -379,16 +383,28 @@ public class ClassPathDocumentLoader {
                                 p,
                                 documentParser);
                     } catch (BlankDocumentException ignored) {
-                        // blank/empty documents are ignored
+                        blank.incrementAndGet();
                         return null;
                     } catch (Exception e) {
-                        String message = (e.getCause() != null) ? e.getCause().getMessage() : e.getMessage();
-                        LOG.warn("Failed to load '{}': {}", p, message);
+                        failed.incrementAndGet();
+                        LOG.warn("Failed to load '{}'", p, e);
                         return null;
                     }
                 })
                 .filter(Objects::nonNull)
                 .toList();
+
+        if (blank.get() > 0 || failed.get() > 0) {
+            LOG.warn(
+                    "Loaded {} of {} documents from '{}'. Skipped {} that failed to load and {} that were blank.",
+                    documents.size(),
+                    documents.size() + blank.get() + failed.get(),
+                    directoryOnClasspath,
+                    failed.get(),
+                    blank.get());
+        }
+
+        return documents;
     }
 
     private static String getRelativePath(

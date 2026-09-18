@@ -67,7 +67,12 @@ class IntegerOutputParserTest {
                 "4.5",
                 "-3.1",
                 "2147483648", // Integer.MAX_VALUE + 1
-                "-2147483649" // Integer.MIN_VALUE - 1
+                "-2147483649", // Integer.MIN_VALUE - 1
+
+                // Malformed JSON object
+                "{\"value\": 1",
+                "{oops}",
+                "{"
             })
     void should_fail_to_parse_invalid_input(String input) {
 
