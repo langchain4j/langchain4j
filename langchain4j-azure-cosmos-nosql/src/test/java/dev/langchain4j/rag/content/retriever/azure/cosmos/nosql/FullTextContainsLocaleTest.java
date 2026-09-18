@@ -53,6 +53,7 @@ class FullTextContainsLocaleTest {
 
     @Test
     void fullTextContainsAny_doesNotMatch_when_all_terms_are_absent_under_turkish_locale() {
-        assertThat(new FullTextContainsAny(KEY, "TOKEN", "PASSWORD").test(metadata)).isFalse();
+        assertThat(new FullTextContainsAny(KEY, "TOKEN", "PASSWORD").test(metadata))
+                .isFalse();
     }
 }
