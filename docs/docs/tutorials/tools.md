@@ -1567,11 +1567,79 @@ Like `IMMEDIATE`, `IMMEDIATE_IF_LAST` is only allowed on AI services with a `Res
 ### Error Handling
 
 :::note
-The defaults below apply to the synchronous and `TokenStream` modes. In the asynchronous and reactive modes they
-are **reversed**: a tool *execution* error fails the invocation instead of being sent to the LLM, and a tool
-*argument-parse* error is sent to the LLM instead of failing the invocation. A handler you configure explicitly is
-used by every mode. See [Non-blocking and Reactive](/tutorials/non-blocking#tool-errors).
+The defaults below apply to the synchronous and `TokenStream` modes. The asynchronous and reactive modes
+already behave the way the defaults are planned to behave: a tool *execution* error fails the invocation
+unless the exception says what the LLM may be told, and a tool *argument-parse* error is sent to the LLM
+instead of failing the invocation. A handler you configure explicitly is used by every mode.
+See [Non-blocking and Reactive](/tutorials/non-blocking#tool-errors).
 :::
+
+#### Ready-Made Handlers
+
+Both handler interfaces come with ready-made implementations for the most common cases,
+so for those you do not have to write a handler yourself:
+
+| Handler | What happens when a tool fails |
+|---------|--------------------------------|
+| `ToolArgumentsErrorHandler.sendExceptionMessageToLlm()` | The message of the error is sent to the LLM, so that it can correct the arguments and try again. The AI Service invocation continues. ⚠️ See the warning below. |
+| `ToolArgumentsErrorHandler.failInvocation()` | The error is rethrown: the AI Service invocation fails and nothing is sent to the LLM. |
+| `ToolExecutionErrorHandler.sendExceptionMessageToLlm()` | The message of the exception thrown by the tool is sent to the LLM, so that it can react to it. The AI Service invocation continues. ⚠️ See the warning below. |
+| `ToolExecutionErrorHandler.failInvocationUnlessVisibleToLlm()` | Only exceptions implementing `ToolErrorVisibleToLlm` are shown to the LLM, using the text they provide. Every other exception fails the AI Service invocation. See [Deciding per exception what the LLM sees](#deciding-per-exception-what-the-llm-sees). |
+| `ToolExecutionErrorHandler.failInvocation()` | The exception is rethrown: the AI Service invocation fails and nothing is sent to the LLM. |
+
+```java
+Assistant assistant = AiServices.builder(Assistant.class)
+        .chatModel(chatModel)
+        .tools(tools)
+        .toolArgumentsErrorHandler(ToolArgumentsErrorHandler.sendExceptionMessageToLlm())
+        .toolExecutionErrorHandler(ToolExecutionErrorHandler.failInvocation())
+        .build();
+```
+
+For anything else - sending a fixed generic message, sanitizing the error before the LLM sees it,
+or deciding based on the type of the error - write the handler yourself, as described in the sections below.
+
+:::warning Sending exception messages to the LLM can expose sensitive data
+The message of an exception is usually written for developers, not for the LLM: it can contain internal
+application details such as file paths, SQL, credentials embedded in error strings, responses of downstream
+services or personal data. Everything sent to the LLM reaches the LLM provider, is stored in the chat memory
+and can end up in the answer the user reads, in logs and in observability pipelines.
+
+Use `sendExceptionMessageToLlm()` only when you know that the exception messages of all your tools are
+written with that in mind. Otherwise send a generic or sanitized description of the failure to the LLM,
+and keep the details in your logs.
+:::
+
+:::note
+When an AI Service is configured with tools, but the error handlers are not configured explicitly,
+LangChain4j logs a warning once per JVM. Configuring the handlers explicitly (with any of the options
+on this page) removes that warning and makes your application immune to the planned change of the defaults.
+The warning can also be turned off by setting the log level of the
+`dev.langchain4j.service.ToolErrorHandlingNotice` logger to `OFF`.
+:::
+
+##### Configuring the handlers in Quarkus
+
+The examples on this page use `AiServices.builder(...)`. In Quarkus, an AI Service is declared with
+`@RegisterAiService`, and the handlers are configured with static methods on the interface:
+
+```java
+@RegisterAiService
+public interface Assistant {
+
+    String chat(String userMessage);
+
+    @HandleToolExecutionError
+    static ToolErrorHandlerResult onToolError(Throwable error, ToolErrorContext context) {
+        return ToolExecutionErrorHandler.failInvocationUnlessVisibleToLlm().handle(error, context);
+    }
+}
+```
+
+For the whole application, declare a class implementing `ToolExecutionErrorHandler` and annotate it with
+`@DefaultToolExecutionErrorHandler` (the qualifier goes on a type, not on a producer method).
+
+Note that Quarkus builds its AI Services itself, so the warning described above is not logged there.
 
 
 #### Handling Tool Name Errors
@@ -1605,8 +1673,8 @@ Argument errors usually come from the LLM, and LLMs can typically self-correct w
 error message. Configure a `ToolArgumentsErrorHandler` that returns the error text so the LLM can
 retry with corrected arguments.
 
-We are planning to change the default to this behaviour in LangChain4j 2.0. If this planned change
-would affect your use case, please [open an issue](https://github.com/langchain4j/langchain4j/issues)
+We are planning to change the default to this behaviour in an upcoming release. If this planned
+change would affect your use case, please [open an issue](https://github.com/langchain4j/langchain4j/issues)
 so we can hear your feedback before it lands.
 :::
 
@@ -1632,11 +1700,21 @@ Currently, there are two ways to handle errors inside the `ToolArgumentsErrorHan
 Assistant assistant = AiServices.builder(Assistant.class)
         .chatModel(chatModel)
         .tools(tools)
-        .toolArgumentsErrorHandler((error, errorContext) -> ToolErrorHandlerResult.text(error.getMessage()))
+        .toolArgumentsErrorHandler(ToolArgumentsErrorHandler.sendExceptionMessageToLlm())
         .build();
 ```
 
 **Strict (stop the flow on any argument error):**
+
+```java
+Assistant assistant = AiServices.builder(Assistant.class)
+        .chatModel(chatModel)
+        .tools(tools)
+        .toolArgumentsErrorHandler(ToolArgumentsErrorHandler.failInvocation())
+        .build();
+```
+
+If you want the AI Service to fail with an exception of your own type, throw it from the handler:
 
 ```java
 Assistant assistant = AiServices.builder(Assistant.class)
@@ -1686,15 +1764,40 @@ Once fed to the LLM, this content can flow into responses, chat history, observa
 and the LLM provider's logs.
 
 Configure a `ToolExecutionErrorHandler` that returns either a generic message or a curated/sanitized
-description of the failure, and rely on logs and observability events for the underlying detail.
+description of the failure, and rely on your own logs and observability events for the underlying detail.
+Note that once you configure a handler, LangChain4j stops logging tool failures for you - that log exists
+only to warn you about the default behaviour.
 
-We are planning to change the default to "Throw an exception and abort AI Service invocation" in
-LangChain4j 2.0. If this planned change would affect your use case, please
-[open an issue](https://github.com/langchain4j/langchain4j/issues) so we can hear your feedback
-before it lands.
+We are planning to change the default in an upcoming release, to
+[`failInvocationUnlessVisibleToLlm()`](#deciding-per-exception-what-the-llm-sees): the AI Service invocation fails,
+unless the exception itself says what the LLM may be told. If this planned change would affect your use
+case, please [open an issue](https://github.com/langchain4j/langchain4j/issues) so we can hear your
+feedback before it lands.
 :::
 
-You can customize this behaviour by configuring a `ToolExecutionErrorHandler` on the AI Service:
+You can customize this behaviour by configuring a `ToolExecutionErrorHandler` on the AI Service.
+
+**Recommended (let each exception decide, see [below](#deciding-per-exception-what-the-llm-sees)):**
+
+```java
+Assistant assistant = AiServices.builder(Assistant.class)
+        .chatModel(chatModel)
+        .tools(tools)
+        .toolExecutionErrorHandler(ToolExecutionErrorHandler.failInvocationUnlessVisibleToLlm())
+        .build();
+```
+
+**Strict (no failure ever reaches the LLM):**
+
+```java
+Assistant assistant = AiServices.builder(Assistant.class)
+        .chatModel(chatModel)
+        .tools(tools)
+        .toolExecutionErrorHandler(ToolExecutionErrorHandler.failInvocation())
+        .build();
+```
+
+**Let the LLM react to the failure, but without exposing the exception message:**
 
 ```java
 Assistant assistant = AiServices.builder(Assistant.class)
@@ -1704,9 +1807,96 @@ Assistant assistant = AiServices.builder(Assistant.class)
         .build();
 ```
 
+**Current default (send the message of the exception to the LLM) - ⚠️ see the warning above about exposing sensitive data:**
+
+```java
+Assistant assistant = AiServices.builder(Assistant.class)
+        .chatModel(chatModel)
+        .tools(tools)
+        .toolExecutionErrorHandler(ToolExecutionErrorHandler.sendExceptionMessageToLlm())
+        .build();
+```
+
 As with the `ToolArgumentsErrorHandler`, there are two ways to handle errors in `ToolExecutionErrorHandler`:
 return a text message or throw an exception. You can use `errorContext.rawError()` to inspect
 the raw error before cause-unwrapping when deciding how to handle it.
+
+##### Deciding per exception what the LLM sees
+
+Sending every exception to the LLM is risky, and failing on every exception takes away the LLM's
+ability to recover from failures it could work around. Usually you want something in between:
+the LLM should learn that there is no order with the ID it invented, but it should not learn
+that your database is called `ORDERS_V2` and rejected the query.
+
+To express that, let your exception implement `ToolErrorVisibleToLlm` and write, in
+`messageForLlm()`, exactly what the LLM should be told:
+
+```java
+public class OrderNotFoundException extends RuntimeException implements ToolErrorVisibleToLlm {
+
+    private final String orderId;
+
+    public OrderNotFoundException(String orderId) {
+        super("Order " + orderId + " not found");
+        this.orderId = orderId;
+    }
+
+    @Override
+    public String messageForLlm() {
+        return "There is no order with ID " + orderId + ". Ask the user to check the order number.";
+    }
+}
+```
+
+If you do not want to declare an exception class, throw a ready-made one instead:
+
+```java
+@Tool("Returns the status of an order")
+String orderStatus(String orderId) {
+    try {
+        return orderService.status(orderId);
+    } catch (SQLException e) {
+        // the LLM is told only what it needs to know; the cause is not sent to it
+        throw ToolErrorVisibleToLlm.from("The order service is temporarily unavailable.", e);
+    }
+}
+```
+
+Then configure the handler that honors it:
+
+```java
+Assistant assistant = AiServices.builder(Assistant.class)
+        .chatModel(chatModel)
+        .tools(tools)
+        .toolExecutionErrorHandler(ToolExecutionErrorHandler.failInvocationUnlessVisibleToLlm())
+        .build();
+```
+
+Now `OrderNotFoundException` reaches the LLM as "There is no order with ID ...", while a
+`NullPointerException` or a failing database connection fails the AI Service invocation,
+so you find out about it instead of the LLM quietly apologizing to your user.
+
+For exceptions you cannot change - typically those thrown by a library - write the handler yourself and
+decide there what the LLM is told:
+
+```java
+.toolExecutionErrorHandler((error, errorContext) -> {
+    if (error instanceof EntityNotFoundException) {
+        return ToolErrorHandlerResult.text("That record does not exist.");
+    }
+    throw new RuntimeException(error);
+})
+```
+
+:::warning
+Do not pass the message of a library exception to the LLM unchanged: it is written for developers and may
+contain internal details, exactly like the message of your own exceptions.
+:::
+
+:::note
+`failInvocationUnlessVisibleToLlm()` is the behavior we are planning to make the default in an upcoming
+releases. Configuring it explicitly today means the change will not affect your application.
+:::
 
 ### Compensating Tool Actions
 
