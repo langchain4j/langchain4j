@@ -386,8 +386,9 @@ class GoogleGenAiContentMapper {
     }
 
     /**
-     * Reads an image the model generated into the given part. Only image blobs are picked up, so audio
-     * returned in the same response is left to its own handling.
+     * Reads an image the model generated into the given part. Only image blobs are picked up, which is
+     * what {@code PartsAndContentsMapper} does in {@code langchain4j-google-ai-gemini}; any other inline
+     * data is left alone.
      */
     private static Optional<Image> toGeneratedImage(Part part) {
         if (part.inlineData().isEmpty()) {
