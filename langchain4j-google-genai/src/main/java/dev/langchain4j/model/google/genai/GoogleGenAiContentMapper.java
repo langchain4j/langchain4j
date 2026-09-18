@@ -1,9 +1,11 @@
 package dev.langchain4j.model.google.genai;
 
+import static dev.langchain4j.data.message.AiMessage.GENERATED_IMAGES_KEY;
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 
+import com.google.genai.types.Blob;
 import com.google.genai.types.Candidate;
 import com.google.genai.types.Content;
 import com.google.genai.types.FunctionCall;
@@ -37,6 +39,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -285,6 +288,7 @@ class GoogleGenAiContentMapper {
         StringBuilder textBuilder = new StringBuilder();
         StringBuilder thinkingBuilder = new StringBuilder();
         List<ToolExecutionRequest> toolRequests = new ArrayList<>();
+        List<Image> generatedImages = new ArrayList<>();
         Map<String, Object> attributes = new HashMap<>();
 
         if (content != null) {
@@ -300,6 +304,8 @@ class GoogleGenAiContentMapper {
                     }
                 } else if (part.audioTranscription().isPresent()) {
                     appendTranscription(textBuilder, part.audioTranscription().get());
+                } else if (part.inlineData().isPresent()) {
+                    toGeneratedImage(part.inlineData().get()).ifPresent(generatedImages::add);
                 }
 
                 if (part.functionCall().isPresent()) {
@@ -353,6 +359,10 @@ class GoogleGenAiContentMapper {
             aiMessageBuilder.thinking(thinkingBuilder.toString());
         }
 
+        if (!generatedImages.isEmpty()) {
+            attributes.put(GENERATED_IMAGES_KEY, generatedImages);
+        }
+
         if (!attributes.isEmpty()) {
             aiMessageBuilder.attributes(attributes);
         }
@@ -392,6 +402,25 @@ class GoogleGenAiContentMapper {
             textBuilder.append(' ');
         }
         textBuilder.append(text);
+    }
+
+    /**
+     * Maps an {@code inlineData} part to a generated image, or returns empty when the part carries
+     * something other than image bytes.
+     * <p>
+     * Image generation models return the picture they produced as an {@code inlineData} part, which
+     * is the only place it appears in a chat response. Parts carrying other media (audio, for
+     * instance) travel through their own fields, so they are not generated images.
+     */
+    private static Optional<Image> toGeneratedImage(Blob inlineData) {
+        String mimeType = inlineData.mimeType().orElse(null);
+        if (!inlineData.data().isPresent() || mimeType == null || !mimeType.startsWith("image/")) {
+            return Optional.empty();
+        }
+        return Optional.of(Image.builder()
+                .base64Data(Base64.getEncoder().encodeToString(inlineData.data().get()))
+                .mimeType(mimeType)
+                .build());
     }
 
     private static List<Part> toParts(UserMessage userMessage) {

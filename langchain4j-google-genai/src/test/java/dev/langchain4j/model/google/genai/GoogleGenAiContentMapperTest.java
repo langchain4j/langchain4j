@@ -8,6 +8,7 @@ import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.google.genai.types.Blob;
 import com.google.genai.types.Candidate;
 import com.google.genai.types.Content;
 import com.google.genai.types.FinishReason;
@@ -30,6 +31,7 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Base64;
@@ -1088,6 +1090,37 @@ class GoogleGenAiContentMapperTest {
         ChatResponse result = GoogleGenAiContentMapper.toChatResponse(response, "gemini-3.5-transcribe");
 
         assertThat(result.aiMessage().text()).isEqualTo("Hello world Hi");
+    }
+
+    @Test
+    void should_return_generated_images_from_inline_data() {
+        byte[] imageBytes = "image-bytes".getBytes(StandardCharsets.UTF_8);
+
+        GenerateContentResponse response = responseWithParts(Part.builder()
+                .inlineData(
+                        Blob.builder().data(imageBytes).mimeType("image/png").build())
+                .build());
+
+        ChatResponse result = GoogleGenAiContentMapper.toChatResponse(response, "gemini-2.5-flash-image");
+
+        assertThat(result.aiMessage().images()).hasSize(1);
+        Image generatedImage = result.aiMessage().images().get(0);
+        assertThat(generatedImage.base64Data()).isEqualTo(Base64.getEncoder().encodeToString(imageBytes));
+        assertThat(generatedImage.mimeType()).isEqualTo("image/png");
+    }
+
+    @Test
+    void should_ignore_inline_data_that_is_not_an_image() {
+        GenerateContentResponse response = responseWithParts(Part.builder()
+                .inlineData(Blob.builder()
+                        .data("audio-bytes".getBytes(StandardCharsets.UTF_8))
+                        .mimeType("audio/wav")
+                        .build())
+                .build());
+
+        ChatResponse result = GoogleGenAiContentMapper.toChatResponse(response, "gemini-2.5-flash");
+
+        assertThat(result.aiMessage().images()).isEmpty();
     }
 
     private static GenerateContentResponse responseWithParts(Part... parts) {

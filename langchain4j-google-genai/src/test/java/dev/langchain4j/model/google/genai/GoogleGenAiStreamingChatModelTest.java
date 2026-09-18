@@ -10,6 +10,7 @@ import com.google.genai.Client;
 import com.google.genai.Models;
 import com.google.genai.ResponseStream;
 import com.google.genai.types.AudioTranscriptionConfig;
+import com.google.genai.types.Blob;
 import com.google.genai.types.Candidate;
 import com.google.genai.types.Content;
 import com.google.genai.types.FunctionCall;
@@ -17,6 +18,7 @@ import com.google.genai.types.GenerateContentConfig;
 import com.google.genai.types.GenerateContentResponse;
 import com.google.genai.types.Part;
 import com.google.genai.types.SafetySetting;
+import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.ModelProvider;
@@ -29,6 +31,7 @@ import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.FinishReason;
 import java.lang.reflect.Field;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Base64;
@@ -279,6 +282,80 @@ class GoogleGenAiStreamingChatModelTest {
         String encodedSig = Base64.getEncoder().encodeToString("signature-data".getBytes());
         assertThat(aiMessage.attribute("thought_signature_call_123", String.class))
                 .isEqualTo(encodedSig);
+    }
+
+    @Test
+    void should_merge_generated_images_across_streaming_chunks() throws Exception {
+        Client client = mock(Client.class);
+        Models models = mock(Models.class);
+        Field modelsField = Client.class.getDeclaredField("models");
+        modelsField.setAccessible(true);
+        modelsField.set(client, models);
+
+        @SuppressWarnings("unchecked")
+        ResponseStream<GenerateContentResponse> stream = mock(ResponseStream.class);
+
+        when(models.generateContentStream(any(String.class), any(List.class), any()))
+                .thenReturn(stream);
+
+        // Image generation models stream one inlineData part per chunk, so an
+        // accumulate-by-replacement loses every image but the last.
+        GenerateContentResponse firstChunk = responseWithInlineImage("first-image-bytes");
+        GenerateContentResponse secondChunk = responseWithInlineImage("second-image-bytes");
+
+        when(stream.iterator()).thenReturn(List.of(firstChunk, secondChunk).iterator());
+
+        GoogleGenAiStreamingChatModel model = GoogleGenAiStreamingChatModel.builder()
+                .client(client)
+                .modelName("gemini-2.5-flash-image")
+                .build();
+
+        CompletableFuture<ChatResponse> future = new CompletableFuture<>();
+
+        model.chat(List.of(UserMessage.from("Draw two pictures")), new StreamingChatResponseHandler() {
+            @Override
+            public void onPartialResponse(String partialResponse) {}
+
+            @Override
+            public void onCompleteResponse(ChatResponse completeResponse) {
+                future.complete(completeResponse);
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                future.completeExceptionally(error);
+            }
+        });
+
+        ChatResponse response = future.get(5, TimeUnit.SECONDS);
+        List<Image> images = response.aiMessage().images();
+
+        assertThat(images).hasSize(2);
+        assertThat(images)
+                .extracting(Image::base64Data)
+                .containsExactly(base64("first-image-bytes"), base64("second-image-bytes"));
+    }
+
+    private static GenerateContentResponse responseWithInlineImage(String content) {
+        Part part = Part.builder()
+                .inlineData(Blob.builder()
+                        .data(content.getBytes(StandardCharsets.UTF_8))
+                        .mimeType("image/png")
+                        .build())
+                .build();
+
+        return GenerateContentResponse.builder()
+                .candidates(List.of(Candidate.builder()
+                        .content(Content.builder()
+                                .role("model")
+                                .parts(List.of(part))
+                                .build())
+                        .build()))
+                .build();
+    }
+
+    private static String base64(String value) {
+        return Base64.getEncoder().encodeToString(value.getBytes(StandardCharsets.UTF_8));
     }
 
     @Test

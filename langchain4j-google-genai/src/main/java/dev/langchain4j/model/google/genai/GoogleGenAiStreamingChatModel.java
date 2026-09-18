@@ -1,5 +1,6 @@
 package dev.langchain4j.model.google.genai;
 
+import static dev.langchain4j.data.message.AiMessage.GENERATED_IMAGES_KEY;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onUnmappedRawEvent;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -192,7 +193,7 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
 
                     if (aiMessage.attributes() != null
                             && !aiMessage.attributes().isEmpty()) {
-                        attributes.putAll(aiMessage.attributes());
+                        mergeAttributes(attributes, aiMessage.attributes());
                     }
 
                     if (aiMessage.thinking() != null && !aiMessage.thinking().isEmpty()) {
@@ -298,6 +299,30 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
     @Override
     public ModelProvider provider() {
         return ModelProvider.GOOGLE_GENAI;
+    }
+
+    /**
+     * Accumulates one chunk's attributes into the ones collected so far.
+     * <p>
+     * Generated images are the exception to the last-chunk-wins rule: an image generation model
+     * streams one image per chunk, so replacing the list would leave only the final picture on the
+     * aggregated message. They are appended instead, as
+     * {@code GeminiStreamingResponseBuilder} does for the other Gemini module.
+     */
+    private static void mergeAttributes(Map<String, Object> accumulated, Map<String, Object> partial) {
+        partial.forEach((key, value) -> {
+            if (GENERATED_IMAGES_KEY.equals(key)) {
+                accumulated.merge(key, value, GoogleGenAiStreamingChatModel::concatenate);
+            } else {
+                accumulated.put(key, value);
+            }
+        });
+    }
+
+    private static Object concatenate(Object existing, Object added) {
+        List<Object> concatenated = new ArrayList<>((List<?>) existing);
+        concatenated.addAll((List<?>) added);
+        return concatenated;
     }
 
     @Override
