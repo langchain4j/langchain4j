@@ -52,8 +52,9 @@ class AgentMonitorParallelErrorTest {
                 new AgentInvocationError(scope, subA, Map.of(), new RuntimeException("timeout")));
 
         // 4. Sub-agent B completes successfully — this should NOT throw NPE
-        assertThatNoException().isThrownBy(() ->
-                monitor.afterAgentInvocation(new AgentResponse(scope, subB, Map.of(), "ok", null, null)));
+        assertThatNoException()
+                .isThrownBy(
+                        () -> monitor.afterAgentInvocation(new AgentResponse(scope, subB, Map.of(), "ok", null, null)));
     }
 
     /**
@@ -88,8 +89,7 @@ class AgentMonitorParallelErrorTest {
 
             Future<?> successFuture = pool.submit(() -> {
                 awaitStart(start);
-                monitor.afterAgentInvocation(
-                        new AgentResponse(scope, subB, Map.of(), "ok", null, null));
+                monitor.afterAgentInvocation(new AgentResponse(scope, subB, Map.of(), "ok", null, null));
             });
 
             start.countDown();
@@ -126,15 +126,44 @@ class AgentMonitorParallelErrorTest {
                 new AgentInvocationError(scope, subA, Map.of(), new RuntimeException("timeout")));
 
         // Sub-agent B succeeds
-        assertThatNoException().isThrownBy(() ->
-                monitor.afterAgentInvocation(new AgentResponse(scope, subB, Map.of(), "ok", null, null)));
+        assertThatNoException()
+                .isThrownBy(
+                        () -> monitor.afterAgentInvocation(new AgentResponse(scope, subB, Map.of(), "ok", null, null)));
 
         // Root agent finishes — should not throw
-        assertThatNoException().isThrownBy(() ->
-                monitor.afterAgentInvocation(new AgentResponse(scope, root, Map.of(), "result", null, null)));
+        assertThatNoException()
+                .isThrownBy(() ->
+                        monitor.afterAgentInvocation(new AgentResponse(scope, root, Map.of(), "result", null, null)));
 
         // The execution should be done and tracked (either as failed or successful)
         assertThat(monitor.ongoingExecutionFor(memoryId)).isNull();
+    }
+
+    @Test
+    void async_sibling_completion_after_root_error_should_finalize_execution_as_failed() {
+        AgentMonitor monitor = new AgentMonitor();
+
+        Object memoryId = "memory-root-error-before-async-sibling";
+        AgenticScope scope = stubScope(memoryId);
+        AgentInstance root = stubAgent("root", null);
+        AgentInstance failingChild = stubAgent("failing-child", root);
+        AgentInstance asyncSibling = stubAgent("async-sibling", root);
+        RuntimeException rootCause = new RuntimeException("child failure");
+
+        monitor.beforeAgentInvocation(new AgentRequest(scope, root, Map.of()));
+        monitor.beforeAgentInvocation(new AgentRequest(scope, failingChild, Map.of()));
+        monitor.beforeAgentInvocation(new AgentRequest(scope, asyncSibling, Map.of()));
+
+        monitor.onAgentInvocationError(new AgentInvocationError(scope, failingChild, Map.of(), rootCause));
+        monitor.onAgentInvocationError(
+                new AgentInvocationError(scope, root, Map.of(), new RuntimeException("propagated root failure")));
+        monitor.afterAgentInvocation(new AgentResponse(scope, asyncSibling, Map.of(), "ok", null, null));
+
+        assertThat(monitor.ongoingExecutionFor(memoryId)).isNull();
+        assertThat(monitor.failedExecutionsFor(memoryId)).hasSize(1);
+        assertThat(monitor.successfulExecutionsFor(memoryId)).isEmpty();
+        assertThat(monitor.failedExecutionsFor(memoryId).get(0).error().agent()).isSameAs(failingChild);
+        assertThat(monitor.failedExecutionsFor(memoryId).get(0).error().error()).isSameAs(rootCause);
     }
 
     private static void awaitStart(CountDownLatch latch) {

@@ -4,6 +4,7 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
+import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -17,6 +18,7 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 
 /**
@@ -76,11 +78,49 @@ public class TokenWindowChatMemory implements ChatMemory {
                 ? new LinkedList<>(store.getMessages(id))
                 : messages();
 
+        if (appendMessage(messages, message)) {
+            store.updateMessages(id, messages);
+        }
+    }
+
+    @Override
+    public CompletableFuture<Void> addAsync(List<ChatMessage> messagesToAdd) {
+        return store.getMessagesAsync(id).thenCompose(stored -> {
+            List<ChatMessage> messages =
+                    autoRecoverOrphanedToolMessages ? new LinkedList<>(stored) : windowed(stored);
+
+            boolean changed = false;
+
+            for (ChatMessage message : messagesToAdd) {
+                List<ChatMessage> candidate =
+                        autoRecoverOrphanedToolMessages && !(message instanceof ToolExecutionResultMessage)
+                                ? windowed(messages)
+                                : messages;
+
+                if (appendMessage(candidate, message)) {
+                    messages = candidate;
+                    changed = true;
+                }
+            }
+
+            return changed
+                    ? store.updateMessagesAsync(id, messages)
+                    : CompletableFuture.completedFuture(null);
+        });
+    }
+
+    /**
+     * Appends {@code message} to {@code messages} applying the sliding-window and {@link SystemMessage} rules.
+     *
+     * @return {@code true} if the messages were modified and should be persisted, {@code false} if the message was
+     *         ignored (a {@code SystemMessage} identical to the existing one).
+     */
+    private boolean appendMessage(List<ChatMessage> messages, ChatMessage message) {
         if (message instanceof SystemMessage) {
             Optional<SystemMessage> maybeSystemMessage = SystemMessage.findFirst(messages);
             if (maybeSystemMessage.isPresent()) {
                 if (maybeSystemMessage.get().equals(message)) {
-                    return; // do not add the same system message
+                    return false; // do not add the same system message
                 } else {
                     messages.remove(maybeSystemMessage.get()); // need to replace existing system message
                 }
@@ -97,7 +137,7 @@ public class TokenWindowChatMemory implements ChatMemory {
         ensureGreaterThanZero(maxTokens, "maxTokens");
         ensureCapacity(messages, maxTokens, tokenCountEstimator);
 
-        store.updateMessages(id, messages);
+        return true;
     }
 
     @Override
@@ -120,15 +160,55 @@ public class TokenWindowChatMemory implements ChatMemory {
     }
 
     @Override
+    public CompletableFuture<Void> setAsync(List<ChatMessage> messages) {
+        // Deliver validation/windowing failures through the returned stage rather than throwing synchronously,
+        // consistent with addAsync and the async error contract.
+        try {
+            Integer maxTokens = maxTokensProvider.apply(id);
+            ensureGreaterThanZero(maxTokens, "maxTokens");
+            List<ChatMessage> windowed = new ArrayList<>(messages);
+            ensureCapacity(windowed, maxTokens, tokenCountEstimator);
+            return store.updateMessagesAsync(id, windowed);
+        } catch (Throwable t) {
+            return CompletableFuture.failedFuture(t);
+        }
+    }
+
+    @Override
     public List<ChatMessage> messages() {
+        return windowed(store.getMessages(id));
+    }
+
+    @Override
+    public CompletableFuture<List<ChatMessage>> messagesAsync() {
+        return store.getMessagesAsync(id).thenApply(this::windowed);
+    }
+
+    private List<ChatMessage> windowed(List<ChatMessage> stored) {
+        return windowed(stored, autoRecoverOrphanedToolMessages);
+    }
+
+    private List<ChatMessage> windowed(List<ChatMessage> stored, boolean recoverInterrupted) {
         Integer maxTokens = maxTokensProvider.apply(id);
         ensureGreaterThanZero(maxTokens, "maxTokens");
-        List<ChatMessage> messages = new LinkedList<>(store.getMessages(id));
-        if (autoRecoverOrphanedToolMessages) {
+
+        List<ChatMessage> messages = new LinkedList<>(stored);
+        if (recoverInterrupted) {
             ChatMemoryUtils.removeInterruptedToolExecutions(messages);
         }
+
         ensureCapacity(messages, maxTokens, tokenCountEstimator);
         return messages;
+    }
+
+    @Internal
+    public List<ChatMessage> messagesForToolExecutionUpdate() {
+        return windowed(store.getMessages(id), false);
+    }
+
+    @Internal
+    public CompletableFuture<List<ChatMessage>> messagesForToolExecutionUpdateAsync() {
+        return store.getMessagesAsync(id).thenApply(stored -> windowed(stored, false));
     }
 
     private static void ensureCapacity(List<ChatMessage> messages, int maxTokens, TokenCountEstimator estimator) {

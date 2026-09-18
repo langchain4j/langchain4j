@@ -1,6 +1,8 @@
 package dev.langchain4j.agentic.a2a;
 
+import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.exception.LangChain4jException;
+import java.util.Map;
 import org.a2aproject.sdk.spec.TaskState;
 
 /**
@@ -17,13 +19,19 @@ import org.a2aproject.sdk.spec.TaskState;
 public class A2ATaskInterruptedException extends LangChain4jException {
 
     private final String taskId;
+    private final String contextId;
     private final TaskState state;
     private final String reason;
 
     public A2ATaskInterruptedException(String taskId, TaskState state, String reason) {
+        this(taskId, null, state, reason);
+    }
+
+    public A2ATaskInterruptedException(String taskId, String contextId, TaskState state, String reason) {
         super("A2A task " + taskId + " is interrupted in state " + state.name() + ": "
                 + (reason == null || reason.isEmpty() ? defaultReason(state) : reason));
         this.taskId = taskId;
+        this.contextId = contextId;
         this.state = state;
         this.reason = reason == null || reason.isEmpty() ? null : reason;
     }
@@ -35,6 +43,16 @@ public class A2ATaskInterruptedException extends LangChain4jException {
      */
     public String taskId() {
         return taskId;
+    }
+
+    /**
+     * The id of the context containing the interrupted task. This can be used together with
+     * {@link #taskId()} when sending the input or authentication needed to resume the task.
+     *
+     * @since 1.19.0
+     */
+    public String contextId() {
+        return contextId;
     }
 
     /**
@@ -57,6 +75,46 @@ public class A2ATaskInterruptedException extends LangChain4jException {
      */
     public String reason() {
         return reason;
+    }
+
+    /**
+     * Reconstructs the A2A interruption associated with a pending response in an agentic scope.
+     * This allows an external event handler to publish the remote task details before completing
+     * the pending response asynchronously.
+     *
+     * @param scope the suspended agentic scope
+     * @param responseId the pending response identifier
+     * @return the matching A2A task interruption
+     * @throws IllegalArgumentException if the response does not belong to an interrupted A2A task
+     * @since 1.19.0
+     */
+    public static A2ATaskInterruptedException from(AgenticScope scope, String responseId) {
+        return scope.state().entrySet().stream()
+                .filter(entry -> entry.getKey().startsWith(DefaultA2AClientBuilder.INTERRUPTION_STATE_PREFIX))
+                .map(Map.Entry::getValue)
+                .filter(Map.class::isInstance)
+                .map(A2ATaskInterruptedException::metadata)
+                .filter(value -> responseId.equals(value.get("responseId")))
+                .findFirst()
+                .map(A2ATaskInterruptedException::fromMetadata)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "No interrupted A2A task found for pending response " + responseId));
+    }
+
+    static A2ATaskInterruptedException fromMetadata(Object value) {
+        Map<?, ?> metadata = metadata(value);
+        return new A2ATaskInterruptedException(
+                (String) metadata.get("taskId"),
+                (String) metadata.get("contextId"),
+                TaskState.valueOf((String) metadata.get("state")),
+                (String) metadata.get("reason"));
+    }
+
+    private static Map<?, ?> metadata(Object value) {
+        if (value instanceof Map<?, ?> metadata) {
+            return metadata;
+        }
+        throw new IllegalArgumentException("Invalid interrupted A2A task metadata");
     }
 
     private static String defaultReason(TaskState state) {

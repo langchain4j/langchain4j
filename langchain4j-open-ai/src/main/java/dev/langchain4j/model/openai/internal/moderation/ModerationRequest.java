@@ -1,11 +1,11 @@
 package dev.langchain4j.model.openai.internal.moderation;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
 
@@ -17,7 +17,6 @@ import static java.util.Collections.unmodifiableList;
 
 @JsonDeserialize(builder = ModerationRequest.Builder.class)
 @JsonInclude(JsonInclude.Include.NON_NULL)
-@JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public class ModerationRequest {
 
     @JsonProperty
@@ -25,9 +24,10 @@ public class ModerationRequest {
     @JsonProperty
     private final List<String> input;
 
+    @JsonCreator
     public ModerationRequest(Builder builder) {
         this.model = builder.model;
-        this.input = builder.input;
+        this.input = builder.input == null ? null : unmodifiableList(builder.input);
     }
 
     public String model() {
@@ -76,7 +76,7 @@ public class ModerationRequest {
 
     @JsonPOJOBuilder(withPrefix = "")
     @JsonIgnoreProperties(ignoreUnknown = true)
-    @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
+    @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
     public static final class Builder {
 
         private String model;
@@ -89,7 +89,7 @@ public class ModerationRequest {
 
         public Builder input(List<String> input) {
             if (input != null) {
-                this.input = unmodifiableList(input);
+                this.input = input;
             }
             return this;
         }

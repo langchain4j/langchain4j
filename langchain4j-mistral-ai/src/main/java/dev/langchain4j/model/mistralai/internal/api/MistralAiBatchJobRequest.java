@@ -3,8 +3,6 @@ package dev.langchain4j.model.mistralai.internal.api;
 import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import java.util.List;
 import java.util.Map;
 
@@ -16,7 +14,6 @@ import java.util.Map;
  * {@code custom_id} correlates the request with its result once the job has completed.</p>
  */
 @JsonInclude(NON_NULL)
-@JsonNaming(SnakeCaseStrategy.class)
 public class MistralAiBatchJobRequest {
 
     private final List<Request> requests;
@@ -102,7 +99,6 @@ public class MistralAiBatchJobRequest {
      * {@code /v1/chat/completions} request.
      */
     @JsonInclude(NON_NULL)
-    @JsonNaming(SnakeCaseStrategy.class)
     public static class Request {
 
         private final String customId;

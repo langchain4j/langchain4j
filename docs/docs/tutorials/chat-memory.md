@@ -137,9 +137,16 @@ ChatMemory chatMemory = MessageWindowChatMemory.builder()
         .build();
 ```
 
-The option is disabled by default and is also available on `TokenWindowChatMemory`. Calling `messages()` returns a
-cleaned view without updating the store. A later non-result message persists the cleanup; tool result messages
-preserve in-flight tool executions.
+The option is disabled by default and is also available on `TokenWindowChatMemory`. `messages()` and `messagesAsync()`
+return a cleaned view without updating the store. A later non-result message that is accepted persists the cleanup;
+tool result messages preserve in-flight tool executions.
+
+:::note
+A `ChatMemory` or `ChatMemoryStore` that performs I/O can implement the asynchronous counterparts
+(`addAsync`/`messagesAsync`/`setAsync`, `getMessagesAsync`/`updateMessagesAsync`/`deleteMessagesAsync`) so that it
+does not block a thread when the AI Service is used in a non-blocking mode.
+See [Non-blocking and Reactive](/tutorials/non-blocking).
+:::
 
 ## Examples
 - With `AiServices`:
