@@ -33,6 +33,7 @@ https://github.com/googleapis/java-genai
 - [Token Usage](#token-usage)
 - [Multimodality (Audio, Video, PDF)](#multimodality-audio-video-pdf)
 - [Audio Transcription](#audio-transcription)
+- [Image Generation Output](#image-generation-output)
 - [Token Count Estimator](#token-count-estimator)
 - [Model Catalog](#model-catalog)
 
@@ -720,6 +721,30 @@ for (Part part : metadata.rawResponse().parts()) {
 
 `GoogleGenAiStreamingChatModel` accepts the same `audioTranscriptionConfig`, but its raw response only holds the last streamed chunk,
 so use `GoogleGenAiChatModel` when you need word timestamps or speaker labels.
+
+## Image Generation Output
+
+Some Gemini models, such as `gemini-2.5-flash-image`, generate images as part of their chat response.
+The images are stored in the `AiMessage` attributes and can be read with `AiMessage.images()`:
+
+```java
+ChatModel model = GoogleGenAiChatModel.builder()
+    .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
+    .modelName("gemini-2.5-flash-image")
+    .build();
+
+ChatResponse response = model.chat(UserMessage.from("A minimalist ceramic coffee mug in matte black"));
+
+List<Image> generatedImages = response.aiMessage().images();
+
+for (Image image : generatedImages) {
+    System.out.println(image.mimeType());
+    // image.base64Data() holds the image itself
+}
+```
+
+`GoogleGenAiStreamingChatModel` collects the images of every streamed chunk, so a response that carries more than one
+image keeps them all. Use `GoogleGenAiChatModel` when you need the text of the response next to the images.
 
 ## Token Count Estimator
 
