@@ -107,7 +107,10 @@ public class GoogleGenAiTokenCountEstimator implements TokenCountEstimator {
 
     private int estimateTokenCount(List<Content> contents, CountTokensConfig config) {
         CountTokensResponse response =
-                withRetryMappingExceptions(() -> client.models.countTokens(modelName, contents, config), maxRetries);
+                withRetryMappingExceptions(
+                        () -> client.models.countTokens(modelName, contents, config),
+                        maxRetries,
+                        GoogleGenAiExceptionMapper.INSTANCE);
         return response.totalTokens().orElse(0);
     }
 

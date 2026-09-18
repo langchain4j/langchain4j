@@ -7,7 +7,10 @@ import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.agent.tool.ToolSpecifications;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
+import dev.langchain4j.model.chat.request.json.JsonNumberSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonRawSchema;
+import dev.langchain4j.model.chat.request.json.JsonReferenceSchema;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.model.googleai.GeminiGenerateContentRequest.GeminiTool;
 import dev.langchain4j.model.output.structured.Description;
@@ -338,6 +341,158 @@ class FunctionMapperTest {
         assertThat(geminiTool.codeExecution()).isNull();
         assertThat(geminiTool.googleMaps()).isNotNull();
         assertThat(geminiTool.googleMaps().enableWidget()).isTrue();
+    }
+
+    @Test
+    void should_use_typed_parameters_when_every_element_has_a_typed_form() {
+        // given
+        JsonObjectSchema parameters = JsonObjectSchema.builder()
+                .addStringProperty("query")
+                .addIntegerProperty("maxResults")
+                .required("query")
+                .build();
+
+        // when
+        GeminiFunctionDeclaration declaration = declarationFor(parameters);
+
+        // then
+        assertThat(declaration.parametersJsonSchema()).isNull();
+        assertThat(declaration.parameters().getType()).isEqualTo(GeminiType.OBJECT);
+        assertThat(declaration.parameters().getProperties().keySet()).containsExactlyInAnyOrder("query", "maxResults");
+    }
+
+    @Test
+    void should_use_json_schema_for_a_raw_element() {
+        // given
+        JsonObjectSchema parameters = JsonObjectSchema.builder()
+                .addStringProperty("query")
+                .addProperty("maxResults", JsonRawSchema.from("{\"type\":\"integer\",\"minimum\":1,\"maximum\":50}"))
+                .required("query")
+                .build();
+
+        // when
+        GeminiFunctionDeclaration declaration = declarationFor(parameters);
+
+        // then
+        assertThat(declaration.parameters()).isNull();
+
+        Map<String, Object> properties = propertiesOf(declaration.parametersJsonSchema());
+        assertThat(properties).containsKeys("query", "maxResults");
+        // The constraints the typed model has no field for survive.
+        assertThat((Map<String, Object>) properties.get("maxResults")).containsEntry("minimum", 1);
+        assertThat((Map<String, Object>) properties.get("maxResults")).containsEntry("maximum", 50);
+    }
+
+    @Test
+    void should_use_json_schema_for_a_reference_element() {
+        // given
+        JsonObjectSchema priceRange = JsonObjectSchema.builder()
+                .addProperty("min", new JsonNumberSchema())
+                .addProperty("max", new JsonNumberSchema())
+                .build();
+        JsonObjectSchema parameters = JsonObjectSchema.builder()
+                .definitions(Map.of("PriceRange", priceRange))
+                .addStringProperty("query")
+                // A reference holds the bare definition name; toMap() writes the "#/$defs/" prefix.
+                .addProperty(
+                        "retailPrice",
+                        JsonReferenceSchema.builder().reference("PriceRange").build())
+                .required("query")
+                .build();
+
+        // when
+        GeminiFunctionDeclaration declaration = declarationFor(parameters);
+
+        // then
+        assertThat(declaration.parameters()).isNull();
+
+        Map<String, Object> jsonSchema = declaration.parametersJsonSchema();
+        assertThat(jsonSchema).containsKey("$defs");
+        assertThat((Map<String, Object>) propertiesOf(jsonSchema).get("retailPrice"))
+                .containsEntry("$ref", "#/$defs/PriceRange");
+    }
+
+    @Test
+    void should_use_json_schema_for_definitions_that_nothing_references() {
+        // given
+        JsonObjectSchema priceRange = JsonObjectSchema.builder()
+                .addProperty("min", new JsonNumberSchema())
+                .addProperty("max", new JsonNumberSchema())
+                .build();
+        // Every property has a typed form. Only the definitions rule out the typed field, since
+        // GeminiSchema has nowhere to put them and they would be dropped without a word.
+        JsonObjectSchema parameters = JsonObjectSchema.builder()
+                .definitions(Map.of("PriceRange", priceRange))
+                .addStringProperty("query")
+                .required("query")
+                .build();
+
+        // when
+        GeminiFunctionDeclaration declaration = declarationFor(parameters);
+
+        // then
+        assertThat(declaration.parameters()).isNull();
+
+        Map<String, Object> jsonSchema = declaration.parametersJsonSchema();
+        assertThat(propertiesOf(jsonSchema)).containsKey("query");
+        assertThat((Map<String, Object>) jsonSchema.get("$defs")).containsKey("PriceRange");
+    }
+
+    @Test
+    void should_use_json_schema_for_an_element_nested_below_the_root() {
+        // given
+        JsonObjectSchema parameters = JsonObjectSchema.builder()
+                .addProperty(
+                        "filters",
+                        JsonArraySchema.builder()
+                                .items(JsonObjectSchema.builder()
+                                        .addProperty("size", JsonRawSchema.from("{\"type\":\"integer\",\"minimum\":1}"))
+                                        .build())
+                                .build())
+                .build();
+
+        // when
+        GeminiFunctionDeclaration declaration = declarationFor(parameters);
+
+        // then
+        assertThat(declaration.parameters()).isNull();
+        assertThat(declaration.parametersJsonSchema()).isNotNull();
+    }
+
+    @Test
+    void should_omit_the_unused_parameter_field_from_the_serialized_request() {
+        // given
+        JsonObjectSchema typed =
+                JsonObjectSchema.builder().addStringProperty("query").build();
+        JsonObjectSchema raw = JsonObjectSchema.builder()
+                .addProperty("query", JsonRawSchema.from("{\"type\":\"string\",\"minLength\":1}"))
+                .build();
+
+        // when
+        String typedJson = Json.toJson(declarationFor(typed));
+        String rawJson = Json.toJson(declarationFor(raw));
+
+        // then
+        assertThat(typedJson).contains("\"parameters\"").doesNotContain("parametersJsonSchema");
+        assertThat(rawJson).contains("\"parametersJsonSchema\"").doesNotContain("\"parameters\"");
+    }
+
+    private static GeminiFunctionDeclaration declarationFor(JsonObjectSchema parameters) {
+        ToolSpecification specification = ToolSpecification.builder()
+                .name("search_products")
+                .description("Search the catalog")
+                .parameters(parameters)
+                .build();
+
+        return FunctionMapper.fromToolSpecsToGTools(List.of(specification), false, false, false, false, false)
+                .get(0)
+                .functionDeclarations()
+                .get(0);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<String, Object> propertiesOf(Map<String, Object> jsonSchema) {
+        return (Map<String, Object>) jsonSchema.get("properties");
     }
 
     private static String withoutNullValues(String toString) {

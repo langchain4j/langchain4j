@@ -3,12 +3,18 @@ package dev.langchain4j.agentic.internal;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope;
+import java.lang.reflect.Method;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class AgentUtilTest {
+
+    static class DescribedArguments {
+        void invoke(@P(name = "query", description = "Text to search for") String query) {}
+    }
 
     record Address(String street, String city) {}
 
@@ -75,6 +81,28 @@ class AgentUtilTest {
     }
 
     @Test
+    void should_coerce_integer_to_short() throws Exception {
+        DefaultAgenticScope scope = DefaultAgenticScope.ephemeralAgenticScope();
+        scope.writeState("count", 42);
+
+        AgentInvocationArguments args =
+                AgentUtil.agentInvocationArguments(scope, List.of(new AgentArgument(short.class, "count")));
+
+        assertThat(args.positionalArgs()[0]).isEqualTo((short) 42);
+    }
+
+    @Test
+    void should_coerce_integer_to_byte() throws Exception {
+        DefaultAgenticScope scope = DefaultAgenticScope.ephemeralAgenticScope();
+        scope.writeState("count", 42);
+
+        AgentInvocationArguments args =
+                AgentUtil.agentInvocationArguments(scope, List.of(new AgentArgument(byte.class, "count")));
+
+        assertThat(args.positionalArgs()[0]).isEqualTo((byte) 42);
+    }
+
+    @Test
     void should_throw_when_json_string_is_invalid_for_target_type() {
         DefaultAgenticScope scope = DefaultAgenticScope.ephemeralAgenticScope();
         scope.writeState("person", "not-valid-json");
@@ -82,5 +110,15 @@ class AgentUtilTest {
         assertThatThrownBy(() ->
                         AgentUtil.agentInvocationArguments(scope, List.of(new AgentArgument(Person.class, "person"))))
                 .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void should_preserve_parameter_description_for_agent_planner() throws Exception {
+        Method method = DescribedArguments.class.getDeclaredMethod("invoke", String.class);
+
+        AgentArgument argument = AgentUtil.argumentFromParameter(method.getParameters()[0]);
+
+        assertThat(argument.name()).isEqualTo("query");
+        assertThat(argument.description()).isEqualTo("Text to search for");
     }
 }

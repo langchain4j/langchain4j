@@ -8,6 +8,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import java.util.List;
+import java.util.Map;
 
 class ToolExecutionResultMessageTest implements WithAssertions {
 
@@ -259,5 +260,49 @@ class ToolExecutionResultMessageTest implements WithAssertions {
         assertThat(message.text()).isEmpty();
         assertThat(message.contents()).containsExactly(TextContent.from(""));
         assertThat(message.hasSingleText()).isTrue();
+    }
+
+    @Test
+    void to_builder_preserves_all_fields() {
+        ToolExecutionResultMessage original = ToolExecutionResultMessage.builder()
+                .id("id")
+                .toolName("toolName")
+                .text("result")
+                .isError(true)
+                .attributes(Map.of("key", "value"))
+                .build();
+
+        ToolExecutionResultMessage copy = original.toBuilder().build();
+
+        assertThat(copy).isEqualTo(original);
+        assertThat(copy.id()).isEqualTo("id");
+        assertThat(copy.toolName()).isEqualTo("toolName");
+        assertThat(copy.text()).isEqualTo("result");
+        assertThat(copy.isError()).isTrue();
+        assertThat(copy.attributes()).containsEntry("key", "value");
+    }
+
+    @Test
+    void to_builder_overriding_contents_preserves_other_fields() {
+        ToolExecutionResultMessage original = ToolExecutionResultMessage.builder()
+                .id("id")
+                .toolName("toolName")
+                .text("original result")
+                .isError(false)
+                .attributes(Map.of("key", "value"))
+                .build();
+
+        ToolExecutionResultMessage modified = original.toBuilder()
+                .contents(List.of(TextContent.from("rolled back")))
+                .isError(true)
+                .build();
+
+        // overridden fields
+        assertThat(modified.text()).isEqualTo("rolled back");
+        assertThat(modified.isError()).isTrue();
+        // preserved fields
+        assertThat(modified.id()).isEqualTo("id");
+        assertThat(modified.toolName()).isEqualTo("toolName");
+        assertThat(modified.attributes()).containsEntry("key", "value");
     }
 }

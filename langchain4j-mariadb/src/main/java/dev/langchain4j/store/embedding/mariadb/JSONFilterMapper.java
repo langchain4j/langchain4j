@@ -8,6 +8,7 @@ class JSONFilterMapper extends MariaDbFilterMapper {
     }
 
     String formatKey(String key) {
-        return "JSON_VALUE(" + this.metadataColumn + ", '$." + key + "')";
+        String escapedKey = key.replace("\\", "\\\\").replace("'", "''");
+        return "JSON_VALUE(" + this.metadataColumn + ", '$." + escapedKey + "')";
     }
 }

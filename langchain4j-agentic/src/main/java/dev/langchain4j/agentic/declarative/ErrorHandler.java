@@ -18,11 +18,8 @@ import java.lang.annotation.Target;
  * {@code
  *     public interface StoryCreatorWithErrorRecovery {
  *
- *         @SequenceAgent(outputKey = "story", subAgents = {
- *                 @SubAgent(type = CreativeWriter.class, outputKey = "story"),
- *                 @SubAgent(type = AudienceEditor.class, outputKey = "story"),
- *                 @SubAgent(type = StyleEditor.class, outputKey = "story")
- *         })
+ *         @SequenceAgent(outputKey = "story",
+ *                 subAgents = { CreativeWriter.class, AudienceEditor.class, StyleEditor.class })
  *         String write(@V("topic") String topic, @V("style") String style, @V("audience") String audience);
  *
  *         @ErrorHandler

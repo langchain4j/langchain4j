@@ -1,5 +1,6 @@
 package dev.langchain4j.model.bedrock;
 
+import static dev.langchain4j.MockitoUtils.ignoreInteractions;
 import static dev.langchain4j.model.bedrock.BedrockChatModelThinkingIT.SLEEPING_TIME_MULTIPLIER;
 import static dev.langchain4j.model.bedrock.BedrockChatModelThinkingIT.THINKING_BUDGET_TOKENS;
 import static dev.langchain4j.model.bedrock.common.BedrockAiServicesIT.sleepIfNeeded;
@@ -71,6 +72,7 @@ class BedrockStreamingChatModelThinkingIT {
         inOrder1.verify(spyHandler1, atLeastOnce()).onPartialThinking(any(), any());
         inOrder1.verify(spyHandler1, atLeastOnce()).onPartialResponse(any(), any());
         inOrder1.verify(spyHandler1).onCompleteResponse(any());
+        ignoreInteractions(spyHandler1).onUnmappedRawEvent(any());
         inOrder1.verifyNoMoreInteractions();
         verifyNoMoreInteractions(spyHandler1);
 
@@ -93,6 +95,7 @@ class BedrockStreamingChatModelThinkingIT {
         inOrder2.verify(spyHandler2, atLeastOnce()).onPartialThinking(any(), any());
         inOrder2.verify(spyHandler2, atLeastOnce()).onPartialResponse(any(), any());
         inOrder2.verify(spyHandler2).onCompleteResponse(any());
+        ignoreInteractions(spyHandler2).onUnmappedRawEvent(any());
         inOrder2.verifyNoMoreInteractions();
         verifyNoMoreInteractions(spyHandler2);
     }
@@ -148,6 +151,7 @@ class BedrockStreamingChatModelThinkingIT {
         inOrder1.verify(spyHandler1, atLeastOnce()).onPartialResponse(any(), any());
         inOrder1.verify(spyHandler1).onCompleteResponse(any());
         inOrder1.verify(spyHandler1).getThinking();
+        ignoreInteractions(spyHandler1).onUnmappedRawEvent(any());
         inOrder1.verifyNoMoreInteractions();
         verifyNoMoreInteractions(spyHandler1);
 
@@ -172,6 +176,7 @@ class BedrockStreamingChatModelThinkingIT {
         inOrder2.verify(spyHandler2, atLeastOnce()).onPartialThinking(any(), any());
         inOrder2.verify(spyHandler2, atLeastOnce()).onPartialResponse(any(), any());
         inOrder2.verify(spyHandler2).onCompleteResponse(any());
+        ignoreInteractions(spyHandler2).onUnmappedRawEvent(any());
         inOrder2.verifyNoMoreInteractions();
         verifyNoMoreInteractions(spyHandler2);
     }
@@ -230,6 +235,7 @@ class BedrockStreamingChatModelThinkingIT {
         inOrder1.verify(spyHandler1, atLeast(0)).onPartialResponse(any(), any()); // do not care if onPartialResponse was called
         inOrder1.verify(spyHandler1).onCompleteToolCall(any());
         inOrder1.verify(spyHandler1).onCompleteResponse(any());
+        ignoreInteractions(spyHandler1).onUnmappedRawEvent(any());
         inOrder1.verifyNoMoreInteractions();
         verifyNoMoreInteractions(spyHandler1);
 
@@ -252,6 +258,7 @@ class BedrockStreamingChatModelThinkingIT {
         inOrder2.verify(spyHandler2).get();
         inOrder2.verify(spyHandler2, atLeastOnce()).onPartialResponse(any(), any());
         inOrder2.verify(spyHandler2).onCompleteResponse(any());
+        ignoreInteractions(spyHandler2).onUnmappedRawEvent(any());
         inOrder2.verifyNoMoreInteractions();
         verifyNoMoreInteractions(spyHandler2);
 
@@ -278,6 +285,7 @@ class BedrockStreamingChatModelThinkingIT {
         inOrder3.verify(spyHandler3, atLeast(0)).onPartialResponse(any(), any()); // do not care if onPartialResponse was called
         inOrder3.verify(spyHandler3).onCompleteToolCall(any());
         inOrder3.verify(spyHandler3).onCompleteResponse(any());
+        ignoreInteractions(spyHandler3).onUnmappedRawEvent(any());
         inOrder3.verifyNoMoreInteractions();
         verifyNoMoreInteractions(spyHandler3);
 
@@ -300,6 +308,7 @@ class BedrockStreamingChatModelThinkingIT {
         inOrder4.verify(spyHandler4).get();
         inOrder4.verify(spyHandler4, atLeastOnce()).onPartialResponse(any(), any());
         inOrder4.verify(spyHandler4).onCompleteResponse(any());
+        ignoreInteractions(spyHandler4).onUnmappedRawEvent(any());
         inOrder4.verifyNoMoreInteractions();
         verifyNoMoreInteractions(spyHandler4);
     }
@@ -361,6 +370,7 @@ class BedrockStreamingChatModelThinkingIT {
         inOrder1.verify(spyHandler1, atLeastOnce()).onPartialResponse(any(), any());
         inOrder1.verify(spyHandler1).onCompleteToolCall(any());
         inOrder1.verify(spyHandler1).onCompleteResponse(any());
+        ignoreInteractions(spyHandler1).onUnmappedRawEvent(any());
         inOrder1.verifyNoMoreInteractions();
         verifyNoMoreInteractions(spyHandler1);
 
@@ -386,6 +396,7 @@ class BedrockStreamingChatModelThinkingIT {
         inOrder2.verify(spyHandler2, atLeastOnce()).onPartialThinking(any(), any());
         inOrder2.verify(spyHandler2, atLeastOnce()).onPartialResponse(any(), any());
         inOrder2.verify(spyHandler2).onCompleteResponse(any());
+        ignoreInteractions(spyHandler2).onUnmappedRawEvent(any());
         inOrder2.verifyNoMoreInteractions();
         verifyNoMoreInteractions(spyHandler2);
 
@@ -414,6 +425,7 @@ class BedrockStreamingChatModelThinkingIT {
         inOrder3.verify(spyHandler3, atLeastOnce()).onPartialResponse(any(), any());
         inOrder3.verify(spyHandler3).onCompleteToolCall(any());
         inOrder3.verify(spyHandler3).onCompleteResponse(any());
+        ignoreInteractions(spyHandler3).onUnmappedRawEvent(any());
         inOrder3.verifyNoMoreInteractions();
         verifyNoMoreInteractions(spyHandler3);
 
@@ -439,6 +451,7 @@ class BedrockStreamingChatModelThinkingIT {
         inOrder4.verify(spyHandler4, atLeastOnce()).onPartialThinking(any(), any());
         inOrder4.verify(spyHandler4, atLeastOnce()).onPartialResponse(any(), any());
         inOrder4.verify(spyHandler4).onCompleteResponse(any());
+        ignoreInteractions(spyHandler4).onUnmappedRawEvent(any());
         inOrder4.verifyNoMoreInteractions();
         verifyNoMoreInteractions(spyHandler4);
     }

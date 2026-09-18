@@ -6,6 +6,8 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import java.io.IOException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.lang.ref.Cleaner;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -42,6 +44,7 @@ import org.beehive.gpullama3.tornadovm.TornadoVMMasterPlan;
  * StreamingChatModel) while leveraging this base functionality.
  */
 abstract class GPULlama3BaseModel implements AutoCloseable {
+    private static final Logger log = LoggerFactory.getLogger(GPULlama3BaseModel.class);
     private static final Cleaner CLEANER = Cleaner.create();
 
     private final Integer START_POSITION = 0;
@@ -150,10 +153,13 @@ abstract class GPULlama3BaseModel implements AutoCloseable {
         }
 
         if (stopToken == null) {
-            return "Ran out of context length...\n Increase context length with by passing to llama-tornado --max-tokens XXX";
-        } else {
-            return responseText;
+            log.warn(
+                    "Generation stopped after reaching maxTokens ({}), so the response is truncated. "
+                            + "Increase maxTokens(...) on the model builder to get a complete response.",
+                    maxTokens);
         }
+
+        return responseText;
     }
     // @formatter:on
 
@@ -242,7 +248,7 @@ abstract class GPULlama3BaseModel implements AutoCloseable {
                 try {
                     plan.freeTornadoExecutionPlan();
                 } catch (Exception e) {
-                    System.err.println("Error while cleaning up TornadoVM resources: " + e.getMessage());
+                    log.error("Error while cleaning up TornadoVM resources", e);
                 }
             }
         }

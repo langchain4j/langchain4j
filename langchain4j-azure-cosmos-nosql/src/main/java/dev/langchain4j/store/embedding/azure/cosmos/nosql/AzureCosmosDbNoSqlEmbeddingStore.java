@@ -60,7 +60,7 @@ public class AzureCosmosDbNoSqlEmbeddingStore extends AbstractAzureCosmosDBNoSql
             CosmosFullTextPolicy cosmosFullTextPolicy,
             Integer vectorStoreThroughput,
             AzureCosmosDBSearchQueryType azureCosmosDBSearchQueryType,
-            AzureCosmosDBNoSqlFilterMapper filterMappe) {
+            AzureCosmosDBNoSqlFilterMapper filterMapper) {
         this.initialize(
                 endpoint,
                 null,

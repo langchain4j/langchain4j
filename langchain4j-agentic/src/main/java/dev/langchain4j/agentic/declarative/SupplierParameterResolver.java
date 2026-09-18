@@ -11,7 +11,8 @@ import java.lang.reflect.Parameter;
  * {@link StreamingChatModelSupplier}, {@link ContentRetrieverSupplier},
  * {@link RetrievalAugmentorSupplier}, {@link ChatMemorySupplier},
  * {@link ChatMemoryProviderSupplier}, {@link ToolProviderSupplier},
- * {@link ToolsSupplier}, and {@link AgentListenerSupplier}.
+ * {@link ToolsSupplier}, {@link AgentListenerSupplier}, and
+ * {@link ParallelExecutor}.
  * <p>
  * Implementations are registered via {@link DeclarativeUtil#addSupplierParameterResolver}.
  */

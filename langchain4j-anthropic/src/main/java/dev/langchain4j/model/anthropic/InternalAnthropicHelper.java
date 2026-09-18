@@ -11,24 +11,79 @@ import static dev.langchain4j.model.chat.request.ResponseFormatType.TEXT;
 import dev.langchain4j.Internal;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCacheType;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicContainer;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicContainer.AnthropicContainerSkill;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRequest;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicDiagnosticsParameters;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicFormat;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicMetadata;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicOutputConfig;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicThinking;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicTool;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicToolChoice;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicToolChoiceType;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 @Internal
 class InternalAnthropicHelper {
 
+    /**
+     * The {@code skill_id} marker used for Anthropic-managed skills in the {@code container.skills} block.
+     */
+    private static final String ANTHROPIC_SKILL_TYPE = "anthropic";
+
+    /**
+     * Version sent for each Anthropic-managed skill. {@code latest} always resolves to the newest skill version.
+     */
+    private static final String SKILL_VERSION_LATEST = "latest";
+
+    /**
+     * Server tool entry that must accompany skills so Claude can run them in the code execution container.
+     */
+    private static final String CODE_EXECUTION_TOOL_TYPE = "code_execution_20250825";
+
+    private static final String CODE_EXECUTION_TOOL_NAME = "code_execution";
+
     private InternalAnthropicHelper() {}
+
+    private static AnthropicContainer toAnthropicContainer(List<AnthropicSkill> skills) {
+        // Drop nulls and duplicates: the API rejects duplicate skill entries, and a null would NPE below.
+        List<AnthropicContainerSkill> containerSkills = skills.stream()
+                .filter(Objects::nonNull)
+                .distinct()
+                .map(skill -> new AnthropicContainerSkill(ANTHROPIC_SKILL_TYPE, skill.skillId(), SKILL_VERSION_LATEST))
+                .toList();
+        return new AnthropicContainer(containerSkills);
+    }
+
+    private static AnthropicTool codeExecutionTool() {
+        Map<String, Object> customParameters = new LinkedHashMap<>();
+        customParameters.put("type", CODE_EXECUTION_TOOL_TYPE);
+        return AnthropicTool.builder()
+                .name(CODE_EXECUTION_TOOL_NAME)
+                .customParameters(customParameters)
+                .build();
+    }
+
+    /**
+     * Detects an already-configured code execution server tool by its {@code type}
+     * (e.g. {@code code_execution_20250825}) rather than by name, so a regular tool that happens to be named
+     * {@code code_execution} does not suppress the server tool that Skills require.
+     */
+    private static boolean hasCodeExecutionTool(List<AnthropicTool> tools) {
+        return tools.stream()
+                .anyMatch(tool -> tool.customParameters() != null
+                        && tool.customParameters().get("type") instanceof String type
+                        && type.startsWith(CODE_EXECUTION_TOOL_NAME));
+    }
 
     static void validate(ChatRequestParameters parameters) {
         List<String> unsupportedFeatures = new ArrayList<>();
@@ -38,7 +93,8 @@ class InternalAnthropicHelper {
         if (parameters.presencePenalty() != null) {
             unsupportedFeatures.add("Presence Penalty");
         }
-        if (parameters.responseFormat() != null && parameters.responseFormat().type() == JSON
+        if (parameters.responseFormat() != null
+                && parameters.responseFormat().type() == JSON
                 && parameters.responseFormat().jsonSchema() == null) {
             unsupportedFeatures.add("Schemaless JSON response format");
         }
@@ -56,6 +112,7 @@ class InternalAnthropicHelper {
             ChatRequest chatRequest,
             AnthropicThinking thinking,
             boolean sendThinking,
+            boolean midConversationSystemMessages,
             AnthropicCacheType cacheType,
             AnthropicCacheType toolsCacheType,
             boolean stream,
@@ -64,13 +121,16 @@ class InternalAnthropicHelper {
             List<AnthropicServerTool> serverTools,
             Set<String> toolMetadataKeysToSend,
             String userId,
+            List<AnthropicSkill> skills,
             Map<String, Object> customParameters,
-            Boolean strictTools) {
+            Boolean strictTools,
+            boolean returnCacheDiagnostics,
+            String previousMessageId) {
 
         AnthropicCreateMessageRequest.Builder requestBuilder = AnthropicCreateMessageRequest.builder().stream(stream)
                 .model(chatRequest.modelName())
-                .messages(toAnthropicMessages(chatRequest.messages(), sendThinking))
-                .system(toAnthropicSystemPrompt(chatRequest.messages(), cacheType))
+                .messages(toAnthropicMessages(chatRequest.messages(), sendThinking, midConversationSystemMessages))
+                .system(toAnthropicSystemPrompt(chatRequest.messages(), cacheType, midConversationSystemMessages))
                 .maxTokens(chatRequest.maxOutputTokens())
                 .stopSequences(chatRequest.stopSequences())
                 .temperature(chatRequest.temperature())
@@ -85,22 +145,58 @@ class InternalAnthropicHelper {
             tools.addAll(toAnthropicTools(serverTools));
         }
         if (!isNullOrEmpty(chatRequest.toolSpecifications())) {
-            tools.addAll(toAnthropicTools(chatRequest.toolSpecifications(), toolsCacheType, toolMetadataKeysToSend, strictTools));
+            tools.addAll(toAnthropicTools(
+                    chatRequest.toolSpecifications(), toolsCacheType, toolMetadataKeysToSend, strictTools));
+        }
+        if (!isNullOrEmpty(skills)) {
+            AnthropicContainer container = toAnthropicContainer(skills);
+            if (!isNullOrEmpty(container.skills)) {
+                requestBuilder.container(container);
+                if (!hasCodeExecutionTool(tools)) {
+                    tools.add(codeExecutionTool());
+                }
+            }
         }
         if (!tools.isEmpty()) {
             requestBuilder.tools(tools);
         }
 
-        if (chatRequest.toolChoice() != null) {
-            requestBuilder.toolChoice(
-                    toAnthropicToolChoice(chatRequest.toolChoice(), toolChoiceName, disableParallelToolUse));
-        }
+        requestBuilder.toolChoice(
+                resolveToolChoice(chatRequest, toolChoiceName, disableParallelToolUse, !tools.isEmpty()));
 
         if (!isNullOrEmpty(userId)) {
             requestBuilder.metadata(AnthropicMetadata.builder().userId(userId).build());
         }
 
+        if (returnCacheDiagnostics) {
+            requestBuilder.diagnostics(new AnthropicDiagnosticsParameters(previousMessageId));
+        }
+
         return requestBuilder.build();
+    }
+
+    private static AnthropicToolChoice resolveToolChoice(
+            ChatRequest chatRequest, String toolChoiceName, Boolean disableParallelToolUse, boolean hasTools) {
+
+        if (chatRequest.toolChoice() != null) {
+            return toAnthropicToolChoice(chatRequest.toolChoice(), toolChoiceName, disableParallelToolUse);
+        }
+
+        if (!hasTools) {
+            return null; // without tools Anthropic defaults to "none", and forcing a tool would be rejected
+        }
+
+        if (toolChoiceName != null) {
+            return AnthropicToolChoice.from(toolChoiceName, disableParallelToolUse);
+        }
+
+        if (Boolean.TRUE.equals(disableParallelToolUse)) {
+            // "disable_parallel_tool_use" can only be sent inside "tool_choice", and "auto" is what Anthropic
+            // already applies when tools are present, so the tool selection strategy stays the same
+            return AnthropicToolChoice.from(AnthropicToolChoiceType.AUTO, disableParallelToolUse);
+        }
+
+        return null;
     }
 
     public static AnthropicOutputConfig toAnthropicOutputConfig(ResponseFormat responseFormat) {

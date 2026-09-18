@@ -30,45 +30,42 @@ public class OpenAiOfficialChatModel extends OpenAiOfficialBaseChatModel impleme
 
     public OpenAiOfficialChatModel(Builder builder) {
 
-        if (builder.openAIClient != null) {
-            this.client = builder.openAIClient;
-        } else {
-            init(
-                    builder.baseUrl,
-                    builder.apiKey,
-                    builder.credential,
-                    builder.microsoftFoundryDeploymentName,
-                    builder.azureOpenAIServiceVersion,
-                    builder.organizationId,
-                    builder.isMicrosoftFoundry,
-                    builder.isGitHubModels,
-                    builder.defaultRequestParameters,
-                    builder.modelName,
-                    builder.temperature,
-                    builder.topP,
-                    builder.stop,
-                    builder.maxCompletionTokens,
-                    builder.presencePenalty,
-                    builder.frequencyPenalty,
-                    builder.logitBias,
-                    builder.responseFormat,
-                    builder.strictJsonSchema,
-                    builder.seed,
-                    builder.user,
-                    builder.strictTools,
-                    builder.parallelToolCalls,
-                    builder.store,
-                    builder.metadata,
-                    builder.serviceTier,
-                    builder.timeout,
-                    builder.maxRetries,
-                    builder.proxy,
-                    builder.tokenCountEstimator,
-                    builder.customHeaders,
-                    builder.listeners,
-                    builder.capabilities,
-                    false);
-        }
+        this.client = builder.openAIClient;
+        init(
+                builder.baseUrl,
+                builder.apiKey,
+                builder.credential,
+                builder.microsoftFoundryDeploymentName,
+                builder.azureOpenAIServiceVersion,
+                builder.organizationId,
+                builder.isMicrosoftFoundry,
+                builder.isGitHubModels,
+                builder.defaultRequestParameters,
+                builder.modelName,
+                builder.temperature,
+                builder.topP,
+                builder.stop,
+                builder.maxCompletionTokens,
+                builder.presencePenalty,
+                builder.frequencyPenalty,
+                builder.logitBias,
+                builder.responseFormat,
+                builder.strictJsonSchema,
+                builder.seed,
+                builder.user,
+                builder.strictTools,
+                builder.parallelToolCalls,
+                builder.store,
+                builder.metadata,
+                builder.serviceTier,
+                builder.timeout,
+                builder.maxRetries,
+                builder.proxy,
+                builder.tokenCountEstimator,
+                builder.customHeaders,
+                builder.listeners,
+                builder.capabilities,
+                false);
         this.modelName = builder.modelName;
     }
 

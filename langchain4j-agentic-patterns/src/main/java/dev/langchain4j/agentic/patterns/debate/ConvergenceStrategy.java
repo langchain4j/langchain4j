@@ -23,7 +23,10 @@ public interface ConvergenceStrategy {
             String firstVerdict = null;
             for (Object p : positions) {
                 String text = p.toString().trim();
-                String lastWord = text.substring(text.lastIndexOf(' ') + 1).trim().toUpperCase();
+                String[] tokens = text.split("\\s+");
+                String lastWord = tokens[tokens.length - 1]
+                        .replaceAll("^[^\\p{Alnum}]+|[^\\p{Alnum}]+$", "")
+                        .toUpperCase();
                 if (firstVerdict == null) {
                     firstVerdict = lastWord;
                 } else if (!firstVerdict.equals(lastWord)) {

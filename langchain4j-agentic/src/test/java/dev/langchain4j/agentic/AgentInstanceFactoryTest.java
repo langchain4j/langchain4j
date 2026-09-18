@@ -7,6 +7,8 @@ import dev.langchain4j.agentic.agent.AgentBuilder;
 import dev.langchain4j.agentic.declarative.ChatModelSupplier;
 import dev.langchain4j.agentic.declarative.SequenceAgent;
 import dev.langchain4j.agentic.internal.InternalAgent;
+import dev.langchain4j.agentic.scope.AgenticScope;
+import dev.langchain4j.agentic.scope.AgenticScopeAccess;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -17,6 +19,7 @@ import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import org.junit.jupiter.api.Test;
 
@@ -139,5 +142,43 @@ class AgentInstanceFactoryTest {
 
         @SequenceAgent(subAgents = {SubAgentA.class})
         String run(@V("message") String message);
+    }
+
+    public interface SequenceAgentWithScopeAccess extends AgenticScopeAccess {
+
+        @SequenceAgent(subAgents = {SubAgentA.class})
+        String run(@V("message") String message);
+    }
+
+    @Test
+    void composite_agent_uses_default_memory_id_supplier() {
+        AtomicReference<String> currentMemoryId = new AtomicReference<>("conv-1");
+
+        var configurator = new AgentConfigurator(ctx -> {}, null, null, () -> currentMemoryId.get());
+
+        SequenceAgentWithScopeAccess agent = AgenticServices.createAgenticSystem(
+                SequenceAgentWithScopeAccess.class, STUB_MODEL, configurator);
+
+        agent.run("hello");
+        AgenticScope scope1 = agent.getAgenticScope("conv-1");
+        assertThat(scope1).isNotNull();
+
+        currentMemoryId.set("conv-2");
+        agent.run("world");
+        AgenticScope scope2 = agent.getAgenticScope("conv-2");
+        assertThat(scope2).isNotNull();
+        assertThat(scope2).isNotSameAs(scope1);
+    }
+
+    @Test
+    void composite_agent_without_supplier_creates_ephemeral_scope() {
+        var configurator = new AgentConfigurator(ctx -> {}, null, null, null);
+
+        SequenceAgentWithScopeAccess agent = AgenticServices.createAgenticSystem(
+                SequenceAgentWithScopeAccess.class, STUB_MODEL, configurator);
+
+        agent.run("hello");
+        AgenticScope scope = agent.getAgenticScope("any-id");
+        assertThat(scope).isNull();
     }
 }

@@ -5,8 +5,6 @@ import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.knuddels.jtokkit.Encodings;
 import com.knuddels.jtokkit.api.Encoding;
 import com.knuddels.jtokkit.api.EncodingRegistry;
@@ -19,6 +17,7 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.internal.Json;
 import dev.langchain4j.model.TokenCountEstimator;
 import java.util.Map;
 import java.util.function.Supplier;
@@ -31,7 +30,6 @@ import java.util.function.Supplier;
 public class AzureOpenAiTokenCountEstimator implements TokenCountEstimator {
 
     private static final EncodingRegistry ENCODING_REGISTRY = Encodings.newDefaultEncodingRegistry();
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private final String modelName;
     private final Encoding encoding;
@@ -104,8 +102,8 @@ public class AzureOpenAiTokenCountEstimator implements TokenCountEstimator {
         for (Content content : userMessage.contents()) {
             if (content instanceof TextContent) {
                 tokenCount += estimateTokenCountInText(((TextContent) content).text());
-            } else if (content instanceof ImageContent) {
-                tokenCount += 85; // TODO implement for HIGH/AUTO detail level
+            } else if (content instanceof ImageContent imageContent) {
+                tokenCount += estimateImageTokens(imageContent);
             } else {
                 throw illegalArgument("Unknown content type: " + content);
             }
@@ -117,6 +115,27 @@ public class AzureOpenAiTokenCountEstimator implements TokenCountEstimator {
         }
 
         return tokenCount;
+    }
+
+    /**
+     * Estimates tokens for image content based on detail level.
+     * <p>
+     * Based on OpenAI documentation:
+     * <ul>
+     *   <li>LOW: 85 tokens (fixed)</li>
+     *   <li>HIGH: 85 base + 170 tokens per 512x512 tile (typically 765 for 1024x1024)</li>
+     *   <li>AUTO: defaults to HIGH for images larger than 512x512</li>
+     * </ul>
+     * Since we don't have image dimensions, we use conservative estimates for HIGH/AUTO.
+     *
+     * @see <a href="https://platform.openai.com/docs/guides/vision">OpenAI Vision documentation</a>
+     */
+    private int estimateImageTokens(ImageContent imageContent) {
+        return switch (imageContent.detailLevel()) {
+            case LOW -> 85;
+            case MEDIUM -> 400; // conservative estimate between LOW and HIGH
+            case HIGH, ULTRA_HIGH, AUTO -> 765; // typical for 1024x1024 image
+        };
     }
 
     private int estimateTokenCountIn(AiMessage aiMessage) {
@@ -144,15 +163,11 @@ public class AzureOpenAiTokenCountEstimator implements TokenCountEstimator {
                         continue;
                     }
 
-                    try {
-                        Map<?, ?> arguments = OBJECT_MAPPER.readValue(toolExecutionRequest.arguments(), Map.class);
-                        for (Map.Entry<?, ?> argument : arguments.entrySet()) {
-                            tokenCount += 2;
-                            tokenCount += estimateTokenCountInText(String.valueOf(argument.getKey()));
-                            tokenCount += estimateTokenCountInText(String.valueOf(argument.getValue()));
-                        }
-                    } catch (JsonProcessingException e) {
-                        throw new RuntimeException(e);
+                    Map<?, ?> arguments = Json.fromJson(toolExecutionRequest.arguments(), Map.class);
+                    for (Map.Entry<?, ?> argument : arguments.entrySet()) {
+                        tokenCount += 2;
+                        tokenCount += estimateTokenCountInText(String.valueOf(argument.getKey()));
+                        tokenCount += estimateTokenCountInText(String.valueOf(argument.getValue()));
                     }
                 }
             }

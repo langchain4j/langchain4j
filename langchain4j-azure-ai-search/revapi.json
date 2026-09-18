@@ -1,0 +1,27 @@
+[
+  {
+    "extension": "revapi.differences",
+    "configuration": {
+      "ignore": true,
+      "differences": [
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class com.azure.search.documents.models.IndexDocumentsBatch",
+          "justification": "Azure SDK type intentionally exposed by the internal upload helper. azure-search-documents 12.0.0 removed SearchClient.uploadDocuments(List) in favor of indexDocuments(IndexDocumentsBatch), and this module already exposes Azure SDK types in its protected API."
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class com.azure.search.documents.models.SearchPagedIterable",
+          "justification": "SearchPagedIterable moved from com.azure.search.documents.util to com.azure.search.documents.models in azure-search-documents 12.0.0. It is exposed by the protected getEmbeddingMatches helper, which already exposed the previous (util) type in earlier releases."
+        },
+        {
+          "code": "java.method.parameterTypeChanged",
+          "old": "parameter java.util.List<dev.langchain4j.store.embedding.EmbeddingMatch<dev.langchain4j.data.segment.TextSegment>> dev.langchain4j.store.embedding.azure.search.AbstractAzureAiSearchEmbeddingStore::getEmbeddingMatches(===com.azure.search.documents.util.SearchPagedIterable===, java.lang.Double, dev.langchain4j.rag.content.retriever.azure.search.AzureAiSearchQueryType)",
+          "new": "parameter java.util.List<dev.langchain4j.store.embedding.EmbeddingMatch<dev.langchain4j.data.segment.TextSegment>> dev.langchain4j.store.embedding.azure.search.AbstractAzureAiSearchEmbeddingStore::getEmbeddingMatches(===com.azure.search.documents.models.SearchPagedIterable===, java.lang.Double, dev.langchain4j.rag.content.retriever.azure.search.AzureAiSearchQueryType)",
+          "parameterIndex": "0",
+          "justification": "SearchPagedIterable moved from com.azure.search.documents.util to com.azure.search.documents.models in azure-search-documents 12.0.0; the protected getEmbeddingMatches helper parameter type changed accordingly."
+        }
+      ]
+    }
+  }
+]

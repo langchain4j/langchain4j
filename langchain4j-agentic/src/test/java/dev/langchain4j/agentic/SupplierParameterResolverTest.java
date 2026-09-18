@@ -1,13 +1,21 @@
 package dev.langchain4j.agentic;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.langchain4j.agentic.declarative.ChatMemorySupplier;
 import dev.langchain4j.agentic.declarative.ChatModelSupplier;
 import dev.langchain4j.agentic.declarative.ContentRetrieverSupplier;
 import dev.langchain4j.agentic.declarative.DeclarativeUtil;
+import dev.langchain4j.agentic.declarative.McpClientAgent;
+import dev.langchain4j.agentic.declarative.McpClientSupplier;
+import dev.langchain4j.agentic.declarative.Output;
+import dev.langchain4j.agentic.declarative.ParallelAgent;
+import dev.langchain4j.agentic.declarative.ParallelExecutor;
+import dev.langchain4j.agentic.declarative.ParallelMapperAgent;
 import dev.langchain4j.agentic.declarative.SequenceAgent;
 import dev.langchain4j.agentic.declarative.SupplierParameterResolver;
+import dev.langchain4j.agentic.planner.AgenticSystemConfigurationException;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.segment.TextSegment;
@@ -21,6 +29,8 @@ import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Executor;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -33,6 +43,9 @@ class SupplierParameterResolverTest {
         DeclarativeUtil.getSupplierParameterResolvers().clear();
         capturedRetriever = null;
         capturedMemory = null;
+        capturedMcpClientHolder = null;
+        capturedParallelExecutorHolder = null;
+        capturedParallelMapperExecutorHolder = null;
     }
 
     static final ChatModel DUMMY_MODEL = new ChatModel() {
@@ -80,6 +93,35 @@ class SupplierParameterResolverTest {
 
     static RetrieverService capturedRetriever;
     static MemoryService capturedMemory;
+    static McpClientHolder capturedMcpClientHolder;
+    static ExecutorHolder capturedParallelExecutorHolder;
+    static ExecutorHolder capturedParallelMapperExecutorHolder;
+
+    static class ExecutorHolder {
+        private final CountingExecutor executor = new CountingExecutor();
+
+        Executor executor() {
+            return executor;
+        }
+
+        int executionCount() {
+            return executor.executionCount();
+        }
+    }
+
+    static class CountingExecutor implements Executor {
+        private final AtomicInteger executionCount = new AtomicInteger();
+
+        @Override
+        public void execute(Runnable command) {
+            executionCount.incrementAndGet();
+            command.run();
+        }
+
+        int executionCount() {
+            return executionCount.get();
+        }
+    }
 
     // -- Agents with parameterised non-chat suppliers --
 
@@ -131,6 +173,73 @@ class SupplierParameterResolverTest {
                 outputKey = "result",
                 subAgents = {MemoryAgent.class})
         String run(@V("it") String input);
+    }
+
+    public interface FirstParallelAgent {
+
+        @UserMessage("First: {{it}}")
+        @Agent(description = "First parallel agent", outputKey = "first")
+        String first(@V("it") String input);
+
+        @ChatModelSupplier
+        static ChatModel chatModel() {
+            return DUMMY_MODEL;
+        }
+    }
+
+    public interface SecondParallelAgent {
+
+        @UserMessage("Second: {{it}}")
+        @Agent(description = "Second parallel agent", outputKey = "second")
+        String second(@V("it") String input);
+
+        @ChatModelSupplier
+        static ChatModel chatModel() {
+            return DUMMY_MODEL;
+        }
+    }
+
+    public interface ParallelAgentWithResolvedExecutor {
+
+        @ParallelAgent(
+                outputKey = "result",
+                subAgents = {FirstParallelAgent.class, SecondParallelAgent.class})
+        String run(@V("it") String input);
+
+        @ParallelExecutor
+        static Executor executor(ExecutorHolder holder) {
+            capturedParallelExecutorHolder = holder;
+            return holder.executor();
+        }
+
+        @Output
+        static String output(@V("first") String first, @V("second") String second) {
+            return first + ":" + second;
+        }
+    }
+
+    public interface ItemAgent {
+
+        @UserMessage("Map: {{item}}")
+        @Agent(description = "Map item", outputKey = "mapped")
+        String map(@V("item") String item);
+
+        @ChatModelSupplier
+        static ChatModel chatModel() {
+            return DUMMY_MODEL;
+        }
+    }
+
+    public interface ParallelMapperAgentWithResolvedExecutor {
+
+        @ParallelMapperAgent(subAgent = ItemAgent.class, outputKey = "mappedItems")
+        List<String> map(@V("items") List<String> items);
+
+        @ParallelExecutor
+        static Executor executor(ExecutorHolder holder) {
+            capturedParallelMapperExecutorHolder = holder;
+            return holder.executor();
+        }
     }
 
     @Test
@@ -204,5 +313,136 @@ class SupplierParameterResolverTest {
                 .orElseThrow();
         assertThat(ctx.declaringAgentClass()).isEqualTo(RetrieverAgent.class);
         assertThat(ctx.supplierMethod().getName()).isEqualTo("retriever");
+    }
+
+    @Test
+    void parallelExecutorSupplier_parameter_resolved() {
+        ExecutorHolder holder = new ExecutorHolder();
+        registerExecutorHolderResolver(holder);
+
+        ParallelAgentWithResolvedExecutor agent =
+                AgenticServices.createAgenticSystem(ParallelAgentWithResolvedExecutor.class, DUMMY_MODEL);
+        String result = agent.run("test");
+
+        assertThat(capturedParallelExecutorHolder).isSameAs(holder);
+        assertThat(holder.executionCount()).isEqualTo(2);
+        assertThat(result).isEqualTo("test-response:test-response");
+    }
+
+    @Test
+    void parallelExecutorSupplier_parameter_withoutResolver_failsFast() {
+        assertThatThrownBy(
+                        () -> AgenticServices.createAgenticSystem(ParallelAgentWithResolvedExecutor.class, DUMMY_MODEL))
+                .isInstanceOf(AgenticSystemConfigurationException.class)
+                .hasMessageContaining("@ParallelExecutor")
+                .hasMessageContaining("SupplierParameterResolver");
+    }
+
+    @Test
+    void parallelExecutorSupplier_parameter_withUnrelatedResolver_failsFast() {
+        DeclarativeUtil.addSupplierParameterResolver(new SupplierParameterResolver() {
+            @Override
+            public boolean supports(Context context) {
+                return context.parameter().getType() == RetrieverService.class;
+            }
+
+            @Override
+            public Object resolve(Context context) {
+                return new RetrieverService();
+            }
+        });
+
+        assertThatThrownBy(
+                        () -> AgenticServices.createAgenticSystem(ParallelAgentWithResolvedExecutor.class, DUMMY_MODEL))
+                .isInstanceOf(AgenticSystemConfigurationException.class)
+                .hasMessageContaining("ExecutorHolder")
+                .hasMessageContaining("@ParallelExecutor")
+                .hasMessageContaining("SupplierParameterResolver");
+    }
+
+    @Test
+    void parallelMapperExecutorSupplier_parameter_resolved() {
+        ExecutorHolder holder = new ExecutorHolder();
+        registerExecutorHolderResolver(holder);
+
+        ParallelMapperAgentWithResolvedExecutor agent =
+                AgenticServices.createAgenticSystem(ParallelMapperAgentWithResolvedExecutor.class, DUMMY_MODEL);
+        List<String> result = agent.map(List.of("first", "second"));
+
+        assertThat(capturedParallelMapperExecutorHolder).isSameAs(holder);
+        assertThat(holder.executionCount()).isEqualTo(2);
+        assertThat(result).containsExactly("test-response", "test-response");
+    }
+
+    private static void registerExecutorHolderResolver(ExecutorHolder holder) {
+        DeclarativeUtil.addSupplierParameterResolver(new SupplierParameterResolver() {
+            @Override
+            public boolean supports(Context context) {
+                return context.parameter().getType() == ExecutorHolder.class;
+            }
+
+            @Override
+            public Object resolve(Context context) {
+                return holder;
+            }
+        });
+    }
+
+    // -- MCP client supplier with parameterised resolver --
+
+    static class McpClientHolder {
+        private final Object client;
+
+        McpClientHolder(Object client) {
+            this.client = client;
+        }
+
+        Object client() {
+            return client;
+        }
+    }
+
+    public interface McpWeatherAgent {
+
+        @McpClientAgent(toolName = "getWeather", outputKey = "weather",
+                description = "Fetches weather from MCP server")
+        String fetchWeather(@V("city") String city);
+
+        @McpClientSupplier
+        static Object mcpClient(McpClientHolder holder) {
+            capturedMcpClientHolder = holder;
+            return holder.client();
+        }
+    }
+
+    public interface McpWrapper {
+        @SequenceAgent(outputKey = "result", subAgents = { McpWeatherAgent.class })
+        String run(@V("city") String city);
+    }
+
+    @Test
+    void mcpClientSupplier_parameter_resolved() {
+        Object fakeMcpClient = new Object();
+        McpClientHolder holder = new McpClientHolder(fakeMcpClient);
+
+        DeclarativeUtil.addSupplierParameterResolver(new SupplierParameterResolver() {
+            @Override
+            public boolean supports(Context context) {
+                return context.parameter().getType() == McpClientHolder.class;
+            }
+
+            @Override
+            public Object resolve(Context context) {
+                return holder;
+            }
+        });
+
+        // The supplier parameter is resolved, then McpService.get().mcpBuilder() fails
+        // because langchain4j-agentic-mcp is not on the classpath.
+        assertThatThrownBy(() -> AgenticServices.createAgenticSystem(McpWrapper.class, DUMMY_MODEL))
+                .isInstanceOf(UnsupportedOperationException.class)
+                .hasMessageContaining("No MCP service implementation found");
+
+        assertThat(capturedMcpClientHolder).isSameAs(holder);
     }
 }

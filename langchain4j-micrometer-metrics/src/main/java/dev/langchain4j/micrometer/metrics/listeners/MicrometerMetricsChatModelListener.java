@@ -75,7 +75,13 @@ public class MicrometerMetricsChatModelListener implements ChatModelListener {
     }
 
     private void addTokenMetric(
-            ChatModelResponseContext responseContext, OTelGenAiTokenType tokenType, int tokenCount) {
+            ChatModelResponseContext responseContext, OTelGenAiTokenType tokenType, Integer tokenCount) {
+
+        if (tokenCount == null) {
+            // Token counts are nullable (TokenUsage documents each component as "null if unknown").
+            // Skip recording a token type whose count is unknown instead of failing the whole response.
+            return;
+        }
 
         DistributionSummary.builder(OTelGenAiMetricName.TOKEN_USAGE.value())
                 .baseUnit("tokens")

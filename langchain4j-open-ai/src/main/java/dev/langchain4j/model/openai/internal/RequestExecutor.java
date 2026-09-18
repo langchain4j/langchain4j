@@ -1,9 +1,14 @@
 package dev.langchain4j.model.openai.internal;
 
+import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
+
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpRequest;
+import dev.langchain4j.http.client.SuccessfulHttpResponse;
 
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 class RequestExecutor<Response> implements SyncOrAsyncOrStreaming<Response> {
 
@@ -11,26 +16,41 @@ class RequestExecutor<Response> implements SyncOrAsyncOrStreaming<Response> {
     private final HttpRequest httpRequest;
     private final HttpRequest streamingHttpRequest;
     private final Class<Response> responseClass;
+    private final Function<SuccessfulHttpResponse, Response> responseMapper;
 
-    RequestExecutor(HttpClient httpClient,
-                    HttpRequest httpRequest,
-                    Class<Response> responseClass
-    ) {
+    RequestExecutor(HttpClient httpClient, HttpRequest httpRequest, Class<Response> responseClass) {
         this.httpClient = httpClient;
         this.httpRequest = httpRequest;
         this.streamingHttpRequest = null;
         this.responseClass = responseClass;
+        this.responseMapper = null;
     }
 
-    RequestExecutor(HttpClient httpClient,
-                    HttpRequest httpRequest,
-                    HttpRequest streamingHttpRequest,
-                    Class<Response> responseClass
-    ) {
+    RequestExecutor(
+            HttpClient httpClient,
+            HttpRequest httpRequest,
+            HttpRequest streamingHttpRequest,
+            Class<Response> responseClass) {
         this.httpClient = httpClient;
         this.httpRequest = httpRequest;
         this.streamingHttpRequest = streamingHttpRequest;
         this.responseClass = responseClass;
+        this.responseMapper = null;
+    }
+
+    /**
+     * Creates an executor that maps the raw HTTP response into the result instead of deserializing JSON.
+     * Used for endpoints that return a non-JSON body (e.g. binary audio).
+     */
+    RequestExecutor(
+            HttpClient httpClient,
+            HttpRequest httpRequest,
+            Function<SuccessfulHttpResponse, Response> responseMapper) {
+        this.httpClient = httpClient;
+        this.httpRequest = httpRequest;
+        this.streamingHttpRequest = null;
+        this.responseClass = null;
+        this.responseMapper = responseMapper;
     }
 
     @Override
@@ -40,8 +60,22 @@ class RequestExecutor<Response> implements SyncOrAsyncOrStreaming<Response> {
 
     @Override
     public ParsedAndRawResponse<Response> executeRaw() {
-        SyncRequestExecutor<Response> executor = new SyncRequestExecutor<>(httpClient, httpRequest, responseClass);
+        SyncRequestExecutor<Response> executor =
+                new SyncRequestExecutor<>(httpClient, httpRequest, responseClass, responseMapper);
         return executor.execute();
+    }
+
+    @Override
+    public CompletableFuture<ParsedAndRawResponse<Response>> executeRawAsync() {
+        CompletableFuture<SuccessfulHttpResponse> httpFuture = httpClient.executeAsync(httpRequest);
+
+        CompletableFuture<ParsedAndRawResponse<Response>> result = httpFuture.thenApply(rawHttpResponse -> {
+            Response parsedResponse = Json.fromJson(rawHttpResponse.body(), responseClass);
+            return new ParsedAndRawResponse<>(parsedResponse, rawHttpResponse);
+        });
+
+        propagateCancellation(result, httpFuture);
+        return result;
     }
 
     @Override

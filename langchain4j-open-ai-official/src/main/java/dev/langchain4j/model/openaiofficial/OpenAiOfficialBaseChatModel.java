@@ -76,35 +76,39 @@ abstract class OpenAiOfficialBaseChatModel {
             boolean isAsync) {
 
         if (isAsync) {
-            this.asyncClient = setupAsyncClient(
-                    baseUrl,
-                    apiKey,
-                    credential,
-                    microsoftFoundryDeploymentName,
-                    azureOpenAIServiceVersion,
-                    organizationId,
-                    isAzure,
-                    isGitHubModels,
-                    modelName,
-                    timeout,
-                    maxRetries,
-                    proxy,
-                    customHeaders);
+            if (this.asyncClient == null) {
+                this.asyncClient = setupAsyncClient(
+                        baseUrl,
+                        apiKey,
+                        credential,
+                        microsoftFoundryDeploymentName,
+                        azureOpenAIServiceVersion,
+                        organizationId,
+                        isAzure,
+                        isGitHubModels,
+                        modelName,
+                        timeout,
+                        maxRetries,
+                        proxy,
+                        customHeaders);
+            }
         } else {
-            this.client = setupSyncClient(
-                    baseUrl,
-                    apiKey,
-                    credential,
-                    microsoftFoundryDeploymentName,
-                    azureOpenAIServiceVersion,
-                    organizationId,
-                    isAzure,
-                    isGitHubModels,
-                    modelName,
-                    timeout,
-                    maxRetries,
-                    proxy,
-                    customHeaders);
+            if (this.client == null) {
+                this.client = setupSyncClient(
+                        baseUrl,
+                        apiKey,
+                        credential,
+                        microsoftFoundryDeploymentName,
+                        azureOpenAIServiceVersion,
+                        organizationId,
+                        isAzure,
+                        isGitHubModels,
+                        modelName,
+                        timeout,
+                        maxRetries,
+                        proxy,
+                        customHeaders);
+            }
         }
 
         ChatRequestParameters commonParameters;
@@ -144,6 +148,8 @@ abstract class OpenAiOfficialBaseChatModel {
                 .store(getOrDefault(store, openAiParameters.store()))
                 .metadata(getOrDefault(metadata, openAiParameters.metadata()))
                 .serviceTier(getOrDefault(serviceTier, openAiParameters.serviceTier()))
+                .promptCacheKey(openAiParameters.promptCacheKey())
+                .promptCacheOptions(openAiParameters.promptCacheOptions())
                 .reasoningEffort(openAiParameters.reasoningEffort())
                 .build();
 

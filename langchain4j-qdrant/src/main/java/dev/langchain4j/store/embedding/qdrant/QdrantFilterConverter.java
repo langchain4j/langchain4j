@@ -84,10 +84,17 @@ class QdrantFilterConverter {
         } else if (value instanceof Integer || value instanceof Long) {
             long lValue = Long.parseLong(value.toString());
             return ConditionFactory.match(key, lValue);
+        } else if (value instanceof Float || value instanceof Double) {
+            // Qdrant's Match proto has no float/double field, so equality is expressed as a Range
+            // where gte == lte == value. Convert via doubleValue() (not the string form) so the bound
+            // matches how a Float is stored: ValueMapFactory widens it through ValueFactory.value(double).
+            double dValue = ((Number) value).doubleValue();
+            return ConditionFactory.range(
+                    key, Common.Range.newBuilder().setGte(dValue).setLte(dValue).build());
         }
 
         throw new IllegalArgumentException(
-                "Invalid value type for IsEqualTo. Can either be a String or Boolean or Integer or Long");
+                "Invalid value type for IsEqualTo. Can either be a String or Boolean or Integer or Long or Float or Double");
     }
 
     private static Condition buildNeCondition(IsNotEqualTo notEqual) {
@@ -106,10 +113,19 @@ class QdrantFilterConverter {
             Condition condition = ConditionFactory.match(key, lValue);
             return ConditionFactory.filter(
                     Common.Filter.newBuilder().addMustNot(condition).build());
+        } else if (value instanceof Float || value instanceof Double) {
+            // Qdrant's Match proto has no float/double field, so inequality is expressed as a
+            // must_not Range where gte == lte == value. Convert via doubleValue() (not the string form)
+            // so the bound matches how a Float is stored: widened through ValueFactory.value(double).
+            double dValue = ((Number) value).doubleValue();
+            Condition condition = ConditionFactory.range(
+                    key, Common.Range.newBuilder().setGte(dValue).setLte(dValue).build());
+            return ConditionFactory.filter(
+                    Common.Filter.newBuilder().addMustNot(condition).build());
         }
 
         throw new IllegalArgumentException(
-                "Invalid value type for IsNotEqualto. Can either be a String or Boolean or Integer or Long");
+                "Invalid value type for IsNotEqualto. Can either be a String or Boolean or Integer or Long or Float or Double");
     }
 
     private static Condition buildGtCondition(IsGreaterThan greaterThan) {

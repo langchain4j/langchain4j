@@ -86,6 +86,7 @@ internal class MergeMetadataTest {
                 metadata1.merge(metadata2)
             }
 
-       exception.message shouldBe "Metadata keys are not unique. Common keys: [key2]"
+       exception.message shouldBe
+           "Metadata keys are not unique. Common keys and their values: {key2=(\"value2\", \"value3\")}"
     }
 }

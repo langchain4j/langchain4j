@@ -97,7 +97,7 @@ class AzureAiSearchEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
         fields.add(new SearchField(DEFAULT_FIELD_ID, SearchFieldDataType.STRING)
                 .setKey(true)
                 .setFilterable(true));
-        SearchIndex providedIndex = new SearchIndex(providedIndexName).setFields(fields);
+        SearchIndex providedIndex = new SearchIndex(providedIndexName, fields);
         AzureAiSearchEmbeddingStore store = new AzureAiSearchEmbeddingStore(
                 AZURE_SEARCH_ENDPOINT, new AzureKeyCredential(AZURE_SEARCH_KEY), true, providedIndex, null, null);
 

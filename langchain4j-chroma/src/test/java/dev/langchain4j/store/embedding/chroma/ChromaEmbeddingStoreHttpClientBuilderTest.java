@@ -3,19 +3,12 @@ package dev.langchain4j.store.embedding.chroma;
 import static dev.langchain4j.http.client.HttpMethod.DELETE;
 import static dev.langchain4j.http.client.HttpMethod.GET;
 import static dev.langchain4j.http.client.HttpMethod.POST;
-import static java.util.Collections.emptyMap;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.data.embedding.Embedding;
-import dev.langchain4j.http.client.HttpClient;
-import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.http.client.HttpRequest;
-import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.http.client.jdk.JdkHttpClientBuilder;
-import dev.langchain4j.http.client.sse.ServerSentEventListener;
-import dev.langchain4j.http.client.sse.ServerSentEventParser;
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -106,83 +99,6 @@ class ChromaEmbeddingStoreHttpClientBuilderTest {
 
         // then
         assertThat(httpClient.requests()).hasSize(1);
-    }
-
-    private static class TestHttpClientBuilder implements HttpClientBuilder {
-
-        private final HttpClient httpClient;
-
-        private TestHttpClientBuilder(HttpClient httpClient) {
-            this.httpClient = httpClient;
-        }
-
-        @Override
-        public Duration connectTimeout() {
-            return null;
-        }
-
-        @Override
-        public HttpClientBuilder connectTimeout(Duration timeout) {
-            return this;
-        }
-
-        @Override
-        public Duration readTimeout() {
-            return null;
-        }
-
-        @Override
-        public HttpClientBuilder readTimeout(Duration timeout) {
-            return this;
-        }
-
-        @Override
-        public HttpClient build() {
-            return httpClient;
-        }
-    }
-
-    private static class CapturingHttpClient implements HttpClient {
-
-        private final List<HttpRequest> requests = new ArrayList<>();
-
-        private List<HttpRequest> requests() {
-            return requests;
-        }
-
-        @Override
-        public SuccessfulHttpResponse execute(HttpRequest request) {
-            requests.add(request);
-            return SuccessfulHttpResponse.builder()
-                    .statusCode(200)
-                    .headers(emptyMap())
-                    .body(bodyFor(request.url()))
-                    .build();
-        }
-
-        @Override
-        public void execute(HttpRequest request, ServerSentEventParser parser, ServerSentEventListener listener) {
-            throw new UnsupportedOperationException("SSE is not used by ChromaEmbeddingStore");
-        }
-
-        private static String bodyFor(String url) {
-            if (url.endsWith("/api/v2/tenants/default")) {
-                return "{\"name\":\"default\"}";
-            }
-            if (url.endsWith("/api/v2/tenants/default/databases/default")) {
-                return "{\"name\":\"default\"}";
-            }
-            if (url.endsWith("/add")) {
-                return "true";
-            }
-            if (url.endsWith("/api/v1/collections")) {
-                return "{\"id\":\"collection-id\",\"name\":\"test\",\"metadata\":{}}";
-            }
-            if (url.contains("/collections/test")) {
-                return "{\"id\":\"collection-id\",\"name\":\"test\",\"metadata\":{}}";
-            }
-            throw new IllegalArgumentException("Unexpected URL: " + url);
-        }
     }
 
     private void assertStaticHeaders(HttpRequest request) {

@@ -18,7 +18,9 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.AudioContent;
@@ -36,8 +38,10 @@ import dev.langchain4j.model.chat.request.json.JsonAnyOfSchema;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
 import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
+import dev.langchain4j.model.chat.request.json.JsonNumberSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonRawSchema;
+import dev.langchain4j.model.chat.request.json.JsonReferenceSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -408,6 +412,61 @@ class GoogleAiGeminiChatModelIT {
     }
 
     @Test
+    void should_support_tool_parameters_without_a_typed_form() throws JsonProcessingException {
+        // given
+        GoogleAiGeminiChatModel model = GoogleAiGeminiChatModel.builder()
+                .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+                .modelName("gemini-flash-latest")
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        JsonObjectSchema priceRange = JsonObjectSchema.builder()
+                .addProperty("min", new JsonNumberSchema())
+                .addProperty("max", new JsonNumberSchema())
+                .build();
+
+        ToolSpecification searchProducts = ToolSpecification.builder()
+                .name("search_products")
+                .description("Search the catalog")
+                .parameters(JsonObjectSchema.builder()
+                        .definitions(Map.of("PriceRange", priceRange))
+                        .addStringProperty("query")
+                        .addProperty(
+                                "retail_price",
+                                JsonReferenceSchema.builder()
+                                        .reference("PriceRange")
+                                        .build())
+                        .addProperty(
+                                "max_results",
+                                JsonRawSchema.from("{\"type\":\"integer\",\"minimum\":1,\"maximum\":50}"))
+                        .required("query")
+                        .build())
+                .build();
+
+        ChatRequest request = ChatRequest.builder()
+                .messages(UserMessage.from("Find blue shirts priced 10 to 50, at most 5 results."))
+                .toolSpecifications(searchProducts)
+                .build();
+
+        // when
+        ChatResponse response = model.chat(request);
+
+        // then
+        assertThat(response.aiMessage().hasToolExecutionRequests()).isTrue();
+
+        ToolExecutionRequest toolExecutionRequest =
+                response.aiMessage().toolExecutionRequests().get(0);
+        assertThat(toolExecutionRequest.name()).isEqualTo("search_products");
+
+        // Only "query" is required, so the optional properties are the model's call and are not asserted.
+        Map<String, Object> arguments =
+                new ObjectMapper().readValue(toolExecutionRequest.arguments(), new TypeReference<>() {});
+        assertThat(arguments).containsKey("query");
+        assertThat(arguments.keySet()).isSubsetOf("query", "retail_price", "max_results");
+    }
+
+    @Test
     void should_support_tool_config() {
         // given
         GoogleAiGeminiChatModel model1 = GoogleAiGeminiChatModel.builder()
@@ -564,8 +623,7 @@ class GoogleAiGeminiChatModelIT {
         ResponseFormat responseFormat =
                 ResponseFormat.builder().type(JSON).jsonSchema(jsonSchema).build();
 
-        UserMessage userMessage = UserMessage.from(
-                """
+        UserMessage userMessage = UserMessage.from("""
                         Extract information from the following text:
                         1. A circle with a radius of 5
                         2. A rectangle with a width of 10 and a height of 20
@@ -596,8 +654,7 @@ class GoogleAiGeminiChatModelIT {
     @Test
     void should_support_raw_json_schema() throws JsonProcessingException {
         // given
-        String rawSchema =
-                """
+        String rawSchema = """
         {
           "type": "object",
           "properties": {
@@ -663,8 +720,7 @@ class GoogleAiGeminiChatModelIT {
                 .build();
 
         // when
-        UserMessage userMessage = UserMessage.from(
-                """
+        UserMessage userMessage = UserMessage.from("""
                    Tell me about a software engineer named Sherlock Holmes,
                    who was born on November 28 1990 and sees the world over six feet from the ground.
                    He is an open-source contributor, an active volunteer and lives in London at 221B Baker Street.

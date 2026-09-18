@@ -6,10 +6,10 @@ import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.ollama.OllamaJsonUtils.fromJson;
-import static dev.langchain4j.model.ollama.OllamaJsonUtils.toJson;
 import static dev.langchain4j.model.ollama.OllamaJsonUtils.toJsonWithoutIdent;
 
-import com.fasterxml.jackson.core.type.TypeReference;
+import java.lang.reflect.Type;
+import dev.langchain4j.internal.Types;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -44,6 +44,8 @@ import java.util.stream.Collectors;
 
 @Internal
 class InternalOllamaHelper {
+
+    private static final Type MAP_OF_OBJECT = Types.parameterized(HashMap.class, String.class, Object.class);
 
     private static final Predicate<ChatMessage> isUserMessage = UserMessage.class::isInstance;
     private static final Predicate<UserMessage> hasImages =
@@ -97,13 +99,13 @@ class InternalOllamaHelper {
                 .collect(Collectors.toList());
     }
 
-    static String toOllamaResponseFormat(ResponseFormat responseFormat) {
+    static Object toOllamaResponseFormat(ResponseFormat responseFormat) {
         if (responseFormat == null || responseFormat.type() == ResponseFormatType.TEXT) {
             return null;
         } else if (responseFormat.type() == ResponseFormatType.JSON && responseFormat.jsonSchema() == null) {
             return "json";
         } else {
-            return toJson(toMap(responseFormat.jsonSchema().rootElement()));
+            return toMap(responseFormat.jsonSchema().rootElement());
         }
     }
 
@@ -191,6 +193,7 @@ class InternalOllamaHelper {
                 .tools(toOllamaTools(chatRequest.toolSpecifications()))
                 .keepAlive(requestParameters.keepAlive())
                 .think(requestParameters.think())
+                .truncate(requestParameters.truncate())
                 .build();
     }
 
@@ -207,13 +210,9 @@ class InternalOllamaHelper {
         Map<ContentType, List<Content>> groupedContents =
                 userMessage.contents().stream().collect(Collectors.groupingBy(Content::type));
 
-        if (groupedContents.get(TEXT).size() != 1) {
-            throw new IllegalArgumentException("Expecting single text content, but got: " + userMessage.contents());
-        }
+        String text = concatenateTextContents(userMessage);
 
-        String text = ((TextContent) groupedContents.get(TEXT).get(0)).text();
-
-        List<ImageContent> imageContents = groupedContents.get(IMAGE).stream()
+        List<ImageContent> imageContents = groupedContents.getOrDefault(IMAGE, List.of()).stream()
                 .map(content -> (ImageContent) content)
                 .collect(Collectors.toList());
 
@@ -222,6 +221,18 @@ class InternalOllamaHelper {
                 .content(text)
                 .images(ImageUtils.base64EncodeImageList(imageContents))
                 .build();
+    }
+
+    /**
+     * Ollama messages carry a single {@code content} string, so multiple {@link TextContent}s
+     * of a {@link UserMessage} are concatenated (separated by newlines). Returns an empty string
+     * if the message has no text content (e.g. it only contains images).
+     */
+    private static String concatenateTextContents(UserMessage userMessage) {
+        return userMessage.contents().stream()
+                .filter(content -> TEXT.equals(content.type()))
+                .map(content -> ((TextContent) content).text())
+                .collect(Collectors.joining("\n"));
     }
 
     private static Message otherMessages(ChatMessage chatMessage) {
@@ -237,11 +248,9 @@ class InternalOllamaHelper {
             toolCalls = Optional.ofNullable(toolExecutionRequests)
                     .map(reqs -> reqs.stream()
                             .map(toolExecutionRequest -> {
-                                TypeReference<HashMap<String, Object>> typeReference =
-                                        new TypeReference<HashMap<String, Object>>() {};
                                 FunctionCall functionCall = FunctionCall.builder()
                                         .name(toolExecutionRequest.name())
-                                        .arguments(fromJson(toolExecutionRequest.arguments(), typeReference))
+                                        .arguments(fromJson(toolExecutionRequest.arguments(), MAP_OF_OBJECT))
                                         .build();
                                 return ToolCall.builder()
                                         .id(toolExecutionRequest.id())
@@ -262,7 +271,7 @@ class InternalOllamaHelper {
         if (chatMessage instanceof SystemMessage systemMessage) {
             return systemMessage.text();
         } else if (chatMessage instanceof UserMessage userMessage) {
-            return userMessage.singleText();
+            return concatenateTextContents(userMessage);
         } else if (chatMessage instanceof AiMessage aiMessage) {
             return aiMessage.text();
         } else if (chatMessage instanceof ToolExecutionResultMessage toolExecutionResultMessage) {

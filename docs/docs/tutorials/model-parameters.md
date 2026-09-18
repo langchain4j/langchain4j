@@ -68,7 +68,7 @@ If you are using one of our [Spring Boot starters](https://github.com/langchain4
 you can configure model parameters in the `application.properties` file as follows:
 ```
 langchain4j.open-ai.chat-model.api-key=${OPENAI_API_KEY}
-langchain4j.open-ai.chat-model.model-name=gpt-4-1106-preview
+langchain4j.open-ai.chat-model.model-name=gpt-5.4-mini
 ...
 ```
 The complete list of supported properties can be found

@@ -1,6 +1,7 @@
 package dev.langchain4j.model.googleai;
 
 import static dev.langchain4j.JsonTestUtils.jsonify;
+import static dev.langchain4j.MockitoUtils.ignoreInteractions;
 import static dev.langchain4j.model.googleai.GoogleAiGeminiChatModelThinkingIT.THOUGHT_LENGTH_THRESHOLD;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -85,6 +86,7 @@ class GoogleAiGeminiStreamingChatModelThinkingIT {
         inOrder1.verify(spyHandler1, atLeastOnce()).onPartialResponse(any(), any());
         inOrder1.verify(spyHandler1).onCompleteResponse(any());
         inOrder1.verify(spyHandler1).getThinking();
+        ignoreInteractions(spyHandler1).onUnmappedRawEvent(any());
         inOrder1.verifyNoMoreInteractions();
         verifyNoMoreInteractions(spyHandler1);
 
@@ -153,6 +155,7 @@ class GoogleAiGeminiStreamingChatModelThinkingIT {
         inOrder.verify(spyHandler).get();
         inOrder.verify(spyHandler, atLeastOnce()).onPartialResponse(any(), any());
         inOrder.verify(spyHandler).onCompleteResponse(any());
+        ignoreInteractions(spyHandler).onUnmappedRawEvent(any());
         inOrder.verifyNoMoreInteractions();
         verifyNoMoreInteractions(spyHandler);
     }
@@ -223,6 +226,7 @@ class GoogleAiGeminiStreamingChatModelThinkingIT {
         inOrder1.verify(spyHandler1, atLeastOnce()).onPartialThinking(any(), any());
         inOrder1.verify(spyHandler1).onCompleteToolCall(any());
         inOrder1.verify(spyHandler1).onCompleteResponse(any());
+        ignoreInteractions(spyHandler1).onUnmappedRawEvent(any());
         inOrder1.verifyNoMoreInteractions();
         verify(spyHandler1).get();
         verifyNoMoreInteractions(spyHandler1);
@@ -244,6 +248,7 @@ class GoogleAiGeminiStreamingChatModelThinkingIT {
         InOrder inOrder2 = inOrder(spyHandler2);
         inOrder2.verify(spyHandler2, atLeastOnce()).onPartialResponse(any(), any());
         inOrder2.verify(spyHandler2).onCompleteResponse(any());
+        ignoreInteractions(spyHandler2).onUnmappedRawEvent(any());
         inOrder2.verifyNoMoreInteractions();
         verify(spyHandler2).get();
         verifyNoMoreInteractions(spyHandler2);
@@ -271,6 +276,7 @@ class GoogleAiGeminiStreamingChatModelThinkingIT {
         inOrder3.verify(spyHandler3, atLeastOnce()).onPartialThinking(any(), any());
         inOrder3.verify(spyHandler3).onCompleteToolCall(any());
         inOrder3.verify(spyHandler3).onCompleteResponse(any());
+        ignoreInteractions(spyHandler3).onUnmappedRawEvent(any());
         inOrder3.verifyNoMoreInteractions();
         verify(spyHandler3).get();
         verifyNoMoreInteractions(spyHandler3);
@@ -300,6 +306,7 @@ class GoogleAiGeminiStreamingChatModelThinkingIT {
         inOrder4.verify(spyHandler4, atLeast(0)).onPartialThinking(any(), any());
         inOrder4.verify(spyHandler4, atLeastOnce()).onPartialResponse(any(), any());
         inOrder4.verify(spyHandler4).onCompleteResponse(any());
+        ignoreInteractions(spyHandler4).onUnmappedRawEvent(any());
         inOrder4.verifyNoMoreInteractions();
         verify(spyHandler4).get();
         verifyNoMoreInteractions(spyHandler4);
@@ -354,6 +361,7 @@ class GoogleAiGeminiStreamingChatModelThinkingIT {
         InOrder inOrder = inOrder(spyHandler);
         inOrder.verify(spyHandler, atLeastOnce()).onPartialResponse(any(), any());
         inOrder.verify(spyHandler).onCompleteResponse(any());
+        ignoreInteractions(spyHandler).onUnmappedRawEvent(any());
         inOrder.verifyNoMoreInteractions();
         verify(spyHandler).get();
         verifyNoMoreInteractions(spyHandler);
@@ -395,6 +403,7 @@ class GoogleAiGeminiStreamingChatModelThinkingIT {
         InOrder inOrder = inOrder(spyHandler);
         inOrder.verify(spyHandler, atLeastOnce()).onPartialResponse(any(), any());
         inOrder.verify(spyHandler).onCompleteResponse(any());
+        ignoreInteractions(spyHandler).onUnmappedRawEvent(any());
         inOrder.verifyNoMoreInteractions();
         verify(spyHandler).get();
         verifyNoMoreInteractions(spyHandler);

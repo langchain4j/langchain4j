@@ -1,11 +1,13 @@
 package dev.langchain4j.micrometer.metrics.listeners;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.micrometer.metrics.conventions.OTelGenAiAttributes;
 import dev.langchain4j.micrometer.metrics.conventions.OTelGenAiMetricName;
+import dev.langchain4j.micrometer.metrics.conventions.OTelGenAiTokenType;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -68,8 +70,69 @@ class MicrometerMetricsChatModelListenerTest {
                 .isNotNull();
     }
 
+    @Test
+    void should_record_only_output_metric_when_input_token_count_is_null() {
+        ChatModelResponseContext responseContext = responseContextWithTokenUsage(new TokenUsage(null, 20));
+
+        listener.onResponse(responseContext);
+
+        assertThat(meterRegistry
+                        .find(OTelGenAiMetricName.TOKEN_USAGE.value())
+                        .tag(OTelGenAiAttributes.TOKEN_TYPE.value(), OTelGenAiTokenType.OUTPUT.value())
+                        .summary())
+                .isNotNull();
+        assertThat(meterRegistry
+                        .find(OTelGenAiMetricName.TOKEN_USAGE.value())
+                        .tag(OTelGenAiAttributes.TOKEN_TYPE.value(), OTelGenAiTokenType.INPUT.value())
+                        .meter())
+                .isNull();
+    }
+
+    @Test
+    void should_record_only_input_metric_when_output_token_count_is_null() {
+        ChatModelResponseContext responseContext = responseContextWithTokenUsage(new TokenUsage(10, null));
+
+        listener.onResponse(responseContext);
+
+        assertThat(meterRegistry
+                        .find(OTelGenAiMetricName.TOKEN_USAGE.value())
+                        .tag(OTelGenAiAttributes.TOKEN_TYPE.value(), OTelGenAiTokenType.INPUT.value())
+                        .summary())
+                .isNotNull();
+        assertThat(meterRegistry
+                        .find(OTelGenAiMetricName.TOKEN_USAGE.value())
+                        .tag(OTelGenAiAttributes.TOKEN_TYPE.value(), OTelGenAiTokenType.OUTPUT.value())
+                        .meter())
+                .isNull();
+    }
+
+    @Test
+    void should_record_no_token_metric_and_not_throw_when_all_token_counts_are_null() {
+        ChatModelResponseContext responseContext = responseContextWithTokenUsage(new TokenUsage());
+
+        assertThatCode(() -> listener.onResponse(responseContext)).doesNotThrowAnyException();
+
+        assertThat(meterRegistry.find(OTelGenAiMetricName.TOKEN_USAGE.value()).meter())
+                .isNull();
+    }
+
     private ChatModelResponseContext createResponseContext(ModelProvider modelProvider) {
         return createResponseContext(modelProvider, "gpt-4o", "gpt-4o");
+    }
+
+    private ChatModelResponseContext responseContextWithTokenUsage(TokenUsage tokenUsage) {
+        ChatResponse chatResponse = ChatResponse.builder()
+                .aiMessage(new AiMessage("Hello"))
+                .modelName("gpt-4o")
+                .tokenUsage(tokenUsage)
+                .build();
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(UserMessage.from("Hi"))
+                .modelName("gpt-4o")
+                .build();
+
+        return new ChatModelResponseContext(
+                chatResponse, chatRequest, ModelProvider.MICROSOFT_FOUNDRY, new HashMap<>());
     }
 
     private ChatModelResponseContext createResponseContext(

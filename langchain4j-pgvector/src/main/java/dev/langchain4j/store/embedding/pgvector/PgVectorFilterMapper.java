@@ -62,7 +62,8 @@ abstract class PgVectorFilterMapper {
     private String mapContains(ContainsString containsString) {
         String key =
                 formatKey(containsString.key(), containsString.comparisonValue().getClass());
-        return format("%s is not null and %s ~ %s", key, key, formatValue(containsString.comparisonValue()));
+        return format(
+                "%s is not null and position(%s in %s) > 0", key, formatValue(containsString.comparisonValue()), key);
     }
 
     private String mapEqual(IsEqualTo isEqualTo) {

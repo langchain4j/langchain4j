@@ -25,7 +25,7 @@ public interface OutputGuardrail extends Guardrail<OutputGuardrailRequest, Outpu
     /**
      * Validates the response from the LLM.
      * <p>
-     * Unlike {@link #validate(AiMessage)}, this method allows to access the memory and the augmentation result (in the
+     * Unlike {@link #validate(AiMessage)}, this method allows you to access the memory and the augmentation result (in the
      * case of a RAG).
      * <p>
      * Implementation must not attempt to write to the memory or the augmentation result.

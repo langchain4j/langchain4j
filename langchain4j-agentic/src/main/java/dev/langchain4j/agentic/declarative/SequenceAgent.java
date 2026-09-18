@@ -65,4 +65,12 @@ public @interface SequenceAgent {
      * @return array of sub-agents.
      */
     Class<?>[] subAgents();
+
+    /**
+     * When true, if any agent in the hierarchy fails, all previously successful tool
+     * executions with {@code @CompensateFor} actions are compensated in reverse order.
+     *
+     * @return whether to enable cross-agent compensation on error.
+     */
+    boolean compensateOnError() default false;
 }

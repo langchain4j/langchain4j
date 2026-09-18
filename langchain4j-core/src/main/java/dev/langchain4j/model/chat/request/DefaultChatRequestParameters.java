@@ -99,6 +99,9 @@ public class DefaultChatRequestParameters implements ChatRequestParameters {
 
     @Override
     public ChatRequestParameters overrideWith(ChatRequestParameters that) {
+        if (isSubtypeOfThis(that)) {
+            return that.defaultedBy(this);
+        }
         return DefaultChatRequestParameters.builder()
                 .overrideWith(this)
                 .overrideWith(that)
@@ -107,10 +110,25 @@ public class DefaultChatRequestParameters implements ChatRequestParameters {
 
     @Override
     public ChatRequestParameters defaultedBy(ChatRequestParameters that) {
+        if (isSubtypeOfThis(that)) {
+            return that.overrideWith(this);
+        }
         return DefaultChatRequestParameters.builder()
                 .overrideWith(that)
                 .overrideWith(this)
                 .build();
+    }
+
+    /**
+     * Checks whether {@code that} is a more specific (provider-specific) type than this one,
+     * for example {@code OpenAiChatRequestParameters} when this is a plain {@code DefaultChatRequestParameters}.
+     * In such a case the merging has to be delegated to {@code that},
+     * otherwise all provider-specific parameters would be silently lost.
+     */
+    private boolean isSubtypeOfThis(ChatRequestParameters that) {
+        return that != null
+                && that.getClass() != this.getClass()
+                && this.getClass().isAssignableFrom(that.getClass());
     }
 
     @Override

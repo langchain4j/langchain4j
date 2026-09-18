@@ -1,5 +1,10 @@
 package dev.langchain4j.experimental.rag.content.retriever.sql;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static java.util.Collections.emptyList;
+import static java.util.Collections.singletonList;
+
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -11,25 +16,20 @@ import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.query.Query;
-import net.sf.jsqlparser.JSQLParserException;
-import net.sf.jsqlparser.parser.CCJSqlParserUtil;
-import net.sf.jsqlparser.statement.select.Select;
-
-import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static java.util.Collections.emptyList;
-import static java.util.Collections.singletonList;
+import javax.sql.DataSource;
+import net.sf.jsqlparser.JSQLParserException;
+import net.sf.jsqlparser.parser.CCJSqlParserUtil;
+import net.sf.jsqlparser.statement.select.Select;
 
 /**
  * <b>
@@ -53,13 +53,12 @@ import static java.util.Collections.singletonList;
 @Experimental
 public class SqlDatabaseContentRetriever implements ContentRetriever {
 
-    private static final PromptTemplate DEFAULT_PROMPT_TEMPLATE = PromptTemplate.from(
-            "You are an expert in writing SQL queries.\n" +
-                    "You have access to a {{sqlDialect}} database with the following structure:\n" +
-                    "{{databaseStructure}}\n" +
-                    "If a user asks a question that can be answered by querying this database, generate an SQL SELECT query.\n" +
-                    "Do not output anything else aside from a valid SQL statement!"
-    );
+    private static final PromptTemplate DEFAULT_PROMPT_TEMPLATE =
+            PromptTemplate.from("You are an expert in writing SQL queries.\n"
+                    + "You have access to a {{sqlDialect}} database with the following structure:\n"
+                    + "{{databaseStructure}}\n"
+                    + "If a user asks a question that can be answered by querying this database, generate an SQL SELECT query.\n"
+                    + "Do not output anything else aside from a valid SQL statement!");
 
     private final DataSource dataSource;
     private final String sqlDialect;
@@ -95,12 +94,13 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
      *                          This is an optional parameter. Default: 0.
      */
     @Experimental
-    public SqlDatabaseContentRetriever(DataSource dataSource,
-                                       String sqlDialect,
-                                       String databaseStructure,
-                                       PromptTemplate promptTemplate,
-                                       ChatModel chatModel,
-                                       Integer maxRetries) {
+    public SqlDatabaseContentRetriever(
+            DataSource dataSource,
+            String sqlDialect,
+            String databaseStructure,
+            PromptTemplate promptTemplate,
+            ChatModel chatModel,
+            Integer maxRetries) {
         this.dataSource = ensureNotNull(dataSource, "dataSource");
         this.sqlDialect = getOrDefault(sqlDialect, () -> getSqlDialect(dataSource));
         this.databaseStructure = getOrDefault(databaseStructure, () -> generateDDL(dataSource));
@@ -128,7 +128,7 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
         try (Connection connection = dataSource.getConnection()) {
             DatabaseMetaData metaData = connection.getMetaData();
 
-            ResultSet tables = metaData.getTables(null, null, "%", new String[]{"TABLE"});
+            ResultSet tables = metaData.getTables(null, null, "%", new String[] {"TABLE"});
 
             while (tables.next()) {
                 String tableName = tables.getString("TABLE_NAME");
@@ -155,17 +155,15 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
                 primaryKeyColumn = pk.getString("COLUMN_NAME");
             }
 
-            createTableStatement
-                    .append("CREATE TABLE ")
-                    .append(tableName)
-                    .append(" (\n");
+            createTableStatement.append("CREATE TABLE ").append(tableName).append(" (\n");
 
             while (columns.next()) {
                 String columnName = columns.getString("COLUMN_NAME");
                 String columnType = columns.getString("TYPE_NAME");
                 int size = columns.getInt("COLUMN_SIZE");
                 String nullable = columns.getString("IS_NULLABLE").equals("YES") ? " NULL" : " NOT NULL";
-                String columnDef = columns.getString("COLUMN_DEF") != null ? " DEFAULT " + columns.getString("COLUMN_DEF") : "";
+                String columnDef =
+                        columns.getString("COLUMN_DEF") != null ? " DEFAULT " + columns.getString("COLUMN_DEF") : "";
                 String comment = columns.getString("REMARKS");
 
                 createTableStatement
@@ -262,7 +260,7 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
                 validate(sqlQuery);
 
                 try (Connection connection = dataSource.getConnection();
-                     Statement statement = connection.createStatement()) {
+                        Statement statement = connection.createStatement()) {
 
                     String result = execute(sqlQuery, statement);
                     Content content = format(result, sqlQuery);
@@ -276,7 +274,8 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
         return emptyList();
     }
 
-    protected String generateSqlQuery(Query naturalLanguageQuery, String previousSqlQuery, String previousErrorMessage) {
+    protected String generateSqlQuery(
+            Query naturalLanguageQuery, String previousSqlQuery, String previousErrorMessage) {
 
         List<ChatMessage> messages = new ArrayList<>();
         messages.add(createSystemPrompt().toSystemMessage());
@@ -299,16 +298,21 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
 
     protected String clean(String sqlQuery) {
         if (sqlQuery.contains("```sql")) {
-            return sqlQuery.substring(sqlQuery.indexOf("```sql") + 6, sqlQuery.lastIndexOf("```"));
+            return stripCodeFence(sqlQuery, sqlQuery.indexOf("```sql") + 6);
         } else if (sqlQuery.contains("```")) {
-            return sqlQuery.substring(sqlQuery.indexOf("```") + 3, sqlQuery.lastIndexOf("```"));
+            return stripCodeFence(sqlQuery, sqlQuery.indexOf("```") + 3);
         }
         return sqlQuery;
     }
 
-    protected void validate(String sqlQuery) {
-
+    private static String stripCodeFence(String sqlQuery, int contentStart) {
+        int closingFence = sqlQuery.lastIndexOf("```");
+        return closingFence > contentStart
+                ? sqlQuery.substring(contentStart, closingFence)
+                : sqlQuery.substring(contentStart);
     }
+
+    protected void validate(String sqlQuery) {}
 
     protected boolean isSelect(String sqlQuery) {
         try {
@@ -323,12 +327,13 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
         List<String> resultRows = new ArrayList<>();
 
         try (ResultSet resultSet = statement.executeQuery(sqlQuery)) {
-            int columnCount = resultSet.getMetaData().getColumnCount();
+            ResultSetMetaData metaData = resultSet.getMetaData();
+            int columnCount = metaData.getColumnCount();
 
             // header
             List<String> columnNames = new ArrayList<>();
             for (int i = 1; i <= columnCount; i++) {
-                columnNames.add(resultSet.getMetaData().getColumnName(i));
+                columnNames.add(toCsvValue(metaData.getColumnName(i)));
             }
             resultRows.add(String.join(",", columnNames));
 
@@ -336,19 +341,28 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
             while (resultSet.next()) {
                 List<String> columnValues = new ArrayList<>();
                 for (int i = 1; i <= columnCount; i++) {
-
-                    String columnValue = resultSet.getObject(i) == null ? "" : resultSet.getObject(i).toString();
-
-                    if (columnValue.contains(",")) {
-                        columnValue = "\"" + columnValue + "\"";
-                    }
-                    columnValues.add(columnValue);
+                    columnValues.add(toCsvValue(resultSet.getObject(i)));
                 }
                 resultRows.add(String.join(",", columnValues));
             }
         }
 
         return String.join("\n", resultRows);
+    }
+
+    /**
+     * Formats a value as a CSV field, escaping it as per RFC 4180 when it contains
+     * a comma, a double quote, or a line break.
+     */
+    private static String toCsvValue(Object value) {
+        String stringValue = value == null ? "" : value.toString();
+        if (stringValue.contains(",")
+                || stringValue.contains("\"")
+                || stringValue.contains("\n")
+                || stringValue.contains("\r")) {
+            return '"' + stringValue.replace("\"", "\"\"") + '"';
+        }
+        return stringValue;
     }
 
     private static Content format(String result, String sqlQuery) {
@@ -363,8 +377,7 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
         private ChatModel chatModel;
         private Integer maxRetries;
 
-        SqlDatabaseContentRetrieverBuilder() {
-        }
+        SqlDatabaseContentRetrieverBuilder() {}
 
         public SqlDatabaseContentRetrieverBuilder dataSource(DataSource dataSource) {
             this.dataSource = dataSource;
@@ -397,11 +410,20 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
         }
 
         public SqlDatabaseContentRetriever build() {
-            return new SqlDatabaseContentRetriever(this.dataSource, this.sqlDialect, this.databaseStructure, this.promptTemplate, this.chatModel, this.maxRetries);
+            return new SqlDatabaseContentRetriever(
+                    this.dataSource,
+                    this.sqlDialect,
+                    this.databaseStructure,
+                    this.promptTemplate,
+                    this.chatModel,
+                    this.maxRetries);
         }
 
         public String toString() {
-            return "SqlDatabaseContentRetriever.SqlDatabaseContentRetrieverBuilder(dataSource=" + this.dataSource + ", sqlDialect=" + this.sqlDialect + ", databaseStructure=" + this.databaseStructure + ", promptTemplate=" + this.promptTemplate + ", chatModel=" + this.chatModel + ", maxRetries=" + this.maxRetries + ")";
+            return "SqlDatabaseContentRetriever.SqlDatabaseContentRetrieverBuilder(dataSource=" + this.dataSource
+                    + ", sqlDialect=" + this.sqlDialect + ", databaseStructure=" + this.databaseStructure
+                    + ", promptTemplate=" + this.promptTemplate + ", chatModel=" + this.chatModel + ", maxRetries="
+                    + this.maxRetries + ")";
         }
     }
 }

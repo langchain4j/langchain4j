@@ -492,8 +492,9 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
                                 .generateContentCallable()
                                 .call(request);
                     },
-                    maxRetries);
-        } catch (Exception e) {
+                    maxRetries,
+                    VertexAiGeminiExceptionMapper.INSTANCE);
+        } catch (RuntimeException e) {
             listeners.forEach(listener -> {
                 try {
                     ChatModelErrorContext chatModelErrorContext =
@@ -504,7 +505,7 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
                 }
             });
 
-            throw new RuntimeException(e);
+            throw e; // already mapped by VertexAiGeminiExceptionMapper, do not wrap it again
         }
 
         if (this.logResponses && logger.isDebugEnabled()) {

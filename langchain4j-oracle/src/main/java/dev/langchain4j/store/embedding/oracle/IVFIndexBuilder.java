@@ -4,7 +4,7 @@ import static dev.langchain4j.internal.ValidationUtils.*;
 
 /**
  * <p>
- *   This index builder allows to configure an Inverted File Flat index on the
+ *   This index builder allows you to configure an Inverted File Flat index on the
  *   embedding column of the {@link EmbeddingTable}.
  * </p>
  * <p>

@@ -8,6 +8,7 @@ import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolCall;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialThinking;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onUnmappedRawEvent;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.Utils.firstNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -26,11 +27,15 @@ import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventContext;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.internal.ExceptionMapper;
+import dev.langchain4j.internal.MappingTrackingStreamingChatResponseHandler;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.chat.response.StreamingHandle;
 import dev.langchain4j.model.googleai.BatchRequestResponse.ListOperationsResponse;
+import dev.langchain4j.model.googleai.GeminiCaches.GeminiCachedContent;
+import dev.langchain4j.model.googleai.GeminiCaches.GeminiCachedContentsListResponse;
+import dev.langchain4j.model.googleai.GeminiCaches.GeminiCreateCachedContentRequest;
 import dev.langchain4j.model.googleai.GeminiEmbeddingRequestResponse.GeminiBatchEmbeddingRequest;
 import dev.langchain4j.model.googleai.GeminiEmbeddingRequestResponse.GeminiBatchEmbeddingResponse;
 import dev.langchain4j.model.googleai.GeminiEmbeddingRequestResponse.GeminiEmbeddingRequest;
@@ -179,6 +184,29 @@ class GeminiService {
         return sendRequest(url, apiKey, null, GeminiModelsListResponse.class, GET);
     }
 
+    GeminiCachedContent createCachedContent(GeminiCreateCachedContentRequest request) {
+        String url = String.format("%s/cachedContents", baseUrl);
+        return sendRequest(url, apiKey, request, GeminiCachedContent.class);
+    }
+
+    GeminiCachedContent getCachedContent(String name) {
+        String url = String.format("%s/%s", baseUrl, name);
+        return sendRequest(url, apiKey, null, GeminiCachedContent.class, GET);
+    }
+
+    GeminiCachedContentsListResponse listCachedContents(@Nullable Integer pageSize, @Nullable String pageToken) {
+        String url = buildUrl(
+                baseUrl + "/cachedContents",
+                new StringPair("pageSize", pageSize != null ? String.valueOf(pageSize) : null),
+                new StringPair("pageToken", pageToken));
+        return sendRequest(url, apiKey, null, GeminiCachedContentsListResponse.class, GET);
+    }
+
+    Void deleteCachedContent(String name) {
+        String url = String.format("%s/%s", baseUrl, name);
+        return sendRequest(url, apiKey, null, Void.class, DELETE);
+    }
+
     void generateContentStream(
             String modelName,
             GeminiGenerateContentRequest request,
@@ -211,7 +239,12 @@ class GeminiService {
         GeminiStreamingResponseBuilder responseBuilder =
                 new GeminiStreamingResponseBuilder(includeCodeExecutionOutput, returnThinking);
 
+        StreamingChatResponseHandler targetHandler = handler;
+
         httpClient.execute(httpRequest, new ServerSentEventListener() {
+
+            final MappingTrackingStreamingChatResponseHandler handler =
+                    new MappingTrackingStreamingChatResponseHandler(targetHandler);
 
             AtomicInteger toolIndex = new AtomicInteger(0);
             volatile StreamingHandle streamingHandle;
@@ -226,6 +259,8 @@ class GeminiService {
                 if (streamingHandle == null) {
                     streamingHandle = toStreamingHandle(context.parsingHandle());
                 }
+
+                handler.resetMappingTracking();
 
                 GeminiGenerateContentResponse response = fromJson(event.data(), GeminiGenerateContentResponse.class);
                 GeminiStreamingResponseBuilder.TextAndTools textAndTools = responseBuilder.append(response);
@@ -243,6 +278,10 @@ class GeminiService {
                     CompleteToolCall completeToolCall = new CompleteToolCall(toolIndex.get(), tool);
                     onCompleteToolCall(handler, completeToolCall);
                     toolIndex.incrementAndGet();
+                }
+
+                if (!handler.wasMapped()) {
+                    onUnmappedRawEvent(handler, event);
                 }
             }
 

@@ -10,6 +10,7 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.MockHttpClientBuilder;
 import dev.langchain4j.http.client.SpyingHttpClient;
+import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.http.client.jdk.JdkHttpClient;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -76,7 +77,10 @@ class OllamaChatModelThinkingIT extends AbstractOllamaThinkingModelInfrastructur
         boolean think = true;
         boolean returnThinking = false;
 
+        SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder().build());
+
         ChatModel model = OllamaChatModel.builder()
+                .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
                 .baseUrl(ollamaBaseUrl(ollama))
                 .modelName(MODEL_NAME)
 
@@ -99,7 +103,10 @@ class OllamaChatModelThinkingIT extends AbstractOllamaThinkingModelInfrastructur
                 .doesNotContain("<think>", "</think>");
         assertThat(aiMessage.thinking()).isNull();
 
-        // TODO verify that raw HTTP response contains "thinking" field and that it is not sent back on the follow-up request
+        // verify that raw HTTP response contains "thinking" field
+        List<SuccessfulHttpResponse> httpResponses = spyingHttpClient.responses();
+        assertThat(httpResponses).hasSize(1);
+        assertThat(httpResponses.get(0).body()).contains("thinking");
     }
 
     @Test
@@ -108,7 +115,10 @@ class OllamaChatModelThinkingIT extends AbstractOllamaThinkingModelInfrastructur
         // given
         boolean think = false;
 
+        SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder().build());
+
         ChatModel model = OllamaChatModel.builder()
+                .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
                 .baseUrl(ollamaBaseUrl(ollama))
                 .modelName(MODEL_NAME)
 
@@ -130,7 +140,10 @@ class OllamaChatModelThinkingIT extends AbstractOllamaThinkingModelInfrastructur
                 .doesNotContain("<think>", "</think>");
         assertThat(aiMessage.thinking()).isNull();
 
-        // TODO verify that raw HTTP response does not contain "thinking" field
+        // verify that raw HTTP response does not contain "thinking" field
+        List<SuccessfulHttpResponse> httpResponses = spyingHttpClient.responses();
+        assertThat(httpResponses).hasSize(1);
+        assertThat(httpResponses.get(0).body()).doesNotContain("thinking");
     }
 
     @Test

@@ -1,12 +1,15 @@
 package dev.langchain4j.data.document.parser.markdown;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.langchain4j.data.document.BlankDocumentException;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentParser;
+import java.io.ByteArrayInputStream;
 import java.io.InputStream;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
@@ -33,5 +36,17 @@ public class MarkdownDocumentParserTest {
         InputStream inputStream = getClass().getClassLoader().getResourceAsStream(fileName);
 
         assertThatThrownBy(() -> parser.parse(inputStream)).isExactlyInstanceOf(BlankDocumentException.class);
+    }
+
+    @Test
+    void should_decode_multibyte_content_as_utf8() {
+
+        String markdown = "café 한글 🚀";
+        DocumentParser parser = new MarkdownDocumentParser();
+        InputStream inputStream = new ByteArrayInputStream(markdown.getBytes(UTF_8));
+
+        Document document = parser.parse(inputStream);
+
+        assertThat(document.text()).contains("café").contains("한글").contains("🚀");
     }
 }

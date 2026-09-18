@@ -1,10 +1,13 @@
 package dev.langchain4j.agentic.internal;
 
 import static dev.langchain4j.agentic.AgenticServices.createBuiltInAgentExecutor;
+import static dev.langchain4j.agentic.scope.DefaultAgenticScope.isSerializable;
+import static dev.langchain4j.internal.Utils.allMethods;
 import static dev.langchain4j.internal.Utils.getAnnotatedMethod;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.service.TypeUtils.isImageType;
 
+import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.UntypedAgent;
@@ -179,20 +182,35 @@ public class AgentUtil {
         return argumentsFromMethod(method, defaultValues, Set.of());
     }
 
-    public static List<AgentArgument> argumentsFromMethod(Method method, Map<String, Object> defaultValues, Set<String> optionalArgs) {
+    public static List<AgentArgument> argumentsFromMethod(
+            Method method, Map<String, Object> defaultValues, Set<String> optionalArgs) {
         if (method.getDeclaringClass() == UntypedAgent.class) {
             return List.of();
         }
         return Stream.of(method.getParameters())
-                .map(p -> {
-                    String argName = parameterName(p);
-                    Object defaultValue = defaultValues.getOrDefault(argName, parameterDefaultValue(p));
-                    return new AgentArgument(p.getParameterizedType(), argName, defaultValue, optionalArgs.contains(argName));
-                })
+                .map(p -> argumentFromParameter(p, defaultValues, optionalArgs))
                 .toList();
     }
 
+    public static AgentArgument argumentFromParameter(Parameter parameter) {
+        return argumentFromParameter(parameter, Map.of(), Set.of());
+    }
+
+    private static AgentArgument argumentFromParameter(
+            Parameter parameter, Map<String, Object> defaultValues, Set<String> optionalArgs) {
+        String argName = parameterName(parameter);
+        Object defaultValue = defaultValues.getOrDefault(argName, parameterDefaultValue(parameter));
+        P p = parameter.getAnnotation(P.class);
+        String description = p == null ? null : (isNullOrBlank(p.description()) ? p.value() : p.description());
+        return new AgentArgument(
+                parameter.getParameterizedType(), argName, defaultValue, optionalArgs.contains(argName), description);
+    }
+
     private static String parameterName(Parameter p) {
+        P annotation = p.getAnnotation(P.class);
+        if (annotation != null && !annotation.name().isBlank()) {
+            return annotation.name();
+        }
         if (p.getAnnotation(MemoryId.class) != null) {
             return MEMORY_ID_ARG_NAME;
         }
@@ -211,6 +229,23 @@ public class AgentUtil {
     private static Object parameterDefaultValue(Parameter p) {
         K k = p.getAnnotation(K.class);
         return k != null ? stateInstance(k.value()).defaultValue() : null;
+    }
+
+    /**
+     * Builds the arguments for an untyped agent, which receives the whole {@link AgenticScope} state as a single
+     * {@link Map}. The map is a filtered copy rather than the state itself: a copy so that the recorded
+     * {@link dev.langchain4j.agentic.scope.AgentInvocation#input()} keeps the state as it was at invocation time
+     * instead of following later writes, and filtered so that values which cannot be serialized never reach the
+     * agent or the persisted invocation.
+     */
+    public static AgentInvocationArguments untypedAgentInvocationArguments(AgenticScope agenticScope) {
+        Map<String, Object> args = new HashMap<>();
+        for (var entry : agenticScope.state().entrySet()) {
+            if (isSerializable(entry.getValue())) {
+                args.put(entry.getKey(), entry.getValue());
+            }
+        }
+        return new AgentInvocationArguments(args, new Object[] {args});
     }
 
     public static AgentInvocationArguments agentInvocationArguments(AgenticScope agenticScope, Method method)
@@ -268,14 +303,14 @@ public class AgentUtil {
                 throw new MissingArgumentException(arg.name());
             }
         }
-        Object parsedArgument = adaptValueToType(argValue, arg.rawType());
+        Object parsedArgument = adaptValueToType(argValue, arg.rawType(), arg.name());
         if (argValue != parsedArgument) {
             agenticScope.writeState(arg.name(), parsedArgument);
         }
         return parsedArgument;
     }
 
-    private static Object adaptValueToType(Object value, Class<?> type) {
+    private static Object adaptValueToType(Object value, Class<?> type, String argumentName) {
         if (type.isInstance(value)) {
             return value;
         }
@@ -287,14 +322,7 @@ public class AgentUtil {
                 case "double", "java.lang.Double" -> Double.parseDouble(s);
                 case "float", "java.lang.Float" -> Float.parseFloat(s);
                 case "boolean", "java.lang.Boolean" -> Boolean.parseBoolean(s);
-                default -> {
-                    try {
-                        yield Json.fromJson(s, type);
-                    } catch (Exception e) {
-                        throw new IllegalArgumentException(
-                                "Cannot deserialize value '" + s + "' to type " + type.getName(), e);
-                    }
-                }
+                default -> readArgument(s, type, argumentName);
             };
         }
         if (value instanceof Number n) {
@@ -304,11 +332,13 @@ public class AgentUtil {
                 case "long", "java.lang.Long" -> n.longValue();
                 case "double", "java.lang.Double" -> n.doubleValue();
                 case "float", "java.lang.Float" -> n.floatValue();
+                case "short", "java.lang.Short" -> n.shortValue();
+                case "byte", "java.lang.Byte" -> n.byteValue();
                 default -> value;
             };
         }
         if (value instanceof Map && !Map.class.isAssignableFrom(type)) {
-            return Json.fromJson(Json.toJson(value), type);
+            return readArgument(Json.toJson(value), type, argumentName);
         }
         if (value instanceof Image image && type == ImageContent.class) {
             return ImageContent.from(image);
@@ -317,6 +347,25 @@ public class AgentUtil {
             return imageContent.image();
         }
         return value;
+    }
+
+    /**
+     * A planner describes an argument as JSON, so a type used as an agent argument has to be one a
+     * JSON library can build: a record, a type with a no-arg constructor, or one whose constructor
+     * carries {@code @JsonCreator}. Saying that is more use than the JSON library's own message,
+     * which names neither the argument nor what to do about it. The value itself is left out: it
+     * came from a model and can carry anything the prompt did.
+     */
+    private static <T> T readArgument(String json, Class<T> type, String argumentName) {
+        try {
+            return Json.fromJson(json, type);
+        } catch (Exception e) {
+            throw new IllegalArgumentException(
+                    "Cannot read agent argument '" + argumentName + "' as " + type.getName()
+                            + ". A type used as an agent argument must be a record, have a no-arg"
+                            + " constructor, or have a constructor annotated with @JsonCreator.",
+                    e);
+        }
     }
 
     public static Method validateAgentClass(Class<?> agentServiceClass) {
@@ -332,7 +381,7 @@ public class AgentUtil {
             boolean failOnMissingAnnotation,
             Class<? extends Annotation> patternAnnotation) {
         Method agentMethod = null;
-        for (Method method : agentServiceClass.getMethods()) {
+        for (Method method : allMethods(agentServiceClass)) {
             if (method.isAnnotationPresent(Agent.class)
                     || (patternAnnotation != null && method.isAnnotationPresent(patternAnnotation))) {
                 if (agentMethod != null) {
@@ -342,7 +391,9 @@ public class AgentUtil {
                 agentMethod = method;
             }
         }
-        if (agentMethod == null && failOnMissingAnnotation) {
+        if (agentMethod != null) {
+            agentMethod.setAccessible(true);
+        } else if (failOnMissingAnnotation) {
             throw new IllegalArgumentException("No agent method found in class: " + agentServiceClass.getName());
         }
         return agentMethod;

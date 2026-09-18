@@ -8,11 +8,14 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
+import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreWithFilteringIT;
 import dev.langchain4j.store.embedding.filter.Filter;
 import java.sql.SQLException;
+import java.util.Collections;
+import java.util.List;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -110,5 +113,124 @@ abstract class MariaDbEmbeddingStoreConfigIT extends EmbeddingStoreWithFiltering
 
         // make sure table and embeddings are still there
         assertThat(getAllEmbeddings()).isNotEmpty();
+    }
+
+    @Test
+    void sql_injection_via_metadata_key_should_be_prevented__search() {
+
+        Embedding embedding = embeddingModel().embed("hello").content();
+        embeddingStore().add(embedding);
+        awaitUntilAsserted(() -> assertThat(getAllEmbeddings()).hasSize(1));
+
+        Embedding referenceEmbedding = embeddingModel().embed("hi").content();
+
+        // A malicious metadata key that tries to break out of the JSON path / identifier
+        // and turn the filter into an always-true condition (OR 1=1).
+        Filter filter = metadataKey("nonexistent') OR 1=1 OR JSON_VALUE(metadata, '$.x")
+                .isEqualTo("no-such-value");
+
+        EmbeddingSearchRequest searchRequest = EmbeddingSearchRequest.builder()
+                .queryEmbedding(referenceEmbedding)
+                .maxResults(10)
+                .filter(filter)
+                .build();
+
+        List<EmbeddingMatch<TextSegment>> matches;
+        try {
+            matches = embeddingStore().search(searchRequest).matches();
+        } catch (Exception e) {
+            // a rejected/invalid identifier is acceptable - the injection did not succeed
+            matches = Collections.emptyList();
+        }
+
+        // The malicious filter must not match the stored embedding.
+        assertThat(matches).isEmpty();
+    }
+
+    @Test
+    void sql_injection_via_metadata_key_should_be_prevented__remove() {
+
+        Embedding embedding = embeddingModel().embed("hello").content();
+        embeddingStore().add(embedding);
+        awaitUntilAsserted(() -> assertThat(getAllEmbeddings()).hasSize(1));
+
+        // A malicious filter that, if injected, would turn the DELETE into an always-true
+        // condition and wipe the whole table.
+        Filter filter = metadataKey("nonexistent') OR 1=1 OR JSON_VALUE(metadata, '$.x")
+                .isEqualTo("no-such-value");
+
+        try {
+            embeddingStore().removeAll(filter);
+        } catch (Exception e) {
+            // a rejected/invalid identifier is acceptable - the injection did not succeed
+        }
+
+        // The malicious filter must not have deleted the stored embedding.
+        assertThat(getAllEmbeddings()).hasSize(1);
+    }
+
+    @Test
+    void sql_injection_via_metadata_value_with_backslash_should_be_prevented() {
+
+        Embedding embedding = embeddingModel().embed("hello").content();
+        embeddingStore().add(embedding);
+        awaitUntilAsserted(() -> assertThat(getAllEmbeddings()).hasSize(1));
+
+        Embedding referenceEmbedding = embeddingModel().embed("hi").content();
+
+        // MariaDB treats backslash as an escape character by default, so simply doubling the
+        // single quote is not enough: a trailing backslash turns the escaped quote ('') back
+        // into an escaped quote followed by a string terminator, breaking out of the value
+        // literal and injecting an always-true "OR 1=1".
+        Filter filter = metadataKey("category").isEqualTo("a\\' OR 1=1 -- ");
+
+        EmbeddingSearchRequest searchRequest = EmbeddingSearchRequest.builder()
+                .queryEmbedding(referenceEmbedding)
+                .maxResults(10)
+                .filter(filter)
+                .build();
+
+        List<EmbeddingMatch<TextSegment>> matches;
+        try {
+            matches = embeddingStore().search(searchRequest).matches();
+        } catch (Exception e) {
+            // a rejected value is acceptable - the injection did not succeed
+            matches = Collections.emptyList();
+        }
+
+        // The malicious value must not match the stored embedding.
+        assertThat(matches).isEmpty();
+    }
+
+    @Test
+    void sql_injection_via_metadata_key_with_null_byte_should_be_prevented() {
+
+        Embedding embedding = embeddingModel().embed("hello").content();
+        embeddingStore().add(embedding);
+        awaitUntilAsserted(() -> assertThat(getAllEmbeddings()).hasSize(1));
+
+        Embedding referenceEmbedding = embeddingModel().embed("hi").content();
+
+        // In COLUMN_PER_KEY mode the key is quoted as an identifier. A key that cannot be quoted
+        // because it contains a NUL character used to fall back to the raw, unescaped key, which
+        // the injected "OR 1=1" turns into an always-true condition ("-- " comments out the rest).
+        Filter filter = metadataKey("key IS NOT NULL OR 1=1 -- \0").isEqualTo("v");
+
+        EmbeddingSearchRequest searchRequest = EmbeddingSearchRequest.builder()
+                .queryEmbedding(referenceEmbedding)
+                .maxResults(10)
+                .filter(filter)
+                .build();
+
+        List<EmbeddingMatch<TextSegment>> matches;
+        try {
+            matches = embeddingStore().search(searchRequest).matches();
+        } catch (Exception e) {
+            // a rejected identifier is acceptable - the injection did not succeed
+            matches = Collections.emptyList();
+        }
+
+        // The malicious key must not match the stored embedding.
+        assertThat(matches).isEmpty();
     }
 }

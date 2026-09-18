@@ -195,15 +195,9 @@ final class PartsAndContentsMapper {
             GeminiExecutableCode executableCode = part.executableCode();
             if (executableCode != null && includeCodeExecutionOutput) {
                 fullText.append("Code executed:\n")
-                        .append("```python")
-                        .append(
-                                executableCode.programmingLanguage() != null
-                                        ? // TODO check below why programming language is null
-                                        // TODO: Is this correct? This would result in: ```pythonpythonCODE```
-                                        executableCode.programmingLanguage().toString()
-                                        : "")
+                        .append("```python\n")
                         .append(executableCode.code())
-                        .append("```\n");
+                        .append("\n```\n");
             }
 
             GeminiCodeExecutionResult codeExecutionResult = part.codeExecutionResult();

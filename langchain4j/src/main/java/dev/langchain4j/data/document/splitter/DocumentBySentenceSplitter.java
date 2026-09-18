@@ -20,6 +20,9 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
  * <p>
  * Sentence boundaries are detected using the Apache OpenNLP library with the English sentence model.
  * <p>
+ * If no sentence can be detected in the text at all (for example, a run of non-breaking spaces,
+ * which document parsers often produce), the whole text is treated as a single sentence.
+ * <p>
  * If multiple sentences fit within {@code maxSegmentSize}, they are joined together using a space (" ").
  * <p>
  * If a single sentence is too long and exceeds {@code maxSegmentSize},
@@ -88,7 +91,14 @@ public class DocumentBySentenceSplitter extends HierarchicalDocumentSplitter {
     @Override
     public String[] split(String text) {
         SentenceDetectorME sentenceDetector = new SentenceDetectorME(sentenceModel);
-        return sentenceDetector.sentDetect(text);
+        String[] sentences = sentenceDetector.sentDetect(text);
+        if (sentences.length == 0) {
+            // Text with no recognizable sentence content (e.g. a run of non-breaking spaces coming
+            // from PDF extraction) yields no sentence at all. It is treated as a single sentence so
+            // that the subSplitter can still break it down, instead of the text being lost.
+            return new String[] {text};
+        }
+        return sentences;
     }
 
     @Override

@@ -144,7 +144,7 @@ class VespaEmbeddingStoreIT extends EmbeddingStoreWithoutMetadataIT {
             // wait for Vespa application is deployed properly
             await().atMost(Duration.ofSeconds(60)).ignoreExceptions().untilAsserted(super::ensureStoreIsEmpty);
         } catch (URISyntaxException | IOException e) {
-            e.printStackTrace();
+            throw new RuntimeException("Failed to deploy Vespa application", e);
         }
     }
 }

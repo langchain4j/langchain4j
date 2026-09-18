@@ -19,6 +19,8 @@ import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.mistralai.internal.api.*;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
 
@@ -214,5 +216,100 @@ public class DefaultMistralAiClient extends MistralAiClient {
 
         SuccessfulHttpResponse successfulHttpResponse = httpClient.execute(httpRequest);
         return fromJson(successfulHttpResponse.body(), MistralAiModelResponse.class);
+    }
+
+    @Override
+    public MistralAiBatchJob createBatchJob(MistralAiBatchJobRequest request) {
+        HttpRequest httpRequest = HttpRequest.builder()
+                .method(POST)
+                .url(baseUrl, "batch/jobs")
+                .addHeader("Authorization", "Bearer " + apiKey)
+                .addHeader("Content-Type", "application/json")
+                .addHeader("User-Agent", "langchain4j-mistral-ai")
+                .addHeaders(buildRequestHeaders())
+                .body(toJson(request))
+                .build();
+
+        SuccessfulHttpResponse rawResponse = httpClient.execute(httpRequest);
+        return fromJson(rawResponse.body(), MistralAiBatchJob.class);
+    }
+
+    @Override
+    public MistralAiBatchJob retrieveBatchJob(String jobId) {
+        HttpRequest httpRequest = HttpRequest.builder()
+                .method(HttpMethod.GET)
+                .url(baseUrl, "batch/jobs/" + jobId)
+                .addHeader("Authorization", "Bearer " + apiKey)
+                .addHeader("Content-Type", "application/json")
+                .addHeader("User-Agent", "langchain4j-mistral-ai")
+                .addHeaders(buildRequestHeaders())
+                .build();
+
+        SuccessfulHttpResponse rawResponse = httpClient.execute(httpRequest);
+        return fromJson(rawResponse.body(), MistralAiBatchJob.class);
+    }
+
+    @Override
+    public MistralAiBatchJob cancelBatchJob(String jobId) {
+        HttpRequest httpRequest = HttpRequest.builder()
+                .method(POST)
+                .url(baseUrl, "batch/jobs/" + jobId + "/cancel")
+                .addHeader("Authorization", "Bearer " + apiKey)
+                .addHeader("Content-Type", "application/json")
+                .addHeader("User-Agent", "langchain4j-mistral-ai")
+                .addHeaders(buildRequestHeaders())
+                .build();
+
+        SuccessfulHttpResponse rawResponse = httpClient.execute(httpRequest);
+        return fromJson(rawResponse.body(), MistralAiBatchJob.class);
+    }
+
+    @Override
+    public MistralAiBatchJobsResponse listBatchJobs(Integer page, Integer pageSize) {
+        StringBuilder path = new StringBuilder("batch/jobs");
+        List<String> queryParams = new ArrayList<>();
+        if (page != null) {
+            queryParams.add("page=" + page);
+        }
+        if (pageSize != null) {
+            queryParams.add("page_size=" + pageSize);
+        }
+        if (!queryParams.isEmpty()) {
+            path.append('?').append(String.join("&", queryParams));
+        }
+
+        HttpRequest httpRequest = HttpRequest.builder()
+                .method(HttpMethod.GET)
+                .url(baseUrl, path.toString())
+                .addHeader("Authorization", "Bearer " + apiKey)
+                .addHeader("Content-Type", "application/json")
+                .addHeader("User-Agent", "langchain4j-mistral-ai")
+                .addHeaders(buildRequestHeaders())
+                .build();
+
+        SuccessfulHttpResponse rawResponse = httpClient.execute(httpRequest);
+        return fromJson(rawResponse.body(), MistralAiBatchJobsResponse.class);
+    }
+
+    @Override
+    public List<MistralAiBatchResultEntry> downloadBatchResults(String fileId) {
+        HttpRequest httpRequest = HttpRequest.builder()
+                .method(HttpMethod.GET)
+                .url(baseUrl, "files/" + fileId + "/content")
+                .addHeader("Authorization", "Bearer " + apiKey)
+                .addHeader("User-Agent", "langchain4j-mistral-ai")
+                .addHeaders(buildRequestHeaders())
+                .build();
+
+        SuccessfulHttpResponse rawResponse = httpClient.execute(httpRequest);
+        String body = rawResponse.body();
+        if (body == null) {
+            return List.of();
+        }
+        return body.lines()
+                .map(String::trim)
+                .filter(line -> !line.isEmpty())
+                .map(line -> fromJson(line, MistralAiBatchResultEntry.class))
+                .toList();
     }
 }

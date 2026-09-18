@@ -2,12 +2,12 @@ package dev.langchain4j.model.ollama;
 
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.ollama.AbstractOllamaLanguageModelInfrastructure.OLLAMA_BASE_URL;
-import static dev.langchain4j.model.ollama.OllamaImage.LLAMA_3_2_VISION;
+import static dev.langchain4j.model.ollama.OllamaImage.GEMMA_4;
 import static dev.langchain4j.model.ollama.OllamaImage.localOllamaImage;
 
 class AbstractOllamaVisionModelInfrastructure {
 
-    protected static final String MODEL_NAME = LLAMA_3_2_VISION;
+    protected static final String MODEL_NAME = GEMMA_4;
 
     static LC4jOllamaContainer ollama;
 

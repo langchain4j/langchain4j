@@ -21,7 +21,7 @@ class GoogleAiGeminiAiServiceWithToolsIT extends AbstractAiServiceWithToolsIT {
                 .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
                 .modelName("gemini-2.5-flash")
                 .temperature(0.0)
-                .logRequests(true)
+                .logRequests(false)
                 .logResponses(true)
                 .build());
     }

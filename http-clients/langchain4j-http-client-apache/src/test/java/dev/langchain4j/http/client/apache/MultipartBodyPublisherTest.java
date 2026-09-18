@@ -1,6 +1,7 @@
 package dev.langchain4j.http.client.apache;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import dev.langchain4j.http.client.FormDataFile;
@@ -19,8 +20,7 @@ class MultipartBodyPublisherTest {
 
         String body = bodyAsString(publisher.parts());
 
-        String expected =
-                """
+        String expected = """
                         ------LangChain4j
                         Content-Disposition: form-data; name="field1"
 
@@ -42,8 +42,7 @@ class MultipartBodyPublisherTest {
 
         String body = bodyAsString(publisher.parts());
 
-        String expected =
-                """
+        String expected = """
                         ------LangChain4j
                         Content-Disposition: form-data; name="file"; filename="test.txt"
                         Content-Type: text/plain
@@ -67,8 +66,7 @@ class MultipartBodyPublisherTest {
 
         String body = bodyAsString(publisher.parts());
 
-        String expected =
-                """
+        String expected = """
                         ------LangChain4j
                         Content-Disposition: form-data; name="field1"
 
@@ -76,6 +74,80 @@ class MultipartBodyPublisherTest {
                         ------LangChain4j
                         Content-Disposition: form-data; name="file"; filename="test.txt"
                         Content-Type: text/plain
+
+                        hello
+                        ------LangChain4j--
+                        """;
+
+        assertEquals(normalize(expected), body);
+    }
+
+    @Test
+    void should_omit_content_type_header_when_content_type_is_null() {
+        MultipartBodyPublisher publisher = new MultipartBodyPublisher();
+
+        FormDataFile file = new FormDataFile("audio.wav", null, "hello".getBytes(UTF_8));
+
+        publisher.addFile("file", file);
+        publisher.build();
+
+        String body = bodyAsString(publisher.parts());
+
+        assertThat(body).doesNotContain("Content-Type:");
+        assertThat(body).doesNotContain("Content-Type: null");
+
+        String expected = """
+                        ------LangChain4j
+                        Content-Disposition: form-data; name="file"; filename="audio.wav"
+
+                        hello
+                        ------LangChain4j--
+                        """;
+
+        assertEquals(normalize(expected), body);
+    }
+
+    @Test
+    void should_omit_content_type_header_when_content_type_is_blank() {
+        MultipartBodyPublisher publisher = new MultipartBodyPublisher();
+
+        FormDataFile file = new FormDataFile("audio.wav", "", "hello".getBytes(UTF_8));
+
+        publisher.addFile("file", file);
+        publisher.build();
+
+        String body = bodyAsString(publisher.parts());
+
+        assertThat(body).doesNotContain("Content-Type:");
+
+        String expected = """
+                        ------LangChain4j
+                        Content-Disposition: form-data; name="file"; filename="audio.wav"
+
+                        hello
+                        ------LangChain4j--
+                        """;
+
+        assertEquals(normalize(expected), body);
+    }
+
+    @Test
+    void should_keep_content_type_header_when_content_type_is_present() {
+        MultipartBodyPublisher publisher = new MultipartBodyPublisher();
+
+        FormDataFile file = new FormDataFile("audio.wav", "audio/wav", "hello".getBytes(UTF_8));
+
+        publisher.addFile("file", file);
+        publisher.build();
+
+        String body = bodyAsString(publisher.parts());
+
+        assertThat(body).contains("Content-Type: audio/wav");
+
+        String expected = """
+                        ------LangChain4j
+                        Content-Disposition: form-data; name="file"; filename="audio.wav"
+                        Content-Type: audio/wav
 
                         hello
                         ------LangChain4j--

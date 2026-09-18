@@ -2,7 +2,6 @@ package dev.langchain4j.model.openai;
 
 import static dev.langchain4j.internal.Utils.repeat;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
-import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_5_MINI;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static java.util.Map.entry;
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -30,6 +29,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -267,7 +267,6 @@ class OpenAiStreamingChatModelIT {
                 "O1_2024_12_17", // don't have access
                 "O3", // don't have access
                 "O3_2025_04_16", // don't have access
-                "GPT_4_TURBO_PREVIEW" // flaky
             })
     void should_support_all_model_names(OpenAiChatModelName modelName) {
 

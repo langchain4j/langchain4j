@@ -31,6 +31,7 @@ import java.util.concurrent.CompletableFuture;
  *     .baseUrl("https://...") // or use CloudRegion
  *     .apiKey("...")
  *     .projectId("...")
+ *     .modelName("ibm/granite-4-h-small")
  *     .build();
  * }</pre>
  *
@@ -164,9 +165,11 @@ public class WatsonxTokenCountEstimator implements TokenCountEstimator {
      *     .baseUrl("https://...") // or use CloudRegion
      *     .apiKey("...")
      *     .projectId("...")
+     *     .modelName("ibm/granite-4-h-small")
      *     .build();
      * }</pre>
      *
+     * @return {@link Builder} instance.
      */
     public static Builder builder() {
         return new Builder();
@@ -180,18 +183,14 @@ public class WatsonxTokenCountEstimator implements TokenCountEstimator {
 
         private Builder() {}
 
+        /**
+         * Sets the watsonx.ai model ID used for token counting, e.g. {@code "ibm/granite-4-h-small"}.
+         *
+         * @param modelName the model ID
+         * @return {@code this}
+         */
         public Builder modelName(String modelName) {
             this.modelName = modelName;
-            return this;
-        }
-
-        public Builder projectId(String projectId) {
-            this.projectId = projectId;
-            return this;
-        }
-
-        public Builder spaceId(String spaceId) {
-            this.spaceId = spaceId;
             return this;
         }
 

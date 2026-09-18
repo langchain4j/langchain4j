@@ -21,6 +21,7 @@ import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.vertexai.anthropic.internal.Constants;
 import dev.langchain4j.model.vertexai.anthropic.internal.api.*;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -199,25 +200,17 @@ public class AnthropicRequestMapper {
 
         List<String> required = parameters != null ? parameters.required() : emptyList();
 
-        Map<String, Object> inputSchema = Map.of(
-                "type", "object",
-                "properties", properties,
-                "required", required);
-
-        String description;
-        if (isNotNullOrBlank(toolSpecification.description())) {
-            description = toolSpecification.description();
-        } else {
-            // Provide intelligent default descriptions based on tool name
-            description = switch (toolSpecification.name().toLowerCase()) {
-                case "get_current_time", "current_time", "time" -> "Gets the current time";
-                case "get_weather", "weather" -> "Gets weather information";
-                case "calculator", "calculate" -> "Performs mathematical calculations";
-                default -> "Tool: " + toolSpecification.name();
-            };
+        Map<String, Object> inputSchema = new LinkedHashMap<>();
+        inputSchema.put("type", "object");
+        inputSchema.put("properties", properties);
+        inputSchema.put("required", required);
+        if (parameters != null
+                && parameters.definitions() != null
+                && !parameters.definitions().isEmpty()) {
+            inputSchema.put("$defs", toMap(parameters.definitions()));
         }
 
-        return new AnthropicTool(toolSpecification.name(), description, inputSchema);
+        return new AnthropicTool(toolSpecification.name(), toolSpecification.description(), inputSchema);
     }
 
     private static AnthropicTool toTool(ToolSpecification toolSpec) {

@@ -7,10 +7,12 @@ import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.genai.Client;
+import com.google.genai.types.AudioTranscriptionConfig;
 import com.google.genai.types.Content;
 import com.google.genai.types.GenerateContentConfig;
 import com.google.genai.types.SafetySetting;
 import dev.langchain4j.Experimental;
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.ChatModel;
@@ -25,6 +27,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Consumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,6 +46,9 @@ public class GoogleGenAiChatModel implements ChatModel {
     private final List<SafetySetting> safetySettings;
     private final Integer thinkingBudget;
     private final String thinkingLevel;
+    private final Boolean includeThoughts;
+    private final boolean returnThinking;
+    private final boolean sendThinking;
     private final Integer seed;
     private final boolean googleSearchEnabled;
     private final boolean googleMapsEnabled;
@@ -50,7 +56,8 @@ public class GoogleGenAiChatModel implements ChatModel {
     private final List<String> allowedFunctionNames;
     private final String vertexSearchDatastore;
     private final Map<String, String> labels;
-    private final String cachedContent;
+    private final AudioTranscriptionConfig audioTranscriptionConfig;
+    private final Consumer<GenerateContentConfig.Builder> generateContentConfigCustomizer;
 
     private GoogleGenAiChatModel(Builder builder) {
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
@@ -63,11 +70,15 @@ public class GoogleGenAiChatModel implements ChatModel {
         this.allowedFunctionNames = copy(builder.allowedFunctionNames);
         this.thinkingBudget = builder.thinkingBudget;
         this.thinkingLevel = builder.thinkingLevel;
+        this.includeThoughts = builder.includeThoughts;
+        this.returnThinking = getOrDefault(builder.returnThinking, false);
+        this.sendThinking = getOrDefault(builder.sendThinking, false);
         this.seed = builder.seed;
         this.safetySettings = copy(builder.safetySettings);
         this.vertexSearchDatastore = builder.vertexSearchDatastore;
         this.labels = builder.labels != null ? new HashMap<>(builder.labels) : null;
-        this.cachedContent = builder.cachedContent;
+        this.audioTranscriptionConfig = builder.audioTranscriptionConfig;
+        this.generateContentConfigCustomizer = builder.generateContentConfigCustomizer;
 
         this.client = builder.client != null
                 ? builder.client
@@ -83,7 +94,12 @@ public class GoogleGenAiChatModel implements ChatModel {
         ChatRequestParameters commonParameters =
                 getOrDefault(builder.defaultRequestParameters, DefaultChatRequestParameters.EMPTY);
 
-        this.defaultRequestParameters = DefaultChatRequestParameters.builder()
+        GoogleGenAiChatRequestParameters genAiParameters =
+                builder.defaultRequestParameters instanceof GoogleGenAiChatRequestParameters googleGenAiParameters
+                        ? googleGenAiParameters
+                        : GoogleGenAiChatRequestParameters.EMPTY;
+
+        this.defaultRequestParameters = GoogleGenAiChatRequestParameters.builder()
                 .modelName(getOrDefault(builder.modelName, commonParameters.modelName()))
                 .temperature(getOrDefault(builder.temperature, commonParameters.temperature()))
                 .topP(getOrDefault(builder.topP, commonParameters.topP()))
@@ -95,20 +111,24 @@ public class GoogleGenAiChatModel implements ChatModel {
                 .toolSpecifications(commonParameters.toolSpecifications())
                 .toolChoice(commonParameters.toolChoice())
                 .responseFormat(getOrDefault(builder.responseFormat, commonParameters.responseFormat()))
+                .cachedContent(getOrDefault(builder.cachedContent, genAiParameters.cachedContent()))
                 .build();
     }
 
     @Override
     public ChatResponse doChat(ChatRequest chatRequest) {
         Content systemInstruction = GoogleGenAiContentMapper.toSystemInstruction(chatRequest.messages());
-        List<Content> contents = GoogleGenAiContentMapper.toContents(chatRequest.messages());
+        List<Content> contents = GoogleGenAiContentMapper.toContents(chatRequest.messages(), sendThinking);
+
+        GoogleGenAiChatRequestParameters parameters = (GoogleGenAiChatRequestParameters) chatRequest.parameters();
 
         GenerateContentConfig config = GoogleGenAiConfigBuilder.buildConfig(
-                chatRequest.parameters(),
+                parameters,
                 systemInstruction,
                 safetySettings,
                 thinkingBudget,
                 thinkingLevel,
+                includeThoughts,
                 seed,
                 googleSearchEnabled,
                 googleMapsEnabled,
@@ -116,7 +136,9 @@ public class GoogleGenAiChatModel implements ChatModel {
                 allowedFunctionNames,
                 vertexSearchDatastore,
                 labels,
-                cachedContent);
+                parameters.cachedContent(),
+                audioTranscriptionConfig,
+                generateContentConfigCustomizer);
 
         if (logRequests) {
             log.info(
@@ -127,9 +149,12 @@ public class GoogleGenAiChatModel implements ChatModel {
         }
 
         var result = withRetryMappingExceptions(
-                () -> client.models.generateContent(chatRequest.modelName(), contents, config), maxRetries);
+                () -> client.models.generateContent(chatRequest.modelName(), contents, config),
+                maxRetries,
+                GoogleGenAiExceptionMapper.INSTANCE);
 
-        ChatResponse response = GoogleGenAiContentMapper.toChatResponse(result, chatRequest.modelName());
+        ChatResponse response =
+                GoogleGenAiContentMapper.toChatResponse(result, chatRequest.modelName(), returnThinking);
 
         if (logResponses) {
             log.info("Response:\n- model: {}\n- response: {}", chatRequest.modelName(), response);
@@ -178,6 +203,9 @@ public class GoogleGenAiChatModel implements ChatModel {
         private Integer maxOutputTokens;
         private Integer thinkingBudget;
         private String thinkingLevel;
+        private Boolean includeThoughts;
+        private Boolean returnThinking;
+        private Boolean sendThinking;
         private Integer seed;
         private Integer maxRetries;
         private List<String> stopSequences;
@@ -197,67 +225,168 @@ public class GoogleGenAiChatModel implements ChatModel {
         private String cachedContent;
         private Boolean logRequests;
         private Boolean logResponses;
+        private AudioTranscriptionConfig audioTranscriptionConfig;
+        private Consumer<GenerateContentConfig.Builder> generateContentConfigCustomizer;
 
+        /**
+         * Sets a pre-configured Google GenAI {@link Client}.
+         * <p>
+         * Use this when you need full control over client configuration.
+         * When set, {@link #apiKey(String)}, {@link #googleCredentials(GoogleCredentials)},
+         * {@link #projectId(String)}, {@link #location(String)}, and {@link #timeout(Duration)} are ignored.
+         *
+         * @param client the pre-configured client
+         * @return {@code this}
+         */
         public Builder client(Client client) {
             this.client = client;
             return this;
         }
 
+        /**
+         * Sets the Google OAuth2 credentials used to authenticate requests via Vertex AI.
+         * <p>
+         * Use this instead of {@link #apiKey(String)} when authenticating with a service account
+         * or Application Default Credentials (ADC).
+         * Requires {@link #projectId(String)} and {@link #location(String)} to be set.
+         *
+         * @param credentials the Google OAuth2 credentials
+         * @return {@code this}
+         */
         public Builder googleCredentials(GoogleCredentials credentials) {
             this.googleCredentials = credentials;
             return this;
         }
 
+        /**
+         * Sets the Google AI Gemini API key used to authenticate requests.
+         * <p>
+         * Use this for the Google AI Studio API. For Vertex AI, use {@link #googleCredentials(GoogleCredentials)}.
+         * Alternatively, set the {@code GOOGLE_API_KEY} environment variable.
+         *
+         * @param apiKey the API key
+         * @return {@code this}
+         */
         public Builder apiKey(String apiKey) {
             this.apiKey = apiKey;
             return this;
         }
 
+        /**
+         * Sets the Google Cloud project ID for Vertex AI access.
+         * <p>
+         * Required when using {@link #googleCredentials(GoogleCredentials)} for Vertex AI.
+         *
+         * @param projectId the GCP project ID
+         * @return {@code this}
+         */
         public Builder projectId(String projectId) {
             this.projectId = projectId;
             return this;
         }
 
+        /**
+         * Sets the Google Cloud region/location for Vertex AI access (e.g. {@code "us-central1"}).
+         * <p>
+         * Required when using {@link #googleCredentials(GoogleCredentials)} for Vertex AI.
+         *
+         * @param location the GCP region
+         * @return {@code this}
+         */
         public Builder location(String location) {
             this.location = location;
             return this;
         }
 
+        /**
+         * Sets the model to use for chat completions.
+         * <p>
+         * Examples: {@code "gemini-2.0-flash"}, {@code "gemini-2.5-pro"}.
+         *
+         * @param modelName the model name
+         * @return {@code this}
+         */
         public Builder modelName(String modelName) {
             this.modelName = modelName;
             return this;
         }
 
+        /**
+         * Sets the HTTP request timeout for calls to the Google GenAI API.
+         *
+         * @param timeout the request timeout
+         * @return {@code this}
+         */
         public Builder timeout(Duration timeout) {
             this.timeout = timeout;
             return this;
         }
 
+        /**
+         * Sets the sampling temperature in the range {@code [0.0, 2.0]}.
+         * Higher values produce more creative output; lower values produce more deterministic output.
+         *
+         * @param temperature the sampling temperature
+         * @return {@code this}
+         */
         public Builder temperature(Double temperature) {
             this.temperature = temperature;
             return this;
         }
 
+        /**
+         * Sets the nucleus sampling probability (top-p).
+         * Only the tokens whose cumulative probability exceeds this threshold are considered.
+         *
+         * @param topP the nucleus sampling threshold
+         * @return {@code this}
+         */
         public Builder topP(Double topP) {
             this.topP = topP;
             return this;
         }
 
+        /**
+         * Sets the top-K sampling value. Only the {@code topK} most-likely next tokens are considered at each step.
+         *
+         * @param topK the number of top tokens to sample from
+         * @return {@code this}
+         */
         public Builder topK(Integer topK) {
             this.topK = topK;
             return this;
         }
 
+        /**
+         * Sets the frequency penalty, which reduces the likelihood of repeating tokens
+         * proportionally to how often they have appeared in the response so far.
+         *
+         * @param frequencyPenalty the frequency penalty
+         * @return {@code this}
+         */
         public Builder frequencyPenalty(Double frequencyPenalty) {
             this.frequencyPenalty = frequencyPenalty;
             return this;
         }
 
+        /**
+         * Sets the presence penalty, which reduces the likelihood of repeating any token
+         * that has already appeared in the response, regardless of frequency.
+         *
+         * @param presencePenalty the presence penalty
+         * @return {@code this}
+         */
         public Builder presencePenalty(Double presencePenalty) {
             this.presencePenalty = presencePenalty;
             return this;
         }
 
+        /**
+         * Sets the maximum number of tokens to generate in the response.
+         *
+         * @param maxOutputTokens the maximum number of output tokens
+         * @return {@code this}
+         */
         public Builder maxOutputTokens(Integer maxOutputTokens) {
             this.maxOutputTokens = maxOutputTokens;
             return this;
@@ -281,99 +410,316 @@ public class GoogleGenAiChatModel implements ChatModel {
             return this;
         }
 
+        /**
+         * Controls whether the model is asked to include
+         * <a href="https://ai.google.dev/gemini-api/docs/generate-content/thinking">thought summaries</a>
+         * in the response.
+         * <p>
+         * Not set by default. This does not control how much the model thinks;
+         * see {@link #thinkingBudget(Integer)} and {@link #thinkingLevel(String)} for that.
+         *
+         * @see #returnThinking(Boolean)
+         * @see #sendThinking(Boolean)
+         */
+        public Builder includeThoughts(Boolean includeThoughts) {
+            this.includeThoughts = includeThoughts;
+            return this;
+        }
+
+        /**
+         * Controls whether to return thinking/reasoning text (if available) inside {@link AiMessage#thinking()}.
+         * Please note that this does not enable thinking/reasoning for the LLM;
+         * it only controls whether to parse the {@code thought} parts of the API response
+         * and return them inside the {@link AiMessage}.
+         * <p>
+         * Disabled by default.
+         * If enabled, the thinking text will be stored within the {@link AiMessage} and may be persisted.
+         *
+         * @see #includeThoughts(Boolean)
+         * @see #sendThinking(Boolean)
+         */
+        public Builder returnThinking(Boolean returnThinking) {
+            this.returnThinking = returnThinking;
+            return this;
+        }
+
+        /**
+         * Controls whether to send thinking/reasoning text to the LLM in follow-up requests.
+         * <p>
+         * Disabled by default.
+         * If enabled, the contents of {@link AiMessage#thinking()} will be sent in the API request,
+         * together with the thought signature that Gemini returned for the answer, if there was one.
+         * A thought signature is an opaque token that lets the model resume its own reasoning
+         * on the next turn; sending it back keeps reasoning continuous across turns.
+         * <p>
+         * Thought signatures required for function calling are handled independently of this setting.
+         *
+         * @see #includeThoughts(Boolean)
+         * @see #returnThinking(Boolean)
+         */
+        public Builder sendThinking(Boolean sendThinking) {
+            this.sendThinking = sendThinking;
+            return this;
+        }
+
+        /**
+         * Sets the random seed for deterministic output.
+         * Requests with the same seed and parameters should produce the same response.
+         *
+         * @param seed the random seed
+         * @return {@code this}
+         */
         public Builder seed(Integer seed) {
             this.seed = seed;
             return this;
         }
 
+        /**
+         * Sets sequences that, when generated, will cause the model to stop generating further tokens.
+         *
+         * @param stopSequences the list of stop sequences
+         * @return {@code this}
+         */
         public Builder stopSequences(List<String> stopSequences) {
             this.stopSequences = stopSequences;
             return this;
         }
 
+        /**
+         * Sets the number of times to retry a request on transient errors (e.g. rate limits, server errors).
+         * <p>
+         * Defaults to {@code 2}.
+         *
+         * @param maxRetries the maximum number of retry attempts
+         * @return {@code this}
+         */
         public Builder maxRetries(Integer maxRetries) {
             this.maxRetries = maxRetries;
             return this;
         }
 
+        /**
+         * Sets safety content filter settings to block harmful content.
+         * See the <a href="https://ai.google.dev/gemini-api/docs/safety-settings">safety settings docs</a>.
+         *
+         * @param safetySettings the list of safety settings
+         * @return {@code this}
+         */
         public Builder safetySettings(List<SafetySetting> safetySettings) {
             this.safetySettings = safetySettings;
             return this;
         }
 
+        /**
+         * Sets the response format, enabling structured output such as JSON mode or JSON Schema.
+         *
+         * @param responseFormat the desired response format
+         * @return {@code this}
+         */
         public Builder responseFormat(ResponseFormat responseFormat) {
             this.responseFormat = responseFormat;
             return this;
         }
 
+        /**
+         * Enables the Google Search grounding tool, allowing the model to retrieve
+         * real-time information from the web.
+         * See the <a href="https://ai.google.dev/gemini-api/docs/google-search">Google Search tool docs</a>.
+         *
+         * @param googleSearch whether to enable Google Search
+         * @return {@code this}
+         */
         public Builder enableGoogleSearch(boolean googleSearch) {
             this.googleSearch = googleSearch;
             return this;
         }
 
+        /**
+         * Enables the Google Maps grounding tool, allowing the model to retrieve
+         * location-based information.
+         * See the <a href="https://ai.google.dev/gemini-api/docs/maps-grounding">Google Maps tool docs</a>.
+         *
+         * @param googleMaps whether to enable Google Maps
+         * @return {@code this}
+         */
         public Builder enableGoogleMaps(boolean googleMaps) {
             this.googleMaps = googleMaps;
             return this;
         }
 
+        /**
+         * Enables the URL context tool, allowing the model to read and reason about
+         * content at provided URLs.
+         * See the <a href="https://ai.google.dev/gemini-api/docs/url-context">URL context tool docs</a>.
+         *
+         * @param urlContext whether to enable URL context
+         * @return {@code this}
+         */
         public Builder enableUrlContext(boolean urlContext) {
             this.urlContext = urlContext;
             return this;
         }
 
+        /**
+         * Restricts function calling to only the specified function names.
+         * When set, the model can only call functions whose names appear in this list.
+         *
+         * @param allowedFunctionNames the list of allowed function names
+         * @return {@code this}
+         */
         public Builder allowedFunctionNames(List<String> allowedFunctionNames) {
             this.allowedFunctionNames = allowedFunctionNames;
             return this;
         }
 
+        /**
+         * Sets the list of {@link ChatModelListener}s to be notified on each request and response.
+         * Useful for logging, metrics, and observability integrations.
+         *
+         * @param listeners the chat model listeners
+         * @return {@code this}
+         */
         public Builder listeners(List<ChatModelListener> listeners) {
             this.listeners = listeners;
             return this;
         }
 
+        /**
+         * Sets default {@link ChatRequestParameters} that are merged into every request.
+         * Individual request parameters take precedence over these defaults.
+         *
+         * @param defaultRequestParameters the default request parameters
+         * @return {@code this}
+         */
         public Builder defaultRequestParameters(ChatRequestParameters defaultRequestParameters) {
             this.defaultRequestParameters = defaultRequestParameters;
             return this;
         }
 
+        /**
+         * Sets the Vertex AI Search datastore to use for grounding the model's responses
+         * with enterprise data.
+         *
+         * @param vertexSearchDatastore the Vertex AI Search datastore resource name
+         * @return {@code this}
+         */
         public Builder vertexSearchDatastore(String vertexSearchDatastore) {
             this.vertexSearchDatastore = vertexSearchDatastore;
             return this;
         }
 
+        /**
+         * Sets labels (key-value metadata) attached to the request.
+         * Useful for cost attribution and billing tracking in Google Cloud.
+         *
+         * @param labels a map of label keys to values
+         * @return {@code this}
+         */
         public Builder labels(Map<String, String> labels) {
             this.labels = labels;
             return this;
         }
 
+        /**
+         * Overrides the default API endpoint.
+         * <p>
+         * Useful for pointing at a regional endpoint or a compatible proxy.
+         *
+         * @param apiEndpoint the custom API endpoint URL
+         * @return {@code this}
+         */
         public Builder apiEndpoint(String apiEndpoint) {
             this.apiEndpoint = apiEndpoint;
             return this;
         }
 
+        /**
+         * Sets extra HTTP headers to include in every request to the Google GenAI API.
+         *
+         * @param customHeaders a map of header names to values
+         * @return {@code this}
+         */
         public Builder customHeaders(Map<String, String> customHeaders) {
             this.customHeaders = customHeaders;
             return this;
         }
 
+        /**
+         * Sets the name of a previously created cached content resource to use with this model.
+         * Using cached content can reduce latency and cost for repeated prompts.
+         * See the <a href="https://ai.google.dev/gemini-api/docs/caching">context caching docs</a>.
+         *
+         * @param cachedContent the cached content resource name
+         * @return {@code this}
+         */
         public Builder cachedContent(String cachedContent) {
             this.cachedContent = cachedContent;
             return this;
         }
 
+        /**
+         * Enables debug logging of request details sent to the Google GenAI API.
+         *
+         * @param logRequests whether to log requests
+         * @return {@code this}
+         */
         public Builder logRequests(Boolean logRequests) {
             this.logRequests = logRequests;
             return this;
         }
 
+        /**
+         * Enables debug logging of response details received from the Google GenAI API.
+         *
+         * @param logResponses whether to log responses
+         * @return {@code this}
+         */
         public Builder logResponses(Boolean logResponses) {
             this.logResponses = logResponses;
             return this;
         }
 
+        /**
+         * Enables debug logging of both request and response details.
+         * Equivalent to calling both {@link #logRequests(Boolean)} and {@link #logResponses(Boolean)}.
+         *
+         * @param logRequestsAndResponses whether to log requests and responses
+         * @return {@code this}
+         */
         public Builder logRequestsAndResponses(Boolean logRequestsAndResponses) {
             this.logRequests = logRequestsAndResponses;
             this.logResponses = logRequestsAndResponses;
+            return this;
+        }
+
+        /**
+         * Registers a customizer applied to the {@link GenerateContentConfig.Builder} after this integration has
+         * populated it (generation parameters, tools, system instruction, etc.), so it can set any underlying
+         * Google Gen AI SDK option that is not exposed here, or override a value set above.
+         *
+         * @param generateContentConfigCustomizer a consumer that mutates the {@link GenerateContentConfig.Builder}
+         * @see GenerateContentConfig
+         */
+        public Builder generateContentConfigCustomizer(
+                Consumer<GenerateContentConfig.Builder> generateContentConfigCustomizer) {
+            this.generateContentConfigCustomizer = generateContentConfigCustomizer;
+            return this;
+        }
+
+        /**
+         * Sets the {@link AudioTranscriptionConfig} applied when the model transcribes audio input:
+         * the transcription mode ({@code VERBATIM} or {@code SMART}), the spoken languages, a custom vocabulary,
+         * word-level timestamps and speaker diarization.
+         * <p>
+         * It only takes effect with models built for audio transcription, such as {@code gemini-3.5-transcribe}.
+         * The transcript is returned as the text of the {@link AiMessage}. Word-level timestamps and speaker labels
+         * are not part of that text; read them from the parts of {@link GoogleGenAiChatResponseMetadata#rawResponse()}.
+         *
+         * @param audioTranscriptionConfig the audio transcription configuration
+         * @return {@code this}
+         */
+        public Builder audioTranscriptionConfig(AudioTranscriptionConfig audioTranscriptionConfig) {
+            this.audioTranscriptionConfig = audioTranscriptionConfig;
             return this;
         }
 

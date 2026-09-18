@@ -50,6 +50,7 @@ public class DefaultChatModelConvention implements ChatModelConvention {
     @Override
     public @Nullable String getContextualName(final ChatModelObservationContext context) {
         return OPERATION_VALUE_CHAT
+                + " "
                 + ofNullable(context.getRequestContext())
                         .map(ChatModelRequestContext::chatRequest)
                         .map(ChatRequest::parameters)

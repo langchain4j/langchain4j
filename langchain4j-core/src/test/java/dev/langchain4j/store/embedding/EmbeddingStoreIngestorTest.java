@@ -4,7 +4,9 @@ import static dev.langchain4j.data.segment.TextSegment.textSegment;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
@@ -17,9 +19,13 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.data.segment.TextSegmentTransformer;
 import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.embedding.request.EmbeddingInputType;
+import dev.langchain4j.model.embedding.request.EmbeddingRequest;
+import dev.langchain4j.model.embedding.response.EmbeddingResponse;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 class EmbeddingStoreIngestorTest {
 
@@ -191,5 +197,40 @@ class EmbeddingStoreIngestorTest {
         verifyNoMoreInteractions(embeddingStore);
 
         assertThat(ingestionResult.tokenUsage()).isEqualTo(tokenUsage);
+    }
+
+    @Test
+    void should_embed_documents_with_input_type_when_configured() {
+
+        // given
+        Document document = Document.from("hello world");
+        TextSegment segment = textSegment("hello world");
+
+        DocumentSplitter documentSplitter = mock(DocumentSplitter.class);
+        when(documentSplitter.splitAll(singletonList(document))).thenReturn(singletonList(segment));
+
+        EmbeddingModel embeddingModel = mock(EmbeddingModel.class);
+        when(embeddingModel.embed(any(EmbeddingRequest.class)))
+                .thenReturn(EmbeddingResponse.builder()
+                        .embeddings(singletonList(Embedding.from(new float[] {1})))
+                        .build());
+
+        EmbeddingStore<TextSegment> embeddingStore = mock(EmbeddingStore.class);
+
+        EmbeddingStoreIngestor ingestor = EmbeddingStoreIngestor.builder()
+                .documentSplitter(documentSplitter)
+                .embeddingModel(embeddingModel)
+                .embeddingStore(embeddingStore)
+                .embeddingInputType(EmbeddingInputType.DOCUMENT)
+                .build();
+
+        // when
+        ingestor.ingest(document);
+
+        // then: documents were embedded via the new API with input_type=DOCUMENT, not via legacy embedAll
+        ArgumentCaptor<EmbeddingRequest> captor = ArgumentCaptor.forClass(EmbeddingRequest.class);
+        verify(embeddingModel).embed(captor.capture());
+        assertThat(captor.getValue().inputType()).isEqualTo(EmbeddingInputType.DOCUMENT);
+        verify(embeddingModel, never()).embedAll(any());
     }
 }

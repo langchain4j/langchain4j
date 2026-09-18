@@ -1,12 +1,15 @@
 package dev.langchain4j.model.googleai;
 
+import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.googleai.FinishReasonMapper.fromGFinishReasonToFinishReason;
 import static dev.langchain4j.model.googleai.FunctionMapper.fromToolSpecsToGTools;
 import static dev.langchain4j.model.googleai.PartsAndContentsMapper.fromGPartsToAiMessage;
 import static dev.langchain4j.model.googleai.PartsAndContentsMapper.fromMessageToGContent;
+import static dev.langchain4j.model.googleai.SchemaMapper.canBeMapped;
 import static dev.langchain4j.model.googleai.SchemaMapper.fromJsonSchemaToGSchema;
 import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 
@@ -20,7 +23,7 @@ import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
-import dev.langchain4j.model.chat.request.json.JsonRawSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.googleai.GeminiGenerateContentRequest.GeminiToolConfig;
 import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiCandidate;
@@ -55,10 +58,8 @@ class BaseGeminiChatModel {
     protected final Boolean enableEnhancedCivicAnswers;
     protected final GeminiMediaResolutionLevel mediaResolution;
     protected final boolean mediaResolutionPerPartEnabled;
-    protected final GeminiGenerationConfig.GeminiImageConfig imageConfig;
-    protected final String cachedContentName;
 
-    protected final ChatRequestParameters defaultRequestParameters;
+    protected final GoogleAiGeminiChatRequestParameters defaultRequestParameters;
 
     protected BaseGeminiChatModel(GoogleAiGeminiChatModelBaseBuilder<?> builder, GeminiService geminiService) {
         this.geminiService = geminiService;
@@ -76,33 +77,41 @@ class BaseGeminiChatModel {
         this.returnThinking = builder.returnThinking;
         this.sendThinking = getOrDefault(builder.sendThinking, false);
         this.seed = builder.seed;
-        this.responseLogprobs = getOrDefault(builder.responseLogprobs, false);
-        this.enableEnhancedCivicAnswers = getOrDefault(builder.enableEnhancedCivicAnswers, false);
+        this.responseLogprobs = builder.responseLogprobs;
+        this.enableEnhancedCivicAnswers = builder.enableEnhancedCivicAnswers;
         this.logprobs = builder.logprobs;
         this.mediaResolution = builder.mediaResolution;
         this.mediaResolutionPerPartEnabled = getOrDefault(builder.mediaResolutionPerPartEnabled, false);
-        this.imageConfig = buildImageConfig(builder.aspectRatio, builder.imageSize);
-        this.cachedContentName = builder.cachedContentName;
 
-        ChatRequestParameters parameters;
+        ChatRequestParameters commonParameters;
         if (builder.defaultRequestParameters != null) {
-            parameters = builder.defaultRequestParameters;
+            commonParameters = builder.defaultRequestParameters;
         } else {
-            parameters = DefaultChatRequestParameters.EMPTY;
+            commonParameters = DefaultChatRequestParameters.EMPTY;
         }
 
-        this.defaultRequestParameters = ChatRequestParameters.builder()
-                .modelName(getOrDefault(builder.modelName, parameters.modelName()))
-                .temperature(getOrDefault(builder.temperature, parameters.temperature()))
-                .topP(getOrDefault(builder.topP, parameters.topP()))
-                .topK(getOrDefault(builder.topK, parameters.topK()))
-                .frequencyPenalty(getOrDefault(builder.frequencyPenalty, parameters.frequencyPenalty()))
-                .presencePenalty(getOrDefault(builder.presencePenalty, parameters.presencePenalty()))
-                .maxOutputTokens(getOrDefault(builder.maxOutputTokens, parameters.maxOutputTokens()))
-                .stopSequences(getOrDefault(builder.stopSequences, parameters.stopSequences()))
-                .toolSpecifications(parameters.toolSpecifications())
-                .toolChoice(getOrDefault(toToolChoice(functionCallingConfig), parameters.toolChoice()))
-                .responseFormat(getOrDefault(builder.responseFormat, parameters.responseFormat()))
+        GoogleAiGeminiChatRequestParameters geminiParameters =
+                builder.defaultRequestParameters instanceof GoogleAiGeminiChatRequestParameters googleAiParameters
+                        ? googleAiParameters
+                        : GoogleAiGeminiChatRequestParameters.EMPTY;
+
+        this.defaultRequestParameters = GoogleAiGeminiChatRequestParameters.builder()
+                // common parameters
+                .modelName(getOrDefault(builder.modelName, commonParameters.modelName()))
+                .temperature(getOrDefault(builder.temperature, commonParameters.temperature()))
+                .topP(getOrDefault(builder.topP, commonParameters.topP()))
+                .topK(getOrDefault(builder.topK, commonParameters.topK()))
+                .frequencyPenalty(getOrDefault(builder.frequencyPenalty, commonParameters.frequencyPenalty()))
+                .presencePenalty(getOrDefault(builder.presencePenalty, commonParameters.presencePenalty()))
+                .maxOutputTokens(getOrDefault(builder.maxOutputTokens, commonParameters.maxOutputTokens()))
+                .stopSequences(getOrDefault(builder.stopSequences, commonParameters.stopSequences()))
+                .toolSpecifications(commonParameters.toolSpecifications())
+                .toolChoice(getOrDefault(toToolChoice(functionCallingConfig), commonParameters.toolChoice()))
+                .responseFormat(getOrDefault(builder.responseFormat, commonParameters.responseFormat()))
+                // Gemini-specific parameters
+                .aspectRatio(getOrDefault(builder.aspectRatio, geminiParameters.aspectRatio()))
+                .imageSize(getOrDefault(builder.imageSize, geminiParameters.imageSize()))
+                .cachedContentName(getOrDefault(builder.cachedContentName, geminiParameters.cachedContentName()))
                 .build();
     }
 
@@ -120,7 +129,9 @@ class BaseGeminiChatModel {
     }
 
     protected GeminiGenerateContentRequest createGenerateContentRequest(ChatRequest chatRequest) {
-        ChatRequestParameters parameters = chatRequest.parameters();
+        GoogleAiGeminiChatRequestParameters parameters = (GoogleAiGeminiChatRequestParameters) chatRequest.parameters();
+        GeminiGenerationConfig.GeminiImageConfig effectiveImageConfig =
+                buildImageConfig(parameters.aspectRatio(), parameters.imageSize());
 
         GeminiContent systemInstruction = new GeminiContent(List.of(), GeminiRole.MODEL.toString());
         List<GeminiContent> geminiContentList = fromMessageToGContent(
@@ -132,10 +143,11 @@ class BaseGeminiChatModel {
 
         if (responseFormat != null) {
             if (responseFormat.jsonSchema() != null) {
-                if (responseFormat.jsonSchema().rootElement() instanceof JsonRawSchema jsonRawSchema) {
-                    rawSchema = Json.fromJson(jsonRawSchema.schema(), Map.class);
+                JsonSchemaElement rootElement = responseFormat.jsonSchema().rootElement();
+                if (canBeMapped(rootElement)) {
+                    schema = fromJsonSchemaToGSchema(rootElement);
                 } else {
-                    schema = fromJsonSchemaToGSchema(responseFormat.jsonSchema());
+                    rawSchema = toMap(rootElement);
                 }
             }
         }
@@ -157,10 +169,11 @@ class BaseGeminiChatModel {
                         .presencePenalty(parameters.presencePenalty())
                         .frequencyPenalty(parameters.frequencyPenalty())
                         .responseLogprobs(responseLogprobs)
+                        .enableEnhancedCivicAnswers(enableEnhancedCivicAnswers)
                         .logprobs(logprobs)
                         .thinkingConfig(this.thinkingConfig)
                         .mediaResolution(this.mediaResolution)
-                        .imageConfig(this.imageConfig)
+                        .imageConfig(effectiveImageConfig)
                         .build())
                 .safetySettings(this.safetySettings)
                 .tools(fromToolSpecsToGTools(
@@ -171,7 +184,7 @@ class BaseGeminiChatModel {
                         this.allowGoogleMaps,
                         this.retrieveGoogleMapsWidgetToken))
                 .toolConfig(toToolConfig(parameters.toolChoice(), this.functionCallingConfig))
-                .cachedContent(this.cachedContentName)
+                .cachedContent(parameters.cachedContentName())
                 .build();
     }
 
@@ -240,6 +253,10 @@ class BaseGeminiChatModel {
     }
 
     protected ChatResponse processResponse(GeminiGenerateContentResponse geminiResponse) {
+        if (isNullOrEmpty(geminiResponse.candidates())) {
+            return processBlockedPromptResponse(geminiResponse);
+        }
+
         GeminiCandidate firstCandidate = geminiResponse.candidates().get(0);
         AiMessage aiMessage = createAiMessage(firstCandidate);
 
@@ -263,8 +280,37 @@ class BaseGeminiChatModel {
                                 firstCandidate.urlContextMetadata() != null
                                         ? toUrlContextMetadata(firstCandidate.urlContextMetadata())
                                         : null)
+                        .safetyRatings(firstCandidate.safetyRatings())
+                        .promptSafetyRatings(promptSafetyRatings(geminiResponse))
+                        .blockReason(blockReason(geminiResponse))
                         .build())
                 .build();
+    }
+
+    private ChatResponse processBlockedPromptResponse(GeminiGenerateContentResponse geminiResponse) {
+        // Gemini returns no candidates at all when it refuses the prompt; the reason is in promptFeedback instead.
+        return ChatResponse.builder()
+                .aiMessage(createAiMessage(null))
+                .metadata(GoogleAiGeminiChatResponseMetadata.builder()
+                        .id(geminiResponse.responseId())
+                        .modelName(geminiResponse.modelVersion())
+                        .tokenUsage(
+                                geminiResponse.usageMetadata() != null
+                                        ? createTokenUsage(geminiResponse.usageMetadata())
+                                        : null)
+                        .finishReason(FinishReason.CONTENT_FILTER)
+                        .promptSafetyRatings(promptSafetyRatings(geminiResponse))
+                        .blockReason(blockReason(geminiResponse))
+                        .build())
+                .build();
+    }
+
+    private static List<GeminiSafetyRating> promptSafetyRatings(GeminiGenerateContentResponse response) {
+        return response.promptFeedback() != null ? response.promptFeedback().safetyRatings() : null;
+    }
+
+    private static String blockReason(GeminiGenerateContentResponse response) {
+        return response.promptFeedback() != null ? response.promptFeedback().blockReason() : null;
     }
 
     protected AiMessage createAiMessage(GeminiCandidate candidate) {
@@ -285,17 +331,17 @@ class BaseGeminiChatModel {
                 .build();
     }
 
-    private UrlContextMetadata toUrlContextMetadata(
+    static UrlContextMetadata toUrlContextMetadata(
             GeminiGenerateContentResponse.GeminiUrlContextMetadata geminiUrlContextMetadata) {
         if (geminiUrlContextMetadata == null || geminiUrlContextMetadata.urlMetadata() == null) {
             return null;
         }
         return new UrlContextMetadata(geminiUrlContextMetadata.urlMetadata().stream()
-                .map(this::toUrlMetadata)
+                .map(BaseGeminiChatModel::toUrlMetadata)
                 .toList());
     }
 
-    private UrlContextMetadata.UrlMetadata toUrlMetadata(
+    private static UrlContextMetadata.UrlMetadata toUrlMetadata(
             GeminiGenerateContentResponse.GeminiUrlMetadata geminiUrlMetadata) {
         if (geminiUrlMetadata == null) {
             return null;
@@ -363,6 +409,13 @@ class BaseGeminiChatModel {
             return builder();
         }
 
+        /**
+         * Sets default common {@link ChatRequestParameters} or
+         * Gemini-specific {@link GoogleAiGeminiChatRequestParameters}.
+         * <br>
+         * When a parameter is set via an individual builder method (e.g., {@link #modelName(String)}),
+         * its value takes precedence over the same parameter set via {@link ChatRequestParameters}.
+         */
         public B defaultRequestParameters(ChatRequestParameters defaultRequestParameters) {
             this.defaultRequestParameters = defaultRequestParameters;
             return builder();
@@ -761,6 +814,8 @@ class BaseGeminiChatModel {
          * to create the cache out of band via the
          * <a href="https://ai.google.dev/gemini-api/docs/caching">Gemini context caching API</a> and pass the
          * returned resource name here.</p>
+         *
+         * <p>Can be overridden per-request via {@link GoogleAiGeminiChatRequestParameters#cachedContentName()}.</p>
          */
         public B cachedContentName(String cachedContentName) {
             this.cachedContentName = cachedContentName;

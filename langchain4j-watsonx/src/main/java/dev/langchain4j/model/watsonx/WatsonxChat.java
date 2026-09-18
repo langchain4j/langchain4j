@@ -1,318 +1,139 @@
 package dev.langchain4j.model.watsonx;
 
-import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static java.util.Arrays.asList;
 import static java.util.Objects.nonNull;
 
+import com.ibm.watsonx.ai.chat.ChatModeration;
 import com.ibm.watsonx.ai.chat.ChatProvider;
+import com.ibm.watsonx.ai.chat.ChatRequest;
 import com.ibm.watsonx.ai.chat.ChatService;
-import com.ibm.watsonx.ai.chat.model.ExtractionTags;
-import com.ibm.watsonx.ai.chat.model.Thinking;
-import com.ibm.watsonx.ai.chat.model.ThinkingEffort;
-import com.ibm.watsonx.ai.deployment.DeploymentService;
+import com.ibm.watsonx.ai.chat.TextChatResponse;
+import com.ibm.watsonx.ai.chat.model.ChatMessage;
+import com.ibm.watsonx.ai.chat.model.Tool;
 import dev.langchain4j.Internal;
-import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.exception.UnsupportedFeatureException;
-import dev.langchain4j.model.chat.Capability;
-import dev.langchain4j.model.chat.listener.ChatModelListener;
+import dev.langchain4j.exception.ContentFilteredException;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
-import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
-import dev.langchain4j.model.chat.request.ResponseFormat;
-import dev.langchain4j.model.chat.request.ToolChoice;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 @Internal
-abstract class WatsonxChat {
+abstract class WatsonxChat extends WatsonxTextChatBase<ChatRequest> {
 
-    protected final ChatProvider chatProvider;
-    protected final List<ChatModelListener> listeners;
-    protected final ChatRequestParameters defaultRequestParameters;
-    protected final Set<Capability> supportedCapabilities;
+    protected final ChatService chatService;
 
     protected WatsonxChat(Builder<?> builder) {
-        listeners = copy(builder.listeners);
-        supportedCapabilities = copy(builder.supportedCapabilities);
+        super(builder, mergeParameters(builder));
 
-        ChatRequestParameters commonParameters;
-        if (builder.defaultRequestParameters != null) {
-            validate(builder.defaultRequestParameters);
-            commonParameters = builder.defaultRequestParameters;
-        } else {
-            commonParameters = DefaultChatRequestParameters.EMPTY;
-        }
+        var parameters = (WatsonxChatRequestParameters) defaultRequestParameters;
 
-        WatsonxChatRequestParameters watsonxParameters =
-                builder.defaultRequestParameters instanceof WatsonxChatRequestParameters watsonxChatRequestParameters
-                        ? watsonxChatRequestParameters
-                        : WatsonxChatRequestParameters.EMPTY;
+        var serviceBuilder = nonNull(builder.authenticator)
+                ? ChatService.builder().authenticator(builder.authenticator)
+                : ChatService.builder().apiKey(builder.apiKey);
 
-        var modelName = getOrDefault(builder.modelName, commonParameters.modelName());
-        var projectId = getOrDefault(builder.projectId, watsonxParameters.projectId());
-        var spaceId = getOrDefault(builder.spaceId, watsonxParameters.spaceId());
-        var timeout = getOrDefault(builder.timeout, watsonxParameters.timeout());
-        var thinking = getOrDefault(builder.thinking, watsonxParameters.thinking());
-        var deploymentId = getOrDefault(builder.deploymentId, watsonxParameters.deploymentId());
-
-        defaultRequestParameters = WatsonxChatRequestParameters.builder()
-                // Common parameters
-                .modelName(modelName)
-                .temperature(getOrDefault(builder.temperature, commonParameters.temperature()))
-                .topP(getOrDefault(builder.topP, commonParameters.topP()))
-                .frequencyPenalty(getOrDefault(builder.frequencyPenalty, commonParameters.frequencyPenalty()))
-                .presencePenalty(getOrDefault(builder.presencePenalty, commonParameters.presencePenalty()))
-                .maxOutputTokens(getOrDefault(builder.maxOutputTokens, commonParameters.maxOutputTokens()))
-                .stopSequences(getOrDefault(builder.stopSequences, commonParameters.stopSequences()))
-                .toolSpecifications(getOrDefault(builder.toolSpecifications, commonParameters.toolSpecifications()))
-                .toolChoice(getOrDefault(builder.toolChoice, commonParameters.toolChoice()))
-                .responseFormat(getOrDefault(builder.responseFormat, commonParameters.responseFormat()))
-                // Watsonx parameters
-                .projectId(projectId)
-                .spaceId(spaceId)
-                .logitBias(getOrDefault(builder.logitBias, watsonxParameters.logitBias()))
-                .logprobs(getOrDefault(builder.logprobs, watsonxParameters.logprobs()))
-                .topLogprobs(getOrDefault(builder.topLogprobs, watsonxParameters.topLogprobs()))
-                .seed(getOrDefault(builder.seed, watsonxParameters.seed()))
-                .toolChoiceName(getOrDefault(builder.toolChoiceName, watsonxParameters.toolChoiceName()))
-                .timeout(timeout)
-                .thinking(thinking)
-                .guidedChoice(getOrDefault(builder.guidedChoice, watsonxParameters.guidedChoice()))
-                .guidedGrammar(getOrDefault(builder.guidedGrammar, watsonxParameters.guidedGrammar()))
-                .guidedRegex(getOrDefault(builder.guidedRegex, watsonxParameters.guidedRegex()))
-                .lengthPenalty(getOrDefault(builder.lengthPenalty, watsonxParameters.lengthPenalty()))
-                .repetitionPenalty(getOrDefault(builder.repetitionPenalty, watsonxParameters.repetitionPenalty()))
-                .deploymentId(deploymentId)
+        chatService = serviceBuilder
+                .baseUrl(builder.baseUrl)
+                .modelId(parameters.modelName())
+                .version(builder.version)
+                .projectId(parameters.projectId())
+                .spaceId(parameters.spaceId())
+                .timeout(parameters.timeout())
+                .logRequests(builder.logRequests)
+                .logResponses(builder.logResponses)
+                .httpClient(builder.httpClient)
+                .verifySsl(builder.verifySsl)
                 .build();
-
-        if (nonNull(deploymentId)) {
-
-            var deploymentBuilder = nonNull(builder.authenticator)
-                    ? DeploymentService.builder().authenticator(builder.authenticator)
-                    : DeploymentService.builder().apiKey(builder.apiKey);
-
-            chatProvider = deploymentBuilder
-                    .baseUrl(builder.baseUrl)
-                    .version(builder.version)
-                    .timeout(timeout)
-                    .logRequests(builder.logRequests)
-                    .logResponses(builder.logResponses)
-                    .httpClient(builder.httpClient)
-                    .verifySsl(builder.verifySsl)
-                    .build();
-
-        } else {
-
-            var chatServiceBuilder = nonNull(builder.authenticator)
-                    ? ChatService.builder().authenticator(builder.authenticator)
-                    : ChatService.builder().apiKey(builder.apiKey);
-
-            chatProvider = chatServiceBuilder
-                    .baseUrl(builder.baseUrl)
-                    .modelId(modelName)
-                    .version(builder.version)
-                    .projectId(projectId)
-                    .spaceId(spaceId)
-                    .timeout(timeout)
-                    .logRequests(builder.logRequests)
-                    .logResponses(builder.logResponses)
-                    .httpClient(builder.httpClient)
-                    .verifySsl(builder.verifySsl)
-                    .build();
-        }
     }
 
-    final void validate(ChatRequestParameters parameters) {
-        if (nonNull(parameters.topK()))
-            throw new UnsupportedFeatureException("'topK' parameter is not supported by watsonx.ai");
+    @Override
+    protected ChatRequest buildChatRequest(
+            List<ChatMessage> messages, List<Tool> tools, ChatRequestParameters parameters) {
+
+        var requestBuilder = applyChatRequest(ChatRequest.builder(), messages, tools, parameters);
+
+        if (parameters instanceof WatsonxChatRequestParameters watsonxParameters) {
+            requestBuilder.moderations(watsonxParameters.moderations());
+        }
+
+        return requestBuilder.build();
+    }
+
+    @Override
+    protected ChatProvider<ChatRequest, TextChatResponse> chatProvider() {
+        return chatService;
+    }
+
+    private static WatsonxChatRequestParameters mergeParameters(Builder<?> builder) {
+
+        var watsonxParameters = builder.defaultRequestParameters instanceof WatsonxChatRequestParameters parameters
+                ? parameters
+                : WatsonxChatRequestParameters.EMPTY;
+
+        var target = WatsonxChatRequestParameters.builder();
+        applyTextChatParameters(target, builder);
+
+        return target.projectId(getOrDefault(builder.projectId, watsonxParameters.projectId()))
+                .spaceId(getOrDefault(builder.spaceId, watsonxParameters.spaceId()))
+                .moderations(getOrDefault(builder.moderations, watsonxParameters.moderations()))
+                .build();
     }
 
     @SuppressWarnings("unchecked")
-    abstract static class Builder<T extends Builder<T>> extends WatsonxBuilder<T> {
-        private String modelName;
-        private Double temperature;
-        private Double topP;
-        private Double frequencyPenalty;
-        private Double presencePenalty;
-        private Integer maxOutputTokens;
-        private List<String> stopSequences;
-        private ToolChoice toolChoice;
-        private ResponseFormat responseFormat;
-        private Map<String, Integer> logitBias;
-        private Boolean logprobs;
-        private Integer topLogprobs;
-        private Integer seed;
-        private String toolChoiceName;
-        private List<ToolSpecification> toolSpecifications;
-        private List<ChatModelListener> listeners;
-        private ChatRequestParameters defaultRequestParameters;
-        private Set<Capability> supportedCapabilities;
-        private Set<String> guidedChoice;
-        private String guidedRegex;
-        private String guidedGrammar;
-        private Double repetitionPenalty;
-        private Double lengthPenalty;
-        private String deploymentId;
-        private Thinking thinking;
+    abstract static class Builder<T extends Builder<T>> extends WatsonxTextChatBase.Builder<T> {
+        protected String projectId;
+        protected String spaceId;
+        protected ChatModeration moderations;
 
+        /**
+         * Sets the foundation model id, e.g. {@code "ibm/granite-4-h-small"}.
+         *
+         * @param modelName the model id
+         * @return {@code this}
+         */
         public T modelName(String modelName) {
             this.modelName = modelName;
             return (T) this;
         }
 
-        public T temperature(Double temperature) {
-            this.temperature = temperature;
+        /**
+         * Sets the IBM Cloud project ID that owns the watsonx.ai resources. Exactly one of {@code projectId} or {@code spaceId} must be set.
+         *
+         * @param projectId the IBM Cloud project ID
+         * @return {@code this}
+         */
+        public T projectId(String projectId) {
+            this.projectId = projectId;
             return (T) this;
         }
 
-        public T topP(Double topP) {
-            this.topP = topP;
+        /**
+         * Sets the IBM Cloud deployment space ID. Exactly one of {@code projectId} or {@code spaceId} must be set.
+         *
+         * @param spaceId the IBM Cloud deployment space ID
+         * @return {@code this}
+         */
+        public T spaceId(String spaceId) {
+            this.spaceId = spaceId;
             return (T) this;
         }
 
-        public T frequencyPenalty(Double frequencyPenalty) {
-            this.frequencyPenalty = frequencyPenalty;
-            return (T) this;
-        }
-
-        public T presencePenalty(Double presencePenalty) {
-            this.presencePenalty = presencePenalty;
-            return (T) this;
-        }
-
-        public T maxOutputTokens(Integer maxOutputTokens) {
-            this.maxOutputTokens = maxOutputTokens;
-            return (T) this;
-        }
-
-        public T stopSequences(List<String> stopSequences) {
-            this.stopSequences = stopSequences;
-            return (T) this;
-        }
-
-        public T stopSequences(String... stopSequences) {
-            return stopSequences(asList(stopSequences));
-        }
-
-        public T toolChoice(ToolChoice toolChoice) {
-            this.toolChoice = toolChoice;
-            return (T) this;
-        }
-
-        public T responseFormat(ResponseFormat responseFormat) {
-            this.responseFormat = responseFormat;
-            return (T) this;
-        }
-
-        public T logitBias(Map<String, Integer> logitBias) {
-            this.logitBias = logitBias;
-            return (T) this;
-        }
-
-        public T logprobs(Boolean logprobs) {
-            this.logprobs = logprobs;
-            return (T) this;
-        }
-
-        public T topLogprobs(Integer topLogprobs) {
-            this.topLogprobs = topLogprobs;
-            return (T) this;
-        }
-
-        public T seed(Integer seed) {
-            this.seed = seed;
-            return (T) this;
-        }
-
-        public T toolChoiceName(String toolChoiceName) {
-            this.toolChoiceName = toolChoiceName;
-            return (T) this;
-        }
-
-        public T supportedCapabilities(Set<Capability> supportedCapabilities) {
-            this.supportedCapabilities = supportedCapabilities;
-            return (T) this;
-        }
-
-        public T supportedCapabilities(Capability... supportedCapabilities) {
-            return supportedCapabilities(new HashSet<>(asList(supportedCapabilities)));
-        }
-
-        public T toolSpecifications(List<ToolSpecification> toolSpecifications) {
-            this.toolSpecifications = toolSpecifications;
-            return (T) this;
-        }
-
-        public T toolSpecifications(ToolSpecification... toolSpecifications) {
-            return toolSpecifications(asList(toolSpecifications));
-        }
-
-        public T listeners(List<ChatModelListener> listeners) {
-            this.listeners = listeners;
-            return (T) this;
-        }
-
-        public T defaultRequestParameters(ChatRequestParameters defaultRequestParameters) {
-            this.defaultRequestParameters = defaultRequestParameters;
-            return (T) this;
-        }
-
-        public T deploymentId(String deploymentId) {
-            this.deploymentId = deploymentId;
-            return (T) this;
-        }
-
-        public T thinking(boolean enabled) {
-            return thinking(Thinking.builder().enabled(enabled).build());
-        }
-
-        public T thinking(ExtractionTags tags) {
-            if (nonNull(tags)) return thinking(Thinking.of(tags));
-
-            this.thinking = null;
-            return (T) this;
-        }
-
-        public T thinking(ThinkingEffort thinkingEffort) {
-            if (nonNull(thinkingEffort)) return thinking(Thinking.of(thinkingEffort));
-
-            this.thinking = null;
-            return (T) this;
-        }
-
-        public T thinking(Thinking thinking) {
-            this.thinking = thinking;
-            return (T) this;
-        }
-
-        public T guidedChoice(String... guidedChoice) {
-            return guidedChoice(Set.of(guidedChoice));
-        }
-
-        public T guidedChoice(Set<String> guidedChoices) {
-            this.guidedChoice = guidedChoices;
-            return (T) this;
-        }
-
-        public T guidedRegex(String guidedRegex) {
-            this.guidedRegex = guidedRegex;
-            return (T) this;
-        }
-
-        public T guidedGrammar(String guidedGrammar) {
-            this.guidedGrammar = guidedGrammar;
-            return (T) this;
-        }
-
-        public T repetitionPenalty(Double repetitionPenalty) {
-            this.repetitionPenalty = repetitionPenalty;
-            return (T) this;
-        }
-
-        public T lengthPenalty(Double lengthPenalty) {
-            this.lengthPenalty = lengthPenalty;
+        /**
+         * Enables the inline moderation of the request, screening the input and the output for personal data, hate and
+         * profanity, or the categories of Granite Guardian.
+         *
+         * <p>The matches are reported on {@link WatsonxChatResponseMetadata#moderations()} and {@link WatsonxChatResponseMetadata#detections()}. When a detector blocks the generation the call fails with a
+         * {@link ContentFilteredException}.
+         *
+         * <pre>{@code
+         * .moderations(ChatModeration.builder()
+         *     .pii(p -> p.output(true))
+         *     .hap(h -> h.output(0.8f))
+         *     .build())
+         * }</pre>
+         *
+         * @param moderations the moderation configuration
+         * @return {@code this}
+         */
+        public T moderations(ChatModeration moderations) {
+            this.moderations = moderations;
             return (T) this;
         }
     }

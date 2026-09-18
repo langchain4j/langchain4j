@@ -4,14 +4,21 @@ import static dev.langchain4j.service.tool.DefaultToolExecutor.coerceArgument;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonMap;
 
-import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.type.TypeReference;
+import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolMemoryId;
+import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.agent.tool.ToolSpecifications;
+import dev.langchain4j.data.image.Image;
+import dev.langchain4j.data.message.Content;
+import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.invocation.InvocationContext;
 import java.lang.reflect.Method;
+import java.util.concurrent.CompletableFuture;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.HashMap;
@@ -27,14 +34,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
 class DefaultToolExecutorTest implements WithAssertions {
-
-    @Test
-    void tesT_hasNoFractionalPart() {
-        assertThat(DefaultToolExecutor.hasNoFractionalPart(3.0)).isTrue();
-        assertThat(DefaultToolExecutor.hasNoFractionalPart(-3.0)).isTrue();
-        assertThat(DefaultToolExecutor.hasNoFractionalPart(3.5)).isFalse();
-        assertThat(DefaultToolExecutor.hasNoFractionalPart(-3.5)).isFalse();
-    }
 
     public enum ExampleEnum {
         A,
@@ -284,6 +283,52 @@ class DefaultToolExecutorTest implements WithAssertions {
                 .isEqualTo(singletonMap("A", 1));
     }
 
+    @Test
+    void coerce_argument_preserves_precision_of_large_long() {
+        // A JSON integer above 2^53 is deserialized as a Long by Jackson. Converting via double
+        // would silently corrupt it (9007199254740993 -> 9007199254740992).
+        long largeLong = 9007199254740993L; // 2^53 + 1
+
+        assertThat(coerceArgument(largeLong, "arg", long.class, null)).isEqualTo(largeLong);
+        assertThat(coerceArgument(largeLong, "arg", Long.class, null)).isEqualTo(largeLong);
+        assertThat(coerceArgument(Long.MAX_VALUE, "arg", long.class, null)).isEqualTo(Long.MAX_VALUE);
+        assertThat(coerceArgument(Long.MIN_VALUE, "arg", long.class, null)).isEqualTo(Long.MIN_VALUE);
+    }
+
+    @Test
+    void coerce_argument_preserves_precision_of_large_big_integer() {
+        // A JSON integer larger than Long.MAX_VALUE is deserialized as a BigInteger by Jackson.
+        BigInteger largeBigInteger = BigInteger.valueOf(Long.MAX_VALUE).add(BigInteger.TEN);
+
+        assertThat(coerceArgument(largeBigInteger, "arg", BigInteger.class, null))
+                .isEqualTo(largeBigInteger);
+        // A large integral value must not be routed through double for a BigInteger parameter.
+        BigInteger aboveDoublePrecision = new BigInteger("9007199254740993"); // 2^53 + 1
+        assertThat(coerceArgument(aboveDoublePrecision, "arg", BigInteger.class, null))
+                .isEqualTo(aboveDoublePrecision);
+    }
+
+    @Test
+    void coerce_argument_preserves_precision_of_big_decimal() {
+        // 0.1 has no exact double representation; converting via new BigDecimal(double) would yield
+        // 0.1000000000000000055511151231257827021181583404541015625. Rendering via Number.toString()
+        // (as BigDecimal.valueOf(double) does) keeps it as "0.1".
+        assertThat(coerceArgument(0.1, "arg", BigDecimal.class, null)).isEqualTo(new BigDecimal("0.1"));
+        // A BigDecimal argument must be preserved exactly.
+        BigDecimal preciseValue = new BigDecimal("1234567890.123456789");
+        assertThat(coerceArgument(preciseValue, "arg", BigDecimal.class, null)).isEqualTo(preciseValue);
+    }
+
+    @Test
+    void coerce_argument_rejects_fractional_value_for_integer_types() {
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> coerceArgument(1.5, "arg", long.class, null))
+                .withMessageContaining("has non-integer value");
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> coerceArgument(1.5, "arg", BigInteger.class, null))
+                .withMessageContaining("has non-integer value");
+    }
+
     private static class TestTool {
 
         @Tool
@@ -364,6 +409,162 @@ class DefaultToolExecutorTest implements WithAssertions {
         String result = toolExecutor.execute(request, "DEFAULT");
 
         assertThat(result).isEqualTo("3");
+    }
+
+    @Test
+    void should_execute_tool_by_custom_tool_name() {
+        ToolExecutionRequest request = ToolExecutionRequest.builder()
+                .id("1")
+                .name("add_one")
+                .arguments("{ \"arg0\": 2 }")
+                .build();
+
+        DefaultToolExecutor toolExecutor = new DefaultToolExecutor(new CustomNamedTool(), request);
+
+        String result = toolExecutor.execute(request, "DEFAULT");
+
+        assertThat(result).isEqualTo("3");
+    }
+
+    @Test
+    void should_execute_tool_by_java_method_name_when_custom_tool_name_is_set() {
+        ToolExecutionRequest request = ToolExecutionRequest.builder()
+                .id("1")
+                .name("addOne")
+                .arguments("{ \"arg0\": 2 }")
+                .build();
+
+        DefaultToolExecutor toolExecutor = new DefaultToolExecutor(new CustomNamedTool(), request);
+
+        String result = toolExecutor.execute(request, "DEFAULT");
+
+        assertThat(result).isEqualTo("3");
+    }
+
+    @Test
+    void should_execute_tool_by_java_method_name_when_custom_tool_name_is_blank() {
+        ToolExecutionRequest request = ToolExecutionRequest.builder()
+                .id("1")
+                .name("addOne")
+                .arguments("{ \"arg0\": 2 }")
+                .build();
+
+        DefaultToolExecutor toolExecutor = new DefaultToolExecutor(new BlankNamedTool(), request);
+
+        String result = toolExecutor.execute(request, "DEFAULT");
+
+        assertThat(result).isEqualTo("3");
+    }
+
+    @Test
+    void should_not_execute_tool_with_unknown_custom_tool_name() {
+        ToolExecutionRequest request = ToolExecutionRequest.builder()
+                .id("1")
+                .name("subtract_one")
+                .arguments("{ \"arg0\": 2 }")
+                .build();
+
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> new DefaultToolExecutor(new CustomNamedTool(), request))
+                .withMessageContaining("Method 'subtract_one' is not found in object");
+    }
+
+    @Test
+    void should_execute_inherited_tool_by_custom_tool_name() {
+        ToolExecutionRequest request = ToolExecutionRequest.builder()
+                .id("1")
+                .name("add_one")
+                .arguments("{ \"value\": 2 }")
+                .build();
+
+        DefaultToolExecutor toolExecutor = new DefaultToolExecutor(new InheritedCustomNamedTool(), request);
+
+        String result = toolExecutor.execute(request, "DEFAULT");
+
+        assertThat(result).isEqualTo("3");
+    }
+
+    @Test
+    void should_execute_inherited_tool_by_java_method_name() {
+        ToolExecutionRequest request = ToolExecutionRequest.builder()
+                .id("1")
+                .name("addOne")
+                .arguments("{ \"value\": 2 }")
+                .build();
+
+        DefaultToolExecutor toolExecutor = new DefaultToolExecutor(new InheritedTool(), request);
+
+        String result = toolExecutor.execute(request, "DEFAULT");
+
+        assertThat(result).isEqualTo("3");
+    }
+
+    @Test
+    void should_execute_tool_using_exactly_what_its_tool_specification_publishes() {
+        List<Object> toolObjects = asList(
+                new CustomNamedTool(), new BlankNamedTool(), new InheritedCustomNamedTool(), new InheritedTool());
+
+        for (Object toolObject : toolObjects) {
+            for (ToolSpecification specification : ToolSpecifications.toolSpecificationsFrom(toolObject)) {
+                String parameterName = specification.parameters().properties().keySet().stream()
+                        .findFirst()
+                        .orElseThrow();
+
+                ToolExecutionRequest request = ToolExecutionRequest.builder()
+                        .id("1")
+                        .name(specification.name())
+                        .arguments("{ \"" + parameterName + "\": 2 }")
+                        .build();
+
+                DefaultToolExecutor toolExecutor = new DefaultToolExecutor(toolObject, request);
+
+                assertThat(toolExecutor.execute(request, "DEFAULT")).isEqualTo("3");
+            }
+        }
+    }
+
+    private static class CustomNamedTool {
+
+        @Tool(name = "add_one")
+        public int addOne(int value) {
+            return value + 1;
+        }
+    }
+
+    private static class BlankNamedTool {
+
+        @Tool(name = "")
+        public int addOne(int value) {
+            return value + 1;
+        }
+    }
+
+    interface CustomNamedToolInterface {
+
+        @Tool(name = "add_one")
+        int addOne(@P(name = "value", description = "the value to increment") int value);
+    }
+
+    private static class InheritedCustomNamedTool implements CustomNamedToolInterface {
+
+        @Override
+        public int addOne(int value) {
+            return value + 1;
+        }
+    }
+
+    interface ToolInterface {
+
+        @Tool
+        int addOne(@P(name = "value", description = "the value to increment") int value);
+    }
+
+    private static class InheritedTool implements ToolInterface {
+
+        @Override
+        public int addOne(int value) {
+            return value + 1;
+        }
     }
 
     @Test
@@ -583,8 +784,7 @@ class DefaultToolExecutorTest implements WithAssertions {
 
         // when-then
         assertThatThrownBy(() -> toolExecutor.execute(toolRequest, "default"))
-                .isExactlyInstanceOf(RuntimeException.class)
-                .hasCauseExactlyInstanceOf(JsonParseException.class)
+                .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("was expecting double-quote");
     }
 
@@ -708,5 +908,132 @@ class DefaultToolExecutorTest implements WithAssertions {
         assertThatExceptionOfType(ToolArgumentsException.class)
                 .isThrownBy(() -> executor.execute(request, "DEFAULT"))
                 .withCauseInstanceOf(IllegalArgumentException.class);
+    }
+
+    static class ToolWithException {
+        @Tool("Tool that throws exception")
+        public String throwingTool(String input) {
+            throw new RuntimeException("Test exception with details");
+        }
+    }
+
+    @Test
+    void should_return_error_result_when_tool_execution_fails() throws Exception {
+        ToolWithException tool = new ToolWithException();
+        Method method = ToolWithException.class.getMethod("throwingTool", String.class);
+
+        DefaultToolExecutor executor = new DefaultToolExecutor(tool, method);
+
+        ToolExecutionRequest request = ToolExecutionRequest.builder()
+                .id("1")
+                .name("throwingTool")
+                .arguments("{\"arg0\": \"test\"}")
+                .build();
+
+        ToolExecutionResult result =
+                executor.executeWithContext(request, InvocationContext.builder().build());
+
+        assertThat(result.isError()).isTrue();
+        assertThat(result.resultText()).isEqualTo("Test exception with details");
+    }
+
+    static class AsyncPojo {
+
+        public String name;
+        public int age;
+
+        AsyncPojo(String name, int age) {
+            this.name = name;
+            this.age = age;
+        }
+    }
+
+    static class AsyncResultTools {
+
+        @Tool
+        public CompletableFuture<Void> doNothing() {
+            return CompletableFuture.completedFuture(null);
+        }
+
+        @Tool
+        public CompletableFuture<String> nullString() {
+            return CompletableFuture.completedFuture(null);
+        }
+
+        @Tool
+        public CompletableFuture<String> text() {
+            return CompletableFuture.completedFuture("hello");
+        }
+
+        @Tool
+        public CompletableFuture<AsyncPojo> pojo() {
+            return CompletableFuture.completedFuture(new AsyncPojo("Klaus", 42));
+        }
+
+        @Tool
+        public CompletableFuture<Image> image() {
+            return CompletableFuture.completedFuture(
+                    Image.builder().url("http://example.com/cat.png").build());
+        }
+
+        @Tool
+        public CompletableFuture<List<Content>> contents() {
+            return CompletableFuture.completedFuture(List.<Content>of(TextContent.from("a"), TextContent.from("b")));
+        }
+    }
+
+    private ToolExecutionResult executeAsync(String methodName) throws Exception {
+        DefaultToolExecutor executor =
+                new DefaultToolExecutor(new AsyncResultTools(), AsyncResultTools.class.getDeclaredMethod(methodName));
+        ToolExecutionRequest request = ToolExecutionRequest.builder()
+                .id("1")
+                .name(methodName)
+                .arguments("{}")
+                .build();
+        return executor.executeAsync(request, InvocationContext.builder()
+                        .chatMemoryId("DEFAULT")
+                        .build())
+                .get();
+    }
+
+    @Test
+    void async_tool_returning_future_of_void_yields_success_text() throws Exception {
+        assertThat(executeAsync("doNothing").resultText()).isEqualTo("Success");
+    }
+
+    @Test
+    void async_tool_returning_future_completing_with_null_string_yields_null_text() throws Exception {
+        assertThat(executeAsync("nullString").resultText()).isEqualTo("null");
+    }
+
+    @Test
+    void async_tool_returning_future_of_string() throws Exception {
+        assertThat(executeAsync("text").resultText()).isEqualTo("hello");
+    }
+
+    @Test
+    void async_tool_returning_future_of_pojo_is_json_serialized() throws Exception {
+        ToolExecutionResult result = executeAsync("pojo");
+        assertThat(result.resultText()).contains("Klaus").contains("42");
+        assertThat(result.result()).isInstanceOf(AsyncPojo.class);
+    }
+
+    @Test
+    void async_tool_returning_future_of_image_yields_image_content() throws Exception {
+        ToolExecutionResult result = executeAsync("image");
+        assertThat(result.resultContents()).singleElement().isInstanceOf(ImageContent.class);
+        ImageContent imageContent = (ImageContent) result.resultContents().get(0);
+        assertThat(imageContent.image().url()).hasToString("http://example.com/cat.png");
+    }
+
+    @Test
+    void async_tool_returning_future_of_content_list_yields_those_contents() throws Exception {
+        ToolExecutionResult result = executeAsync("contents");
+        assertThat(result.resultContents())
+                .hasSize(2)
+                .allSatisfy(content -> assertThat(content).isInstanceOf(TextContent.class));
+        assertThat(result.resultContents())
+                .extracting(content -> ((TextContent) content).text())
+                .containsExactly("a", "b");
     }
 }

@@ -23,7 +23,7 @@ class HuggingFaceStreamingChatModelIT {
         StreamingChatModel model = OpenAiStreamingChatModel.builder()
                 .apiKey(System.getenv("HF_API_KEY"))
                 .baseUrl("https://router.huggingface.co/v1")
-                .modelName("katanemo/Arch-Router-1.5B:hf-inference")
+                .modelName("Qwen/Qwen2.5-Coder-3B-Instruct:nscale")
                 .build();
 
         // when

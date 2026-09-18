@@ -1,12 +1,12 @@
 package dev.langchain4j.service;
 
-import java.lang.annotation.Retention;
-import java.lang.annotation.Target;
-import java.util.function.Function;
-
 import static java.lang.annotation.ElementType.METHOD;
 import static java.lang.annotation.ElementType.TYPE;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
+
+import java.lang.annotation.Retention;
+import java.lang.annotation.Target;
+import java.util.function.Function;
 
 /**
  * Specifies either a complete system message (prompt) or a system message template to be used each time an AI service is invoked.
@@ -30,7 +30,21 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
  *     String chat(@UserMessage String userMessage, @V("characteristic") String characteristic);
  * }
  * </pre>
- * When both {@code @SystemMessage} and {@link AiServices#systemMessageProvider(Function)} are configured,
+ * It can also be declared on the AI Service interface, in which case it applies to all methods of that interface.
+ * <br>
+ * An example:
+ * <pre>
+ * {@code @SystemMessage}("You are a helpful assistant")
+ * interface Assistant {
+ *
+ *     String chat(String userMessage);
+ * }
+ * </pre>
+ * A {@code @SystemMessage} declared on a method takes precedence over one declared on the interface.
+ * A {@code @SystemMessage} declared only on a parent interface is not inherited by a child AI Service interface.
+ * <br>
+ * When both {@code @SystemMessage} and a system message provider
+ * (see {@link AiServices#systemMessageProvider(Function)}) are configured,
  * {@code @SystemMessage} takes precedence.
  *
  * @see UserMessage
@@ -53,7 +67,8 @@ public @interface SystemMessage {
      * If the resource is not found, an {@link IllegalConfigurationException} is thrown.
      * <p>
      * The resource will be read by calling {@link Class#getResourceAsStream(String)}
-     * on the AI Service class (interface).
+     * on the interface this annotation is declared on: the AI Service interface for an
+     * interface-level annotation, or the interface declaring the method for a method-level one.
      */
     String fromResource() default "";
 }

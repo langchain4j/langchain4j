@@ -1,19 +1,19 @@
 package dev.langchain4j.model.openai.internal.chat;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
-
+import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 
 @JsonDeserialize(builder = Content.Builder.class)
 @JsonInclude(JsonInclude.Include.NON_NULL)
-@JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public final class Content {
 
     @JsonProperty
@@ -22,8 +22,9 @@ public final class Content {
     @JsonProperty
     private final String text;
 
-    @JsonProperty
     private final ImageUrl imageUrl;
+
+    private final String inputImageUrl;
 
     @JsonProperty
     private final VideoUrl videoUrl;
@@ -34,13 +35,19 @@ public final class Content {
     @JsonProperty
     private final PdfFile file;
 
+    @JsonProperty
+    private final PromptCacheBreakpoint promptCacheBreakpoint;
+
+    @JsonCreator
     public Content(Builder builder) {
         this.type = builder.type;
         this.text = builder.text;
         this.imageUrl = builder.imageUrl;
+        this.inputImageUrl = builder.inputImageUrl;
         this.videoUrl = builder.videoUrl;
         this.inputAudio = builder.inputAudio;
         this.file = builder.file;
+        this.promptCacheBreakpoint = builder.promptCacheBreakpoint;
     }
 
     public ContentType type() {
@@ -55,6 +62,10 @@ public final class Content {
         return imageUrl;
     }
 
+    public String inputImageUrl() {
+        return inputImageUrl;
+    }
+
     public VideoUrl videoUrl() {
         return videoUrl;
     }
@@ -65,6 +76,10 @@ public final class Content {
 
     public PdfFile file() {
         return file;
+    }
+
+    public PromptCacheBreakpoint promptCacheBreakpoint() {
+        return promptCacheBreakpoint;
     }
 
     @Override
@@ -79,9 +94,11 @@ public final class Content {
         return Objects.equals(type, another.type)
                 && Objects.equals(text, another.text)
                 && Objects.equals(imageUrl, another.imageUrl)
+                && Objects.equals(inputImageUrl, another.inputImageUrl)
                 && Objects.equals(videoUrl, another.videoUrl)
                 && Objects.equals(inputAudio, another.inputAudio)
-                && Objects.equals(file, another.file);
+                && Objects.equals(file, another.file)
+                && Objects.equals(promptCacheBreakpoint, another.promptCacheBreakpoint);
     }
 
     @Override
@@ -91,9 +108,11 @@ public final class Content {
         h += (h << 5) + Objects.hashCode(type);
         h += (h << 5) + Objects.hashCode(text);
         h += (h << 5) + Objects.hashCode(imageUrl);
+        h += (h << 5) + Objects.hashCode(inputImageUrl);
         h += (h << 5) + Objects.hashCode(videoUrl);
         h += (h << 5) + Objects.hashCode(inputAudio);
         h += (h << 5) + Objects.hashCode(file);
+        h += (h << 5) + Objects.hashCode(promptCacheBreakpoint);
         return h;
     }
 
@@ -103,27 +122,52 @@ public final class Content {
         return "Content{" + "type="
                 + type + ", text="
                 + text + ", imageUrl="
-                + imageUrl + ", videoUrl="
+                + imageUrl + ", inputImageUrl="
+                + inputImageUrl + ", videoUrl="
                 + videoUrl + ", inputAudio="
                 + inputAudio + ", file="
-                + file + "}";
+                + file + ", promptCacheBreakpoint="
+                + promptCacheBreakpoint + "}";
     }
 
     public static Builder builder() {
         return new Builder();
     }
 
+    public Builder toBuilder() {
+        Builder builder = builder()
+                .type(type)
+                .text(text)
+                .videoUrl(videoUrl)
+                .inputAudio(inputAudio)
+                .file(file)
+                .promptCacheBreakpoint(promptCacheBreakpoint);
+        if (imageUrl != null) {
+            builder.imageUrl(imageUrl);
+        } else if (inputImageUrl != null) {
+            builder.inputImageUrl(inputImageUrl);
+        }
+        return builder;
+    }
+
+    @JsonProperty("image_url")
+    private Object imageUrlForSerialization() {
+        return imageUrl != null ? imageUrl : inputImageUrl;
+    }
+
     @JsonPOJOBuilder(withPrefix = "")
     @JsonIgnoreProperties(ignoreUnknown = true)
-    @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
+    @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
     public static final class Builder {
 
         private ContentType type;
         private String text;
         private ImageUrl imageUrl;
+        private String inputImageUrl;
         private VideoUrl videoUrl;
         private InputAudio inputAudio;
         private PdfFile file;
+        private PromptCacheBreakpoint promptCacheBreakpoint;
 
         public Builder type(ContentType type) {
             this.type = type;
@@ -137,6 +181,37 @@ public final class Content {
 
         public Builder imageUrl(ImageUrl imageUrl) {
             this.imageUrl = imageUrl;
+            this.inputImageUrl = null;
+            return this;
+        }
+
+        @JsonProperty("image_url")
+        Builder imageUrl(Object imageUrl) {
+            if (imageUrl == null) {
+                return this;
+            }
+
+            if (imageUrl instanceof String url) {
+                return inputImageUrl(url);
+            }
+
+            if (imageUrl instanceof ImageUrl url) {
+                return imageUrl(url);
+            }
+
+            if (imageUrl instanceof Map<?, ?> map) {
+                return imageUrl(ImageUrl.builder()
+                        .url(textValue(map.get("url")))
+                        .detail(imageDetail(map.get("detail")))
+                        .build());
+            }
+
+            return this;
+        }
+
+        public Builder inputImageUrl(String inputImageUrl) {
+            this.inputImageUrl = inputImageUrl;
+            this.imageUrl = null;
             return this;
         }
 
@@ -155,8 +230,25 @@ public final class Content {
             return this;
         }
 
+        public Builder promptCacheBreakpoint(PromptCacheBreakpoint promptCacheBreakpoint) {
+            this.promptCacheBreakpoint = promptCacheBreakpoint;
+            return this;
+        }
+
         public Content build() {
             return new Content(this);
+        }
+
+        private static String textValue(Object value) {
+            return value == null ? null : String.valueOf(value);
+        }
+
+        private static ImageDetail imageDetail(Object value) {
+            if (value == null) {
+                return null;
+            }
+
+            return ImageDetail.valueOf(String.valueOf(value).toUpperCase(Locale.ROOT));
         }
     }
 }

@@ -6,6 +6,7 @@ import dev.langchain4j.store.embedding.filter.Filter;
 import dev.langchain4j.store.embedding.filter.comparison.*;
 import io.qdrant.client.grpc.Common;
 import java.util.Arrays;
+import java.util.Collections;
 import org.junit.jupiter.api.Test;
 
 class QdrantFilterConverterTest {
@@ -45,6 +46,22 @@ class QdrantFilterConverterTest {
         assertThat(convertedFilter.getMust(0).getField().getKey()).isEqualTo("bool-value");
         assertThat(convertedFilter.getMust(0).getField().getMatch().getBoolean())
                 .isEqualTo(true);
+
+        filter = new IsEqualTo("double-value", 9.99);
+        convertedFilter = QdrantFilterConverter.convertExpression(filter);
+        assertThat(convertedFilter).isNotNull();
+        assertThat(convertedFilter.getMustCount()).isEqualTo(1);
+        assertThat(convertedFilter.getMust(0).getField().getKey()).isEqualTo("double-value");
+        assertThat(convertedFilter.getMust(0).getField().getRange().getGte()).isEqualTo(9.99);
+        assertThat(convertedFilter.getMust(0).getField().getRange().getLte()).isEqualTo(9.99);
+
+        filter = new IsEqualTo("float-value", 1.5f);
+        convertedFilter = QdrantFilterConverter.convertExpression(filter);
+        assertThat(convertedFilter).isNotNull();
+        assertThat(convertedFilter.getMustCount()).isEqualTo(1);
+        assertThat(convertedFilter.getMust(0).getField().getKey()).isEqualTo("float-value");
+        assertThat(convertedFilter.getMust(0).getField().getRange().getGte()).isEqualTo(1.5);
+        assertThat(convertedFilter.getMust(0).getField().getRange().getLte()).isEqualTo(1.5);
     }
 
     @Test
@@ -108,6 +125,55 @@ class QdrantFilterConverterTest {
                         .getMatch()
                         .getBoolean())
                 .isEqualTo(true);
+
+        filter = new IsNotEqualTo("double-value", 9.99);
+        convertedFilter = QdrantFilterConverter.convertExpression(filter);
+        assertThat(convertedFilter).isNotNull();
+        assertThat(convertedFilter.getMustCount()).isEqualTo(1);
+        assertThat(convertedFilter
+                        .getMust(0)
+                        .getFilter()
+                        .getMustNot(0)
+                        .getField()
+                        .getKey())
+                .isEqualTo("double-value");
+        assertThat(convertedFilter
+                        .getMust(0)
+                        .getFilter()
+                        .getMustNot(0)
+                        .getField()
+                        .getRange()
+                        .getGte())
+                .isEqualTo(9.99);
+        assertThat(convertedFilter
+                        .getMust(0)
+                        .getFilter()
+                        .getMustNot(0)
+                        .getField()
+                        .getRange()
+                        .getLte())
+                .isEqualTo(9.99);
+
+        filter = new IsNotEqualTo("float-value", 1.5f);
+        convertedFilter = QdrantFilterConverter.convertExpression(filter);
+        assertThat(convertedFilter).isNotNull();
+        assertThat(convertedFilter.getMustCount()).isEqualTo(1);
+        assertThat(convertedFilter
+                        .getMust(0)
+                        .getFilter()
+                        .getMustNot(0)
+                        .getField()
+                        .getRange()
+                        .getGte())
+                .isEqualTo(1.5);
+        assertThat(convertedFilter
+                        .getMust(0)
+                        .getFilter()
+                        .getMustNot(0)
+                        .getField()
+                        .getRange()
+                        .getLte())
+                .isEqualTo(1.5);
     }
 
     @Test
@@ -202,5 +268,22 @@ class QdrantFilterConverterTest {
                         .getExceptKeywords()
                         .getStringsCount())
                 .isEqualTo(4);
+    }
+
+    @Test
+    void isEqualToFilter_floatValue_rangeBoundMustEqualStoredValue() {
+        float value = 0.1f;
+
+        // What Qdrant actually persists for metadata.put("k", 0.1f):
+        double stored =
+                ValueMapFactory.valueMap(Collections.singletonMap("k", value)).get("k").getDoubleValue();
+
+        // What the IsEqualTo filter searches for:
+        Common.Filter convertedFilter = QdrantFilterConverter.convertExpression(new IsEqualTo("k", value));
+        double searchedGte = convertedFilter.getMust(0).getField().getRange().getGte();
+
+        assertThat(searchedGte)
+                .as("equality range bound must equal the stored representation, otherwise IsEqualTo(0.1f) never matches a row stored with put(\"k\", 0.1f)")
+                .isEqualTo(stored);
     }
 }

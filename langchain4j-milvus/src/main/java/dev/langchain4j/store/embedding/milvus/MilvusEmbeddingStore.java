@@ -2,7 +2,7 @@ package dev.langchain4j.store.embedding.milvus;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
+import static dev.langchain4j.internal.ValidationUtils.ensureConsistentSizes;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.store.embedding.milvus.CollectionOperationsExecutor.createCollection;
 import static dev.langchain4j.store.embedding.milvus.CollectionOperationsExecutor.createIndex;
@@ -273,7 +273,8 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
                 collectionName,
                 fieldDefinition,
                 consistencyLevel,
-                retrieveEmbeddingsOnSearch);
+                retrieveEmbeddingsOnSearch,
+                metricType);
 
         List<EmbeddingMatch<TextSegment>> result = matches.stream()
                 .filter(match -> match.score() >= embeddingSearchRequest.minScore())
@@ -288,7 +289,8 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     @Override
     public void addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> textSegments) {
-        if (isNullOrEmpty(ids) || isNullOrEmpty(embeddings)) {
+        ensureConsistentSizes(ids, embeddings, textSegments);
+        if (isNullOrEmpty(embeddings)) {
             return;
         }
         List<InsertParam.Field> fields = new ArrayList<>();
@@ -321,7 +323,9 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
      */
     @Override
     public void removeAll(Collection<String> ids) {
-        ensureNotEmpty(ids, "ids");
+        if (isNullOrEmpty(ids)) {
+            return;
+        }
         removeForVector(
                 this.milvusClient,
                 this.collectionName,

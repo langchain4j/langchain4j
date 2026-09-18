@@ -7,6 +7,7 @@ import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.scope.AgenticScope;
+import dev.langchain4j.agentic.scope.AgenticSystemSuspendedException;
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import dev.langchain4j.invocation.LangChain4jManaged;
@@ -47,6 +48,10 @@ public interface AgentInvoker extends AgentInstance, InternalAgent {
         try {
             return method().invoke(agent, args.positionalArgs());
         } catch (Exception e) {
+            Throwable cause = e instanceof java.lang.reflect.InvocationTargetException ? e.getCause() : e;
+            if (cause instanceof AgenticSystemSuspendedException suspended) {
+                throw suspended;
+            }
             AgentInvocationException invocationException = new AgentInvocationException("Failed to invoke agent method: " + method(), e);
             agentError(listener, agenticScope, this, args.namedArgs(), invocationException);
             throw invocationException;

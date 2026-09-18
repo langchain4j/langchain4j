@@ -2,9 +2,9 @@ package dev.langchain4j.store.embedding.infinispan;
 
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.randomUUID;
+import static dev.langchain4j.internal.ValidationUtils.ensureConsistentSizes;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
 import static dev.langchain4j.store.embedding.infinispan.InfinispanStoreConfiguration.DEFAULT_CACHE_CONFIG;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
@@ -34,15 +34,11 @@ import org.infinispan.commons.marshall.ProtoStreamMarshaller;
 import org.infinispan.protostream.FileDescriptorSource;
 import org.infinispan.protostream.SerializationContext;
 import org.infinispan.protostream.schema.Schema;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Infinispan Embedding Store
  */
 public class InfinispanEmbeddingStore implements EmbeddingStore<TextSegment> {
-
-    private static final Logger log = LoggerFactory.getLogger(InfinispanEmbeddingStore.class);
 
     private final RemoteCache<String, LangChainInfinispanItem> remoteCache;
     private final InfinispanStoreConfiguration storeConfiguration;
@@ -181,8 +177,8 @@ public class InfinispanEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     @Override
     public void removeAll(Collection<String> ids) {
-        if (ids == null || ids.isEmpty()) {
-            throw new IllegalArgumentException("ids cannot be null or empty");
+        if (isNullOrEmpty(ids)) {
+            return;
         }
 
         for (String id : ids) {
@@ -244,14 +240,10 @@ public class InfinispanEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     @Override
     public void addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
-        if (isNullOrEmpty(ids) || isNullOrEmpty(embeddings)) {
-            log.info("do not add empty embeddings to infinispan");
+        ensureConsistentSizes(ids, embeddings, embedded);
+        if (isNullOrEmpty(embeddings)) {
             return;
         }
-        ensureTrue(ids.size() == embeddings.size(), "ids size is not equal to embeddings size");
-        ensureTrue(
-                embedded == null || embeddings.size() == embedded.size(),
-                "embeddings size is not equal to embedded size");
 
         int size = ids.size();
         Map<String, LangChainInfinispanItem> elements = new HashMap<>(size);

@@ -1,5 +1,11 @@
 package dev.langchain4j.store.embedding.cassandra;
 
+import static dev.langchain4j.internal.Utils.randomUUID;
+import static dev.langchain4j.internal.Utils.toStringValueMap;
+import static dev.langchain4j.internal.ValidationUtils.ensureBetween;
+import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
+import static java.util.stream.Collectors.toList;
+
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.CqlSessionBuilder;
 import com.dtsx.astra.sdk.cassio.AnnQuery;
@@ -12,24 +18,15 @@ import com.dtsx.astra.sdk.utils.AstraEnvironment;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.store.embedding.CosineSimilarity;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
-import dev.langchain4j.store.embedding.RelevanceScore;
-import org.jspecify.annotations.NonNull;
-
 import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
-
-import static dev.langchain4j.internal.Utils.randomUUID;
-import static dev.langchain4j.internal.Utils.toStringValueMap;
-import static dev.langchain4j.internal.ValidationUtils.ensureBetween;
-import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
-import static java.util.stream.Collectors.toList;
+import org.jspecify.annotations.NonNull;
 
 /**
  * Implementation of {@link EmbeddingStore} using Cassandra.
@@ -68,9 +65,11 @@ public class CassandraEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param dimension dimension
      * @param metric    metric
      */
-    public CassandraEmbeddingStore(CqlSession session, String tableName, int dimension, CassandraSimilarityMetric metric) {
+    public CassandraEmbeddingStore(
+            CqlSession session, String tableName, int dimension, CassandraSimilarityMetric metric) {
         this.cassandraSession = session;
-        this.embeddingTable = new MetadataVectorTable(session, session.getKeyspace().get().asInternal(), tableName, dimension, metric);
+        this.embeddingTable = new MetadataVectorTable(
+                session, session.getKeyspace().get().asInternal(), tableName, dimension, metric);
         embeddingTable.create();
     }
 
@@ -149,13 +148,11 @@ public class CassandraEmbeddingStore implements EmbeddingStore<TextSegment> {
             return this;
         }
 
-        public Builder() {
-        }
+        public Builder() {}
 
         public CassandraEmbeddingStore build() {
-            CqlSessionBuilder builder = CqlSession.builder()
-                    .withKeyspace(keyspace)
-                    .withLocalDatacenter(localDataCenter);
+            CqlSessionBuilder builder =
+                    CqlSession.builder().withKeyspace(keyspace).withLocalDatacenter(localDataCenter);
             if (userName != null && password != null) {
                 builder.withAuthCredentials(userName, password);
             }
@@ -300,13 +297,13 @@ public class CassandraEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     @Override
     public void addAll(List<String> ids, List<Embedding> embeddingList, List<TextSegment> textSegmentList) {
-    	if (ids == null || embeddingList == null || textSegmentList == null) {
+        if (ids == null || embeddingList == null || textSegmentList == null) {
             throw new IllegalArgumentException("ids, embeddingList, and textSegmentList must not be null");
         }
         if (ids.size() != embeddingList.size() || ids.size() != textSegmentList.size()) {
             throw new IllegalArgumentException("ids, embeddingList, and textSegmentList must all have the same size");
         }
-        
+
         // Looping on both list with an index
         for (int i = 0; i < embeddingList.size(); i++) {
             addInternal(ids.get(i), embeddingList.get(i), textSegmentList.get(i));
@@ -329,8 +326,8 @@ public class CassandraEmbeddingStore implements EmbeddingStore<TextSegment> {
                 .similaritySearch(AnnQuery.builder()
                         .embeddings(embedding.vectorAsList())
                         .recordCount(ensureGreaterThanZero(maxResults, "maxResults"))
-                        .threshold(CosineSimilarity.fromRelevanceScore(ensureBetween(minScore, 0, 1, "minScore")))
-                        .metric(CassandraSimilarityMetric.COSINE)
+                        .threshold(ensureBetween(minScore, 0, 1, "minScore"))
+                        .metric(embeddingTable.getSimilarityMetric())
                         .build())
                 .stream()
                 .map(CassandraEmbeddingStore::mapSearchResult)
@@ -347,15 +344,16 @@ public class CassandraEmbeddingStore implements EmbeddingStore<TextSegment> {
 
         TextSegment embedded = null;
         String body = record.getEmbedded().getBody();
-        if (body != null
-                && !body.isEmpty()
-                && record.getEmbedded().getMetadata() != null) {
-            embedded = TextSegment.from(record.getEmbedded().getBody(),
+        if (body != null && !body.isEmpty() && record.getEmbedded().getMetadata() != null) {
+            embedded = TextSegment.from(
+                    record.getEmbedded().getBody(),
                     new Metadata(record.getEmbedded().getMetadata()));
         }
         return new EmbeddingMatch<>(
-                // Score
-                RelevanceScore.fromCosineSimilarity(record.getSimilarity()),
+                // Score: the Cassandra similarity_* CQL functions already return a relevance score in [0..1],
+                // so no further normalization is needed. For COSINE this is exactly
+                // RelevanceScore.fromCosineSimilarity, i.e. 0.5 means orthogonal.
+                (double) record.getSimilarity(),
                 // EmbeddingId : unique identifier
                 record.getEmbedded().getRowId(),
                 // Embeddings vector
@@ -373,18 +371,17 @@ public class CassandraEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param metadata   map key-value to build a metadata filter
      * @return list of matching results
      */
-    public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding embedding, int maxResults, double minScore, Metadata metadata) {
+    public List<EmbeddingMatch<TextSegment>> findRelevant(
+            Embedding embedding, int maxResults, double minScore, Metadata metadata) {
         AnnQuery.AnnQueryBuilder builder = AnnQuery.builder()
                 .embeddings(embedding.vectorAsList())
-                .metric(CassandraSimilarityMetric.COSINE)
+                .metric(embeddingTable.getSimilarityMetric())
                 .recordCount(ensureGreaterThanZero(maxResults, "maxResults"))
-                .threshold(CosineSimilarity.fromRelevanceScore(ensureBetween(minScore, 0, 1, "minScore")));
+                .threshold(ensureBetween(minScore, 0, 1, "minScore"));
         if (metadata != null) {
             builder.metaData(toStringValueMap(metadata.toMap()));
         }
-        return embeddingTable
-                .similaritySearch(builder.build())
-                .stream()
+        return embeddingTable.similaritySearch(builder.build()).stream()
                 .map(CassandraEmbeddingStore::mapSearchResult)
                 .collect(toList());
     }

@@ -1,5 +1,6 @@
 package dev.langchain4j.model.googleai;
 
+import static dev.langchain4j.data.message.AiMessage.GENERATED_IMAGES_KEY;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.model.googleai.FinishReasonMapper.fromGFinishReasonToFinishReason;
 import static dev.langchain4j.model.googleai.PartsAndContentsMapper.fromGPartsToAiMessage;
@@ -10,12 +11,21 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiCandidate;
 import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiUsageMetadata;
+import dev.langchain4j.model.googleai.GroundingMetadata.GroundingChunk;
+import dev.langchain4j.model.googleai.GroundingMetadata.GroundingSupport;
+import dev.langchain4j.model.googleai.GroundingMetadata.RetrievalMetadata;
+import dev.langchain4j.model.googleai.GroundingMetadata.SearchEntryPoint;
+import dev.langchain4j.model.googleai.UrlContextMetadata.UrlMetadata;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -37,6 +47,11 @@ class GeminiStreamingResponseBuilder {
     private final AtomicReference<String> modelName = new AtomicReference<>();
     private final AtomicReference<TokenUsage> tokenUsage = new AtomicReference<>();
     private final AtomicReference<FinishReason> finishReason = new AtomicReference<>();
+    private final AtomicReference<List<GeminiSafetyRating>> safetyRatings = new AtomicReference<>();
+    private final AtomicReference<List<GeminiSafetyRating>> promptSafetyRatings = new AtomicReference<>();
+    private final AtomicReference<String> blockReason = new AtomicReference<>();
+    private final GroundingMetadataAccumulator groundingMetadata = new GroundingMetadataAccumulator();
+    private final UrlContextMetadataAccumulator urlContextMetadata = new UrlContextMetadataAccumulator();
 
     GeminiStreamingResponseBuilder(boolean includeCodeExecutionOutput, Boolean returnThinking) {
         this.includeCodeExecutionOutput = includeCodeExecutionOutput;
@@ -59,6 +74,8 @@ class GeminiStreamingResponseBuilder {
             return new TextAndTools(Optional.empty(), Optional.empty(), List.of());
         }
 
+        updatePromptFeedback(partialResponse);
+
         List<GeminiCandidate> candidates = partialResponse.candidates();
         if (candidates == null || candidates.isEmpty()) {
             return new TextAndTools(Optional.empty(), Optional.empty(), List.of());
@@ -70,6 +87,9 @@ class GeminiStreamingResponseBuilder {
         updateModelName(partialResponse);
         updateFinishReason(firstCandidate);
         updateTokenUsage(partialResponse.usageMetadata());
+        updateSafetyRatings(firstCandidate);
+        updateGroundingMetadata(partialResponse, firstCandidate);
+        updateUrlContextMetadata(firstCandidate);
 
         GeminiContent content = firstCandidate.content();
         if (content == null || content.parts() == null) {
@@ -98,7 +118,12 @@ class GeminiStreamingResponseBuilder {
                         .id(id.get())
                         .modelName(modelName.get())
                         .tokenUsage(tokenUsage.get())
-                        .finishReason(aiMessage.hasToolExecutionRequests() ? TOOL_EXECUTION : finishReason.get())
+                        .finishReason(resolveFinishReason(aiMessage))
+                        .safetyRatings(safetyRatings.get())
+                        .promptSafetyRatings(promptSafetyRatings.get())
+                        .blockReason(blockReason.get())
+                        .groundingMetadata(groundingMetadata.build())
+                        .urlContextMetadata(urlContextMetadata.build())
                         .build())
                 .build();
     }
@@ -107,6 +132,15 @@ class GeminiStreamingResponseBuilder {
         if (!isNullOrBlank(response.responseId())) {
             id.set(response.responseId());
         }
+    }
+
+    private void updateGroundingMetadata(GeminiGenerateContentResponse response, GeminiCandidate candidate) {
+        groundingMetadata.merge(
+                response.groundingMetadata() != null ? response.groundingMetadata() : candidate.groundingMetadata());
+    }
+
+    private void updateUrlContextMetadata(GeminiCandidate candidate) {
+        urlContextMetadata.merge(BaseGeminiChatModel.toUrlContextMetadata(candidate.urlContextMetadata()));
     }
 
     private void updateModelName(GeminiGenerateContentResponse response) {
@@ -134,13 +168,57 @@ class GeminiStreamingResponseBuilder {
         }
     }
 
+    private void updateSafetyRatings(GeminiCandidate candidate) {
+        if (candidate.safetyRatings() != null) {
+            safetyRatings.set(candidate.safetyRatings());
+        }
+    }
+
+    private void updatePromptFeedback(GeminiGenerateContentResponse response) {
+        if (response.promptFeedback() == null) {
+            return;
+        }
+        if (response.promptFeedback().blockReason() != null) {
+            blockReason.set(response.promptFeedback().blockReason());
+        }
+        if (response.promptFeedback().safetyRatings() != null) {
+            promptSafetyRatings.set(response.promptFeedback().safetyRatings());
+        }
+    }
+
+    private FinishReason resolveFinishReason(AiMessage aiMessage) {
+        if (aiMessage.hasToolExecutionRequests()) {
+            return TOOL_EXECUTION;
+        }
+        if (finishReason.get() == null && blockReason.get() != null) {
+            return FinishReason.CONTENT_FILTER; // prompt was blocked, so no candidate carried a finishReason
+        }
+        return finishReason.get();
+    }
+
     private void updateContentAndFunctionCalls(AiMessage message) {
         Optional.ofNullable(message.text()).ifPresent(contentBuilder::append);
         Optional.ofNullable(message.thinking()).ifPresent(thoughtBuilder::append);
-        attributes.putAll(message.attributes());
+        mergeAttributes(message.attributes());
         if (message.hasToolExecutionRequests()) {
             functionCalls.addAll(message.toolExecutionRequests());
         }
+    }
+
+    private void mergeAttributes(Map<String, Object> partialAttributes) {
+        partialAttributes.forEach((key, value) -> {
+            if (GENERATED_IMAGES_KEY.equals(key)) {
+                attributes.merge(key, value, GeminiStreamingResponseBuilder::concatenate);
+            } else {
+                attributes.put(key, value);
+            }
+        });
+    }
+
+    private static Object concatenate(Object existing, Object added) {
+        List<Object> concatenated = new ArrayList<>((List<?>) existing);
+        concatenated.addAll((List<?>) added);
+        return concatenated;
     }
 
     private AiMessage createAiMessage() {
@@ -153,5 +231,146 @@ class GeminiStreamingResponseBuilder {
                 .toolExecutionRequests(functionCalls)
                 .attributes(attributes)
                 .build();
+    }
+
+    /**
+     * Accumulates the grounding metadata of every streamed chunk into a single value.
+     *
+     * <p>A chunk either repeats what earlier chunks already reported or adds to it, and the response does not say
+     * which, so an entry already seen is skipped and a new one is appended. Because a {@link GroundingSupport} points
+     * at {@link GroundingChunk}s by their position, the positions reported by a chunk that contributes new sources are
+     * translated into positions in the accumulated list.
+     */
+    private static class GroundingMetadataAccumulator {
+
+        private final Map<GroundingChunk, Integer> chunkPositions = new HashMap<>();
+
+        private boolean reported;
+        private List<GroundingChunk> chunks;
+        private Set<GroundingSupport> supports;
+        private Set<String> webSearchQueries;
+        private SearchEntryPoint searchEntryPoint;
+        private RetrievalMetadata retrievalMetadata;
+        private String googleMapsWidgetContextToken;
+
+        void merge(GroundingMetadata metadata) {
+            if (metadata == null) {
+                return;
+            }
+            reported = true;
+
+            int[] positions = mergeChunks(metadata.groundingChunks());
+            mergeSupports(metadata.groundingSupports(), positions);
+
+            if (metadata.webSearchQueries() != null) {
+                if (webSearchQueries == null) {
+                    webSearchQueries = new LinkedHashSet<>();
+                }
+                webSearchQueries.addAll(metadata.webSearchQueries());
+            }
+            if (metadata.searchEntryPoint() != null) {
+                searchEntryPoint = metadata.searchEntryPoint();
+            }
+            if (metadata.retrievalMetadata() != null) {
+                retrievalMetadata = metadata.retrievalMetadata();
+            }
+            if (metadata.googleMapsWidgetContextToken() != null) {
+                googleMapsWidgetContextToken = metadata.googleMapsWidgetContextToken();
+            }
+        }
+
+        GroundingMetadata build() {
+            if (!reported) {
+                return null;
+            }
+            return GroundingMetadata.builder()
+                    .groundingChunks(chunks == null ? null : new ArrayList<>(chunks))
+                    .groundingSupports(supports == null ? null : new ArrayList<>(supports))
+                    .webSearchQueries(webSearchQueries == null ? null : new ArrayList<>(webSearchQueries))
+                    .searchEntryPoint(searchEntryPoint)
+                    .retrievalMetadata(retrievalMetadata)
+                    .googleMapsWidgetContextToken(googleMapsWidgetContextToken)
+                    .build();
+        }
+
+        private int[] mergeChunks(List<GroundingChunk> reportedChunks) {
+            if (reportedChunks == null) {
+                return new int[0];
+            }
+            if (chunks == null) {
+                chunks = new ArrayList<>();
+            }
+            int[] positions = new int[reportedChunks.size()];
+            for (int i = 0; i < reportedChunks.size(); i++) {
+                GroundingChunk chunk = reportedChunks.get(i);
+                Integer position = chunkPositions.get(chunk);
+                if (position == null) {
+                    position = chunks.size();
+                    chunks.add(chunk);
+                    chunkPositions.put(chunk, position);
+                }
+                positions[i] = position;
+            }
+            return positions;
+        }
+
+        private void mergeSupports(List<GroundingSupport> reportedSupports, int[] positions) {
+            if (reportedSupports == null) {
+                return;
+            }
+            if (supports == null) {
+                supports = new LinkedHashSet<>();
+            }
+            for (GroundingSupport support : reportedSupports) {
+                supports.add(withAccumulatedPositions(support, positions));
+            }
+        }
+
+        private static GroundingSupport withAccumulatedPositions(GroundingSupport support, int[] positions) {
+            if (support == null || support.groundingChunkIndices() == null) {
+                return support;
+            }
+            List<Integer> indices = support.groundingChunkIndices().stream()
+                    .map(index -> accumulatedPosition(index, positions))
+                    .toList();
+            return new GroundingSupport(indices, support.confidenceScores(), support.segment());
+        }
+
+        private static Integer accumulatedPosition(Integer index, int[] positions) {
+            if (index == null || index < 0 || index >= positions.length) {
+                return index;
+            }
+            return positions[index];
+        }
+    }
+
+    /**
+     * Accumulates the URL context metadata of every streamed chunk into a single value, keeping one entry per
+     * retrieved URL so that a chunk repeating a URL only updates the retrieval status reported for it.
+     */
+    private static class UrlContextMetadataAccumulator {
+
+        private Map<String, UrlMetadata> urlMetadataByUrl;
+
+        void merge(UrlContextMetadata metadata) {
+            if (metadata == null || metadata.urlMetadata() == null) {
+                return;
+            }
+            if (urlMetadataByUrl == null) {
+                urlMetadataByUrl = new LinkedHashMap<>();
+            }
+            for (UrlMetadata urlMetadata : metadata.urlMetadata()) {
+                if (urlMetadata != null) {
+                    urlMetadataByUrl.put(urlMetadata.retrievedUrl(), urlMetadata);
+                }
+            }
+        }
+
+        UrlContextMetadata build() {
+            if (urlMetadataByUrl == null) {
+                return null;
+            }
+            return new UrlContextMetadata(new ArrayList<>(urlMetadataByUrl.values()));
+        }
     }
 }

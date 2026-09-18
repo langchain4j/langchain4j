@@ -1,8 +1,8 @@
 package dev.langchain4j.service.tool;
 
-import java.util.function.Function;
 import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.service.AiServices;
+import java.util.function.Function;
 
 /**
  * Handler for {@link ToolArgumentsException}s thrown by a {@link ToolExecutor}.

@@ -8,9 +8,9 @@ import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolCall;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialThinking;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onUnmappedRawEvent;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
@@ -33,6 +33,7 @@ import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventContext;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.internal.ExceptionMapper;
+import dev.langchain4j.internal.MappingTrackingStreamingChatResponseHandler;
 import dev.langchain4j.internal.ToolCallBuilder;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -174,9 +175,13 @@ class OllamaClient {
                 .body(toJson(ollamaChatRequest))
                 .build();
 
+        StreamingChatResponseHandler targetHandler = handler;
+
         httpClient.execute(httpRequest, new OllamaServerSentEventParser(), new ServerSentEventListener() {
 
-            final ToolCallBuilder toolCallBuilder = new ToolCallBuilder();
+            final MappingTrackingStreamingChatResponseHandler handler =
+                    new MappingTrackingStreamingChatResponseHandler(targetHandler);
+            final ToolCallBuilder toolCallBuilder = new ToolCallBuilder(-1);
             final OllamaStreamingResponseBuilder responseBuilder =
                     new OllamaStreamingResponseBuilder(toolCallBuilder, returnThinking);
             volatile StreamingHandle streamingHandle;
@@ -192,6 +197,8 @@ class OllamaClient {
                     streamingHandle = toStreamingHandle(context.parsingHandle());
                 }
 
+                handler.resetMappingTracking();
+
                 OllamaChatResponse ollamaChatResponse = fromJson(event.data(), OllamaChatResponse.class);
 
                 String error = ollamaChatResponse.getError();
@@ -204,6 +211,7 @@ class OllamaClient {
 
                 Message message = ollamaChatResponse.getMessage();
                 if (message == null) {
+                    onUnmappedRawEvent(handler, event);
                     return;
                 }
 
@@ -220,31 +228,25 @@ class OllamaClient {
                 List<ToolCall> toolCalls = message.getToolCalls();
                 if (toolCalls != null) {
                     for (ToolCall toolCall : toolCalls) {
-
-                        int index = getOrDefault(toolCall.getFunction().getIndex(), 0);
-                        if (toolCallBuilder.index() != index) {
-                            onCompleteToolCall(handler, toolCallBuilder.buildAndReset());
-                            toolCallBuilder.updateIndex(index);
-                        }
-
-                        toolCallBuilder.updateName(toolCall.getFunction().getName());
+                        // Ollama never streams tool calls token by token: "arguments" is always
+                        // a complete JSON object, so every element is a complete tool call
+                        toolCallBuilder.updateIndex(toolCallBuilder.index() + 1);
                         toolCallBuilder.updateId(toolCall.getId());
+                        toolCallBuilder.updateName(toolCall.getFunction().getName());
+                        toolCallBuilder.appendArguments(
+                                toJsonWithoutIdent(toolCall.getFunction().getArguments()));
 
-                        String partialArguments =
-                                toJsonWithoutIdent(toolCall.getFunction().getArguments());
-                        if (isNotNullOrEmpty(partialArguments)) {
-                            toolCallBuilder.appendArguments(partialArguments);
-                        }
+                        onCompleteToolCall(handler, toolCallBuilder.buildAndReset());
                     }
                 }
 
                 if (TRUE.equals(ollamaChatResponse.getDone())) {
-                    if (toolCallBuilder.hasRequests()) {
-                        onCompleteToolCall(handler, toolCallBuilder.buildAndReset());
-                    }
-
                     ChatResponse completeResponse = responseBuilder.build(ollamaChatResponse);
                     onCompleteResponse(handler, completeResponse);
+                }
+
+                if (!handler.wasMapped()) {
+                    onUnmappedRawEvent(handler, event);
                 }
             }
 

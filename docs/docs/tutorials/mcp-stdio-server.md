@@ -113,9 +113,3 @@ Add a server entry in `claude_desktop_config.json`:
 ```
 
 Use absolute paths; on Windows, escape backslashes.
-
-## Complete runnable example
-
-See the `mcp-stdio-server-example` in the examples repository for an end-to-end runnable project (including packaging and client config):
-
-- https://github.com/langchain4j/langchain4j-examples (directory: `mcp-stdio-server-example`)

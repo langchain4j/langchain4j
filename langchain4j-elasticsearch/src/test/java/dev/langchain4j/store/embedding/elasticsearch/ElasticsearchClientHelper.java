@@ -95,57 +95,61 @@ public class ElasticsearchClientHelper {
      * @param cloudApiKey the cloud API key if any. If null, we won't use the cloud
      * @param password    the password to use. If null, we won't use a password
      * @param certificate the SSL certificate if any. If null, we won't check the certificate
-     * @return null if no cluster is running
+     * @return the client, connected to a running cluster
      */
     private ElasticsearchClient startClient(String address, String cloudApiKey, String password, byte[] certificate) {
-        try {
-            log.debug(
-                    "Trying to connect to {} {}.",
-                    address,
-                    certificate == null ? "with no ssl checks" : "using the provided SSL certificate");
+        log.debug(
+                "Trying to connect to {} {}.",
+                address,
+                certificate == null ? "with no ssl checks" : "using the provided SSL certificate");
 
-            // Create the API client
-            client = ElasticsearchClient.of(builder -> {
-                builder.host(address);
-                if (!isNullOrBlank(cloudApiKey)) {
-                    builder.apiKey(cloudApiKey);
+        // Create the API client
+        client = ElasticsearchClient.of(builder -> {
+            builder.host(address);
+            if (!isNullOrBlank(cloudApiKey)) {
+                builder.apiKey(cloudApiKey);
+            } else {
+                builder.usernameAndPassword("elastic", password);
+                if (certificate != null) {
+                    builder.sslContext(createContextFromCaCert(certificate));
                 } else {
-                    builder.usernameAndPassword("elastic", password);
-                    if (certificate != null) {
-                        builder.sslContext(createContextFromCaCert(certificate));
-                    } else {
-                        builder.sslContext(createTrustAllCertsContext());
-                    }
+                    builder.sslContext(createTrustAllCertsContext());
                 }
-                return builder;
-            });
+            }
+            return builder;
+        });
 
-            final InfoResponse info = client.info();
-            version = info.version().number();
-            log.info("Found Elasticsearch cluster version [{}] running at [{}].", version, address);
+        // The cluster can still refuse connections for a while after the container reports being started
+        await("Elasticsearch cluster to be reachable")
+                .pollInterval(ofSeconds(1))
+                .atMost(ofSeconds(60))
+                .until(() -> {
+                    try {
+                        final InfoResponse info = client.info();
+                        version = info.version().number();
+                        return true;
+                    } catch (Exception e) {
+                        log.debug("Elasticsearch cluster not reachable yet at {}.", address, e);
+                        return false;
+                    }
+                });
+        log.info("Found Elasticsearch cluster version [{}] running at [{}].", version, address);
 
-            await("Elasticsearch license to be ready")
-                    .pollInterval(ofSeconds(1))
-                    .atMost(ofSeconds(30))
-                    .until(() -> {
-                        try {
-                            final GetLicenseResponse licenseResponse =
-                                    client.license().get();
-                            license = licenseResponse.license().type().name();
-                            return true;
-                        } catch (Exception e) {
-                            log.debug("Elasticsearch cluster not ready yet at {}.", address);
-                            return false;
-                        }
-                    });
+        await("Elasticsearch license to be ready")
+                .pollInterval(ofSeconds(1))
+                .atMost(ofSeconds(30))
+                .until(() -> {
+                    try {
+                        final GetLicenseResponse licenseResponse = client.license().get();
+                        license = licenseResponse.license().type().name();
+                        return true;
+                    } catch (Exception e) {
+                        log.debug("Elasticsearch cluster not ready yet at {}.", address);
+                        return false;
+                    }
+                });
 
-            return client;
-        } catch (Exception e) {
-            // No cluster is running. Return a null client.
-            log.debug("No cluster is running yet at {}.", address);
-            log.debug("Exception: ", e);
-            return null;
-        }
+        return client;
     }
 
     public boolean isGTENineTwo() {

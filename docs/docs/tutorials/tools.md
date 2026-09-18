@@ -769,7 +769,7 @@ This way, the LLM has more information to decide whether or not to call the give
 
 ### Inheritance and tool discovery
 
-Concrete `@Tool`-annotated methods are inherited from superclasses and interfaces. When you pass a tool object to an AI Service, LangChain4j discovers `@Tool` methods from the object's class, all of its superclasses (up to, but excluding, `Object`), and `default` and `static` methods from implemented interfaces.
+When you pass a tool object to an AI Service, LangChain4j discovers `@Tool` methods from the object's class, all of its superclasses (up to, but excluding, `Object`), and `default` and `static` methods from implemented interfaces.
 
 ```java
 class BaseMathTools {
@@ -816,6 +816,38 @@ class ChildTools extends ParentTools {
 ```
 
 Here the LLM will see a single tool named `greet_formal` with description "Returns a formal greeting".
+
+A method is a tool also when it overrides or implements a `@Tool`-annotated method without repeating the annotation.
+This is handy when the tools are declared in an interface and implemented elsewhere:
+
+```java
+interface WeatherTools {
+
+    @Tool("Returns the weather in the given city")
+    String weather(String city);
+}
+
+class OpenMeteoWeatherTools implements WeatherTools {
+
+    @Override
+    public String weather(String city) {
+        return ...;
+    }
+}
+
+Assistant assistant = AiServices.builder(Assistant.class)
+    .chatModel(model)
+    .tools(new OpenMeteoWeatherTools()) // "weather" is available, described as declared in the interface
+    .build();
+```
+
+The LLM sees the `@Tool` annotation of the overridden method, unless the overriding method declares its own.
+
+This is also what makes tools work when the tool object is wrapped in a proxy,
+for example a Spring bean to which an `@Aspect`, `@Transactional` or `@Async` has been applied.
+Such a proxy is a generated subclass that overrides the tool methods, and Java does not copy method annotations
+into overriding methods, so the annotations are looked up on the class being proxied.
+Tools are invoked through the proxy, so interceptors and aspects still run.
 
 If a subclass declares a method with the same name as a parent method but with different parameters (an overload, not an override), both methods are discovered. Since tool names must be unique and default to the method name, you must give at least one of them an explicit name:
 
@@ -1042,6 +1074,7 @@ ToolExecutionRequest request = toolExecution.request();
 String result = toolExecution.result(); // tool execution result as text
 List<Content> resultContents = toolExecution.resultContents(); // tool execution result as content list (may include images)
 Object resultObject = toolExecution.resultObject(); // actual value returned by the tool
+Map<String, Object> attributes = toolExecution.attributes(); // attributes of the tool execution result, see below
 ```
 
 In streaming mode, you can do so by specifying `onToolExecuted` callback:
@@ -1060,6 +1093,38 @@ tokenStream
     .onError(...)
     .start();
 ```
+
+### Tool Result Attributes
+
+A tool execution result can carry attributes: a `Map<String, Object>` that is **not** sent to the LLM.
+Attributes are useful for data that only your application needs, for example the ID of a record
+that the tool has created, or a widget that your UI should render.
+
+Attributes can be set by a custom `ToolExecutor`:
+```java
+ToolExecutor toolExecutor = (toolExecutionRequest, context) -> ToolExecutionResult.builder()
+        .resultText("Sunny, 22 degrees") // sent to the LLM
+        .attributes(Map.of("widget", weatherWidget)) // not sent to the LLM
+        .build();
+```
+For [MCP](/tutorials/mcp) tools, they originate from the `_meta` field of the tool call response.
+For those, the tool provider needs to be configured with
+[`returnToolResultAttributes(true)`](/tutorials/mcp#mcp-tool-result-metadata).
+
+Attributes can be read from the `ToolExecution` (see [Accessing Executed Tools](#accessing-executed-tools) above).
+They are also propagated into `ToolExecutionResultMessage.attributes()`,
+so they are stored in the [`ChatMemory`](/tutorials/chat-memory) together with the message.
+
+:::note
+If you use a `ChatMemoryStore` that persists messages, they are serialized to JSON.
+Make sure that all attribute values can be serialized to JSON and are useful once deserialized:
+- A value that cannot be serialized (for example an `InputStream`) will fail the whole store operation.
+- Values are deserialized as plain JSON types, so a custom object stored as an attribute
+comes back as a `Map` and can no longer be cast to its original type.
+
+Attributes are also stored for every message, so avoid putting large values there
+if the conversation is persisted.
+:::
 
 ### Specifying Tools Programmatically
 
@@ -1501,6 +1566,14 @@ Like `IMMEDIATE`, `IMMEDIATE_IF_LAST` is only allowed on AI services with a `Res
 
 ### Error Handling
 
+:::note
+The defaults below apply to the synchronous and `TokenStream` modes. In the asynchronous and reactive modes they
+are **reversed**: a tool *execution* error fails the invocation instead of being sent to the LLM, and a tool
+*argument-parse* error is sent to the LLM instead of failing the invocation. A handler you configure explicitly is
+used by every mode. See [Non-blocking and Reactive](/tutorials/non-blocking#tool-errors).
+:::
+
+
 #### Handling Tool Name Errors
 
 It may happen that an LLM hallucinates on tools invocation,
@@ -1635,10 +1708,162 @@ As with the `ToolArgumentsErrorHandler`, there are two ways to handle errors in 
 return a text message or throw an exception. You can use `errorContext.rawError()` to inspect
 the raw error before cause-unwrapping when deciding how to handle it.
 
+### Compensating Tool Actions
+
+When an AI Service uses multiple tools to accomplish a task, a failure in one tool
+can leave the system in an inconsistent state — some tools have already executed
+successfully while others have not. For example, in a bank transfer the LLM might
+credit the recipient's account first and then fail to withdraw from the sender's
+account due to insufficient funds, leaving the recipient with extra money.
+
+To handle this, you can enable **compensation on tool errors**. When enabled,
+if any tool execution fails, all previously successful tool calls that declare a
+compensating action are automatically undone in reverse order.
+
+#### Declaring Compensating Actions with `@CompensateFor`
+
+Use the `@CompensateFor` annotation on a method to declare it as the compensating
+action for a `@Tool`. The `value` must match the name of the tool as exposed to the LLM —
+its `@Tool(name = ...)` attribute when set, otherwise the `@Tool` method name (used as the
+tool name by default).
+The compensating method must either have the same parameter types as the tool,
+or accept a single `ToolExecution` parameter.
+
+**Option 1: Same parameter types** — the compensating method receives the same
+arguments that were passed to the original tool:
+
+```java
+class BankAccountService {
+
+    @Tool("credits money to a bank account")
+    void credit(String name, double amount) {
+        accounts.merge(name, amount, Double::sum);
+    }
+
+    @CompensateFor("credit")
+    void uncredit(String name, double amount) {
+        accounts.merge(name, -amount, Double::sum);
+    }
+
+    @Tool("withdraws money from a bank account")
+    void withdraw(String name, double amount) {
+        if (accounts.getOrDefault(name, 0.0) < amount) {
+            throw new RuntimeException("Insufficient funds");
+        }
+        accounts.merge(name, -amount, Double::sum);
+    }
+
+    @CompensateFor("withdraw")
+    void unwithdraw(String name, double amount) {
+        accounts.merge(name, amount, Double::sum);
+    }
+}
+```
+
+**Option 2: `ToolExecution` parameter** — the compensating method receives the full
+`ToolExecution`, giving access to both the original arguments and the tool's
+**return value**. This is useful when undoing an action requires information
+produced by the original execution (e.g. a transaction ID):
+
+```java
+class BankAccountService {
+
+    @Tool("credits money to a bank account")
+    String credit(String name, double amount) {
+        accounts.merge(name, amount, Double::sum);
+        return createTransactionRecord(name, amount); // e.g. "TX-42"
+    }
+
+    @CompensateFor("credit")
+    void uncredit(ToolExecution toolExecution) {
+        String transactionId = toolExecution.result(); // "TX-42"
+        reverseTransaction(transactionId);
+    }
+}
+```
+
+#### Enabling Compensation
+
+Call `.compensateOnToolErrors(true)` when building the AI Service:
+
+```java
+Assistant assistant = AiServices.builder(Assistant.class)
+        .chatModel(model)
+        .tools(new BankAccountService())
+        .compensateOnToolErrors(true)
+        .build();
+```
+
+With this configuration, if the LLM calls `credit("Dmytro", 100)` and then
+`withdraw("Mario", 100)` which fails, the framework will automatically call
+`uncredit("Dmytro", 100)` to undo the credit. Instead of throwing an exception,
+the framework sends informative result messages back to the LLM for each tool:
+rolled-back tools get a message like _"Tool 'credit' was executed successfully but
+was rolled back due to failure of tool 'withdraw'"_, and the failed tool gets its
+normal error message. This keeps the `ChatMemory` consistent and lets the LLM
+decide what to do next — retry, inform the user, or take a different approach.
+
+Without `.compensateOnToolErrors(true)`, the error is sent back to the LLM as usual and no
+compensation occurs — even if `@CompensateFor` annotations are present.
+
+#### Validation
+
+When `.compensateOnToolErrors(true)` is enabled, each `@CompensateFor` is validated:
+- The referenced tool must exist (by name) on the same object.
+- The compensating method must have exactly the same parameter types as the tool,
+  or accept a single `ToolExecution` parameter.
+
+If either check fails, an `IllegalConfigurationException` is thrown immediately,
+so misconfigurations are caught at startup rather than at runtime.
+If `.compensateOnToolErrors(true)` is not enabled, `@CompensateFor` annotations
+are silently ignored and no validation is performed.
+
+#### Notes and Limitations
+
+:::note
+Compensation is best-effort: if a compensating action itself throws an exception, it is
+logged at WARN level and the remaining compensating actions continue to execute.
+:::
+
+:::note
+`@CompensateFor` methods are not exposed to the LLM — they are internal compensation
+infrastructure and do not appear in tool specifications.
+:::
+
+:::note
+Compensating actions always run sequentially in reverse order, even when tool
+execution is configured to run in parallel via `.executeToolsConcurrently()`.
+:::
+
+:::note
+`@CompensateFor` methods can be inherited from superclasses, consistent with how
+`@Tool` methods are discovered.
+:::
+
+:::note
+`@CompensateFor` only works with `@Tool`-annotated methods. Programmatically or
+dynamically defined tools (e.g. MCP tools, tools registered via `ToolSpecification`)
+are not supported.
+:::
+
+:::note
+Compensating tool actions are currently marked as experimental and may evolve
+in future releases.
+:::
+
 ## Model Context Protocol (MCP)
 
 You can also import [tools from MCP server](https://modelcontextprotocol.io/docs/concepts/tools).
 More information on this can be found [here](/tutorials/mcp/#creating-an-mcp-tool-provider).
+
+:::note
+In the asynchronous and reactive AI Service modes, tools behave differently: they always run on an `Executor`
+and therefore **execute concurrently by default** (pass a single-threaded `Executor` to
+`executeToolsConcurrently(Executor)` to serialize them), a tool **execution** error fails the invocation while a
+tool **argument-parse** error is sent back to the LLM, and a hand-written `ToolExecutor` should implement
+`executeAsync(...)` or it will fail loudly rather than block a thread.
+See [Non-blocking and Reactive](/tutorials/non-blocking).
+:::
 
 ## Related Tutorials
 

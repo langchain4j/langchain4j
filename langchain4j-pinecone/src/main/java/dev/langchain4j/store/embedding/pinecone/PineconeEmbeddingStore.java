@@ -1,5 +1,15 @@
 package dev.langchain4j.store.embedding.pinecone;
 
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.internal.Utils.randomUUID;
+import static dev.langchain4j.internal.ValidationUtils.ensureConsistentSizes;
+import static dev.langchain4j.store.embedding.pinecone.PineconeHelper.metadataToStruct;
+import static dev.langchain4j.store.embedding.pinecone.PineconeHelper.structToMetadata;
+import static io.pinecone.commons.IndexInterface.buildUpsertVectorWithUnsignedIndices;
+import static java.util.Collections.singletonList;
+import static java.util.Comparator.comparingDouble;
+import static java.util.stream.Collectors.toList;
+
 import com.google.protobuf.Struct;
 import com.google.protobuf.Value;
 import dev.langchain4j.data.document.Metadata;
@@ -16,27 +26,14 @@ import io.pinecone.clients.Pinecone;
 import io.pinecone.unsigned_indices_model.QueryResponseWithUnsignedIndices;
 import io.pinecone.unsigned_indices_model.ScoredVectorWithUnsignedIndices;
 import io.pinecone.unsigned_indices_model.VectorWithUnsignedIndices;
-import org.openapitools.db_control.client.model.IndexList;
-import org.openapitools.db_control.client.model.IndexModel;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-
-import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-import static dev.langchain4j.internal.Utils.randomUUID;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
-import static dev.langchain4j.store.embedding.pinecone.PineconeHelper.metadataToStruct;
-import static dev.langchain4j.store.embedding.pinecone.PineconeHelper.structToMetadata;
-import static io.pinecone.commons.IndexInterface.buildUpsertVectorWithUnsignedIndices;
-import static java.util.Collections.singletonList;
-import static java.util.Comparator.comparingDouble;
-import static java.util.stream.Collectors.toList;
+import org.openapitools.db_control.client.model.IndexList;
+import org.openapitools.db_control.client.model.IndexModel;
 
 /**
  * Represents a <a href="https://www.pinecone.io/">Pinecone</a> index as an embedding store.
@@ -52,10 +49,9 @@ import static java.util.stream.Collectors.toList;
  */
 public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
 
-    private static final Logger log = LoggerFactory.getLogger(PineconeEmbeddingStore.class);
-
     private static final String DEFAULT_NAMESPACE = "default"; // do not change, will break backward compatibility!
-    private static final String DEFAULT_METADATA_TEXT_KEY = "text_segment"; // do not change, will break backward compatibility!
+    private static final String DEFAULT_METADATA_TEXT_KEY =
+            "text_segment"; // do not change, will break backward compatibility!
 
     private final Index index;
     private final String nameSpace;
@@ -72,13 +68,14 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param environment     (Deprecated) Please use @{@link Builder#createIndex(PineconeIndexConfig)}.
      * @param projectId       (Deprecated) Please use @{@link Builder#createIndex(PineconeIndexConfig)}.
      */
-    public PineconeEmbeddingStore(String apiKey,
-                                  String index,
-                                  String nameSpace,
-                                  String metadataTextKey,
-                                  PineconeIndexConfig createIndex,
-                                  String environment,
-                                  String projectId) {
+    public PineconeEmbeddingStore(
+            String apiKey,
+            String index,
+            String nameSpace,
+            String metadataTextKey,
+            PineconeIndexConfig createIndex,
+            String environment,
+            String projectId) {
         Pinecone client = new Pinecone.Builder(apiKey).build();
         this.nameSpace = nameSpace == null ? DEFAULT_NAMESPACE : nameSpace;
         this.metadataTextKey = metadataTextKey == null ? DEFAULT_METADATA_TEXT_KEY : metadataTextKey;
@@ -116,9 +113,7 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
     @Override
     public List<String> addAll(List<Embedding> embeddings) {
 
-        List<String> ids = embeddings.stream()
-                .map(ignored -> randomUUID())
-                .collect(toList());
+        List<String> ids = embeddings.stream().map(ignored -> randomUUID()).collect(toList());
 
         addAll(ids, embeddings, null);
 
@@ -127,7 +122,9 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     @Override
     public void removeAll(Collection<String> ids) {
-        ensureNotEmpty(ids, "ids");
+        if (isNullOrEmpty(ids)) {
+            return;
+        }
         index.deleteByIds(new ArrayList<>(ids), nameSpace);
     }
 
@@ -146,7 +143,8 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
             response = index.queryByVector(request.maxResults(), embedding.vectorAsList(), nameSpace, true, true);
         } else {
             Struct metadataFilter = PineconeMetadataFilterMapper.map(request.filter());
-            response = index.queryByVector(request.maxResults(), embedding.vectorAsList(), nameSpace, metadataFilter, true, true);
+            response = index.queryByVector(
+                    request.maxResults(), embedding.vectorAsList(), nameSpace, metadataFilter, true, true);
         }
         List<ScoredVectorWithUnsignedIndices> matchesList = response.getMatchesList();
 
@@ -159,7 +157,6 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
         Collections.reverse(matches);
 
         return new EmbeddingSearchResult<>(matches);
-
     }
 
     private void addInternal(String id, Embedding embedding, TextSegment textSegment) {
@@ -168,8 +165,8 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     @Override
     public void addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> textSegments) {
-        if (isNullOrEmpty(ids) || isNullOrEmpty(embeddings)) {
-            log.info("Empty embeddings - no ops");
+        ensureConsistentSizes(ids, embeddings, textSegments);
+        if (isNullOrEmpty(embeddings)) {
             return;
         }
         List<VectorWithUnsignedIndices> vectors = new ArrayList<>(embeddings.size());
@@ -195,10 +192,13 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
         IndexList indexList = client.listIndexes();
         List<IndexModel> indexModels = indexList.getIndexes();
 
-        return !isNullOrEmpty(indexModels) && indexModels.stream().anyMatch(indexModel -> indexModel.getName().equals(index));
+        return !isNullOrEmpty(indexModels)
+                && indexModels.stream()
+                        .anyMatch(indexModel -> indexModel.getName().equals(index));
     }
 
-    private EmbeddingMatch<TextSegment> toEmbeddingMatch(ScoredVectorWithUnsignedIndices indices, Embedding referenceEmbedding) {
+    private EmbeddingMatch<TextSegment> toEmbeddingMatch(
+            ScoredVectorWithUnsignedIndices indices, Embedding referenceEmbedding) {
         Map<String, Value> filedsMap = indices.getMetadata().getFieldsMap();
 
         Value textSegmentValue = filedsMap.get(metadataTextKey);
@@ -211,8 +211,7 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
                 RelevanceScore.fromCosineSimilarity(cosineSimilarity),
                 indices.getId(),
                 embedding,
-                textSegmentValue == null ? null : TextSegment.from(textSegmentValue.getStringValue(), metadata)
-        );
+                textSegmentValue == null ? null : TextSegment.from(textSegmentValue.getStringValue(), metadata));
     }
 
     public static class Builder {
@@ -222,8 +221,10 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
         private String nameSpace;
         private String metadataTextKey;
         private PineconeIndexConfig createIndex;
+
         @Deprecated(forRemoval = true)
         private String environment;
+
         @Deprecated(forRemoval = true)
         private String projectId;
 
@@ -289,7 +290,8 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
 
         public PineconeEmbeddingStore build() {
-            return new PineconeEmbeddingStore(apiKey, index, nameSpace, metadataTextKey, createIndex, environment, projectId);
+            return new PineconeEmbeddingStore(
+                    apiKey, index, nameSpace, metadataTextKey, createIndex, environment, projectId);
         }
     }
 }

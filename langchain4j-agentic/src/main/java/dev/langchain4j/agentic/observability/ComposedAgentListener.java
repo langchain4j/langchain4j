@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.function.Predicate;
 
+
 @Internal
 public class ComposedAgentListener implements AgentListener {
 
@@ -95,6 +96,13 @@ public class ComposedAgentListener implements AgentListener {
     public void beforeAgenticScopeDestroyed(final AgenticScope agenticScope) {
         for (AgentListener listener : listeners) {
             listener.beforeAgenticScopeDestroyed(agenticScope);
+        }
+    }
+
+    @Override
+    public void onAgenticSystemSuspended(final AgenticScope agenticScope) {
+        for (AgentListener listener : listeners) {
+            listener.onAgenticSystemSuspended(agenticScope);
         }
     }
 

@@ -1,9 +1,17 @@
 package dev.langchain4j.service.output;
 
+import static dev.langchain4j.service.output.EnumListOutputParserTest.Animal.CAT;
+import static dev.langchain4j.service.output.EnumListOutputParserTest.Animal.DOG;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -11,19 +19,12 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
-import java.util.List;
-import java.util.Optional;
-import java.util.stream.Stream;
-
-import static dev.langchain4j.service.output.EnumListOutputParserTest.Animal.CAT;
-import static dev.langchain4j.service.output.EnumListOutputParserTest.Animal.DOG;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-
 class EnumListOutputParserTest {
 
     enum Animal {
-        CAT, DOG, BIRD
+        CAT,
+        DOG,
+        BIRD
     }
 
     @ParameterizedTest
@@ -57,8 +58,17 @@ class EnumListOutputParserTest {
                 Arguments.of("{\"values\":[\"CAT\"]}", List.of(CAT)),
                 Arguments.of("{\"values\":[\"CAT\", \"DOG\"]}", List.of(CAT, DOG)),
                 Arguments.of("{\"values\":[]}", List.of()),
-                Arguments.of("  {\"values\":[\"CAT\"]}  ", List.of(CAT))
-        );
+                Arguments.of("  {\"values\":[\"CAT\"]}  ", List.of(CAT)),
+
+                // Bare JSON array (a common shape returned by LLMs)
+                Arguments.of("[\"CAT\"]", List.of(CAT)),
+                Arguments.of("[\"CAT\", \"DOG\"]", List.of(CAT, DOG)),
+                Arguments.of("[]", List.of()),
+                Arguments.of("  [\"CAT\", \"DOG\"]  ", List.of(CAT, DOG)),
+
+                // Text that only looks like a bare JSON array: still parsed line by line
+                Arguments.of("[CAT]", List.of(CAT)),
+                Arguments.of("[CAT]\n[DOG]", List.of(CAT, DOG)));
     }
 
     @ParameterizedTest
@@ -73,12 +83,15 @@ class EnumListOutputParserTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {
-            "BANANA",
-            "{\"values\":[\"BANANA\"]}",
-            "{\"values\":\"CAT\"}",
-            "{\"banana\":[\"CAT\"]}"
-    })
+    @ValueSource(
+            strings = {
+                "BANANA",
+                "{\"values\":[\"BANANA\"]}",
+                "{\"values\":\"CAT\"}",
+                "{\"banana\":[\"CAT\"]}",
+                "[\"BANANA\"]",
+                "[\"CAT\"",
+            })
     void should_fail_to_parse_invalid_input(String text) {
 
         // given
@@ -96,7 +109,9 @@ class EnumListOutputParserTest {
 
         // given
         enum MyEnumWithToString {
-            A, B, C;
+            A,
+            B,
+            C;
 
             @Override
             public String toString() {
@@ -112,16 +127,19 @@ class EnumListOutputParserTest {
         Optional<JsonSchema> jsonSchema = parser.jsonSchema();
 
         // then
-        assertThat(jsonSchema).hasValue(JsonSchema.builder()
-                .name("List_of_MyEnumWithToString")
-                .rootElement(JsonObjectSchema.builder()
-                        .addProperty("values", JsonArraySchema.builder()
-                                .items(JsonEnumSchema.builder()
-                                        .enumValues("A", "B", "C")
-                                        .build())
+        assertThat(jsonSchema)
+                .hasValue(JsonSchema.builder()
+                        .name("List_of_MyEnumWithToString")
+                        .rootElement(JsonObjectSchema.builder()
+                                .addProperty(
+                                        "values",
+                                        JsonArraySchema.builder()
+                                                .items(JsonEnumSchema.builder()
+                                                        .enumValues("A", "B", "C")
+                                                        .build())
+                                                .build())
+                                .required("values")
                                 .build())
-                        .required("values")
-                        .build())
-                .build());
+                        .build());
     }
 }

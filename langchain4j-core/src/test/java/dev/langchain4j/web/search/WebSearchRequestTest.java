@@ -3,6 +3,7 @@ package dev.langchain4j.web.search;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
 
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 class WebSearchRequestTest {
@@ -22,7 +23,7 @@ class WebSearchRequestTest {
 
         assertThat(webSearchRequest)
                 .hasToString(
-                        "WebSearchRequest{searchTerms='query', maxResults=null, language='null', geoLocation='null', startPage=1, startIndex=null, siteRestrict=true, additionalParams={}}");
+                        "WebSearchRequest{searchTerms='query', maxResults=null, language='null', geoLocation='null', startPage=1, startIndex=null, safeSearch=true, additionalParams={}}");
     }
 
     @Test
@@ -41,7 +42,7 @@ class WebSearchRequestTest {
 
         assertThat(webSearchRequest)
                 .hasToString(
-                        "WebSearchRequest{searchTerms='query', maxResults=null, language='null', geoLocation='null', startPage=1, startIndex=null, siteRestrict=true, additionalParams={}}");
+                        "WebSearchRequest{searchTerms='query', maxResults=null, language='null', geoLocation='null', startPage=1, startIndex=null, safeSearch=true, additionalParams={}}");
     }
 
     @Test
@@ -59,7 +60,7 @@ class WebSearchRequestTest {
 
         assertThat(webSearchRequest)
                 .hasToString(
-                        "WebSearchRequest{searchTerms='query', maxResults=10, language='null', geoLocation='null', startPage=1, startIndex=null, siteRestrict=true, additionalParams={}}");
+                        "WebSearchRequest{searchTerms='query', maxResults=10, language='null', geoLocation='null', startPage=1, startIndex=null, safeSearch=true, additionalParams={}}");
     }
 
     @Test
@@ -78,7 +79,32 @@ class WebSearchRequestTest {
 
         assertThat(webSearchRequest)
                 .hasToString(
-                        "WebSearchRequest{searchTerms='query', maxResults=10, language='null', geoLocation='null', startPage=1, startIndex=null, siteRestrict=true, additionalParams={}}");
+                        "WebSearchRequest{searchTerms='query', maxResults=10, language='null', geoLocation='null', startPage=1, startIndex=null, safeSearch=true, additionalParams={}}");
+    }
+
+    @Test
+    void should_label_every_field_in_toString_with_its_own_name() {
+        WebSearchRequest webSearchRequest = WebSearchRequest.builder()
+                .searchTerms("query")
+                .maxResults(10)
+                .language("en")
+                .geoLocation("us")
+                .startPage(2)
+                .startIndex(3)
+                .safeSearch(false)
+                .additionalParams(Map.of("key", "value"))
+                .build();
+
+        assertThat(webSearchRequest.toString())
+                .contains("searchTerms='query'")
+                .contains("maxResults=10")
+                .contains("language='en'")
+                .contains("geoLocation='us'")
+                .contains("startPage=2")
+                .contains("startIndex=3")
+                .contains("safeSearch=false")
+                .contains("additionalParams={key=value}")
+                .doesNotContain("siteRestrict=");
     }
 
     @Test

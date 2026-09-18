@@ -49,6 +49,8 @@ import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.openai.LogProb;
 import dev.langchain4j.model.openai.OpenAiChatRequestParameters;
+import dev.langchain4j.model.openai.OpenAiPromptCacheBreakpoint;
+import dev.langchain4j.model.openai.OpenAiPromptCacheOptions;
 import dev.langchain4j.model.openai.OpenAiTokenUsage;
 import dev.langchain4j.model.openai.OpenAiTokenUsage.InputTokensDetails;
 import dev.langchain4j.model.openai.OpenAiTokenUsage.OutputTokensDetails;
@@ -65,22 +67,26 @@ import dev.langchain4j.model.openai.internal.chat.InputAudio;
 import dev.langchain4j.model.openai.internal.chat.LogProbs;
 import dev.langchain4j.model.openai.internal.chat.Message;
 import dev.langchain4j.model.openai.internal.chat.PdfFile;
+import dev.langchain4j.model.openai.internal.chat.PromptCacheBreakpoint;
 import dev.langchain4j.model.openai.internal.chat.Tool;
 import dev.langchain4j.model.openai.internal.chat.ToolCall;
 import dev.langchain4j.model.openai.internal.chat.ToolChoiceMode;
 import dev.langchain4j.model.openai.internal.chat.ToolMessage;
 import dev.langchain4j.model.openai.internal.chat.VideoUrl;
 import dev.langchain4j.model.openai.internal.shared.CompletionTokensDetails;
+import dev.langchain4j.model.openai.internal.shared.PromptCacheOptions;
 import dev.langchain4j.model.openai.internal.shared.PromptTokensDetails;
 import dev.langchain4j.model.openai.internal.shared.Usage;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Internal
 public class OpenAiUtils {
@@ -89,42 +95,69 @@ public class OpenAiUtils {
     public static final String DEFAULT_USER_AGENT = "langchain4j-openai";
 
     public static List<Message> toOpenAiMessages(List<ChatMessage> messages) {
-        return toOpenAiMessages(messages, false, null);
+        return toOpenAiMessages(messages, false, null, false);
     }
 
     public static List<Message> toOpenAiMessages(
             List<ChatMessage> messages, boolean sendThinking, String thinkingFieldName) {
+        return toOpenAiMessages(messages, sendThinking, thinkingFieldName, false);
+    }
+
+    public static List<Message> toOpenAiMessages(
+            List<ChatMessage> messages, boolean sendThinking, String thinkingFieldName, boolean useInputImageFormat) {
         return messages.stream()
-                .map(message -> toOpenAiMessage(message, sendThinking, thinkingFieldName))
+                .map(message -> toOpenAiMessage(message, sendThinking, thinkingFieldName, useInputImageFormat))
                 .collect(toList());
     }
 
     public static Message toOpenAiMessage(ChatMessage message) {
-        return toOpenAiMessage(message, false, null);
+        return toOpenAiMessage(message, false, null, false);
     }
 
     public static Message toOpenAiMessage(ChatMessage message, boolean sendThinking, String thinkingFieldName) {
-        if (message instanceof SystemMessage) {
-            return dev.langchain4j.model.openai.internal.chat.SystemMessage.from(((SystemMessage) message).text());
+        return toOpenAiMessage(message, sendThinking, thinkingFieldName, false);
+    }
+
+    public static Message toOpenAiMessage(
+            ChatMessage message, boolean sendThinking, String thinkingFieldName, boolean useInputImageFormat) {
+        if (message instanceof SystemMessage systemMessage) {
+            if (!OpenAiPromptCacheBreakpoint.isMarked(systemMessage.attributes())) {
+                return dev.langchain4j.model.openai.internal.chat.SystemMessage.from(systemMessage.text());
+            }
+            // the string form of "content" cannot carry a "prompt_cache_breakpoint", so the block form is used
+            return dev.langchain4j.model.openai.internal.chat.SystemMessage.builder()
+                    .content(
+                            List.of(withPromptCacheBreakpoint(toOpenAiContent(TextContent.from(systemMessage.text())))))
+                    .build();
         }
 
         if (message instanceof UserMessage userMessage) {
-            if (userMessage.hasSingleText()) {
+            boolean promptCacheBreakpoint = OpenAiPromptCacheBreakpoint.isMarked(userMessage.attributes());
+
+            if (userMessage.hasSingleText() && !promptCacheBreakpoint) {
                 return dev.langchain4j.model.openai.internal.chat.UserMessage.builder()
                         .content(userMessage.singleText())
                         .name(userMessage.name())
                         .build();
             } else {
+                List<dev.langchain4j.model.openai.internal.chat.Content> contents = userMessage.contents().stream()
+                        .map(content -> toOpenAiContent(content, useInputImageFormat))
+                        .collect(toList());
                 return dev.langchain4j.model.openai.internal.chat.UserMessage.builder()
-                        .content(userMessage.contents().stream()
-                                .map(OpenAiUtils::toOpenAiContent)
-                                .collect(toList()))
+                        .content(promptCacheBreakpoint ? withPromptCacheBreakpointOnLast(contents) : contents)
                         .name(userMessage.name())
                         .build();
             }
         }
 
         if (message instanceof AiMessage aiMessage) {
+
+            if (OpenAiPromptCacheBreakpoint.isMarked(aiMessage.attributes())) {
+                throw new UnsupportedFeatureException(
+                        "OpenAI does not support a \"" + OpenAiPromptCacheBreakpoint.ATTRIBUTE_KEY
+                                + "\" on an AiMessage. Mark a SystemMessage, a UserMessage "
+                                + "or a ToolExecutionResultMessage instead.");
+            }
 
             String thinking = null;
             if (sendThinking && !isNullOrEmpty(aiMessage.thinking())) {
@@ -180,8 +213,26 @@ public class OpenAiUtils {
                                 + "Only text content is supported.");
             }
 
+            boolean promptCacheBreakpoint =
+                    OpenAiPromptCacheBreakpoint.isMarked(toolExecutionResultMessage.attributes());
+
             if (toolExecutionResultMessage.id() == null) {
+                if (promptCacheBreakpoint) {
+                    throw new UnsupportedFeatureException("OpenAI does not support a \""
+                            + OpenAiPromptCacheBreakpoint.ATTRIBUTE_KEY
+                            + "\" on a legacy function message. Set ToolExecutionResultMessage.id to send it "
+                            + "as a tool message instead.");
+                }
                 return FunctionMessage.from(toolExecutionResultMessage.toolName(), toolExecutionResultMessage.text());
+            }
+
+            if (promptCacheBreakpoint) {
+                // the string form of "content" cannot carry a "prompt_cache_breakpoint", so the block form is used
+                return ToolMessage.builder()
+                        .toolCallId(toolExecutionResultMessage.id())
+                        .content(List.of(withPromptCacheBreakpoint(
+                                toOpenAiContent(TextContent.from(toolExecutionResultMessage.text())))))
+                        .build();
             }
 
             return ToolMessage.from(toolExecutionResultMessage.id(), toolExecutionResultMessage.text());
@@ -190,11 +241,57 @@ public class OpenAiUtils {
         throw illegalArgument("Unknown message type: " + message.type());
     }
 
-    private static dev.langchain4j.model.openai.internal.chat.Content toOpenAiContent(Content content) {
+    private static final PromptCacheBreakpoint PROMPT_CACHE_BREAKPOINT = PromptCacheBreakpoint.builder()
+            .mode(OpenAiPromptCacheBreakpoint.MODE_EXPLICIT)
+            .build();
+
+    /**
+     * Content block types that OpenAI accepts a {@code prompt_cache_breakpoint} on
+     * in the Chat Completions API.
+     */
+    private static final Set<ContentType> PROMPT_CACHE_BREAKPOINT_CONTENT_TYPES = EnumSet.of(
+            ContentType.TEXT, ContentType.IMAGE_URL, ContentType.INPUT_IMAGE, ContentType.AUDIO, ContentType.FILE);
+
+    private static dev.langchain4j.model.openai.internal.chat.Content withPromptCacheBreakpoint(
+            dev.langchain4j.model.openai.internal.chat.Content content) {
+        if (!PROMPT_CACHE_BREAKPOINT_CONTENT_TYPES.contains(content.type())) {
+            throw new UnsupportedFeatureException("OpenAI does not support a \""
+                    + OpenAiPromptCacheBreakpoint.ATTRIBUTE_KEY + "\" on a " + content.type()
+                    + " content block. Supported content blocks: text, image_url, input_image, input_audio and file.");
+        }
+        return content.toBuilder()
+                .promptCacheBreakpoint(PROMPT_CACHE_BREAKPOINT)
+                .build();
+    }
+
+    /**
+     * Prompt caching is prefix-based, so the breakpoint goes on the last content block of the marked
+     * message: that makes the whole message part of the cached prefix.
+     */
+    private static List<dev.langchain4j.model.openai.internal.chat.Content> withPromptCacheBreakpointOnLast(
+            List<dev.langchain4j.model.openai.internal.chat.Content> contents) {
+        List<dev.langchain4j.model.openai.internal.chat.Content> result = new ArrayList<>(contents);
+        int lastIndex = result.size() - 1;
+        result.set(lastIndex, withPromptCacheBreakpoint(result.get(lastIndex)));
+        return result;
+    }
+
+    private static PromptCacheOptions toOpenAiPromptCacheOptions(OpenAiPromptCacheOptions promptCacheOptions) {
+        if (promptCacheOptions == null) {
+            return null;
+        }
+        return PromptCacheOptions.builder()
+                .mode(promptCacheOptions.mode())
+                .ttl(promptCacheOptions.ttl())
+                .build();
+    }
+
+    private static dev.langchain4j.model.openai.internal.chat.Content toOpenAiContent(
+            Content content, boolean useInputImageFormat) {
         if (content instanceof TextContent) {
             return toOpenAiContent((TextContent) content);
         } else if (content instanceof ImageContent) {
-            return toOpenAiContent((ImageContent) content);
+            return toOpenAiContent((ImageContent) content, useInputImageFormat);
         } else if (content instanceof VideoContent videoContent) {
             return toOpenAiContent(videoContent);
         } else if (content instanceof AudioContent audioContent) {
@@ -213,7 +310,15 @@ public class OpenAiUtils {
                 .build();
     }
 
-    private static dev.langchain4j.model.openai.internal.chat.Content toOpenAiContent(ImageContent content) {
+    private static dev.langchain4j.model.openai.internal.chat.Content toOpenAiContent(
+            ImageContent content, boolean useInputImageFormat) {
+        if (useInputImageFormat) {
+            return dev.langchain4j.model.openai.internal.chat.Content.builder()
+                    .type(ContentType.INPUT_IMAGE)
+                    .inputImageUrl(toUrl(content.image()))
+                    .build();
+        }
+
         return dev.langchain4j.model.openai.internal.chat.Content.builder()
                 .type(ContentType.IMAGE_URL)
                 .imageUrl(ImageUrl.builder()
@@ -415,6 +520,7 @@ public class OpenAiUtils {
         if (promptTokensDetails != null) {
             inputTokensDetails = InputTokensDetails.builder()
                     .cachedTokens(promptTokensDetails.cachedTokens())
+                    .cacheWriteTokens(promptTokensDetails.cacheWriteTokens())
                     .build();
         }
 
@@ -554,9 +660,22 @@ public class OpenAiUtils {
             String thinkingFieldName,
             Boolean strictTools,
             Boolean strictJsonSchema) {
+        return toOpenAiChatRequest(
+                chatRequest, parameters, sendThinking, thinkingFieldName, strictTools, strictJsonSchema, false);
+    }
+
+    public static ChatCompletionRequest.Builder toOpenAiChatRequest(
+            ChatRequest chatRequest,
+            OpenAiChatRequestParameters parameters,
+            boolean sendThinking,
+            String thinkingFieldName,
+            Boolean strictTools,
+            Boolean strictJsonSchema,
+            boolean useInputImageFormat) {
 
         return ChatCompletionRequest.builder()
-                .messages(toOpenAiMessages(chatRequest.messages(), sendThinking, thinkingFieldName))
+                .messages(
+                        toOpenAiMessages(chatRequest.messages(), sendThinking, thinkingFieldName, useInputImageFormat))
                 // common parameters
                 .model(parameters.modelName())
                 .temperature(parameters.temperature())
@@ -577,6 +696,8 @@ public class OpenAiUtils {
                 .store(parameters.store())
                 .metadata(parameters.metadata())
                 .serviceTier(parameters.serviceTier())
+                .promptCacheKey(parameters.promptCacheKey())
+                .promptCacheOptions(toOpenAiPromptCacheOptions(parameters.promptCacheOptions()))
                 .reasoningEffort(parameters.reasoningEffort())
                 .logprobs(parameters.logprobs())
                 .topLogprobs(parameters.topLogprobs())
