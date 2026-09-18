@@ -745,6 +745,7 @@ class MessageWindowChatMemoryTest implements WithAssertions {
                 .containsExactly(userMessage("hello"), aiMessageWithTools, resultMessage);
         assertThat(chatMemory.messages()).containsExactly(userMessage("hello"), aiMessageWithTools, resultMessage);
     }
+
     @Test
     void should_not_remove_in_flight_tool_block_during_addAsync_when_auto_recover_is_enabled() {
 
@@ -807,5 +808,4 @@ class MessageWindowChatMemoryTest implements WithAssertions {
         // then
         assertThat(store.getMessages("default")).containsExactly(systemMessage, aiMessageWithTools, resultMessage);
     }
-
 }

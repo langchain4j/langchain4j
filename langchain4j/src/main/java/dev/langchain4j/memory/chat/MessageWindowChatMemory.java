@@ -82,8 +82,7 @@ public class MessageWindowChatMemory implements ChatMemory {
     @Override
     public CompletableFuture<Void> addAsync(List<ChatMessage> messagesToAdd) {
         return store.getMessagesAsync(id).thenCompose(stored -> {
-            List<ChatMessage> messages =
-                    autoRecoverOrphanedToolMessages ? new LinkedList<>(stored) : windowed(stored);
+            List<ChatMessage> messages = autoRecoverOrphanedToolMessages ? new LinkedList<>(stored) : windowed(stored);
 
             boolean changed = false;
 
@@ -99,9 +98,7 @@ public class MessageWindowChatMemory implements ChatMemory {
                 }
             }
 
-            return changed
-                    ? store.updateMessagesAsync(id, messages)
-                    : CompletableFuture.completedFuture(null);
+            return changed ? store.updateMessagesAsync(id, messages) : CompletableFuture.completedFuture(null);
         });
     }
 
