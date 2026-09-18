@@ -144,6 +144,7 @@ public class ImageUsage {
         @JsonProperty
         private final Integer textTokens;
 
+        @JsonCreator
         public TokensDetails(TokensDetailsBuilder builder) {
             this.imageTokens = builder.imageTokens;
             this.textTokens = builder.textTokens;
@@ -184,6 +185,7 @@ public class ImageUsage {
 
         @JsonPOJOBuilder(withPrefix = "")
         @JsonIgnoreProperties(ignoreUnknown = true)
+        @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
         public static class TokensDetailsBuilder {
 
             private Integer imageTokens;
