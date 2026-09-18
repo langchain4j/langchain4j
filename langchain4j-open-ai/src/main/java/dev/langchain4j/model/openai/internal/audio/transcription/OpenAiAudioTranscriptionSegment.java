@@ -1,18 +1,17 @@
 package dev.langchain4j.model.openai.internal.audio.transcription;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
 import java.util.Objects;
 
 @JsonDeserialize(builder = OpenAiAudioTranscriptionSegment.Builder.class)
 @JsonInclude(JsonInclude.Include.NON_NULL)
-@JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public final class OpenAiAudioTranscriptionSegment {
 
     @JsonProperty
@@ -24,6 +23,7 @@ public final class OpenAiAudioTranscriptionSegment {
     @JsonProperty
     private final Double end;
 
+    @JsonCreator
     public OpenAiAudioTranscriptionSegment(Builder builder) {
         this.text = builder.text;
         this.start = builder.start;
@@ -75,7 +75,7 @@ public final class OpenAiAudioTranscriptionSegment {
 
     @JsonPOJOBuilder(withPrefix = "")
     @JsonIgnoreProperties(ignoreUnknown = true)
-    @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
+    @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
     public static final class Builder {
 
         private String text;

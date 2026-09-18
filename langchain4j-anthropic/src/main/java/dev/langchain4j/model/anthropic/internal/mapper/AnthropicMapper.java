@@ -3,6 +3,7 @@ package dev.langchain4j.model.anthropic.internal.mapper;
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
 import static dev.langchain4j.internal.ToolSpecificationUtils.isEffectivelyStrict;
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
@@ -224,15 +225,18 @@ public class AnthropicMapper {
     private static List<AnthropicMessageContent> toAnthropicMessageContents(AiMessage message, boolean sendThinking) {
         List<AnthropicMessageContent> contents = new ArrayList<>();
 
-        if (sendThinking && isNotNullOrBlank(message.thinking())) {
+        if (sendThinking) {
             String signature = message.attribute(THINKING_SIGNATURE_KEY, String.class);
-            contents.add(new AnthropicThinkingContent(message.thinking(), signature));
-        }
+            if (isNotNullOrBlank(message.thinking()) || isNotNullOrBlank(signature)) {
+                // "thinking" is required by the API, so an empty string is sent when the model returned no text
+                contents.add(new AnthropicThinkingContent(getOrDefault(message.thinking(), ""), signature));
+            }
 
-        if (sendThinking && message.attributes().containsKey(REDACTED_THINKING_KEY)) {
-            List<String> redactedThinkings = message.attribute(REDACTED_THINKING_KEY, List.class);
-            for (String redactedThinking : redactedThinkings) {
-                contents.add(new AnthropicRedactedThinkingContent(redactedThinking));
+            if (message.attributes().containsKey(REDACTED_THINKING_KEY)) {
+                List<String> redactedThinkings = message.attribute(REDACTED_THINKING_KEY, List.class);
+                for (String redactedThinking : redactedThinkings) {
+                    contents.add(new AnthropicRedactedThinkingContent(redactedThinking));
+                }
             }
         }
 

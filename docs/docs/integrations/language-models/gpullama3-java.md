@@ -19,13 +19,13 @@ For Maven project `pom.xml`
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j</artifactId>
-    <version>1.19.0</version>
+    <version>1.20.0</version>
 </dependency>
 
 <dependency>
 <groupId>dev.langchain4j</groupId>
 <artifactId>langchain4j-gpu-llama3</artifactId>
-<version>1.19.0-beta29</version>
+<version>1.20.0-beta30</version>
 </dependency>
 
 ```
@@ -33,8 +33,8 @@ For Maven project `pom.xml`
 For Gradle project `build.gradle`
 
 ```groovy
-implementation 'dev.langchain4j:langchain4j:1.19.0'
-implementation 'dev.langchain4j:langchain4j-gpu-llama3:1.19.0-beta29'
+implementation 'dev.langchain4j:langchain4j:1.20.0'
+implementation 'dev.langchain4j:langchain4j-gpu-llama3:1.20.0-beta30'
 ```
 ---
 ## Model Compatibility
@@ -175,7 +175,7 @@ mvn clean package
 
 Your main JAR will be located at:
 ```bash
-target/gpullama3.java-example-1.19.0-beta29.jar
+target/gpullama3.java-example-1.20.0-beta30.jar
 ```
 
 #### **Step 4 — Run the program directly with Java**
@@ -183,7 +183,7 @@ You can now run the example with all JVM and Tornado flags:
 
 ```bash
 JAVA_BIN=/home/mikepapadim/.sdkman/candidates/java/current/bin/java
-CP="target/gpullama3.java-example-1.19.0-beta29.jar:$(cat cp.txt)"
+CP="target/gpullama3.java-example-1.20.0-beta30.jar:$(cat cp.txt)"
 
 $JAVA_BIN \
   -server \

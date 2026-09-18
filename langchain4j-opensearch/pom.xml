@@ -5,7 +5,7 @@
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>1.20.0-beta30-SNAPSHOT</version>
+        <version>1.21.0-beta31-SNAPSHOT</version>
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
@@ -38,7 +38,12 @@
             <dependency>
                 <groupId>org.apache.httpcomponents.client5</groupId>
                 <artifactId>httpclient5</artifactId>
-                <version>5.3</version>
+                <version>5.5.2</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.httpcomponents.core5</groupId>
+                <artifactId>httpcore5</artifactId>
+                <version>5.3.6</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
@@ -48,7 +53,7 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
-            <version>1.20.0-SNAPSHOT</version>
+            <version>1.21.0-SNAPSHOT</version>
         </dependency>
 
         <dependency>
@@ -88,7 +93,7 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
-            <version>1.20.0-SNAPSHOT</version>
+            <version>1.21.0-SNAPSHOT</version>
             <classifier>tests</classifier>
             <type>test-jar</type>
             <scope>test</scope>

@@ -6,13 +6,13 @@ import static java.util.Objects.nonNull;
 import com.ibm.watsonx.ai.chat.ChatProvider;
 import com.ibm.watsonx.ai.chat.model.ChatMessage;
 import com.ibm.watsonx.ai.chat.model.Tool;
+import com.ibm.watsonx.ai.gateway.chat.ModelGatewayChatParameters.Cache;
+import com.ibm.watsonx.ai.gateway.chat.ModelGatewayChatParameters.ReasoningEffort;
+import com.ibm.watsonx.ai.gateway.chat.ModelGatewayChatParameters.Router;
+import com.ibm.watsonx.ai.gateway.chat.ModelGatewayChatParameters.ServiceTier;
 import com.ibm.watsonx.ai.gateway.chat.ModelGatewayChatRequest;
 import com.ibm.watsonx.ai.gateway.chat.ModelGatewayChatResponse;
-import com.ibm.watsonx.ai.gateway.chat.ModelGatewayParameters.Cache;
-import com.ibm.watsonx.ai.gateway.chat.ModelGatewayParameters.ReasoningEffort;
-import com.ibm.watsonx.ai.gateway.chat.ModelGatewayParameters.Router;
-import com.ibm.watsonx.ai.gateway.chat.ModelGatewayParameters.ServiceTier;
-import com.ibm.watsonx.ai.gateway.chat.ModelGatewayService;
+import com.ibm.watsonx.ai.gateway.chat.ModelGatewayChatService;
 import dev.langchain4j.Internal;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import java.util.List;
@@ -21,7 +21,7 @@ import java.util.Map;
 @Internal
 abstract class WatsonxGatewayChat extends WatsonxChatBase<ModelGatewayChatRequest> {
 
-    protected final ModelGatewayService modelGatewayService;
+    protected final ModelGatewayChatService modelGatewayChatService;
 
     protected WatsonxGatewayChat(Builder<?> builder) {
         super(builder, mergeParameters(builder));
@@ -29,10 +29,10 @@ abstract class WatsonxGatewayChat extends WatsonxChatBase<ModelGatewayChatReques
         var parameters = (WatsonxGatewayChatRequestParameters) defaultRequestParameters;
 
         var serviceBuilder = nonNull(builder.authenticator)
-                ? ModelGatewayService.builder().authenticator(builder.authenticator)
-                : ModelGatewayService.builder().apiKey(builder.apiKey);
+                ? ModelGatewayChatService.builder().authenticator(builder.authenticator)
+                : ModelGatewayChatService.builder().apiKey(builder.apiKey);
 
-        modelGatewayService = serviceBuilder
+        modelGatewayChatService = serviceBuilder
                 .baseUrl(builder.baseUrl)
                 .version(builder.version)
                 .modelId(parameters.modelName())
@@ -46,7 +46,7 @@ abstract class WatsonxGatewayChat extends WatsonxChatBase<ModelGatewayChatReques
 
     @Override
     protected ChatProvider<ModelGatewayChatRequest, ModelGatewayChatResponse> chatProvider() {
-        return modelGatewayService;
+        return modelGatewayChatService;
     }
 
     @Override
@@ -56,7 +56,7 @@ abstract class WatsonxGatewayChat extends WatsonxChatBase<ModelGatewayChatReques
         return ModelGatewayChatRequest.builder()
                 .messages(messages)
                 .tools(tools)
-                .parameters(Converter.toModelGatewayParameters(parameters, strictJsonSchema))
+                .parameters(Converter.toModelGatewayChatParameters(parameters, strictJsonSchema))
                 .build();
     }
 

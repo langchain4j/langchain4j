@@ -11,7 +11,6 @@ import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onUnmappedRawEvent;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
@@ -182,7 +181,7 @@ class OllamaClient {
 
             final MappingTrackingStreamingChatResponseHandler handler =
                     new MappingTrackingStreamingChatResponseHandler(targetHandler);
-            final ToolCallBuilder toolCallBuilder = new ToolCallBuilder();
+            final ToolCallBuilder toolCallBuilder = new ToolCallBuilder(-1);
             final OllamaStreamingResponseBuilder responseBuilder =
                     new OllamaStreamingResponseBuilder(toolCallBuilder, returnThinking);
             volatile StreamingHandle streamingHandle;
@@ -229,29 +228,19 @@ class OllamaClient {
                 List<ToolCall> toolCalls = message.getToolCalls();
                 if (toolCalls != null) {
                     for (ToolCall toolCall : toolCalls) {
-
-                        int index = getOrDefault(toolCall.getFunction().getIndex(), 0);
-                        if (toolCallBuilder.index() != index) {
-                            onCompleteToolCall(handler, toolCallBuilder.buildAndReset());
-                            toolCallBuilder.updateIndex(index);
-                        }
-
-                        toolCallBuilder.updateName(toolCall.getFunction().getName());
+                        // Ollama never streams tool calls token by token: "arguments" is always
+                        // a complete JSON object, so every element is a complete tool call
+                        toolCallBuilder.updateIndex(toolCallBuilder.index() + 1);
                         toolCallBuilder.updateId(toolCall.getId());
+                        toolCallBuilder.updateName(toolCall.getFunction().getName());
+                        toolCallBuilder.appendArguments(
+                                toJsonWithoutIdent(toolCall.getFunction().getArguments()));
 
-                        String partialArguments =
-                                toJsonWithoutIdent(toolCall.getFunction().getArguments());
-                        if (isNotNullOrEmpty(partialArguments)) {
-                            toolCallBuilder.appendArguments(partialArguments);
-                        }
+                        onCompleteToolCall(handler, toolCallBuilder.buildAndReset());
                     }
                 }
 
                 if (TRUE.equals(ollamaChatResponse.getDone())) {
-                    if (toolCallBuilder.hasRequests()) {
-                        onCompleteToolCall(handler, toolCallBuilder.buildAndReset());
-                    }
-
                     ChatResponse completeResponse = responseBuilder.build(ollamaChatResponse);
                     onCompleteResponse(handler, completeResponse);
                 }

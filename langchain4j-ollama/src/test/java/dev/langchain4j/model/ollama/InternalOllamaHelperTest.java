@@ -2,7 +2,6 @@ package dev.langchain4j.model.ollama;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ImageContent;
@@ -122,7 +121,7 @@ class InternalOllamaHelperTest {
                 .build();
 
         String json =
-                new ObjectMapper().writeValueAsString(InternalOllamaHelper.toOllamaChatRequest(chatRequest, false));
+                OllamaJsonUtils.toJsonWithoutIdent(InternalOllamaHelper.toOllamaChatRequest(chatRequest, false));
 
         // truncate is a sibling of model and messages, not a member of options, which carries num_ctx.
         assertThat(json).contains("\"truncate\":false");
@@ -140,7 +139,7 @@ class InternalOllamaHelperTest {
                 .build();
 
         String json =
-                new ObjectMapper().writeValueAsString(InternalOllamaHelper.toOllamaChatRequest(chatRequest, false));
+                OllamaJsonUtils.toJsonWithoutIdent(InternalOllamaHelper.toOllamaChatRequest(chatRequest, false));
 
         assertThat(json).doesNotContain("truncate");
     }

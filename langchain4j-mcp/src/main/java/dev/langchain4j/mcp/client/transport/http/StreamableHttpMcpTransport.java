@@ -4,13 +4,15 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import dev.langchain4j.exception.HttpException;
+import dev.langchain4j.exception.JsonException;
 import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.mcp.client.McpCallContext;
 import dev.langchain4j.mcp.client.McpHeadersSupplier;
 import dev.langchain4j.mcp.client.logging.McpLoggers;
 import dev.langchain4j.mcp.client.transport.McpHeaderEncoding;
-import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import dev.langchain4j.mcp.client.transport.McpJson;
+import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import dev.langchain4j.mcp.client.transport.McpTransport;
 import dev.langchain4j.mcp.protocol.McpClientMessage;
 import dev.langchain4j.mcp.protocol.McpInitializationNotification;
@@ -78,7 +80,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
         sslContext = builder.sslContext;
         httpVersion = builder.forceHttpVersion1_1 ? HttpClient.Version.HTTP_1_1 : HttpClient.Version.HTTP_2;
         subsidiaryChannelEnabled = builder.subsidiaryChannelEnabled;
-        executor = getOrDefault(builder.executor, DefaultExecutorProvider.getDefaultExecutorService());
+        executor = getOrDefault(builder.executor, DefaultExecutorProvider.getDefaultExecutor());
         HttpClient.Builder clientBuilder =
                 HttpClient.newBuilder().connectTimeout(timeout).version(httpVersion);
         if (builder.followRedirects) {
@@ -260,7 +262,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
         HttpRequest request = null;
         try {
             request = createRequest(context.message(), context);
-        } catch (IllegalArgumentException e) {
+        } catch (JsonException | IllegalArgumentException e) {
             return CompletableFuture.failedFuture(e);
         }
         CompletableFuture<String> future = new CompletableFuture<>();
@@ -276,8 +278,8 @@ public class StreamableHttpMcpTransport implements McpTransport {
                                 && !modernProtocol) {
                             // Legacy protocol only (up to 2025-11-25) — 404 means session expired, reinitialize
                             if (!isRetry) {
-                                initialize(StreamableHttpMcpTransport.this.initializeRequest)
-                                        .thenAccept(node -> {
+                                sendInitializeRequest(StreamableHttpMcpTransport.this.initializeRequest)
+                                        .thenAccept(ignored -> {
                                             execute(context, true)
                                                     .thenAccept(future::complete)
                                                     .exceptionally(t -> {
@@ -289,10 +291,16 @@ public class StreamableHttpMcpTransport implements McpTransport {
                                             future.completeExceptionally(t);
                                             return null;
                                         });
+                            } else {
+                                // Reinitialization did not help; fail instead of leaving the caller hanging
+                                future.completeExceptionally(new HttpException(
+                                        responseInfo.statusCode(),
+                                        "Session expired again after reinitialization: server returned status code "
+                                                + responseInfo.statusCode()));
                             }
                         } else {
-                            future.completeExceptionally(
-                                    new RuntimeException("Unexpected status code: " + responseInfo.statusCode()));
+                            future.completeExceptionally(new HttpException(
+                                    responseInfo.statusCode(), "Unexpected status code: " + responseInfo.statusCode()));
                         }
                         return HttpResponse.BodySubscribers.discarding();
                     } else {
@@ -675,5 +683,4 @@ public class StreamableHttpMcpTransport implements McpTransport {
     public void executeOperationWithoutResponse(McpCallContext context) {
         sendMessage(context);
     }
-
 }
