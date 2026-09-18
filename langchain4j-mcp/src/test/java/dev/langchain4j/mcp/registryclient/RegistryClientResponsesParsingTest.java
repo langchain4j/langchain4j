@@ -113,7 +113,7 @@ public class RegistryClientResponsesParsingTest {
                   }
                 }
                 """;
-        McpServer server = DefaultMcpRegistryClient.OBJECT_MAPPER.readValue(json, McpServer.class);
+        McpServer server = McpRegistryJson.fromJson(json, McpServer.class);
 
         // Verify server is not null
         assertThat(server).isNotNull();

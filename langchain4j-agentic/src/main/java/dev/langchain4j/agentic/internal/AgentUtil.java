@@ -7,6 +7,7 @@ import static dev.langchain4j.internal.Utils.getAnnotatedMethod;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.service.TypeUtils.isImageType;
 
+import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.UntypedAgent;
@@ -199,11 +200,17 @@ public class AgentUtil {
             Parameter parameter, Map<String, Object> defaultValues, Set<String> optionalArgs) {
         String argName = parameterName(parameter);
         Object defaultValue = defaultValues.getOrDefault(argName, parameterDefaultValue(parameter));
+        P p = parameter.getAnnotation(P.class);
+        String description = p == null ? null : (isNullOrBlank(p.description()) ? p.value() : p.description());
         return new AgentArgument(
-                parameter.getParameterizedType(), argName, defaultValue, optionalArgs.contains(argName));
+                parameter.getParameterizedType(), argName, defaultValue, optionalArgs.contains(argName), description);
     }
 
     private static String parameterName(Parameter p) {
+        P annotation = p.getAnnotation(P.class);
+        if (annotation != null && !annotation.name().isBlank()) {
+            return annotation.name();
+        }
         if (p.getAnnotation(MemoryId.class) != null) {
             return MEMORY_ID_ARG_NAME;
         }
@@ -296,14 +303,14 @@ public class AgentUtil {
                 throw new MissingArgumentException(arg.name());
             }
         }
-        Object parsedArgument = adaptValueToType(argValue, arg.rawType());
+        Object parsedArgument = adaptValueToType(argValue, arg.rawType(), arg.name());
         if (argValue != parsedArgument) {
             agenticScope.writeState(arg.name(), parsedArgument);
         }
         return parsedArgument;
     }
 
-    private static Object adaptValueToType(Object value, Class<?> type) {
+    private static Object adaptValueToType(Object value, Class<?> type, String argumentName) {
         if (type.isInstance(value)) {
             return value;
         }
@@ -315,14 +322,7 @@ public class AgentUtil {
                 case "double", "java.lang.Double" -> Double.parseDouble(s);
                 case "float", "java.lang.Float" -> Float.parseFloat(s);
                 case "boolean", "java.lang.Boolean" -> Boolean.parseBoolean(s);
-                default -> {
-                    try {
-                        yield Json.fromJson(s, type);
-                    } catch (Exception e) {
-                        throw new IllegalArgumentException(
-                                "Cannot deserialize value '" + s + "' to type " + type.getName(), e);
-                    }
-                }
+                default -> readArgument(s, type, argumentName);
             };
         }
         if (value instanceof Number n) {
@@ -338,7 +338,7 @@ public class AgentUtil {
             };
         }
         if (value instanceof Map && !Map.class.isAssignableFrom(type)) {
-            return Json.fromJson(Json.toJson(value), type);
+            return readArgument(Json.toJson(value), type, argumentName);
         }
         if (value instanceof Image image && type == ImageContent.class) {
             return ImageContent.from(image);
@@ -347,6 +347,25 @@ public class AgentUtil {
             return imageContent.image();
         }
         return value;
+    }
+
+    /**
+     * A planner describes an argument as JSON, so a type used as an agent argument has to be one a
+     * JSON library can build: a record, a type with a no-arg constructor, or one whose constructor
+     * carries {@code @JsonCreator}. Saying that is more use than the JSON library's own message,
+     * which names neither the argument nor what to do about it. The value itself is left out: it
+     * came from a model and can carry anything the prompt did.
+     */
+    private static <T> T readArgument(String json, Class<T> type, String argumentName) {
+        try {
+            return Json.fromJson(json, type);
+        } catch (Exception e) {
+            throw new IllegalArgumentException(
+                    "Cannot read agent argument '" + argumentName + "' as " + type.getName()
+                            + ". A type used as an agent argument must be a record, have a no-arg"
+                            + " constructor, or have a constructor annotated with @JsonCreator.",
+                    e);
+        }
     }
 
     public static Method validateAgentClass(Class<?> agentServiceClass) {

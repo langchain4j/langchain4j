@@ -2,6 +2,7 @@ package dev.langchain4j.rag.query.transformer;
 
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -73,6 +74,24 @@ class CompressingQueryTransformerTest {
     }
 
     @Test
+    void transformAsync_should_compress_query_and_chat_memory_over_chatAsync() throws Exception {
+
+        SystemMessage systemMessage = SystemMessage.from("Be polite");
+        List<ChatMessage> chatMemory =
+                asList(UserMessage.from("Tell me about Klaus Heisler"), AiMessage.from("He is a cool guy"));
+        UserMessage userMessage = UserMessage.from("How old is he?");
+        Metadata metadata = Metadata.from(userMessage, systemMessage, "default", chatMemory);
+        Query query = Query.from(userMessage.singleText(), metadata);
+
+        String expectedCompressedQuery = "How old is Klaus Heisler?";
+        ChatModelMock model = ChatModelMock.thatAlwaysResponds(expectedCompressedQuery);
+        CompressingQueryTransformer transformer = new CompressingQueryTransformer(model);
+
+        assertThat(transformer.transformAsync(query).get(5, SECONDS))
+                .containsExactly(Query.from(expectedCompressedQuery, metadata));
+    }
+
+    @Test
     void should_not_compress_when_empty_chat_memory() {
 
         // given
@@ -89,6 +108,42 @@ class CompressingQueryTransformerTest {
 
         // when
         Collection<Query> queries = transformer.transform(query);
+
+        // then
+        assertThat(queries).containsExactly(query);
+
+        verifyNoInteractions(model);
+    }
+
+    @Test
+    void should_not_compress_when_query_has_no_metadata() {
+
+        // given
+        Query query = Query.from("Hello");
+
+        ChatModel model = mock(ChatModel.class);
+        CompressingQueryTransformer transformer = new CompressingQueryTransformer(model);
+
+        // when
+        Collection<Query> queries = transformer.transform(query);
+
+        // then
+        assertThat(queries).containsExactly(query);
+
+        verifyNoInteractions(model);
+    }
+
+    @Test
+    void transformAsync_should_not_compress_when_query_has_no_metadata() throws Exception {
+
+        // given
+        Query query = Query.from("Hello");
+
+        ChatModel model = mock(ChatModel.class);
+        CompressingQueryTransformer transformer = new CompressingQueryTransformer(model);
+
+        // when
+        Collection<Query> queries = transformer.transformAsync(query).get(5, SECONDS);
 
         // then
         assertThat(queries).containsExactly(query);

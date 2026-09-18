@@ -1,10 +1,12 @@
 package dev.langchain4j.guardrail;
 
+import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.guardrail.GuardrailResult.Failure;
 import dev.langchain4j.guardrail.config.GuardrailsConfig;
+import dev.langchain4j.internal.CancellationChain;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.observability.api.event.GuardrailExecutedEvent;
 import dev.langchain4j.observability.api.event.GuardrailExecutedEvent.GuardrailExecutedEventBuilder;
@@ -12,6 +14,8 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Abstract base class for {@link GuardrailExecutor}s.
@@ -159,6 +163,77 @@ public abstract sealed class AbstractGuardrailExecutor<
         }
 
         return accumulatedResult;
+    }
+
+    /**
+     * Non-blocking counterpart of {@link #validate(GuardrailRequest, Guardrail)}: runs a single guardrail's
+     * {@link Guardrail#validateAsync(GuardrailRequest)} and wraps any failure in a {@link GuardrailException},
+     * mirroring the synchronous error handling.
+     */
+    protected CompletableFuture<R> validateAsync(P request, G guardrail, CancellationChain chain) {
+        ensureNotNull(request, "request");
+        ensureNotNull(guardrail, "guardrail");
+
+        try {
+            CompletableFuture<R> inFlight = guardrail.validateAsync(request);
+            chain.track(inFlight);
+            return inFlight.handle((result, error) -> {
+                if (error != null) {
+                    Throwable cause = unwrapCompletionException(error);
+                    if (cause instanceof CancellationException cancellation) {
+                        throw cancellation;
+                    }
+                    throw createGuardrailException(cause.getMessage(), cause);
+                }
+                return result.validatedBy(guardrail.getClass());
+            });
+        } catch (Exception e) {
+            return CompletableFuture.failedFuture(createGuardrailException(e.getMessage(), e));
+        }
+    }
+
+    /**
+     * Non-blocking counterpart of {@link #executeGuardrails(GuardrailRequest)}: runs the configured guardrails
+     * sequentially (each guardrail sees the result of any rewrite by the previous one), firing the observability
+     * event and short-circuiting on a fatal result, without blocking the calling thread.
+     */
+    protected CompletableFuture<R> executeGuardrailsAsync(P request, CancellationChain chain) {
+        ensureNotNull(request, "request");
+        return executeGuardrailsAsync(request, request, createSuccess(), 0, chain);
+    }
+
+    private CompletableFuture<R> executeGuardrailsAsync(
+            P originalRequest, P accumulatedRequest, R accumulatedResult, int index, CancellationChain chain) {
+
+        if (index >= this.guardrails.size()) {
+            return CompletableFuture.completedFuture(accumulatedResult);
+        }
+
+        var guardrail = this.guardrails.get(index);
+        if (guardrail == null) {
+            return executeGuardrailsAsync(originalRequest, accumulatedRequest, accumulatedResult, index + 1, chain);
+        }
+
+        var before = System.nanoTime();
+        var currentRequest = accumulatedRequest;
+        return validateAsync(currentRequest, guardrail, chain).thenCompose(result -> {
+            var after = System.nanoTime();
+            fireObservabilityEvent(
+                    originalRequest.requestParams().invocationContext(),
+                    currentRequest,
+                    result,
+                    guardrail,
+                    Duration.ofNanos(after - before));
+
+            if (result.isFatal()) {
+                return CompletableFuture.completedFuture(handleFatalResult(accumulatedResult, result));
+            }
+
+            var nextRequest =
+                    result.hasRewrittenResult() ? currentRequest.withText(result.successfulText()) : currentRequest;
+            var nextResult = composeResult(accumulatedResult, result);
+            return executeGuardrailsAsync(originalRequest, nextRequest, nextResult, index + 1, chain);
+        });
     }
 
     protected R composeResult(R oldResult, R newResult) {

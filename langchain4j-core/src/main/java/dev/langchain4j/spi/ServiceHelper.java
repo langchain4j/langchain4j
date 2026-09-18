@@ -5,13 +5,18 @@ import dev.langchain4j.Internal;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Comparator;
 import java.util.ServiceLoader;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Utility wrapper around {@code ServiceLoader.load()}.
  */
 @Internal
 public class ServiceHelper {
+
+    private static final Logger log = LoggerFactory.getLogger(ServiceHelper.class);
 
     /**
      * Utility class, no public constructor.
@@ -74,7 +79,47 @@ public class ServiceHelper {
             // class. In OSGi it would be the bundle exposing vert.x and so have access to all its classes.
             result = loadAll(ServiceLoader.load(clazz, ServiceHelper.class.getClassLoader()));
         }
+        result = sortByPriority(result);
+        warnIfAmbiguous(clazz, result);
         return result;
+    }
+
+    /**
+     * Every caller of this takes the first service and ignores the rest, so a second implementation
+     * on the classpath is decided by whatever order the {@link ServiceLoader} happened to enumerate
+     * - which can differ between a development run, a shaded jar and a container image. That is
+     * worth saying out loud rather than leaving someone to discover that their JSON, or their
+     * prompt templating, is not the implementation they thought.
+     */
+    /**
+     * Highest priority first, stable so that equal priorities keep the {@link ServiceLoader} order
+     * they came in with.
+     */
+    static <T> List<T> sortByPriority(List<T> factories) {
+        List<T> sorted = new ArrayList<>(factories);
+        sorted.sort(Comparator.comparingInt(ServiceHelper::priorityOf).reversed());
+        return sorted;
+    }
+
+    private static int priorityOf(Object factory) {
+        return factory instanceof PrioritizedFactory prioritized
+                ? prioritized.priority()
+                : PrioritizedFactory.DEFAULT_PRIORITY;
+    }
+
+    private static <T> void warnIfAmbiguous(Class<T> clazz, List<T> found) {
+        if (found.size() > 1) {
+            log.warn(
+                    "Found {} implementations of {} on the classpath; using {} and ignoring {}. "
+                            + "Which one is used is decided by classpath order and is not stable - "
+                            + "remove the ones you do not want.",
+                    found.size(),
+                    clazz.getName(),
+                    found.get(0).getClass().getName(),
+                    found.subList(1, found.size()).stream()
+                            .map(other -> other.getClass().getName())
+                            .toList());
+        }
     }
 
     /**
