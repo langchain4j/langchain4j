@@ -33,6 +33,7 @@ https://github.com/googleapis/java-genai
 - [Token Usage](#token-usage)
 - [Multimodality (Audio, Video, PDF)](#multimodality-audio-video-pdf)
 - [Audio Transcription](#audio-transcription)
+- [Image Generation Output](#image-generation-output)
 - [Token Count Estimator](#token-count-estimator)
 - [Model Catalog](#model-catalog)
 
@@ -720,6 +721,36 @@ for (Part part : metadata.rawResponse().parts()) {
 
 `GoogleGenAiStreamingChatModel` accepts the same `audioTranscriptionConfig`, but its raw response only holds the last streamed chunk,
 so use `GoogleGenAiChatModel` when you need word timestamps or speaker labels.
+
+## Image Generation Output
+
+Some Gemini models, such as `gemini-2.5-flash-image`, return generated pictures alongside the text of a chat
+response. They arrive as `inlineData` parts, and `GoogleGenAiChatModel` maps them into the `AiMessage` attributes
+under `GENERATED_IMAGES_KEY`, which is what `AiMessage.images()` reads:
+
+```java
+ChatModel model = GoogleGenAiChatModel.builder()
+    .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
+    .modelName("gemini-2.5-flash-image")
+    .build();
+
+ChatResponse response = model.chat(UserMessage.from("A watercolor sketch of a lighthouse at dusk"));
+
+for (Image image : response.aiMessage().images()) {
+    System.out.println("Generated image: " + image.mimeType());
+
+    // Save it, display it, or hand it to another model
+    Files.write(Paths.get("generated_image.png"), Base64.getDecoder().decode(image.base64Data()));
+}
+```
+
+Only `image/*` blobs become generated images; inline data of any other type is ignored.
+
+Streaming responses work the same way. `GoogleGenAiStreamingChatModel` receives the answer one chunk at a time, and
+every chunk contributes its images to the final message, so a picture that arrives on its own chunk is not lost.
+
+`langchain4j-google-ai-gemini` stores generated images under the same key, so the same reading code works with
+either module.
 
 ## Token Count Estimator
 
