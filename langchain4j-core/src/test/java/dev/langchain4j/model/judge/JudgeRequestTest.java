@@ -27,13 +27,19 @@ class JudgeRequestTest {
                 .build();
         ChoiceQuestion team = ChoiceQuestion.builder()
                 .instructions("Which team should handle this?")
-                .option("billing", OptionCriteria.builder().what("Charges and refunds").build())
-                .option("support", OptionCriteria.builder().what("Product problems").build())
+                .option(
+                        "billing",
+                        OptionCriteria.builder().what("Charges and refunds").build())
+                .option(
+                        "support",
+                        OptionCriteria.builder().what("Product problems").build())
                 .build();
         ScoreQuestion urgency = ScoreQuestion.builder()
                 .instructions("How urgent is this?")
                 .level("low", OptionCriteria.builder().what("Can wait").build())
-                .level("high", OptionCriteria.builder().what("Needs attention now").build())
+                .level(
+                        "high",
+                        OptionCriteria.builder().what("Needs attention now").build())
                 .build();
 
         JudgeRequest request = JudgeRequest.builder()
@@ -47,8 +53,8 @@ class JudgeRequestTest {
         examples.add("Return my money");
 
         assertThat(request.state()).containsExactly(Map.entry("message", "I was charged twice"));
-        assertThat(request.questions()).containsExactly(
-                Map.entry("refund", refund), Map.entry("team", team), Map.entry("urgency", urgency));
+        assertThat(request.questions())
+                .containsExactly(Map.entry("refund", refund), Map.entry("team", team), Map.entry("urgency", urgency));
         assertThat(refund.criteria().examples()).containsExactly("Please refund me");
         assertThat(team.options()).containsOnlyKeys("billing", "support");
         assertThat(urgency.levels()).containsOnlyKeys("low", "high");
@@ -60,19 +66,22 @@ class JudgeRequestTest {
     void defaults_to_empty_request_parameters_and_supports_overrides() {
         JudgeRequest request = JudgeRequest.builder()
                 .state(Map.of("message", "hello"))
-                .question("greeting", NoulQuestion.builder().instructions("Is this a greeting?").build())
+                .question(
+                        "greeting",
+                        NoulQuestion.builder()
+                                .instructions("Is this a greeting?")
+                                .build())
                 .build();
-        JudgeRequestParameters configured = JudgeRequestParameters.builder()
-                .modelName("jev-latest")
-                .build();
-        JudgeRequestParameters override = JudgeRequestParameters.builder()
-                .modelName("jev-preview")
-                .build();
+        JudgeRequestParameters configured =
+                JudgeRequestParameters.builder().modelName("jev-latest").build();
+        JudgeRequestParameters override =
+                JudgeRequestParameters.builder().modelName("jev-preview").build();
 
         assertThat(request.parameters()).isEqualTo(JudgeRequestParameters.EMPTY);
         assertThat(request.modelName()).isNull();
         assertThat(configured.overrideWith(override).modelName()).isEqualTo("jev-preview");
-        assertThat(configured.overrideWith(JudgeRequestParameters.EMPTY).modelName()).isEqualTo("jev-latest");
+        assertThat(configured.overrideWith(JudgeRequestParameters.EMPTY).modelName())
+                .isEqualTo("jev-latest");
         assertThat(configured.overrideWith(null)).isSameAs(configured);
     }
 
@@ -96,10 +105,12 @@ class JudgeRequestTest {
     void validates_choice_options_and_score_levels() {
         OptionCriteria criterion = OptionCriteria.builder().what("criterion").build();
 
-        assertThatThrownBy(() -> ChoiceQuestion.builder().instructions("Pick one").build())
+        assertThatThrownBy(
+                        () -> ChoiceQuestion.builder().instructions("Pick one").build())
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("options");
-        assertThatThrownBy(() -> ChoiceQuestion.builder().instructions("Pick one").option(" ", criterion))
+        assertThatThrownBy(
+                        () -> ChoiceQuestion.builder().instructions("Pick one").option(" ", criterion))
                 .isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> ScoreQuestion.builder()
                         .instructions("Rate it")
@@ -111,12 +122,9 @@ class JudgeRequestTest {
 
     @Test
     void criteria_require_content() {
-        assertThatThrownBy(() -> NoulCriteria.builder().build())
-                .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> OptionCriteria.builder().build())
-                .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> NoulCriteria.builder().what(" ").build())
-                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> NoulCriteria.builder().build()).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> OptionCriteria.builder().build()).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> NoulCriteria.builder().what(" ").build()).isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> OptionCriteria.builder().notFor("").build())
                 .isInstanceOf(IllegalArgumentException.class);
     }

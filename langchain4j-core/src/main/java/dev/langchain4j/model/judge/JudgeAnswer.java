@@ -17,9 +17,8 @@ public final class JudgeAnswer {
     private final Double confidence;
 
     private JudgeAnswer(Builder builder) {
-        int values = (builder.noul == null ? 0 : 1)
-                + (builder.choice == null ? 0 : 1)
-                + (builder.score == null ? 0 : 1);
+        int values =
+                (builder.noul == null ? 0 : 1) + (builder.choice == null ? 0 : 1) + (builder.score == null ? 0 : 1);
         ensureTrue(values == 1, "JudgeAnswer must contain exactly one of 'noul', 'choice', or 'score'");
         ensureTrue(builder.noul == null || Double.isFinite(builder.noul), "noul must be a finite number");
         ensureTrue(
@@ -28,9 +27,7 @@ public final class JudgeAnswer {
         this.noul = builder.noul == null ? null : ensureBetween(builder.noul, 0, 1, "noul");
         this.choice = builder.choice == null ? null : ensureNotBlank(builder.choice, "choice");
         this.score = builder.score;
-        this.confidence = builder.confidence == null
-                ? null
-                : ensureBetween(builder.confidence, 0, 1, "confidence");
+        this.confidence = builder.confidence == null ? null : ensureBetween(builder.confidence, 0, 1, "confidence");
     }
 
     public Double noul() {
@@ -70,8 +67,8 @@ public final class JudgeAnswer {
 
     @Override
     public String toString() {
-        return "JudgeAnswer{noul=" + noul + ", choice=" + choice + ", score=" + score
-                + ", confidence=" + confidence + '}';
+        return "JudgeAnswer{noul=" + noul + ", choice=" + choice + ", score=" + score + ", confidence=" + confidence
+                + '}';
     }
 
     public static final class Builder {

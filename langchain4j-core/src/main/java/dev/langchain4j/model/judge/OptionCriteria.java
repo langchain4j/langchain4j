@@ -20,7 +20,8 @@ public final class OptionCriteria {
         this.what = builder.what;
         this.notFor = builder.notFor;
         this.examples = copy(builder.examples);
-        ensureTrue(isNotNullOrBlank(what) || isNotNullOrBlank(notFor) || !examples.isEmpty(),
+        ensureTrue(
+                isNotNullOrBlank(what) || isNotNullOrBlank(notFor) || !examples.isEmpty(),
                 "OptionCriteria must define at least one of 'what', 'notFor', or 'examples'");
     }
 

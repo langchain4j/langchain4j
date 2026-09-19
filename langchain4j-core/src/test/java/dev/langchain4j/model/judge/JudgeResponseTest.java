@@ -12,7 +12,8 @@ class JudgeResponseTest {
     @Test
     void maps_each_typed_answer_and_defensively_copies_the_answer_map() {
         JudgeAnswer noul = JudgeAnswer.builder().noul(0.83).build();
-        JudgeAnswer choice = JudgeAnswer.builder().choice("billing").confidence(0.91).build();
+        JudgeAnswer choice =
+                JudgeAnswer.builder().choice("billing").confidence(0.91).build();
         JudgeAnswer score = JudgeAnswer.builder().score(1.7).confidence(0.64).build();
         Map<String, JudgeAnswer> answers = new LinkedHashMap<>();
         answers.put("refund", noul);
@@ -22,8 +23,8 @@ class JudgeResponseTest {
         JudgeResponse response = JudgeResponse.builder().answers(answers).build();
         answers.clear();
 
-        assertThat(response.answers()).containsExactly(
-                Map.entry("refund", noul), Map.entry("team", choice), Map.entry("urgency", score));
+        assertThat(response.answers())
+                .containsExactly(Map.entry("refund", noul), Map.entry("team", choice), Map.entry("urgency", score));
         assertThat(response.answers().get("refund").noul()).isEqualTo(0.83);
         assertThat(response.answers().get("refund").confidence()).isNull();
         assertThat(response.answers().get("team").choice()).isEqualTo("billing");
@@ -43,13 +44,14 @@ class JudgeResponseTest {
 
     @Test
     void validates_probabilities_and_response_entries() {
-        assertThatThrownBy(() -> JudgeAnswer.builder().noul(1.01).build())
-                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> JudgeAnswer.builder().noul(1.01).build()).isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> JudgeAnswer.builder().noul(Double.NaN).build())
                 .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> JudgeAnswer.builder().choice("x").confidence(-0.01).build())
+        assertThatThrownBy(() ->
+                        JudgeAnswer.builder().choice("x").confidence(-0.01).build())
                 .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> JudgeAnswer.builder().choice("x").confidence(Double.NaN).build())
+        assertThatThrownBy(() ->
+                        JudgeAnswer.builder().choice("x").confidence(Double.NaN).build())
                 .isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> JudgeResponse.builder().answers(Map.of()).build())
                 .isInstanceOf(IllegalArgumentException.class)
