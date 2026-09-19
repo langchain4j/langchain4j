@@ -1486,6 +1486,9 @@ public class DefaultMcpClient implements McpClient {
     private void triggerReconnection() {
         if (initializationLock.tryLock()) {
             try {
+                if (closed) {
+                    return;
+                }
                 initialize();
             } catch (Exception e) {
                 log.warn("mcp server reconnection failed", e);

@@ -2,6 +2,7 @@ package dev.langchain4j.model.google.genai;
 
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 
+import com.google.genai.types.AudioTranscriptionConfig;
 import com.google.genai.types.Content;
 import com.google.genai.types.FunctionCallingConfig;
 import com.google.genai.types.FunctionDeclaration;
@@ -59,6 +60,7 @@ class GoogleGenAiConfigBuilder {
                 vertexSearchDatastore,
                 labels,
                 cachedContent,
+                null,
                 null);
     }
 
@@ -77,6 +79,42 @@ class GoogleGenAiConfigBuilder {
             String vertexSearchDatastore,
             Map<String, String> labels,
             String cachedContent,
+            Consumer<GenerateContentConfig.Builder> generateContentConfigCustomizer) {
+        return buildConfig(
+                parameters,
+                systemInstruction,
+                safetySettings,
+                thinkingBudget,
+                thinkingLevel,
+                includeThoughts,
+                seed,
+                googleSearchEnabled,
+                googleMapsEnabled,
+                urlContextEnabled,
+                allowedFunctionNames,
+                vertexSearchDatastore,
+                labels,
+                cachedContent,
+                null,
+                generateContentConfigCustomizer);
+    }
+
+    static GenerateContentConfig buildConfig(
+            ChatRequestParameters parameters,
+            Content systemInstruction,
+            List<SafetySetting> safetySettings,
+            Integer thinkingBudget,
+            String thinkingLevel,
+            Boolean includeThoughts,
+            Integer seed,
+            boolean googleSearchEnabled,
+            boolean googleMapsEnabled,
+            boolean urlContextEnabled,
+            List<String> allowedFunctionNames,
+            String vertexSearchDatastore,
+            Map<String, String> labels,
+            String cachedContent,
+            AudioTranscriptionConfig audioTranscriptionConfig,
             Consumer<GenerateContentConfig.Builder> generateContentConfigCustomizer) {
 
         GenerateContentConfig.Builder configBuilder = GenerateContentConfig.builder();
@@ -149,6 +187,10 @@ class GoogleGenAiConfigBuilder {
 
         if (cachedContent != null && !cachedContent.trim().isEmpty()) {
             configBuilder.cachedContent(cachedContent);
+        }
+
+        if (audioTranscriptionConfig != null) {
+            configBuilder.audioTranscriptionConfig(audioTranscriptionConfig);
         }
 
         buildTools(

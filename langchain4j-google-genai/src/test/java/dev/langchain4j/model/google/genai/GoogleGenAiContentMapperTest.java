@@ -16,6 +16,8 @@ import com.google.genai.types.FunctionCall;
 import com.google.genai.types.GenerateContentResponse;
 import com.google.genai.types.GenerateContentResponseUsageMetadata;
 import com.google.genai.types.Part;
+import com.google.genai.types.Transcription;
+import com.google.genai.types.WordInfo;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.AiMessage;
@@ -1018,5 +1020,85 @@ class GoogleGenAiContentMapperTest {
         assertThat(result.aiMessage().attribute("thought_signature_call-1", String.class))
                 .isEqualTo(Base64.getEncoder().encodeToString(signature));
         assertThat(result.aiMessage().attributes()).doesNotContainKey("thought_signature");
+    }
+
+    @Test
+    void should_extract_text_from_audio_transcription_part() {
+        GenerateContentResponse response = GenerateContentResponse.builder()
+                .candidates(List.of(Candidate.builder()
+                        .content(Content.builder()
+                                .parts(Part.builder()
+                                        .audioTranscription(Transcription.builder()
+                                                .text("Hello world transcription")
+                                                .build())
+                                        .build())
+                                .build())
+                        .build()))
+                .build();
+
+        ChatResponse result = GoogleGenAiContentMapper.toChatResponse(response, "gemini-3.5-transcribe");
+
+        assertThat(result.aiMessage().text()).isEqualTo("Hello world transcription");
+    }
+
+    @Test
+    void should_separate_audio_transcription_segments_with_a_space() {
+        GenerateContentResponse response = responseWithParts(
+                transcriptionPart(Transcription.builder().text("Good evening.").build()),
+                transcriptionPart(Transcription.builder().text("Good morning.").build()));
+
+        ChatResponse result = GoogleGenAiContentMapper.toChatResponse(response, "gemini-3.5-transcribe");
+
+        assertThat(result.aiMessage().text()).isEqualTo("Good evening. Good morning.");
+    }
+
+    @Test
+    void should_not_add_a_space_when_audio_transcription_segments_are_already_separated() {
+        GenerateContentResponse response = responseWithParts(
+                transcriptionPart(Transcription.builder().text("Good evening. ").build()),
+                transcriptionPart(Transcription.builder().text("Good morning.").build()));
+
+        ChatResponse result = GoogleGenAiContentMapper.toChatResponse(response, "gemini-3.5-transcribe");
+
+        assertThat(result.aiMessage().text()).isEqualTo("Good evening. Good morning.");
+    }
+
+    @Test
+    void should_build_text_from_words_when_audio_transcription_has_no_text() {
+        GenerateContentResponse response = responseWithParts(
+                transcriptionPart(Transcription.builder()
+                        .speakerLabel("spk_1")
+                        .words(
+                                WordInfo.builder()
+                                        .word("Hello")
+                                        .startOffset("0.100s")
+                                        .endOffset("0.450s")
+                                        .build(),
+                                WordInfo.builder()
+                                        .word("world")
+                                        .startOffset("0.500s")
+                                        .endOffset("0.850s")
+                                        .build())
+                        .build()),
+                transcriptionPart(Transcription.builder()
+                        .speakerLabel("spk_2")
+                        .words(WordInfo.builder().word("Hi").build())
+                        .build()));
+
+        ChatResponse result = GoogleGenAiContentMapper.toChatResponse(response, "gemini-3.5-transcribe");
+
+        assertThat(result.aiMessage().text()).isEqualTo("Hello world Hi");
+    }
+
+    private static GenerateContentResponse responseWithParts(Part... parts) {
+        return GenerateContentResponse.builder()
+                .candidates(List.of(Candidate.builder()
+                        .content(Content.builder().parts(parts).build())
+                        .build()))
+                .build();
+    }
+
+    private static Part transcriptionPart(Transcription transcription) {
+        return Part.builder().audioTranscription(transcription).build();
     }
 }

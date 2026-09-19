@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 import com.google.genai.Client;
 import com.google.genai.Models;
 import com.google.genai.ResponseStream;
+import com.google.genai.types.AudioTranscriptionConfig;
 import com.google.genai.types.Candidate;
 import com.google.genai.types.Content;
 import com.google.genai.types.FunctionCall;
@@ -196,6 +197,9 @@ class GoogleGenAiStreamingChatModelTest {
         assertThat(builder.allowedFunctionNames(List.of("fn1"))).isSameAs(builder);
         assertThat(builder.listeners(List.of())).isSameAs(builder);
         assertThat(builder.executor(mock(ExecutorService.class))).isSameAs(builder);
+        assertThat(builder.audioTranscriptionConfig(
+                        AudioTranscriptionConfig.builder().build()))
+                .isSameAs(builder);
     }
 
     @Test
@@ -398,6 +402,57 @@ class GoogleGenAiStreamingChatModelTest {
 
         assertThat(configCaptor.getValue().cachedContent())
                 .contains("projects/123/locations/us-central1/cachedContents/per-request");
+    }
+
+    @Test
+    void should_send_audio_transcription_config() throws Exception {
+        Client client = mock(Client.class);
+        Models models = mock(Models.class);
+        Field modelsField = Client.class.getDeclaredField("models");
+        modelsField.setAccessible(true);
+        modelsField.set(client, models);
+
+        @SuppressWarnings("unchecked")
+        ResponseStream<GenerateContentResponse> stream = mock(ResponseStream.class);
+        when(models.generateContentStream(any(String.class), any(List.class), any(GenerateContentConfig.class)))
+                .thenReturn(stream);
+        when(stream.iterator()).thenReturn(List.<GenerateContentResponse>of().iterator());
+
+        AudioTranscriptionConfig audioTranscriptionConfig = AudioTranscriptionConfig.builder()
+                .mode("SMART")
+                .languageCodes(List.of("en-US"))
+                .build();
+
+        GoogleGenAiStreamingChatModel model = GoogleGenAiStreamingChatModel.builder()
+                .client(client)
+                .modelName("gemini-3.5-transcribe")
+                .audioTranscriptionConfig(audioTranscriptionConfig)
+                .build();
+
+        ChatRequest request =
+                ChatRequest.builder().messages(UserMessage.from("Hello")).build();
+
+        CompletableFuture<ChatResponse> future = new CompletableFuture<>();
+        model.chat(request, new StreamingChatResponseHandler() {
+            @Override
+            public void onPartialResponse(String partialResponse) {}
+
+            @Override
+            public void onCompleteResponse(ChatResponse completeResponse) {
+                future.complete(completeResponse);
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                future.completeExceptionally(error);
+            }
+        });
+        future.get(30, TimeUnit.SECONDS);
+
+        ArgumentCaptor<GenerateContentConfig> configCaptor = ArgumentCaptor.forClass(GenerateContentConfig.class);
+        verify(models).generateContentStream(any(String.class), any(List.class), configCaptor.capture());
+
+        assertThat(configCaptor.getValue().audioTranscriptionConfig()).contains(audioTranscriptionConfig);
     }
 
     private static Client clientStreamingNothing() throws Exception {
