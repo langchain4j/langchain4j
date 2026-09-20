@@ -566,7 +566,7 @@ The following metrics are currently collected:
 | Metric Name | Type | Description                                                     |
 |-------------|------|-----------------------------------------------------------------|
 | `gen_ai.client.token.usage` | Histogram (DistributionSummary) | The number of input and output tokens used per **chat** model request, and the number of input tokens per **embedding** model request |
-| `gen_ai.client.operation.duration` | Timer | The duration of **embedding** model operations, recorded for both successful and failed calls |
+| `gen_ai.client.operation.duration` | Timer | How long every **chat** and **embedding** model request took, successful or failed |
 
 #### Tags on `gen_ai.client.token.usage`
 
@@ -577,6 +577,16 @@ The following metrics are currently collected:
 | `gen_ai.request.model`  | The model name from the request | `gpt-4`, `gpt-35-turbo`, `text-embedding-3-small` |
 | `gen_ai.response.model` | The model name from the response | `gpt-4-0613`                                |
 | `gen_ai.token.type`     | The type of token counted | `input`, `output` (embeddings record `input` only) |
+
+#### Tags on `gen_ai.client.operation.duration`
+
+| Tag                     | Description | Example Values                              |
+|-------------------------|-------------|---------------------------------------------|
+| `gen_ai.operation.name` | The operation being performed | `chat`                                      |
+| `gen_ai.provider.name`  | The AI provider name | `openai`, `azure.ai.inference`, `anthropic` |
+| `gen_ai.request.model`  | The model name from the request | `gpt-4`, `gpt-35-turbo`                     |
+| `gen_ai.response.model` | The model name from the response, only set when the call succeeds | `gpt-4-0613`                                |
+| `error.type`            | The exception class name, only set when the call fails | `java.util.concurrent.TimeoutException`     |
 
 #### Creating the `MicrometerMetricsChatModelListener`
 
