@@ -97,6 +97,24 @@ class AiServicesModerationTest {
         assertDoesNotThrow(() -> AiServices.verifyModerationIfNeeded(moderationFuture));
     }
 
+    @Test
+    void should_preserve_interrupt_status_when_interrupted_while_waiting_for_moderation() {
+        // Given a moderation that has not completed yet and a calling thread that has already been interrupted
+        final var moderationFuture = new CompletableFuture<Moderation>();
+        Thread.currentThread().interrupt();
+
+        try {
+            // When/Then - the wait is cut short and the interrupt is not swallowed
+            assertThatThrownBy(() -> AiServices.verifyModerationIfNeeded(moderationFuture))
+                    .isInstanceOf(RuntimeException.class)
+                    .hasCauseInstanceOf(InterruptedException.class);
+            assertThat(Thread.currentThread().isInterrupted()).isTrue();
+        } finally {
+            // clear the flag so it does not leak into other tests running on this thread
+            Thread.interrupted();
+        }
+    }
+
     interface AsyncAssistant {
 
         @Moderate
