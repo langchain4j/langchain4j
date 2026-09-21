@@ -163,6 +163,7 @@ class OpenAiResponsesClient {
     private static final String FIELD_SCHEMA = "schema";
     private static final String FIELD_ADDITIONAL_PROPERTIES = "additionalProperties";
     private static final String FIELD_STATUS = "status";
+    private static final String FIELD_PHASE = "phase";
     private static final String FIELD_INCOMPLETE_DETAILS = "incomplete_details";
     private static final String FIELD_REASON = "reason";
     private static final String FIELD_CREATED_AT = "created_at";
@@ -187,6 +188,7 @@ class OpenAiResponsesClient {
     private static final String TYPE_INPUT_IMAGE = "input_image";
     private static final String TYPE_INPUT_FILE = "input_file";
     private static final String TYPE_FUNCTION_CALL_OUTPUT = "function_call_output";
+    private static final String PHASE_FINAL_ANSWER = "final_answer";
     private static final String TYPE_JSON_OBJECT = "json_object";
     private static final String TYPE_JSON_SCHEMA = "json_schema";
 
@@ -567,13 +569,33 @@ class OpenAiResponsesClient {
     }
 
     private static String extractText(Object output) {
-        StringBuilder textBuilder = new StringBuilder();
+        List<Object> messageItems = new ArrayList<>();
         for (Object item : arr(output)) {
             if (TYPE_MESSAGE.equals(str(at(item, FIELD_TYPE)))) {
-                for (Object c : arr(at(item, FIELD_CONTENT))) {
-                    if (TYPE_OUTPUT_TEXT.equals(str(at(c, FIELD_TYPE)))) {
-                        textBuilder.append(str(at(c, FIELD_TEXT)));
-                    }
+                messageItems.add(item);
+            }
+        }
+
+        /*
+         * Reasoning models may emit more than one message item per turn, each tagged with a
+         * "phase" (e.g. "commentary" followed by "final_answer"). Concatenating all of them
+         * duplicates the reply or runs a commentary preamble into the real answer, so the
+         * final_answer-phase items win when any phase is present. Responses without phases
+         * (the ordinary case, including the Chat Completions API) keep the previous behaviour.
+         */
+        List<Object> finalAnswerItems = new ArrayList<>();
+        for (Object item : messageItems) {
+            if (PHASE_FINAL_ANSWER.equals(str(at(item, FIELD_PHASE)))) {
+                finalAnswerItems.add(item);
+            }
+        }
+        List<Object> textItems = finalAnswerItems.isEmpty() ? messageItems : finalAnswerItems;
+
+        StringBuilder textBuilder = new StringBuilder();
+        for (Object item : textItems) {
+            for (Object c : arr(at(item, FIELD_CONTENT))) {
+                if (TYPE_OUTPUT_TEXT.equals(str(at(c, FIELD_TYPE)))) {
+                    textBuilder.append(str(at(c, FIELD_TEXT)));
                 }
             }
         }
