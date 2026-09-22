@@ -11,7 +11,8 @@ class JSONIndexBuilderLocaleTest {
 
     private static final Locale DEFAULT_LOCALE = Locale.getDefault();
 
-    private final EmbeddingTable embeddingTable = EmbeddingTable.builder().name("vectors").build();
+    private final EmbeddingTable embeddingTable =
+            EmbeddingTable.builder().name("vectors").build();
 
     @BeforeEach
     void setUp() {
