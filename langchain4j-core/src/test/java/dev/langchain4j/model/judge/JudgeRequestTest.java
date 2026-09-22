@@ -83,6 +83,10 @@ class JudgeRequestTest {
         assertThat(configured.overrideWith(JudgeRequestParameters.EMPTY).modelName())
                 .isEqualTo("jev-latest");
         assertThat(configured.overrideWith(null)).isSameAs(configured);
+
+        JudgeRequestParameters configuredFromEmpty = JudgeRequestParameters.EMPTY.overrideWith(configured);
+        assertThat(configuredFromEmpty).isEqualTo(configured).isNotSameAs(JudgeRequestParameters.EMPTY);
+        assertThat(JudgeRequestParameters.EMPTY.modelName()).isNull();
     }
 
     @Test
@@ -92,12 +96,21 @@ class JudgeRequestTest {
         assertThatThrownBy(() -> JudgeRequest.builder().question("q", question).build())
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("state");
-        assertThatThrownBy(() -> JudgeRequest.builder().state(Map.of()).build())
+        assertThatThrownBy(() -> JudgeRequest.builder()
+                        .state(Map.of())
+                        .question("q", question)
+                        .build())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("state");
+        assertThatThrownBy(() ->
+                        JudgeRequest.builder().state(Map.of("message", "hello")).build())
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("questions");
-        assertThatThrownBy(() -> JudgeRequest.builder().state(Map.of()).question(" ", question))
+        assertThatThrownBy(() ->
+                        JudgeRequest.builder().state(Map.of("message", "hello")).question(" ", question))
                 .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> JudgeRequest.builder().state(Map.of()).question("q", null))
+        assertThatThrownBy(() ->
+                        JudgeRequest.builder().state(Map.of("message", "hello")).question("q", null))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 

@@ -20,7 +20,7 @@ public final class JudgeRequest {
     private final JudgeRequestParameters parameters;
 
     private JudgeRequest(Builder builder) {
-        this.state = copy(ensureNotNull(builder.state, "state"));
+        this.state = copy(ensureNotEmpty(builder.state, "state"));
         this.questions = copy(ensureNotEmpty(builder.questions, "questions"));
         this.parameters = getOrDefault(builder.parameters, JudgeRequestParameters.EMPTY);
     }
