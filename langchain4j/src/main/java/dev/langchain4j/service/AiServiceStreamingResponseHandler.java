@@ -290,11 +290,14 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                 intermediateResponseHandler.accept(chatResponse);
             }
 
+            List<ToolExecutionRequest> executedRequests = aiMessage.toolExecutionRequests();
             Map<ToolExecutionRequest, ToolExecutionResult> toolResults = new LinkedHashMap<>();
             if (toolExecutor != null) {
+                executedRequests = new ArrayList<>();
                 for (Future<ToolRequestResult> toolExecutionFuture : toolExecutionFutures) {
                     try {
                         ToolRequestResult toolRequestResult = toolExecutionFuture.get();
+                        executedRequests.add(toolRequestResult.request());
                         toolResults.put(toolRequestResult.request(), toolRequestResult.result());
                     } catch (ExecutionException e) {
                         if (e.getCause() instanceof RuntimeException re) {
@@ -313,13 +316,9 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                 }
             }
 
+            // Use the requests that were executed: the final response can reformat their JSON arguments.
             ToolService.ToolResultsOutcome outcome = context.toolService.processToolResults(
-                    context,
-                    aiMessage.toolExecutionRequests(),
-                    toolResults,
-                    new ArrayList<>(),
-                    invocationContext,
-                    toolServiceContext);
+                    context, executedRequests, toolResults, new ArrayList<>(), invocationContext, toolServiceContext);
 
             List<ChatMessage> nextMessages = context.toolService.persistToolResultsAndResolveMessagesSync(
                     context, getMemory(), null, outcome.resultMessages(), invocationContext);

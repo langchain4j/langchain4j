@@ -281,6 +281,18 @@
           "code": "java.field.removed",
           "old": "field dev.langchain4j.model.googleai.BaseGeminiChatModel.cachedContentName @ dev.langchain4j.model.googleai.GoogleAiGeminiStreamingChatModel",
           "justification": "cachedContentName is now part of GoogleAiGeminiChatRequestParameters and resolved per-request, replacing the model-level cachedContentName field"
+        },
+        {
+          "code": "java.annotation.removed",
+          "old": "class dev.langchain4j.model.googleai.GeminiFunctionCallingConfig",
+          "annotationType": "com.fasterxml.jackson.databind.annotation.JsonNaming",
+          "justification": "@JsonNaming is in Jackson 2's databind package and is ignored rather than honoured under Jackson 3. The one field it renamed now says so with @JsonProperty(\"allowed_function_names\"), which comes from the shared jackson-annotations artifact. Wire format is unchanged and pinned by GeminiWireFormatTest."
+        },
+        {
+          "code": "java.annotation.removed",
+          "old": "class dev.langchain4j.model.googleai.GeminiSafetySetting",
+          "annotationType": "com.fasterxml.jackson.databind.annotation.JsonNaming",
+          "justification": "@JsonNaming is in Jackson 2's databind package and is ignored rather than honoured under Jackson 3. It was a no-op here: both properties, category and threshold, are single words, so snake_case and the declared name are identical. Pinned by GeminiWireFormatTest."
         }
       ]
     }

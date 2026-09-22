@@ -734,7 +734,7 @@ For this, please import `langchain4j-reactor` module:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-reactor</artifactId>
-    <version>1.19.0-beta29</version>
+    <version>1.20.0-beta30</version>
 </dependency>
 ```
 ```java
@@ -743,6 +743,10 @@ interface Assistant {
   Flux<String> chat(String message);
 }
 ```
+
+`Flux<String>` is backed by `TokenStream`, so it works with every provider. The same module also carries the
+Reactor bindings for the [non-blocking modes](/tutorials/non-blocking) — `Mono<T>` and
+`Flux<AiServiceStreamingEvent>` — which work only with providers that have implemented them.
 
 [Streaming example](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithStreamingExample.java)
 

@@ -8,6 +8,7 @@ import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.genai.Client;
 import com.google.genai.ResponseStream;
+import com.google.genai.types.AudioTranscriptionConfig;
 import com.google.genai.types.Content;
 import com.google.genai.types.GenerateContentConfig;
 import com.google.genai.types.GenerateContentResponse;
@@ -67,6 +68,7 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
     private final List<String> allowedFunctionNames;
     private final String vertexSearchDatastore;
     private final Map<String, String> labels;
+    private final AudioTranscriptionConfig audioTranscriptionConfig;
     private final Consumer<GenerateContentConfig.Builder> generateContentConfigCustomizer;
 
     private final Executor executor;
@@ -88,6 +90,7 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
         this.safetySettings = copy(builder.safetySettings);
         this.vertexSearchDatastore = builder.vertexSearchDatastore;
         this.labels = builder.labels != null ? new HashMap<>(builder.labels) : null;
+        this.audioTranscriptionConfig = builder.audioTranscriptionConfig;
         this.generateContentConfigCustomizer = builder.generateContentConfigCustomizer;
 
         this.client = builder.client != null
@@ -151,6 +154,7 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
                 vertexSearchDatastore,
                 labels,
                 parameters.cachedContent(),
+                audioTranscriptionConfig,
                 generateContentConfigCustomizer);
 
         if (logRequests) {
@@ -173,7 +177,7 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
                 StringBuilder thinkingBuilder = new StringBuilder();
                 List<ToolExecutionRequest> toolRequests = new ArrayList<>();
                 Map<String, Object> attributes = new java.util.HashMap<>();
-                TokenUsage tokenUsage = new TokenUsage();
+                TokenUsage tokenUsage = GoogleGenAiTokenUsage.builder().build();
                 FinishReason finishReason = null;
                 GenerateContentResponse lastChunk = null;
 
@@ -334,6 +338,7 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
         private String cachedContent;
         private Boolean logRequests;
         private Boolean logResponses;
+        private AudioTranscriptionConfig audioTranscriptionConfig;
         private Consumer<GenerateContentConfig.Builder> generateContentConfigCustomizer;
 
         /**
@@ -556,7 +561,10 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
          * Controls whether to send thinking/reasoning text to the LLM in follow-up requests.
          * <p>
          * Disabled by default.
-         * If enabled, the contents of {@link AiMessage#thinking()} will be sent in the API request.
+         * If enabled, the contents of {@link AiMessage#thinking()} will be sent in the API request,
+         * together with the thought signature that Gemini returned for the answer, if there was one.
+         * A thought signature is an opaque token that lets the model resume its own reasoning
+         * on the next turn; sending it back keeps reasoning continuous across turns.
          * <p>
          * Thought signatures required for function calling are handled independently of this setting.
          *
@@ -810,6 +818,24 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
         public Builder generateContentConfigCustomizer(
                 Consumer<GenerateContentConfig.Builder> generateContentConfigCustomizer) {
             this.generateContentConfigCustomizer = generateContentConfigCustomizer;
+            return this;
+        }
+
+        /**
+         * Sets the {@link AudioTranscriptionConfig} applied when the model transcribes audio input:
+         * the transcription mode ({@code VERBATIM} or {@code SMART}), the spoken languages, a custom vocabulary,
+         * word-level timestamps and speaker diarization.
+         * <p>
+         * It only takes effect with models built for audio transcription, such as {@code gemini-3.5-transcribe}.
+         * Word-level timestamps and speaker labels are not part of the {@link AiMessage} text, and
+         * {@link GoogleGenAiChatResponseMetadata#rawResponse()} only holds the last streamed chunk,
+         * so use {@link GoogleGenAiChatModel} to read them.
+         *
+         * @param audioTranscriptionConfig the audio transcription configuration
+         * @return {@code this}
+         */
+        public Builder audioTranscriptionConfig(AudioTranscriptionConfig audioTranscriptionConfig) {
+            this.audioTranscriptionConfig = audioTranscriptionConfig;
             return this;
         }
 

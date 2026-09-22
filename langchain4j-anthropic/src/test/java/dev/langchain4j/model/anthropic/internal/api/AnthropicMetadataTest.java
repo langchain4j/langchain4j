@@ -2,12 +2,11 @@ package dev.langchain4j.model.anthropic.internal.api;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.langchain4j.model.anthropic.internal.client.Json;
 import org.junit.jupiter.api.Test;
 
 class AnthropicMetadataTest {
 
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     @Test
     void should_create_metadata_with_userId() {
@@ -40,10 +39,10 @@ class AnthropicMetadataTest {
                 AnthropicMetadata.builder().userId("test-user-789").build();
 
         // when
-        String json = OBJECT_MAPPER.writeValueAsString(metadata);
+        String json = Json.toJson(metadata);
 
         // then
-        assertThat(json).contains("\"user_id\":\"test-user-789\"");
+        assertThat(json).isEqualToIgnoringWhitespace("{\"user_id\" : \"test-user-789\"}");
     }
 
     @Test
@@ -52,7 +51,7 @@ class AnthropicMetadataTest {
         String json = "{\"user_id\":\"test-user-abc\"}";
 
         // when
-        AnthropicMetadata metadata = OBJECT_MAPPER.readValue(json, AnthropicMetadata.class);
+        AnthropicMetadata metadata = Json.fromJson(json, AnthropicMetadata.class);
 
         // then
         assertThat(metadata.getUserId()).isEqualTo("test-user-abc");
@@ -64,10 +63,10 @@ class AnthropicMetadataTest {
         AnthropicMetadata metadata = new AnthropicMetadata();
 
         // when
-        String json = OBJECT_MAPPER.writeValueAsString(metadata);
+        String json = Json.toJson(metadata);
 
         // then
-        assertThat(json).isEqualTo("{}");
+        assertThat(json).isEqualToIgnoringWhitespace("{}");
     }
 
     @Test

@@ -130,16 +130,28 @@ configurable with `AiServices.builder(...).streamingBufferSize(int)`.
 AI Service methods return JDK types — `CompletableFuture` and `Flow.Publisher` — so the API does not tie you to
 any particular reactive programming library.
 
-:::warning
-Returning a library's own type (`Uni`/`Multi`, `Mono`/`Flux`) from a non-blocking AI Service method is **not
-supported yet**. The seam exists — the `CompletableFutureAdapter` and `PublisherAdapter` SPIs, discovered via
-`ServiceLoader` — but both are internal, and no adapter ships with LangChain4j today. Declaring such a return type
-currently fails. Use `CompletableFuture` or `Flow.Publisher` and adapt at the call site.
+Reactor types are supported through the `langchain4j-reactor` module — `Mono<T>` for the single-response mode
+and `Flux<AiServiceStreamingEvent>` for the reactive one. Adding the dependency is enough; the adapters register
+themselves via `ServiceLoader`.
+
+```java
+interface Assistant {
+
+    Mono<String> answer(String userMessage);
+
+    Flux<AiServiceStreamingEvent> events(String userMessage);
+}
+```
+
+:::note
+Mutiny's `Uni`/`Multi` are not supported yet. The seam is there — the `CompletableFutureAdapter` and
+`PublisherAdapter` SPIs, discovered via `ServiceLoader` — but no adapter ships for them, so declaring such a
+return type currently fails. Use `CompletableFuture` or `Flow.Publisher` and adapt at the call site.
 :::
 
-`Flux<String>` is available through the separate `langchain4j-reactor` module — see
-[AI Services](/tutorials/ai-services#flux). That is an adapter over `TokenStream` and predates this feature; it is
-not part of the non-blocking path described here.
+`Flux<String>` is served by the older `TokenStream`-based adapter in the same module — see
+[AI Services](/tutorials/ai-services#flux). It predates this feature, is not part of the non-blocking path
+described here, and works with every provider.
 
 ## What has to be non-blocking
 
@@ -268,7 +280,8 @@ A single invocation now crosses several threads, so ambient `ThreadLocal` state 
 spans, security context — is **not** automatically propagated the way it is in the fully synchronous mode. Return a
 context-propagating executor from your provider to make it follow the work: a `ManagedExecutor` on
 Quarkus/MicroProfile, a `TaskDecorator`-wrapped executor on Spring, `Context.taskWrapping(executor)` for
-OpenTelemetry, or `ContextSnapshot.wrap(executor)` for Micrometer.
+OpenTelemetry, or `ContextSnapshot.wrap(executor)` for Micrometer. On Spring Boot you can point LangChain4j at
+the application's executor with one property instead — see [Spring Boot](#spring-boot) below.
 
 `InvocationContext` is unaffected — it is passed explicitly as a parameter, never through a thread-local.
 :::
@@ -282,8 +295,68 @@ to your own executor from inside the callback. See [Observability](/tutorials/ob
 
 ## Provider support
 
-Non-blocking support is opt-in per provider, and is being rolled out gradually. Today OpenAI (both the Chat
-Completions and the Responses APIs), Anthropic and Bedrock implement the asynchronous and reactive chat methods;
-OpenAI also implements asynchronous embeddings, Cohere asynchronous scoring and Tavily asynchronous web search.
-Any provider that has not opted in still works — it fails loudly on the non-blocking path instead of quietly
-blocking a thread.
+:::warning
+**The non-blocking modes only work with providers that have implemented them.** Declaring a
+`CompletableFuture` or `Flow.Publisher` return type against any other provider compiles, and then fails at
+runtime with an `AsyncNotSupportedException` naming the component and the missing method. There is no silent
+fallback to a blocking call — that is the point, but it means the return type you can use depends on your
+provider.
+:::
+
+Support is opt-in per provider and is being rolled out gradually. Today:
+
+| Provider | `CompletableFuture` (`chatAsync`) | `Flow.Publisher` (reactive `chat`) |
+|---|---|---|
+| OpenAI — Chat Completions | ✅ | ✅ |
+| OpenAI — Responses | ✅ | ✅ |
+| Anthropic | ✅ | ✅ |
+| Bedrock | ✅ | ✅ |
+| every other provider | ❌ | ❌ |
+
+Beyond chat models: OpenAI implements asynchronous embeddings (`embedAsync`), Cohere asynchronous scoring
+(`scoreAsync`) and Tavily asynchronous web search (`searchAsync`).
+
+A provider that has not opted in is unaffected on the synchronous and `TokenStream` APIs — those keep working
+exactly as before.
+
+### The same applies to everything else in the call
+
+A chat model that supports the mode is necessary but not sufficient: a single blocking component anywhere in the
+interaction fails the call the same way. In practice that means:
+
+| Component | What it must implement | Bundled implementations |
+|---|---|---|
+| Chat memory | `addAsync` / `messagesAsync` / `setAsync` | `MessageWindowChatMemory` and `InMemoryChatMemoryStore` already do |
+| Guardrails | `validateAsync` | none — a guardrail you write must override it, even if it does no I/O |
+| Content retriever, query router, aggregator | `retrieveAsync`, `routeAsync`, `aggregateAsync` | opt into offloading instead with `offloadBlocking(true)` |
+| Embedding store | `searchAsync` | as above, via the retriever's `offloadBlocking(true)` |
+| Custom `ToolExecutor` | `executeAsync` | `@Tool`-annotated methods are offloaded for you |
+
+A guardrail that does no blocking work satisfies the contract in one line:
+
+```java
+@Override
+public CompletableFuture<InputGuardrailResult> validateAsync(InputGuardrailRequest request) {
+    return CompletableFuture.completedFuture(validate(request));
+}
+```
+
+### Spring Boot
+
+`Flux<String>` keeps working with **every** provider, including those in the ❌ row: it is served by the
+`TokenStream`-based adapter in `langchain4j-reactor`, not by the non-blocking path described on this page.
+
+`Mono<T>` and `Flux<AiServiceStreamingEvent>` come from the `langchain4j-reactor` module and carry the same
+provider constraint as the JDK types — see [Third-party reactive types](#third-party-reactive-types) above.
+
+To make ambient context follow an asynchronous invocation, let LangChain4j offload to the application's own
+executor rather than its default one:
+
+```properties
+langchain4j.executor.use-spring-task-executor=true
+```
+
+Spring's task executor propagates tracing spans, MDC and security context when a `TaskDecorator` is installed
+(Micrometer context propagation and Spring Security both install one), and its pool follows
+`spring.task.execution.*`. It is off by default because the setting is process-wide, not scoped to one
+application context.
