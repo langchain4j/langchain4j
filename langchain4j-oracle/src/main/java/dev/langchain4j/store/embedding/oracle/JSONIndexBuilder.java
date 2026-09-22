@@ -5,6 +5,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.stream.Collectors;
 import oracle.jdbc.OracleType;
 
@@ -139,7 +140,7 @@ public class JSONIndexBuilder extends IndexBuilder<JSONIndexBuilder> {
                     embeddingTable.name(),
                     "_METADATA_"
                             + this.indexExpressions.stream()
-                                    .map(metadataKey -> metadataKey.getKey().toUpperCase())
+                                    .map(metadataKey -> metadataKey.getKey().toUpperCase(Locale.ROOT))
                                     .collect(Collectors.joining("_")));
         }
         return indexName;
