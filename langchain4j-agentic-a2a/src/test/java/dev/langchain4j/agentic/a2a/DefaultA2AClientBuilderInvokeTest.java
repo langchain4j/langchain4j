@@ -8,14 +8,20 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 
 import dev.langchain4j.agentic.observability.A2AStreamingClientListenerResult;
+import dev.langchain4j.agentic.scope.AgenticScope;
+import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
+import dev.langchain4j.invocation.LangChain4jManaged;
 import dev.langchain4j.service.V;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
+import java.util.function.Supplier;
 import org.a2aproject.sdk.client.Client;
 import org.a2aproject.sdk.client.ClientEvent;
 import org.a2aproject.sdk.client.MessageEvent;
@@ -38,12 +44,15 @@ import org.junit.jupiter.api.Test;
  * call, the outgoing {@code Message}, the event consumption and the scope write-back, all running
  * in-process against a mocked A2A {@link Client}.
  *
- * <p>These tests pin the stateless contract introduced for issue #6371: the response taskId is no
- * longer written back into the {@code AgenticScope}, so repeating an invocation of the same agent
- * starts a fresh task instead of sending a message to a task that has already reached a terminal
- * state. The contextId write-back is intentionally kept (it identifies the conversation, and
- * reusing it across tasks is legitimate multi-turn behaviour), so it is pinned here as well to
- * protect it from being dropped later.
+ * <p>These tests pin the stateless contract introduced for issue #6371: the taskId of a task that
+ * reached a terminal state is not written back into the {@code AgenticScope}, so repeating an
+ * invocation of the same agent starts a fresh task instead of sending a message to a task that can
+ * no longer accept one. The taskId of a task that is still open when the invocation returns — which
+ * only happens when a {@code streamingClientListener} stops consuming the stream early — is still
+ * propagated, since that task remains continuable, pollable and cancelable. The contextId
+ * write-back is intentionally kept (it identifies the conversation, and reusing it across tasks is
+ * legitimate multi-turn behaviour), so it is pinned here as well to protect it from being dropped
+ * later.
  */
 class DefaultA2AClientBuilderInvokeTest {
 
@@ -104,6 +113,16 @@ class DefaultA2AClientBuilderInvokeTest {
                 .build();
         return new TaskEvent(
                 task(taskId, contextId, new TaskStatus(TaskState.TASK_STATE_COMPLETED), List.of(artifact)));
+    }
+
+    private static ClientEvent workingUpdateEvent(String taskId, String contextId) {
+        return updateEvent(taskId, contextId, TaskState.TASK_STATE_WORKING);
+    }
+
+    private static ClientEvent updateEvent(String taskId, String contextId, TaskState state) {
+        return new TaskUpdateEvent(
+                task(taskId, contextId, new TaskStatus(state), List.of()),
+                new TaskStatusUpdateEvent(taskId, new TaskStatus(state), contextId, Map.of()));
     }
 
     private static ClientEvent taskEvent(String taskId, String contextId, TaskState state, String reason) {
@@ -225,37 +244,90 @@ class DefaultA2AClientBuilderInvokeTest {
 
     @Test
     void streaming_client_listener_stops_the_stream_and_returns_its_response() {
-        AgentCard card = agentCard();
-        Client client = mock(Client.class);
-        doAnswer(invocation -> {
-                    List<BiConsumer<ClientEvent, AgentCard>> consumers = invocation.getArgument(1);
-                    Task task = task("task-s1", "ctx-s1", new TaskStatus(TaskState.TASK_STATE_WORKING), List.of());
-                    consumers
-                            .get(0)
-                            .accept(
-                                    new TaskUpdateEvent(
-                                            task,
-                                            new TaskStatusUpdateEvent(
-                                                    "task-s1",
-                                                    new TaskStatus(TaskState.TASK_STATE_WORKING),
-                                                    "ctx-s1",
-                                                    Map.of())),
-                                    card);
-                    return null;
-                })
-                .when(client)
-                .sendMessage(any(Message.class), anyList(), any(), any());
+        MockedClient mocked = clientReplaying(workingUpdateEvent("task-s1", "ctx-s1"));
+        EchoAgent agent = stoppingOnWorking(mocked.client());
 
-        EchoAgent agent = new DefaultA2AClientBuilder<>(agentCard(), EchoAgent.class, client)
+        ResultWithAgenticScope<String> result = agent.echo("question", null, null);
+
+        assertThat(result.result()).isEqualTo("stopped early");
+    }
+
+    @Test
+    void task_id_of_a_task_still_open_on_early_stop_is_written_back() {
+        MockedClient mocked = clientReplaying(workingUpdateEvent("task-s1", "ctx-s1"));
+        EchoAgent agent = stoppingOnWorking(mocked.client());
+
+        ResultWithAgenticScope<String> result = agent.echo("question", null, null);
+
+        // Stopping the client-side stream does not cancel the remote task: it is still in
+        // TASK_STATE_WORKING when the invocation returns, so its id must stay reachable for the
+        // caller to poll, cancel or continue it.
+        assertThat(result.agenticScope().readState("taskId")).isEqualTo("task-s1");
+        assertThat(result.agenticScope().readState("contextId")).isEqualTo("ctx-s1");
+    }
+
+    @Test
+    void task_id_of_a_terminal_task_is_not_written_back_on_early_stop() {
+        MockedClient mocked = clientReplaying(updateEvent("task-s2", "ctx-s2", TaskState.TASK_STATE_COMPLETED));
+        EchoAgent agent = new DefaultA2AClientBuilder<>(agentCard(), EchoAgent.class, mocked.client())
+                .outputKey("response")
+                .streamingClientListener((TaskUpdateEvent event) ->
+                        A2AStreamingClientListenerResult.stopWithResponse("stopped on a completed task"))
+                .build();
+
+        ResultWithAgenticScope<String> result = agent.echo("question", null, null);
+
+        // The listener stopped the stream on a task that already reached a terminal state: that id
+        // is unusable, so it must not be propagated (#6371).
+        assertThat(result.result()).isEqualTo("stopped on a completed task");
+        assertThat(result.agenticScope().readState("taskId")).isNull();
+    }
+
+    @Test
+    void a_completed_task_clears_a_task_id_left_in_the_scope_by_an_earlier_invocation() {
+        MockedClient mocked = clientReplaying(
+                workingUpdateEvent("task-open", "ctx-1"), completedTaskEvent("task-open", "ctx-1", "answer"));
+        AtomicBoolean stopStream = new AtomicBoolean(true);
+        EchoAgent agent = new DefaultA2AClientBuilder<>(agentCard(), EchoAgent.class, mocked.client())
+                .outputKey("response")
+                .streamingClientListener((TaskUpdateEvent event) -> stopStream.get()
+                        ? A2AStreamingClientListenerResult.stopWithResponse("stopped early")
+                        : A2AStreamingClientListenerResult.continueStreaming())
+                .build();
+
+        ResultWithAgenticScope<String> first = agent.echo("question-1", null, null);
+        assertThat(first.agenticScope().readState("taskId")).isEqualTo("task-open");
+
+        // The same task is now driven to completion: the scope entry must be cleared rather than
+        // left pointing at a task that can no longer accept messages.
+        stopStream.set(false);
+        DefaultAgenticScope scope = DefaultAgenticScope.ephemeralAgenticScope();
+        scope.writeState("taskId", "task-open");
+        ResultWithAgenticScope<String> second =
+                withCurrentScope(scope, () -> agent.echo("question-2", "ctx-1", (String) scope.readState("taskId")));
+
+        assertThat(mocked.sentMessages().get(1).taskId()).isEqualTo("task-open");
+        assertThat(second.result()).isEqualTo("answer");
+        assertThat(scope.readState("taskId")).isNull();
+    }
+
+    /** Runs {@code call} with {@code scope} as the ambient scope, as an agentic system would. */
+    private static <R> R withCurrentScope(AgenticScope scope, Supplier<R> call) {
+        LangChain4jManaged.setCurrent(Map.of(AgenticScope.class, scope));
+        try {
+            return call.get();
+        } finally {
+            LangChain4jManaged.removeCurrent();
+        }
+    }
+
+    private static EchoAgent stoppingOnWorking(Client client) {
+        return new DefaultA2AClientBuilder<>(agentCard(), EchoAgent.class, client)
                 .outputKey("response")
                 .streamingClientListener(
                         (TaskUpdateEvent event) -> event.getTask().status().state() == TaskState.TASK_STATE_WORKING
                                 ? A2AStreamingClientListenerResult.stopWithResponse("stopped early")
                                 : A2AStreamingClientListenerResult.continueStreaming())
                 .build();
-
-        ResultWithAgenticScope<String> result = agent.echo("question", null, null);
-
-        assertThat(result.result()).isEqualTo("stopped early");
     }
 }
