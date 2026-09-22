@@ -146,8 +146,7 @@ class JacksonJsonCodec implements Json.JsonCodec {
         // type is resolved from the declared field, so Optional<Pojo> needs no extra setup.
         module.addSerializer(Optional.class, new StdSerializer<>(Optional.class) {
             @Override
-            public void serialize(Optional value, JsonGenerator gen, SerializerProvider provider)
-                    throws IOException {
+            public void serialize(Optional value, JsonGenerator gen, SerializerProvider provider) throws IOException {
                 if (value.isPresent()) {
                     provider.defaultSerializeValue(value.get(), gen);
                 } else {
@@ -197,8 +196,7 @@ class JacksonJsonCodec implements Json.JsonCodec {
         }
 
         @Override
-        public JsonDeserializer<?> createContextual(DeserializationContext ctxt, BeanProperty property)
-                throws JsonMappingException {
+        public JsonDeserializer<?> createContextual(DeserializationContext ctxt, BeanProperty property) throws JsonMappingException {
             JavaType valueType = property != null && property.getType().containedTypeCount() > 0
                     ? property.getType().containedType(0)
                     : ctxt.constructType(Object.class);
