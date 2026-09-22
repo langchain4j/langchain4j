@@ -265,7 +265,6 @@ class JsonCodecTest {
 
     record PersonRecordWithOptional(String name, Optional<Integer> age) {}
 
-    @Disabled("optional fields are currently not supported")
     @ParameterizedTest
     @MethodSource("codecs")
     void record_with_optional_present(Json.JsonCodec codec) {
@@ -278,7 +277,6 @@ class JsonCodecTest {
         assertThat(pojo.age()).hasValue(42);
     }
 
-    @Disabled("optional fields are currently not supported")
     @ParameterizedTest
     @MethodSource("codecs")
     void record_with_optional_absent(Json.JsonCodec codec) {
@@ -298,7 +296,6 @@ class JsonCodecTest {
         assertThat(pojo.age()).isEmpty();
     }
 
-    @Disabled("optional fields are currently not supported")
     @ParameterizedTest
     @MethodSource("codecs")
     void record_with_optional_null(Json.JsonCodec codec) {
