@@ -3114,9 +3114,9 @@ When `null` is passed for `contextId` or `taskId`, the field is omitted from the
 
 When the `@A2AContextId` parameter also has a recognizable name, possibly configured through the `@V` annotation, the server-assigned value from the response is automatically written back to the `AgenticScope` under that name. This enables multi-turn flows, where the first call captures the context and subsequent calls continue the same conversation: the server keeps the context and creates a new task in it for every invocation.
 
-The `taskId`, on the other hand, is never written back to the `AgenticScope`. A task is already in a terminal state when an invocation returns, and the A2A server rejects any further message sent to such a task.
+The `taskId` follows a different rule: it is written back to the `AgenticScope` only when the remote task is still open at the moment the invocation returns, and the scope entry is cleared otherwise. An invocation normally returns once its task has reached a terminal state, and the A2A server rejects any further message sent to such a task, so in the common case nothing is propagated and the next invocation starts a fresh task. The one exception is a [streaming client listener](#streaming-a2a-client-listener) that stops consuming the stream early: the remote task keeps running, and its identifier is kept in the scope so that it can still be polled, canceled or continued.
 
-The `taskId` is instead taken from the invocation context: pass `null` (or omit the parameter) to let the server create a new task, or pass the identifier of an interrupted task to resume it, as described in the [Human-in-the-loop A2A agents](#human-in-the-loop-a2a-agents) section.
+Outside of that case the `taskId` is taken from the invocation arguments: pass `null` (or omit the parameter) to let the server create a new task, or pass the identifier of an existing task to continue it.
 
 If the method returns `ResultWithAgenticScope`, the context is accessible directly:
 
@@ -3170,7 +3170,7 @@ MultiTurnWorkflow workflow = AgenticServices.sequenceBuilder(MultiTurnWorkflow.c
 ResultWithAgenticScope<String> result = workflow.converse("hello");
 ```
 
-In this sequence, the first agent sends a message with no `contextId`/`taskId` (they are `null` in the scope). The server creates a new context and a new task, and then the `contextId` is written to the scope. When the second agent runs, it reads the now-populated `contextId` from the scope and sends it on the message envelope, so the conversation continues. As the task completed by the first agent cannot accept further messages, the second agent leaves the `taskId` unset and the server creates a new task in the same context.
+In this sequence, the first agent sends a message with no `contextId`/`taskId` (they are `null` in the scope). The server creates a new context and a new task, and then the `contextId` is written to the scope. When the second agent runs, it reads the now-populated `contextId` from the scope and sends it on the message envelope, so the conversation continues. As the task completed by the first agent cannot accept further messages, the `taskId` is left unset in the scope, and the server creates a new task in the same context.
 
 ### Multi-tenant A2A agents
 
@@ -3201,7 +3201,7 @@ public interface MultiTenantChatAgent {
 }
 ```
 
-Unlike `@A2AContextId`, the tenant value is never written back to the `AgenticScope`; like `@A2ATaskId`, the caller is responsible for supplying it on every invocation.
+Unlike `@A2AContextId` and `@A2ATaskId`, the tenant value is never written back to the `AgenticScope` — the caller is responsible for supplying it on every invocation.
 
 ### Human-in-the-loop A2A agents
 
@@ -3294,7 +3294,7 @@ UntypedAgent creativeWriter = AgenticServices.a2aBuilder(A2A_SERVER_URL)
 
 The listener is invoked for each event received from the remote A2A agent. Return `continueStreaming()` to keep consuming events, `stopWithResponse(response)` to stop consuming the stream and return the specified response to the caller, or `stopWithCurrentArtifacts()` to stop consuming the stream and return the artifacts received so far, using the default A2A client artifact-to-text extraction logic.
 
-Stopping the client-side stream does not cancel the remote A2A task. The remote task may continue executing asynchronously.
+Stopping the client-side stream does not cancel the remote A2A task. The remote task may continue executing asynchronously. Because that task is still open when the invocation returns, its identifier is written back to the `AgenticScope` under the name of the `@A2ATaskId` parameter, if the agent declares one, so that the caller can poll, cancel or continue it. This is the only case in which a `taskId` is propagated through the scope, as explained in the [Multi-turn conversations with A2A servers](#multi-turn-conversations-with-a2a-servers) section.
 
 ### Configuring the A2A server URL dynamically
 
