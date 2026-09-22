@@ -5,6 +5,7 @@ import static com.fasterxml.jackson.annotation.PropertyAccessor.FIELD;
 import static com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES;
 import static com.fasterxml.jackson.databind.MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS;
 import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
+
 import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE;
 import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 import static java.time.format.DateTimeFormatter.ISO_LOCAL_TIME;
@@ -14,7 +15,6 @@ import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.JsonToken;
-import com.fasterxml.jackson.databind.AnnotationIntrospector;
 import com.fasterxml.jackson.databind.BeanProperty;
 import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.JavaType;
@@ -28,13 +28,15 @@ import com.fasterxml.jackson.databind.deser.ContextualDeserializer;
 import com.fasterxml.jackson.databind.introspect.AnnotatedClass;
 import com.fasterxml.jackson.databind.introspect.AnnotationIntrospectorPair;
 import com.fasterxml.jackson.databind.introspect.NopAnnotationIntrospector;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.databind.jsontype.NamedType;
 import com.fasterxml.jackson.databind.jsontype.TypeResolverBuilder;
 import com.fasterxml.jackson.databind.jsontype.impl.StdTypeResolverBuilder;
-import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.ser.std.StdSerializer;
+
 import dev.langchain4j.Internal;
+
 import java.io.IOException;
 import java.lang.reflect.Type;
 import java.time.LocalDate;
@@ -60,14 +62,16 @@ class JacksonJsonCodec implements Json.JsonCodec {
 
         module.addSerializer(LocalDate.class, new StdSerializer<>(LocalDate.class) {
             @Override
-            public void serialize(LocalDate value, JsonGenerator gen, SerializerProvider provider) throws IOException {
+            public void serialize(LocalDate value, JsonGenerator gen, SerializerProvider provider)
+                    throws IOException {
                 gen.writeString(value.format(ISO_LOCAL_DATE));
             }
         });
 
         module.addDeserializer(LocalDate.class, new JsonDeserializer<>() {
             @Override
-            public LocalDate deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
+            public LocalDate deserialize(JsonParser p, DeserializationContext ctxt)
+                    throws IOException {
                 JsonNode node = p.getCodec().readTree(p);
                 if (node.isObject()) {
                     int year = node.get("year").asInt();
@@ -82,14 +86,16 @@ class JacksonJsonCodec implements Json.JsonCodec {
 
         module.addSerializer(LocalTime.class, new StdSerializer<>(LocalTime.class) {
             @Override
-            public void serialize(LocalTime value, JsonGenerator gen, SerializerProvider provider) throws IOException {
+            public void serialize(LocalTime value, JsonGenerator gen, SerializerProvider provider)
+                    throws IOException {
                 gen.writeString(value.format(ISO_LOCAL_TIME));
             }
         });
 
         module.addDeserializer(LocalTime.class, new JsonDeserializer<>() {
             @Override
-            public LocalTime deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
+            public LocalTime deserialize(JsonParser p, DeserializationContext ctxt)
+                    throws IOException {
                 JsonNode node = p.getCodec().readTree(p);
                 if (node.isObject()) {
                     int hour = node.get("hour").asInt();
@@ -109,7 +115,8 @@ class JacksonJsonCodec implements Json.JsonCodec {
 
         module.addSerializer(LocalDateTime.class, new StdSerializer<>(LocalDateTime.class) {
             @Override
-            public void serialize(LocalDateTime value, JsonGenerator gen, SerializerProvider provider)
+            public void serialize(
+                    LocalDateTime value, JsonGenerator gen, SerializerProvider provider)
                     throws IOException {
                 gen.writeString(value.format(ISO_LOCAL_DATE_TIME));
             }
@@ -117,7 +124,8 @@ class JacksonJsonCodec implements Json.JsonCodec {
 
         module.addDeserializer(LocalDateTime.class, new JsonDeserializer<>() {
             @Override
-            public LocalDateTime deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
+            public LocalDateTime deserialize(JsonParser p, DeserializationContext ctxt)
+                    throws IOException {
                 JsonNode node = p.getCodec().readTree(p);
                 if (node.isObject()) {
                     JsonNode date = node.get("date");
@@ -146,7 +154,8 @@ class JacksonJsonCodec implements Json.JsonCodec {
         // type is resolved from the declared field, so Optional<Pojo> needs no extra setup.
         module.addSerializer(Optional.class, new StdSerializer<>(Optional.class) {
             @Override
-            public void serialize(Optional value, JsonGenerator gen, SerializerProvider provider) throws IOException {
+            public void serialize(Optional value, JsonGenerator gen, SerializerProvider provider)
+                    throws IOException {
                 if (value.isPresent()) {
                     provider.defaultSerializeValue(value.get(), gen);
                 } else {
@@ -159,8 +168,12 @@ class JacksonJsonCodec implements Json.JsonCodec {
 
         ObjectMapper mapper = JsonMapper.builder()
                 .visibility(FIELD, ANY)
-                .disable(INDENT_OUTPUT) // disabled on purpose to save tokens when sending tool results to LLM
-                .enable(FAIL_ON_UNKNOWN_PROPERTIES) // enabled on purpose to prevent issues caused by LLM hallucinations
+                .disable(
+                        INDENT_OUTPUT) // disabled on purpose to save tokens when sending tool
+                                       // results to LLM
+                .enable(
+                        FAIL_ON_UNKNOWN_PROPERTIES) // enabled on purpose to prevent issues caused
+                                                    // by LLM hallucinations
                 .enable(ACCEPT_CASE_INSENSITIVE_ENUMS)
                 .build()
                 .findAndRegisterModules()
@@ -170,7 +183,8 @@ class JacksonJsonCodec implements Json.JsonCodec {
         // having to add @JsonTypeInfo+@JsonSubTypes. We synthesize equivalent metadata via a
         // custom AnnotationIntrospector consulted ahead of Jackson's default one.
         mapper.setAnnotationIntrospector(AnnotationIntrospectorPair.pair(
-                new SealedTypePolymorphicIntrospector(), mapper.getDeserializationConfig().getAnnotationIntrospector()));
+                new SealedTypePolymorphicIntrospector(),
+                mapper.getDeserializationConfig().getAnnotationIntrospector()));
         return mapper;
     }
 
@@ -196,15 +210,18 @@ class JacksonJsonCodec implements Json.JsonCodec {
         }
 
         @Override
-        public JsonDeserializer<?> createContextual(DeserializationContext ctxt, BeanProperty property) throws JsonMappingException {
+        public JsonDeserializer<?> createContextual(
+                DeserializationContext ctxt, BeanProperty property) throws JsonMappingException {
             JavaType valueType = property != null && property.getType().containedTypeCount() > 0
                     ? property.getType().containedType(0)
                     : ctxt.constructType(Object.class);
-            return new OptionalDeserializer(ctxt.findContextualValueDeserializer(valueType, property));
+            return new OptionalDeserializer(
+                    ctxt.findContextualValueDeserializer(valueType, property));
         }
 
         @Override
-        public Optional<?> deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
+        public Optional<?> deserialize(JsonParser p, DeserializationContext ctxt)
+                throws IOException {
             if (p.currentToken() == JsonToken.VALUE_NULL) {
                 return Optional.empty();
             }
@@ -288,7 +305,9 @@ class JacksonJsonCodec implements Json.JsonCodec {
 
         @Override
         public TypeResolverBuilder<?> findTypeResolver(
-                MapperConfig<?> config, AnnotatedClass ac, com.fasterxml.jackson.databind.JavaType baseType) {
+                MapperConfig<?> config,
+                AnnotatedClass ac,
+                com.fasterxml.jackson.databind.JavaType baseType) {
             Class<?> raw = ac.getRawType();
             if (!shouldHandle(raw)) {
                 return null;
@@ -316,7 +335,8 @@ class JacksonJsonCodec implements Json.JsonCodec {
             // Step in for any polymorphic base that doesn't already declare its own type-info
             // strategy via @JsonTypeInfo. This covers both sealed types (no annotations) and
             // types that only use @JsonSubTypes for subtype enumeration.
-            return raw.getAnnotation(JsonTypeInfo.class) == null && PolymorphicTypes.isPolymorphic(raw);
+            return raw.getAnnotation(JsonTypeInfo.class) == null
+                    && PolymorphicTypes.isPolymorphic(raw);
         }
     }
 }

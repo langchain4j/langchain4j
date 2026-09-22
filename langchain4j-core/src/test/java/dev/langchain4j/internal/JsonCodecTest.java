@@ -6,25 +6,26 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
 import com.fasterxml.jackson.databind.exc.ValueInstantiationException;
+
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
+
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.MethodSource;
 
 class JsonCodecTest {
 
     record Person(String name, int age) {}
 
     private static final String PERSON_JSON = """
-            {
-                "name": "Klaus",
-                "age": 42
-            }
-            """;
+        {
+            "name": "Klaus",
+            "age": 42
+        }
+        """;
 
     static List<Json.JsonCodec> codecs() {
         return List.of(new JacksonJsonCodec());
@@ -63,11 +64,11 @@ class JsonCodecTest {
 
         // given
         String json = """
-                {
-                    "age": 42,
-                    "name": "Klaus"
-                }
-                """;
+            {
+                "age": 42,
+                "name": "Klaus"
+            }
+            """;
 
         // when
         Person pojo = codec.fromJson(json, Person.class);
@@ -89,12 +90,12 @@ class JsonCodecTest {
 
         // given
         String json = """
-                {
-                    "name": "Klaus",
-                    "age": 42,
-                    "married": false
-                }
-                """;
+            {
+                "name": "Klaus",
+                "age": 42,
+                "married": false
+            }
+            """;
 
         // when-then
         assertThatThrownBy(() -> codec.fromJson(json, Person.class))
@@ -116,11 +117,11 @@ class JsonCodecTest {
 
         // given
         String json = """
-                {
-                    "name": "Klaus",
-                    "age": null
-                }
-                """;
+            {
+                "name": "Klaus",
+                "age": null
+            }
+            """;
 
         // when
         Person pojo = codec.fromJson(json, Person.class);
@@ -136,11 +137,11 @@ class JsonCodecTest {
 
         // given
         String json = """
-                {
-                    "name": "Klaus",
-                    "age": "42"
-                }
-                """;
+            {
+                "name": "Klaus",
+                "age": "42"
+            }
+            """;
 
         // when
         Person pojo = codec.fromJson(json, Person.class);
@@ -156,11 +157,11 @@ class JsonCodecTest {
 
         // given
         String json = """
-                {
-                    "name": "Klaus",
-                    "age": 42.0
-                }
-                """;
+            {
+                "name": "Klaus",
+                "age": 42.0
+            }
+            """;
 
         // when
         Person pojo = codec.fromJson(json, Person.class);
@@ -180,16 +181,17 @@ class JsonCodecTest {
 
         // given
         String json = """
-                {
-                    "name": "Klaus",
-                    "address": {
-                        "city": "Langley Falls"
-                    }
+            {
+                "name": "Klaus",
+                "address": {
+                    "city": "Langley Falls"
                 }
-                """;
+            }
+            """;
 
         // when
-        PersonRecordWithNestedRecord pojo = codec.fromJson(json, PersonRecordWithNestedRecord.class);
+        PersonRecordWithNestedRecord pojo =
+                codec.fromJson(json, PersonRecordWithNestedRecord.class);
 
         // then
         assertThat(pojo.name()).isEqualTo("Klaus");
@@ -210,10 +212,10 @@ class JsonCodecTest {
 
         // given
         String json = """
-                {
-                    "name": "Klaus"
-                }
-                """;
+            {
+                "name": "Klaus"
+            }
+            """;
 
         // when
         PersonRecordWithCollections pojo = codec.fromJson(json, PersonRecordWithCollections.class);
@@ -233,15 +235,15 @@ class JsonCodecTest {
 
         // given
         String json = """
-                {
-                    "name": "Klaus",
-                    "collection": [],
-                    "list": [],
-                    "set": [],
-                    "array": [],
-                    "map": {}
-                }
-                """;
+            {
+                "name": "Klaus",
+                "collection": [],
+                "list": [],
+                "set": [],
+                "array": [],
+                "map": {}
+            }
+            """;
 
         // when
         PersonRecordWithCollections pojo = codec.fromJson(json, PersonRecordWithCollections.class);
@@ -275,10 +277,10 @@ class JsonCodecTest {
 
         // given
         String json = """
-                {
-                    "name": "Klaus"
-                }
-                """;
+            {
+                "name": "Klaus"
+            }
+            """;
 
         // when
         PersonRecordWithOptional pojo = codec.fromJson(json, PersonRecordWithOptional.class);
@@ -294,11 +296,11 @@ class JsonCodecTest {
 
         // given
         String json = """
-                {
-                    "name": "Klaus",
-                    "age": null
-                }
-                """;
+            {
+                "name": "Klaus",
+                "age": null
+            }
+            """;
 
         // when
         PersonRecordWithOptional pojo = codec.fromJson(json, PersonRecordWithOptional.class);
@@ -338,11 +340,11 @@ class JsonCodecTest {
 
         // given
         String json = """
-                {
-                    "name": "Klaus",
-                    "age": -1
-                }
-                """;
+            {
+                "name": "Klaus",
+                "age": -1
+            }
+            """;
 
         // when-then
         assertThatThrownBy(() -> codec.fromJson(json, PersonRecordWithValidation.class))
@@ -364,13 +366,11 @@ class JsonCodecTest {
     void record_with_custom_ctor(Json.JsonCodec codec) {
 
         // when
-        PersonRecordCustomCtor pojo = codec.fromJson(
-                """
-                {
-                    "name": "Klaus"
-                }
-                """,
-                PersonRecordCustomCtor.class);
+        PersonRecordCustomCtor pojo = codec.fromJson("""
+            {
+                "name": "Klaus"
+            }
+            """, PersonRecordCustomCtor.class);
 
         // then
         assertThat(pojo.name()).isEqualTo("Klaus");
