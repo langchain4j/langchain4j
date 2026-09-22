@@ -31,6 +31,7 @@ class ConvergenceStrategyLocaleTest {
 
     @Test
     void unanimousLastWord_does_not_converge_on_different_verdicts_under_turkish_locale() {
-        assertThat(ConvergenceStrategy.unanimousLastWord().hasConverged(List.of("I agree", "I disagree"))).isFalse();
+        assertThat(ConvergenceStrategy.unanimousLastWord().hasConverged(List.of("I agree", "I disagree")))
+                .isFalse();
     }
 }
