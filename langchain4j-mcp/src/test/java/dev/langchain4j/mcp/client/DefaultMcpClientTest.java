@@ -116,6 +116,65 @@ public class DefaultMcpClientTest {
     }
 
     @Test
+    public void should_reinitialize_when_health_check_fails() throws Exception {
+        final McpTransport transport = getMinimalMcpTransportMock();
+        doThrow(new RuntimeException("server unreachable")).when(transport).checkHealth();
+
+        final CountDownLatch restarted = new CountDownLatch(1);
+        doAnswer(invocation -> {
+                    restarted.countDown();
+                    return null;
+                })
+                .when(transport)
+                .start(any(McpOperationHandler.class));
+
+        try (DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .autoHealthCheckInterval(java.time.Duration.ofMillis(10))
+                .build()) {
+            assertThat(restarted.await(5, TimeUnit.SECONDS)).isTrue();
+        }
+    }
+
+    @Test
+    public void should_not_reinitialize_when_health_check_fails_after_close() throws Exception {
+        final McpTransport transport = getMinimalMcpTransportMock();
+        final CountDownLatch healthCheckRunning = new CountDownLatch(1);
+        final CountDownLatch neverCompletes = new CountDownLatch(1);
+        doAnswer(invocation -> {
+                    healthCheckRunning.countDown();
+                    try {
+                        neverCompletes.await();
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        throw new RuntimeException("health check interrupted", e);
+                    }
+                    return null;
+                })
+                .when(transport)
+                .checkHealth();
+
+        final DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .autoHealthCheckInterval(java.time.Duration.ofMillis(10))
+                .build();
+        assertThat(healthCheckRunning.await(5, TimeUnit.SECONDS)).isTrue();
+
+        final CountDownLatch restarted = new CountDownLatch(1);
+        doAnswer(invocation -> {
+                    restarted.countDown();
+                    return null;
+                })
+                .when(transport)
+                .start(any(McpOperationHandler.class));
+
+        client.close();
+
+        assertThat(restarted.await(2, TimeUnit.SECONDS)).isFalse();
+        verify(transport, times(1)).start(any(McpOperationHandler.class));
+    }
+
+    @Test
     public void should_throw_from_build_when_there_is_no_transport() {
         // given
         final DefaultMcpClient.Builder clientBuilder = new DefaultMcpClient.Builder();
@@ -1131,6 +1190,36 @@ public class DefaultMcpClientTest {
             thread.interrupt();
             thread.join(TimeUnit.SECONDS.toMillis(5));
         }
+    }
+
+    @Test
+    public void tools_list_without_result_is_rejected() throws Exception {
+        McpTransport transport = getMinimalMcpTransportMock();
+        when(transport.sendRequest(any(McpCallContext.class)))
+                .thenReturn(CompletableFuture.completedFuture("{\"jsonrpc\":\"2.0\",\"id\":1}"));
+        DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion("2025-11-25")
+                .build();
+
+        assertThatThrownBy(client::listTools)
+                .isInstanceOf(IllegalResponseException.class)
+                .hasMessage("Result does not contain 'result' element");
+    }
+
+    @Test
+    public void tools_list_without_tools_element_is_rejected() throws Exception {
+        McpTransport transport = getMinimalMcpTransportMock();
+        when(transport.sendRequest(any(McpCallContext.class)))
+                .thenReturn(CompletableFuture.completedFuture("{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{}}"));
+        DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion("2025-11-25")
+                .build();
+
+        assertThatThrownBy(client::listTools)
+                .isInstanceOf(IllegalResponseException.class)
+                .hasMessage("Result does not contain 'tools' element");
     }
 
     private static McpTransport getMinimalMcpTransportMock() {

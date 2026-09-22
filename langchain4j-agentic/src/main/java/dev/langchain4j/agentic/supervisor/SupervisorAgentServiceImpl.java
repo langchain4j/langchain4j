@@ -3,6 +3,7 @@ package dev.langchain4j.agentic.supervisor;
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.agenticScopeFunction;
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.buildAgentFeatures;
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.invokeStatic;
+import static dev.langchain4j.agentic.declarative.DeclarativeUtil.invokeSupplierWithResolvers;
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.selectMethod;
 import static dev.langchain4j.agentic.internal.AgentUtil.validateAgentClass;
 
@@ -152,9 +153,8 @@ public class SupervisorAgentServiceImpl<T> extends AbstractServiceBuilder<T, Sup
         selectMethod(
                         agentServiceClass,
                         method -> method.isAnnotationPresent(ChatModelSupplier.class)
-                                && method.getReturnType() == ChatModel.class
-                                && method.getParameterCount() == 0)
-                .map(method -> (ChatModel) invokeStatic(method))
+                                && method.getReturnType() == ChatModel.class)
+                .map(method -> invokeSupplierWithResolvers(agentServiceClass, method, ChatModel.class))
                 .ifPresentOrElse(this::chatModel, () -> this.chatModel(chatModel));
 
         selectMethod(

@@ -32,6 +32,7 @@ https://github.com/googleapis/java-genai
 - [Thinking Models (Gemini 3.0+)](#thinking-models-gemini-30)
 - [Token Usage](#token-usage)
 - [Multimodality (Audio, Video, PDF)](#multimodality-audio-video-pdf)
+- [Audio Transcription](#audio-transcription)
 - [Token Count Estimator](#token-count-estimator)
 - [Model Catalog](#model-catalog)
 
@@ -666,6 +667,59 @@ ChatResponse response = gemini.chat(ChatRequest.builder()
     ))
     .build());
 ```
+
+## Audio Transcription
+
+Models built for speech recognition, such as `gemini-3.5-transcribe`, turn audio into text.
+Send the audio as an `AudioContent`; no text instruction is needed. The transcript is returned as the text of the `AiMessage`.
+
+Use `audioTranscriptionConfig` to control how the audio is transcribed:
+
+```java
+ChatModel transcriber = GoogleGenAiChatModel.builder()
+    .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
+    .modelName("gemini-3.5-transcribe")
+    .audioTranscriptionConfig(AudioTranscriptionConfig.builder()
+        .mode(AudioTranscriptionConfigMode.Known.VERBATIM)
+        .languageCodes("en-US")
+        .customVocabulary("LangChain4j", "Gemini")
+        .wordTimestamp(true)
+        .diarization(true)
+        .build())
+    .build();
+
+ChatResponse response = transcriber.chat(ChatRequest.builder()
+    .messages(UserMessage.from(AudioContent.from("https://example.com/meeting.mp3")))
+    .build());
+
+String transcript = response.aiMessage().text();
+```
+
+- `mode`: `VERBATIM` (the default) keeps every word, including filler words, repetitions and false starts.
+  `SMART` removes them and lightly formats the text. Word timestamps and diarization cannot be used with `SMART`.
+- `languageCodes`: BCP-47 codes of the languages spoken in the audio. When omitted, the language is detected automatically.
+- `customVocabulary`: words and phrases the model should recognize, such as product or people names.
+- `wordTimestamp`: returns the start and end offset of every word.
+- `diarization`: labels which speaker said what.
+
+Word timestamps and speaker labels are not part of the `AiMessage` text. Read them from the raw response:
+
+```java
+GoogleGenAiChatResponseMetadata metadata = (GoogleGenAiChatResponseMetadata) response.metadata();
+
+for (Part part : metadata.rawResponse().parts()) {
+    part.audioTranscription().ifPresent(transcription -> {
+        String speaker = transcription.speakerLabel().orElse("");
+        for (WordInfo word : transcription.words().orElse(List.of())) {
+            System.out.printf("[%s] %s - %s %s%n",
+                speaker, word.startOffset().orElse(""), word.endOffset().orElse(""), word.word().orElse(""));
+        }
+    });
+}
+```
+
+`GoogleGenAiStreamingChatModel` accepts the same `audioTranscriptionConfig`, but its raw response only holds the last streamed chunk,
+so use `GoogleGenAiChatModel` when you need word timestamps or speaker labels.
 
 ## Token Count Estimator
 
