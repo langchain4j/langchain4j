@@ -187,7 +187,7 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
         if (result.taskIdKey != null) {
             // The task id is propagated only while the remote task is still open: a task that already
             // reached a terminal state cannot accept further messages, so its id must not survive in
-            // the scope for the next invocation to pick up (#6371).
+            // the scope for the next invocation
             scope.writeState(result.taskIdKey, result.openTaskId);
         }
 
