@@ -10,7 +10,6 @@ import static org.mockito.Mockito.mock;
 import dev.langchain4j.agentic.observability.A2AStreamingClientListenerResult;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.service.V;
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
