@@ -11,6 +11,7 @@ import static dev.langchain4j.agentic.internal.AgentUtil.agentInvocationArgument
 import static dev.langchain4j.agentic.internal.AgentUtil.agentToExecutor;
 import static dev.langchain4j.agentic.internal.AgentUtil.argumentsFromMethod;
 import static dev.langchain4j.agentic.internal.AgentUtil.getAnnotatedMethodOnClass;
+import static dev.langchain4j.agentic.internal.AgentUtil.keyName;
 import static dev.langchain4j.agentic.internal.AgentUtil.nonAiAgentInvoker;
 import static dev.langchain4j.agentic.internal.AgentUtil.nonAiAgentToExecutor;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
@@ -32,6 +33,7 @@ import dev.langchain4j.agentic.declarative.ParallelMapperAgent;
 import dev.langchain4j.agentic.declarative.PlannerAgent;
 import dev.langchain4j.agentic.declarative.RegistryAgent;
 import dev.langchain4j.agentic.declarative.SequenceAgent;
+import dev.langchain4j.agentic.declarative.TypedKey;
 import dev.langchain4j.agentic.internal.A2AClientBuilder;
 import dev.langchain4j.agentic.internal.A2AService;
 import dev.langchain4j.agentic.internal.AbstractServiceBuilder;
@@ -41,6 +43,7 @@ import dev.langchain4j.agentic.internal.AgentUtil;
 import dev.langchain4j.agentic.internal.InternalAgent;
 import dev.langchain4j.agentic.internal.McpService;
 import dev.langchain4j.agentic.observability.AgentListener;
+import dev.langchain4j.agentic.observability.ComposedAgentListener;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticService;
@@ -62,6 +65,7 @@ import dev.langchain4j.agentic.workflow.impl.WorkflowAgentsBuilderImpl;
 import dev.langchain4j.model.chat.ChatModel;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.lang.reflect.Type;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -931,8 +935,147 @@ public class AgenticServices {
         }
     }
 
+    /**
+     * Creates a builder for a non-AI agent whose logic is a function of the {@link AgenticScope}. Unlike an
+     * {@link #agentAction(AgenticScopeAction.NonThrowingConsumer) agentAction}, the resulting agent can be given a
+     * name, a description, typed input keys and an output key, so that it can also be used as a subagent of a
+     * supervisor or of any other planner that relies on this metadata.
+     *
+     * @param function the function computing the agent's result from the AgenticScope
+     * @return a new NonAiAgentBuilder instance
+     */
+    public static <T> NonAiAgentBuilder<T> nonAiAgentBuilder(
+            AgenticScopeFunction.NonThrowingFunction<AgenticScope, T> function) {
+        return new NonAiAgentBuilder<>(function);
+    }
+
+    public static class NonAiAgentBuilder<T> {
+        private final AgenticScopeFunction.NonThrowingFunction<AgenticScope, T> function;
+        private String name;
+        private String description = "";
+        private List<AgentArgument> inputs = List.of();
+        private String outputKey;
+        private Type outputType = Object.class;
+        private boolean async;
+        private AgentListener listener;
+
+        private NonAiAgentBuilder(AgenticScopeFunction.NonThrowingFunction<AgenticScope, T> function) {
+            this.function = function;
+        }
+
+        /**
+         * Sets the agent name used for identification in multi-agent systems. If not set, the name of the
+         * {@link AgenticScopeFunction#accept(AgenticScope)} method is used, as for an agentAction.
+         */
+        public NonAiAgentBuilder<T> name(String name) {
+            this.name = name;
+            return this;
+        }
+
+        /**
+         * Sets a human-readable description of what this agent does, used by planners and orchestrators.
+         */
+        public NonAiAgentBuilder<T> description(String description) {
+            this.description = description;
+            return this;
+        }
+
+        /**
+         * Declares the keys of the AgenticScope that this agent reads. Before invoking the function, each input is
+         * read from the AgenticScope, converted to its declared type and written back, so that the function can
+         * read it with the expected type. If an input without default value is missing the invocation fails with a
+         * {@link dev.langchain4j.agentic.agent.MissingArgumentException}.
+         */
+        public NonAiAgentBuilder<T> inputs(AgentArgument... inputs) {
+            this.inputs = List.of(inputs);
+            return this;
+        }
+
+        public NonAiAgentBuilder<T> inputKey(Class<?> type, String name) {
+            return inputs(new AgentArgument(type, name));
+        }
+
+        public NonAiAgentBuilder<T> inputKeys(Class<?> type1, String name1, Class<?> type2, String name2) {
+            return inputs(new AgentArgument(type1, name1), new AgentArgument(type2, name2));
+        }
+
+        public NonAiAgentBuilder<T> inputKeys(
+                Class<?> type1, String name1, Class<?> type2, String name2, Class<?> type3, String name3) {
+            return inputs(
+                    new AgentArgument(type1, name1), new AgentArgument(type2, name2), new AgentArgument(type3, name3));
+        }
+
+        public NonAiAgentBuilder<T> inputKeys(
+                Class<?> type1,
+                String name1,
+                Class<?> type2,
+                String name2,
+                Class<?> type3,
+                String name3,
+                Class<?> type4,
+                String name4) {
+            return inputs(
+                    new AgentArgument(type1, name1),
+                    new AgentArgument(type2, name2),
+                    new AgentArgument(type3, name3),
+                    new AgentArgument(type4, name4));
+        }
+
+        /**
+         * Sets the key under which this agent's result is stored in the {@link AgenticScope}.
+         */
+        public NonAiAgentBuilder<T> outputKey(String outputKey) {
+            this.outputKey = outputKey;
+            return this;
+        }
+
+        /**
+         * Sets the output key using a {@link TypedKey} class for type-safe scope access.
+         */
+        public NonAiAgentBuilder<T> outputKey(Class<? extends TypedKey<?>> outputKey) {
+            return outputKey(keyName(outputKey));
+        }
+
+        /**
+         * Sets the type of the result produced by this agent. Since the generic type of the function is erased at
+         * runtime, it defaults to {@link Object}.
+         */
+        public NonAiAgentBuilder<T> outputType(Type outputType) {
+            this.outputType = outputType;
+            return this;
+        }
+
+        /**
+         * Controls whether this agent executes asynchronously within an agentic system.
+         */
+        public NonAiAgentBuilder<T> async(boolean async) {
+            this.async = async;
+            return this;
+        }
+
+        /**
+         * Adds a listener notified of this agent's invocations.
+         */
+        public NonAiAgentBuilder<T> listener(AgentListener listener) {
+            this.listener = ComposedAgentListener.compose(this.listener, listener);
+            return this;
+        }
+
+        public AgenticScopeFunction<T> build() {
+            return new AgenticScopeFunction<>(
+                    function, name, description, inputs, outputKey, outputType, async, listener);
+        }
+    }
+
     public static class AgenticScopeFunction<T> {
         private final NonThrowingFunction<AgenticScope, T> function;
+        private final String name;
+        private final String description;
+        private final List<AgentArgument> inputs;
+        private final String outputKey;
+        private final Type outputType;
+        private final boolean async;
+        private final AgentListener listener;
 
         @FunctionalInterface
         public interface NonThrowingFunction<A, B> {
@@ -940,7 +1083,26 @@ public class AgenticServices {
         }
 
         private AgenticScopeFunction(NonThrowingFunction<AgenticScope, T> function) {
+            this(function, null, "", List.of(), null, Object.class, false, null);
+        }
+
+        private AgenticScopeFunction(
+                NonThrowingFunction<AgenticScope, T> function,
+                String name,
+                String description,
+                List<AgentArgument> inputs,
+                String outputKey,
+                Type outputType,
+                boolean async,
+                AgentListener listener) {
             this.function = function;
+            this.name = name;
+            this.description = description;
+            this.inputs = inputs;
+            this.outputKey = outputKey;
+            this.outputType = outputType;
+            this.async = async;
+            this.listener = listener;
         }
 
         @Agent
@@ -950,6 +1112,34 @@ public class AgenticServices {
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
+        }
+
+        public String name() {
+            return name;
+        }
+
+        public String description() {
+            return description;
+        }
+
+        public List<AgentArgument> inputs() {
+            return inputs;
+        }
+
+        public String outputKey() {
+            return outputKey;
+        }
+
+        public Type outputType() {
+            return outputType;
+        }
+
+        public boolean async() {
+            return async;
+        }
+
+        public AgentListener listener() {
+            return listener;
         }
     }
 }

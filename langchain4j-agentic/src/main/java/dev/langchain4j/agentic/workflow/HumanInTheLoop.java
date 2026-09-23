@@ -3,6 +3,7 @@ package dev.langchain4j.agentic.workflow;
 import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.internal.AgentSpecsProvider;
 import dev.langchain4j.agentic.observability.AgentListener;
+import dev.langchain4j.agentic.observability.ComposedAgentListener;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.scope.AgenticScope;
 
@@ -87,7 +88,7 @@ public record HumanInTheLoop(
         }
 
         public HumanInTheLoopBuilder listener(AgentListener agentListener) {
-            this.agentListener = agentListener;
+            this.agentListener = ComposedAgentListener.compose(this.agentListener, agentListener);
             return this;
         }
 

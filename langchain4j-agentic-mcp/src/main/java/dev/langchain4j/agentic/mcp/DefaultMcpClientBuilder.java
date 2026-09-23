@@ -1,5 +1,6 @@
 package dev.langchain4j.agentic.mcp;
 
+import static dev.langchain4j.agentic.observability.ComposedAgentListener.compose;
 import static dev.langchain4j.agentic.observability.ComposedAgentListener.composeWithInherited;
 import static dev.langchain4j.internal.Utils.getAnnotatedMethod;
 
@@ -88,7 +89,7 @@ public class DefaultMcpClientBuilder<T> implements McpClientBuilder<T>, Internal
 
     @Override
     public McpClientBuilder<T> listener(AgentListener agentListener) {
-        this.agentListener = agentListener;
+        this.agentListener = compose(this.agentListener, agentListener);
         return this;
     }
 

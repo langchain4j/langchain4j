@@ -1,5 +1,6 @@
 package dev.langchain4j.agentic.a2a;
 
+import static dev.langchain4j.agentic.observability.ComposedAgentListener.compose;
 import static dev.langchain4j.agentic.observability.ComposedAgentListener.composeWithInherited;
 
 import dev.langchain4j.agentic.UntypedAgent;
@@ -513,7 +514,7 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
 
     @Override
     public DefaultA2AClientBuilder<T> listener(AgentListener agentListener) {
-        this.agentListener = agentListener;
+        this.agentListener = compose(this.agentListener, agentListener);
         return this;
     }
 

@@ -118,6 +118,23 @@ public class ComposedAgentListener implements AgentListener {
         return listeners.stream().anyMatch(AgentListener::inheritedBySubagents);
     }
 
+    /**
+     * Composes a newly registered listener with the existing one, if any. When the existing listener is already a
+     * {@link ComposedAgentListener}, the new listener is added to it.
+     *
+     * @return the listener to be used in place of the existing one
+     */
+    public static AgentListener compose(AgentListener existingListener, AgentListener newListener) {
+        if (existingListener == null) {
+            return newListener;
+        }
+        if (existingListener instanceof ComposedAgentListener composed) {
+            composed.addListener(newListener);
+            return composed;
+        }
+        return new ComposedAgentListener(existingListener, newListener);
+    }
+
     public static AgentListener composeWithInherited(AgentListener localListener, AgentListener parentListener) {
         if (parentListener == null) {
             return localListener;
