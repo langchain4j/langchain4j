@@ -1660,16 +1660,15 @@ public class DefaultMcpClient implements McpClient {
         if (spec == null || spec.metadata() == null) {
             return null;
         }
-        Map<String, String> headerMappings =
-                (Map<String, String>) spec.metadata().get(McpToolMetadataKeys.MCP_PARAM_HEADERS);
+        Map<String, List<String>> headerMappings =
+                (Map<String, List<String>>) spec.metadata().get(ToolSpecificationHelper.MCP_PARAM_HEADER_PATHS);
         if (headerMappings == null || headerMappings.isEmpty()) {
             return null;
         }
         Map<String, String> result = new LinkedHashMap<>();
-        for (Map.Entry<String, String> entry : headerMappings.entrySet()) {
-            String propertyPath = entry.getKey();
-            String headerName = entry.getValue();
-            Object value = resolvePropertyPath(arguments, propertyPath);
+        for (Map.Entry<String, List<String>> entry : headerMappings.entrySet()) {
+            String headerName = entry.getKey();
+            Object value = resolvePropertyPath(arguments, entry.getValue());
             String stringValue;
             if (value instanceof String text) {
                 stringValue = text;
@@ -1686,10 +1685,9 @@ public class DefaultMcpClient implements McpClient {
         return result.isEmpty() ? null : result;
     }
 
-    private static @Nullable Object resolvePropertyPath(Map<String, Object> root, String path) {
-        String[] segments = path.split("\\.");
+    private static @Nullable Object resolvePropertyPath(Map<String, Object> root, List<String> path) {
         Object current = root;
-        for (String segment : segments) {
+        for (String segment : path) {
             if (!(current instanceof Map<?, ?> map)) {
                 return null;
             }
