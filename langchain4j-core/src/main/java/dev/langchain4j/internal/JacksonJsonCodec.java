@@ -5,7 +5,6 @@ import static com.fasterxml.jackson.annotation.PropertyAccessor.FIELD;
 import static com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES;
 import static com.fasterxml.jackson.databind.MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS;
 import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
-
 import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE;
 import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 import static java.time.format.DateTimeFormatter.ISO_LOCAL_TIME;
@@ -34,9 +33,7 @@ import com.fasterxml.jackson.databind.jsontype.TypeResolverBuilder;
 import com.fasterxml.jackson.databind.jsontype.impl.StdTypeResolverBuilder;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.ser.std.StdSerializer;
-
 import dev.langchain4j.Internal;
-
 import java.io.IOException;
 import java.lang.reflect.Type;
 import java.time.LocalDate;
@@ -168,12 +165,10 @@ class JacksonJsonCodec implements Json.JsonCodec {
 
         ObjectMapper mapper = JsonMapper.builder()
                 .visibility(FIELD, ANY)
-                .disable(
-                        INDENT_OUTPUT) // disabled on purpose to save tokens when sending tool
-                                       // results to LLM
-                .enable(
-                        FAIL_ON_UNKNOWN_PROPERTIES) // enabled on purpose to prevent issues caused
-                                                    // by LLM hallucinations
+                .disable(INDENT_OUTPUT) // disabled on purpose to save tokens when sending tool
+                // results to LLM
+                .enable(FAIL_ON_UNKNOWN_PROPERTIES) // enabled on purpose to prevent issues caused
+                // by LLM hallucinations
                 .enable(ACCEPT_CASE_INSENSITIVE_ENUMS)
                 .build()
                 .findAndRegisterModules()
