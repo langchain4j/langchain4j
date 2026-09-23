@@ -161,7 +161,10 @@ public class QdrantEmbeddingStore implements EmbeddingStore<TextSegment> {
             }
 
             client.upsertAsync(collectionName, points).get();
-        } catch (InterruptedException | ExecutionException e) {
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException(e);
+        } catch (ExecutionException e) {
             throw new RuntimeException(e);
         }
     }
@@ -192,7 +195,10 @@ public class QdrantEmbeddingStore implements EmbeddingStore<TextSegment> {
                             .setPoints(pointsSelector)
                             .build())
                     .get();
-        } catch (InterruptedException | ExecutionException e) {
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException(e);
+        } catch (ExecutionException e) {
             throw new RuntimeException(e);
         }
     }
@@ -210,7 +216,10 @@ public class QdrantEmbeddingStore implements EmbeddingStore<TextSegment> {
                             .setPoints(pointsSelector)
                             .build())
                     .get();
-        } catch (InterruptedException | ExecutionException e) {
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException(e);
+        } catch (ExecutionException e) {
             throw new RuntimeException(e);
         }
     }
@@ -239,7 +248,10 @@ public class QdrantEmbeddingStore implements EmbeddingStore<TextSegment> {
 
         try {
             results = client.queryAsync(queryBuilder.build()).get();
-        } catch (InterruptedException | ExecutionException e) {
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException(e);
+        } catch (ExecutionException e) {
             throw new RuntimeException(e);
         }
 
@@ -271,7 +283,10 @@ public class QdrantEmbeddingStore implements EmbeddingStore<TextSegment> {
                             .setPoints(allPointsSelector)
                             .build())
                     .get();
-        } catch (InterruptedException | ExecutionException e) {
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException(e);
+        } catch (ExecutionException e) {
             throw new RuntimeException(e);
         }
     }
