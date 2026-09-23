@@ -188,8 +188,7 @@ class JsonCodecTest {
             """;
 
         // when
-        PersonRecordWithNestedRecord pojo =
-                codec.fromJson(json, PersonRecordWithNestedRecord.class);
+        PersonRecordWithNestedRecord pojo = codec.fromJson(json, PersonRecordWithNestedRecord.class);
 
         // then
         assertThat(pojo.name()).isEqualTo("Klaus");

@@ -59,16 +59,14 @@ class JacksonJsonCodec implements Json.JsonCodec {
 
         module.addSerializer(LocalDate.class, new StdSerializer<>(LocalDate.class) {
             @Override
-            public void serialize(LocalDate value, JsonGenerator gen, SerializerProvider provider)
-                    throws IOException {
+            public void serialize(LocalDate value, JsonGenerator gen, SerializerProvider provider) throws IOException {
                 gen.writeString(value.format(ISO_LOCAL_DATE));
             }
         });
 
         module.addDeserializer(LocalDate.class, new JsonDeserializer<>() {
             @Override
-            public LocalDate deserialize(JsonParser p, DeserializationContext ctxt)
-                    throws IOException {
+            public LocalDate deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
                 JsonNode node = p.getCodec().readTree(p);
                 if (node.isObject()) {
                     int year = node.get("year").asInt();
@@ -83,16 +81,14 @@ class JacksonJsonCodec implements Json.JsonCodec {
 
         module.addSerializer(LocalTime.class, new StdSerializer<>(LocalTime.class) {
             @Override
-            public void serialize(LocalTime value, JsonGenerator gen, SerializerProvider provider)
-                    throws IOException {
+            public void serialize(LocalTime value, JsonGenerator gen, SerializerProvider provider) throws IOException {
                 gen.writeString(value.format(ISO_LOCAL_TIME));
             }
         });
 
         module.addDeserializer(LocalTime.class, new JsonDeserializer<>() {
             @Override
-            public LocalTime deserialize(JsonParser p, DeserializationContext ctxt)
-                    throws IOException {
+            public LocalTime deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
                 JsonNode node = p.getCodec().readTree(p);
                 if (node.isObject()) {
                     int hour = node.get("hour").asInt();
@@ -112,8 +108,7 @@ class JacksonJsonCodec implements Json.JsonCodec {
 
         module.addSerializer(LocalDateTime.class, new StdSerializer<>(LocalDateTime.class) {
             @Override
-            public void serialize(
-                    LocalDateTime value, JsonGenerator gen, SerializerProvider provider)
+            public void serialize(LocalDateTime value, JsonGenerator gen, SerializerProvider provider)
                     throws IOException {
                 gen.writeString(value.format(ISO_LOCAL_DATE_TIME));
             }
@@ -121,8 +116,7 @@ class JacksonJsonCodec implements Json.JsonCodec {
 
         module.addDeserializer(LocalDateTime.class, new JsonDeserializer<>() {
             @Override
-            public LocalDateTime deserialize(JsonParser p, DeserializationContext ctxt)
-                    throws IOException {
+            public LocalDateTime deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
                 JsonNode node = p.getCodec().readTree(p);
                 if (node.isObject()) {
                     JsonNode date = node.get("date");
@@ -151,8 +145,7 @@ class JacksonJsonCodec implements Json.JsonCodec {
         // type is resolved from the declared field, so Optional<Pojo> needs no extra setup.
         module.addSerializer(Optional.class, new StdSerializer<>(Optional.class) {
             @Override
-            public void serialize(Optional value, JsonGenerator gen, SerializerProvider provider)
-                    throws IOException {
+            public void serialize(Optional value, JsonGenerator gen, SerializerProvider provider) throws IOException {
                 if (value.isPresent()) {
                     provider.defaultSerializeValue(value.get(), gen);
                 } else {
@@ -195,8 +188,7 @@ class JacksonJsonCodec implements Json.JsonCodec {
      * <p>The element type is resolved from the declared field through {@link ContextualDeserializer},
      * so Optional of a nested type works without a separate registration.
      */
-    private static class OptionalDeserializer extends JsonDeserializer<Optional<?>>
-            implements ContextualDeserializer {
+    private static class OptionalDeserializer extends JsonDeserializer<Optional<?>> implements ContextualDeserializer {
 
         private final JsonDeserializer<?> valueDeserializer;
 
@@ -205,18 +197,16 @@ class JacksonJsonCodec implements Json.JsonCodec {
         }
 
         @Override
-        public JsonDeserializer<?> createContextual(
-                DeserializationContext ctxt, BeanProperty property) throws JsonMappingException {
+        public JsonDeserializer<?> createContextual(DeserializationContext ctxt, BeanProperty property)
+                throws JsonMappingException {
             JavaType valueType = property != null && property.getType().containedTypeCount() > 0
                     ? property.getType().containedType(0)
                     : ctxt.constructType(Object.class);
-            return new OptionalDeserializer(
-                    ctxt.findContextualValueDeserializer(valueType, property));
+            return new OptionalDeserializer(ctxt.findContextualValueDeserializer(valueType, property));
         }
 
         @Override
-        public Optional<?> deserialize(JsonParser p, DeserializationContext ctxt)
-                throws IOException {
+        public Optional<?> deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
             if (p.currentToken() == JsonToken.VALUE_NULL) {
                 return Optional.empty();
             }
@@ -300,9 +290,7 @@ class JacksonJsonCodec implements Json.JsonCodec {
 
         @Override
         public TypeResolverBuilder<?> findTypeResolver(
-                MapperConfig<?> config,
-                AnnotatedClass ac,
-                com.fasterxml.jackson.databind.JavaType baseType) {
+                MapperConfig<?> config, AnnotatedClass ac, com.fasterxml.jackson.databind.JavaType baseType) {
             Class<?> raw = ac.getRawType();
             if (!shouldHandle(raw)) {
                 return null;
@@ -330,8 +318,7 @@ class JacksonJsonCodec implements Json.JsonCodec {
             // Step in for any polymorphic base that doesn't already declare its own type-info
             // strategy via @JsonTypeInfo. This covers both sealed types (no annotations) and
             // types that only use @JsonSubTypes for subtype enumeration.
-            return raw.getAnnotation(JsonTypeInfo.class) == null
-                    && PolymorphicTypes.isPolymorphic(raw);
+            return raw.getAnnotation(JsonTypeInfo.class) == null && PolymorphicTypes.isPolymorphic(raw);
         }
     }
 }
