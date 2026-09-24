@@ -10,6 +10,20 @@ import org.junit.jupiter.api.Test;
 class StructuredDecisionResponseTest {
 
     @Test
+    void exposes_vendor_response_metadata_without_modeling_vendor_fields() {
+        Map<String, Object> metadata = new LinkedHashMap<>();
+        metadata.put("latency_ms", 42);
+        StructuredDecisionResponse response = StructuredDecisionResponse.builder()
+                .answer("q", StructuredDecisionAnswer.builder().noul(0.8).build())
+                .metadata(metadata)
+                .build();
+
+        metadata.clear();
+        assertThat(response.metadata()).containsExactly(Map.entry("latency_ms", 42));
+        assertThatThrownBy(() -> response.metadata().clear()).isInstanceOf(UnsupportedOperationException.class);
+    }
+
+    @Test
     void maps_each_typed_answer_and_defensively_copies_the_answer_map() {
         StructuredDecisionAnswer noul =
                 StructuredDecisionAnswer.builder().noul(0.83).build();

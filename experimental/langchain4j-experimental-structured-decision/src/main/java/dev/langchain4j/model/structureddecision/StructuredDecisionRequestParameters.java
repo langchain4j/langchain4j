@@ -1,6 +1,7 @@
 package dev.langchain4j.model.structureddecision;
 
 import dev.langchain4j.Experimental;
+import java.util.Map;
 
 /** Per-call parameters for a {@link StructuredDecisionRequest}. */
 @Experimental
@@ -11,6 +12,9 @@ public interface StructuredDecisionRequestParameters {
             DefaultStructuredDecisionRequestParameters.builder().build();
 
     String modelName();
+
+    /** Provider-specific request options. Providers may reject unsupported options. */
+    Map<String, Object> additionalProperties();
 
     /**
      * Returns new parameters combining this instance with {@code that}. Values from {@code that} take precedence;

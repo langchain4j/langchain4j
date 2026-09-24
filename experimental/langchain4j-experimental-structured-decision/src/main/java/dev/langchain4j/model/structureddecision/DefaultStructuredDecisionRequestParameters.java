@@ -1,8 +1,13 @@
 package dev.langchain4j.model.structureddecision;
 
+import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.Experimental;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Objects;
 
 /** Default implementation of {@link StructuredDecisionRequestParameters}. */
@@ -10,14 +15,21 @@ import java.util.Objects;
 public class DefaultStructuredDecisionRequestParameters implements StructuredDecisionRequestParameters {
 
     private final String modelName;
+    private final Map<String, Object> additionalProperties;
 
     protected DefaultStructuredDecisionRequestParameters(Builder<?> builder) {
         this.modelName = builder.modelName;
+        this.additionalProperties = copy(builder.additionalProperties);
     }
 
     @Override
     public String modelName() {
         return modelName;
+    }
+
+    @Override
+    public Map<String, Object> additionalProperties() {
+        return additionalProperties;
     }
 
     @Override
@@ -37,30 +49,47 @@ public class DefaultStructuredDecisionRequestParameters implements StructuredDec
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         DefaultStructuredDecisionRequestParameters that = (DefaultStructuredDecisionRequestParameters) o;
-        return Objects.equals(modelName, that.modelName);
+        return Objects.equals(modelName, that.modelName)
+                && Objects.equals(additionalProperties, that.additionalProperties);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(modelName);
+        return Objects.hash(modelName, additionalProperties);
     }
 
     @Override
     public String toString() {
-        return "DefaultStructuredDecisionRequestParameters{modelName=" + modelName + '}';
+        return "DefaultStructuredDecisionRequestParameters{modelName=" + modelName + ", additionalProperties="
+                + additionalProperties + '}';
     }
 
     public static class Builder<B extends Builder<B>> {
         protected String modelName;
+        protected final Map<String, Object> additionalProperties = new LinkedHashMap<>();
 
         public B modelName(String modelName) {
             this.modelName = modelName;
             return self();
         }
 
+        public B additionalProperties(Map<String, Object> additionalProperties) {
+            this.additionalProperties.clear();
+            ensureNotNull(additionalProperties, "additionalProperties").forEach(this::additionalProperty);
+            return self();
+        }
+
+        public B additionalProperty(String name, Object value) {
+            this.additionalProperties.put(
+                    ensureNotBlank(name, "additional property name"),
+                    ensureNotNull(value, "additional property value"));
+            return self();
+        }
+
         public B overrideWith(StructuredDecisionRequestParameters parameters) {
             if (parameters != null) {
                 this.modelName = getOrDefault(parameters.modelName(), this.modelName);
+                this.additionalProperties.putAll(parameters.additionalProperties());
             }
             return self();
         }

@@ -3,6 +3,7 @@ package dev.langchain4j.model.structureddecision;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import dev.langchain4j.data.message.ImageContent;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -10,6 +11,43 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 class StructuredDecisionRequestTest {
+
+    @Test
+    void accepts_text_state_and_preserves_multimodal_content() {
+        ImageContent image = ImageContent.from("aGVsbG8=", "image/png");
+        StructuredDecisionRequest request = StructuredDecisionRequest.builder()
+                .state("Customer asks about this image")
+                .content(image)
+                .question(
+                        "q",
+                        NoulQuestion.builder().instructions("Is it relevant?").build())
+                .build();
+
+        assertThat(request.state()).isEqualTo("Customer asks about this image");
+        assertThat(request.contents()).containsExactly(image);
+        assertThatThrownBy(() -> request.contents().clear()).isInstanceOf(UnsupportedOperationException.class);
+    }
+
+    @Test
+    void merges_additional_parameters_without_losing_known_fields() {
+        Map<String, Object> extras = new LinkedHashMap<>();
+        extras.put("temperature", 0.2);
+        StructuredDecisionRequestParameters defaults = StructuredDecisionRequestParameters.builder()
+                .modelName("jev-latest")
+                .additionalProperties(extras)
+                .build();
+        StructuredDecisionRequestParameters overrides = StructuredDecisionRequestParameters.builder()
+                .additionalProperty("temperature", 0.5)
+                .additionalProperty("trace", true)
+                .build();
+
+        extras.clear();
+        assertThat(defaults.overrideWith(overrides).modelName()).isEqualTo("jev-latest");
+        assertThat(defaults.overrideWith(overrides).additionalProperties())
+                .containsExactly(Map.entry("temperature", 0.5), Map.entry("trace", true));
+        assertThatThrownBy(() -> defaults.additionalProperties().clear())
+                .isInstanceOf(UnsupportedOperationException.class);
+    }
 
     @Test
     void builds_a_typed_batch_request_and_defensively_copies_collections() {
@@ -52,13 +90,14 @@ class StructuredDecisionRequestTest {
         state.put("later", true);
         examples.add("Return my money");
 
-        assertThat(request.state()).containsExactly(Map.entry("message", "I was charged twice"));
+        assertThat((Map<String, Object>) request.state()).containsExactly(Map.entry("message", "I was charged twice"));
         assertThat(request.questions())
                 .containsExactly(Map.entry("refund", refund), Map.entry("team", team), Map.entry("urgency", urgency));
         assertThat(refund.criteria().examples()).containsExactly("Please refund me");
         assertThat(team.options()).containsOnlyKeys("billing", "support");
         assertThat(urgency.levels()).containsOnlyKeys("low", "high");
-        assertThatThrownBy(() -> request.state().put("x", "y")).isInstanceOf(UnsupportedOperationException.class);
+        assertThatThrownBy(() -> ((Map<String, Object>) request.state()).put("x", "y"))
+                .isInstanceOf(UnsupportedOperationException.class);
         assertThatThrownBy(() -> request.questions().clear()).isInstanceOf(UnsupportedOperationException.class);
     }
 
