@@ -22,7 +22,9 @@ import org.junit.jupiter.api.Test;
 /**
  * Verifies that an interrupted call restores the thread's interrupt status before the
  * {@link RuntimeException} leaves the store, so that a caller relying on the flag (for example a
- * timeout wrapper, or any deadline based cancellation) is not silently left with it cleared.
+ * timeout wrapper, or any deadline based cancellation) is not silently left with it cleared. Also
+ * pins the other side of the same guard: a call that fails for an unrelated reason must leave the
+ * flag alone.
  */
 class QdrantEmbeddingStoreTest {
 
@@ -68,6 +70,17 @@ class QdrantEmbeddingStoreTest {
         when(client.deleteAsync(any(Points.DeletePoints.class))).thenReturn(SettableFuture.create());
 
         assertInterruptStatusIsRestored(() -> store().clearStore());
+    }
+
+    @Test
+    void should_leave_the_interrupt_status_alone_when_the_call_fails_for_another_reason() {
+        SettableFuture<Points.UpdateResult> failed = SettableFuture.create();
+        failed.setException(new IllegalStateException("boom"));
+        when(client.upsertAsync(anyString(), anyList())).thenReturn(failed);
+
+        assertThatThrownBy(() -> store().addAll(List.of("1"), List.of(EMBEDDING), null))
+                .isInstanceOf(RuntimeException.class);
+        assertThat(Thread.currentThread().isInterrupted()).isFalse();
     }
 
     private QdrantEmbeddingStore store() {
