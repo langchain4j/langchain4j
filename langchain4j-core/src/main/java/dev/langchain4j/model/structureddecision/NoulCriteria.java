@@ -1,4 +1,4 @@
-package dev.langchain4j.model.judge;
+package dev.langchain4j.model.structureddecision;
 
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
@@ -8,21 +8,21 @@ import dev.langchain4j.Experimental;
 import java.util.List;
 import java.util.Objects;
 
-/** Contrastive criteria for a choice option or score level. */
+/** Contrastive criteria for the true outcome of a {@link NoulQuestion}. */
 @Experimental
-public final class OptionCriteria {
+public final class NoulCriteria {
 
     private final String what;
     private final String notFor;
     private final List<String> examples;
 
-    private OptionCriteria(Builder builder) {
+    private NoulCriteria(Builder builder) {
         this.what = builder.what;
         this.notFor = builder.notFor;
         this.examples = copy(builder.examples);
         ensureTrue(
                 isNotNullOrBlank(what) || isNotNullOrBlank(notFor) || !examples.isEmpty(),
-                "OptionCriteria must define at least one of 'what', 'notFor', or 'examples'");
+                "NoulCriteria must define at least one of 'what', 'notFor', or 'examples'");
     }
 
     public String what() {
@@ -44,7 +44,7 @@ public final class OptionCriteria {
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (!(o instanceof OptionCriteria that)) return false;
+        if (!(o instanceof NoulCriteria that)) return false;
         return Objects.equals(what, that.what)
                 && Objects.equals(notFor, that.notFor)
                 && Objects.equals(examples, that.examples);
@@ -57,7 +57,7 @@ public final class OptionCriteria {
 
     @Override
     public String toString() {
-        return "OptionCriteria{what=" + what + ", notFor=" + notFor + ", examples=" + examples + '}';
+        return "NoulCriteria{what=" + what + ", notFor=" + notFor + ", examples=" + examples + '}';
     }
 
     public static final class Builder {
@@ -80,8 +80,8 @@ public final class OptionCriteria {
             return this;
         }
 
-        public OptionCriteria build() {
-            return new OptionCriteria(this);
+        public NoulCriteria build() {
+            return new NoulCriteria(this);
         }
     }
 }

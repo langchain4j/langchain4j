@@ -1,4 +1,4 @@
-package dev.langchain4j.model.judge;
+package dev.langchain4j.model.structureddecision;
 
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;

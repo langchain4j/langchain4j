@@ -1,4 +1,4 @@
-package dev.langchain4j.model.judge;
+package dev.langchain4j.model.structureddecision;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -7,18 +7,24 @@ import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
-class JudgeValueObjectsTest {
+class StructuredDecisionValueObjectsTest {
 
     @Test
     void answer_equals_hashCode_and_toString_follow_value_semantics() {
-        JudgeAnswer answer = JudgeAnswer.builder().noul(0.83).build();
-        JudgeAnswer same = JudgeAnswer.builder().noul(0.83).build();
-        JudgeAnswer differentNoul = JudgeAnswer.builder().noul(0.5).build();
-        JudgeAnswer withConfidence =
-                JudgeAnswer.builder().noul(0.83).confidence(0.9).build();
-        JudgeAnswer choice =
-                JudgeAnswer.builder().choice("billing").confidence(0.9).build();
-        JudgeAnswer score = JudgeAnswer.builder().score(1.5).confidence(0.6).build();
+        StructuredDecisionAnswer answer =
+                StructuredDecisionAnswer.builder().noul(0.83).build();
+        StructuredDecisionAnswer same =
+                StructuredDecisionAnswer.builder().noul(0.83).build();
+        StructuredDecisionAnswer differentNoul =
+                StructuredDecisionAnswer.builder().noul(0.5).build();
+        StructuredDecisionAnswer withConfidence =
+                StructuredDecisionAnswer.builder().noul(0.83).confidence(0.9).build();
+        StructuredDecisionAnswer choice = StructuredDecisionAnswer.builder()
+                .choice("billing")
+                .confidence(0.9)
+                .build();
+        StructuredDecisionAnswer score =
+                StructuredDecisionAnswer.builder().score(1.5).confidence(0.6).build();
 
         assertThat(answer).isEqualTo(same).hasSameHashCodeAs(same);
         assertThat(answer)
@@ -28,22 +34,22 @@ class JudgeValueObjectsTest {
                 .isNotEqualTo(score)
                 .isNotEqualTo(null)
                 .isNotEqualTo("answer");
-        assertThat(answer.toString()).contains("JudgeAnswer").contains("0.83");
+        assertThat(answer.toString()).contains("StructuredDecisionAnswer").contains("0.83");
         assertThat(choice.toString()).contains("billing");
     }
 
     @Test
     void request_equals_hashCode_and_toString_follow_value_semantics() {
-        JudgeRequest request = sampleRequest();
-        JudgeRequest same = sampleRequest();
-        JudgeRequest otherParameters = JudgeRequest.builder()
+        StructuredDecisionRequest request = sampleRequest();
+        StructuredDecisionRequest same = sampleRequest();
+        StructuredDecisionRequest otherParameters = StructuredDecisionRequest.builder()
                 .state(Map.of("message", "hello"))
                 .question("greeting", noulQuestion("Is this a greeting?"))
-                .parameters(JudgeRequestParameters.builder()
+                .parameters(StructuredDecisionRequestParameters.builder()
                         .modelName("jev-preview")
                         .build())
                 .build();
-        JudgeRequest otherQuestions = JudgeRequest.builder()
+        StructuredDecisionRequest otherQuestions = StructuredDecisionRequest.builder()
                 .state(Map.of("message", "hello"))
                 .question("farewell", noulQuestion("Is this a farewell?"))
                 .build();
@@ -53,20 +59,20 @@ class JudgeValueObjectsTest {
                 .isNotEqualTo(otherParameters)
                 .isNotEqualTo(otherQuestions)
                 .isNotEqualTo(null);
-        assertThat(request.toString()).contains("JudgeRequest").contains("greeting");
+        assertThat(request.toString()).contains("StructuredDecisionRequest").contains("greeting");
     }
 
     @Test
     void response_equals_hashCode_and_toString_follow_value_semantics() {
-        JudgeResponse response = sampleResponse();
-        JudgeResponse same = sampleResponse();
-        JudgeResponse other = JudgeResponse.builder()
-                .answer("greeting", JudgeAnswer.builder().noul(0.5).build())
+        StructuredDecisionResponse response = sampleResponse();
+        StructuredDecisionResponse same = sampleResponse();
+        StructuredDecisionResponse other = StructuredDecisionResponse.builder()
+                .answer("greeting", StructuredDecisionAnswer.builder().noul(0.5).build())
                 .build();
 
         assertThat(response).isEqualTo(same).hasSameHashCodeAs(same);
         assertThat(response).isNotEqualTo(other).isNotEqualTo(null);
-        assertThat(response.toString()).contains("JudgeResponse").contains("refund");
+        assertThat(response.toString()).contains("StructuredDecisionResponse").contains("refund");
     }
 
     @Test
@@ -125,17 +131,20 @@ class JudgeValueObjectsTest {
 
     @Test
     void parameters_equals_hashCode_and_toString_follow_value_semantics() {
-        JudgeRequestParameters parameters =
-                JudgeRequestParameters.builder().modelName("jev-latest").build();
-        JudgeRequestParameters same =
-                JudgeRequestParameters.builder().modelName("jev-latest").build();
-        JudgeRequestParameters other =
-                JudgeRequestParameters.builder().modelName("jev-preview").build();
+        StructuredDecisionRequestParameters parameters = StructuredDecisionRequestParameters.builder()
+                .modelName("jev-latest")
+                .build();
+        StructuredDecisionRequestParameters same = StructuredDecisionRequestParameters.builder()
+                .modelName("jev-latest")
+                .build();
+        StructuredDecisionRequestParameters other = StructuredDecisionRequestParameters.builder()
+                .modelName("jev-preview")
+                .build();
 
         assertThat(parameters).isEqualTo(same).hasSameHashCodeAs(same);
         assertThat(parameters).isNotEqualTo(other).isNotEqualTo(null).isNotEqualTo("parameters");
         assertThat(parameters.toString())
-                .contains("DefaultJudgeRequestParameters")
+                .contains("DefaultStructuredDecisionRequestParameters")
                 .contains("jev-latest");
     }
 
@@ -143,11 +152,11 @@ class JudgeValueObjectsTest {
     void map_based_builder_overloads_match_the_repeated_add_forms() {
         Map<String, Question> questions = new LinkedHashMap<>();
         questions.put("greeting", noulQuestion("Is this a greeting?"));
-        JudgeRequest fromMap = JudgeRequest.builder()
+        StructuredDecisionRequest fromMap = StructuredDecisionRequest.builder()
                 .state(Map.of("message", "hello"))
                 .questions(questions)
                 .build();
-        JudgeRequest repeated = JudgeRequest.builder()
+        StructuredDecisionRequest repeated = StructuredDecisionRequest.builder()
                 .state(Map.of("message", "hello"))
                 .question("greeting", noulQuestion("Is this a greeting?"))
                 .build();
@@ -180,11 +189,12 @@ class JudgeValueObjectsTest {
                 .level("high", OptionCriteria.builder().what("Now").build())
                 .build();
 
-        Map<String, JudgeAnswer> answers = new LinkedHashMap<>();
-        answers.put("greeting", JudgeAnswer.builder().noul(0.9).build());
-        JudgeResponse responseFromMap = JudgeResponse.builder().answers(answers).build();
-        JudgeResponse responseRepeated = JudgeResponse.builder()
-                .answer("greeting", JudgeAnswer.builder().noul(0.9).build())
+        Map<String, StructuredDecisionAnswer> answers = new LinkedHashMap<>();
+        answers.put("greeting", StructuredDecisionAnswer.builder().noul(0.9).build());
+        StructuredDecisionResponse responseFromMap =
+                StructuredDecisionResponse.builder().answers(answers).build();
+        StructuredDecisionResponse responseRepeated = StructuredDecisionResponse.builder()
+                .answer("greeting", StructuredDecisionAnswer.builder().noul(0.9).build())
                 .build();
 
         assertThat(fromMap).isEqualTo(repeated);
@@ -195,7 +205,7 @@ class JudgeValueObjectsTest {
 
     @Test
     void map_based_builder_overloads_tolerate_null_maps() {
-        JudgeRequest request = JudgeRequest.builder()
+        StructuredDecisionRequest request = StructuredDecisionRequest.builder()
                 .state(Map.of("message", "hello"))
                 .questions(null)
                 .question("greeting", noulQuestion("Is this a greeting?"))
@@ -211,9 +221,9 @@ class JudgeValueObjectsTest {
                 .level("low", OptionCriteria.builder().what("Can wait").build())
                 .level("high", OptionCriteria.builder().what("Now").build())
                 .build();
-        JudgeResponse response = JudgeResponse.builder()
+        StructuredDecisionResponse response = StructuredDecisionResponse.builder()
                 .answers(null)
-                .answer("greeting", JudgeAnswer.builder().noul(0.9).build())
+                .answer("greeting", StructuredDecisionAnswer.builder().noul(0.9).build())
                 .build();
 
         assertThat(request.questions()).containsOnlyKeys("greeting");
@@ -222,16 +232,16 @@ class JudgeValueObjectsTest {
         assertThat(response.answers()).containsOnlyKeys("greeting");
     }
 
-    private JudgeRequest sampleRequest() {
-        return JudgeRequest.builder()
+    private StructuredDecisionRequest sampleRequest() {
+        return StructuredDecisionRequest.builder()
                 .state(Map.of("message", "hello"))
                 .question("greeting", noulQuestion("Is this a greeting?"))
                 .build();
     }
 
-    private JudgeResponse sampleResponse() {
-        return JudgeResponse.builder()
-                .answer("refund", JudgeAnswer.builder().noul(0.83).build())
+    private StructuredDecisionResponse sampleResponse() {
+        return StructuredDecisionResponse.builder()
+                .answer("refund", StructuredDecisionAnswer.builder().noul(0.83).build())
                 .build();
     }
 

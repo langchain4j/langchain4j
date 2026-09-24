@@ -1,4 +1,4 @@
-package dev.langchain4j.model.judge;
+package dev.langchain4j.model.structureddecision;
 
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
@@ -10,17 +10,17 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 
-/** Answers keyed by the names supplied in a {@link JudgeRequest}. */
+/** Answers keyed by the names supplied in a {@link StructuredDecisionRequest}. */
 @Experimental
-public final class JudgeResponse {
+public final class StructuredDecisionResponse {
 
-    private final Map<String, JudgeAnswer> answers;
+    private final Map<String, StructuredDecisionAnswer> answers;
 
-    private JudgeResponse(Builder builder) {
+    private StructuredDecisionResponse(Builder builder) {
         this.answers = copy(ensureNotEmpty(builder.answers, "answers"));
     }
 
-    public Map<String, JudgeAnswer> answers() {
+    public Map<String, StructuredDecisionAnswer> answers() {
         return answers;
     }
 
@@ -31,7 +31,7 @@ public final class JudgeResponse {
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (!(o instanceof JudgeResponse that)) return false;
+        if (!(o instanceof StructuredDecisionResponse that)) return false;
         return Objects.equals(answers, that.answers);
     }
 
@@ -42,13 +42,13 @@ public final class JudgeResponse {
 
     @Override
     public String toString() {
-        return "JudgeResponse{answers=" + answers + '}';
+        return "StructuredDecisionResponse{answers=" + answers + '}';
     }
 
     public static final class Builder {
-        private final Map<String, JudgeAnswer> answers = new LinkedHashMap<>();
+        private final Map<String, StructuredDecisionAnswer> answers = new LinkedHashMap<>();
 
-        public Builder answers(Map<String, JudgeAnswer> answers) {
+        public Builder answers(Map<String, StructuredDecisionAnswer> answers) {
             this.answers.clear();
             if (answers != null) {
                 answers.forEach(this::answer);
@@ -56,13 +56,13 @@ public final class JudgeResponse {
             return this;
         }
 
-        public Builder answer(String name, JudgeAnswer answer) {
+        public Builder answer(String name, StructuredDecisionAnswer answer) {
             answers.put(ensureNotBlank(name, "answer name"), ensureNotNull(answer, "answer"));
             return this;
         }
 
-        public JudgeResponse build() {
-            return new JudgeResponse(this);
+        public StructuredDecisionResponse build() {
+            return new StructuredDecisionResponse(this);
         }
     }
 }

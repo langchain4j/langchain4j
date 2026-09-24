@@ -1,4 +1,4 @@
-package dev.langchain4j.model.judge;
+package dev.langchain4j.model.structureddecision;
 
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -13,16 +13,16 @@ import java.util.Objects;
 
 /** State and named typed questions to evaluate in one judgment call. */
 @Experimental
-public final class JudgeRequest {
+public final class StructuredDecisionRequest {
 
     private final Map<String, Object> state;
     private final Map<String, Question> questions;
-    private final JudgeRequestParameters parameters;
+    private final StructuredDecisionRequestParameters parameters;
 
-    private JudgeRequest(Builder builder) {
+    private StructuredDecisionRequest(Builder builder) {
         this.state = copy(ensureNotEmpty(builder.state, "state"));
         this.questions = copy(ensureNotEmpty(builder.questions, "questions"));
-        this.parameters = getOrDefault(builder.parameters, JudgeRequestParameters.EMPTY);
+        this.parameters = getOrDefault(builder.parameters, StructuredDecisionRequestParameters.EMPTY);
     }
 
     public Map<String, Object> state() {
@@ -33,7 +33,7 @@ public final class JudgeRequest {
         return questions;
     }
 
-    public JudgeRequestParameters parameters() {
+    public StructuredDecisionRequestParameters parameters() {
         return parameters;
     }
 
@@ -48,7 +48,7 @@ public final class JudgeRequest {
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (!(o instanceof JudgeRequest that)) return false;
+        if (!(o instanceof StructuredDecisionRequest that)) return false;
         return Objects.equals(state, that.state)
                 && Objects.equals(questions, that.questions)
                 && Objects.equals(parameters, that.parameters);
@@ -61,13 +61,14 @@ public final class JudgeRequest {
 
     @Override
     public String toString() {
-        return "JudgeRequest{state=" + state + ", questions=" + questions + ", parameters=" + parameters + '}';
+        return "StructuredDecisionRequest{state=" + state + ", questions=" + questions + ", parameters=" + parameters
+                + '}';
     }
 
     public static final class Builder {
         private Map<String, Object> state;
         private final Map<String, Question> questions = new LinkedHashMap<>();
-        private JudgeRequestParameters parameters;
+        private StructuredDecisionRequestParameters parameters;
 
         public Builder state(Map<String, Object> state) {
             this.state = state;
@@ -87,13 +88,13 @@ public final class JudgeRequest {
             return this;
         }
 
-        public Builder parameters(JudgeRequestParameters parameters) {
+        public Builder parameters(StructuredDecisionRequestParameters parameters) {
             this.parameters = parameters;
             return this;
         }
 
-        public JudgeRequest build() {
-            return new JudgeRequest(this);
+        public StructuredDecisionRequest build() {
+            return new StructuredDecisionRequest(this);
         }
     }
 }

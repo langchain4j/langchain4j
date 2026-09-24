@@ -1,4 +1,4 @@
-package dev.langchain4j.model.judge;
+package dev.langchain4j.model.structureddecision;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -8,21 +8,21 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.Test;
 
-class JudgeModelTest {
+class StructuredDecisionModelTest {
 
     @Test
     void defaults_parameters_to_empty_and_async_to_failed_future() {
-        JudgeModel model = request -> JudgeResponse.builder()
-                .answer("q", JudgeAnswer.builder().noul(0.5).build())
+        StructuredDecisionModel model = request -> StructuredDecisionResponse.builder()
+                .answer("q", StructuredDecisionAnswer.builder().noul(0.5).build())
                 .build();
-        JudgeRequest request = JudgeRequest.builder()
+        StructuredDecisionRequest request = StructuredDecisionRequest.builder()
                 .state(Map.of("message", "hello"))
                 .question("q", NoulQuestion.builder().instructions("Greeting?").build())
                 .build();
 
-        CompletableFuture<JudgeResponse> future = model.judgeAsync(request);
+        CompletableFuture<StructuredDecisionResponse> future = model.decideAsync(request);
 
-        assertThat(model.defaultRequestParameters()).isEqualTo(JudgeRequestParameters.EMPTY);
+        assertThat(model.defaultRequestParameters()).isEqualTo(StructuredDecisionRequestParameters.EMPTY);
         assertThat(future).isCompletedExceptionally();
         assertThatThrownBy(future::get).hasCauseInstanceOf(AsyncNotSupportedException.class);
     }

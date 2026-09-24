@@ -1,4 +1,4 @@
-package dev.langchain4j.model.judge;
+package dev.langchain4j.model.structureddecision;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
-class JudgeRequestTest {
+class StructuredDecisionRequestTest {
 
     @Test
     void builds_a_typed_batch_request_and_defensively_copies_collections() {
@@ -42,7 +42,7 @@ class JudgeRequestTest {
                         OptionCriteria.builder().what("Needs attention now").build())
                 .build();
 
-        JudgeRequest request = JudgeRequest.builder()
+        StructuredDecisionRequest request = StructuredDecisionRequest.builder()
                 .state(state)
                 .question("refund", refund)
                 .question("team", team)
@@ -64,7 +64,7 @@ class JudgeRequestTest {
 
     @Test
     void defaults_to_empty_request_parameters_and_supports_overrides() {
-        JudgeRequest request = JudgeRequest.builder()
+        StructuredDecisionRequest request = StructuredDecisionRequest.builder()
                 .state(Map.of("message", "hello"))
                 .question(
                         "greeting",
@@ -72,45 +72,55 @@ class JudgeRequestTest {
                                 .instructions("Is this a greeting?")
                                 .build())
                 .build();
-        JudgeRequestParameters configured =
-                JudgeRequestParameters.builder().modelName("jev-latest").build();
-        JudgeRequestParameters override =
-                JudgeRequestParameters.builder().modelName("jev-preview").build();
+        StructuredDecisionRequestParameters configured = StructuredDecisionRequestParameters.builder()
+                .modelName("jev-latest")
+                .build();
+        StructuredDecisionRequestParameters override = StructuredDecisionRequestParameters.builder()
+                .modelName("jev-preview")
+                .build();
 
-        assertThat(request.parameters()).isEqualTo(JudgeRequestParameters.EMPTY);
+        assertThat(request.parameters()).isEqualTo(StructuredDecisionRequestParameters.EMPTY);
         assertThat(request.modelName()).isNull();
         assertThat(configured.overrideWith(override).modelName()).isEqualTo("jev-preview");
-        assertThat(configured.overrideWith(JudgeRequestParameters.EMPTY).modelName())
+        assertThat(configured
+                        .overrideWith(StructuredDecisionRequestParameters.EMPTY)
+                        .modelName())
                 .isEqualTo("jev-latest");
         assertThat(configured.overrideWith(null)).isSameAs(configured);
 
-        JudgeRequestParameters configuredFromEmpty = JudgeRequestParameters.EMPTY.overrideWith(configured);
-        assertThat(configuredFromEmpty).isEqualTo(configured).isNotSameAs(JudgeRequestParameters.EMPTY);
-        assertThat(JudgeRequestParameters.EMPTY.modelName()).isNull();
+        StructuredDecisionRequestParameters configuredFromEmpty =
+                StructuredDecisionRequestParameters.EMPTY.overrideWith(configured);
+        assertThat(configuredFromEmpty).isEqualTo(configured).isNotSameAs(StructuredDecisionRequestParameters.EMPTY);
+        assertThat(StructuredDecisionRequestParameters.EMPTY.modelName()).isNull();
     }
 
     @Test
     void rejects_missing_or_invalid_request_fields() {
         NoulQuestion question = NoulQuestion.builder().instructions("Question?").build();
 
-        assertThatThrownBy(() -> JudgeRequest.builder().question("q", question).build())
+        assertThatThrownBy(() -> StructuredDecisionRequest.builder()
+                        .question("q", question)
+                        .build())
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("state");
-        assertThatThrownBy(() -> JudgeRequest.builder()
+        assertThatThrownBy(() -> StructuredDecisionRequest.builder()
                         .state(Map.of())
                         .question("q", question)
                         .build())
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("state");
-        assertThatThrownBy(() ->
-                        JudgeRequest.builder().state(Map.of("message", "hello")).build())
+        assertThatThrownBy(() -> StructuredDecisionRequest.builder()
+                        .state(Map.of("message", "hello"))
+                        .build())
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("questions");
-        assertThatThrownBy(() ->
-                        JudgeRequest.builder().state(Map.of("message", "hello")).question(" ", question))
+        assertThatThrownBy(() -> StructuredDecisionRequest.builder()
+                        .state(Map.of("message", "hello"))
+                        .question(" ", question))
                 .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() ->
-                        JudgeRequest.builder().state(Map.of("message", "hello")).question("q", null))
+        assertThatThrownBy(() -> StructuredDecisionRequest.builder()
+                        .state(Map.of("message", "hello"))
+                        .question("q", null))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 

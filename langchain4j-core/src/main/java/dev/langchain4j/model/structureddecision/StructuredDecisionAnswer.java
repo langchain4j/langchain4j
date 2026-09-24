@@ -1,4 +1,4 @@
-package dev.langchain4j.model.judge;
+package dev.langchain4j.model.structureddecision;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureBetween;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
@@ -7,19 +7,19 @@ import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
 import dev.langchain4j.Experimental;
 import java.util.Objects;
 
-/** One typed answer returned for a named judge question. */
+/** One typed answer returned for a named question in a structured decision response. */
 @Experimental
-public final class JudgeAnswer {
+public final class StructuredDecisionAnswer {
 
     private final Double noul;
     private final String choice;
     private final Double score;
     private final Double confidence;
 
-    private JudgeAnswer(Builder builder) {
+    private StructuredDecisionAnswer(Builder builder) {
         int values =
                 (builder.noul == null ? 0 : 1) + (builder.choice == null ? 0 : 1) + (builder.score == null ? 0 : 1);
-        ensureTrue(values == 1, "JudgeAnswer must contain exactly one of 'noul', 'choice', or 'score'");
+        ensureTrue(values == 1, "StructuredDecisionAnswer must contain exactly one of 'noul', 'choice', or 'score'");
         ensureTrue(builder.noul == null || Double.isFinite(builder.noul), "noul must be a finite number");
         ensureTrue(
                 builder.confidence == null || Double.isFinite(builder.confidence),
@@ -53,7 +53,7 @@ public final class JudgeAnswer {
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (!(o instanceof JudgeAnswer that)) return false;
+        if (!(o instanceof StructuredDecisionAnswer that)) return false;
         return Objects.equals(noul, that.noul)
                 && Objects.equals(choice, that.choice)
                 && Objects.equals(score, that.score)
@@ -67,8 +67,8 @@ public final class JudgeAnswer {
 
     @Override
     public String toString() {
-        return "JudgeAnswer{noul=" + noul + ", choice=" + choice + ", score=" + score + ", confidence=" + confidence
-                + '}';
+        return "StructuredDecisionAnswer{noul=" + noul + ", choice=" + choice + ", score=" + score + ", confidence="
+                + confidence + '}';
     }
 
     public static final class Builder {
@@ -97,8 +97,8 @@ public final class JudgeAnswer {
             return this;
         }
 
-        public JudgeAnswer build() {
-            return new JudgeAnswer(this);
+        public StructuredDecisionAnswer build() {
+            return new StructuredDecisionAnswer(this);
         }
     }
 }

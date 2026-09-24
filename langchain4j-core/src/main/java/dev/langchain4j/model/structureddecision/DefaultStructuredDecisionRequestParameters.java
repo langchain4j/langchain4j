@@ -1,17 +1,17 @@
-package dev.langchain4j.model.judge;
+package dev.langchain4j.model.structureddecision;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 
 import dev.langchain4j.Experimental;
 import java.util.Objects;
 
-/** Default implementation of {@link JudgeRequestParameters}. */
+/** Default implementation of {@link StructuredDecisionRequestParameters}. */
 @Experimental
-public class DefaultJudgeRequestParameters implements JudgeRequestParameters {
+public class DefaultStructuredDecisionRequestParameters implements StructuredDecisionRequestParameters {
 
     private final String modelName;
 
-    protected DefaultJudgeRequestParameters(Builder<?> builder) {
+    protected DefaultStructuredDecisionRequestParameters(Builder<?> builder) {
         this.modelName = builder.modelName;
     }
 
@@ -21,7 +21,7 @@ public class DefaultJudgeRequestParameters implements JudgeRequestParameters {
     }
 
     @Override
-    public JudgeRequestParameters overrideWith(JudgeRequestParameters that) {
+    public StructuredDecisionRequestParameters overrideWith(StructuredDecisionRequestParameters that) {
         if (that == null) {
             return this;
         }
@@ -36,7 +36,7 @@ public class DefaultJudgeRequestParameters implements JudgeRequestParameters {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        DefaultJudgeRequestParameters that = (DefaultJudgeRequestParameters) o;
+        DefaultStructuredDecisionRequestParameters that = (DefaultStructuredDecisionRequestParameters) o;
         return Objects.equals(modelName, that.modelName);
     }
 
@@ -47,7 +47,7 @@ public class DefaultJudgeRequestParameters implements JudgeRequestParameters {
 
     @Override
     public String toString() {
-        return "DefaultJudgeRequestParameters{modelName=" + modelName + '}';
+        return "DefaultStructuredDecisionRequestParameters{modelName=" + modelName + '}';
     }
 
     public static class Builder<B extends Builder<B>> {
@@ -58,7 +58,7 @@ public class DefaultJudgeRequestParameters implements JudgeRequestParameters {
             return self();
         }
 
-        public B overrideWith(JudgeRequestParameters parameters) {
+        public B overrideWith(StructuredDecisionRequestParameters parameters) {
             if (parameters != null) {
                 this.modelName = getOrDefault(parameters.modelName(), this.modelName);
             }
@@ -70,8 +70,8 @@ public class DefaultJudgeRequestParameters implements JudgeRequestParameters {
             return (B) this;
         }
 
-        public DefaultJudgeRequestParameters build() {
-            return new DefaultJudgeRequestParameters(this);
+        public DefaultStructuredDecisionRequestParameters build() {
+            return new DefaultStructuredDecisionRequestParameters(this);
         }
     }
 }
