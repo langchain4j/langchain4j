@@ -14,6 +14,7 @@ import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import java.time.Duration;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
@@ -32,6 +33,8 @@ import software.amazon.awssdk.services.bedrockruntime.model.ConverseResponse;
  * @see <a href="https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference.html">https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference.html</a>
  */
 public class BedrockChatModel extends AbstractBedrockChatModel implements ChatModel {
+
+    private static final Duration DEFAULT_TIMEOUT = Duration.ofMinutes(1);
 
     private final BedrockRuntimeClient client;
     private final Integer maxRetries;
@@ -77,7 +80,8 @@ public class BedrockChatModel extends AbstractBedrockChatModel implements ChatMo
         CompletableFuture<ConverseResponse> future = withRetryMappingExceptionsAsync(
                 () -> asyncClient().converse(converseRequest), maxRetries, BedrockExceptionMapper.INSTANCE);
 
-        CompletableFuture<ChatResponse> result = future.thenApply(response -> toChatResponse(converseRequest, response));
+        CompletableFuture<ChatResponse> result =
+                future.thenApply(response -> toChatResponse(converseRequest, response));
 
         propagateCancellation(result, future);
         return result;
@@ -152,7 +156,7 @@ public class BedrockChatModel extends AbstractBedrockChatModel implements ChatMo
                 .region(this.region)
                 .credentialsProvider(DefaultCredentialsProvider.create())
                 .overrideConfiguration(config -> {
-                    config.apiCallTimeout(this.timeout);
+                    config.apiCallTimeout(getOrDefault(this.timeout, DEFAULT_TIMEOUT));
                     if (logRequests || logResponses)
                         config.addExecutionInterceptor(new AwsLoggingInterceptor(logRequests, logResponses, logger));
                     if (customHeadersSupplier != null)
@@ -166,8 +170,9 @@ public class BedrockChatModel extends AbstractBedrockChatModel implements ChatMo
         if (existing != null) {
             return existing;
         }
-        BedrockRuntimeAsyncClient created =
-                injectedAsyncClient != null ? injectedAsyncClient : createAsyncClient(logRequests, logResponses, logger);
+        BedrockRuntimeAsyncClient created = injectedAsyncClient != null
+                ? injectedAsyncClient
+                : createAsyncClient(logRequests, logResponses, logger);
         return asyncClientRef.compareAndSet(null, created) ? created : asyncClientRef.get();
     }
 
@@ -176,7 +181,7 @@ public class BedrockChatModel extends AbstractBedrockChatModel implements ChatMo
                 .region(this.region)
                 .credentialsProvider(DefaultCredentialsProvider.create())
                 .overrideConfiguration(config -> {
-                    config.apiCallTimeout(this.timeout);
+                    config.apiCallTimeout(getOrDefault(this.timeout, DEFAULT_TIMEOUT));
                     if (logRequests || logResponses)
                         config.addExecutionInterceptor(new AwsLoggingInterceptor(logRequests, logResponses, logger));
                     if (customHeadersSupplier != null)
