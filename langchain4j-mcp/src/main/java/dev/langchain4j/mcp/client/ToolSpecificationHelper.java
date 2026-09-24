@@ -28,8 +28,6 @@ import org.slf4j.LoggerFactory;
 
 class ToolSpecificationHelper {
 
-    static final String MCP_PARAM_HEADER_PATHS = "langchain4j.internal.mcp-param-header-paths";
-
     private static final Logger log = LoggerFactory.getLogger(ToolSpecificationHelper.class);
     private static final Set<String> ALLOWED_HEADER_PARAM_TYPES = Set.of("string", "integer", "boolean");
 
@@ -52,17 +50,14 @@ class ToolSpecificationHelper {
             if (paramHeaders == null) {
                 continue;
             }
-            if (!paramHeaders.publicHeaders().isEmpty()) {
-                builder.addMetadata(MCP_PARAM_HEADERS, paramHeaders.publicHeaders());
+            if (!paramHeaders.headers().isEmpty()) {
+                builder.addMetadata(MCP_PARAM_HEADERS, paramHeaders.headers());
             }
             if (tool.containsKey("annotations")) {
                 processMcpToolAnnotations(object(tool.get("annotations")), builder);
             }
             if (tool.containsKey("_meta")) {
                 processMcpToolMetadata(object(tool.get("_meta")), builder);
-            }
-            if (!paramHeaders.headerPaths().isEmpty()) {
-                builder.addMetadata(MCP_PARAM_HEADER_PATHS, paramHeaders.headerPaths());
             }
             if (tool.containsKey("title")) {
                 builder.addMetadata(TITLE, string(tool.get("title")));
@@ -433,21 +428,20 @@ class ToolSpecificationHelper {
         meta.forEach(builder::addMetadata);
     }
 
-    private record McpParamHeaders(Map<String, String> publicHeaders, Map<String, List<String>> headerPaths) {}
+    private record McpParamHeaders(Map<List<String>, String> headers) {}
 
     private static McpParamHeaders extractAndValidateMcpParamHeaders(Map<String, Object> schema, String toolName) {
-        Map<String, String> publicHeaders = new LinkedHashMap<>();
-        Map<String, List<String>> headerPaths = new LinkedHashMap<>();
+        Map<List<String>, String> headers = new LinkedHashMap<>();
         Set<String> seenHeaderNamesLower = new HashSet<>();
         List<String> errors = new ArrayList<>();
-        extractAndValidateMcpParamHeaders(schema, List.of(), publicHeaders, headerPaths, seenHeaderNamesLower, errors);
+        extractAndValidateMcpParamHeaders(schema, List.of(), headers, seenHeaderNamesLower, errors);
         if (!errors.isEmpty()) {
             for (String error : errors) {
                 log.warn("Excluding tool '{}' from tools/list: {}", toolName, error);
             }
             return null;
         }
-        return new McpParamHeaders(publicHeaders, headerPaths);
+        return new McpParamHeaders(headers);
     }
 
     private static final List<String> FORBIDDEN_SCHEMA_KEYWORDS = List.of(
@@ -456,8 +450,7 @@ class ToolSpecificationHelper {
     private static void extractAndValidateMcpParamHeaders(
             Map<String, Object> schema,
             List<String> pathPrefix,
-            Map<String, String> publicHeaders,
-            Map<String, List<String>> headerPaths,
+            Map<List<String>, String> headers,
             Set<String> seenHeaderNamesLower,
             List<String> errors) {
         checkForbiddenSubtrees(schema, errors);
@@ -475,18 +468,11 @@ class ToolSpecificationHelper {
                             + jsonTypeName(headerAnnotation));
                 } else {
                     validateMcpParamHeader(
-                            (String) headerAnnotation,
-                            propSchema,
-                            propertyPath,
-                            publicHeaders,
-                            headerPaths,
-                            seenHeaderNamesLower,
-                            errors);
+                            (String) headerAnnotation, propSchema, propertyPath, headers, seenHeaderNamesLower, errors);
                 }
             }
             if (propSchema.containsKey("properties")) {
-                extractAndValidateMcpParamHeaders(
-                        propSchema, propertyPath, publicHeaders, headerPaths, seenHeaderNamesLower, errors);
+                extractAndValidateMcpParamHeaders(propSchema, propertyPath, headers, seenHeaderNamesLower, errors);
             } else {
                 checkForbiddenSubtrees(propSchema, errors);
             }
@@ -497,8 +483,7 @@ class ToolSpecificationHelper {
             String headerName,
             Map<String, Object> propSchema,
             List<String> propertyPath,
-            Map<String, String> publicHeaders,
-            Map<String, List<String>> headerPaths,
+            Map<List<String>, String> headers,
             Set<String> seenHeaderNamesLower,
             List<String> errors) {
         String pathDescription = String.join(".", propertyPath);
@@ -519,8 +504,7 @@ class ToolSpecificationHelper {
             }
         }
         if (errors.isEmpty()) {
-            publicHeaders.put(pathDescription, headerName);
-            headerPaths.put(headerName, propertyPath);
+            headers.put(List.copyOf(propertyPath), headerName);
         }
     }
 

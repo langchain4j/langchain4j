@@ -860,20 +860,16 @@ public class DefaultMcpClientTest {
 
         DefaultMcpClient client = createMcpClient(transport);
         List<ToolSpecification> tools = client.listTools();
-        Map<String, String> publicHeaderMappings =
-                (Map<String, String>) tools.get(0).metadata().get(McpToolMetadataKeys.MCP_PARAM_HEADERS);
-        assertThat(publicHeaderMappings)
-                .containsExactlyInAnyOrderEntriesOf(Map.of("config.region", "Nested-Region", "region", "Top-Region"));
-        Map<String, List<String>> internalHeaderPaths =
-                (Map<String, List<String>>) tools.get(0).metadata().get(ToolSpecificationHelper.MCP_PARAM_HEADER_PATHS);
-        assertThat(internalHeaderPaths)
+        Map<List<String>, String> headerMappings =
+                (Map<List<String>, String>) tools.get(0).metadata().get(McpToolMetadataKeys.MCP_PARAM_HEADERS);
+        assertThat(headerMappings)
                 .containsExactlyInAnyOrderEntriesOf(Map.of(
-                        "Literal-Region",
                         List.of("config.region"),
-                        "Nested-Region",
+                        "Literal-Region",
                         List.of("config", "region"),
-                        "Top-Region",
-                        List.of("region")));
+                        "Nested-Region",
+                        List.of("region"),
+                        "Top-Region"));
         client.executeTool(ToolExecutionRequest.builder()
                 .name("dottedTool")
                 .arguments("{\"config.region\":\"literal\",\"config\":{\"region\":\"nested\"},\"region\":\"top\"}")

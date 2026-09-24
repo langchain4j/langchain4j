@@ -1660,15 +1660,15 @@ public class DefaultMcpClient implements McpClient {
         if (spec == null || spec.metadata() == null) {
             return null;
         }
-        Map<String, List<String>> headerMappings =
-                (Map<String, List<String>>) spec.metadata().get(ToolSpecificationHelper.MCP_PARAM_HEADER_PATHS);
+        Map<List<String>, String> headerMappings =
+                (Map<List<String>, String>) spec.metadata().get(McpToolMetadataKeys.MCP_PARAM_HEADERS);
         if (headerMappings == null || headerMappings.isEmpty()) {
             return null;
         }
         Map<String, String> result = new LinkedHashMap<>();
-        for (Map.Entry<String, List<String>> entry : headerMappings.entrySet()) {
-            String headerName = entry.getKey();
-            Object value = resolvePropertyPath(arguments, entry.getValue());
+        for (Map.Entry<List<String>, String> entry : headerMappings.entrySet()) {
+            Object value = resolvePropertyPath(arguments, entry.getKey());
+            String headerName = entry.getValue();
             String stringValue;
             if (value instanceof String text) {
                 stringValue = text;
