@@ -1,6 +1,7 @@
 package dev.langchain4j.agentic.patterns.debate;
 
 import java.util.Collection;
+import java.util.Locale;
 import java.util.Objects;
 
 @FunctionalInterface
@@ -26,7 +27,7 @@ public interface ConvergenceStrategy {
                 String[] tokens = text.split("\\s+");
                 String lastWord = tokens[tokens.length - 1]
                         .replaceAll("^[^\\p{Alnum}]+|[^\\p{Alnum}]+$", "")
-                        .toUpperCase();
+                        .toUpperCase(Locale.ROOT);
                 if (firstVerdict == null) {
                     firstVerdict = lastWord;
                 } else if (!firstVerdict.equals(lastWord)) {
