@@ -3,9 +3,9 @@ package dev.langchain4j.model.structureddecision;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import java.util.Map;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 class StructuredDecisionReceiptTest {
@@ -14,28 +14,45 @@ class StructuredDecisionReceiptTest {
     void captures_ordered_schema_and_answer_provenance_without_recording_state() {
         StructuredDecisionRequest request = StructuredDecisionRequest.builder()
                 .state("Private message")
-                .question("department", ChoiceQuestion.builder()
-                        .instructions("Choose a department")
-                        .option("sales", OptionCriteria.builder().what("Sales").build())
-                        .option("support", OptionCriteria.builder().what("Support").build())
-                        .build())
-                .question("risk", ScoreQuestion.builder()
-                        .instructions("Rate risk")
-                        .level("low", OptionCriteria.builder().what("Low").build())
-                        .level("high", OptionCriteria.builder().what("High").build())
-                        .build())
+                .question(
+                        "department",
+                        ChoiceQuestion.builder()
+                                .instructions("Choose a department")
+                                .option(
+                                        "sales",
+                                        OptionCriteria.builder().what("Sales").build())
+                                .option(
+                                        "support",
+                                        OptionCriteria.builder().what("Support").build())
+                                .build())
+                .question(
+                        "risk",
+                        ScoreQuestion.builder()
+                                .instructions("Rate risk")
+                                .level(
+                                        "low",
+                                        OptionCriteria.builder().what("Low").build())
+                                .level(
+                                        "high",
+                                        OptionCriteria.builder().what("High").build())
+                                .build())
                 .build();
         StructuredDecisionResponse response = StructuredDecisionResponse.builder()
-                .answer("department", new ChoiceAnswer("support", 0.7,
-                        ConfidenceProvenance.PROVIDER_REPORTED, Map.of("probabilities", Map.of("support", 0.7))))
+                .answer(
+                        "department",
+                        new ChoiceAnswer(
+                                "support",
+                                0.7,
+                                ConfidenceProvenance.PROVIDER_REPORTED,
+                                Map.of("probabilities", Map.of("support", 0.7))))
                 .build();
 
-        StructuredDecisionReceipt receipt = StructuredDecisionReceipt.from(
-                "routing", "v3", request, response);
+        StructuredDecisionReceipt receipt = StructuredDecisionReceipt.from("routing", "v3", request, response);
 
         assertThat(receipt.schemaId()).isEqualTo("routing");
         assertThat(receipt.schemaVersion()).isEqualTo("v3");
-        assertThat(receipt.questions()).extracting(StructuredDecisionReceipt.QuestionSnapshot::name)
+        assertThat(receipt.questions())
+                .extracting(StructuredDecisionReceipt.QuestionSnapshot::name)
                 .containsExactly("department", "risk");
         assertThat(receipt.questions().get(0).optionIds()).containsExactly("sales", "support");
         assertThat(receipt.questions().get(1).optionIds()).containsExactly("low", "high");
@@ -72,13 +89,28 @@ class StructuredDecisionReceiptTest {
                 .build();
         List<String> values = new ArrayList<>(List.of("first"));
         StructuredDecisionAnswer answer = new StructuredDecisionAnswer() {
-            @Override public Object value() { return values; }
-            @Override public Double confidence() { return null; }
-            @Override public ConfidenceProvenance confidenceProvenance() { return null; }
-            @Override public Map<String, Object> metadata() { return Map.of(); }
+            @Override
+            public Object value() {
+                return values;
+            }
+
+            @Override
+            public Double confidence() {
+                return null;
+            }
+
+            @Override
+            public ConfidenceProvenance confidenceProvenance() {
+                return null;
+            }
+
+            @Override
+            public Map<String, Object> metadata() {
+                return Map.of();
+            }
         };
-        StructuredDecisionResponse response = StructuredDecisionResponse.builder()
-                .answer("custom", answer).build();
+        StructuredDecisionResponse response =
+                StructuredDecisionResponse.builder().answer("custom", answer).build();
 
         StructuredDecisionReceipt receipt = StructuredDecisionReceipt.from("custom", "v1", request, response);
         values.add("second");

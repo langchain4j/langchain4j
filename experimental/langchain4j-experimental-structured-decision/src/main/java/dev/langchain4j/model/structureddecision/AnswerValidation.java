@@ -8,7 +8,8 @@ final class AnswerValidation {
     private AnswerValidation() {}
 
     static void validateConfidence(Double confidence, ConfidenceProvenance provenance) {
-        ensureTrue((confidence == null) == (provenance == null),
+        ensureTrue(
+                (confidence == null) == (provenance == null),
                 "confidence and confidenceProvenance must either both be present or both be absent");
         if (confidence != null) {
             ensureTrue(Double.isFinite(confidence), "confidence must be finite");

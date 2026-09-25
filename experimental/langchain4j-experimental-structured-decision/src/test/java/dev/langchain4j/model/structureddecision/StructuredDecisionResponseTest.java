@@ -26,7 +26,8 @@ class StructuredDecisionResponseTest {
     @Test
     void maps_each_typed_answer_and_defensively_copies_the_answer_map() {
         StructuredDecisionAnswer noul = new NoulAnswer(0.83);
-        StructuredDecisionAnswer choice = new ChoiceAnswer("billing", 0.91, ConfidenceProvenance.PROVIDER_REPORTED, Map.of());
+        StructuredDecisionAnswer choice =
+                new ChoiceAnswer("billing", 0.91, ConfidenceProvenance.PROVIDER_REPORTED, Map.of());
         StructuredDecisionAnswer score = new ScoreAnswer(1.7, 0.64, ConfidenceProvenance.PROVIDER_REPORTED, Map.of());
         Map<String, StructuredDecisionAnswer> answers = new LinkedHashMap<>();
         answers.put("refund", noul);
@@ -54,11 +55,8 @@ class StructuredDecisionResponseTest {
 
     @Test
     void validates_probabilities_and_response_entries() {
-        assertThatThrownBy(() -> new NoulAnswer(1.01))
-                .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() ->
-                        new NoulAnswer(Double.NaN))
-                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> new NoulAnswer(1.01)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> new NoulAnswer(Double.NaN)).isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> new ChoiceAnswer("x", -0.01, ConfidenceProvenance.PROVIDER_REPORTED, Map.of()))
                 .isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> new ChoiceAnswer("x", Double.NaN, ConfidenceProvenance.PROVIDER_REPORTED, Map.of()))
@@ -73,18 +71,15 @@ class StructuredDecisionResponseTest {
     void answer_metadata_is_copied_and_confidence_has_explicit_provenance() {
         Map<String, Object> metadata = new LinkedHashMap<>();
         metadata.put("probabilities", Map.of("billing", 0.91));
-        ChoiceAnswer answer = new ChoiceAnswer("billing", 0.91,
-                ConfidenceProvenance.PROVIDER_REPORTED, metadata);
+        ChoiceAnswer answer = new ChoiceAnswer("billing", 0.91, ConfidenceProvenance.PROVIDER_REPORTED, metadata);
         metadata.clear();
 
         assertThat(answer.metadata()).containsKey("probabilities");
-        assertThatThrownBy(() -> answer.metadata().clear())
-                .isInstanceOf(UnsupportedOperationException.class);
+        assertThatThrownBy(() -> answer.metadata().clear()).isInstanceOf(UnsupportedOperationException.class);
         assertThat(answer.confidenceProvenance()).isEqualTo(ConfidenceProvenance.PROVIDER_REPORTED);
         assertThatThrownBy(() -> new ChoiceAnswer("billing", 0.91, null, Map.of()))
                 .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> new ChoiceAnswer("billing", null,
-                ConfidenceProvenance.PROVIDER_REPORTED, Map.of()))
+        assertThatThrownBy(() -> new ChoiceAnswer("billing", null, ConfidenceProvenance.PROVIDER_REPORTED, Map.of()))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -93,13 +88,11 @@ class StructuredDecisionResponseTest {
     void nested_answer_metadata_is_an_immutable_snapshot() {
         Map<String, Object> probabilities = new LinkedHashMap<>();
         probabilities.put("billing", 0.8);
-        ChoiceAnswer answer = new ChoiceAnswer("billing", null, null,
-                Map.of("probabilities", probabilities));
+        ChoiceAnswer answer = new ChoiceAnswer("billing", null, null, Map.of("probabilities", probabilities));
         probabilities.put("billing", 0.1);
 
         Map<String, Object> captured = (Map<String, Object>) answer.metadata().get("probabilities");
         assertThat(captured).containsEntry("billing", 0.8);
-        assertThatThrownBy(() -> captured.put("billing", 0.2))
-                .isInstanceOf(UnsupportedOperationException.class);
+        assertThatThrownBy(() -> captured.put("billing", 0.2)).isInstanceOf(UnsupportedOperationException.class);
     }
 }

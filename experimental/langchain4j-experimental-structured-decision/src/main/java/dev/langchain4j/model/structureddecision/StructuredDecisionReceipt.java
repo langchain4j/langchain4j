@@ -12,9 +12,8 @@ import java.util.Map;
 
 /** An explicit, state-free snapshot of the schema and returned decisions. */
 @Experimental
-public record StructuredDecisionReceipt(String schemaId, String schemaVersion,
-                                        List<QuestionSnapshot> questions,
-                                        Map<String, AnswerSnapshot> answers) {
+public record StructuredDecisionReceipt(
+        String schemaId, String schemaVersion, List<QuestionSnapshot> questions, Map<String, AnswerSnapshot> answers) {
 
     public StructuredDecisionReceipt {
         schemaId = ensureNotBlank(schemaId, "schemaId");
@@ -23,19 +22,21 @@ public record StructuredDecisionReceipt(String schemaId, String schemaVersion,
         answers = java.util.Collections.unmodifiableMap(new LinkedHashMap<>(ensureNotNull(answers, "answers")));
     }
 
-    public static StructuredDecisionReceipt from(String schemaId, String schemaVersion,
-                                                 StructuredDecisionRequest request,
-                                                 StructuredDecisionResponse response) {
+    public static StructuredDecisionReceipt from(
+            String schemaId,
+            String schemaVersion,
+            StructuredDecisionRequest request,
+            StructuredDecisionResponse response) {
         ensureNotNull(request, "request");
         ensureNotNull(response, "response");
         List<QuestionSnapshot> questions = new ArrayList<>();
-        request.questions().forEach((name, question) -> questions.add(new QuestionSnapshot(
-                name, question.getClass().getName(), optionIds(question))));
+        request.questions()
+                .forEach((name, question) -> questions.add(
+                        new QuestionSnapshot(name, question.getClass().getName(), optionIds(question))));
         Map<String, AnswerSnapshot> answers = new LinkedHashMap<>();
         response.answers().forEach((name, answer) -> {
             ensureTrue(request.questions().containsKey(name), "Unknown answer name: " + name);
-            answers.put(name, new AnswerSnapshot(answer.value(), answer.confidence(),
-                    answer.confidenceProvenance()));
+            answers.put(name, new AnswerSnapshot(answer.value(), answer.confidence(), answer.confidenceProvenance()));
         });
         return new StructuredDecisionReceipt(schemaId, schemaVersion, questions, answers);
     }

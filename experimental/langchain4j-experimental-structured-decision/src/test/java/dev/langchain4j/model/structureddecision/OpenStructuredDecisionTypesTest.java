@@ -16,9 +16,8 @@ class OpenStructuredDecisionTypesTest {
                 .state("some text")
                 .question("matches", question)
                 .build();
-        StructuredDecisionResponse response = StructuredDecisionResponse.builder()
-                .answer("matches", answer)
-                .build();
+        StructuredDecisionResponse response =
+                StructuredDecisionResponse.builder().answer("matches", answer).build();
 
         assertThat(request.questions().get("matches")).isSameAs(question);
         assertThat(response.answers().get("matches").value()).isEqualTo("first match");

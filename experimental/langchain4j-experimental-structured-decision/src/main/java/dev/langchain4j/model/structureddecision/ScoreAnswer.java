@@ -1,6 +1,5 @@
 package dev.langchain4j.model.structureddecision;
 
-import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
 
@@ -9,8 +8,9 @@ import java.util.Map;
 
 /** A position on an ordered score scale. */
 @Experimental
-public record ScoreAnswer(Double value, Double confidence, ConfidenceProvenance confidenceProvenance,
-                          Map<String, Object> metadata) implements StructuredDecisionAnswer {
+public record ScoreAnswer(
+        Double value, Double confidence, ConfidenceProvenance confidenceProvenance, Map<String, Object> metadata)
+        implements StructuredDecisionAnswer {
 
     public ScoreAnswer {
         ensureNotNull(value, "value");

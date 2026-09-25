@@ -18,8 +18,7 @@ class StructuredDecisionValueObjectsTest {
                 new NoulAnswer(0.83, 0.9, ConfidenceProvenance.PROVIDER_REPORTED, Map.of());
         StructuredDecisionAnswer choice =
                 new ChoiceAnswer("billing", 0.9, ConfidenceProvenance.PROVIDER_REPORTED, Map.of());
-        StructuredDecisionAnswer score =
-                new ScoreAnswer(1.5, 0.6, ConfidenceProvenance.PROVIDER_REPORTED, Map.of());
+        StructuredDecisionAnswer score = new ScoreAnswer(1.5, 0.6, ConfidenceProvenance.PROVIDER_REPORTED, Map.of());
 
         assertThat(answer).isEqualTo(same).hasSameHashCodeAs(same);
         assertThat(answer)
