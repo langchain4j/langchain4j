@@ -6,6 +6,7 @@ import dev.langchain4j.agentic.agent.AgentInvocationException;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
 import dev.langchain4j.agentic.scope.AgenticSystemSuspendedException;
+import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
@@ -99,8 +100,10 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements 
             AgentInvocationArguments args) {
         String outputKey = agentInvoker.outputKey();
         if (outputKey != null && !outputKey.isBlank()) {
-            agenticScope.writeState(outputKey, response);
+            Object stateValue = response instanceof ResultWithAgenticScope<?> r ? r.result() : response;
+            agenticScope.writeState(outputKey, stateValue);
         }
+
         Map<String, Object> namedArgs = args != null ? args.namedArgs() : Map.of();
         AgentInvocation agentInvocation = new AgentInvocation(
                 type(), name(), agentId(), namedArgs, isSerializable(response) ? response : "<unknown>");
