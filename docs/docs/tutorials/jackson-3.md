@@ -19,7 +19,7 @@ Add one dependency:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-jackson3</artifactId>
-    <version>1.20.0-beta30</version>
+    <version>1.20.1-beta30</version>
 </dependency>
 ```
 
@@ -132,7 +132,7 @@ dependency you declare, not only the first:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j</artifactId>
-    <version>1.20.0</version>
+    <version>1.20.1</version>
     <exclusions>
         <exclusion>
             <groupId>com.fasterxml.jackson.core</groupId>
