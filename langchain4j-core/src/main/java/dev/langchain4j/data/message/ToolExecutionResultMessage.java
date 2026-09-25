@@ -7,7 +7,6 @@ import static java.util.Arrays.asList;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
-
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -90,6 +89,7 @@ public class ToolExecutionResultMessage implements ChatMessage {
      * @throws IllegalStateException if contents contains non-text or multiple content elements.
      *                               Use {@link #contents()} instead.
      */
+    @Override
     public String text() {
         if (contents.size() == 1 && contents.get(0) instanceof TextContent textContent) {
             return textContent.text();
@@ -164,13 +164,12 @@ public class ToolExecutionResultMessage implements ChatMessage {
 
     @Override
     public String toString() {
-        return "ToolExecutionResultMessage{" +
-                "id='" + id + '\'' +
-                ", toolName='" + toolName + '\'' +
-                ", contents=" + contents +
-                ", isError=" + isError +
-                ", attributes=" + attributes +
-                '}';
+        return "ToolExecutionResultMessage{" + "id='"
+                + id + '\'' + ", toolName='"
+                + toolName + '\'' + ", contents="
+                + contents + ", isError="
+                + isError + ", attributes="
+                + attributes + '}';
     }
 
     /**
