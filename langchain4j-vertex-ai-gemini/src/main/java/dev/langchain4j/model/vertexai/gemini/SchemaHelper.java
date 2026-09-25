@@ -120,6 +120,18 @@ public class SchemaHelper {
             if (jsonStringSchema.description() != null) {
                 builder.setDescription(jsonStringSchema.description());
             }
+            if (jsonStringSchema.minLength() != null) {
+                builder.setMinLength(jsonStringSchema.minLength());
+            }
+            if (jsonStringSchema.maxLength() != null) {
+                builder.setMaxLength(jsonStringSchema.maxLength());
+            }
+            if (jsonStringSchema.pattern() != null) {
+                builder.setPattern(jsonStringSchema.pattern());
+            }
+            if (jsonStringSchema.format() != null) {
+                builder.setFormat(jsonStringSchema.format());
+            }
             return builder.build();
         } else if (jsonSchemaElement instanceof JsonBooleanSchema) {
             JsonBooleanSchema jsonBooleanSchema = (JsonBooleanSchema) jsonSchemaElement;
@@ -134,12 +146,26 @@ public class SchemaHelper {
             if (jsonIntegerSchema.description() != null) {
                 builder.setDescription(jsonIntegerSchema.description());
             }
+            // exclusiveMinimum/exclusiveMaximum are not supported by the Vertex AI Gemini API and are ignored
+            if (jsonIntegerSchema.minimum() != null) {
+                builder.setMinimum(jsonIntegerSchema.minimum());
+            }
+            if (jsonIntegerSchema.maximum() != null) {
+                builder.setMaximum(jsonIntegerSchema.maximum());
+            }
             return builder.build();
         } else if (jsonSchemaElement instanceof JsonNumberSchema) {
             JsonNumberSchema jsonNumberSchema = (JsonNumberSchema) jsonSchemaElement;
             Schema.Builder builder = Schema.newBuilder().setType(Type.NUMBER);
             if (jsonNumberSchema.description() != null) {
                 builder.setDescription(jsonNumberSchema.description());
+            }
+            // exclusiveMinimum/exclusiveMaximum are not supported by the Vertex AI Gemini API and are ignored
+            if (jsonNumberSchema.minimum() != null) {
+                builder.setMinimum(jsonNumberSchema.minimum());
+            }
+            if (jsonNumberSchema.maximum() != null) {
+                builder.setMaximum(jsonNumberSchema.maximum());
             }
             return builder.build();
         } else if (jsonSchemaElement instanceof JsonEnumSchema) {
@@ -154,6 +180,13 @@ public class SchemaHelper {
             Schema.Builder builder = Schema.newBuilder().setType(Type.ARRAY).setItems(from(jsonArraySchema.items()));
             if (jsonArraySchema.description() != null) {
                 builder.setDescription(jsonArraySchema.description());
+            }
+            // uniqueItems is not supported by the Vertex AI Gemini API and is ignored
+            if (jsonArraySchema.minItems() != null) {
+                builder.setMinItems(jsonArraySchema.minItems());
+            }
+            if (jsonArraySchema.maxItems() != null) {
+                builder.setMaxItems(jsonArraySchema.maxItems());
             }
             return builder.build();
         } else if (jsonSchemaElement instanceof JsonAnyOfSchema) {
