@@ -1,8 +1,10 @@
 package dev.langchain4j.model.openai;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.exception.ContentFilteredException;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.openai.internal.chat.*;
 import java.util.List;
@@ -310,6 +312,44 @@ class OpenAiStreamingResponseBuilderTest {
         // Then: logProbs stays null (backward compatible)
         OpenAiChatResponseMetadata metadata = (OpenAiChatResponseMetadata) chatResponse.metadata();
         assertThat(metadata.logProbs()).isNull();
+    }
+
+    @Test
+    void should_throw_content_filter_exception_when_model_refuses() {
+        // Given: OpenAI streams a chunk whose delta carries a refusal instead of content
+        OpenAiStreamingResponseBuilder builder = new OpenAiStreamingResponseBuilder();
+        builder.append(chatCompletionResponseWithRefusal("I'm sorry, I cannot assist with that request."));
+
+        // When / Then: building the response throws, consistent with the non-streaming behavior
+        assertThatThrownBy(builder::build)
+                .isExactlyInstanceOf(ContentFilteredException.class)
+                .hasMessageContaining("I'm sorry, I cannot assist with that request.");
+        assertThat(builder.refusal()).isEqualTo("I'm sorry, I cannot assist with that request.");
+    }
+
+    @Test
+    void should_not_throw_when_no_refusal_received() {
+        // Given: a regular stream without a refusal
+        OpenAiStreamingResponseBuilder builder = new OpenAiStreamingResponseBuilder();
+        builder.append(chatCompletionResponseWithRefusal(null));
+
+        // When
+        ChatResponse chatResponse = builder.build();
+
+        // Then
+        assertThat(builder.refusal()).isNull();
+        assertThat(chatResponse.aiMessage().text()).isNull();
+    }
+
+    private static ChatCompletionResponse chatCompletionResponseWithRefusal(String refusal) {
+        return ChatCompletionResponse.builder()
+                .id("resp_1")
+                .model("gpt-4o")
+                .choices(List.of(ChatCompletionChoice.builder()
+                        .index(0)
+                        .delta(Delta.builder().refusal(refusal).build())
+                        .build()))
+                .build();
     }
 
     private static ChatCompletionResponse chatCompletionResponseWithLogProb(
