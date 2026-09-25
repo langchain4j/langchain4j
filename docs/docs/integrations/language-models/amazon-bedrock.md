@@ -109,7 +109,8 @@ StreamingChatModel model = BedrockStreamingChatModel.builder()
 
 `BedrockBatchChatModel` implements the core `BatchChatModel` interface on top of the Bedrock
 [batch inference API](https://docs.aws.amazon.com/bedrock/latest/userguide/batch-inference.html), which processes
-many chat requests asynchronously at a 50% lower price than on-demand for supported models.
+many chat requests asynchronously at a lower price than on-demand inference for supported models. See
+[Batch Processing](/tutorials/batch-processing) for how batching works in LangChain4j.
 
 Requests are written as a JSONL file to S3, a model invocation job is submitted, and the results are read back from
 the S3 output location. It requires an S3 bucket in the same region as the job and a
@@ -121,6 +122,8 @@ until you remove them.
 Bedrock batch inference does not support tool calling, structured output or prompt caching, so a request that
 specifies tools, a JSON response format or cache points is rejected with an `UnsupportedFeatureException`. Only a subset of models supports batch
 inference, see [supported models](https://docs.aws.amazon.com/bedrock/latest/userguide/batch-inference-supported.html).
+Bedrock also enforces a minimum and a maximum number of records per job as
+[service quotas](https://docs.aws.amazon.com/bedrock/latest/userguide/quotas.html), and rejects a job outside them.
 :::
 
 ### Configuration
@@ -143,22 +146,29 @@ BedrockBatchChatModel model = BedrockBatchChatModel.builder()
         .build();
 ```
 
+Unless an `S3Client` and a `BedrockClient` are passed to the builder, the model creates its own, and `close()`
+closes the ones it created.
+
 ### Usage
 ```java
-// Submit a batch of chat requests
-BatchResponse<ChatResponse> submitted = model.submit(new BatchRequest<>(List.of(
-        ChatRequest.builder().messages(UserMessage.from("Summarize: ...")).build(),
-        ChatRequest.builder().messages(UserMessage.from("Classify: ...")).build())));
+// Submit a batch of chat requests, at least as many as the minimum number of records per job
+List<ChatRequest> requests = ...;
+BatchResponse<ChatResponse> submitted = model.submit(new BatchRequest<>(requests));
 
 String batchId = submitted.batchId();
 
-// Poll until the job reaches a terminal state, then read the results
-BatchResponse<ChatResponse> result = model.retrieve(batchId);
-if (result.state() == BatchState.SUCCEEDED) {
-    for (BatchItemResult<ChatResponse> item : result.results()) {
-        if (item.isSuccess()) {
-            System.out.println(item.response().aiMessage().text());
-        }
+// Poll until the job reaches a terminal state (SUCCEEDED, FAILED, CANCELLED, EXPIRED).
+BatchResponse<ChatResponse> batch = model.retrieve(batchId);
+while (!batch.state().isTerminal()) {
+    Thread.sleep(Duration.ofMinutes(1).toMillis());
+    batch = model.retrieve(batchId);
+}
+
+for (BatchItemResult<ChatResponse> result : batch.results()) {
+    if (result.isSuccess()) {
+        System.out.println(result.response().aiMessage().text());
+    } else {
+        System.out.println("Failed: " + result.error().message());
     }
 }
 ```

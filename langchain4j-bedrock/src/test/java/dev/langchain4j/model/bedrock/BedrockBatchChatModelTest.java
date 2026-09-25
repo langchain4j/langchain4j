@@ -25,16 +25,25 @@ import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Random;
 import java.util.function.Consumer;
+import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.ArgumentCaptor;
+import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
+import software.amazon.awssdk.auth.credentials.AwsCredentials;
+import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.core.ResponseBytes;
 import software.amazon.awssdk.core.sync.RequestBody;
+import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.bedrock.BedrockClient;
 import software.amazon.awssdk.services.bedrock.model.CreateModelInvocationJobRequest;
 import software.amazon.awssdk.services.bedrock.model.CreateModelInvocationJobResponse;
@@ -49,15 +58,18 @@ import software.amazon.awssdk.services.bedrock.model.StopModelInvocationJobReque
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
 import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
 import software.amazon.awssdk.services.s3.model.PutObjectResponse;
 import software.amazon.awssdk.services.s3.model.S3Exception;
 import software.amazon.awssdk.services.s3.model.S3Object;
+import software.amazon.awssdk.utils.SdkAutoCloseable;
 
 class BedrockBatchChatModelTest {
 
     private static final String MODEL_ID = "model-x";
     private static final String JOB_ARN = "arn:aws:bedrock:us-east-1:123456789012:model-invocation-job/job-123";
+    private static final String OUTPUT_BUCKET = "out-bucket";
     private static final String OUTPUT_PREFIX = "out/job-123/";
 
     private final BedrockClient bedrock = mock(BedrockClient.class);
@@ -122,6 +134,15 @@ class BedrockBatchChatModelTest {
     }
 
     @SuppressWarnings("unchecked")
+    private static String userText(Map<String, Object> record) {
+        List<Map<String, Object>> messages =
+                (List<Map<String, Object>>) modelInput(record).get("messages");
+        List<Map<String, Object>> content =
+                (List<Map<String, Object>>) messages.get(0).get("content");
+        return (String) content.get(0).get("text");
+    }
+
+    @SuppressWarnings("unchecked")
     private void stubJob(ModelInvocationJobStatus status, String message, Map<String, String> outputFiles) {
         when(bedrock.getModelInvocationJob(any(Consumer.class)))
                 .thenReturn(GetModelInvocationJobResponse.builder()
@@ -129,15 +150,23 @@ class BedrockBatchChatModelTest {
                         .status(status)
                         .message(message)
                         .build());
-        when(s3.listObjectsV2(any(Consumer.class)))
-                .thenReturn(ListObjectsV2Response.builder()
-                        .contents(outputFiles.keySet().stream()
-                                .map(key -> S3Object.builder().key(key).build())
-                                .toList())
-                        .build());
+        when(s3.listObjectsV2(any(Consumer.class))).thenAnswer(invocation -> {
+            ListObjectsV2Request.Builder request = ListObjectsV2Request.builder();
+            ((Consumer<ListObjectsV2Request.Builder>) invocation.getArgument(0)).accept(request);
+            ListObjectsV2Request listing = request.build();
+            if (!listing.bucket().equals(OUTPUT_BUCKET) || !listing.prefix().equals(OUTPUT_PREFIX)) {
+                return ListObjectsV2Response.builder().build();
+            }
+            return ListObjectsV2Response.builder()
+                    .contents(outputFiles.keySet().stream()
+                            .map(key -> S3Object.builder().key(key).build())
+                            .toList())
+                    .build();
+        });
         when(s3.getObjectAsBytes(any(Consumer.class))).thenAnswer(invocation -> {
             GetObjectRequest.Builder request = GetObjectRequest.builder();
             ((Consumer<GetObjectRequest.Builder>) invocation.getArgument(0)).accept(request);
+            assertThat(request.build().bucket()).isEqualTo(OUTPUT_BUCKET);
             String content = outputFiles.get(request.build().key());
             return ResponseBytes.fromByteArray(GetObjectResponse.builder().build(), content.getBytes(UTF_8));
         });
@@ -187,6 +216,7 @@ class BedrockBatchChatModelTest {
         List<Map<String, Object>> records = uploadedRecords();
         assertThat(records).hasSize(2);
         assertThat(records).extracting(record -> record.get("recordId")).containsExactly("r0000000000", "r0000000001");
+        assertThat(records).extracting(BedrockBatchChatModelTest::userText).containsExactly("A", "B");
 
         CreateModelInvocationJobRequest job = createdJob();
         assertThat(job.jobName()).startsWith("lc4j-batch-");
@@ -198,6 +228,22 @@ class BedrockBatchChatModelTest {
         assertThat(job.inputDataConfig().s3InputDataConfig().s3InputFormat()).isEqualTo(S3InputFormat.JSONL);
         assertThat(job.outputDataConfig().s3OutputDataConfig().s3Uri()).isEqualTo("s3://out-bucket/out");
         assertThat(job.timeoutDurationInHours()).isNull();
+    }
+
+    @Test
+    void should_generate_ascii_record_ids_whatever_the_default_locale() throws Exception {
+        stubSubmit();
+        Locale defaultLocale = Locale.getDefault();
+        try {
+            Locale.setDefault(Locale.forLanguageTag("ar-EG"));
+            model().submit(new BatchRequest<>(List.of(request("A"), request("B"))));
+        } finally {
+            Locale.setDefault(defaultLocale);
+        }
+
+        assertThat(uploadedRecords())
+                .extracting(record -> record.get("recordId"))
+                .containsExactly("r0000000000", "r0000000001");
     }
 
     @Test
@@ -258,7 +304,7 @@ class BedrockBatchChatModelTest {
 
         Map<String, Object> modelInput = modelInput(uploadedRecords().get(0));
         assertThat(modelInput.get("guardrailConfig"))
-                .isEqualTo(Map.of("guardrailIdentifier", "guardrail-1", "guardrailVersion", "2", "trace", "enabled"));
+                .isEqualTo(Map.of("guardrailIdentifier", "guardrail-1", "guardrailVersion", "2"));
         assertThat(modelInput.get("requestMetadata")).isEqualTo(Map.of("tenant", "acme"));
     }
 
@@ -534,7 +580,7 @@ class BedrockBatchChatModelTest {
     }
 
     @Test
-    void should_return_results_in_request_order_and_ignore_the_manifest() {
+    void should_return_results_in_request_order() {
         stubJob(
                 ModelInvocationJobStatus.COMPLETED,
                 files(
@@ -624,19 +670,29 @@ class BedrockBatchChatModelTest {
         assertThat(text(response.results().get(0))).isEqualTo("first");
     }
 
-    @Test
-    void should_keep_every_result_in_output_order_when_record_ids_are_not_its_own() {
+    @ParameterizedTest
+    @CsvSource({
+        "r+000000001, r+000000000",
+        "r000000001, r000000000",
+        "r00000000001, r00000000000",
+        "R0000000001, R0000000000",
+        "2, 1",
+        "CALL0000002, CALL0000001"
+    })
+    void should_keep_every_result_in_output_order_when_record_ids_are_not_its_own(String firstId, String secondId) {
         stubJob(
                 ModelInvocationJobStatus.COMPLETED,
                 files(
                         OUTPUT_PREFIX + "manifest.json.out",
                         manifest(2),
                         OUTPUT_PREFIX + "input.jsonl.out",
-                        success("CALL0000002", "second") + "\n" + success("CALL0000001", "first") + "\n"));
+                        success(firstId, "listed first") + "\n" + success(secondId, "listed second") + "\n"));
 
         List<BatchItemResult<ChatResponse>> results = model().retrieve(JOB_ARN).results();
 
-        assertThat(results).extracting(BedrockBatchChatModelTest::text).containsExactly("second", "first");
+        assertThat(results)
+                .extracting(BedrockBatchChatModelTest::text)
+                .containsExactly("listed first", "listed second");
     }
 
     @Test
@@ -677,12 +733,12 @@ class BedrockBatchChatModelTest {
                         OUTPUT_PREFIX + "manifest.json.out",
                         manifest(2),
                         OUTPUT_PREFIX + "input.jsonl.out",
-                        success("r0000000000", "first") + "\n" + "{not json\n"));
+                        success("r0000000001", "second") + "\n" + "{not json\n"));
 
         List<BatchItemResult<ChatResponse>> results = model().retrieve(JOB_ARN).results();
 
         assertThat(results).hasSize(2);
-        assertThat(text(results.get(0))).isEqualTo("first");
+        assertThat(text(results.get(0))).isEqualTo("second");
         assertThat(results.get(1).isSuccess()).isFalse();
         assertThat(results.get(1).error().message()).isEqualTo("The result line could not be parsed");
     }
@@ -833,6 +889,86 @@ class BedrockBatchChatModelTest {
         assertThat(builder.build().nextToken()).isEqualTo("token");
     }
 
+    @Test
+    void should_return_every_result_at_the_position_of_its_request_whatever_the_output_order() throws Exception {
+        stubSubmit();
+        List<ChatRequest> requests =
+                IntStream.range(0, 12).mapToObj(i -> request("question " + i)).toList();
+
+        model().submit(new BatchRequest<>(requests));
+
+        List<String> resultLines = new ArrayList<>();
+        for (Map<String, Object> record : uploadedRecords()) {
+            resultLines.add(success((String) record.get("recordId"), "answer to " + userText(record)));
+        }
+        List<String> shuffled = new ArrayList<>(resultLines);
+        Collections.shuffle(shuffled, new Random(42));
+        assertThat(shuffled).isNotEqualTo(resultLines);
+        stubJob(
+                ModelInvocationJobStatus.COMPLETED,
+                files(
+                        OUTPUT_PREFIX + "manifest.json.out",
+                        manifest(12),
+                        OUTPUT_PREFIX + "input.jsonl.out",
+                        String.join("\n", shuffled) + "\n"));
+
+        List<BatchItemResult<ChatResponse>> results = model().retrieve(JOB_ARN).results();
+
+        assertThat(results)
+                .extracting(BedrockBatchChatModelTest::text)
+                .containsExactlyElementsOf(IntStream.range(0, 12)
+                        .mapToObj(i -> "answer to question " + i)
+                        .toList());
+    }
+
+    @Test
+    void should_drop_empty_segments_from_the_s3_locations() {
+        stubSubmit();
+        stubJob(
+                ModelInvocationJobStatus.COMPLETED,
+                files(
+                        OUTPUT_PREFIX + "manifest.json.out",
+                        manifest(1),
+                        OUTPUT_PREFIX + "input.jsonl.out",
+                        success("r0000000000", "first") + "\n"));
+        BedrockBatchChatModel model = modelBuilder()
+                .outputS3Uri("s3://out-bucket//out//")
+                .inputS3Uri("s3://in-bucket/in//")
+                .build();
+
+        model.submit(new BatchRequest<>(List.of(request("A"))));
+
+        CreateModelInvocationJobRequest job = createdJob();
+        assertThat(job.outputDataConfig().s3OutputDataConfig().s3Uri()).isEqualTo("s3://out-bucket/out");
+        assertThat(job.inputDataConfig().s3InputDataConfig().s3Uri())
+                .matches("s3://in-bucket/in/lc4j-batch-[0-9a-f-]+/input\\.jsonl");
+        assertThat(text(model.retrieve(JOB_ARN).results().get(0))).isEqualTo("first");
+    }
+
+    @Test
+    void should_not_close_clients_passed_to_the_builder() {
+        model().close();
+
+        verify(bedrock, never()).close();
+        verify(s3, never()).close();
+    }
+
+    @Test
+    void should_not_close_a_credentials_provider_passed_to_the_builder() {
+        CloseTrackingCredentialsProvider credentialsProvider = new CloseTrackingCredentialsProvider();
+
+        BedrockBatchChatModel.builder()
+                .region(Region.US_EAST_1)
+                .credentialsProvider(credentialsProvider)
+                .modelId(MODEL_ID)
+                .roleArn("arn:role")
+                .outputS3Uri("s3://out-bucket/out")
+                .build()
+                .close();
+
+        assertThat(credentialsProvider.closed).isFalse();
+    }
+
     @ParameterizedTest
     @CsvSource({
         "SUBMITTED, PENDING",
@@ -854,5 +990,20 @@ class BedrockBatchChatModelTest {
     @Test
     void should_map_a_missing_job_status_to_unspecified() {
         assertThat(BedrockBatchChatModel.toBatchState(null)).isEqualTo(BatchState.UNSPECIFIED);
+    }
+
+    private static class CloseTrackingCredentialsProvider implements AwsCredentialsProvider, SdkAutoCloseable {
+
+        private boolean closed;
+
+        @Override
+        public AwsCredentials resolveCredentials() {
+            return AwsBasicCredentials.create("access-key", "secret-key");
+        }
+
+        @Override
+        public void close() {
+            closed = true;
+        }
     }
 }

@@ -30,13 +30,8 @@ import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import org.jspecify.annotations.Nullable;
 
-/**
- * Maps between LangChain4j chat types and the Bedrock batch JSONL payloads.
- *
- * <p>Batch jobs use the {@code Converse} invocation type, so {@code modelInput} is a Converse request body
- * (without {@code modelId}, which is set at the job level) and {@code modelOutput} is a Converse response body.</p>
- */
 @Internal
 final class BedrockBatchConverseMapper {
 
@@ -104,7 +99,6 @@ final class BedrockBatchConverseMapper {
                 Map<String, Object> guardrailConfig = new LinkedHashMap<>();
                 guardrailConfig.put("guardrailIdentifier", guardrail.guardrailIdentifier());
                 guardrailConfig.put("guardrailVersion", guardrail.guardrailVersion());
-                guardrailConfig.put("trace", "enabled");
                 modelInput.put("guardrailConfig", guardrailConfig);
             }
             if (!isNullOrEmpty(bedrockParameters.requestMetadata())) {
@@ -198,8 +192,6 @@ final class BedrockBatchConverseMapper {
         BedrockTokenUsage tokenUsage = BedrockTokenUsage.builder()
                 .inputTokenCount(integer(usage, "inputTokens"))
                 .outputTokenCount(integer(usage, "outputTokens"))
-                .cacheReadInputTokens(integer(usage, "cacheReadInputTokens"))
-                .cacheWriteInputTokens(integer(usage, "cacheWriteInputTokens"))
                 .build();
 
         return ChatResponse.builder()
@@ -216,7 +208,7 @@ final class BedrockBatchConverseMapper {
                 .build();
     }
 
-    private static FinishReason finishReason(String stopReason) {
+    private static @Nullable FinishReason finishReason(@Nullable String stopReason) {
         if (stopReason == null) {
             return null;
         }
@@ -253,11 +245,11 @@ final class BedrockBatchConverseMapper {
         return result;
     }
 
-    static String string(Map<String, Object> source, String key) {
+    static @Nullable String string(Map<String, Object> source, String key) {
         return source.get(key) instanceof String value ? value : null;
     }
 
-    static Integer integer(Map<String, Object> source, String key) {
+    static @Nullable Integer integer(Map<String, Object> source, String key) {
         return source.get(key) instanceof Number value ? value.intValue() : null;
     }
 
@@ -266,14 +258,14 @@ final class BedrockBatchConverseMapper {
         return (Map<String, Object>) map;
     }
 
-    private static String base64(String base64Data, URI url) {
+    private static String base64(@Nullable String base64Data, @Nullable URI url) {
         if (base64Data != null) {
             return base64Data;
         }
         return Base64.getEncoder().encodeToString(readBytes(String.valueOf(url)));
     }
 
-    private static void putIfNotNull(Map<String, Object> map, String key, Object value) {
+    private static void putIfNotNull(Map<String, Object> map, String key, @Nullable Object value) {
         if (value != null) {
             map.put(key, value);
         }

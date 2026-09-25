@@ -235,7 +235,7 @@ class BedrockBatchConverseMapperTest {
         ChatResponse response = chatResponse(
                 "{\"output\":{\"message\":{\"role\":\"assistant\",\"content\":[{\"text\":\"hello\"}]}},"
                         + "\"stopReason\":\"end_turn\",\"usage\":{\"inputTokens\":7,\"outputTokens\":3,"
-                        + "\"cacheReadInputTokens\":5,\"cacheWriteInputTokens\":2}}",
+                        + "\"totalTokens\":10,\"cacheReadInputTokenCount\":0,\"cacheWriteInputTokenCount\":0}}",
                 false);
 
         assertThat(response.aiMessage().text()).isEqualTo("hello");
@@ -244,8 +244,6 @@ class BedrockBatchConverseMapperTest {
         BedrockTokenUsage tokenUsage = (BedrockTokenUsage) response.tokenUsage();
         assertThat(tokenUsage.inputTokenCount()).isEqualTo(7);
         assertThat(tokenUsage.outputTokenCount()).isEqualTo(3);
-        assertThat(tokenUsage.cacheReadInputTokens()).isEqualTo(5);
-        assertThat(tokenUsage.cacheWriteInputTokens()).isEqualTo(2);
     }
 
     @Test
