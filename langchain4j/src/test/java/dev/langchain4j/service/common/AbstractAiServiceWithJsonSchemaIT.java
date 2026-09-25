@@ -1105,7 +1105,12 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
                                 .jsonSchema(JsonSchema.builder()
                                         .name("Person")
                                         .rootElement(JsonObjectSchema.builder()
-                                                .addStringProperty("id", "String in a UUID format")
+                                                .addProperty(
+                                                        "id",
+                                                        JsonStringSchema.builder()
+                                                                .description("String in a UUID format")
+                                                                .format("uuid")
+                                                                .build())
                                                 .addStringProperty("name")
                                                 .build())
                                         .build())
