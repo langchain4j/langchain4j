@@ -213,6 +213,8 @@ class JitLLMConversionsTest {
                 .isEqualTo(dev.langchain4j.model.output.FinishReason.STOP);
         assertThat(JitLLMConversions.toLangChain4jFinishReason(org.beehive.jitllm.api.FinishReason.STOP_SEQUENCE))
                 .isEqualTo(dev.langchain4j.model.output.FinishReason.STOP);
+        assertThat(JitLLMConversions.toLangChain4jFinishReason(org.beehive.jitllm.api.FinishReason.CANCELLED))
+                .isEqualTo(dev.langchain4j.model.output.FinishReason.OTHER);
     }
 
     @Test

@@ -119,6 +119,8 @@ final class JitLLMConversions {
             case TOOL_CALL -> dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
             case MAX_TOKENS, CONTEXT_FULL -> dev.langchain4j.model.output.FinishReason.LENGTH;
             case STOP_TOKEN, STOP_SEQUENCE -> dev.langchain4j.model.output.FinishReason.STOP;
+            // Cancelled through a CancellationToken; LangChain4j has no reason of its own for it.
+            case CANCELLED -> dev.langchain4j.model.output.FinishReason.OTHER;
         };
     }
 

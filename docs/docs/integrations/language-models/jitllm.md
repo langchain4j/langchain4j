@@ -38,6 +38,12 @@ select the one that matches the JDK building it.
 On the GPU, start the JVM through TornadoVM's `tornado` launcher and pass `-Duse.tornadovm=true`
 and `--add-modules jdk.incubator.vector`. The backend is whichever one the SDK provides.
 
+jitLLM's jar leaves TornadoVM to the SDK. Its CPU path still uses TornadoVM's array types, so to
+run on the CPU without the SDK (`onGPU(false)` in a plain JVM), add `tornado-api` from the same
+TornadoVM release with `runtime` scope, for example
+`io.github.beehive-lab:tornado-api:7.0.1-jdk22plus` (`7.0.1-jdk21` on JDK 21). Leave it out when
+running through TornadoVM: the SDK already provides it.
+
 ## Chat
 
 ```java

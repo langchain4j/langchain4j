@@ -144,7 +144,7 @@
             </activation>
             <properties>
                 <maven.compiler.release>21</maven.compiler.release>
-                <jitllm.version>1.0.0-jdk21</jitllm.version>
+                <jitllm.version>1.0.1-jdk21</jitllm.version>
             </properties>
             <build>
                 <plugins>
@@ -175,7 +175,7 @@
             </activation>
             <properties>
                 <maven.compiler.release>22</maven.compiler.release>
-                <jitllm.version>1.0.0-jdk22plus</jitllm.version>
+                <jitllm.version>1.0.1-jdk22plus</jitllm.version>
             </properties>
         </profile>
         <profile>
