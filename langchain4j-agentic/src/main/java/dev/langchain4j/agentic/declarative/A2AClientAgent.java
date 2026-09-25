@@ -69,4 +69,16 @@ public @interface A2AClientAgent {
      * @return true if the agent should be invoked in an asynchronous manner, false otherwise.
      */
     boolean async() default false;
+
+    /**
+     * Tenant identifier to include in every A2A message sent by this agent.
+     * <p>
+     * When set, the tenant is sent automatically via {@code MessageSendParams}
+     * without exposing it to the LLM as a tool argument.
+     * If left empty, the tenant is extracted from the agent card URL path
+     * (pattern {@code /.well-known/{tenant}/agent-card.json}).
+     *
+     * @return the tenant identifier, or empty to auto-detect from the URL.
+     */
+    String tenant() default "";
 }

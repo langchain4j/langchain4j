@@ -78,6 +78,16 @@ public interface A2AClientBuilder<T> {
     A2AClientBuilder<T> streamingClientListener(A2AStreamingClientListener<?> clientListener);
 
     /**
+     * Sets the tenant identifier that will be sent with every A2A message.
+     *
+     * @param tenant the tenant identifier
+     * @return this builder for method chaining
+     */
+    default A2AClientBuilder<T> tenant(String tenant) {
+        return this;
+    }
+
+    /**
      * Builds the A2A client proxy implementing the agent service interface.
      *
      * @return the proxy instance
