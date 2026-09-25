@@ -8,6 +8,8 @@ import static org.hamcrest.Matchers.is;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.exception.ToolErrorVisibleToLlm;
+import dev.langchain4j.mcp.client.McpApplicationErrorException;
 import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.mcp.McpToolExecutor;
@@ -122,6 +124,8 @@ public abstract class McpToolsTestBase extends AbstractAiServicesWithToolErrorHa
                 ToolExecutionRequest.builder().arguments("{}").build();
         assertThatThrownBy(() -> executor.execute(toolExecutionRequest, null))
                 .isExactlyInstanceOf(ToolExecutionException.class)
+                .as("a protocol error is not written for the model and must not reach it")
+                .isNotInstanceOf(ToolErrorVisibleToLlm.class)
                 .hasMessage("Internal error")
                 .hasFieldOrPropertyWithValue("errorCode", -32603);
     }
@@ -133,7 +137,9 @@ public abstract class McpToolsTestBase extends AbstractAiServicesWithToolErrorHa
         ToolExecutionRequest toolExecutionRequest =
                 ToolExecutionRequest.builder().arguments("{}").build();
         assertThatThrownBy(() -> executor.execute(toolExecutionRequest, null))
-                .isExactlyInstanceOf(ToolExecutionException.class)
+                .isExactlyInstanceOf(McpApplicationErrorException.class)
+                .as("the text of an application-level error is written by the server for the model")
+                .isInstanceOf(ToolErrorVisibleToLlm.class)
                 .hasMessage("This is an actual error");
     }
 

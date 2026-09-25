@@ -131,8 +131,39 @@ class DefaultAiServices<T> extends AiServices<T> {
         };
     }
 
+    private CompletableFutureAdapter findCompletableFutureAdapter(Type returnType) {
+        for (CompletableFutureAdapter adapter : completableFutureAdapters) {
+            if (adapter.canAdapt(returnType)) {
+                return adapter;
+            }
+        }
+        return null;
+    }
+
+    private PublisherAdapter findPublisherAdapter(Type returnType) {
+        for (PublisherAdapter adapter : publisherAdapters) {
+            if (adapter.canAdapt(returnType)) {
+                return adapter;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Whether a method with this return type is served by the asynchronous or the reactive path,
+     * rather than by the blocking one.
+     */
+    private boolean isAsynchronousOrReactive(Type returnType) {
+        return typeHasRawClass(returnType, CompletableFuture.class)
+                || typeHasRawClass(returnType, CompletionStage.class)
+                || typeHasRawClass(returnType, Flow.Publisher.class)
+                || findCompletableFutureAdapter(returnType) != null
+                || findPublisherAdapter(returnType) != null;
+    }
+
     public T build() {
         validate();
+        ToolErrorHandlingNotice.logOnceIfNeeded(context, this::isAsynchronousOrReactive);
 
         context.streamingBufferSize = ensureGreaterThanZero(
                 getOrDefault(context.streamingBufferSize, AiServiceStreamingEventPublisher.DEFAULT_BUFFER_SIZE),
@@ -1292,24 +1323,6 @@ class DefaultAiServices<T> extends AiServices<T> {
                             }
                         }
                         return false;
-                    }
-
-                    private CompletableFutureAdapter findCompletableFutureAdapter(Type returnType) {
-                        for (CompletableFutureAdapter adapter : completableFutureAdapters) {
-                            if (adapter.canAdapt(returnType)) {
-                                return adapter;
-                            }
-                        }
-                        return null;
-                    }
-
-                    private PublisherAdapter findPublisherAdapter(Type returnType) {
-                        for (PublisherAdapter adapter : publisherAdapters) {
-                            if (adapter.canAdapt(returnType)) {
-                                return adapter;
-                            }
-                        }
-                        return null;
                     }
 
                     private Object adapt(TokenStream tokenStream, Type returnType) {

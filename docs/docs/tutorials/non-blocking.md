@@ -225,7 +225,8 @@ deliberately different. If you are migrating an existing method, these are the o
 
 The two tool error defaults are reversed on purpose. Sending an *execution* failure to the LLM hides a bug in your
 tool from you and invites the model to invent an answer around it, so the asynchronous modes fail the invocation
-instead. A malformed *argument* string, on the other hand, is something the model produced and can usually fix
+instead, unless the exception itself says what the LLM may be told
+(see [`ToolErrorVisibleToLlm`](/tutorials/tools#deciding-per-exception-what-the-llm-sees)). A malformed *argument* string, on the other hand, is something the model produced and can usually fix
 when told, so it is sent back rather than failing the call.
 
 Both remain configurable, and an explicitly configured handler is used by every mode:
