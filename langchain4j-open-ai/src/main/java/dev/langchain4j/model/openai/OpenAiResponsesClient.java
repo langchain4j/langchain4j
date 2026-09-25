@@ -96,6 +96,7 @@ class OpenAiResponsesClient {
     private static final String FIELD_TYPE = "type";
     private static final String FIELD_ROLE = "role";
     private static final String FIELD_CONTENT = "content";
+    private static final String FIELD_PHASE = "phase";
     private static final String FIELD_NAME = "name";
     private static final String FIELD_DESCRIPTION = "description";
     private static final String FIELD_PARAMETERS = "parameters";
@@ -189,6 +190,8 @@ class OpenAiResponsesClient {
     private static final String TYPE_FUNCTION_CALL_OUTPUT = "function_call_output";
     private static final String TYPE_JSON_OBJECT = "json_object";
     private static final String TYPE_JSON_SCHEMA = "json_schema";
+
+    private static final String PHASE_FINAL_ANSWER = "final_answer";
 
     private final HttpClient httpClient;
     private final String baseUrl;
@@ -567,9 +570,22 @@ class OpenAiResponsesClient {
     }
 
     private static String extractText(Object output) {
+        // when the output contains a final_answer message, it takes precedence over any
+        // commentary message, which would otherwise be concatenated and duplicate/mix the text
+        boolean hasFinalAnswer = false;
+        for (Object item : arr(output)) {
+            if (isFinalAnswerMessage(item)) {
+                hasFinalAnswer = true;
+                break;
+            }
+        }
+
         StringBuilder textBuilder = new StringBuilder();
         for (Object item : arr(output)) {
             if (TYPE_MESSAGE.equals(str(at(item, FIELD_TYPE)))) {
+                if (hasFinalAnswer && !isFinalAnswerMessage(item)) {
+                    continue;
+                }
                 for (Object c : arr(at(item, FIELD_CONTENT))) {
                     if (TYPE_OUTPUT_TEXT.equals(str(at(c, FIELD_TYPE)))) {
                         textBuilder.append(str(at(c, FIELD_TEXT)));
@@ -578,6 +594,10 @@ class OpenAiResponsesClient {
             }
         }
         return textBuilder.isEmpty() ? null : textBuilder.toString();
+    }
+
+    private static boolean isFinalAnswerMessage(Object item) {
+        return TYPE_MESSAGE.equals(str(at(item, FIELD_TYPE))) && PHASE_FINAL_ANSWER.equals(str(at(item, FIELD_PHASE)));
     }
 
     private static String extractReasoningSummary(Object output) {
