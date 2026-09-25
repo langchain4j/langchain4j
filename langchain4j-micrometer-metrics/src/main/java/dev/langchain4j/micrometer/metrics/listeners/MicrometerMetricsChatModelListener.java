@@ -15,6 +15,9 @@ import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 /**
  * A {@link ChatModelListener} that uses a Micrometer {@link MeterRegistry} to collect metrics
@@ -25,6 +28,13 @@ import io.micrometer.core.instrument.MeterRegistry;
  * <a href="https://opentelemetry.io/docs/specs/semconv/gen-ai/gen-ai-metrics/#metric-gen_aiclienttokenusage">
  * OpenTelemetry Semantic Conventions for {@code gen_ai.client.token.usage}</a>.
  * <p>
+ * It also records the duration of every chat operation as {@code gen_ai.client.operation.duration} using a
+ * {@link Timer}, consistent with the
+ * <a href="https://opentelemetry.io/docs/specs/semconv/gen-ai/gen-ai-metrics/#metric-gen_aiclientoperationduration">
+ * OpenTelemetry Semantic Conventions for {@code gen_ai.client.operation.duration}</a>.
+ * The duration is recorded for both successful and failed calls; a failed call carries an additional
+ * {@code error.type} tag, whose value is the class name of the exception and is therefore bounded.
+ * <p>
  * Histogram publishing and bucket boundaries are not configured by this listener.
  * Users can enable histograms and set bucket boundaries through their {@link MeterRegistry} configuration
  * (e.g., via Spring Boot properties or {@link io.micrometer.core.instrument.config.MeterFilter}).
@@ -34,6 +44,13 @@ import io.micrometer.core.instrument.MeterRegistry;
  */
 @Experimental
 public class MicrometerMetricsChatModelListener implements ChatModelListener {
+
+    /**
+     * Key under which {@link #onRequest} stores the start timestamp, so that {@link #onResponse} and
+     * {@link #onError} can turn it into a duration. The key is namespaced because the attributes map is shared
+     * between listeners and can be pre-populated by the caller.
+     */
+    private static final String START_TIME_KEY = "micrometer.metrics.chat.startTime";
 
     private final MeterRegistry meterRegistry;
 
@@ -48,17 +65,58 @@ public class MicrometerMetricsChatModelListener implements ChatModelListener {
 
     @Override
     public void onRequest(ChatModelRequestContext requestContext) {
-        // Nothing to do on request
+        requestContext.attributes().put(START_TIME_KEY, System.nanoTime());
     }
 
     @Override
     public void onResponse(ChatModelResponseContext responseContext) {
+        Long startNanos = takeStartNanos(responseContext.attributes());
+        if (startNanos != null) {
+            durationTimer(getProviderName(responseContext), getRequestModelName(responseContext))
+                    .tag(OTelGenAiAttributes.RESPONSE_MODEL.value(), getResponseModelName(responseContext))
+                    .register(meterRegistry)
+                    .record(System.nanoTime() - startNanos, TimeUnit.NANOSECONDS);
+        }
+
         recordTokenUsageMetrics(responseContext);
     }
 
     @Override
     public void onError(ChatModelErrorContext errorContext) {
-        // Nothing to do on error, ChatModelErrorContext does not contain TokenUsage
+        Long startNanos = takeStartNanos(errorContext.attributes());
+        if (startNanos == null) {
+            return;
+        }
+
+        Timer.Builder timer = durationTimer(
+                OTelGenAiProviderName.fromModelProvider(errorContext.modelProvider()),
+                getOrDefault(errorContext.chatRequest().parameters().modelName(), "unknown"));
+
+        Throwable error = errorContext.error();
+        if (error != null) {
+            timer.tag(OTelGenAiAttributes.ERROR_TYPE.value(), error.getClass().getName());
+        }
+
+        timer.register(meterRegistry).record(System.nanoTime() - startNanos, TimeUnit.NANOSECONDS);
+    }
+
+    /**
+     * Reads and removes the start timestamp written by {@link #onRequest}.
+     *
+     * @return the start timestamp in nanoseconds, or {@code null} when there is none, in which case the duration is
+     * skipped rather than recorded as zero
+     */
+    private static Long takeStartNanos(Map<Object, Object> attributes) {
+        Object startTime = attributes.remove(START_TIME_KEY);
+        return startTime instanceof Long startNanos ? startNanos : null;
+    }
+
+    private static Timer.Builder durationTimer(String providerName, String requestModelName) {
+        return Timer.builder(OTelGenAiMetricName.OPERATION_DURATION.value())
+                .description("Measures operation duration")
+                .tag(OTelGenAiAttributes.OPERATION_NAME.value(), OTelGenAiOperationName.CHAT.value())
+                .tag(OTelGenAiAttributes.PROVIDER_NAME.value(), providerName)
+                .tag(OTelGenAiAttributes.REQUEST_MODEL.value(), requestModelName);
     }
 
     private void recordTokenUsageMetrics(ChatModelResponseContext responseContext) {
