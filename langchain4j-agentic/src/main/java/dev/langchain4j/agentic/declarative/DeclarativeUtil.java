@@ -289,7 +289,7 @@ public class DeclarativeUtil {
                 agenticScopeFunction(predicateMethod, boolean.class).apply(agenticScope);
     }
 
-    private static <T> T invokeSupplierWithResolvers(Class<?> agentType, Method method, Class<T> targetClass) {
+    public static <T> T invokeSupplierWithResolvers(Class<?> agentType, Method method, Class<T> targetClass) {
         if (method.getParameterCount() == 0) {
             return invokeStatic(method);
         }
