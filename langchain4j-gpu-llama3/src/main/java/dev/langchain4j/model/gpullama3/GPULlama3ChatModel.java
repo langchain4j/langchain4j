@@ -3,13 +3,19 @@ package dev.langchain4j.model.gpullama3;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static java.util.Objects.requireNonNull;
 
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.internal.ChatRequestValidationUtils;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.output.FinishReason;
 import java.nio.file.Path;
+import java.util.List;
+import org.beehive.gpullama3.model.format.ToolCallExtract;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * GPULlama3 implementation of the langchain4j ChatModel interface.
@@ -30,6 +36,8 @@ import java.nio.file.Path;
  * }</pre>
  */
 public class GPULlama3ChatModel extends GPULlama3BaseModel implements ChatModel {
+
+    private static final Logger log = LoggerFactory.getLogger(GPULlama3ChatModel.class);
 
     // @formatter:off
     private GPULlama3ChatModel(Builder builder) {
@@ -58,6 +66,25 @@ public class GPULlama3ChatModel extends GPULlama3BaseModel implements ChatModel 
         try {
             // Generate a raw response from the model
             String rawResponse = modelResponse(chatRequest, null);
+            log.debug("Raw GPULlama3 response: {}", rawResponse);
+
+            List<ToolCallExtract> toolCalls = chatFormat.extractAllToolCalls(rawResponse);
+            log.debug("Extracted {} tool call(s)", toolCalls.size());
+            if (!toolCalls.isEmpty()) {
+                List<ToolExecutionRequest> toolExecutionRequests = toolCalls.stream()
+                        .map(toolCall -> ToolExecutionRequest.builder()
+                                .id(toolCall.id().orElseGet(GPULlama3ChatModel::generateCallId))
+                                .name(toolCall.name())
+                                .arguments(normalizeJson(toolCall.argumentsJson()))
+                                .build())
+                        .toList();
+                return ChatResponse.builder()
+                        .aiMessage(AiMessage.builder()
+                                .toolExecutionRequests(toolExecutionRequests)
+                                .build())
+                        .finishReason(FinishReason.TOOL_EXECUTION)
+                        .build();
+            }
 
             // Parse thinking and actual response using the GPULlama3ResponseParser
             GPULlama3ResponseParser.ParsedResponse parsed = GPULlama3ResponseParser.parseResponse(rawResponse);

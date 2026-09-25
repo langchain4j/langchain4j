@@ -16,13 +16,13 @@ For Maven project `pom.xml`
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j</artifactId>
-    <version>1.6.0</version>
+    <version>1.19.0-SNAPSHOT</version>
 </dependency>
 
 <dependency>
-<groupId>dev.langchain4j</groupId>
-<artifactId>langchain4j-gpu-llama3</artifactId>
-<version>1.6.0-beta12</version>
+    <groupId>dev.langchain4j</groupId>
+    <artifactId>langchain4j-gpu-llama3</artifactId>
+    <version>1.19.0-beta29-SNAPSHOT</version>
 </dependency>
 
 ```
@@ -30,8 +30,8 @@ For Maven project `pom.xml`
 For Gradle project `build.gradle`
 
 ```groovy
-implementation 'dev.langchain4j:langchain4j:1.6.0'
-implementation 'dev.langchain4j:langchain4j-gpu-llama3:1.6.0-beta12'
+implementation 'dev.langchain4j:langchain4j:1.19.0-SNAPSHOT'
+implementation 'dev.langchain4j:langchain4j-gpu-llama3:1.19.0-beta29-SNAPSHOT'
 ```
 ---
 ## Model Compatibility
@@ -61,7 +61,7 @@ ChatRequest request = ChatRequest.builder().messages(
     SystemMessage.from("reply with extensive sarcasm"))
     .build();
 
-Path modelPath = Paths.get("beehive-llama-3.2-1b-instruct-fp16.gguf");
+Path modelPath = Path.of(System.getenv("MODEL"));
 
 GPULlama3ChatModel model = GPULlama3ChatModel.builder()
         .modelPath(modelPath)
@@ -95,7 +95,7 @@ public static void main(String[] args) {
                     SystemMessage.from("reply with extensive sarcasm"))
             .build();
 
-    Path modelPath = Paths.get("beehive-llama-3.2-1b-instruct-fp16.gguf");
+    Path modelPath = Path.of(System.getenv("MODEL"));
 
 
     GPULlama3StreamingChatModel model = GPULlama3StreamingChatModel.builder()
@@ -130,173 +130,38 @@ public static void main(String[] args) {
 ## How to run Tests:
 
 This project includes integration tests that verify GPULlama3.java functionality with TornadoVM.
-The tests require proper GPULlama3.java and TornadoVM configuration.PrerequisitesBefore running tests, ensure you have:
+The tests require proper GPULlama3.java and TornadoVM configuration.
+
+Before running tests, ensure you have:
 
 * GPULlama3.java properly configured and installed
-* TornadoVM installed and configured with GPU support
-* JDK 21+ installed
+* TornadoVM 5.2.0 for JDK 21 or 25, selected with SDKMAN. For example, for CUDA:
+  `sdk use tornadovm 5.2.0-jdk21-cuda` or
+  `sdk use tornadovm 5.2.0-jdk25-cuda`. Select the corresponding SDKMAN
+  distribution for another backend.
+* JDK 21 or 25 installed, matching the selected TornadoVM distribution
 * TORNADOVM_HOME environment variable set to your TornadoVM installation path
-* A compatible GGUF model file (e.g., Phi-3-mini-4k-instruct-fp16.gguf) in the project root
+* `MODEL` set to the path of a compatible GGUF model file
+
+The active JDK selects GPULlama3 `1.0.0-jdk21` or `1.0.0-jdk25`. Both use
+release-specific Java preview features. The Maven build enables preview features
+for compilation and Javadoc, and the TornadoVM launcher enables them at runtime.
+The selected TornadoVM distribution must match both the JDK and installed
+backend runtime; for example, the CUDA distribution requires its matching CUDA
+native libraries.
 
 ### Running Tests
 To run the integration tests with TornadoVM GPU acceleration:
 
 ```bash
-mvn clean compile test-compile
-mvn -P run-tests
+sdk use java 21.0.2-open
+sdk use tornadovm 5.2.0-jdk21-cuda
+export MODEL=/path/to/model.gguf
+../mvnw -P run-tests
 ```
 
-#### Expected Output
-```bash
-[INFO] --- exec:3.1.0:exec (default-cli) @ langchain4j-gpu-llama3 ---
-WARNING: Using incubator modules: jdk.incubator.vector
-
-Thanks for using JUnit! Support its development at https://junit.org/sponsoring
-
-Here's one:
-
-What do you call a fake noodle?
-
-An impasta!
-╷
-├─ JUnit Jupiter ✔
-│  ├─ GPULlama3ChatModelIT ✔
-│  │  └─ should_get_non_empty_response() ✔
-│  └─ GPULlama3CStreamingChatModelIT ✔
-│     └─ should_stream_answer_and_return_response() 22313 ms ✔
-├─ JUnit Vintage ✔
-└─ JUnit Platform Suite ✔
-
-Test run finished after 31605 ms
-[         5 containers found      ]
-[         0 containers skipped    ]
-[         5 containers started    ]
-[         0 containers aborted    ]
-[         5 containers successful ]
-[         0 containers failed     ]
-[         2 tests found           ]
-[         0 tests skipped         ]
-[         2 tests started         ]
-[         0 tests aborted         ]
-[         2 tests successful      ]
-[         0 tests failed          ]
-
-```
-
-## How to run:
-
-One need to configure TornadoVM to run the example
-Detailed instructions can be found **[Setup & Configure](https://github.com/beehive-lab/GPULlama3.java?tab=readme-ov-file#prerequisites)**
-
-#### Install the TornadoVM SDK on Linux or macOS
-
-Ensure that your JAVA_HOME points to a supported JDK before using the SDK. Download an SDK package matching your OS, architecture, and accelerator backend (opencl, ptx).
-TornadoVM is distributed through our [**official website**](https://www.tornadovm.org/downloads) and **SDKMAN!**. Install a version that matches your OS, architecture, and accelerator backend.
-
-All TornadoVM SDKs are available on the [SDKMAN! TornadoVM page](https://sdkman.io/sdks/tornadovm/).
-
-#### SDKMAN! Installation (Recommended)
-
-##### Install SDKMAN! if not installed already
-```bash
-curl -s "https://get.sdkman.io" | bash
-source "$HOME/.sdkman/bin/sdkman-init.sh"
-sdk version
-```
-##### Install TornadoVM via SDKMAN!
-```bash
-sdk install tornadovm
-```
-
-#### **Step 1 — Get Tornado JVM flags**
-
-Run the following command (You need to have Tornado installed):
-
-```bash
-tornado --printJavaFlags
-```
-
-Example output:
-
-```bash
-/home/mikepapadim/.sdkman/candidates/java/current/bin/java -server \
- -XX:+UnlockExperimentalVMOptions -XX:+EnableJVMCI \
--XX:-UseCompressedClassPointers --enable-preview \
--Djava.library.path=/home/mikepapadim/java-ai-demos/GPULlama3.java/external/tornadovm/bin/sdk/lib \
---module-path .:/home/mikepapadim/java-ai-demos/GPULlama3.java/external/tornadovm/bin/sdk/share/java/tornado \
--Dtornado.load.api.implementation=uk.ac.manchester.tornado.runtime.tasks.TornadoTaskGraph \
--Dtornado.load.runtime.implementation=uk.ac.manchester.tornado.runtime.TornadoCoreRuntime \
--Dtornado.load.tornado.implementation=uk.ac.manchester.tornado.runtime.common.Tornado \
--Dtornado.load.annotation.implementation=uk.ac.manchester.tornado.annotation.ASMClassVisitor \
--Dtornado.load.annotation.parallel=uk.ac.manchester.tornado.api.annotations.Parallel \
---upgrade-module-path /home/mikepapadim/java-ai-demos/GPULlama3.java/external/tornadovm/bin/sdk/share/java/graalJars \
--XX:+UseParallelGC \
-@/home/mikepapadim/java-ai-demos/GPULlama3.java/external/tornadovm/bin/sdk/etc/exportLists/common-exports \
-@/home/mikepapadim/java-ai-demos/GPULlama3.java/external/tornadovm/bin/sdk/etc/exportLists/opencl-exports \
---add-modules ALL-SYSTEM,tornado.runtime,tornado.annotation,tornado.drivers.common,tornado.drivers.opencl
-```
-
-#### **Step 2 — Build the Maven classpath**
-
-From the project root, run:
-
-```bash
-mvn dependency:build-classpath -Dmdep.outputFile=cp.txt
-```
-
-#### **Step 3 — Build the Maven classpath**
-
-```bash
-mvn clean package
-```
-
-Your main JAR will be located at:
-```bash
-target/gpullama3.java-example-1.4.0-beta10.jar
-```
-
-#### **Step 4 — Run the program directly with Java**
-You can now run the example with all JVM and Tornado flags:
-
-```bash
-JAVA_BIN=/home/mikepapadim/.sdkman/candidates/java/current/bin/java
-CP="target/gpullama3.java-example-1.4.0-beta10.jar:$(cat cp.txt)"
-
-$JAVA_BIN \
-  -server \
-  -XX:+UnlockExperimentalVMOptions \
-  -XX:+EnableJVMCI \
-  --enable-preview \
-  -Djava.library.path=/home/mikepapadim/java-ai-demos/GPULlama3.java/external/tornadovm/bin/sdk/lib \
-  --module-path .:/home/mikepapadim/java-ai-demos/GPULlama3.java/external/tornadovm/bin/sdk/share/java/tornado \
-  -Dtornado.load.api.implementation=uk.ac.manchester.tornado.runtime.tasks.TornadoTaskGraph \
-  -Dtornado.load.runtime.implementation=uk.ac.manchester.tornado.runtime.TornadoCoreRuntime \
-  -Dtornado.load.tornado.implementation=uk.ac.manchester.tornado.runtime.common.Tornado \
-  -Dtornado.load.annotation.implementation=uk.ac.manchester.tornado.annotation.ASMClassVisitor \
-  -Dtornado.load.annotation.parallel=uk.ac.manchester.tornado.api.annotations.Parallel \
-  --upgrade-module-path /home/mikepapadim/java-ai-demos/GPULlama3.java/external/tornadovm/bin/sdk/share/java/graalJars \
-  -XX:+UseParallelGC \
-  @/home/mikepapadim/java-ai-demos/GPULlama3.java/external/tornadovm/bin/sdk/etc/exportLists/common-exports \
-  @/home/mikepapadim/java-ai-demos/GPULlama3.java/external/tornadovm/bin/sdk/etc/exportLists/opencl-exports \
-  --add-modules ALL-SYSTEM,tornado.runtime,tornado.annotation,tornado.drivers.common,tornado.drivers.opencl \
-  -Xms6g -Xmx6g \
-  -Dtornado.device.memory=6GB \
-  -cp "$CP" \
-  GPULlama3ChatModelExamples
-```
-
-## Expected output:
-
-```bash
-WARNING: Using incubator modules: jdk.incubator.vector
-Example Prompt: What is the capital of France?
-SLF4J(W): No SLF4J providers were found.
-SLF4J(W): Defaulting to no-operation (NOP) logger implementation
-SLF4J(W): See https://www.slf4j.org/codes.html#noProviders for further details.
-Wow, I'm so glad you asked. I've been waiting for someone to finally ask me this question. It's not like I have better things to do, like take a nap or something. So, yes, the capital of France is... (dramatic pause) ...Paris!
-
-achieved tok/s: 48.86. Tokens: 87, seconds: 1.78
-```
+For JDK 25, select `java 25.0.2-open` and
+`tornadovm 5.2.0-jdk25-cuda` instead.
 
 ## Notes:
 
