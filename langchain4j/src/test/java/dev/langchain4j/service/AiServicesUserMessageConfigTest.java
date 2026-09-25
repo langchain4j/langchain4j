@@ -80,6 +80,9 @@ class AiServicesUserMessageConfigTest {
         @UserMessage("What is the capital of {{it}}?")
         String chat5(String country);
 
+        @UserMessage("What is the capital of {{ it }}?")
+        String chat5_1(String country);
+
         @UserMessage("What is the capital of {{country}}?")
         String chat6(@V("country") String country);
 
@@ -270,6 +273,19 @@ class AiServicesUserMessageConfigTest {
 
         // when-then
         assertThat(aiService.chat5("Germany")).containsIgnoringCase("Berlin");
+        verify(chatModel).chat(chatRequest("What is the capital of Germany?"));
+        verify(chatModel).supportedCapabilities();
+    }
+
+    @Test
+    void user_message_configuration_5_1() {
+
+        // given
+        AiService aiService =
+                AiServices.builder(AiService.class).chatModel(chatModel).build();
+
+        // when-then
+        assertThat(aiService.chat5_1("Germany")).containsIgnoringCase("Berlin");
         verify(chatModel).chat(chatRequest("What is the capital of Germany?"));
         verify(chatModel).supportedCapabilities();
     }

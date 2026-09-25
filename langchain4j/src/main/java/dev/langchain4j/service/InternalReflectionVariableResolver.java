@@ -12,6 +12,8 @@ import java.lang.reflect.Parameter;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Utility class responsible for resolving variable names and values for prompt templates
@@ -24,6 +26,12 @@ import java.util.Map;
 public class InternalReflectionVariableResolver {
 
     private InternalReflectionVariableResolver() {}
+
+    /**
+     * Matches a prompt template variable placeholder, allowing whitespace around the variable name,
+     * in the same way as {@code DefaultPromptTemplateFactory}.
+     */
+    private static final Pattern VARIABLE_PATTERN = Pattern.compile("\\{\\{\\s*(.+?)\\s*\\}\\}");
 
     public static Map<String, Object> findTemplateVariables(String template, Method method, Object[] args) {
         if (args == null) {
@@ -46,12 +54,22 @@ public class InternalReflectionVariableResolver {
             }
         }
 
-        if (template.contains("{{it}}") && !variables.containsKey("it")) {
+        if (templateContainsVariableIt(template) && !variables.containsKey("it")) {
             String itValue = getValueOfVariableIt(parameters, args);
             variables.put("it", itValue);
         }
 
         return variables;
+    }
+
+    private static boolean templateContainsVariableIt(String template) {
+        Matcher matcher = VARIABLE_PATTERN.matcher(template);
+        while (matcher.find()) {
+            if ("it".equals(matcher.group(1).trim())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static String getValueOfVariableIt(Parameter[] parameters, Object[] args) {
