@@ -35,7 +35,12 @@ public class ChatMemoryService {
     }
 
     public ChatMemory getChatMemory(Object memoryId) {
-        return chatMemoryProvider != null ? chatMemories.get(memoryId) : memoryId == DEFAULT ? defaultChatMemory : null;
+        if (chatMemoryProvider != null) {
+            return chatMemories.get(memoryId);
+        }
+        // Single-chat-memory mode: there is only one (default) ChatMemory, and
+        // getOrCreateChatMemory() returns it for any memoryId, so do the same here.
+        return defaultChatMemory;
     }
 
     public ChatMemory evictChatMemory(Object memoryId) {
@@ -43,8 +48,12 @@ public class ChatMemoryService {
     }
 
     public void clearAll() {
-        chatMemories.values().forEach(ChatMemory::clear);
-        chatMemories.clear();
+        if (chatMemoryProvider != null) {
+            chatMemories.values().forEach(ChatMemory::clear);
+            chatMemories.clear();
+        } else {
+            defaultChatMemory.clear();
+        }
     }
 
     public Collection<Object> getChatMemoryIDs() {
