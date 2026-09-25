@@ -19,7 +19,7 @@ public final class StructuredDecisionResponse {
 
     private StructuredDecisionResponse(Builder builder) {
         this.answers = copy(ensureNotEmpty(builder.answers, "answers"));
-        this.metadata = copy(builder.metadata);
+        this.metadata = DecisionSnapshots.map(builder.metadata);
     }
 
     public Map<String, StructuredDecisionAnswer> answers() {
@@ -65,7 +65,7 @@ public final class StructuredDecisionResponse {
         }
 
         public Builder metadata(String name, Object value) {
-            metadata.put(ensureNotBlank(name, "metadata name"), ensureNotNull(value, "metadata value"));
+            metadata.put(ensureNotBlank(name, "metadata name"), value);
             return this;
         }
 

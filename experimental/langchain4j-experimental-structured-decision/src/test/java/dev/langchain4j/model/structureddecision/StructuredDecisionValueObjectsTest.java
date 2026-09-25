@@ -11,20 +11,15 @@ class StructuredDecisionValueObjectsTest {
 
     @Test
     void answer_equals_hashCode_and_toString_follow_value_semantics() {
-        StructuredDecisionAnswer answer =
-                StructuredDecisionAnswer.builder().noul(0.83).build();
-        StructuredDecisionAnswer same =
-                StructuredDecisionAnswer.builder().noul(0.83).build();
-        StructuredDecisionAnswer differentNoul =
-                StructuredDecisionAnswer.builder().noul(0.5).build();
+        StructuredDecisionAnswer answer = new NoulAnswer(0.83);
+        StructuredDecisionAnswer same = new NoulAnswer(0.83);
+        StructuredDecisionAnswer differentNoul = new NoulAnswer(0.5);
         StructuredDecisionAnswer withConfidence =
-                StructuredDecisionAnswer.builder().noul(0.83).confidence(0.9).build();
-        StructuredDecisionAnswer choice = StructuredDecisionAnswer.builder()
-                .choice("billing")
-                .confidence(0.9)
-                .build();
+                new NoulAnswer(0.83, 0.9, ConfidenceProvenance.PROVIDER_REPORTED, Map.of());
+        StructuredDecisionAnswer choice =
+                new ChoiceAnswer("billing", 0.9, ConfidenceProvenance.PROVIDER_REPORTED, Map.of());
         StructuredDecisionAnswer score =
-                StructuredDecisionAnswer.builder().score(1.5).confidence(0.6).build();
+                new ScoreAnswer(1.5, 0.6, ConfidenceProvenance.PROVIDER_REPORTED, Map.of());
 
         assertThat(answer).isEqualTo(same).hasSameHashCodeAs(same);
         assertThat(answer)
@@ -34,7 +29,7 @@ class StructuredDecisionValueObjectsTest {
                 .isNotEqualTo(score)
                 .isNotEqualTo(null)
                 .isNotEqualTo("answer");
-        assertThat(answer.toString()).contains("StructuredDecisionAnswer").contains("0.83");
+        assertThat(answer.toString()).contains("NoulAnswer").contains("0.83");
         assertThat(choice.toString()).contains("billing");
     }
 
@@ -67,7 +62,7 @@ class StructuredDecisionValueObjectsTest {
         StructuredDecisionResponse response = sampleResponse();
         StructuredDecisionResponse same = sampleResponse();
         StructuredDecisionResponse other = StructuredDecisionResponse.builder()
-                .answer("greeting", StructuredDecisionAnswer.builder().noul(0.5).build())
+                .answer("greeting", new NoulAnswer(0.5))
                 .build();
 
         assertThat(response).isEqualTo(same).hasSameHashCodeAs(same);
@@ -190,11 +185,11 @@ class StructuredDecisionValueObjectsTest {
                 .build();
 
         Map<String, StructuredDecisionAnswer> answers = new LinkedHashMap<>();
-        answers.put("greeting", StructuredDecisionAnswer.builder().noul(0.9).build());
+        answers.put("greeting", new NoulAnswer(0.9));
         StructuredDecisionResponse responseFromMap =
                 StructuredDecisionResponse.builder().answers(answers).build();
         StructuredDecisionResponse responseRepeated = StructuredDecisionResponse.builder()
-                .answer("greeting", StructuredDecisionAnswer.builder().noul(0.9).build())
+                .answer("greeting", new NoulAnswer(0.9))
                 .build();
 
         assertThat(fromMap).isEqualTo(repeated);
@@ -223,7 +218,7 @@ class StructuredDecisionValueObjectsTest {
                 .build();
         StructuredDecisionResponse response = StructuredDecisionResponse.builder()
                 .answers(null)
-                .answer("greeting", StructuredDecisionAnswer.builder().noul(0.9).build())
+                .answer("greeting", new NoulAnswer(0.9))
                 .build();
 
         assertThat(request.questions()).containsOnlyKeys("greeting");
@@ -241,7 +236,7 @@ class StructuredDecisionValueObjectsTest {
 
     private StructuredDecisionResponse sampleResponse() {
         return StructuredDecisionResponse.builder()
-                .answer("refund", StructuredDecisionAnswer.builder().noul(0.83).build())
+                .answer("refund", new NoulAnswer(0.83))
                 .build();
     }
 

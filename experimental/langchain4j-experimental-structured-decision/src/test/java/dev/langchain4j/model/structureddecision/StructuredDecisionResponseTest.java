@@ -14,7 +14,7 @@ class StructuredDecisionResponseTest {
         Map<String, Object> metadata = new LinkedHashMap<>();
         metadata.put("latency_ms", 42);
         StructuredDecisionResponse response = StructuredDecisionResponse.builder()
-                .answer("q", StructuredDecisionAnswer.builder().noul(0.8).build())
+                .answer("q", new NoulAnswer(0.8))
                 .metadata(metadata)
                 .build();
 
@@ -25,14 +25,9 @@ class StructuredDecisionResponseTest {
 
     @Test
     void maps_each_typed_answer_and_defensively_copies_the_answer_map() {
-        StructuredDecisionAnswer noul =
-                StructuredDecisionAnswer.builder().noul(0.83).build();
-        StructuredDecisionAnswer choice = StructuredDecisionAnswer.builder()
-                .choice("billing")
-                .confidence(0.91)
-                .build();
-        StructuredDecisionAnswer score =
-                StructuredDecisionAnswer.builder().score(1.7).confidence(0.64).build();
+        StructuredDecisionAnswer noul = new NoulAnswer(0.83);
+        StructuredDecisionAnswer choice = new ChoiceAnswer("billing", 0.91, ConfidenceProvenance.PROVIDER_REPORTED, Map.of());
+        StructuredDecisionAnswer score = new ScoreAnswer(1.7, 0.64, ConfidenceProvenance.PROVIDER_REPORTED, Map.of());
         Map<String, StructuredDecisionAnswer> answers = new LinkedHashMap<>();
         answers.put("refund", noul);
         answers.put("team", choice);
@@ -44,46 +39,67 @@ class StructuredDecisionResponseTest {
 
         assertThat(response.answers())
                 .containsExactly(Map.entry("refund", noul), Map.entry("team", choice), Map.entry("urgency", score));
-        assertThat(response.answers().get("refund").noul()).isEqualTo(0.83);
+        assertThat(response.answers().get("refund").value()).isEqualTo(0.83);
         assertThat(response.answers().get("refund").confidence()).isNull();
-        assertThat(response.answers().get("team").choice()).isEqualTo("billing");
-        assertThat(response.answers().get("urgency").score()).isEqualTo(1.7);
+        assertThat(response.answers().get("team").value()).isEqualTo("billing");
+        assertThat(response.answers().get("urgency").value()).isEqualTo(1.7);
         assertThatThrownBy(() -> response.answers().clear()).isInstanceOf(UnsupportedOperationException.class);
     }
 
     @Test
-    void answer_requires_exactly_one_typed_value() {
-        assertThatThrownBy(() -> StructuredDecisionAnswer.builder().build())
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("exactly one");
-        assertThatThrownBy(() -> StructuredDecisionAnswer.builder()
-                        .noul(0.4)
-                        .choice("yes")
-                        .build())
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("exactly one");
+    void answer_requires_a_value() {
+        assertThatThrownBy(() -> new NoulAnswer(null)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> new ChoiceAnswer(null)).isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
     void validates_probabilities_and_response_entries() {
-        assertThatThrownBy(() -> StructuredDecisionAnswer.builder().noul(1.01).build())
+        assertThatThrownBy(() -> new NoulAnswer(1.01))
                 .isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() ->
-                        StructuredDecisionAnswer.builder().noul(Double.NaN).build())
+                        new NoulAnswer(Double.NaN))
                 .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> StructuredDecisionAnswer.builder()
-                        .choice("x")
-                        .confidence(-0.01)
-                        .build())
+        assertThatThrownBy(() -> new ChoiceAnswer("x", -0.01, ConfidenceProvenance.PROVIDER_REPORTED, Map.of()))
                 .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> StructuredDecisionAnswer.builder()
-                        .choice("x")
-                        .confidence(Double.NaN)
-                        .build())
+        assertThatThrownBy(() -> new ChoiceAnswer("x", Double.NaN, ConfidenceProvenance.PROVIDER_REPORTED, Map.of()))
                 .isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() ->
                         StructuredDecisionResponse.builder().answers(Map.of()).build())
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("answers");
+    }
+
+    @Test
+    void answer_metadata_is_copied_and_confidence_has_explicit_provenance() {
+        Map<String, Object> metadata = new LinkedHashMap<>();
+        metadata.put("probabilities", Map.of("billing", 0.91));
+        ChoiceAnswer answer = new ChoiceAnswer("billing", 0.91,
+                ConfidenceProvenance.PROVIDER_REPORTED, metadata);
+        metadata.clear();
+
+        assertThat(answer.metadata()).containsKey("probabilities");
+        assertThatThrownBy(() -> answer.metadata().clear())
+                .isInstanceOf(UnsupportedOperationException.class);
+        assertThat(answer.confidenceProvenance()).isEqualTo(ConfidenceProvenance.PROVIDER_REPORTED);
+        assertThatThrownBy(() -> new ChoiceAnswer("billing", 0.91, null, Map.of()))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> new ChoiceAnswer("billing", null,
+                ConfidenceProvenance.PROVIDER_REPORTED, Map.of()))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void nested_answer_metadata_is_an_immutable_snapshot() {
+        Map<String, Object> probabilities = new LinkedHashMap<>();
+        probabilities.put("billing", 0.8);
+        ChoiceAnswer answer = new ChoiceAnswer("billing", null, null,
+                Map.of("probabilities", probabilities));
+        probabilities.put("billing", 0.1);
+
+        Map<String, Object> captured = (Map<String, Object>) answer.metadata().get("probabilities");
+        assertThat(captured).containsEntry("billing", 0.8);
+        assertThatThrownBy(() -> captured.put("billing", 0.2))
+                .isInstanceOf(UnsupportedOperationException.class);
     }
 }

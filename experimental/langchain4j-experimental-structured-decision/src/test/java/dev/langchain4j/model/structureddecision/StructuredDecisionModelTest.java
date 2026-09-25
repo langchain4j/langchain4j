@@ -13,7 +13,7 @@ class StructuredDecisionModelTest {
     @Test
     void defaults_parameters_to_empty_and_async_to_failed_future() {
         StructuredDecisionModel model = request -> StructuredDecisionResponse.builder()
-                .answer("q", StructuredDecisionAnswer.builder().noul(0.5).build())
+                .answer("q", new NoulAnswer(0.5))
                 .build();
         StructuredDecisionRequest request = StructuredDecisionRequest.builder()
                 .state(Map.of("message", "hello"))
