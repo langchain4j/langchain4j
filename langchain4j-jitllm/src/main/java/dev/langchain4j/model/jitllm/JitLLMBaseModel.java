@@ -60,7 +60,7 @@ abstract class JitLLMBaseModel implements AutoCloseable {
      * @param onGPU whether to run on an accelerator; the backend is whichever one the TornadoVM
      *              SDK the JVM was started with provides, which requires {@code -Duse.tornadovm=true}
      */
-    public void init(Path modelPath, Double temperature, Double topP, Integer seed, Integer maxTokens, Boolean onGPU) {
+    void init(Path modelPath, Double temperature, Double topP, Integer seed, Integer maxTokens, Boolean onGPU) {
         this.maxTokens = maxTokens;
         this.temperature = temperature;
         this.topP = topP;
@@ -90,7 +90,7 @@ abstract class JitLLMBaseModel implements AutoCloseable {
      *
      * @return the model, or {@code null} before {@link #init} has run
      */
-    public LocalModel getModel() {
+    LocalModel getModel() {
         return model;
     }
 
@@ -102,7 +102,7 @@ abstract class JitLLMBaseModel implements AutoCloseable {
      * @param onEvent receives one ordered event per emitted completion token — its id and the text
      *                it completed — or {@code null} for a non-streaming call
      */
-    public GenerationResult modelResponse(ChatRequest request, Consumer<GenerationEvent> onEvent) {
+    GenerationResult modelResponse(ChatRequest request, Consumer<GenerationEvent> onEvent) {
         List<ToolSpecification> tools = request.toolSpecifications();
 
         GenerationRequest.Builder builder = GenerationRequest.builder()

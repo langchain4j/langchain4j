@@ -12,7 +12,7 @@ import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
  * This parser separates the thinking content from the actual response content for both
  * complete responses and streaming responses, while preserving the thinking tags.
  */
-public class JitLLMResponseParser {
+final class JitLLMResponseParser {
 
     /**
      * Private constructor to prevent instantiation of this utility class.
