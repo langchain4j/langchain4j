@@ -606,7 +606,7 @@
             <!-- experimental -->
             <dependency>
                 <groupId>dev.langchain4j</groupId>
-                <artifactId>langchain4j-experimental-structured-decision</artifactId>
+                <artifactId>langchain4j-experimental-decision</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>
             <dependency>
