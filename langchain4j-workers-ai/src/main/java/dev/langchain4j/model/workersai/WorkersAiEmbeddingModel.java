@@ -1,5 +1,7 @@
 package dev.langchain4j.model.workersai;
 
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.http.client.HttpClientBuilder;
@@ -9,8 +11,6 @@ import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.workersai.client.AbstractWorkersAIModel;
 import dev.langchain4j.model.workersai.client.WorkersAiEmbeddingResponse;
 import dev.langchain4j.model.workersai.spi.WorkersAiEmbeddingModelBuilderFactory;
-import org.slf4j.Logger;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
@@ -18,8 +18,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
-
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+import org.slf4j.Logger;
 
 /**
  * WorkerAI Embedding model.
@@ -55,7 +54,8 @@ public class WorkersAiEmbeddingModel extends AbstractWorkersAIModel implements E
      * @return builder instance
      */
     public static Builder builder() {
-        for (WorkersAiEmbeddingModelBuilderFactory factory : loadFactories(WorkersAiEmbeddingModelBuilderFactory.class)) {
+        for (WorkersAiEmbeddingModelBuilderFactory factory :
+                loadFactories(WorkersAiEmbeddingModelBuilderFactory.class)) {
             return factory.get();
         }
         return new WorkersAiEmbeddingModel.Builder();
@@ -86,8 +86,7 @@ public class WorkersAiEmbeddingModel extends AbstractWorkersAIModel implements E
         /**
          * Simple constructor.
          */
-        public Builder() {
-        }
+        public Builder() {}
 
         /**
          * Simple constructor.
@@ -148,7 +147,8 @@ public class WorkersAiEmbeddingModel extends AbstractWorkersAIModel implements E
      */
     @Override
     public Response<Embedding> embed(String text) {
-        dev.langchain4j.model.workersai.client.WorkersAiEmbeddingRequest req = new dev.langchain4j.model.workersai.client.WorkersAiEmbeddingRequest();
+        dev.langchain4j.model.workersai.client.WorkersAiEmbeddingRequest req =
+                new dev.langchain4j.model.workersai.client.WorkersAiEmbeddingRequest();
         req.getText().add(text);
 
         dev.langchain4j.model.workersai.client.WorkersAiEmbeddingResponse response =
@@ -185,7 +185,8 @@ public class WorkersAiEmbeddingModel extends AbstractWorkersAIModel implements E
     @Override
     public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
         List<Future<List<Embedding>>> futures = new ArrayList<>();
-        ExecutorService executor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+        ExecutorService executor =
+                Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
         try {
             final int chunkSize = 100;
             for (int i = 0; i < textSegments.size(); i += chunkSize) {
@@ -199,7 +200,10 @@ public class WorkersAiEmbeddingModel extends AbstractWorkersAIModel implements E
                 result.addAll(future.get());
             }
             return new Response<>(result);
-        } catch (InterruptedException | ExecutionException e) {
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException(e);
+        } catch (ExecutionException e) {
             throw new RuntimeException(e);
         } finally {
             executor.shutdown();
@@ -208,6 +212,7 @@ public class WorkersAiEmbeddingModel extends AbstractWorkersAIModel implements E
                     executor.shutdownNow();
                 }
             } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
                 executor.shutdownNow();
             }
         }
@@ -227,7 +232,8 @@ public class WorkersAiEmbeddingModel extends AbstractWorkersAIModel implements E
      * @return list of embeddings.
      */
     private List<Embedding> processChunk(List<TextSegment> chunk, String accountIdentifier, String modelName) {
-        dev.langchain4j.model.workersai.client.WorkersAiEmbeddingRequest req = new dev.langchain4j.model.workersai.client.WorkersAiEmbeddingRequest();
+        dev.langchain4j.model.workersai.client.WorkersAiEmbeddingRequest req =
+                new dev.langchain4j.model.workersai.client.WorkersAiEmbeddingRequest();
         for (TextSegment textSegment : chunk) {
             req.getText().add(textSegment.text());
         }
