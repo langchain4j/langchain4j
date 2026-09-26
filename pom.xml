@@ -129,6 +129,7 @@
         <module>langchain4j-guardrails</module>
 
         <!-- experimental -->
+        <module>experimental/langchain4j-experimental-decision</module>
         <module>experimental/langchain4j-experimental-sql</module>
         <module>experimental/langchain4j-experimental-hibernate</module>
         <module>experimental/langchain4j-experimental-skills-shell</module>
