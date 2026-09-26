@@ -164,14 +164,14 @@ public class JdkHttpClient implements HttpClient {
         });
 
         BodyPublisher bodyPublisher;
-        if (request.formDataFields().isEmpty() && request.formDataFiles().isEmpty()) {
+        if (request.formDataFieldEntries().isEmpty() && request.formDataFiles().isEmpty()) {
             if (request.body() != null) {
                 bodyPublisher = BodyPublishers.ofString(request.body());
             } else {
                 bodyPublisher = BodyPublishers.noBody();
             }
         } else {
-            bodyPublisher = ofMultipartData(request.formDataFields(), request.formDataFiles());
+            bodyPublisher = ofMultipartData(request.formDataFieldEntries(), request.formDataFiles());
             builder.setHeader("Content-Type", MultipartBodyPublisher.contentType());
         }
         builder.method(request.method().name(), bodyPublisher);
@@ -183,10 +183,11 @@ public class JdkHttpClient implements HttpClient {
         return builder.build();
     }
 
-    private static BodyPublisher ofMultipartData(Map<String, String> fields, Map<String, FormDataFile> files) {
+    private static BodyPublisher ofMultipartData(
+            List<Map.Entry<String, String>> fields, Map<String, FormDataFile> files) {
         MultipartBodyPublisher publisher = new MultipartBodyPublisher();
-        for (Map.Entry<String, String> entry : fields.entrySet()) {
-            publisher.addField(entry.getKey(), entry.getValue());
+        for (Map.Entry<String, String> field : fields) {
+            publisher.addField(field.getKey(), field.getValue());
         }
         for (Map.Entry<String, FormDataFile> entry : files.entrySet()) {
             publisher.addFile(entry.getKey(), entry.getValue());

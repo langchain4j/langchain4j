@@ -25,6 +25,7 @@ class AudioTranscriptionRequestTest {
         assertThat(request.prompt()).isNull();
         assertThat(request.language()).isNull();
         assertThat(request.temperature()).isNull();
+        assertThat(request.timestampGranularities()).isEmpty();
     }
 
     @Test
@@ -51,6 +52,7 @@ class AudioTranscriptionRequestTest {
         assertThat(request.prompt()).isEqualTo(prompt);
         assertThat(request.language()).isEqualTo(language);
         assertThat(request.temperature()).isEqualTo(temperature);
+        assertThat(request.timestampGranularities()).isEmpty();
     }
 
     @Test
@@ -179,5 +181,23 @@ class AudioTranscriptionRequestTest {
 
         // then
         assertThat(request.prompt()).isEqualTo(longPrompt);
+    }
+
+    @Test
+    void should_create_request_with_timestamp_granularities() {
+        // given
+        Audio audio = Audio.builder()
+                .binaryData("test audio".getBytes())
+                .mimeType("audio/wav")
+                .build();
+
+        // when
+        AudioTranscriptionRequest request = AudioTranscriptionRequest.builder()
+                .audio(audio)
+                .timestampGranularities("word", "segment")
+                .build();
+
+        // then
+        assertThat(request.timestampGranularities()).containsExactly("word", "segment");
     }
 }
