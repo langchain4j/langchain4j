@@ -29,8 +29,11 @@ public final class ResultWithAgenticScope<T> {
         this(agenticScope, result, suspended, null);
     }
 
-    public ResultWithAgenticScope(AgenticScope agenticScope, T result, boolean suspended,
-                                  Supplier<ResultWithAgenticScope<T>> resumeCallback) {
+    public ResultWithAgenticScope(
+            AgenticScope agenticScope,
+            T result,
+            boolean suspended,
+            Supplier<ResultWithAgenticScope<T>> resumeCallback) {
         this.agenticScope = agenticScope;
         this.result = result;
         this.suspended = suspended;

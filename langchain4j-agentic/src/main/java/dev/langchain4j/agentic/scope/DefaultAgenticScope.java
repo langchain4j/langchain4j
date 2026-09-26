@@ -373,7 +373,8 @@ public class DefaultAgenticScope implements AgenticScope {
 
     @Override
     public String toString() {
-        StringBuilder sb = new StringBuilder("AgenticScope{memoryId='").append(memoryId).append("', state={");
+        StringBuilder sb =
+                new StringBuilder("AgenticScope{memoryId='").append(memoryId).append("', state={");
         boolean first = true;
         for (Map.Entry<String, Object> e : state.entrySet()) {
             if (!first) sb.append(", ");
