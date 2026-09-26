@@ -13,20 +13,24 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.AnnotationIntrospector;
+import com.fasterxml.jackson.core.JsonToken;
+import com.fasterxml.jackson.databind.BeanProperty;
 import com.fasterxml.jackson.databind.DeserializationContext;
+import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.JsonDeserializer;
+import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializerProvider;
 import com.fasterxml.jackson.databind.cfg.MapperConfig;
+import com.fasterxml.jackson.databind.deser.ContextualDeserializer;
 import com.fasterxml.jackson.databind.introspect.AnnotatedClass;
 import com.fasterxml.jackson.databind.introspect.AnnotationIntrospectorPair;
 import com.fasterxml.jackson.databind.introspect.NopAnnotationIntrospector;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.databind.jsontype.NamedType;
 import com.fasterxml.jackson.databind.jsontype.TypeResolverBuilder;
 import com.fasterxml.jackson.databind.jsontype.impl.StdTypeResolverBuilder;
-import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.ser.std.StdSerializer;
 import dev.langchain4j.Internal;
@@ -135,10 +139,29 @@ class JacksonJsonCodec implements Json.JsonCodec {
             }
         });
 
+        // Optional is unwrapped on write: Optional.of(x) serialises as x and Optional.empty()
+        // as null. On read, a present value becomes Optional.of(value), while both an explicit
+        // JSON null and a field that is absent altogether become Optional.empty(). The element
+        // type is resolved from the declared field, so Optional<Pojo> needs no extra setup.
+        module.addSerializer(Optional.class, new StdSerializer<>(Optional.class) {
+            @Override
+            public void serialize(Optional value, JsonGenerator gen, SerializerProvider provider) throws IOException {
+                if (value.isPresent()) {
+                    provider.defaultSerializeValue(value.get(), gen);
+                } else {
+                    provider.defaultSerializeNull(gen);
+                }
+            }
+        });
+
+        module.addDeserializer(Optional.class, new OptionalDeserializer(null));
+
         ObjectMapper mapper = JsonMapper.builder()
                 .visibility(FIELD, ANY)
-                .disable(INDENT_OUTPUT) // disabled on purpose to save tokens when sending tool results to LLM
-                .enable(FAIL_ON_UNKNOWN_PROPERTIES) // enabled on purpose to prevent issues caused by LLM hallucinations
+                .disable(INDENT_OUTPUT) // disabled on purpose to save tokens when sending tool
+                // results to LLM
+                .enable(FAIL_ON_UNKNOWN_PROPERTIES) // enabled on purpose to prevent issues caused
+                // by LLM hallucinations
                 .enable(ACCEPT_CASE_INSENSITIVE_ENUMS)
                 .build()
                 .findAndRegisterModules()
@@ -148,7 +171,8 @@ class JacksonJsonCodec implements Json.JsonCodec {
         // having to add @JsonTypeInfo+@JsonSubTypes. We synthesize equivalent metadata via a
         // custom AnnotationIntrospector consulted ahead of Jackson's default one.
         mapper.setAnnotationIntrospector(AnnotationIntrospectorPair.pair(
-                new SealedTypePolymorphicIntrospector(), mapper.getDeserializationConfig().getAnnotationIntrospector()));
+                new SealedTypePolymorphicIntrospector(),
+                mapper.getDeserializationConfig().getAnnotationIntrospector()));
         return mapper;
     }
 
@@ -157,6 +181,54 @@ class JacksonJsonCodec implements Json.JsonCodec {
      *
      * @param objectMapper the ObjectMapper to use for JSON serialization and deserialization.
      */
+    /**
+     * Reads a JSON value into an {@link Optional}. A present value yields {@code Optional.of(value)};
+     * an explicit JSON null and an absent field both yield {@link Optional#empty()}.
+     *
+     * <p>The element type is resolved from the declared field through {@link ContextualDeserializer},
+     * so Optional of a nested type works without a separate registration.
+     */
+    private static class OptionalDeserializer extends JsonDeserializer<Optional<?>> implements ContextualDeserializer {
+
+        private final JsonDeserializer<?> valueDeserializer;
+
+        private OptionalDeserializer(JsonDeserializer<?> valueDeserializer) {
+            this.valueDeserializer = valueDeserializer;
+        }
+
+        @Override
+        public JsonDeserializer<?> createContextual(DeserializationContext ctxt, BeanProperty property)
+                throws JsonMappingException {
+            JavaType valueType = property != null && property.getType().containedTypeCount() > 0
+                    ? property.getType().containedType(0)
+                    : ctxt.constructType(Object.class);
+            return new OptionalDeserializer(ctxt.findContextualValueDeserializer(valueType, property));
+        }
+
+        @Override
+        public Optional<?> deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
+            if (p.currentToken() == JsonToken.VALUE_NULL) {
+                return Optional.empty();
+            }
+            if (valueDeserializer == null) {
+                // createContextual was not consulted (no declared field to read the element type
+                // from), so fall back to the generic object representation.
+                return Optional.ofNullable(p.readValueAs(Object.class));
+            }
+            return Optional.ofNullable(valueDeserializer.deserialize(p, ctxt));
+        }
+
+        @Override
+        public Optional<?> getNullValue(DeserializationContext ctxt) {
+            return Optional.empty();
+        }
+
+        @Override
+        public Object getAbsentValue(DeserializationContext ctxt) {
+            return Optional.empty();
+        }
+    }
+
     public JacksonJsonCodec(ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
     }
