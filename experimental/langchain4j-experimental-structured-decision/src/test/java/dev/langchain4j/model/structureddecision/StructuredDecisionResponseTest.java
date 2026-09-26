@@ -1,0 +1,89 @@
+package dev.langchain4j.model.structureddecision;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import java.util.LinkedHashMap;
+import java.util.Map;
+import org.junit.jupiter.api.Test;
+
+class StructuredDecisionResponseTest {
+
+    @Test
+    void exposes_vendor_response_metadata_without_modeling_vendor_fields() {
+        Map<String, Object> metadata = new LinkedHashMap<>();
+        metadata.put("latency_ms", 42);
+        StructuredDecisionResponse response = StructuredDecisionResponse.builder()
+                .answer("q", StructuredDecisionAnswer.builder().noul(0.8).build())
+                .metadata(metadata)
+                .build();
+
+        metadata.clear();
+        assertThat(response.metadata()).containsExactly(Map.entry("latency_ms", 42));
+        assertThatThrownBy(() -> response.metadata().clear()).isInstanceOf(UnsupportedOperationException.class);
+    }
+
+    @Test
+    void maps_each_typed_answer_and_defensively_copies_the_answer_map() {
+        StructuredDecisionAnswer noul =
+                StructuredDecisionAnswer.builder().noul(0.83).build();
+        StructuredDecisionAnswer choice = StructuredDecisionAnswer.builder()
+                .choice("billing")
+                .confidence(0.91)
+                .build();
+        StructuredDecisionAnswer score =
+                StructuredDecisionAnswer.builder().score(1.7).confidence(0.64).build();
+        Map<String, StructuredDecisionAnswer> answers = new LinkedHashMap<>();
+        answers.put("refund", noul);
+        answers.put("team", choice);
+        answers.put("urgency", score);
+
+        StructuredDecisionResponse response =
+                StructuredDecisionResponse.builder().answers(answers).build();
+        answers.clear();
+
+        assertThat(response.answers())
+                .containsExactly(Map.entry("refund", noul), Map.entry("team", choice), Map.entry("urgency", score));
+        assertThat(response.answers().get("refund").noul()).isEqualTo(0.83);
+        assertThat(response.answers().get("refund").confidence()).isNull();
+        assertThat(response.answers().get("team").choice()).isEqualTo("billing");
+        assertThat(response.answers().get("urgency").score()).isEqualTo(1.7);
+        assertThatThrownBy(() -> response.answers().clear()).isInstanceOf(UnsupportedOperationException.class);
+    }
+
+    @Test
+    void answer_requires_exactly_one_typed_value() {
+        assertThatThrownBy(() -> StructuredDecisionAnswer.builder().build())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("exactly one");
+        assertThatThrownBy(() -> StructuredDecisionAnswer.builder()
+                        .noul(0.4)
+                        .choice("yes")
+                        .build())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("exactly one");
+    }
+
+    @Test
+    void validates_probabilities_and_response_entries() {
+        assertThatThrownBy(() -> StructuredDecisionAnswer.builder().noul(1.01).build())
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() ->
+                        StructuredDecisionAnswer.builder().noul(Double.NaN).build())
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> StructuredDecisionAnswer.builder()
+                        .choice("x")
+                        .confidence(-0.01)
+                        .build())
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> StructuredDecisionAnswer.builder()
+                        .choice("x")
+                        .confidence(Double.NaN)
+                        .build())
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() ->
+                        StructuredDecisionResponse.builder().answers(Map.of()).build())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("answers");
+    }
+}
