@@ -1015,6 +1015,20 @@ The complete list of supported scoring (re-ranking) models can be found
 [here](https://docs.langchain4j.dev/category/scoring-reranking-models).
 Please see [`ReRankingContentAggregator` Javadoc](https://javadoc.io/doc/dev.langchain4j/langchain4j-core/latest/dev/langchain4j/rag/content/aggregator/ReRankingContentAggregator.html) for more details.
 
+#### Overlap-Removing Content Aggregator
+When documents are split with overlap, adjacent segments of the same document share a common
+suffix/prefix. If both segments of such a pair are retrieved, the shared text appears twice in the prompt.
+`OverlapRemovingContentAggregator` is a decorator that strips this duplicated text from the later segment
+after the wrapped aggregator has run:
+```java
+ContentAggregator contentAggregator =
+    new OverlapRemovingContentAggregator(new DefaultContentAggregator());
+```
+Detection is a heuristic string match, so the behavior is strictly opt-in: you only get it by wrapping
+your aggregator. Segments are compared only when they come from the same document (identical metadata
+except the `index` key) and are consecutive (index N and N + 1).
+Please see [`OverlapRemovingContentAggregator` Javadoc](https://javadoc.io/doc/dev.langchain4j/langchain4j-core/latest/dev/langchain4j/rag/content/aggregator/OverlapRemovingContentAggregator.html) for more details.
+
 ### Content Injector
 
 `ContentInjector` is responsible for injecting of `Content`s returned by `ContentAggregator` into the `UserMessage`.
