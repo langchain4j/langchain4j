@@ -1,14 +1,14 @@
 package dev.langchain4j.store.embedding.filter.comparison;
 
-import dev.langchain4j.data.document.Metadata;
-import dev.langchain4j.store.embedding.filter.Filter;
-
-import java.util.Objects;
-
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.store.embedding.filter.comparison.NumberComparator.isLessThanOrEqualTo;
 import static dev.langchain4j.store.embedding.filter.comparison.TypeChecker.ensureTypesAreCompatible;
+
+import dev.langchain4j.data.document.Metadata;
+import dev.langchain4j.store.embedding.filter.Filter;
+import java.util.Objects;
+import java.util.UUID;
 
 public class IsLessThanOrEqualTo implements Filter {
 
@@ -45,16 +45,18 @@ public class IsLessThanOrEqualTo implements Filter {
             return isLessThanOrEqualTo(actualValue, comparisonValue);
         }
 
+        if (comparisonValue instanceof UUID && actualValue instanceof String) {
+            return ((String) actualValue).compareTo(comparisonValue.toString()) <= 0;
+        }
+
         return ((Comparable) actualValue).compareTo(comparisonValue) <= 0;
     }
-
 
     public boolean equals(final Object o) {
         if (o == this) return true;
         if (!(o instanceof IsLessThanOrEqualTo other)) return false;
 
-        return Objects.equals(this.key, other.key)
-                && Objects.equals(this.comparisonValue, other.comparisonValue);
+        return Objects.equals(this.key, other.key) && Objects.equals(this.comparisonValue, other.comparisonValue);
     }
 
     public int hashCode() {
