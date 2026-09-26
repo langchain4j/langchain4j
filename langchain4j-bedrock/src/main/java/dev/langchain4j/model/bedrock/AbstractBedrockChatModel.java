@@ -148,7 +148,8 @@ abstract class AbstractBedrockChatModel {
 
     protected AbstractBedrockChatModel(AbstractBuilder<?> builder) {
         this.region = getOrDefault(builder.region, Region.US_EAST_1);
-        this.timeout = getOrDefault(builder.timeout, Duration.ofMinutes(1));
+        // the default depends on the model, see AbstractBuilder#timeout(Duration)
+        this.timeout = builder.timeout;
         this.returnThinking = getOrDefault(builder.returnThinking, false);
         this.sendThinking = getOrDefault(builder.sendThinking, true);
         this.listeners = copy(builder.listeners);
@@ -1166,6 +1167,13 @@ abstract class AbstractBedrockChatModel {
             return self();
         }
 
+        /**
+         * Sets the AWS SDK {@code apiCallTimeout} of the client created by this builder.
+         * <p>
+         * Defaults to 1 minute for {@link BedrockChatModel}.
+         * {@link BedrockStreamingChatModel} has no default, because there the timeout covers the whole stream
+         * and would cut off a long answer that is still streaming.
+         */
         public T timeout(Duration timeout) {
             this.timeout = timeout;
             return self();
