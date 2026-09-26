@@ -75,6 +75,7 @@ import java.io.InputStream;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
+import java.nio.charset.StandardCharsets;
 import java.lang.reflect.Parameter;
 import java.lang.reflect.Proxy;
 import java.lang.reflect.Type;
@@ -1766,7 +1767,7 @@ class DefaultAiServices<T> extends AiServices<T> {
         if (inputStream == null) {
             return null;
         }
-        try (Scanner scanner = new Scanner(inputStream);
+        try (Scanner scanner = new Scanner(inputStream, StandardCharsets.UTF_8);
                 Scanner s = scanner.useDelimiter("\\A")) {
             return s.hasNext() ? s.next() : "";
         }
