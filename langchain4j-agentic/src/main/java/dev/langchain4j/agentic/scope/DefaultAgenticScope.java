@@ -396,6 +396,10 @@ public class DefaultAgenticScope implements AgenticScope {
         return this;
     }
 
+    public boolean hasCustomErrorHandler() {
+        return this.errorHandler != DEFAULT_ERROR_RECOVERY;
+    }
+
     public ErrorRecoveryResult handleError(String agentName, AgentInvocationException exception) {
         return errorHandler.apply(new ErrorContext(agentName, this, exception));
     }

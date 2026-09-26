@@ -61,6 +61,34 @@ class SequentialAgentInputValidationTest {
         assertThat(modelCalls).hasValue(2);
     }
 
+    @Test
+    void dynamic_scope_write_by_preceding_action_satisfies_later_input() {
+        AtomicInteger modelCalls = new AtomicInteger();
+        ChatModel model = new ChatModel() {
+            @Override
+            public ChatResponse chat(ChatRequest chatRequest) {
+                modelCalls.incrementAndGet();
+                return ChatResponse.builder()
+                        .aiMessage(AiMessage.from("edited result"))
+                        .build();
+            }
+        };
+        AgenticServices.AgenticScopeAction writer = AgenticServices.agentAction(scope -> {
+            scope.writeState("story", "dynamically provided story");
+        });
+        Editor editor = AgenticServices.agentBuilder(Editor.class)
+                .chatModel(model)
+                .outputKey("edited")
+                .build();
+        UntypedAgent workflow = AgenticServices.sequenceBuilder()
+                .subAgents(writer, editor)
+                .outputKey("edited")
+                .build();
+
+        workflow.invoke(Map.of("topic", "dragons", "audience", "adults"));
+        assertThat(modelCalls).hasValue(1); // Editor was called
+    }
+
     private static UntypedAgent workflow(String writerOutputKey, AtomicInteger modelCalls) {
         ChatModel model = new ChatModel() {
             @Override

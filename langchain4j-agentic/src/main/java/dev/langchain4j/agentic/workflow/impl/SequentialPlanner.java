@@ -21,8 +21,10 @@ public class SequentialPlanner implements Planner {
         java.util.Set<String> availableKeys = new java.util.HashSet<>(
                 initPlanningContext.agenticScope().state().keySet());
 
+        boolean scopeMightBeMutated = initPlanningContext.agenticScope().hasCustomErrorHandler();
+
         for (AgentInstance agent : this.agents) {
-            if (!agent.optional()) {
+            if (!agent.optional() && !scopeMightBeMutated) {
                 for (dev.langchain4j.agentic.planner.AgentArgument arg : agent.arguments()) {
                     String name = arg.name();
                     if (!arg.isOptional() && arg.defaultValue() == null && !name.startsWith("@")) {
@@ -34,6 +36,13 @@ public class SequentialPlanner implements Planner {
             }
             if (agent.outputKey() != null) {
                 availableKeys.add(agent.outputKey());
+            }
+
+            if (agent.arguments().stream().anyMatch(arg -> "@AgenticScope".equals(arg.name()))) {
+                scopeMightBeMutated = true;
+            } else if (dev.langchain4j.agentic.scope.ResultWithAgenticScope.class.isAssignableFrom(
+                    dev.langchain4j.agentic.internal.AgentUtil.rawType(agent.outputType()))) {
+                scopeMightBeMutated = true;
             }
         }
     }
