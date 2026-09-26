@@ -279,6 +279,9 @@ public class DockerMcpTransport implements McpTransport {
                 // For messages with null ID, we don't wait for a corresponding response
                 future.complete(null);
             }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            future.completeExceptionally(e);
         } catch (Exception e) {
             future.completeExceptionally(e);
         } finally {
