@@ -883,13 +883,7 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
      * @return {@code this}
      */
     public B listener(AgentListener agentListener) {
-        if (this.agentListener == null) {
-            this.agentListener = agentListener;
-        } else if (this.agentListener instanceof ComposedAgentListener composed) {
-            composed.addListener(agentListener);
-        } else {
-            this.agentListener = new ComposedAgentListener(this.agentListener, agentListener);
-        }
+        this.agentListener = ComposedAgentListener.compose(this.agentListener, agentListener);
         return (B) this;
     }
 }
