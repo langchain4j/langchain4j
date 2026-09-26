@@ -5,6 +5,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
 
 import com.azure.core.credential.AzureKeyCredential;
 import com.azure.core.credential.TokenCredential;
+import com.azure.cosmos.CosmosAsyncClient;
 import com.azure.cosmos.models.CosmosFullTextPolicy;
 import com.azure.cosmos.models.CosmosVectorEmbeddingPolicy;
 import com.azure.cosmos.models.IndexingPolicy;
@@ -34,17 +35,9 @@ public class AzureCosmosDBNoSqlContentRetriever extends AbstractAzureCosmosDBNoS
     private final Filter filter;
 
     public AzureCosmosDBNoSqlContentRetriever(Builder builder) {
-        ensureNotNull(builder.endpoint, "endpoint");
-        ensureTrue(
-                (builder.keyCredential != null && builder.tokenCredential == null)
-                        || (builder.keyCredential == null && builder.tokenCredential != null),
-                "either keyCredential or tokenCredential must be set");
-
-        if (builder.keyCredential != null) {
+        if (builder.cosmosAsyncClient != null) {
             this.initialize(
-                    builder.endpoint,
-                    builder.keyCredential,
-                    null,
+                    builder.cosmosAsyncClient,
                     builder.databaseName,
                     builder.containerName,
                     builder.partitionKeyPath,
@@ -55,9 +48,15 @@ public class AzureCosmosDBNoSqlContentRetriever extends AbstractAzureCosmosDBNoS
                     builder.azureCosmosDBSearchQueryType,
                     null);
         } else {
+            ensureNotNull(builder.endpoint, "endpoint");
+            ensureTrue(
+                    (builder.keyCredential != null && builder.tokenCredential == null)
+                            || (builder.keyCredential == null && builder.tokenCredential != null),
+                    "either keyCredential or tokenCredential must be set");
+
             this.initialize(
                     builder.endpoint,
-                    null,
+                    builder.keyCredential,
                     builder.tokenCredential,
                     builder.databaseName,
                     builder.containerName,
@@ -209,6 +208,7 @@ public class AzureCosmosDBNoSqlContentRetriever extends AbstractAzureCosmosDBNoS
     }
 
     public static class Builder {
+        private CosmosAsyncClient cosmosAsyncClient;
         private String endpoint;
         private AzureKeyCredential keyCredential;
         private TokenCredential tokenCredential;
@@ -224,6 +224,19 @@ public class AzureCosmosDBNoSqlContentRetriever extends AbstractAzureCosmosDBNoS
         private Integer maxResults;
         private Double minScore;
         private Filter filter;
+
+        /**
+         * Sets the {@link CosmosAsyncClient}.
+         * The provided client remains caller-owned and is not closed by this retriever.
+         * When configured, this client takes precedence over endpoint and credentials.
+         *
+         * @param cosmosAsyncClient the Azure Cosmos DB async client.
+         * @return builder
+         */
+        public Builder cosmosAsyncClient(CosmosAsyncClient cosmosAsyncClient) {
+            this.cosmosAsyncClient = cosmosAsyncClient;
+            return this;
+        }
 
         public Builder endpoint(String endpoint) {
             this.endpoint = endpoint;
