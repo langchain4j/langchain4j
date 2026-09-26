@@ -1,0 +1,196 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>dev.langchain4j</groupId>
+        <artifactId>langchain4j-parent</artifactId>
+        <version>1.21.0-beta31-SNAPSHOT</version>
+        <relativePath>../langchain4j-parent/pom.xml</relativePath>
+    </parent>
+
+    <artifactId>langchain4j-jitllm</artifactId>
+    <name>LangChain4j :: Integration :: jitLLM</name>
+    <description>jitLLM: GPU-accelerated LLM inference engine for Java, based on TornadoVM. Requires Java 21 or 22+</description>
+
+    <properties>
+        <tornadovm.home>${env.TORNADOVM_HOME}</tornadovm.home>
+        <maven.test.skip>true</maven.test.skip>
+        <maven.compiler.testSkip>true</maven.compiler.testSkip>
+        <skipTests>true</skipTests>
+        <!-- Which ITs the run-tests profile executes; overridable with -Dit.selection=... -->
+        <it.selection>--scan-classpath --include-classname=.*IT</it.selection>
+        <skipITs>true</skipITs>
+    </properties>
+
+    <dependencies>
+
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-core</artifactId>
+            <version>1.21.0-SNAPSHOT</version>
+        </dependency>
+
+        <dependency>
+            <groupId>io.github.beehive-lab</groupId>
+            <artifactId>jitllm</artifactId>
+            <version>${jitllm.version}</version>
+        </dependency>
+
+        <!-- test dependencies -->
+
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-core</artifactId>
+            <version>1.21.0-SNAPSHOT</version>
+            <classifier>tests</classifier>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j</artifactId>
+            <version>1.21.0-SNAPSHOT</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j</artifactId>
+            <version>1.21.0-SNAPSHOT</version>
+            <classifier>tests</classifier>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.junit.platform</groupId>
+            <artifactId>junit-platform-console-standalone</artifactId>
+            <version>${junit.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+    </dependencies>
+
+    <build>
+        <plugins>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>build-test-classpath</id>
+                        <goals>
+                            <goal>build-classpath</goal>
+                        </goals>
+                        <phase>generate-test-resources</phase>
+                        <configuration>
+                            <includeScope>test</includeScope>
+                            <outputProperty>test.classpath</outputProperty>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <skipTests>true</skipTests>
+                </configuration>
+            </plugin>
+
+            <!-- jitllm uses jdk.incubator.vector, an incubator module on every supported JDK -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.15.0</version>
+                <configuration>
+                    <compilerArgs combine.children="append">
+                        <arg>--add-modules</arg>
+                        <arg>jdk.incubator.vector</arg>
+                    </compilerArgs>
+                </configuration>
+            </plugin>
+
+            <!-- TornadoVM Test Runner -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.6.3</version>
+                <configuration>
+                    <executable>${tornadovm.home}/bin/tornado</executable>
+                    <arguments>
+                        <argument>--jvm=@${project.basedir}/src/test/resources/tornado-jvm.args</argument>
+                        <argument>-cp</argument>
+                        <argument>${project.build.outputDirectory}:${project.build.testOutputDirectory}:${test.classpath}</argument>
+                        <argument>--params=execute ${it.selection}</argument>
+                        <argument>org.junit.platform.console.ConsoleLauncher</argument>
+                    </arguments>
+                </configuration>
+            </plugin>
+        </plugins>
+
+    </build>
+
+    <profiles>
+
+        <profile>
+            <!-- jitllm:*-jdk21 uses java.lang.foreign, a preview API on JDK 21 -->
+            <id>jdk21</id>
+            <activation>
+                <jdk>[21,22)</jdk>
+            </activation>
+            <properties>
+                <maven.compiler.release>21</maven.compiler.release>
+                <jitllm.version>1.0.1-jdk21</jitllm.version>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-compiler-plugin</artifactId>
+                        <configuration>
+                            <compilerArgs combine.children="append">
+                                <arg>--enable-preview</arg>
+                            </compilerArgs>
+                        </configuration>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-javadoc-plugin</artifactId>
+                        <configuration>
+                            <additionalOptions>--enable-preview</additionalOptions>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <!-- jitllm:*-jdk22plus mirrors TornadoVM's jdk22plus line and runs on any JDK from 22 up -->
+            <id>jdk22plus</id>
+            <activation>
+                <jdk>[22,)</jdk>
+            </activation>
+            <properties>
+                <maven.compiler.release>22</maven.compiler.release>
+                <jitllm.version>1.0.1-jdk22plus</jitllm.version>
+            </properties>
+        </profile>
+        <profile>
+            <id>run-tests</id>
+            <properties>
+                <maven.test.skip>false</maven.test.skip>
+                <maven.compiler.testSkip>false</maven.compiler.testSkip>
+                <skipTests>false</skipTests>
+                <skipITs>false</skipITs>
+            </properties>
+            <build>
+                <defaultGoal>clean generate-test-resources compile test-compile exec:exec</defaultGoal>
+            </build>
+        </profile>
+
+    </profiles>
+
+</project>
