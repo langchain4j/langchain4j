@@ -827,6 +827,62 @@ public class DefaultMcpClientTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
+    public void should_use_literal_dotted_property_for_mcp_param_header() throws Exception {
+        McpTransport transport = getModernHttpTransportMock();
+        ObjectNode toolList = getToolResultJson(new ToolDefinition(
+                "dottedTool",
+                "Dotted property",
+                new ToolArg("config.region", "string", "Region"),
+                new ToolArg("region", "string", "Region")));
+        ObjectNode properties = (ObjectNode)
+                toolList.get("result").get("tools").get(0).get("inputSchema").get("properties");
+        ((ObjectNode) properties.get("config.region")).put("x-mcp-header", "Literal-Region");
+        ((ObjectNode) properties.get("region")).put("x-mcp-header", "Top-Region");
+        properties
+                .putObject("config")
+                .put("type", "object")
+                .putObject("properties")
+                .putObject("region")
+                .put("type", "string")
+                .put("x-mcp-header", "Nested-Region");
+        ObjectNode toolResult = JsonNodeFactory.instance.objectNode();
+        toolResult
+                .putObject("result")
+                .putArray("content")
+                .addObject()
+                .put("type", "text")
+                .put("text", "ok");
+        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
+                .thenReturn(CompletableFuture.completedFuture(getDiscoverResult()))
+                .thenReturn(CompletableFuture.completedFuture(toolList))
+                .thenReturn(CompletableFuture.completedFuture(toolResult));
+
+        DefaultMcpClient client = createMcpClient(transport);
+        List<ToolSpecification> tools = client.listTools();
+        Map<List<String>, String> headerMappings =
+                (Map<List<String>, String>) tools.get(0).metadata().get(McpToolMetadataKeys.MCP_PARAM_HEADERS);
+        assertThat(headerMappings)
+                .containsExactlyInAnyOrderEntriesOf(Map.of(
+                        List.of("config.region"),
+                        "Literal-Region",
+                        List.of("config", "region"),
+                        "Nested-Region",
+                        List.of("region"),
+                        "Top-Region"));
+        client.executeTool(ToolExecutionRequest.builder()
+                .name("dottedTool")
+                .arguments("{\"config.region\":\"literal\",\"config\":{\"region\":\"nested\"},\"region\":\"top\"}")
+                .build());
+
+        ArgumentCaptor<McpCallContext> captor = ArgumentCaptor.forClass(McpCallContext.class);
+        verify(transport, times(3)).executeOperationWithResponse(captor.capture());
+        assertThat(captor.getAllValues().get(2).mcpParamHeaders())
+                .containsExactlyInAnyOrderEntriesOf(
+                        Map.of("Literal-Region", "literal", "Nested-Region", "nested", "Top-Region", "top"));
+    }
+
+    @Test
     public void meta_supplier_should_not_drop_progress_token() throws Exception {
         final McpTransport transport = getMinimalMcpTransportMock();
 
