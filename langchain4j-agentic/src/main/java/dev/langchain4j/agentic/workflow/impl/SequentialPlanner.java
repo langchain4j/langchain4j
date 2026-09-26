@@ -21,7 +21,9 @@ public class SequentialPlanner implements Planner {
         java.util.Set<String> availableKeys = new java.util.HashSet<>(
                 initPlanningContext.agenticScope().state().keySet());
 
-        boolean scopeMightBeMutated = initPlanningContext.agenticScope().hasCustomErrorHandler();
+        boolean scopeMightBeMutated = initPlanningContext.agenticScope()
+                        instanceof dev.langchain4j.agentic.scope.DefaultAgenticScope defaultScope
+                && defaultScope.hasCustomErrorHandler();
 
         for (AgentInstance agent : this.agents) {
             if (!agent.optional() && !scopeMightBeMutated) {
@@ -38,13 +40,28 @@ public class SequentialPlanner implements Planner {
                 availableKeys.add(agent.outputKey());
             }
 
-            if (agent.arguments().stream().anyMatch(arg -> "@AgenticScope".equals(arg.name()))) {
-                scopeMightBeMutated = true;
-            } else if (dev.langchain4j.agentic.scope.ResultWithAgenticScope.class.isAssignableFrom(
-                    dev.langchain4j.agentic.internal.AgentUtil.rawType(agent.outputType()))) {
+            if (mightMutateScope(agent)) {
                 scopeMightBeMutated = true;
             }
         }
+    }
+
+    private boolean mightMutateScope(AgentInstance agent) {
+        if (agent.arguments().stream().anyMatch(arg -> "@AgenticScope".equals(arg.name()))) {
+            return true;
+        }
+        if (agent.outputType() != null
+                && agent.outputType()
+                        .getTypeName()
+                        .startsWith("dev.langchain4j.agentic.scope.ResultWithAgenticScope")) {
+            return true;
+        }
+        for (AgentInstance subagent : agent.subagents()) {
+            if (mightMutateScope(subagent)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override

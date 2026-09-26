@@ -64,10 +64,15 @@ class SequentialAgentInputValidationTest {
     @Test
     void dynamic_scope_write_by_preceding_action_satisfies_later_input() {
         AtomicInteger modelCalls = new AtomicInteger();
+        java.util.List<String> promptTexts = new java.util.ArrayList<>();
         ChatModel model = new ChatModel() {
             @Override
             public ChatResponse chat(ChatRequest chatRequest) {
                 modelCalls.incrementAndGet();
+                promptTexts.add(((dev.langchain4j.data.message.UserMessage) chatRequest
+                                .messages()
+                                .get(chatRequest.messages().size() - 1))
+                        .singleText());
                 return ChatResponse.builder()
                         .aiMessage(AiMessage.from("edited result"))
                         .build();
@@ -87,6 +92,90 @@ class SequentialAgentInputValidationTest {
 
         workflow.invoke(Map.of("topic", "dragons", "audience", "adults"));
         assertThat(modelCalls).hasValue(1); // Editor was called
+    }
+
+    @Test
+    void custom_error_handler_can_recover_missing_argument() {
+        AtomicInteger modelCalls = new AtomicInteger();
+        java.util.List<String> promptTexts = new java.util.ArrayList<>();
+        ChatModel model = new ChatModel() {
+            @Override
+            public ChatResponse chat(ChatRequest chatRequest) {
+                modelCalls.incrementAndGet();
+                promptTexts.add(((dev.langchain4j.data.message.UserMessage) chatRequest
+                                .messages()
+                                .get(chatRequest.messages().size() - 1))
+                        .singleText());
+                return ChatResponse.builder()
+                        .aiMessage(AiMessage.from("result"))
+                        .build();
+            }
+        };
+
+        Writer writer = AgenticServices.agentBuilder(Writer.class)
+                .chatModel(model)
+                .outputKey("something_else") // intentionally not 'story'
+                .build();
+        Editor editor = AgenticServices.agentBuilder(Editor.class)
+                .chatModel(model)
+                .outputKey("edited")
+                .build();
+
+        UntypedAgent workflow = AgenticServices.sequenceBuilder()
+                .subAgents(writer, editor)
+                .outputKey("edited")
+                .errorHandler(errorContext -> {
+                    if (errorContext.exception() instanceof MissingArgumentException mEx) {
+                        if (mEx.argumentName().equals("story")) {
+                            errorContext.agenticScope().writeState("story", "recovered story");
+                            return dev.langchain4j.agentic.agent.ErrorRecoveryResult.retry();
+                        }
+                    }
+                    return dev.langchain4j.agentic.agent.ErrorRecoveryResult.throwException();
+                })
+                .build();
+
+        workflow.invoke(Map.of("topic", "dragons", "audience", "adults"));
+        assertThat(modelCalls).hasValue(2);
+        assertThat(promptTexts).anyMatch(text -> text.contains("recovered story"));
+    }
+
+    @Test
+    void nested_sequence_dynamic_scope_write_by_preceding_action_satisfies_later_input() {
+        AtomicInteger modelCalls = new AtomicInteger();
+        java.util.List<String> promptTexts = new java.util.ArrayList<>();
+        ChatModel model = new ChatModel() {
+            @Override
+            public ChatResponse chat(ChatRequest chatRequest) {
+                modelCalls.incrementAndGet();
+                promptTexts.add(((dev.langchain4j.data.message.UserMessage) chatRequest
+                                .messages()
+                                .get(chatRequest.messages().size() - 1))
+                        .singleText());
+                return ChatResponse.builder()
+                        .aiMessage(AiMessage.from("edited result"))
+                        .build();
+            }
+        };
+        AgenticServices.AgenticScopeAction writerAction = AgenticServices.agentAction(scope -> {
+            scope.writeState("story", "dynamically provided story");
+        });
+        UntypedAgent innerSequence = AgenticServices.sequenceBuilder()
+                .subAgents(writerAction)
+                .outputKey("innerOut")
+                .build();
+        Editor editor = AgenticServices.agentBuilder(Editor.class)
+                .chatModel(model)
+                .outputKey("edited")
+                .build();
+        UntypedAgent workflow = AgenticServices.sequenceBuilder()
+                .subAgents(innerSequence, editor)
+                .outputKey("edited")
+                .build();
+
+        workflow.invoke(Map.of("topic", "dragons", "audience", "adults"));
+        assertThat(modelCalls).hasValue(1); // Editor was called
+        assertThat(promptTexts).anyMatch(text -> text.contains("dynamically provided story"));
     }
 
     private static UntypedAgent workflow(String writerOutputKey, AtomicInteger modelCalls) {

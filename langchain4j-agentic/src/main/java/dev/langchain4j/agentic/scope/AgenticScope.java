@@ -236,10 +236,6 @@ public interface AgenticScope extends LangChain4jManaged {
      */
     void writeExecutionContext(String key, Object context);
 
-    default boolean hasCustomErrorHandler() {
-        return false;
-    }
-
     /**
      * Stores non-serializable execution context in this scope, using the class name as the key.
      * <p>
