@@ -55,7 +55,9 @@ class ErrorRecoveryResultTest {
                 .chatModel(STUB_MODEL)
                 .build();
         StoryEditor editor = AgenticServices.agentBuilder(StoryEditor.class)
-                .chatModel(STUB_MODEL)
+                .chatModel(chatRequest -> {
+                    throw new RuntimeException("Editor failed");
+                })
                 .build();
         StoryPublisher publisher = spy(AgenticServices.agentBuilder(StoryPublisher.class)
                 .chatModel(STUB_MODEL)
@@ -72,8 +74,8 @@ class ErrorRecoveryResultTest {
                 })
                 .build();
 
-        Object result =
-                assertTimeoutPreemptively(Duration.ofSeconds(5), () -> workflow.invoke(Map.of("topic", "dragons")));
+        Object result = assertTimeoutPreemptively(
+                Duration.ofSeconds(5), () -> workflow.invoke(Map.of("topic", "dragons", "style", "magic")));
 
         assertThat(failedAgent.get()).isEqualTo("edit");
         verify(publisher).publish("default story");
@@ -86,7 +88,9 @@ class ErrorRecoveryResultTest {
                 .chatModel(STUB_MODEL)
                 .build();
         StoryEditor editor = AgenticServices.agentBuilder(StoryEditor.class)
-                .chatModel(STUB_MODEL)
+                .chatModel(chatRequest -> {
+                    throw new RuntimeException("Editor failed");
+                })
                 .build();
 
         AtomicReference<String> failedAgent = new AtomicReference<>();
@@ -100,8 +104,8 @@ class ErrorRecoveryResultTest {
                 })
                 .build();
 
-        Object result =
-                assertTimeoutPreemptively(Duration.ofSeconds(5), () -> workflow.invoke(Map.of("topic", "dragons")));
+        Object result = assertTimeoutPreemptively(
+                Duration.ofSeconds(5), () -> workflow.invoke(Map.of("topic", "dragons", "style", "magic")));
 
         assertThat(failedAgent.get()).isEqualTo("edit");
         assertThat(result).isEqualTo("default story");

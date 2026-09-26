@@ -4,8 +4,8 @@ import dev.langchain4j.agentic.planner.Action;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.planner.InitPlanningContext;
-import dev.langchain4j.agentic.planner.PlanningContext;
 import dev.langchain4j.agentic.planner.Planner;
+import dev.langchain4j.agentic.planner.PlanningContext;
 import java.util.List;
 import java.util.Map;
 
@@ -17,6 +17,25 @@ public class SequentialPlanner implements Planner {
     @Override
     public void init(InitPlanningContext initPlanningContext) {
         this.agents = initPlanningContext.subagents();
+
+        java.util.Set<String> availableKeys = new java.util.HashSet<>(
+                initPlanningContext.agenticScope().state().keySet());
+
+        for (AgentInstance agent : this.agents) {
+            if (!agent.optional()) {
+                for (dev.langchain4j.agentic.planner.AgentArgument arg : agent.arguments()) {
+                    String name = arg.name();
+                    if (!arg.isOptional() && arg.defaultValue() == null && !name.startsWith("@")) {
+                        if (!availableKeys.contains(name)) {
+                            throw new dev.langchain4j.agentic.agent.MissingArgumentException(name);
+                        }
+                    }
+                }
+            }
+            if (agent.outputKey() != null) {
+                availableKeys.add(agent.outputKey());
+            }
+        }
     }
 
     @Override
