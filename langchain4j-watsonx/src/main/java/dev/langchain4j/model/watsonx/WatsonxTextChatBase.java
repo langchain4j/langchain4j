@@ -118,7 +118,12 @@ abstract class WatsonxTextChatBase<R extends BaseChatRequest> extends WatsonxCha
          * @return {@code this}
          */
         public T thinking(ThinkingEffort thinkingEffort) {
-            if (nonNull(thinkingEffort)) return thinking(Thinking.of(thinkingEffort));
+            if (nonNull(thinkingEffort)) {
+                return thinking(Thinking.builder()
+                        .includeReasoning(true)
+                        .thinkingEffort(thinkingEffort)
+                        .build());
+            }
 
             this.thinking = null;
             return (T) this;
