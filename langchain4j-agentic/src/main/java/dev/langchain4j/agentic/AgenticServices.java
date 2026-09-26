@@ -807,8 +807,7 @@ public class AgenticServices {
         var mcpAgent = mcpMethod.getAnnotation(McpClientAgent.class);
 
         Object mcpClient = selectMethod(
-                        agentServiceClass,
-                        method -> method.isAnnotationPresent(McpClientSupplier.class))
+                        agentServiceClass, method -> method.isAnnotationPresent(McpClientSupplier.class))
                 .map(method -> invokeSupplierWithResolvers(agentServiceClass, method, Object.class))
                 .orElseThrow(
                         () -> new IllegalArgumentException(
