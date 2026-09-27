@@ -116,45 +116,6 @@ class DecisionServicesTest {
         assertThat(spamFilter.isSpam("Hello")).isFalse();
     }
 
-    interface SpamFilterWithThreshold {
-
-        @Decide("Is this message spam?")
-        boolean isSpam(@V("message") String message, @Threshold double threshold);
-
-        @Decide("Is this message spam?")
-        boolean isSpamOptionalThreshold(@V("message") String message, @Threshold Double threshold);
-    }
-
-    @Test
-    void should_use_threshold_parameter_and_not_send_it_to_the_model() {
-
-        // given
-        FakeDecisionModel model = new FakeDecisionModel(Map.of("isSpam", noul(0.7)));
-        SpamFilterWithThreshold spamFilter = DecisionServices.builder(SpamFilterWithThreshold.class)
-                .decisionModel(model)
-                .build();
-
-        // when-then
-        assertThat(spamFilter.isSpam("You won a cruise!", 0.9)).isFalse();
-        assertThat(spamFilter.isSpam("You won a cruise!", 0.6)).isTrue();
-        assertThat(model.requests.get(0).state()).isEqualTo(Map.of("message", "You won a cruise!"));
-    }
-
-    @Test
-    void threshold_parameter_should_override_threshold_provider() {
-
-        // given
-        FakeDecisionModel model = new FakeDecisionModel(Map.of("isSpamOptionalThreshold", noul(0.7)));
-        SpamFilterWithThreshold spamFilter = DecisionServices.builder(SpamFilterWithThreshold.class)
-                .decisionModel(model)
-                .thresholdProvider(question -> 0.9)
-                .build();
-
-        // when-then
-        assertThat(spamFilter.isSpamOptionalThreshold("You won a cruise!", 0.6)).isTrue();
-        assertThat(spamFilter.isSpamOptionalThreshold("You won a cruise!", null)).isFalse();
-    }
-
     @Test
     void should_use_threshold_provider() {
 
@@ -184,11 +145,12 @@ class DecisionServicesTest {
     @Test
     void should_reject_invalid_threshold() {
 
-        SpamFilterWithThreshold spamFilter = DecisionServices.builder(SpamFilterWithThreshold.class)
+        SpamFilter spamFilter = DecisionServices.builder(SpamFilter.class)
                 .decisionModel(new FakeDecisionModel(Map.of("isSpam", noul(0.7))))
+                .thresholdProvider(question -> 1.5)
                 .build();
 
-        assertThatThrownBy(() -> spamFilter.isSpam("Hello", 1.5))
+        assertThatThrownBy(() -> spamFilter.isSpam("Hello"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("threshold");
     }
@@ -310,6 +272,16 @@ class DecisionServicesTest {
     }
 
     @Test
+    void choice_should_support_options_that_are_not_enum_constants() {
+
+        Choice<String> choice = new Choice<>("refunds-agent", Map.of("refunds-agent", 0.7, "billing-agent", 0.3), 0.4);
+
+        assertThat(choice.value()).isEqualTo("refunds-agent");
+        assertThat(choice.probability("billing-agent")).isEqualTo(0.3);
+        assertThat(choice.margin()).isCloseTo(0.4, org.assertj.core.data.Offset.offset(1e-9));
+    }
+
+    @Test
     void choice_should_fail_when_model_did_not_report_probabilities() {
 
         Choice<Team> choice = new Choice<>(Team.BILLING, Map.of(), null);
@@ -353,7 +325,7 @@ class DecisionServicesTest {
 
         Triage triage(@V("ticket") String ticket, @V("plan") String plan);
 
-        TriageRecord triageRecord(@V("ticket") String ticket, @Threshold("urgent") double urgentThreshold);
+        TriageRecord triageRecord(@V("ticket") String ticket);
     }
 
     @Test
@@ -385,20 +357,22 @@ class DecisionServicesTest {
     }
 
     @Test
-    void should_support_records_and_named_threshold() {
+    void should_support_records_with_thresholds_per_field() {
 
         // given
         FakeDecisionModel model = new FakeDecisionModel(
                 Map.of("team", BILLING_ANSWER, "urgent", noul(0.7), "refund", noul(0.7)));
-        SupportDesk supportDesk =
-                DecisionServices.builder(SupportDesk.class).decisionModel(model).build();
+        SupportDesk supportDesk = DecisionServices.builder(SupportDesk.class)
+                .decisionModel(model)
+                .thresholdProvider(question -> question.equals("urgent") ? 0.8 : null)
+                .build();
 
         // when
-        TriageRecord triage = supportDesk.triageRecord("I was charged twice", 0.8);
+        TriageRecord triage = supportDesk.triageRecord("I was charged twice");
 
         // then
         assertThat(triage.team().value()).isEqualTo(Team.BILLING);
-        assertThat(triage.urgent()).isFalse(); // 0.7 < 0.8 (@Threshold("urgent"))
+        assertThat(triage.urgent()).isFalse(); // 0.7 < 0.8 (from thresholdProvider)
         assertThat(triage.refund()).isTrue(); // 0.7 >= 0.5 (default)
         assertThat(model.request().state()).isEqualTo(Map.of("ticket", "I was charged twice"));
     }
@@ -534,28 +508,15 @@ class DecisionServicesTest {
         boolean isSpam(String message);
     }
 
-    interface UnnamedThresholdWithSeveralBooleans {
-        TriageRecord triage(@V("ticket") String ticket, @Threshold double threshold);
-    }
-
-    interface UnknownThresholdTarget {
-        TriageRecord triage(@V("ticket") String ticket, @Threshold("team") double threshold);
-    }
-
-    interface NonDoubleThreshold {
-        @Decide("Is this message spam?")
-        boolean isSpam(@V("message") String message, @Threshold int threshold);
-    }
-
-    interface NoState {
-        @Decide("Is this message spam?")
-        boolean isSpam(@Threshold double threshold);
-    }
-
     interface SeveralRequestParameters {
         @Decide("Is this message spam?")
         boolean isSpam(
                 @V("message") String message, DecisionRequestParameters first, DecisionRequestParameters second);
+    }
+
+    interface NoState {
+        @Decide("Is this message spam?")
+        boolean isSpam(DecisionRequestParameters parameters);
     }
 
     enum SingleConstant {
@@ -603,36 +564,17 @@ class DecisionServicesTest {
                 .hasMessageContaining("-parameters")
                 .hasMessageContaining("@V");
 
-        assertThatThrownBy(() -> DecisionServices.builder(UnnamedThresholdWithSeveralBooleans.class)
+        assertThatThrownBy(() -> DecisionServices.builder(SeveralRequestParameters.class)
                         .decisionModel(model)
                         .build())
                 .isInstanceOf(IllegalConfigurationException.class)
-                .hasMessageContaining("must name the boolean field")
-                .hasMessageContaining("[urgent, refund]");
-
-        assertThatThrownBy(() -> DecisionServices.builder(UnknownThresholdTarget.class)
-                        .decisionModel(model)
-                        .build())
-                .isInstanceOf(IllegalConfigurationException.class)
-                .hasMessageContaining("@Threshold(\"team\")");
-
-        assertThatThrownBy(() -> DecisionServices.builder(NonDoubleThreshold.class)
-                        .decisionModel(model)
-                        .build())
-                .isInstanceOf(IllegalConfigurationException.class)
-                .hasMessageContaining("must be a double");
+                .hasMessageContaining("several DecisionRequestParameters");
 
         assertThatThrownBy(() -> DecisionServices.builder(NoState.class)
                         .decisionModel(model)
                         .build())
                 .isInstanceOf(IllegalConfigurationException.class)
                 .hasMessageContaining("at least one parameter");
-
-        assertThatThrownBy(() -> DecisionServices.builder(SeveralRequestParameters.class)
-                        .decisionModel(model)
-                        .build())
-                .isInstanceOf(IllegalConfigurationException.class)
-                .hasMessageContaining("several DecisionRequestParameters");
 
         assertThatThrownBy(() -> DecisionServices.builder(SingleConstantEnum.class)
                         .decisionModel(model)

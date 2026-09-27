@@ -30,6 +30,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.DoubleSupplier;
 import java.util.function.Function;
 
 /**
@@ -44,7 +45,6 @@ final class DecisionMethod {
     private final boolean async;
     private final boolean withResponse;
     private final List<StateParameter> stateParameters = new ArrayList<>();
-    private final Map<String, Integer> thresholdParameters = new LinkedHashMap<>();
     private Integer requestParametersIndex;
     private final Map<String, QuestionMapping> mappings = new LinkedHashMap<>();
     private final Map<String, Question> questions = new LinkedHashMap<>();
@@ -94,7 +94,7 @@ final class DecisionMethod {
 
     Object invoke(DecisionModel decisionModel, Object[] args, Function<String, Double> thresholdProvider) {
         if (!async) {
-            return result(decisionModel.decide(request(args)), args, thresholdProvider);
+            return result(decisionModel.decide(request(args)), thresholdProvider);
         }
         DecisionRequest request;
         try {
@@ -102,7 +102,7 @@ final class DecisionMethod {
         } catch (RuntimeException e) {
             return CompletableFuture.failedFuture(e);
         }
-        return decisionModel.decideAsync(request).thenApply(response -> result(response, args, thresholdProvider));
+        return decisionModel.decideAsync(request).thenApply(response -> result(response, thresholdProvider));
     }
 
     private DecisionRequest request(Object[] args) {
@@ -113,20 +113,16 @@ final class DecisionMethod {
                 .build();
     }
 
-    private Object result(DecisionResponse response, Object[] args, Function<String, Double> thresholdProvider) {
+    private Object result(DecisionResponse response, Function<String, Double> thresholdProvider) {
         Map<String, Object> values = new LinkedHashMap<>();
         mappings.forEach((name, mapping) ->
-                values.put(name, mapping.value(response, threshold(name, args, thresholdProvider))));
+                values.put(name, mapping.value(response, () -> threshold(name, thresholdProvider))));
         Object content = resultFactory.apply(values);
         return withResponse ? new DecisionResult<>(content, response) : content;
     }
 
-    private double threshold(String questionName, Object[] args, Function<String, Double> thresholdProvider) {
-        Integer index = thresholdParameters.get(questionName);
-        Double threshold = index == null ? null : (Double) args[index];
-        if (threshold == null && thresholdProvider != null) {
-            threshold = thresholdProvider.apply(questionName);
-        }
+    private double threshold(String questionName, Function<String, Double> thresholdProvider) {
+        Double threshold = thresholdProvider == null ? null : thresholdProvider.apply(questionName);
         if (threshold == null) {
             threshold = DEFAULT_THRESHOLD;
         }
@@ -156,11 +152,6 @@ final class DecisionMethod {
         Parameter[] parameters = method.getParameters();
         for (int i = 0; i < parameters.length; i++) {
             Parameter parameter = parameters[i];
-            Threshold threshold = parameter.getAnnotation(Threshold.class);
-            if (threshold != null) {
-                addThresholdParameter(parameter, threshold, i);
-                continue;
-            }
             if (DecisionRequestParameters.class.isAssignableFrom(parameter.getType())) {
                 if (requestParametersIndex != null) {
                     throw illegalConfiguration(
@@ -185,44 +176,9 @@ final class DecisionMethod {
         }
         if (stateParameters.isEmpty()) {
             throw illegalConfiguration(
-                    "Method '%s' must have at least one parameter that is not annotated with @Threshold "
-                            + "and is not DecisionRequestParameters: the parameters are what the model evaluates",
+                    "Method '%s' must have at least one parameter that is not DecisionRequestParameters: "
+                            + "the parameters are what the model evaluates",
                     method.getName());
-        }
-    }
-
-    private void addThresholdParameter(Parameter parameter, Threshold threshold, int index) {
-        if (parameter.getType() != double.class && parameter.getType() != Double.class) {
-            throw illegalConfiguration(
-                    "Parameter %s of method '%s' is annotated with @Threshold and must be a double",
-                    index, method.getName());
-        }
-        List<String> booleanQuestions = mappings.values().stream()
-                .filter(mapping -> mapping.kind() == Kind.BOOLEAN)
-                .map(QuestionMapping::name)
-                .toList();
-        String target;
-        if (threshold.value().isBlank()) {
-            if (booleanQuestions.size() != 1) {
-                throw illegalConfiguration(
-                        "@Threshold on parameter %s of method '%s' must name the boolean field it applies to, "
-                                + "one of %s, for example @Threshold(\"%s\")",
-                        index, method.getName(), booleanQuestions,
-                        booleanQuestions.isEmpty() ? "field" : booleanQuestions.get(0));
-            }
-            target = booleanQuestions.get(0);
-        } else {
-            target = threshold.value();
-            if (!booleanQuestions.contains(target)) {
-                throw illegalConfiguration(
-                        "@Threshold(\"%s\") on parameter %s of method '%s' does not match a boolean answer. "
-                                + "Boolean answers: %s",
-                        target, index, method.getName(), booleanQuestions);
-            }
-        }
-        if (thresholdParameters.put(target, index) != null) {
-            throw illegalConfiguration(
-                    "Method '%s' has several @Threshold parameters for '%s'", method.getName(), target);
         }
     }
 
@@ -400,9 +356,9 @@ final class DecisionMethod {
 
     private record QuestionMapping(String name, Question question, Kind kind, Class<?> enumType) {
 
-        Object value(DecisionResponse response, double threshold) {
+        Object value(DecisionResponse response, DoubleSupplier threshold) {
             return switch (kind) {
-                case BOOLEAN -> response.noul(name).probability() >= threshold;
+                case BOOLEAN -> response.noul(name).probability() >= threshold.getAsDouble();
                 case YES_NO -> new YesNo(response.noul(name).probability());
                 case ENUM -> constant(response.choice(name).choice());
                 case CHOICE -> choice(response.choice(name));

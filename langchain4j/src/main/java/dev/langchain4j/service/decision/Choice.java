@@ -5,20 +5,20 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import dev.langchain4j.Experimental;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.EnumMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
 /**
- * The answer to a question of a decision service whose options are the constants of an enum: the chosen constant,
- * the probability of each constant and, if the model reports one, a confidence.
+ * The answer to a question of a decision service that chooses one of several options: the chosen option, the
+ * probability of each option and, if the model reports one, a confidence.
  *
- * @param <E> the enum whose constants are the options
+ * @param <E> the type of the options, for example an enum whose constants are the options
  * @since 1.21.0
  */
 @Experimental
-public final class Choice<E extends Enum<E>> {
+public final class Choice<E> {
 
     private final E value;
     private final Map<E, Double> probabilities;
@@ -28,26 +28,26 @@ public final class Choice<E extends Enum<E>> {
         this.value = ensureNotNull(value, "value");
         this.probabilities = probabilities == null || probabilities.isEmpty()
                 ? Map.of()
-                : Collections.unmodifiableMap(new EnumMap<>(probabilities));
+                : Collections.unmodifiableMap(new LinkedHashMap<>(probabilities));
         this.confidence = confidence;
     }
 
     /**
-     * The chosen constant, usually the one with the highest probability.
+     * The chosen option, usually the one with the highest probability.
      */
     public E value() {
         return value;
     }
 
     /**
-     * The probability of each constant. Empty if the model does not report probabilities.
+     * The probability of each option. Empty if the model does not report probabilities.
      */
     public Map<E, Double> probabilities() {
         return probabilities;
     }
 
     /**
-     * The probability of the given constant, or 0 if the model reported probabilities but none for this constant.
+     * The probability of the given option, or 0 if the model reported probabilities but none for this option.
      *
      * @throws IllegalStateException if the model did not report probabilities.
      */
@@ -58,7 +58,7 @@ public final class Choice<E extends Enum<E>> {
 
     /**
      * The difference between the two highest probabilities, from 0 to 1. A small margin means the model hesitated
-     * between two constants, which is a common signal to escalate, for example to a human.
+     * between two options, which is a common signal to escalate, for example to a human.
      *
      * @throws IllegalStateException if the model did not report probabilities.
      */

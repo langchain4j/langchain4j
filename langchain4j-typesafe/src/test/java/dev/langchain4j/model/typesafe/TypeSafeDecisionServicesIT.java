@@ -10,7 +10,6 @@ import dev.langchain4j.service.decision.Choice;
 import dev.langchain4j.service.decision.Decide;
 import dev.langchain4j.service.decision.DecisionResult;
 import dev.langchain4j.service.decision.DecisionServices;
-import dev.langchain4j.service.decision.Threshold;
 import dev.langchain4j.service.decision.YesNo;
 import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.Test;
@@ -38,7 +37,7 @@ class TypeSafeDecisionServicesIT {
         Triage triage(@V("ticket") String ticket, @V("customer_plan") String plan);
 
         @Decide("Is this message spam?")
-        boolean isSpam(@V("message") String message, @Threshold double threshold);
+        boolean isSpam(@V("message") String message);
 
         @Decide("Which team should handle this ticket?")
         DecisionResult<Choice<Team>> route(@V("ticket") String ticket);
@@ -75,12 +74,12 @@ class TypeSafeDecisionServicesIT {
     }
 
     @Test
-    void should_answer_yes_no_question_with_threshold() {
+    void should_answer_yes_no_question() {
 
         String spam = "Congratulations! You won a free cruise, click here to claim your prize.";
 
-        assertThat(supportDesk.isSpam(spam, 0.5)).isTrue();
-        assertThat(supportDesk.isSpam("Hi Anna, are we still meeting tomorrow at 10?", 0.5))
+        assertThat(supportDesk.isSpam(spam)).isTrue();
+        assertThat(supportDesk.isSpam("Hi Anna, are we still meeting tomorrow at 10?"))
                 .isFalse();
     }
 

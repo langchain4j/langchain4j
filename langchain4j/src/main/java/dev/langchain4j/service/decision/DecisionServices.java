@@ -19,7 +19,8 @@ import java.util.function.Function;
  * The parameters of a method are sent to the model as the state, keyed by parameter name, and the return type
  * determines the questions:
  * <ul>
- *     <li>{@code boolean}: a yes/no question, {@code true} when the probability of "yes" reaches the threshold</li>
+ *     <li>{@code boolean}: a yes/no question, {@code true} when the probability of "yes" reaches the threshold
+ *     (see {@link Builder#thresholdProvider(Function)})</li>
  *     <li>{@link YesNo}: a yes/no question, with the probability of "yes"</li>
  *     <li>an enum: a question choosing one of its constants</li>
  *     <li>{@link Choice Choice&lt;enum&gt;}: the same, with the probability of each constant</li>
@@ -50,7 +51,7 @@ import java.util.function.Function;
  *     Triage triage(String ticket, String plan);
  *
  *     @Decide("Is this message spam?")
- *     boolean isSpam(String message, @Threshold double threshold);
+ *     YesNo isSpam(String message);
  *
  *     @Decide("Which team should handle this ticket?")
  *     Choice<Team> route(String ticket);
@@ -88,8 +89,8 @@ public class DecisionServices {
         }
 
         /**
-         * Provides the threshold for {@code boolean} answers that have no {@link Threshold @Threshold} parameter.
-         * The function receives the name of the question (the method name, or the field name for methods returning
+         * Provides the threshold for {@code boolean} answers: the answer is {@code true} when the probability of
+         * "yes" is greater than or equal to the threshold. The function receives the name of the question (the method name, or the field name for methods returning
          * an object) and is called on every invocation, so the thresholds can come from configuration that changes
          * at runtime. When it returns {@code null}, or is not set, the threshold is 0.5.
          */
