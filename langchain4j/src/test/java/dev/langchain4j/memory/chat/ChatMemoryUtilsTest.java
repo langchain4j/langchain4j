@@ -108,6 +108,22 @@ class ChatMemoryUtilsTest implements WithAssertions {
     }
 
     @Test
+    void should_remove_incomplete_tool_execution_even_with_excess_results() {
+        // given: result B is missing while results A, C and D are present
+        UserMessage userMessage = userMessage("hello");
+        AiMessage aiMessage = AiMessage.from(TOOL_REQUEST_A, TOOL_REQUEST_B);
+        ToolExecutionResultMessage resultD = new ToolExecutionResultMessage("4", "toolD", "resultD");
+        AiMessage answer = AiMessage.from("done");
+        List<ChatMessage> messages = mutableListOf(userMessage, aiMessage, RESULT_A, RESULT_C, resultD, answer);
+
+        // when
+        ChatMemoryUtils.removeInterruptedToolExecutions(messages);
+
+        // then
+        assertThat(messages).containsExactly(userMessage, answer);
+    }
+
+    @Test
     void should_use_result_count_when_ids_are_unavailable() {
         // given
         ToolExecutionRequest firstRequest =

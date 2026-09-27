@@ -22,8 +22,9 @@ class ChatMemoryUtils {
      * Removes incomplete tool execution blocks from the entire message history.
      *
      * <p>A block is incomplete when an {@link AiMessage} with tool requests is followed by too few
-     * consecutive {@link ToolExecutionResultMessage}s, or when equally sized request and result
-     * lists have complete, unique IDs that do not match.
+     * consecutive {@link ToolExecutionResultMessage}s, or when complete, unique IDs are available on
+     * both sides and at least one requested ID has no matching result. Excess results alone do not
+     * make a block incomplete as long as every requested ID is answered.
      */
     static void removeInterruptedToolExecutions(List<ChatMessage> messages) {
         ListIterator<ChatMessage> cursor = messages.listIterator();
@@ -66,7 +67,7 @@ class ChatMemoryUtils {
         if (resultCount < requests.size()) {
             return true;
         }
-        if (resultCount > requests.size() || !resultIdsReliable) {
+        if (!resultIdsReliable) {
             return false;
         }
 
@@ -76,6 +77,6 @@ class ChatMemoryUtils {
                 return false;
             }
         }
-        return !requestIds.equals(resultIds);
+        return !resultIds.containsAll(requestIds);
     }
 }
