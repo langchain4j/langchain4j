@@ -529,8 +529,7 @@ metadata.serviceTier();      // Service tier used for the request
 
 `OpenAiOfficialBatchChatModel` implements the core `BatchChatModel` interface to process many chat requests
 asynchronously via the [OpenAI Batch API](https://platform.openai.com/docs/guides/batch), at 50% of the
-standard per-token price. See [Batch Processing](/tutorials/batch-processing) for how batching works in
-LangChain4j.
+standard per-token price.
 
 Requests are written to a JSONL file, uploaded through the Files API with the `batch` purpose, and run
 against the `/v1/chat/completions` endpoint. All requests in a batch must resolve to the same model. Results
