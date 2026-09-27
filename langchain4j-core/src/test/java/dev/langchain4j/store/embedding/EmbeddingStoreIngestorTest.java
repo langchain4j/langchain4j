@@ -277,6 +277,25 @@ class EmbeddingStoreIngestorTest {
     }
 
     @Test
+    void should_not_embed_or_store_when_all_documents_produce_no_segments() {
+
+        DocumentSplitter splitter = document -> emptyList();
+        EmbeddingModel embeddingModel = mock(EmbeddingModel.class);
+        EmbeddingStore<TextSegment> embeddingStore = mock(EmbeddingStore.class);
+        EmbeddingStoreIngestor ingestor = EmbeddingStoreIngestor.builder()
+                .documentSplitter(splitter)
+                .embeddingModel(embeddingModel)
+                .embeddingStore(embeddingStore)
+                .ignoreErrors(true)
+                .build();
+
+        ingestor.ingest(asList(Document.from("empty"), Document.from("also empty")));
+
+        verify(embeddingModel, never()).embedAll(any());
+        verify(embeddingStore, never()).addAll(any(), any());
+    }
+
+    @Test
     void should_fail_fast_by_default() {
 
         RuntimeException failure = new RuntimeException("cannot split");
