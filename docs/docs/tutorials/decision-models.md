@@ -39,6 +39,8 @@ The `DecisionModel` API itself is part of `langchain4j-core`, which comes with e
 requests and questions are in `dev.langchain4j.model.decision.request`, answers in
 `dev.langchain4j.model.decision.response` and listeners in `dev.langchain4j.model.decision.listener`.
 
+To use decision models through plain Java interfaces, see [Decision Services](/tutorials/decision-services).
+
 ## Asking questions
 
 A `DecisionRequest` contains the input (state) and the questions, each registered under a name of your choice:
