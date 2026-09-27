@@ -1,5 +1,6 @@
 package dev.langchain4j.model.typesafe;
 
+import dev.langchain4j.model.decision.response.YesNoAnswer;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.model.decision.DecisionModel;
@@ -10,7 +11,6 @@ import dev.langchain4j.service.decision.Choice;
 import dev.langchain4j.service.decision.Decide;
 import dev.langchain4j.service.decision.DecisionResult;
 import dev.langchain4j.service.decision.DecisionServices;
-import dev.langchain4j.service.decision.YesNo;
 import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -30,7 +30,7 @@ class TypeSafeDecisionServicesIT {
     record Triage(
             @Decide("Which team should handle this ticket?") Team team,
             @Decide("Does this need attention today?") boolean urgent,
-            @Decide("Does the customer ask for money back?") YesNo refund) {}
+            @Decide("Does the customer ask for money back?") YesNoAnswer refund) {}
 
     interface SupportDesk {
 

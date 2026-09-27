@@ -30,11 +30,18 @@ public final class Choice<E> {
         if (builder.probabilities != null) {
             builder.probabilities.forEach((option, probability) -> probabilities.put(
                     ensureNotNull(option, "option"),
-                    YesNo.ensureProbability(ensureNotNull(probability, "probability"), "probability")));
+                    ensureProbability(ensureNotNull(probability, "probability"), "probability")));
         }
         this.probabilities = Collections.unmodifiableMap(probabilities);
         this.confidence =
-                builder.confidence == null ? null : YesNo.ensureProbability(builder.confidence, "confidence");
+                builder.confidence == null ? null : ensureProbability(builder.confidence, "confidence");
+    }
+
+    private static double ensureProbability(double value, String name) {
+        if (!(value >= 0 && value <= 1)) {
+            throw new IllegalArgumentException(name + " must be between 0 and 1, but was " + value);
+        }
+        return value;
     }
 
     public static <E> Builder<E> builder() {

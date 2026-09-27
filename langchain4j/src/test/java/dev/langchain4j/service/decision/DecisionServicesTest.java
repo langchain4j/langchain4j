@@ -1,5 +1,6 @@
 package dev.langchain4j.service.decision;
 
+import dev.langchain4j.service.decision.internal.DecisionMethod;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -103,12 +104,12 @@ class DecisionServicesTest {
 
         // then
         assertThat(spam).isTrue();
-        assertThat(model.request().state()).isEqualTo(Map.of("message", "You won a cruise!"));
+        assertThat(model.request().input()).isEqualTo(Map.of("message", "You won a cruise!"));
         assertThat(model.request().questions())
                 .isEqualTo(Map.of(
                         "isSpam",
                         YesNoQuestion.builder()
-                                .instructions("Is this message spam?")
+                                .text("Is this message spam?")
                                 .build()));
     }
 
@@ -169,7 +170,7 @@ class DecisionServicesTest {
     interface SpamScorer {
 
         @Decide("Is this message spam?")
-        YesNo isSpam(@V("message") String message);
+        YesNoAnswer isSpam(@V("message") String message);
     }
 
     @Test
@@ -179,7 +180,7 @@ class DecisionServicesTest {
                 .decisionModel(new FakeDecisionModel(Map.of("isSpam", yesNo(0.7))))
                 .build();
 
-        YesNo spam = spamScorer.isSpam("You won a cruise!");
+        YesNoAnswer spam = spamScorer.isSpam("You won a cruise!");
 
         assertThat(spam.probability()).isEqualTo(0.7);
         assertThat(spam.isYes(0.6)).isTrue();
@@ -208,7 +209,7 @@ class DecisionServicesTest {
 
         // then
         assertThat(model.request().modelName()).isEqualTo("jev-1.13.0");
-        assertThat(model.request().state()).isEqualTo(Map.of("message", "You won a cruise!"));
+        assertThat(model.request().input()).isEqualTo(Map.of("message", "You won a cruise!"));
     }
 
     @Test
@@ -250,7 +251,7 @@ class DecisionServicesTest {
                 .isEqualTo(Map.of(
                         "route",
                         ChoiceQuestion.builder()
-                                .instructions("Which team should handle this ticket?")
+                                .text("Which team should handle this ticket?")
                                 .option("BILLING", "Payments, invoices, refunds")
                                 .option("SUPPORT", "Problems using the product")
                                 .option("SALES", "SALES")
@@ -332,7 +333,7 @@ class DecisionServicesTest {
         boolean urgent;
 
         @Decide("Does the customer ask for money back?")
-        YesNo refund;
+        YesNoAnswer refund;
     }
 
     record TriageRecord(
@@ -365,15 +366,15 @@ class DecisionServicesTest {
         assertThat(triage.refund.probability()).isEqualTo(0.3);
 
         DecisionRequest request = model.request();
-        assertThat(request.state()).isEqualTo(Map.of("ticket", "I was charged twice", "plan", "enterprise"));
+        assertThat(request.input()).isEqualTo(Map.of("ticket", "I was charged twice", "plan", "enterprise"));
         assertThat(request.questions()).containsOnlyKeys("team", "urgent", "refund");
         assertThat(request.questions().get("urgent"))
                 .isEqualTo(YesNoQuestion.builder()
-                        .instructions("Does this need attention today?")
+                        .text("Does this need attention today?")
                         .build());
         assertThat(request.questions().get("refund"))
                 .isEqualTo(YesNoQuestion.builder()
-                        .instructions("Does the customer ask for money back?")
+                        .text("Does the customer ask for money back?")
                         .build());
     }
 
@@ -395,7 +396,7 @@ class DecisionServicesTest {
         assertThat(triage.team().value()).isEqualTo(Team.BILLING);
         assertThat(triage.urgent()).isFalse(); // 0.7 < 0.8 (from thresholdProvider)
         assertThat(triage.refund()).isTrue(); // 0.7 >= 0.5 (default)
-        assertThat(model.request().state()).isEqualTo(Map.of("ticket", "I was charged twice"));
+        assertThat(model.request().input()).isEqualTo(Map.of("ticket", "I was charged twice"));
     }
 
     // wrappers
@@ -549,7 +550,7 @@ class DecisionServicesTest {
 
         desk.urgent("Payouts are failing", new Customer("enterprise", 3));
 
-        assertThat(model.request().state())
+        assertThat(model.request().input())
                 .isEqualTo(Map.of(
                         "ticket", "Payouts are failing",
                         "customer", Map.of("customerPlan", "enterprise", "openTickets", 3)));
@@ -568,7 +569,7 @@ class DecisionServicesTest {
         assertThat(method.reflectiveTypes()).containsExactlyInAnyOrder(TriageRecord.class, Team.class);
 
         DecisionRequest request = method.toRequest(new Object[] {"I was charged twice"});
-        assertThat(request.state()).isEqualTo(Map.of("ticket", "I was charged twice"));
+        assertThat(request.input()).isEqualTo(Map.of("ticket", "I was charged twice"));
 
         TriageRecord triage = (TriageRecord) method.toResult(
                 DecisionResponse.builder()

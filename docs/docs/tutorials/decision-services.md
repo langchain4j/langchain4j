@@ -53,6 +53,8 @@ Decision Services are part of the `langchain4j` module; add it next to the modul
 
 The annotations used below are `dev.langchain4j.service.decision.Decide`,
 `dev.langchain4j.model.output.structured.Description` and `dev.langchain4j.service.V`.
+`YesNoAnswer` is `dev.langchain4j.model.decision.response.YesNoAnswer`; the other types are in
+`dev.langchain4j.service.decision`.
 
 ## How it works
 
@@ -70,7 +72,7 @@ All methods are checked when `build()` is called, so a misconfigured method
 | Return type | Question | Result |
 |---|---|---|
 | `boolean` | yes/no | `true` if the probability of "yes" reaches the [threshold](#thresholds) |
-| `YesNo` | yes/no | the probability of "yes" |
+| `YesNoAnswer` | yes/no | the probability of "yes" |
 | an enum | choice between the enum constants | the chosen constant |
 | `Choice<E>` (`E` is an enum) | choice between the enum constants | the chosen constant and the probability of each constant |
 | a class or record whose fields have the types above | one question per field, all in a single call | an instance with every field set |
@@ -87,15 +89,15 @@ interface Moderation {
     boolean isSpam(String message);
 
     @Decide("Is this message spam?")
-    YesNo spamProbability(String message);
+    YesNoAnswer spamProbability(String message);
 }
 
-YesNo spam = moderation.spamProbability(message);
+YesNoAnswer spam = moderation.spamProbability(message);
 spam.probability();   // 0.97
 spam.isYes(0.9);      // true
 ```
 
-Return `YesNo` when you want to decide on the threshold in your own code,
+Return `YesNoAnswer` when you want to decide on the threshold in your own code,
 or to [evaluate several thresholds](#evaluating-thresholds) without calling the model again.
 
 ### Choice questions
@@ -139,7 +141,7 @@ and all questions are answered in a single call to the model:
 record Triage(
         @Decide("Which team should handle this ticket?") Team team,
         @Decide("Does this need attention today?") boolean urgent,
-        @Decide("Does the customer ask for money back?") YesNo refund) {}
+        @Decide("Does the customer ask for money back?") YesNoAnswer refund) {}
 
 interface SupportDesk {
 
@@ -232,7 +234,7 @@ When the provider returns `null`, the default of 0.5 is used.
 Make sure your configuration keys match the question names exactly:
 a missing key silently falls back to 0.5, which is rarely what a gate needs.
 
-To decide on the threshold in the calling code instead, return `YesNo` and use `isYes(threshold)`.
+To decide on the threshold in the calling code instead, return `YesNoAnswer` and use `isYes(threshold)`.
 
 ### Evaluating thresholds
 
@@ -289,16 +291,16 @@ or with a lambda when the interface has a single method:
 interface SpamCheck {
 
     @Decide("Is this message spam?")
-    YesNo isSpam(String message);
+    YesNoAnswer isSpam(String message);
 }
 
-SpamCheck spamCheck = message -> YesNo.of(0.97);
+SpamCheck spamCheck = message -> YesNoAnswer.of(0.97);
 
 CommentService commentService = new CommentService(spamCheck);
 assertThat(commentService.accept("Buy now!")).isFalse();
 ```
 
-Results are easy to create in tests: `YesNo.of(0.97)`, `Choice.builder()` and `DecisionResult.builder()`.
+Results are easy to create in tests: `YesNoAnswer.of(0.97)`, `Choice.builder()` and `DecisionResult.builder()`.
 
 ## Errors
 

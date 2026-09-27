@@ -1,5 +1,12 @@
-package dev.langchain4j.service.decision;
+package dev.langchain4j.service.decision.internal;
 
+import dev.langchain4j.model.decision.response.YesNoAnswer;
+import dev.langchain4j.service.decision.ThresholdProvider;
+import dev.langchain4j.service.decision.ThresholdContext;
+import dev.langchain4j.service.decision.DecisionServices;
+import dev.langchain4j.service.decision.DecisionResult;
+import dev.langchain4j.service.decision.Decide;
+import dev.langchain4j.service.decision.Choice;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
@@ -99,7 +106,7 @@ public final class DecisionMethod {
             this.resultFactory = analysis.objectFactory(objectType);
         } else {
             throw illegalConfiguration(
-                    "Method '%s' has an unsupported return type: %s. Supported types are boolean, YesNo, an enum, "
+                    "Method '%s' has an unsupported return type: %s. Supported types are boolean, YesNoAnswer, an enum, "
                             + "Choice<enum>, and objects whose fields are of these types, optionally wrapped in "
                             + "DecisionResult<> and/or CompletableFuture<>",
                     method.getName(), method.getGenericReturnType().getTypeName());
@@ -173,7 +180,7 @@ public final class DecisionMethod {
                             stateParameters.stream().map(StateParameter::name).toList()));
         }
         return DecisionRequest.builder()
-                .state(state)
+                .input(state)
                 .questions(questions)
                 .parameters(requestParameters(args))
                 .build();
@@ -238,8 +245,12 @@ public final class DecisionMethod {
 
     private static double threshold(String questionName, Function<String, Double> thresholds) {
         Double threshold = thresholds == null ? null : thresholds.apply(questionName);
-        return YesNo.ensureProbability(
-                threshold == null ? DEFAULT_THRESHOLD : threshold, "threshold for '" + questionName + "'");
+        double value = threshold == null ? DEFAULT_THRESHOLD : threshold;
+        if (!(value >= 0 && value <= 1)) {
+            throw new IllegalArgumentException(
+                    "The threshold for '%s' must be between 0 and 1, but was %s".formatted(questionName, value));
+        }
+        return value;
     }
 
     private DecisionRequestParameters requestParameters(Object[] args) {
@@ -401,7 +412,7 @@ public final class DecisionMethod {
             if (mapping == null) {
                 throw illegalConfiguration(
                         "Field '%s' of %s, returned by method '%s', has an unsupported type: %s. "
-                                + "Supported types are boolean, YesNo, an enum and Choice<enum>",
+                                + "Supported types are boolean, YesNoAnswer, an enum and Choice<enum>",
                         field.getName(),
                         field.getDeclaringClass().getSimpleName(),
                         method.getName(),
@@ -420,7 +431,7 @@ public final class DecisionMethod {
             Class<?> enumType = null;
             if (type == boolean.class || type == Boolean.class) {
                 kind = Kind.BOOLEAN;
-            } else if (type == YesNo.class) {
+            } else if (type == YesNoAnswer.class) {
                 kind = Kind.YES_NO;
             } else if (type instanceof Class<?> c && c.isEnum()) {
                 kind = Kind.ENUM;
@@ -442,7 +453,7 @@ public final class DecisionMethod {
                 reflectiveTypes.add(enumType);
             }
             Question question = enumType == null
-                    ? YesNoQuestion.builder().instructions(questionText).build()
+                    ? YesNoQuestion.builder().text(questionText).build()
                     : choiceQuestion(name, questionText, enumType);
             return new QuestionMapping(name, question, kind, enumType);
         }
@@ -454,7 +465,7 @@ public final class DecisionMethod {
                         "'%s' of method '%s': enum %s must have at least 2 constants",
                         name, method.getName(), enumType.getSimpleName());
             }
-            ChoiceQuestion.Builder builder = ChoiceQuestion.builder().instructions(questionText);
+            ChoiceQuestion.Builder builder = ChoiceQuestion.builder().text(questionText);
             for (Object constant : constants) {
                 String option = ((Enum<?>) constant).name();
                 Description description = declaredField(enumType, option).getAnnotation(Description.class);
@@ -490,7 +501,7 @@ public final class DecisionMethod {
         Object value(DecisionResponse response, DoubleSupplier threshold) {
             return switch (kind) {
                 case BOOLEAN -> response.yesNo(name).probability() >= threshold.getAsDouble();
-                case YES_NO -> YesNo.of(response.yesNo(name).probability());
+                case YES_NO -> response.yesNo(name);
                 case ENUM -> constant(response.choice(name).value());
                 case CHOICE -> choice(response.choice(name));
             };

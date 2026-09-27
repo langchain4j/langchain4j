@@ -1,5 +1,7 @@
 package dev.langchain4j.service.decision;
 
+import dev.langchain4j.model.decision.response.YesNoAnswer;
+import dev.langchain4j.service.decision.internal.DecisionMethod;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
 import static dev.langchain4j.spi.ServiceHelper.loadFactory;
@@ -22,7 +24,7 @@ import java.util.Map;
  * <ul>
  *     <li>{@code boolean}: a yes/no question, {@code true} when the probability of "yes" reaches the threshold
  *     (see {@link Builder#thresholdProvider(ThresholdProvider)})</li>
- *     <li>{@link YesNo}: a yes/no question, with the probability of "yes"</li>
+ *     <li>{@link YesNoAnswer}: a yes/no question, with the probability of "yes"</li>
  *     <li>an enum: a question choosing one of its constants</li>
  *     <li>{@link Choice Choice&lt;enum&gt;}: the same, with the probability of each constant</li>
  *     <li>an object or record whose fields are of the types above: one question per field, in a single call</li>
@@ -52,7 +54,7 @@ import java.util.Map;
  *     Triage triage(String ticket, String plan);
  *
  *     @Decide("Is this message spam?")
- *     YesNo isSpam(String message);
+ *     YesNoAnswer isSpam(String message);
  *
  *     @Decide("Which team should handle this ticket?")
  *     Choice<Team> route(String ticket);
