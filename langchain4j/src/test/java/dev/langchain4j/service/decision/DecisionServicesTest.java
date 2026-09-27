@@ -331,6 +331,7 @@ class DecisionServicesTest {
         @Description("Does this need attention today?")
         boolean urgent;
 
+        @Decide("Does the customer ask for money back?")
         YesNo refund;
     }
 
@@ -371,7 +372,9 @@ class DecisionServicesTest {
                         .instructions("Does this need attention today?")
                         .build());
         assertThat(request.questions().get("refund"))
-                .isEqualTo(YesNoQuestion.builder().instructions("refund").build());
+                .isEqualTo(YesNoQuestion.builder()
+                        .instructions("Does the customer ask for money back?")
+                        .build());
     }
 
     @Test
@@ -650,6 +653,18 @@ class DecisionServicesTest {
         UnsupportedField analyze(@V("ticket") String ticket);
     }
 
+    static class UnannotatedField {
+
+        @Decide("Is this message spam?")
+        boolean spam;
+
+        boolean urgent;
+    }
+
+    interface MissingFieldQuestion {
+        UnannotatedField analyze(@V("message") String message);
+    }
+
     interface MissingParameterName {
         @Decide("Is this message spam?")
         boolean isSpam(String message);
@@ -703,6 +718,13 @@ class DecisionServicesTest {
                         .build())
                 .isInstanceOf(IllegalConfigurationException.class)
                 .hasMessageContaining("Field 'topic'");
+
+        assertThatThrownBy(() -> DecisionServices.builder(MissingFieldQuestion.class)
+                        .decisionModel(model)
+                        .build())
+                .isInstanceOf(IllegalConfigurationException.class)
+                .hasMessageContaining("Field 'urgent' of UnannotatedField")
+                .hasMessageContaining("@Decide");
 
         assertThatThrownBy(() -> DecisionServices.builder(MissingParameterName.class)
                         .decisionModel(model)

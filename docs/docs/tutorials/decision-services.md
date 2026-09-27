@@ -152,9 +152,9 @@ triage.urgent();                   // true
 triage.refund().probability();     // 0.99
 ```
 
-The question of a field is taken from `@Decide`, or from `@Description` if there is no `@Decide`
-(so classes written for [structured outputs](/tutorials/structured-outputs) can be reused),
-or else from the name of the field.
+Every field needs a question: `@Decide`, or `@Description` if there is no `@Decide`
+(so classes written for [structured outputs](/tutorials/structured-outputs) can be reused).
+A field without either fails when `build()` is called.
 `@Decide` on the method itself is not supported for such methods.
 
 A regular class works as well, as long as it has a no-argument constructor:

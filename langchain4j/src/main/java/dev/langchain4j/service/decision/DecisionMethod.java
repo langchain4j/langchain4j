@@ -393,7 +393,10 @@ public final class DecisionMethod {
                     .map(Decide::value)
                     .or(() -> Optional.ofNullable(field.getAnnotation(Description.class))
                             .map(description -> String.join(" ", description.value())))
-                    .orElse(field.getName());
+                    .orElseThrow(() -> illegalConfiguration(
+                            "Field '%s' of %s, returned by method '%s', must be annotated with @Decide "
+                                    + "(or @Description), which contains the question to answer",
+                            field.getName(), field.getDeclaringClass().getSimpleName(), method.getName()));
             QuestionMapping mapping = mappingFor(field.getName(), type, questionText);
             if (mapping == null) {
                 throw illegalConfiguration(
