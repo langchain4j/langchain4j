@@ -590,7 +590,7 @@ public class DefaultMcpClient implements McpClient {
     private String handleMultiRoundTrip(
             String initialResult,
             long timeoutMillis,
-            InvocationContext invocationContext,
+            McpCallContext originalContext,
             BiFunction<Long, Object, McpClientRequest> retryRequestFactory,
             String operationName)
             throws ExecutionException, InterruptedException, TimeoutException {
@@ -613,7 +613,8 @@ public class DefaultMcpClient implements McpClient {
             }
             long retryOperationId = idGenerator.getAndIncrement();
             McpClientRequest retryOperation = retryRequestFactory.apply(retryOperationId, requestState);
-            McpCallContext retryContext = new McpCallContext(invocationContext, retryOperation);
+            McpCallContext retryContext = new McpCallContext(
+                    originalContext.invocationContext(), retryOperation, originalContext.mcpParamHeaders());
             applyMeta(retryOperation, retryContext);
             CompletableFuture<String> resultFuture = executeViaTransport(retryContext);
             try {
@@ -733,7 +734,7 @@ public class DefaultMcpClient implements McpClient {
             result = handleMultiRoundTrip(
                     result,
                     timeoutMillis,
-                    invocationContext,
+                    context,
                     (retryId, requestState) -> {
                         McpCallToolRequest retryOp =
                                 new McpCallToolRequest(retryId, executionRequest.name(), finalArguments, progressToken);
@@ -778,7 +779,9 @@ public class DefaultMcpClient implements McpClient {
         McpCallToolRequest operation =
                 new McpCallToolRequest(operationId, executionRequest.name(), arguments, progressToken);
         long timeoutMillis = toolExecutionTimeout.toMillis() == 0 ? Integer.MAX_VALUE : toolExecutionTimeout.toMillis();
-        McpCallContext context = new McpCallContext(invocationContext, operation);
+        Map<String, String> paramHeaders =
+                modernProtocol ? buildMcpParamHeaders(executionRequest.name(), arguments) : null;
+        McpCallContext context = new McpCallContext(invocationContext, operation, paramHeaders);
 
         CompletableFuture<String> resultFuture;
         try {
@@ -893,7 +896,7 @@ public class DefaultMcpClient implements McpClient {
             result = handleMultiRoundTrip(
                     result,
                     timeoutMillis,
-                    invocationContext,
+                    context,
                     (retryId, requestState) -> {
                         McpReadResourceRequest retryOp = new McpReadResourceRequest(retryId, uri);
                         ((McpReadResourceParams) retryOp.getParams()).setRequestState(requestState);
@@ -949,7 +952,7 @@ public class DefaultMcpClient implements McpClient {
             result = handleMultiRoundTrip(
                     result,
                     timeoutMillis,
-                    null,
+                    context,
                     (retryId, requestState) -> {
                         McpGetPromptRequest retryOp = new McpGetPromptRequest(retryId, name, finalArguments);
                         ((McpGetPromptParams) retryOp.getParams()).setRequestState(requestState);
