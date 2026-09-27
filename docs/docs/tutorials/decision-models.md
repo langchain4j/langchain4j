@@ -8,8 +8,8 @@ sidebar_position: 38
 The `DecisionModel` API is experimental and may change in future releases.
 :::
 
-A decision model answers typed questions about some input, instead of generating text.
-You give it an **input** (for example a support ticket) and a set of named **questions**,
+A decision model answers typed questions about some input (state), instead of generating text.
+You give it an **input** (state), for example a support ticket, and a set of named **questions**,
 and it returns one typed **answer** per question, together with probabilities.
 
 Typical uses are:
@@ -39,7 +39,7 @@ requests and questions are in `dev.langchain4j.model.decision.request`, answers 
 
 ## Asking questions
 
-A `DecisionRequest` contains the input and the questions, each registered under a name of your choice:
+A `DecisionRequest` contains the input (state) and the questions, each registered under a name of your choice:
 
 ```java
 DecisionModel decisionModel = TypeSafeDecisionModel.builder()
@@ -144,7 +144,7 @@ ChoiceQuestion team = ChoiceQuestion.builder()
 
 The keys are not predefined: choose names that describe the content well, because the model sees them.
 
-## Describing the input
+## Describing the input (state)
 
 The input can be plain text, a `Map` or a `List`.
 Use a `Map` to give the model several pieces of information that belong together.
