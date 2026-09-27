@@ -124,7 +124,7 @@ public class SentenceWindowTextSegmentTransformer implements TextSegmentTransfor
     }
 
     private int windowEnd(List<TextSegment> segments, int currentIndex) {
-        int end = Math.min(segments.size() - 1, currentIndex + segmentsAfter);
+        int end = (int) Math.min((long) segments.size() - 1, (long) currentIndex + segmentsAfter);
         for (int i = currentIndex; i < end; i++) {
             if (isDocumentBoundary(segments.get(i), segments.get(i + 1))) {
                 return i;

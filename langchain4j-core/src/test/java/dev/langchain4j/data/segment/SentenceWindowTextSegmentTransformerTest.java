@@ -52,6 +52,20 @@ class SentenceWindowTextSegmentTransformerTest {
     }
 
     @Test
+    void should_clamp_large_window_without_overflow() {
+        SentenceWindowTextSegmentTransformer transformer =
+                new SentenceWindowTextSegmentTransformer(Integer.MAX_VALUE, Integer.MAX_VALUE);
+        TextSegment first = TextSegment.from("First", Metadata.from("index", "0"));
+        TextSegment second = TextSegment.from("Second", Metadata.from("index", "1"));
+
+        List<TextSegment> result = transformer.transformAll(List.of(first, second));
+
+        assertThat(result)
+                .extracting(it -> it.metadata().getString(SURROUNDING_CONTEXT_KEY))
+                .containsExactly("First\n\nSecond", "First\n\nSecond");
+    }
+
+    @Test
     void should_reject_negative_window_sizes() {
         assertThatThrownBy(() -> new SentenceWindowTextSegmentTransformer(-1, 0))
                 .isInstanceOf(IllegalArgumentException.class);
