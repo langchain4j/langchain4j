@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import dev.langchain4j.model.decision.DecisionModel;
 import dev.langchain4j.model.decision.request.ChoiceQuestion;
 import dev.langchain4j.model.decision.request.DecisionRequest;
+import dev.langchain4j.model.decision.request.DecisionRequestParameters;
 import dev.langchain4j.model.decision.request.NoulQuestion;
 import dev.langchain4j.model.decision.response.ChoiceAnswer;
 import dev.langchain4j.model.decision.response.DecisionAnswer;
@@ -209,6 +210,43 @@ class DecisionServicesTest {
         assertThat(spam.probability()).isEqualTo(0.7);
         assertThat(spam.isYes(0.6)).isTrue();
         assertThat(spam.isYes(0.8)).isFalse();
+    }
+
+    interface SpamFilterWithParameters {
+
+        @Decide("Is this message spam?")
+        boolean isSpam(@V("message") String message, DecisionRequestParameters parameters);
+    }
+
+    @Test
+    void should_pass_request_parameters_and_not_send_them_as_state() {
+
+        // given
+        FakeDecisionModel model = new FakeDecisionModel(Map.of("isSpam", noul(0.7)));
+        SpamFilterWithParameters spamFilter = DecisionServices.builder(SpamFilterWithParameters.class)
+                .decisionModel(model)
+                .build();
+
+        // when
+        spamFilter.isSpam(
+                "You won a cruise!",
+                DecisionRequestParameters.builder().modelName("jev-1.13.0").build());
+
+        // then
+        assertThat(model.request().modelName()).isEqualTo("jev-1.13.0");
+        assertThat(model.request().state()).isEqualTo(Map.of("message", "You won a cruise!"));
+    }
+
+    @Test
+    void should_reject_null_request_parameters() {
+
+        SpamFilterWithParameters spamFilter = DecisionServices.builder(SpamFilterWithParameters.class)
+                .decisionModel(new FakeDecisionModel(Map.of("isSpam", noul(0.7))))
+                .build();
+
+        assertThatThrownBy(() -> spamFilter.isSpam("Hello", null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("DecisionRequestParameters");
     }
 
     // choice questions
@@ -473,6 +511,12 @@ class DecisionServicesTest {
         boolean isSpam(@Threshold double threshold);
     }
 
+    interface SeveralRequestParameters {
+        @Decide("Is this message spam?")
+        boolean isSpam(
+                @V("message") String message, DecisionRequestParameters first, DecisionRequestParameters second);
+    }
+
     enum SingleConstant {
         ONLY
     }
@@ -542,6 +586,12 @@ class DecisionServicesTest {
                         .build())
                 .isInstanceOf(IllegalConfigurationException.class)
                 .hasMessageContaining("at least one parameter");
+
+        assertThatThrownBy(() -> DecisionServices.builder(SeveralRequestParameters.class)
+                        .decisionModel(model)
+                        .build())
+                .isInstanceOf(IllegalConfigurationException.class)
+                .hasMessageContaining("several DecisionRequestParameters");
 
         assertThatThrownBy(() -> DecisionServices.builder(SingleConstantEnum.class)
                         .decisionModel(model)

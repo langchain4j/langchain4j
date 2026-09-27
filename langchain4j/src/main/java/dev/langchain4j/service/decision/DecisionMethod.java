@@ -1,10 +1,12 @@
 package dev.langchain4j.service.decision;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
 
 import dev.langchain4j.model.decision.DecisionModel;
 import dev.langchain4j.model.decision.request.ChoiceQuestion;
 import dev.langchain4j.model.decision.request.DecisionRequest;
+import dev.langchain4j.model.decision.request.DecisionRequestParameters;
 import dev.langchain4j.model.decision.request.NoulQuestion;
 import dev.langchain4j.model.decision.request.Question;
 import dev.langchain4j.model.decision.response.ChoiceAnswer;
@@ -42,6 +44,7 @@ final class DecisionMethod {
     private final boolean withResponse;
     private final List<StateParameter> stateParameters = new ArrayList<>();
     private final Map<String, Integer> thresholdParameters = new LinkedHashMap<>();
+    private Integer requestParametersIndex;
     private final Map<String, QuestionMapping> mappings = new LinkedHashMap<>();
     private final Map<String, Question> questions = new LinkedHashMap<>();
     private final Function<Map<String, Object>, Object> resultFactory;
@@ -89,8 +92,11 @@ final class DecisionMethod {
     }
 
     Object invoke(DecisionModel decisionModel, Object[] args, Function<String, Double> thresholdProvider) {
-        DecisionRequest request =
-                DecisionRequest.builder().state(state(args)).questions(questions).build();
+        DecisionRequest request = DecisionRequest.builder()
+                .state(state(args))
+                .questions(questions)
+                .parameters(requestParameters(args))
+                .build();
         if (async) {
             return decisionModel.decideAsync(request).thenApply(response -> result(response, args, thresholdProvider));
         }
@@ -117,6 +123,14 @@ final class DecisionMethod {
         return YesNo.ensureProbability(threshold, "threshold for '" + questionName + "'");
     }
 
+    private DecisionRequestParameters requestParameters(Object[] args) {
+        if (requestParametersIndex == null) {
+            return null;
+        }
+        return ensureNotNull(
+                (DecisionRequestParameters) args[requestParametersIndex], DecisionRequestParameters.class.getSimpleName());
+    }
+
     private Map<String, Object> state(Object[] args) {
         Map<String, Object> state = new LinkedHashMap<>();
         for (StateParameter parameter : stateParameters) {
@@ -137,6 +151,14 @@ final class DecisionMethod {
                 addThresholdParameter(parameter, threshold, i);
                 continue;
             }
+            if (DecisionRequestParameters.class.isAssignableFrom(parameter.getType())) {
+                if (requestParametersIndex != null) {
+                    throw illegalConfiguration(
+                            "Method '%s' has several DecisionRequestParameters parameters", method.getName());
+                }
+                requestParametersIndex = i;
+                continue;
+            }
             if (!ParameterNameResolver.hasName(parameter) && !parameter.isNamePresent()) {
                 throw illegalConfiguration(
                         "The name of parameter %s of method '%s' is not available, but it is sent to the model "
@@ -153,8 +175,8 @@ final class DecisionMethod {
         }
         if (stateParameters.isEmpty()) {
             throw illegalConfiguration(
-                    "Method '%s' must have at least one parameter that is not annotated with @Threshold: "
-                            + "the parameters are what the model evaluates",
+                    "Method '%s' must have at least one parameter that is not annotated with @Threshold "
+                            + "and is not DecisionRequestParameters: the parameters are what the model evaluates",
                     method.getName());
         }
     }

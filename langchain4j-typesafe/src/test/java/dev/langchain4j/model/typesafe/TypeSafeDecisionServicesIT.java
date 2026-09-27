@@ -3,6 +3,7 @@ package dev.langchain4j.model.typesafe;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.model.decision.DecisionModel;
+import dev.langchain4j.model.decision.request.DecisionRequestParameters;
 import dev.langchain4j.model.output.structured.Description;
 import dev.langchain4j.service.V;
 import dev.langchain4j.service.decision.Choice;
@@ -44,6 +45,9 @@ class TypeSafeDecisionServicesIT {
 
         @Decide("Which team should handle this ticket?")
         CompletableFuture<Team> routeAsync(@V("ticket") String ticket);
+
+        @Decide("Which team should handle this ticket?")
+        DecisionResult<Team> route(@V("ticket") String ticket, DecisionRequestParameters parameters);
     }
 
     DecisionModel decisionModel = TypeSafeDecisionModel.builder()
@@ -97,5 +101,16 @@ class TypeSafeDecisionServicesIT {
         Team team = supportDesk.routeAsync("How much does the premium plan cost?").get();
 
         assertThat(team).isEqualTo(Team.SALES);
+    }
+
+    @Test
+    void should_use_model_name_from_request_parameters() {
+
+        DecisionResult<Team> result = supportDesk.route(
+                "Where is my invoice for September?",
+                DecisionRequestParameters.builder().modelName("jev-1.13.0").build());
+
+        assertThat(result.content()).isEqualTo(Team.BILLING);
+        assertThat(result.modelName()).isEqualTo("jev-1.13.0");
     }
 }

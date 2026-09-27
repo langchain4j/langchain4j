@@ -28,6 +28,9 @@ import java.util.function.Function;
  * Any of these can be wrapped in {@link DecisionResult} (to also get the raw response) and/or in
  * {@link java.util.concurrent.CompletableFuture} (to call the model asynchronously).
  * <p>
+ * A parameter of type {@link dev.langchain4j.model.decision.request.DecisionRequestParameters} is not sent as part of
+ * the state: it sets the parameters of the call, such as the model name, overriding the model's defaults.
+ * <p>
  * The question is set with {@link Decide @Decide}: on the method, or on the fields of the returned object (where
  * {@link dev.langchain4j.model.output.structured.Description @Description} is also accepted).
  * The meaning of enum constants is described with {@code @Description}:
