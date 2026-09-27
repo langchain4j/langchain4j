@@ -104,8 +104,10 @@ YesNoQuestion refundRequested = YesNoQuestion.builder()
 
 A `ChoiceQuestion` selects exactly one option out of a named set (at least 2 options).
 It is answered with a `ChoiceAnswer`:
-- `choice()`: the name of the chosen option
+- `value()`: the name of the chosen option
 - `probabilities()`: the probability of each option, keyed by option name
+- `probability(option)` and `margin()`: the probability of one option, and the difference between the two most
+  likely options
 - `confidence()`: how confident the model is, or `null` if the model does not report it (see [below](#probabilities-and-confidence))
 
 ### Score questions

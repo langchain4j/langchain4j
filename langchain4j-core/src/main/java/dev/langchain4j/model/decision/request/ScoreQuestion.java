@@ -106,8 +106,8 @@ public final class ScoreQuestion implements Question {
          * Adds the next (higher) level, described as a {@link String}, a {@link java.util.Map} or a
          * {@link java.util.List}.
          */
-        public Builder level(Object criteria) {
-            levels.add(FreeFormValue.ensureValid(criteria, "level"));
+        public Builder level(Object description) {
+            levels.add(FreeFormValue.ensureValid(description, "level"));
             return this;
         }
 

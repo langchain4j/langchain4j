@@ -102,8 +102,8 @@ public final class YesNoQuestion implements Question {
          * Describes when the answer should be "yes", as a {@link String}, a {@link java.util.Map} or a
          * {@link java.util.List}.
          */
-        public Builder whenYes(Object criteria) {
-            this.whenYes = criteria;
+        public Builder whenYes(Object description) {
+            this.whenYes = description;
             return this;
         }
 
@@ -118,8 +118,8 @@ public final class YesNoQuestion implements Question {
          * Describes when the answer should be "no", as a {@link String}, a {@link java.util.Map} or a
          * {@link java.util.List}.
          */
-        public Builder whenNo(Object criteria) {
-            this.whenNo = criteria;
+        public Builder whenNo(Object description) {
+            this.whenNo = description;
             return this;
         }
 

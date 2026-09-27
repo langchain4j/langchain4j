@@ -115,11 +115,11 @@ class QuestionsTest {
 
         assertThatThrownBy(() -> ChoiceQuestion.builder().option("billing", Map.of()))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("criteria");
+                .hasMessageContaining("description");
 
         assertThatThrownBy(() -> ChoiceQuestion.builder().option("billing", (Object) null))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("criteria");
+                .hasMessageContaining("description");
     }
 
     @Test
