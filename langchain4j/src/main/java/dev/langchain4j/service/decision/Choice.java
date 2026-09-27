@@ -24,12 +24,21 @@ public final class Choice<E> {
     private final Map<E, Double> probabilities;
     private final Double confidence;
 
-    public Choice(E value, Map<E, Double> probabilities, Double confidence) {
-        this.value = ensureNotNull(value, "value");
-        this.probabilities = probabilities == null || probabilities.isEmpty()
-                ? Map.of()
-                : Collections.unmodifiableMap(new LinkedHashMap<>(probabilities));
-        this.confidence = confidence;
+    private Choice(Builder<E> builder) {
+        this.value = ensureNotNull(builder.value, "value");
+        Map<E, Double> probabilities = new LinkedHashMap<>();
+        if (builder.probabilities != null) {
+            builder.probabilities.forEach((option, probability) -> probabilities.put(
+                    ensureNotNull(option, "option"),
+                    YesNo.ensureProbability(ensureNotNull(probability, "probability"), "probability")));
+        }
+        this.probabilities = Collections.unmodifiableMap(probabilities);
+        this.confidence =
+                builder.confidence == null ? null : YesNo.ensureProbability(builder.confidence, "confidence");
+    }
+
+    public static <E> Builder<E> builder() {
+        return new Builder<>();
     }
 
     /**
@@ -101,5 +110,31 @@ public final class Choice<E> {
     @Override
     public String toString() {
         return "Choice{value=" + value + ", probabilities=" + probabilities + ", confidence=" + confidence + '}';
+    }
+
+    public static final class Builder<E> {
+
+        private E value;
+        private Map<E, Double> probabilities;
+        private Double confidence;
+
+        public Builder<E> value(E value) {
+            this.value = value;
+            return this;
+        }
+
+        public Builder<E> probabilities(Map<E, Double> probabilities) {
+            this.probabilities = probabilities;
+            return this;
+        }
+
+        public Builder<E> confidence(Double confidence) {
+            this.confidence = confidence;
+            return this;
+        }
+
+        public Choice<E> build() {
+            return new Choice<>(this);
+        }
     }
 }

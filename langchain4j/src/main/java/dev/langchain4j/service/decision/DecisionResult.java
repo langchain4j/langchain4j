@@ -27,9 +27,13 @@ public final class DecisionResult<T> {
     private final T content;
     private final DecisionResponse response;
 
-    public DecisionResult(T content, DecisionResponse response) {
-        this.content = ensureNotNull(content, "content");
-        this.response = ensureNotNull(response, "response");
+    private DecisionResult(Builder<T> builder) {
+        this.content = ensureNotNull(builder.content, "content");
+        this.response = ensureNotNull(builder.response, "response");
+    }
+
+    public static <T> Builder<T> builder() {
+        return new Builder<>();
     }
 
     public T content() {
@@ -67,5 +71,25 @@ public final class DecisionResult<T> {
     @Override
     public String toString() {
         return "DecisionResult{content=" + content + ", response=" + response + '}';
+    }
+
+    public static final class Builder<T> {
+
+        private T content;
+        private DecisionResponse response;
+
+        public Builder<T> content(T content) {
+            this.content = content;
+            return this;
+        }
+
+        public Builder<T> response(DecisionResponse response) {
+            this.response = response;
+            return this;
+        }
+
+        public DecisionResult<T> build() {
+            return new DecisionResult<>(this);
+        }
     }
 }

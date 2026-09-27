@@ -3,7 +3,7 @@ package dev.langchain4j.service.decision;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import dev.langchain4j.exception.LangChain4jException;
+import dev.langchain4j.model.decision.InvalidDecisionResponseException;
 import dev.langchain4j.model.decision.DecisionModel;
 import dev.langchain4j.model.decision.request.ChoiceQuestion;
 import dev.langchain4j.model.decision.request.DecisionRequest;
@@ -22,6 +22,7 @@ import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import org.junit.jupiter.api.Test;
 
 class DecisionServicesTest {
@@ -58,6 +59,11 @@ class DecisionServicesTest {
             return CompletableFuture.completedFuture(doDecide(request));
         }
 
+        @Override
+        public DecisionRequestParameters defaultRequestParameters() {
+            return DecisionRequestParameters.builder().modelName("fake-default-model").build();
+        }
+
         DecisionRequest request() {
             assertThat(requests).hasSize(1);
             return requests.get(0);
@@ -69,7 +75,7 @@ class DecisionServicesTest {
     }
 
     private static final ChoiceAnswer BILLING_ANSWER = ChoiceAnswer.builder()
-            .choice("BILLING")
+            .value("BILLING")
             .probability("BILLING", 0.8)
             .probability("SUPPORT", 0.15)
             .probability("SALES", 0.05)
@@ -120,13 +126,13 @@ class DecisionServicesTest {
     void should_use_threshold_provider() {
 
         // given
-        List<String> requestedThresholds = new ArrayList<>();
+        List<ThresholdContext> requestedThresholds = new ArrayList<>();
         Map<String, Double> config = new java.util.HashMap<>(Map.of("isSpam", 0.9));
         SpamFilter spamFilter = DecisionServices.builder(SpamFilter.class)
                 .decisionModel(new FakeDecisionModel(Map.of("isSpam", yesNo(0.7))))
-                .thresholdProvider(question -> {
-                    requestedThresholds.add(question);
-                    return config.get(question);
+                .thresholdProvider(context -> {
+                    requestedThresholds.add(context);
+                    return config.get(context.questionName());
                 })
                 .build();
 
@@ -139,7 +145,12 @@ class DecisionServicesTest {
         config.remove("isSpam"); // falls back to 0.5
         assertThat(spamFilter.isSpam("You won a cruise!")).isTrue();
 
-        assertThat(requestedThresholds).containsExactly("isSpam", "isSpam", "isSpam");
+        assertThat(requestedThresholds).hasSize(3);
+        ThresholdContext context = requestedThresholds.get(0);
+        assertThat(context.serviceInterface()).isEqualTo(SpamFilter.class);
+        assertThat(context.method().getName()).isEqualTo("isSpam");
+        assertThat(context.questionName()).isEqualTo("isSpam");
+        assertThat(context.modelName()).isEqualTo("fake-default-model");
     }
 
     @Test
@@ -147,7 +158,7 @@ class DecisionServicesTest {
 
         SpamFilter spamFilter = DecisionServices.builder(SpamFilter.class)
                 .decisionModel(new FakeDecisionModel(Map.of("isSpam", yesNo(0.7))))
-                .thresholdProvider(question -> 1.5)
+                .thresholdProvider(context -> 1.5)
                 .build();
 
         assertThatThrownBy(() -> spamFilter.isSpam("Hello"))
@@ -264,7 +275,10 @@ class DecisionServicesTest {
     @Test
     void choice_should_expose_probability_and_margin() {
 
-        Choice<Team> choice = new Choice<>(Team.BILLING, Map.of(Team.BILLING, 0.55, Team.SUPPORT, 0.4), null);
+        Choice<Team> choice = Choice.<Team>builder()
+                .value(Team.BILLING)
+                .probabilities(Map.of(Team.BILLING, 0.55, Team.SUPPORT, 0.4))
+                .build();
 
         assertThat(choice.probability(Team.BILLING)).isEqualTo(0.55);
         assertThat(choice.probability(Team.SALES)).isZero();
@@ -274,7 +288,11 @@ class DecisionServicesTest {
     @Test
     void choice_should_support_options_that_are_not_enum_constants() {
 
-        Choice<String> choice = new Choice<>("refunds-agent", Map.of("refunds-agent", 0.7, "billing-agent", 0.3), 0.4);
+        Choice<String> choice = Choice.<String>builder()
+                .value("refunds-agent")
+                .probabilities(Map.of("refunds-agent", 0.7, "billing-agent", 0.3))
+                .confidence(0.4)
+                .build();
 
         assertThat(choice.value()).isEqualTo("refunds-agent");
         assertThat(choice.probability("billing-agent")).isEqualTo(0.3);
@@ -284,7 +302,7 @@ class DecisionServicesTest {
     @Test
     void choice_should_fail_when_model_did_not_report_probabilities() {
 
-        Choice<Team> choice = new Choice<>(Team.BILLING, Map.of(), null);
+        Choice<Team> choice = Choice.<Team>builder().value(Team.BILLING).build();
 
         assertThatThrownBy(() -> choice.probability(Team.BILLING)).isInstanceOf(IllegalStateException.class);
         assertThatThrownBy(choice::margin).isInstanceOf(IllegalStateException.class);
@@ -295,11 +313,11 @@ class DecisionServicesTest {
 
         Router router = DecisionServices.builder(Router.class)
                 .decisionModel(new FakeDecisionModel(Map.of(
-                        "route", ChoiceAnswer.builder().choice("MARKETING").build())))
+                        "route", ChoiceAnswer.builder().value("MARKETING").build())))
                 .build();
 
         assertThatThrownBy(() -> router.route("Hello"))
-                .isInstanceOf(LangChain4jException.class)
+                .isInstanceOf(InvalidDecisionResponseException.class)
                 .hasMessageContaining("MARKETING");
     }
 
@@ -364,7 +382,7 @@ class DecisionServicesTest {
                 Map.of("team", BILLING_ANSWER, "urgent", yesNo(0.7), "refund", yesNo(0.7)));
         SupportDesk supportDesk = DecisionServices.builder(SupportDesk.class)
                 .decisionModel(model)
-                .thresholdProvider(question -> question.equals("urgent") ? 0.8 : null)
+                .thresholdProvider(context -> context.questionName().equals("urgent") ? 0.8 : null)
                 .build();
 
         // when
@@ -452,6 +470,135 @@ class DecisionServicesTest {
                 .failsWithin(java.time.Duration.ZERO)
                 .withThrowableOfType(java.util.concurrent.ExecutionException.class)
                 .withCauseInstanceOf(IllegalArgumentException.class);
+    }
+
+    interface CompletionStageRouter {
+
+        @Decide("Which team should handle this ticket?")
+        CompletionStage<Team> route(@V("ticket") String ticket);
+    }
+
+    @Test
+    void should_support_completion_stage() {
+
+        CompletionStageRouter router = DecisionServices.builder(CompletionStageRouter.class)
+                .decisionModel(new FakeDecisionModel(Map.of("route", BILLING_ANSWER)))
+                .build();
+
+        assertThat(router.route("I was charged twice").toCompletableFuture().join())
+                .isEqualTo(Team.BILLING);
+    }
+
+    @Test
+    void cancelling_the_result_should_cancel_the_model_call() {
+
+        // given
+        CompletableFuture<DecisionResponse> modelCall = new CompletableFuture<>();
+        FakeDecisionModel model = new FakeDecisionModel(Map.of()) {
+            @Override
+            public CompletableFuture<DecisionResponse> doDecideAsync(DecisionRequest request) {
+                return modelCall;
+            }
+        };
+        RouterWithDetails router = DecisionServices.builder(RouterWithDetails.class)
+                .decisionModel(model)
+                .build();
+
+        // when
+        router.routeAsync("I was charged twice").cancel(true);
+
+        // then
+        assertThat(modelCall).isCancelled();
+    }
+
+    interface TwoParameters {
+
+        @Decide("Is this message spam?")
+        boolean isSpam(@V("subject") String subject, @V("body") String body);
+    }
+
+    @Test
+    void should_fail_with_clear_message_when_all_arguments_are_null() {
+
+        TwoParameters service = DecisionServices.builder(TwoParameters.class)
+                .decisionModel(new FakeDecisionModel(Map.of("isSpam", yesNo(0.7))))
+                .build();
+
+        assertThatThrownBy(() -> service.isSpam(null, null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("All arguments of method 'isSpam'")
+                .hasMessageContaining("[subject, body]");
+    }
+
+    record Customer(String customerPlan, int openTickets) {}
+
+    interface CustomerDesk {
+
+        @Decide("Does this need attention today?")
+        boolean urgent(@V("ticket") String ticket, @V("customer") Customer customer);
+    }
+
+    @Test
+    void should_send_objects_as_maps_with_java_field_names() {
+
+        FakeDecisionModel model = new FakeDecisionModel(Map.of("urgent", yesNo(0.7)));
+        CustomerDesk desk = DecisionServices.builder(CustomerDesk.class).decisionModel(model).build();
+
+        desk.urgent("Payouts are failing", new Customer("enterprise", 3));
+
+        assertThat(model.request().state())
+                .isEqualTo(Map.of(
+                        "ticket", "Payouts are failing",
+                        "customer", Map.of("customerPlan", "enterprise", "openTickets", 3)));
+    }
+
+    @Test
+    void decision_method_should_expose_its_analysis() throws Exception {
+
+        // given
+        DecisionMethod method = DecisionMethod.of(SupportDesk.class.getMethod("triageRecord", String.class));
+
+        // then
+        assertThat(method.questions()).containsOnlyKeys("team", "urgent", "refund");
+        assertThat(method.isAsync()).isFalse();
+        assertThat(method.contentType()).isEqualTo(TriageRecord.class);
+        assertThat(method.reflectiveTypes()).containsExactlyInAnyOrder(TriageRecord.class, Team.class);
+
+        DecisionRequest request = method.toRequest(new Object[] {"I was charged twice"});
+        assertThat(request.state()).isEqualTo(Map.of("ticket", "I was charged twice"));
+
+        TriageRecord triage = (TriageRecord) method.toResult(
+                DecisionResponse.builder()
+                        .answers(Map.of("team", BILLING_ANSWER, "urgent", yesNo(0.7), "refund", yesNo(0.2)))
+                        .build(),
+                question -> question.equals("urgent") ? 0.8 : null);
+        assertThat(triage.team().value()).isEqualTo(Team.BILLING);
+        assertThat(triage.urgent()).isFalse();
+        assertThat(triage.refund()).isFalse();
+    }
+
+    @Test
+    void builder_should_be_extensible_by_frameworks() {
+
+        class FrameworkBuilder<T> extends DecisionServices.Builder<T> {
+
+            FrameworkBuilder(Class<T> serviceInterface) {
+                super(serviceInterface);
+            }
+
+            @Override
+            public T build() {
+                assertThat(serviceInterface()).isEqualTo(SpamFilter.class);
+                assertThat(decisionModel()).isNotNull();
+                return super.build();
+            }
+        }
+
+        SpamFilter spamFilter = new FrameworkBuilder<>(SpamFilter.class)
+                .decisionModel(new FakeDecisionModel(Map.of("isSpam", yesNo(0.7))))
+                .build();
+
+        assertThat(spamFilter.isSpam("You won a cruise!")).isTrue();
     }
 
     // other methods

@@ -1,15 +1,17 @@
 package dev.langchain4j.service.decision;
 
+import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
 
-import dev.langchain4j.exception.LangChain4jException;
+import dev.langchain4j.Internal;
 import dev.langchain4j.model.decision.DecisionModel;
+import dev.langchain4j.model.decision.InvalidDecisionResponseException;
 import dev.langchain4j.model.decision.request.ChoiceQuestion;
 import dev.langchain4j.model.decision.request.DecisionRequest;
 import dev.langchain4j.model.decision.request.DecisionRequestParameters;
-import dev.langchain4j.model.decision.request.YesNoQuestion;
 import dev.langchain4j.model.decision.request.Question;
+import dev.langchain4j.model.decision.request.YesNoQuestion;
 import dev.langchain4j.model.decision.response.ChoiceAnswer;
 import dev.langchain4j.model.decision.response.DecisionResponse;
 import dev.langchain4j.model.output.structured.Description;
@@ -24,37 +26,49 @@ import java.lang.reflect.RecordComponent;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.EnumMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.function.DoubleSupplier;
 import java.util.function.Function;
 
 /**
  * The analysis of one decision service method: the questions it asks, how its parameters become the state, and how
- * the answers are mapped back to its return type. Created once per method, when the service is built.
+ * the answers are mapped back to its return type.
+ * <p>
+ * All validation happens in {@link #of(Method)}, so frameworks can analyze methods at build time. They can then use
+ * {@link #toRequest(Object[])} and {@link #toResult(DecisionResponse, Function)} to implement the method without the
+ * proxy created by {@link DecisionServices}.
  */
-final class DecisionMethod {
+@Internal
+public final class DecisionMethod {
 
     private static final double DEFAULT_THRESHOLD = 0.5;
 
     private final Method method;
     private final boolean async;
     private final boolean withResponse;
-    private final List<StateParameter> stateParameters = new ArrayList<>();
-    private Integer requestParametersIndex;
-    private final Map<String, QuestionMapping> mappings = new LinkedHashMap<>();
-    private final Map<String, Question> questions = new LinkedHashMap<>();
+    private final Type contentType;
+    private final List<StateParameter> stateParameters;
+    private final int requestParametersIndex;
+    private final Map<String, QuestionMapping> mappings;
+    private final Map<String, Question> questions;
+    private final Set<Class<?>> reflectiveTypes;
     private final Function<Map<String, Object>, Object> resultFactory;
 
-    DecisionMethod(Method method) {
+    private DecisionMethod(Method method) {
         this.method = method;
+        Analysis analysis = new Analysis(method);
 
         Type type = method.getGenericReturnType();
-        this.async = isParameterizedBy(type, CompletableFuture.class);
+        this.async = isParameterizedBy(type, CompletableFuture.class) || isParameterizedBy(type, CompletionStage.class);
         if (async) {
             type = typeArgument(type);
         }
@@ -62,16 +76,17 @@ final class DecisionMethod {
         if (withResponse) {
             type = typeArgument(type);
         }
+        this.contentType = type;
 
         Decide decide = method.getAnnotation(Decide.class);
-        QuestionMapping single = mappingFor(method.getName(), type, decide == null ? null : decide.value());
+        QuestionMapping single = analysis.mappingFor(method.getName(), type, decide == null ? null : decide.value());
         if (single != null) {
             if (decide == null) {
                 throw illegalConfiguration(
                         "Method '%s' must be annotated with @Decide, which contains the question to answer",
                         method.getName());
             }
-            add(single);
+            analysis.add(single);
             this.resultFactory = values -> values.get(single.name());
         } else if (type instanceof Class<?> objectType && isObjectType(objectType)) {
             if (decide != null) {
@@ -80,7 +95,8 @@ final class DecisionMethod {
                                 + "@Decide is not supported on such methods: annotate the fields of %s instead",
                         method.getName(), objectType.getSimpleName(), objectType.getSimpleName());
             }
-            this.resultFactory = objectFactory(objectType);
+            analysis.reflectiveTypes.add(objectType);
+            this.resultFactory = analysis.objectFactory(objectType);
         } else {
             throw illegalConfiguration(
                     "Method '%s' has an unsupported return type: %s. Supported types are boolean, YesNo, an enum, "
@@ -89,55 +105,60 @@ final class DecisionMethod {
                     method.getName(), method.getGenericReturnType().getTypeName());
         }
 
-        analyzeParameters();
+        analysis.analyzeParameters();
+        this.stateParameters = List.copyOf(analysis.stateParameters);
+        this.requestParametersIndex = analysis.requestParametersIndex;
+        this.mappings = Collections.unmodifiableMap(analysis.mappings);
+        this.questions = Collections.unmodifiableMap(analysis.questions);
+        this.reflectiveTypes = Collections.unmodifiableSet(analysis.reflectiveTypes);
     }
 
-    Object invoke(DecisionModel decisionModel, Object[] args, Function<String, Double> thresholdProvider) {
-        if (!async) {
-            return result(decisionModel.decide(request(args)), thresholdProvider);
-        }
-        DecisionRequest request;
-        try {
-            request = request(args);
-        } catch (RuntimeException e) {
-            return CompletableFuture.failedFuture(e);
-        }
-        return decisionModel.decideAsync(request).thenApply(response -> result(response, thresholdProvider));
+    /**
+     * Analyzes the given method of a decision service interface.
+     *
+     * @throws dev.langchain4j.service.IllegalConfigurationException if the method cannot be implemented.
+     */
+    public static DecisionMethod of(Method method) {
+        return new DecisionMethod(ensureNotNull(method, "method"));
     }
 
-    private DecisionRequest request(Object[] args) {
-        return DecisionRequest.builder()
-                .state(state(args))
-                .questions(questions)
-                .parameters(requestParameters(args))
-                .build();
+    public Method method() {
+        return method;
     }
 
-    private Object result(DecisionResponse response, Function<String, Double> thresholdProvider) {
-        Map<String, Object> values = new LinkedHashMap<>();
-        mappings.forEach((name, mapping) ->
-                values.put(name, mapping.value(response, () -> threshold(name, thresholdProvider))));
-        Object content = resultFactory.apply(values);
-        return withResponse ? new DecisionResult<>(content, response) : content;
+    /**
+     * The questions asked by this method, keyed by question name.
+     */
+    public Map<String, Question> questions() {
+        return questions;
     }
 
-    private double threshold(String questionName, Function<String, Double> thresholdProvider) {
-        Double threshold = thresholdProvider == null ? null : thresholdProvider.apply(questionName);
-        if (threshold == null) {
-            threshold = DEFAULT_THRESHOLD;
-        }
-        return YesNo.ensureProbability(threshold, "threshold for '" + questionName + "'");
+    /**
+     * Whether the method returns a {@link CompletableFuture} or a {@link CompletionStage}.
+     */
+    public boolean isAsync() {
+        return async;
     }
 
-    private DecisionRequestParameters requestParameters(Object[] args) {
-        if (requestParametersIndex == null) {
-            return null;
-        }
-        return ensureNotNull(
-                (DecisionRequestParameters) args[requestParametersIndex], DecisionRequestParameters.class.getSimpleName());
+    /**
+     * The type of the result, without the {@link CompletableFuture} and {@link DecisionResult} wrappers.
+     */
+    public Type contentType() {
+        return contentType;
     }
 
-    private Map<String, Object> state(Object[] args) {
+    /**
+     * The classes that are instantiated or read by reflection when mapping the answers: the returned object types
+     * and the enums whose constants are the options. Frameworks can use this to register them for native images.
+     */
+    public Set<Class<?>> reflectiveTypes() {
+        return reflectiveTypes;
+    }
+
+    /**
+     * Creates the request for an invocation of this method with the given arguments.
+     */
+    public DecisionRequest toRequest(Object[] args) {
         Map<String, Object> state = new LinkedHashMap<>();
         for (StateParameter parameter : stateParameters) {
             Object value = args[parameter.index()];
@@ -145,157 +166,89 @@ final class DecisionMethod {
                 state.put(parameter.name(), value);
             }
         }
-        return state;
+        if (state.isEmpty()) {
+            throw new IllegalArgumentException("All arguments of method '%s' that are sent to the model (%s) are null"
+                    .formatted(
+                            method.getName(),
+                            stateParameters.stream().map(StateParameter::name).toList()));
+        }
+        return DecisionRequest.builder()
+                .state(state)
+                .questions(questions)
+                .parameters(requestParameters(args))
+                .build();
     }
 
-    private void analyzeParameters() {
-        Parameter[] parameters = method.getParameters();
-        for (int i = 0; i < parameters.length; i++) {
-            Parameter parameter = parameters[i];
-            if (DecisionRequestParameters.class.isAssignableFrom(parameter.getType())) {
-                if (requestParametersIndex != null) {
-                    throw illegalConfiguration(
-                            "Method '%s' has several DecisionRequestParameters parameters", method.getName());
-                }
-                requestParametersIndex = i;
-                continue;
-            }
-            if (!ParameterNameResolver.hasName(parameter) && !parameter.isNamePresent()) {
-                throw illegalConfiguration(
-                        "The name of parameter %s of method '%s' is not available, but it is sent to the model "
-                                + "together with the value. Compile with the '-parameters' option "
-                                + "or annotate the parameter with @V(\"name\")",
-                        i, method.getName());
-            }
-            String name = ParameterNameResolver.name(parameter);
-            if (stateParameters.stream().anyMatch(p -> p.name().equals(name))) {
-                throw illegalConfiguration(
-                        "Method '%s' has several parameters named '%s'", method.getName(), name);
-            }
-            stateParameters.add(new StateParameter(name, i));
-        }
-        if (stateParameters.isEmpty()) {
-            throw illegalConfiguration(
-                    "Method '%s' must have at least one parameter that is not DecisionRequestParameters: "
-                            + "the parameters are what the model evaluates",
-                    method.getName());
-        }
+    /**
+     * Maps the response to the result of this method, without the {@link CompletableFuture} wrapper.
+     *
+     * @param thresholds the threshold of each {@code boolean} answer, by question name; {@code null} means 0.5.
+     */
+    public Object toResult(DecisionResponse response, Function<String, Double> thresholds) {
+        Map<String, Object> values = new LinkedHashMap<>();
+        mappings.forEach(
+                (name, mapping) -> values.put(name, mapping.value(response, () -> threshold(name, thresholds))));
+        Object content = resultFactory.apply(values);
+        return withResponse
+                ? DecisionResult.builder().content(content).response(response).build()
+                : content;
     }
 
-    private Function<Map<String, Object>, Object> objectFactory(Class<?> type) {
-        if (type.isRecord()) {
-            RecordComponent[] components = type.getRecordComponents();
-            Class<?>[] componentTypes = new Class<?>[components.length];
-            for (int i = 0; i < components.length; i++) {
-                RecordComponent component = components[i];
-                componentTypes[i] = component.getType();
-                add(fieldMapping(declaredField(type, component.getName()), component.getGenericType()));
-            }
-            Constructor<?> constructor = constructor(type, componentTypes);
-            return values -> {
-                Object[] arguments = new Object[components.length];
-                for (int i = 0; i < components.length; i++) {
-                    arguments[i] = values.get(components[i].getName());
-                }
-                return newInstance(constructor, arguments);
-            };
+    /**
+     * Invokes this method with the given model.
+     */
+    public Object invoke(
+            DecisionModel decisionModel, Object[] args, Class<?> serviceInterface, ThresholdProvider thresholdProvider) {
+        if (!async) {
+            DecisionRequest request = toRequest(args);
+            return toResult(
+                    decisionModel.decide(request),
+                    thresholds(decisionModel, request, serviceInterface, thresholdProvider));
         }
-
-        List<Field> fields = new ArrayList<>();
-        for (Class<?> c = type; c != null && c != Object.class; c = c.getSuperclass()) {
-            for (Field field : c.getDeclaredFields()) {
-                int modifiers = field.getModifiers();
-                if (!Modifier.isStatic(modifiers) && !Modifier.isTransient(modifiers) && !field.isSynthetic()) {
-                    fields.add(field);
-                }
-            }
+        DecisionRequest request;
+        try {
+            request = toRequest(args);
+        } catch (RuntimeException e) {
+            return CompletableFuture.failedFuture(e);
         }
-        if (fields.isEmpty()) {
-            throw illegalConfiguration("%s, returned by method '%s', has no fields to decide on",
-                    type.getSimpleName(), method.getName());
-        }
-        for (Field field : fields) {
-            add(fieldMapping(field, field.getGenericType()));
-            field.setAccessible(true);
-        }
-        Constructor<?> constructor = constructor(type);
-        return values -> {
-            Object instance = newInstance(constructor);
-            for (Field field : fields) {
-                try {
-                    field.set(instance, values.get(field.getName()));
-                } catch (IllegalAccessException e) {
-                    throw new IllegalStateException("Cannot set field '%s'".formatted(field.getName()), e);
-                }
-            }
-            return instance;
-        };
+        CompletableFuture<DecisionResponse> source = decisionModel.decideAsync(request);
+        CompletableFuture<Object> result = source.thenApply(response ->
+                toResult(response, thresholds(decisionModel, request, serviceInterface, thresholdProvider)));
+        propagateCancellation(result, source);
+        return result;
     }
 
-    private QuestionMapping fieldMapping(Field field, Type type) {
-        String questionText = Optional.ofNullable(field.getAnnotation(Decide.class))
-                .map(Decide::value)
-                .or(() -> Optional.ofNullable(field.getAnnotation(Description.class))
-                        .map(description -> String.join(" ", description.value())))
-                .orElse(field.getName());
-        QuestionMapping mapping = mappingFor(field.getName(), type, questionText);
-        if (mapping == null) {
-            throw illegalConfiguration(
-                    "Field '%s' of %s, returned by method '%s', has an unsupported type: %s. "
-                            + "Supported types are boolean, YesNo, an enum and Choice<enum>",
-                    field.getName(), field.getDeclaringClass().getSimpleName(), method.getName(),
-                    type.getTypeName());
+    private Function<String, Double> thresholds(
+            DecisionModel decisionModel,
+            DecisionRequest request,
+            Class<?> serviceInterface,
+            ThresholdProvider thresholdProvider) {
+        if (thresholdProvider == null) {
+            return questionName -> null;
         }
-        return mapping;
+        String modelName =
+                decisionModel.defaultRequestParameters().overrideWith(request.parameters()).modelName();
+        return questionName -> thresholdProvider.threshold(ThresholdContext.builder()
+                .serviceInterface(serviceInterface)
+                .method(method)
+                .questionName(questionName)
+                .modelName(modelName)
+                .build());
     }
 
-    private void add(QuestionMapping mapping) {
-        mappings.put(mapping.name(), mapping);
-        questions.put(mapping.name(), mapping.question());
+    private static double threshold(String questionName, Function<String, Double> thresholds) {
+        Double threshold = thresholds == null ? null : thresholds.apply(questionName);
+        return YesNo.ensureProbability(
+                threshold == null ? DEFAULT_THRESHOLD : threshold, "threshold for '" + questionName + "'");
     }
 
-    private QuestionMapping mappingFor(String name, Type type, String questionText) {
-        Kind kind;
-        Class<?> enumType = null;
-        if (type == boolean.class || type == Boolean.class) {
-            kind = Kind.BOOLEAN;
-        } else if (type == YesNo.class) {
-            kind = Kind.YES_NO;
-        } else if (type instanceof Class<?> c && c.isEnum()) {
-            kind = Kind.ENUM;
-            enumType = c;
-        } else if (isParameterizedBy(type, Choice.class)) {
-            kind = Kind.CHOICE;
-            if (!(typeArgument(type) instanceof Class<?> c) || !c.isEnum()) {
-                throw illegalConfiguration("'%s' of method '%s': Choice must be parameterized with an enum",
-                        name, method.getName());
-            }
-            enumType = c;
-        } else {
+    private DecisionRequestParameters requestParameters(Object[] args) {
+        if (requestParametersIndex < 0) {
             return null;
         }
-        if (questionText == null) {
-            return new QuestionMapping(name, null, kind, enumType);
-        }
-        Question question = enumType == null
-                ? YesNoQuestion.builder().instructions(questionText).build()
-                : choiceQuestion(name, questionText, enumType);
-        return new QuestionMapping(name, question, kind, enumType);
-    }
-
-    private ChoiceQuestion choiceQuestion(String name, String questionText, Class<?> enumType) {
-        Object[] constants = enumType.getEnumConstants();
-        if (constants.length < 2) {
-            throw illegalConfiguration("'%s' of method '%s': enum %s must have at least 2 constants",
-                    name, method.getName(), enumType.getSimpleName());
-        }
-        ChoiceQuestion.Builder builder = ChoiceQuestion.builder().instructions(questionText);
-        for (Object constant : constants) {
-            String option = ((Enum<?>) constant).name();
-            Description description = declaredField(enumType, option).getAnnotation(Description.class);
-            builder.option(option, description == null ? option : String.join(" ", description.value()));
-        }
-        return builder.build();
+        return ensureNotNull(
+                (DecisionRequestParameters) args[requestParametersIndex],
+                DecisionRequestParameters.class.getSimpleName());
     }
 
     private static boolean isObjectType(Class<?> type) {
@@ -325,23 +278,198 @@ final class DecisionMethod {
         }
     }
 
-    private Constructor<?> constructor(Class<?> type, Class<?>... parameterTypes) {
-        try {
-            Constructor<?> constructor = type.getDeclaredConstructor(parameterTypes);
-            constructor.setAccessible(true);
-            return constructor;
-        } catch (NoSuchMethodException e) {
-            throw illegalConfiguration("%s, returned by method '%s', must have a no-argument constructor",
-                    type.getSimpleName(), method.getName());
-        }
-    }
-
     private static Object newInstance(Constructor<?> constructor, Object... arguments) {
         try {
             return constructor.newInstance(arguments);
         } catch (ReflectiveOperationException e) {
             throw new IllegalStateException(
                     "Cannot create an instance of " + constructor.getDeclaringClass().getName(), e);
+        }
+    }
+
+    /**
+     * Collects the results of the analysis before they are stored in the final fields of {@link DecisionMethod}.
+     */
+    private static final class Analysis {
+
+        private final Method method;
+        private final List<StateParameter> stateParameters = new ArrayList<>();
+        private int requestParametersIndex = -1;
+        private final Map<String, QuestionMapping> mappings = new LinkedHashMap<>();
+        private final Map<String, Question> questions = new LinkedHashMap<>();
+        private final Set<Class<?>> reflectiveTypes = new LinkedHashSet<>();
+
+        private Analysis(Method method) {
+            this.method = method;
+        }
+
+        private void analyzeParameters() {
+            Parameter[] parameters = method.getParameters();
+            for (int i = 0; i < parameters.length; i++) {
+                Parameter parameter = parameters[i];
+                if (DecisionRequestParameters.class.isAssignableFrom(parameter.getType())) {
+                    if (requestParametersIndex >= 0) {
+                        throw illegalConfiguration(
+                                "Method '%s' has several DecisionRequestParameters parameters", method.getName());
+                    }
+                    requestParametersIndex = i;
+                    continue;
+                }
+                if (!ParameterNameResolver.hasName(parameter) && !parameter.isNamePresent()) {
+                    throw illegalConfiguration(
+                            "The name of parameter %s of method '%s' is not available, but it is sent to the model "
+                                    + "together with the value. Compile with the '-parameters' option "
+                                    + "or annotate the parameter with @V(\"name\")",
+                            i, method.getName());
+                }
+                String name = ParameterNameResolver.name(parameter);
+                if (stateParameters.stream().anyMatch(p -> p.name().equals(name))) {
+                    throw illegalConfiguration(
+                            "Method '%s' has several parameters named '%s'", method.getName(), name);
+                }
+                stateParameters.add(new StateParameter(name, i));
+            }
+            if (stateParameters.isEmpty()) {
+                throw illegalConfiguration(
+                        "Method '%s' must have at least one parameter that is not DecisionRequestParameters: "
+                                + "the parameters are what the model evaluates",
+                        method.getName());
+            }
+        }
+
+        private Function<Map<String, Object>, Object> objectFactory(Class<?> type) {
+            if (type.isRecord()) {
+                RecordComponent[] components = type.getRecordComponents();
+                Class<?>[] componentTypes = new Class<?>[components.length];
+                for (int i = 0; i < components.length; i++) {
+                    RecordComponent component = components[i];
+                    componentTypes[i] = component.getType();
+                    add(fieldMapping(declaredField(type, component.getName()), component.getGenericType()));
+                }
+                Constructor<?> constructor = constructor(type, componentTypes);
+                return values -> {
+                    Object[] arguments = new Object[components.length];
+                    for (int i = 0; i < components.length; i++) {
+                        arguments[i] = values.get(components[i].getName());
+                    }
+                    return newInstance(constructor, arguments);
+                };
+            }
+
+            List<Field> fields = new ArrayList<>();
+            for (Class<?> c = type; c != null && c != Object.class; c = c.getSuperclass()) {
+                for (Field field : c.getDeclaredFields()) {
+                    int modifiers = field.getModifiers();
+                    if (!Modifier.isStatic(modifiers) && !Modifier.isTransient(modifiers) && !field.isSynthetic()) {
+                        fields.add(field);
+                    }
+                }
+            }
+            if (fields.isEmpty()) {
+                throw illegalConfiguration(
+                        "%s, returned by method '%s', has no fields to decide on",
+                        type.getSimpleName(), method.getName());
+            }
+            for (Field field : fields) {
+                add(fieldMapping(field, field.getGenericType()));
+                field.setAccessible(true);
+            }
+            Constructor<?> constructor = constructor(type);
+            return values -> {
+                Object instance = newInstance(constructor);
+                for (Field field : fields) {
+                    try {
+                        field.set(instance, values.get(field.getName()));
+                    } catch (IllegalAccessException e) {
+                        throw new IllegalStateException("Cannot set field '%s'".formatted(field.getName()), e);
+                    }
+                }
+                return instance;
+            };
+        }
+
+        private QuestionMapping fieldMapping(Field field, Type type) {
+            String questionText = Optional.ofNullable(field.getAnnotation(Decide.class))
+                    .map(Decide::value)
+                    .or(() -> Optional.ofNullable(field.getAnnotation(Description.class))
+                            .map(description -> String.join(" ", description.value())))
+                    .orElse(field.getName());
+            QuestionMapping mapping = mappingFor(field.getName(), type, questionText);
+            if (mapping == null) {
+                throw illegalConfiguration(
+                        "Field '%s' of %s, returned by method '%s', has an unsupported type: %s. "
+                                + "Supported types are boolean, YesNo, an enum and Choice<enum>",
+                        field.getName(),
+                        field.getDeclaringClass().getSimpleName(),
+                        method.getName(),
+                        type.getTypeName());
+            }
+            return mapping;
+        }
+
+        private void add(QuestionMapping mapping) {
+            mappings.put(mapping.name(), mapping);
+            questions.put(mapping.name(), mapping.question());
+        }
+
+        private QuestionMapping mappingFor(String name, Type type, String questionText) {
+            Kind kind;
+            Class<?> enumType = null;
+            if (type == boolean.class || type == Boolean.class) {
+                kind = Kind.BOOLEAN;
+            } else if (type == YesNo.class) {
+                kind = Kind.YES_NO;
+            } else if (type instanceof Class<?> c && c.isEnum()) {
+                kind = Kind.ENUM;
+                enumType = c;
+            } else if (isParameterizedBy(type, Choice.class)) {
+                kind = Kind.CHOICE;
+                if (!(typeArgument(type) instanceof Class<?> c) || !c.isEnum()) {
+                    throw illegalConfiguration(
+                            "'%s' of method '%s': Choice must be parameterized with an enum", name, method.getName());
+                }
+                enumType = c;
+            } else {
+                return null;
+            }
+            if (questionText == null) {
+                return new QuestionMapping(name, null, kind, enumType);
+            }
+            if (enumType != null) {
+                reflectiveTypes.add(enumType);
+            }
+            Question question = enumType == null
+                    ? YesNoQuestion.builder().instructions(questionText).build()
+                    : choiceQuestion(name, questionText, enumType);
+            return new QuestionMapping(name, question, kind, enumType);
+        }
+
+        private ChoiceQuestion choiceQuestion(String name, String questionText, Class<?> enumType) {
+            Object[] constants = enumType.getEnumConstants();
+            if (constants.length < 2) {
+                throw illegalConfiguration(
+                        "'%s' of method '%s': enum %s must have at least 2 constants",
+                        name, method.getName(), enumType.getSimpleName());
+            }
+            ChoiceQuestion.Builder builder = ChoiceQuestion.builder().instructions(questionText);
+            for (Object constant : constants) {
+                String option = ((Enum<?>) constant).name();
+                Description description = declaredField(enumType, option).getAnnotation(Description.class);
+                builder.option(option, description == null ? option : String.join(" ", description.value()));
+            }
+            return builder.build();
+        }
+
+        private Constructor<?> constructor(Class<?> type, Class<?>... parameterTypes) {
+            try {
+                Constructor<?> constructor = type.getDeclaredConstructor(parameterTypes);
+                constructor.setAccessible(true);
+                return constructor;
+            } catch (NoSuchMethodException e) {
+                throw illegalConfiguration(
+                        "%s, returned by method '%s', must have a no-argument constructor",
+                        type.getSimpleName(), method.getName());
+            }
         }
     }
 
@@ -359,8 +487,8 @@ final class DecisionMethod {
         Object value(DecisionResponse response, DoubleSupplier threshold) {
             return switch (kind) {
                 case BOOLEAN -> response.yesNo(name).probability() >= threshold.getAsDouble();
-                case YES_NO -> new YesNo(response.yesNo(name).probability());
-                case ENUM -> constant(response.choice(name).choice());
+                case YES_NO -> YesNo.of(response.yesNo(name).probability());
+                case ENUM -> constant(response.choice(name).value());
                 case CHOICE -> choice(response.choice(name));
             };
         }
@@ -370,7 +498,7 @@ final class DecisionMethod {
             try {
                 return Enum.valueOf((Class) enumType, option);
             } catch (IllegalArgumentException e) {
-                throw new LangChain4jException("The model chose '%s' for '%s', which is not a constant of %s"
+                throw new InvalidDecisionResponseException("The model chose '%s' for '%s', which is not a constant of %s"
                         .formatted(option, name, enumType.getSimpleName()));
             }
         }
@@ -378,14 +506,12 @@ final class DecisionMethod {
         @SuppressWarnings({"unchecked", "rawtypes"})
         private Choice choice(ChoiceAnswer answer) {
             Map probabilities = new EnumMap(enumType);
-            answer.probabilities().forEach((option, probability) -> {
-                for (Object constant : enumType.getEnumConstants()) {
-                    if (((Enum<?>) constant).name().equals(option)) {
-                        probabilities.put(constant, probability);
-                    }
-                }
-            });
-            return new Choice(constant(answer.choice()), probabilities, answer.confidence());
+            answer.probabilities().forEach((option, probability) -> probabilities.put(constant(option), probability));
+            return Choice.builder()
+                    .value(constant(answer.value()))
+                    .probabilities(probabilities)
+                    .confidence(answer.confidence())
+                    .build();
         }
     }
 }

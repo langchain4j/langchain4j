@@ -18,8 +18,15 @@ public final class YesNo {
 
     private final double probability;
 
-    public YesNo(double probability) {
+    private YesNo(double probability) {
         this.probability = ensureProbability(probability, "probability");
+    }
+
+    /**
+     * Creates an answer with the given probability of "yes", from 0 to 1.
+     */
+    public static YesNo of(double probability) {
+        return new YesNo(probability);
     }
 
     /**

@@ -2,16 +2,17 @@ package dev.langchain4j.service.decision;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
+import static dev.langchain4j.spi.ServiceHelper.loadFactory;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.model.decision.DecisionModel;
+import dev.langchain4j.spi.services.DecisionServicesFactory;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Proxy;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.function.Function;
 
 /**
  * Creates implementations of Java interfaces whose methods are answered by a {@link DecisionModel}.
@@ -20,7 +21,7 @@ import java.util.function.Function;
  * determines the questions:
  * <ul>
  *     <li>{@code boolean}: a yes/no question, {@code true} when the probability of "yes" reaches the threshold
- *     (see {@link Builder#thresholdProvider(Function)})</li>
+ *     (see {@link Builder#thresholdProvider(ThresholdProvider)})</li>
  *     <li>{@link YesNo}: a yes/no question, with the probability of "yes"</li>
  *     <li>an enum: a question choosing one of its constants</li>
  *     <li>{@link Choice Choice&lt;enum&gt;}: the same, with the probability of each constant</li>
@@ -69,17 +70,30 @@ public class DecisionServices {
 
     private DecisionServices() {}
 
-    public static <T> Builder<T> builder(Class<T> serviceInterface) {
-        return new Builder<>(serviceInterface);
+    private static class FactoryHolder {
+        private static final DecisionServicesFactory FACTORY = loadFactory(DecisionServicesFactory.class);
     }
 
+    /**
+     * Creates a builder for an implementation of the given interface.
+     */
+    public static <T> Builder<T> builder(Class<T> serviceInterface) {
+        return FactoryHolder.FACTORY != null
+                ? FactoryHolder.FACTORY.create(serviceInterface)
+                : new Builder<>(serviceInterface);
+    }
+
+    /**
+     * Builds decision services. Frameworks can extend it (see {@link DecisionServicesFactory}) to build their own
+     * implementations, for example at build time, using {@link DecisionMethod} for the analysis of each method.
+     */
     public static class Builder<T> {
 
         private final Class<T> serviceInterface;
         private DecisionModel decisionModel;
-        private Function<String, Double> thresholdProvider;
+        private ThresholdProvider thresholdProvider;
 
-        private Builder(Class<T> serviceInterface) {
+        protected Builder(Class<T> serviceInterface) {
             this.serviceInterface = ensureNotNull(serviceInterface, "serviceInterface");
         }
 
@@ -90,13 +104,25 @@ public class DecisionServices {
 
         /**
          * Provides the threshold for {@code boolean} answers: the answer is {@code true} when the probability of
-         * "yes" is greater than or equal to the threshold. The function receives the name of the question (the method name, or the field name for methods returning
-         * an object) and is called on every invocation, so the thresholds can come from configuration that changes
-         * at runtime. When it returns {@code null}, or is not set, the threshold is 0.5.
+         * "yes" is greater than or equal to the threshold. The provider is called on every invocation, so thresholds
+         * can come from configuration that changes at runtime. When it returns {@code null}, or is not set, the
+         * threshold is 0.5.
          */
-        public Builder<T> thresholdProvider(Function<String, Double> thresholdProvider) {
+        public Builder<T> thresholdProvider(ThresholdProvider thresholdProvider) {
             this.thresholdProvider = thresholdProvider;
             return this;
+        }
+
+        protected Class<T> serviceInterface() {
+            return serviceInterface;
+        }
+
+        protected DecisionModel decisionModel() {
+            return decisionModel;
+        }
+
+        protected ThresholdProvider thresholdProvider() {
+            return thresholdProvider;
         }
 
         public T build() {
@@ -108,12 +134,13 @@ public class DecisionServices {
             Map<Method, DecisionMethod> methods = new HashMap<>();
             for (Method method : serviceInterface.getMethods()) {
                 if (!method.isDefault() && !Modifier.isStatic(method.getModifiers())) {
-                    methods.put(method, new DecisionMethod(method));
+                    methods.put(method, DecisionMethod.of(method));
                 }
             }
+            Map<Method, DecisionMethod> decisionMethods = Map.copyOf(methods);
 
             DecisionModel model = decisionModel;
-            Function<String, Double> thresholds = thresholdProvider;
+            ThresholdProvider thresholds = thresholdProvider;
             InvocationHandler handler = (proxy, method, args) -> {
                 if (method.getDeclaringClass() == Object.class) {
                     return switch (method.getName()) {
@@ -126,7 +153,9 @@ public class DecisionServices {
                 if (method.isDefault()) {
                     return InvocationHandler.invokeDefault(proxy, method, args);
                 }
-                return methods.get(method).invoke(model, args == null ? new Object[0] : args, thresholds);
+                return decisionMethods
+                        .get(method)
+                        .invoke(model, args == null ? new Object[0] : args, serviceInterface, thresholds);
             };
 
             @SuppressWarnings("unchecked")

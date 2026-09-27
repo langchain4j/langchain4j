@@ -39,6 +39,21 @@ Team team = supportDesk.route("I was charged twice this month");                
 
 Any `DecisionModel` can be used, for example [TypeSafe](/integrations/decision-models/typesafe).
 
+## Maven dependency
+
+Decision Services are part of the `langchain4j` module; add it next to the module of your `DecisionModel`:
+
+```xml
+<dependency>
+    <groupId>dev.langchain4j</groupId>
+    <artifactId>langchain4j</artifactId>
+    <version>1.21.0</version>
+</dependency>
+```
+
+The annotations used below are `dev.langchain4j.service.decision.Decide`,
+`dev.langchain4j.model.output.structured.Description` and `dev.langchain4j.service.V`.
+
 ## How it works
 
 For every call, the Decision Service:
@@ -91,9 +106,9 @@ so choose names and descriptions that explain what each option covers:
 
 ```java
 @Decide("Which team should handle this ticket?")
-Choice<Team> route(String ticket);
+Choice<Team> routeWithProbabilities(String ticket);
 
-Choice<Team> choice = supportDesk.route(ticket);
+Choice<Team> choice = supportDesk.routeWithProbabilities(ticket);
 choice.value();                      // BILLING
 choice.probabilities();              // {BILLING=0.88, SUPPORT=0.1, SALES=0.02}
 choice.probability(Team.SUPPORT);    // 0.1
@@ -104,7 +119,7 @@ choice.confidence();                 // provided by some models, see below
 A small margin means that the model hesitated between two options, which is a good signal to escalate:
 
 ```java
-Choice<Team> choice = supportDesk.route(ticket);
+Choice<Team> choice = supportDesk.routeWithProbabilities(ticket);
 if (choice.margin() < 0.2) {
     humanQueue.add(ticket);
 } else {
@@ -162,13 +177,14 @@ Parameters that are `null` are left out.
 
 ```java
 Triage triage(String ticket, Customer customer);
-// state: {"ticket": "...", "customer": {"plan": "enterprise", "open_tickets": 3}}
+// state: {"ticket": "...", "customer": {"plan": "enterprise", "openTickets": 3}}
 ```
 
 The names help the model understand what each value means, so choose them well.
-Objects are converted to JSON by the `DecisionModel` implementation; field names may be converted as well
-(for example, to snake_case). To control exactly what the model sees, pass a small record containing only the
-relevant fields.
+Objects are converted to maps using their Java field names.
+All fields are sent, so to control exactly what the model sees (and to avoid sending personal data it does not
+need), pass a small record containing only the relevant fields.
+If all parameters sent to the model are `null`, the call fails with an `IllegalArgumentException`.
 
 Parameter names are only available at runtime when the code is compiled with the `-parameters` option
 (projects based on Spring Boot or Quarkus usually enable it). Otherwise, name the parameters with `@V`:
@@ -196,18 +212,25 @@ Team team = supportDesk.route(ticket, DecisionRequestParameters.builder()
 ## Thresholds
 
 A `boolean` result is `true` when the probability of "yes" is greater than or equal to a threshold.
-The threshold is 0.5 by default and can be configured with a `thresholdProvider`,
-which receives the name of the question: the name of the method, or the name of the field for methods returning
-an object. It is called on every invocation, so the thresholds can come from configuration that changes at runtime:
+The threshold is 0.5 by default and can be configured with a `ThresholdProvider`.
+It receives a `ThresholdContext` describing the question:
+- `serviceInterface()` and `method()`: the service and the method that is invoked;
+- `questionName()`: the name of the method, or the name of the field for methods returning an object;
+- `modelName()`: the model that answers, so that each model can have its own thresholds.
+
+It is called on every invocation, so the thresholds can come from configuration that changes at runtime:
 
 ```java
 SupportDesk supportDesk = DecisionServices.builder(SupportDesk.class)
         .decisionModel(decisionModel)
-        .thresholdProvider(question -> config.getDouble("thresholds." + question))   // e.g. thresholds.isSpam=0.9
+        .thresholdProvider(context -> config.getDouble(   // e.g. SupportDesk.isSpam=0.9
+                context.serviceInterface().getSimpleName() + "." + context.questionName()))
         .build();
 ```
 
 When the provider returns `null`, the default of 0.5 is used.
+Make sure your configuration keys match the question names exactly:
+a missing key silently falls back to 0.5, which is rarely what a gate needs.
 
 To decide on the threshold in the calling code instead, return `YesNo` and use `isYes(threshold)`.
 
@@ -221,7 +244,8 @@ List<Double> probabilities = dataset.stream()
         .map(example -> moderation.spamProbability(example.text()).probability())
         .toList();
 
-for (double threshold = 0.5; threshold < 1.0; threshold += 0.05) {
+for (int step = 10; step < 20; step++) {
+    double threshold = step * 0.05;   // 0.50, 0.55, ..., 0.95
     // compare probabilities >= threshold with the labels, compute precision and recall
 }
 ```
@@ -233,23 +257,26 @@ including the name of the model that answered and the token usage:
 
 ```java
 @Decide("Which team should handle this ticket?")
-DecisionResult<Team> route(String ticket);
+DecisionResult<Team> routeWithMetadata(String ticket);
 
-DecisionResult<Team> result = supportDesk.route(ticket);
+DecisionResult<Team> result = supportDesk.routeWithMetadata(ticket);
 result.content();       // BILLING
 result.modelName();     // jev-1.13.0
 result.tokenUsage();
-result.response();      // the DecisionResponse; answers are keyed by the method name, or the field names
+result.response();      // the DecisionResponse; answers are keyed by the method name (here "routeWithMetadata"),
+                        // or by the field names for methods returning an object
 ```
 
 ## Asynchronous calls
 
-Return a `CompletableFuture` to call the model without blocking:
+Return a `CompletableFuture` or a `CompletionStage` to call the model without blocking:
 
 ```java
 @Decide("Which team should handle this ticket?")
 CompletableFuture<Team> routeAsync(String ticket);
 ```
+
+Cancelling the returned future cancels the call to the model.
 
 This requires a `DecisionModel` that supports asynchronous calls (see `DecisionModel.decideAsync()`).
 
@@ -265,13 +292,22 @@ interface SpamCheck {
     YesNo isSpam(String message);
 }
 
-SpamCheck spamCheck = message -> new YesNo(0.97);
+SpamCheck spamCheck = message -> YesNo.of(0.97);
 
 CommentService commentService = new CommentService(spamCheck);
 assertThat(commentService.accept("Buy now!")).isFalse();
 ```
 
-`YesNo`, `Choice` and `DecisionResult` have public constructors, so they are easy to create in tests.
+Results are easy to create in tests: `YesNo.of(0.97)`, `Choice.builder()` and `DecisionResult.builder()`.
+
+## Errors
+
+- A misconfigured interface fails when `build()` is called, with an `IllegalConfigurationException` explaining
+  the problem.
+- If the model returns an answer that does not match the question (for example, an option that is not a constant of
+  the enum), the call fails with an `InvalidDecisionResponseException`.
+- Errors of the model (authentication, rate limits, timeouts) are thrown as described in
+  [Decision Models](/tutorials/decision-models#errors).
 
 ## Limitations
 
