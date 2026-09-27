@@ -47,7 +47,7 @@ import java.util.function.DoubleSupplier;
 import java.util.function.Function;
 
 /**
- * The analysis of one decision service method: the questions it asks, how its parameters become the state, and how
+ * The analysis of one decision service method: the questions it asks, how its parameters become the input, and how
  * the answers are mapped back to its return type.
  * <p>
  * All validation happens in {@link #of(Method)}, so frameworks can analyze methods at build time. They can then use
@@ -68,13 +68,14 @@ public final class DecisionMethod {
     private final Map<String, QuestionMapping> mappings;
     private final Map<String, Question> questions;
     private final Set<Class<?>> reflectiveTypes;
+    private final List<Type> inputTypes;
     private final Function<Map<String, Object>, Object> resultFactory;
 
-    private DecisionMethod(Method method) {
+    private DecisionMethod(Method method, Type returnType) {
         this.method = method;
         Analysis analysis = new Analysis(method);
 
-        Type type = method.getGenericReturnType();
+        Type type = returnType;
         this.async = isParameterizedBy(type, CompletableFuture.class) || isParameterizedBy(type, CompletionStage.class);
         if (async) {
             type = typeArgument(type);
@@ -108,8 +109,8 @@ public final class DecisionMethod {
             throw illegalConfiguration(
                     "Method '%s' has an unsupported return type: %s. Supported types are boolean, YesNoAnswer, an enum, "
                             + "Choice<enum>, and objects whose fields are of these types, optionally wrapped in "
-                            + "DecisionResult<> and/or CompletableFuture<>",
-                    method.getName(), method.getGenericReturnType().getTypeName());
+                            + "DecisionResult<> and/or CompletableFuture<> (or CompletionStage<>)",
+                    method.getName(), returnType.getTypeName());
         }
 
         analysis.analyzeParameters();
@@ -118,6 +119,9 @@ public final class DecisionMethod {
         this.mappings = Collections.unmodifiableMap(analysis.mappings);
         this.questions = Collections.unmodifiableMap(analysis.questions);
         this.reflectiveTypes = Collections.unmodifiableSet(analysis.reflectiveTypes);
+        this.inputTypes = analysis.stateParameters.stream()
+                .map(parameter -> method.getGenericParameterTypes()[parameter.index()])
+                .toList();
     }
 
     /**
@@ -126,7 +130,19 @@ public final class DecisionMethod {
      * @throws dev.langchain4j.service.IllegalConfigurationException if the method cannot be implemented.
      */
     public static DecisionMethod of(Method method) {
-        return new DecisionMethod(ensureNotNull(method, "method"));
+        ensureNotNull(method, "method");
+        return new DecisionMethod(method, method.getGenericReturnType());
+    }
+
+    /**
+     * Analyzes the given method as if it returned the given type. Frameworks can use this for return types that are
+     * not supported here, for example a reactive type such as Mutiny's {@code Uni<T>}: they pass {@code T} and call
+     * {@link #invokeAsync(DecisionModel, Object[], Class, ThresholdProvider)}.
+     *
+     * @throws dev.langchain4j.service.IllegalConfigurationException if the method cannot be implemented.
+     */
+    public static DecisionMethod of(Method method, Type returnType) {
+        return new DecisionMethod(ensureNotNull(method, "method"), ensureNotNull(returnType, "returnType"));
     }
 
     public Method method() {
@@ -155,32 +171,42 @@ public final class DecisionMethod {
     }
 
     /**
-     * The classes that are instantiated or read by reflection when mapping the answers: the returned object types
-     * and the enums whose constants are the options. Frameworks can use this to register them for native images.
+     * The classes accessed by reflection when mapping the answers, so that frameworks can register them for native
+     * images: the returned object types and their superclasses (their declared fields and constructors are used, and
+     * for records their components), and the enums whose constants are the options (their constant fields are read
+     * for {@code @Description}).
      */
     public Set<Class<?>> reflectiveTypes() {
         return reflectiveTypes;
     }
 
     /**
+     * The types of the parameters that are sent to the model. Objects among them are converted to maps with the JSON
+     * codec, so frameworks may need to register them, and the types they contain, for native images.
+     */
+    public List<Type> inputTypes() {
+        return inputTypes;
+    }
+
+    /**
      * Creates the request for an invocation of this method with the given arguments.
      */
     public DecisionRequest toRequest(Object[] args) {
-        Map<String, Object> state = new LinkedHashMap<>();
+        Map<String, Object> input = new LinkedHashMap<>();
         for (StateParameter parameter : stateParameters) {
             Object value = args[parameter.index()];
             if (value != null) {
-                state.put(parameter.name(), value);
+                input.put(parameter.name(), value);
             }
         }
-        if (state.isEmpty()) {
+        if (input.isEmpty()) {
             throw new IllegalArgumentException("All arguments of method '%s' that are sent to the model (%s) are null"
                     .formatted(
                             method.getName(),
                             stateParameters.stream().map(StateParameter::name).toList()));
         }
         return DecisionRequest.builder()
-                .input(state)
+                .input(input)
                 .questions(questions)
                 .parameters(requestParameters(args))
                 .build();
@@ -206,12 +232,22 @@ public final class DecisionMethod {
      */
     public Object invoke(
             DecisionModel decisionModel, Object[] args, Class<?> serviceInterface, ThresholdProvider thresholdProvider) {
-        if (!async) {
-            DecisionRequest request = toRequest(args);
-            return toResult(
-                    decisionModel.decide(request),
-                    thresholds(decisionModel, request, serviceInterface, thresholdProvider));
+        if (async) {
+            return invokeAsync(decisionModel, args, serviceInterface, thresholdProvider);
         }
+        DecisionRequest request = toRequest(args);
+        DecisionResponse response = decisionModel.decide(request);
+        return toResult(response, thresholds(decisionModel, request, response, serviceInterface, thresholdProvider));
+    }
+
+    /**
+     * Invokes this method asynchronously with the given model, whatever its return type. The call to the model starts
+     * immediately; frameworks with lazy types (such as Mutiny's {@code Uni}) should call this method on subscription.
+     *
+     * @return a future of the result, without the {@link CompletableFuture} wrapper of the method's return type.
+     */
+    public CompletableFuture<Object> invokeAsync(
+            DecisionModel decisionModel, Object[] args, Class<?> serviceInterface, ThresholdProvider thresholdProvider) {
         DecisionRequest request;
         try {
             request = toRequest(args);
@@ -219,8 +255,8 @@ public final class DecisionMethod {
             return CompletableFuture.failedFuture(e);
         }
         CompletableFuture<DecisionResponse> source = decisionModel.decideAsync(request);
-        CompletableFuture<Object> result = source.thenApply(response ->
-                toResult(response, thresholds(decisionModel, request, serviceInterface, thresholdProvider)));
+        CompletableFuture<Object> result = source.thenApply(response -> toResult(
+                response, thresholds(decisionModel, request, response, serviceInterface, thresholdProvider)));
         propagateCancellation(result, source);
         return result;
     }
@@ -228,13 +264,15 @@ public final class DecisionMethod {
     private Function<String, Double> thresholds(
             DecisionModel decisionModel,
             DecisionRequest request,
+            DecisionResponse response,
             Class<?> serviceInterface,
             ThresholdProvider thresholdProvider) {
         if (thresholdProvider == null) {
             return questionName -> null;
         }
-        String modelName =
-                decisionModel.defaultRequestParameters().overrideWith(request.parameters()).modelName();
+        String modelName = response.modelName() != null
+                ? response.modelName()
+                : decisionModel.defaultRequestParameters().overrideWith(request.parameters()).modelName();
         return questionName -> thresholdProvider.threshold(ThresholdContext.builder()
                 .serviceInterface(serviceInterface)
                 .method(method)
@@ -369,6 +407,7 @@ public final class DecisionMethod {
 
             List<Field> fields = new ArrayList<>();
             for (Class<?> c = type; c != null && c != Object.class; c = c.getSuperclass()) {
+                reflectiveTypes.add(c);
                 for (Field field : c.getDeclaredFields()) {
                     int modifiers = field.getModifiers();
                     if (!Modifier.isStatic(modifiers) && !Modifier.isTransient(modifiers) && !field.isSynthetic()) {

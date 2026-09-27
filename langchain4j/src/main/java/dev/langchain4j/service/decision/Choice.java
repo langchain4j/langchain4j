@@ -14,6 +14,8 @@ import java.util.Objects;
  * The answer to a question of a decision service that chooses one of several options: the chosen option, the
  * probability of each option and, if the model reports one, a confidence.
  *
+ * Decision services currently create it for enums only: the enum constants are the options.
+ *
  * @param <E> the type of the options, for example an enum whose constants are the options
  * @since 1.21.0
  */
@@ -75,6 +77,9 @@ public final class Choice<E> {
     /**
      * The difference between the two highest probabilities, from 0 to 1. A small margin means the model hesitated
      * between two options, which is a common signal to escalate, for example to a human.
+     * <p>
+     * If the model reported probabilities for only some of the options, the probability it did not report is
+     * assumed to belong to a single other option, so the margin is never overestimated.
      *
      * @throws IllegalStateException if the model did not report probabilities.
      */
@@ -83,7 +88,9 @@ public final class Choice<E> {
         List<Double> sorted = probabilities.values().stream()
                 .sorted(Comparator.reverseOrder())
                 .toList();
-        return sorted.size() < 2 ? sorted.get(0) : sorted.get(0) - sorted.get(1);
+        double unreported = 1 - sorted.stream().mapToDouble(Double::doubleValue).sum();
+        double second = Math.max(sorted.size() < 2 ? 0 : sorted.get(1), unreported);
+        return Math.max(0, sorted.get(0) - second);
     }
 
     private void ensureProbabilities() {

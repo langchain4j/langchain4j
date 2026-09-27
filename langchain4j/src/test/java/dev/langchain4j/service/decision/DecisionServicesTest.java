@@ -151,7 +151,7 @@ class DecisionServicesTest {
         assertThat(context.serviceInterface()).isEqualTo(SpamFilter.class);
         assertThat(context.method().getName()).isEqualTo("isSpam");
         assertThat(context.questionName()).isEqualTo("isSpam");
-        assertThat(context.modelName()).isEqualTo("fake-default-model");
+        assertThat(context.modelName()).isEqualTo("fake-model"); // the model that answered
     }
 
     @Test
@@ -603,6 +603,86 @@ class DecisionServicesTest {
                 .build();
 
         assertThat(spamFilter.isSpam("You won a cruise!")).isTrue();
+    }
+
+    @Test
+    void threshold_context_should_fall_back_to_requested_model_name() {
+
+        List<String> modelNames = new ArrayList<>();
+        FakeDecisionModel model = new FakeDecisionModel(Map.of("isSpam", yesNo(0.7))) {
+            @Override
+            public DecisionResponse doDecide(DecisionRequest request) {
+                return DecisionResponse.builder().answers(answers).build(); // no model name reported
+            }
+        };
+        SpamFilter spamFilter = DecisionServices.builder(SpamFilter.class)
+                .decisionModel(model)
+                .thresholdProvider(context -> {
+                    modelNames.add(context.modelName());
+                    return null;
+                })
+                .build();
+
+        spamFilter.isSpam("You won a cruise!");
+
+        assertThat(modelNames).containsExactly("fake-default-model");
+    }
+
+    static class BaseTriage {
+
+        @Decide("Does this need attention today?")
+        boolean urgent;
+    }
+
+    static class ExtendedTriage extends BaseTriage {
+
+        @Decide("Which team should handle this ticket?")
+        Team team;
+    }
+
+    interface ExtendedDesk {
+
+        ExtendedTriage triage(@V("ticket") String ticket, DecisionRequestParameters parameters);
+    }
+
+    @Test
+    void decision_method_should_expose_reflective_and_input_types() throws Exception {
+
+        DecisionMethod method = DecisionMethod.of(
+                ExtendedDesk.class.getMethod("triage", String.class, DecisionRequestParameters.class));
+
+        assertThat(method.questions()).containsOnlyKeys("team", "urgent");
+        assertThat(method.reflectiveTypes()).containsExactlyInAnyOrder(ExtendedTriage.class, BaseTriage.class, Team.class);
+        assertThat(method.inputTypes()).containsExactly(String.class);
+    }
+
+    interface LazyRouter {
+
+        @Decide("Which team should handle this ticket?")
+        java.util.function.Supplier<Team> route(@V("ticket") String ticket);
+    }
+
+    @Test
+    void frameworks_should_be_able_to_invoke_methods_with_their_own_async_types() throws Exception {
+
+        // given: a return type unknown to LangChain4j, analyzed as if it returned its type argument
+        DecisionMethod method = DecisionMethod.of(LazyRouter.class.getMethod("route", String.class), Team.class);
+        FakeDecisionModel model = new FakeDecisionModel(Map.of("route", BILLING_ANSWER));
+
+        // when
+        CompletableFuture<Object> result =
+                method.invokeAsync(model, new Object[] {"I was charged twice"}, LazyRouter.class, null);
+
+        // then
+        assertThat(result.get()).isEqualTo(Team.BILLING);
+    }
+
+    @Test
+    void builder_should_come_from_decision_services_factory_when_available() {
+
+        DecisionServices.Builder<SpamFilter> builder = DecisionServices.builder(SpamFilter.class);
+
+        assertThat(builder).isInstanceOf(TestDecisionServicesFactory.TestBuilder.class);
     }
 
     // other methods

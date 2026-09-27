@@ -51,15 +51,29 @@ Decision Services are part of the `langchain4j` module; add it next to the modul
 </dependency>
 ```
 
-The annotations used below are `dev.langchain4j.service.decision.Decide`,
-`dev.langchain4j.model.output.structured.Description` and `dev.langchain4j.service.V`.
-`YesNoAnswer` is `dev.langchain4j.model.decision.response.YesNoAnswer`; the other types are in
-`dev.langchain4j.service.decision`.
+Decision Services send the names of the method parameters to the model, so compile your code with the
+`-parameters` option (or name each parameter with `@V`, see [Parameters](#parameters)):
+
+```xml
+<plugin>
+    <groupId>org.apache.maven.plugins</groupId>
+    <artifactId>maven-compiler-plugin</artifactId>
+    <configuration>
+        <parameters>true</parameters>
+    </configuration>
+</plugin>
+```
+
+The types used below come from these packages:
+- `dev.langchain4j.service.decision`: `DecisionServices`, `@Decide`, `Choice`, `DecisionResult`, `ThresholdProvider`
+- `dev.langchain4j.model.decision.response`: `YesNoAnswer`
+- `dev.langchain4j.model.decision.request`: `DecisionRequestParameters`
+- `dev.langchain4j.model.output.structured.Description` and `dev.langchain4j.service.V`
 
 ## How it works
 
 For every call, the Decision Service:
-1. Sends the method parameters to the model as the state, keyed by parameter name,
+1. Sends the method parameters to the model as the input, keyed by parameter name,
    for example `{"message": "Congratulations! You won a free cruise!"}`.
 2. Asks the question(s) derived from the method's return type and the `@Decide` annotation.
 3. Converts the answer(s) back to the return type.
@@ -71,14 +85,14 @@ All methods are checked when `build()` is called, so a misconfigured method
 
 | Return type | Question | Result |
 |---|---|---|
-| `boolean` | yes/no | `true` if the probability of "yes" reaches the [threshold](#thresholds) |
+| `boolean` / `Boolean` | yes/no | `true` if the probability of "yes" reaches the [threshold](#thresholds) |
 | `YesNoAnswer` | yes/no | the probability of "yes" |
 | an enum | choice between the enum constants | the chosen constant |
 | `Choice<E>` (`E` is an enum) | choice between the enum constants | the chosen constant and the probability of each constant |
 | a class or record whose fields have the types above | one question per field, all in a single call | an instance with every field set |
 
 Any of these can also be wrapped in [`DecisionResult<T>`](#response-metadata)
-and/or [`CompletableFuture<T>`](#asynchronous-calls).
+and/or [`CompletableFuture<T>` or `CompletionStage<T>`](#asynchronous-calls).
 
 ### Yes/no questions
 
@@ -174,12 +188,12 @@ class Triage {
 
 ## Parameters
 
-All parameters are sent to the model as the state, keyed by parameter name.
+All parameters are sent to the model as the input, keyed by parameter name.
 Parameters that are `null` are left out.
 
 ```java
 Triage triage(String ticket, Customer customer);
-// state: {"ticket": "...", "customer": {"plan": "enterprise", "openTickets": 3}}
+// input: {"ticket": "...", "customer": {"plan": "enterprise", "openTickets": 3}}
 ```
 
 The names help the model understand what each value means, so choose them well.
@@ -199,7 +213,7 @@ If a name is not available, `build()` fails and explains both options.
 
 ### Model name and other parameters
 
-A parameter of type `DecisionRequestParameters` is not sent as part of the state.
+A parameter of type `DecisionRequestParameters` is not sent as part of the input.
 Instead, it sets the parameters of the call, for example the model to use:
 
 ```java
@@ -218,7 +232,9 @@ The threshold is 0.5 by default and can be configured with a `ThresholdProvider`
 It receives a `ThresholdContext` describing the question:
 - `serviceInterface()` and `method()`: the service and the method that is invoked;
 - `questionName()`: the name of the method, or the name of the field for methods returning an object;
-- `modelName()`: the model that answers, so that each model can have its own thresholds.
+- `modelName()`: the model that answered, as reported by the provider (for example a pinned version rather than
+  an alias), so that each model version can have its own thresholds. If the provider does not report it,
+  the requested model name.
 
 It is called on every invocation, so the thresholds can come from configuration that changes at runtime:
 
@@ -316,5 +332,5 @@ Results are easy to create in tests: `YesNoAnswer.of(0.97)`, `Choice.builder()` 
 - Options are defined with enums. When the options are only known at runtime
   (for example, agents or tools registered in a database), use the
   [`DecisionModel` API](/tutorials/decision-models#choice-questions) directly.
-- Score questions are not supported yet. Use the [`DecisionModel` API](/tutorials/decision-models#score-questions)
+- Scale questions are not supported yet. Use the [`DecisionModel` API](/tutorials/decision-models#scale-questions)
   directly.

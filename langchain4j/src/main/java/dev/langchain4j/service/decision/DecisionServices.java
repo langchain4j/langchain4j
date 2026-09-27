@@ -19,7 +19,7 @@ import java.util.Map;
 /**
  * Creates implementations of Java interfaces whose methods are answered by a {@link DecisionModel}.
  * <p>
- * The parameters of a method are sent to the model as the state, keyed by parameter name, and the return type
+ * The parameters of a method are sent to the model as the input, keyed by parameter name, and the return type
  * determines the questions:
  * <ul>
  *     <li>{@code boolean}: a yes/no question, {@code true} when the probability of "yes" reaches the threshold
@@ -30,10 +30,11 @@ import java.util.Map;
  *     <li>an object or record whose fields are of the types above: one question per field, in a single call</li>
  * </ul>
  * Any of these can be wrapped in {@link DecisionResult} (to also get the raw response) and/or in
- * {@link java.util.concurrent.CompletableFuture} (to call the model asynchronously).
+ * {@link java.util.concurrent.CompletableFuture} or {@link java.util.concurrent.CompletionStage} (to call the model
+ * asynchronously).
  * <p>
  * A parameter of type {@link dev.langchain4j.model.decision.request.DecisionRequestParameters} is not sent as part of
- * the state: it sets the parameters of the call, such as the model name, overriding the model's defaults.
+ * the input: it sets the parameters of the call, such as the model name, overriding the model's defaults.
  * <p>
  * The question is set with {@link Decide @Decide}: on the method, or on the fields of the returned object (where
  * {@link dev.langchain4j.model.output.structured.Description @Description} is also accepted).
@@ -68,7 +69,7 @@ import java.util.Map;
  * @since 1.21.0
  */
 @Experimental
-public class DecisionServices {
+public final class DecisionServices {
 
     private DecisionServices() {}
 

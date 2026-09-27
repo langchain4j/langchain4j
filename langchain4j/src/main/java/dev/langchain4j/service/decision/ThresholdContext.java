@@ -49,7 +49,9 @@ public final class ThresholdContext {
     }
 
     /**
-     * The name of the model that answers the question, or {@code null} if it is not known.
+     * The name of the model that answered the question, as reported by the provider (which can be more specific than
+     * the requested name, for example a pinned version instead of an alias). If the provider does not report it, the
+     * requested model name, or {@code null} if it is not known.
      */
     public String modelName() {
         return modelName;
