@@ -36,7 +36,7 @@ To get started, add the following dependencies to your project's `pom.xml`:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-ollama</artifactId>
-    <version>1.20.0</version>
+    <version>1.20.1</version>
 </dependency>
 
 <dependency>
@@ -316,7 +316,7 @@ Import the Spring Boot starter for Ollama:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-ollama-spring-boot4-starter</artifactId>
-    <version>1.20.0-beta30</version>
+    <version>1.20.1-beta30</version>
 </dependency>
 ```
 
