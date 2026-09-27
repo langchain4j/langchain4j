@@ -16,8 +16,8 @@ class QuestionsTest {
                 YesNoQuestion.builder().instructions("Is this spam?").build();
 
         assertThat(question.instructions()).isEqualTo("Is this spam?");
-        assertThat(question.whenTrue()).isNull();
-        assertThat(question.whenFalse()).isNull();
+        assertThat(question.whenYes()).isNull();
+        assertThat(question.whenNo()).isNull();
     }
 
     @Test
@@ -25,12 +25,12 @@ class QuestionsTest {
 
         YesNoQuestion question = YesNoQuestion.builder()
                 .instructions("Does the customer ask for a refund?")
-                .whenTrue("The customer explicitly asks for their money back")
-                .whenFalse(Map.of("what", "A question about a charge", "examples", List.of("Why was I charged?")))
+                .whenYes("The customer explicitly asks for their money back")
+                .whenNo(Map.of("what", "A question about a charge", "examples", List.of("Why was I charged?")))
                 .build();
 
-        assertThat(question.whenTrue()).isEqualTo("The customer explicitly asks for their money back");
-        assertThat(question.whenFalse())
+        assertThat(question.whenYes()).isEqualTo("The customer explicitly asks for their money back");
+        assertThat(question.whenNo())
                 .isEqualTo(Map.of("what", "A question about a charge", "examples", List.of("Why was I charged?")));
     }
 
@@ -39,17 +39,17 @@ class QuestionsTest {
 
         assertThatThrownBy(() -> YesNoQuestion.builder()
                         .instructions("Is this spam?")
-                        .whenTrue(" ")
+                        .whenYes(" ")
                         .build())
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("whenTrue");
+                .hasMessageContaining("whenYes");
 
         assertThatThrownBy(() -> YesNoQuestion.builder()
                         .instructions("Is this spam?")
-                        .whenFalse(42)
+                        .whenNo(42)
                         .build())
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("whenFalse");
+                .hasMessageContaining("whenNo");
     }
 
     @Test
@@ -186,12 +186,12 @@ class QuestionsTest {
     @Test
     void should_implement_equals_and_hash_code() {
 
-        assertThat(YesNoQuestion.builder().instructions("Spam?").whenTrue("Ads").build())
-                .isEqualTo(YesNoQuestion.builder().instructions("Spam?").whenTrue("Ads").build())
+        assertThat(YesNoQuestion.builder().instructions("Spam?").whenYes("Ads").build())
+                .isEqualTo(YesNoQuestion.builder().instructions("Spam?").whenYes("Ads").build())
                 .hasSameHashCodeAs(
-                        YesNoQuestion.builder().instructions("Spam?").whenTrue("Ads").build())
+                        YesNoQuestion.builder().instructions("Spam?").whenYes("Ads").build())
                 .isNotEqualTo(
-                        YesNoQuestion.builder().instructions("Spam?").whenFalse("Ads").build());
+                        YesNoQuestion.builder().instructions("Spam?").whenNo("Ads").build());
 
         assertThat(ChoiceQuestion.builder()
                         .instructions("Team?")

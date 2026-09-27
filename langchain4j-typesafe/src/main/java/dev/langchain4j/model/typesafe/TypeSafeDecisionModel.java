@@ -142,11 +142,11 @@ public class TypeSafeDecisionModel implements DecisionModel {
             result.put("type", "noul");
             result.put("instructions", yesNo.instructions());
             Map<String, Object> criteria = new LinkedHashMap<>();
-            if (yesNo.whenTrue() != null) {
-                criteria.put("true", yesNo.whenTrue());
+            if (yesNo.whenYes() != null) {
+                criteria.put("true", yesNo.whenYes());
             }
-            if (yesNo.whenFalse() != null) {
-                criteria.put("false", yesNo.whenFalse());
+            if (yesNo.whenNo() != null) {
+                criteria.put("false", yesNo.whenNo());
             }
             if (!criteria.isEmpty()) {
                 result.put("criteria", criteria);

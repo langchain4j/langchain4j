@@ -9,14 +9,14 @@ import java.util.Objects;
  * A yes/no question, answered with the probability that the answer is "yes"
  * (see {@link dev.langchain4j.model.decision.response.YesNoAnswer}).
  * <p>
- * Optionally, {@link #whenTrue()} and {@link #whenFalse()} describe when the answer should be "yes" and when it
+ * Optionally, {@link #whenYes()} and {@link #whenNo()} describe when the answer should be "yes" and when it
  * should be "no". Each description is either plain text or structured content (a {@link java.util.Map} or a
  * {@link java.util.List}) that is passed to the model as is:
  * <pre>{@code
  * YesNoQuestion refundRequested = YesNoQuestion.builder()
  *         .instructions("Does the customer ask for a refund?")
- *         .whenTrue("The customer explicitly asks for their money back")
- *         .whenFalse("The customer only asks about a charge")
+ *         .whenYes("The customer explicitly asks for their money back")
+ *         .whenNo("The customer only asks about a charge")
  *         .build();
  * }</pre>
  *
@@ -26,13 +26,13 @@ import java.util.Objects;
 public final class YesNoQuestion implements Question {
 
     private final String instructions;
-    private final Object whenTrue;
-    private final Object whenFalse;
+    private final Object whenYes;
+    private final Object whenNo;
 
     private YesNoQuestion(Builder builder) {
         this.instructions = ensureNotBlank(builder.instructions, "instructions");
-        this.whenTrue = builder.whenTrue == null ? null : FreeFormValue.ensureValid(builder.whenTrue, "whenTrue");
-        this.whenFalse = builder.whenFalse == null ? null : FreeFormValue.ensureValid(builder.whenFalse, "whenFalse");
+        this.whenYes = builder.whenYes == null ? null : FreeFormValue.ensureValid(builder.whenYes, "whenYes");
+        this.whenNo = builder.whenNo == null ? null : FreeFormValue.ensureValid(builder.whenNo, "whenNo");
     }
 
     @Override
@@ -44,16 +44,16 @@ public final class YesNoQuestion implements Question {
      * When the answer should be "yes": a {@link String}, a {@link java.util.Map} or a {@link java.util.List}, or
      * {@code null} if not set.
      */
-    public Object whenTrue() {
-        return whenTrue;
+    public Object whenYes() {
+        return whenYes;
     }
 
     /**
      * When the answer should be "no": a {@link String}, a {@link java.util.Map} or a {@link java.util.List}, or
      * {@code null} if not set.
      */
-    public Object whenFalse() {
-        return whenFalse;
+    public Object whenNo() {
+        return whenNo;
     }
 
     public static Builder builder() {
@@ -65,26 +65,26 @@ public final class YesNoQuestion implements Question {
         if (this == o) return true;
         if (!(o instanceof YesNoQuestion that)) return false;
         return Objects.equals(instructions, that.instructions)
-                && Objects.equals(whenTrue, that.whenTrue)
-                && Objects.equals(whenFalse, that.whenFalse);
+                && Objects.equals(whenYes, that.whenYes)
+                && Objects.equals(whenNo, that.whenNo);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(instructions, whenTrue, whenFalse);
+        return Objects.hash(instructions, whenYes, whenNo);
     }
 
     @Override
     public String toString() {
-        return "YesNoQuestion{instructions=" + instructions + ", whenTrue=" + whenTrue + ", whenFalse=" + whenFalse
+        return "YesNoQuestion{instructions=" + instructions + ", whenYes=" + whenYes + ", whenNo=" + whenNo
                 + '}';
     }
 
     public static final class Builder {
 
         private String instructions;
-        private Object whenTrue;
-        private Object whenFalse;
+        private Object whenYes;
+        private Object whenNo;
 
         public Builder instructions(String instructions) {
             this.instructions = instructions;
@@ -94,32 +94,32 @@ public final class YesNoQuestion implements Question {
         /**
          * Describes when the answer should be "yes".
          */
-        public Builder whenTrue(String description) {
-            return whenTrue((Object) description);
+        public Builder whenYes(String description) {
+            return whenYes((Object) description);
         }
 
         /**
          * Describes when the answer should be "yes", as a {@link String}, a {@link java.util.Map} or a
          * {@link java.util.List}.
          */
-        public Builder whenTrue(Object criteria) {
-            this.whenTrue = criteria;
+        public Builder whenYes(Object criteria) {
+            this.whenYes = criteria;
             return this;
         }
 
         /**
          * Describes when the answer should be "no".
          */
-        public Builder whenFalse(String description) {
-            return whenFalse((Object) description);
+        public Builder whenNo(String description) {
+            return whenNo((Object) description);
         }
 
         /**
          * Describes when the answer should be "no", as a {@link String}, a {@link java.util.Map} or a
          * {@link java.util.List}.
          */
-        public Builder whenFalse(Object criteria) {
-            this.whenFalse = criteria;
+        public Builder whenNo(Object criteria) {
+            this.whenNo = criteria;
             return this;
         }
 

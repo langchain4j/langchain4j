@@ -80,7 +80,7 @@ class TypeSafeDecisionModelTest {
                     "urgent",
                     YesNoQuestion.builder()
                             .instructions("Does this need attention today?")
-                            .whenTrue("Money is not reaching the customer")
+                            .whenYes("Money is not reaching the customer")
                             .build())
             .question(
                     "frustration",

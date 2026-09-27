@@ -95,8 +95,8 @@ Optionally, describe when the answer should be "yes" and when it should be "no":
 ```java
 YesNoQuestion refundRequested = YesNoQuestion.builder()
         .instructions("Does the customer ask for a refund?")
-        .whenTrue("The customer explicitly asks for their money back")
-        .whenFalse("The customer only asks about a charge")
+        .whenYes("The customer explicitly asks for their money back")
+        .whenNo("The customer only asks about a charge")
         .build();
 ```
 
@@ -121,7 +121,7 @@ It is answered with a `ScoreAnswer`:
 
 ## Describing options and levels
 
-Options, levels and the `whenTrue`/`whenFalse` descriptions can be plain text, as in the examples above,
+Options, levels and the `whenYes`/`whenNo` descriptions can be plain text, as in the examples above,
 or structured content (a `Map` or a `List`), which is passed to the model as is.
 Structured descriptions are useful to separate what an option covers from what it does not,
 or to add examples:
