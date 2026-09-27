@@ -48,6 +48,7 @@
         <module>langchain4j-open-ai-official</module>
         <module>langchain4j-google-ai-gemini</module>
         <module>langchain4j-google-genai</module>
+        <module>langchain4j-typesafe</module>
         <module>langchain4j-vertex-ai</module>
         <module>langchain4j-vertex-ai-gemini</module>
         <module>langchain4j-vertex-ai-anthropic</module>
