@@ -403,7 +403,7 @@ public class DefaultOpenAiClient extends OpenAiClient {
         if (!isNullOrEmpty(request.timestampGranularities())) {
             request.timestampGranularities()
                     .forEach(granularity ->
-                            httpRequestBuilder.addFormDataField("timestamp_granularities[]", granularity));
+                            httpRequestBuilder.addRepeatedFormDataField("timestamp_granularities[]", granularity));
         }
 
         return new RequestExecutor<>(httpClient, httpRequestBuilder.build(), OpenAiAudioTranscriptionResponse.class);

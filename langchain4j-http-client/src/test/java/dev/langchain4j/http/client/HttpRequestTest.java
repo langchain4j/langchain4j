@@ -559,13 +559,28 @@ class HttpRequestTest {
     }
 
     @Test
-    void should_preserve_repeated_form_data_fields() {
+    void should_replace_form_data_field_with_the_same_name() {
         // when
         HttpRequest request = HttpRequest.builder()
                 .method(POST)
                 .url("http://example.com/api")
                 .addFormDataField("timestamp_granularities[]", "word")
                 .addFormDataField("timestamp_granularities[]", "segment")
+                .build();
+
+        // then
+        assertThat(request.formDataFields()).containsEntry("timestamp_granularities[]", "segment");
+        assertThat(request.formDataFieldEntries()).containsExactly(entry("timestamp_granularities[]", "segment"));
+    }
+
+    @Test
+    void should_preserve_repeated_form_data_fields() {
+        // when
+        HttpRequest request = HttpRequest.builder()
+                .method(POST)
+                .url("http://example.com/api")
+                .addRepeatedFormDataField("timestamp_granularities[]", "word")
+                .addRepeatedFormDataField("timestamp_granularities[]", "segment")
                 .build();
 
         // then

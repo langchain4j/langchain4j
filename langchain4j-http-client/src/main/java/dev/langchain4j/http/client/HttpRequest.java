@@ -94,7 +94,11 @@ public class HttpRequest {
     }
 
     /**
-     * @since 1.15.0
+     * Returns the form-data fields in the order they were added, preserving repeated field names added via
+     * {@link Builder#addRepeatedFormDataField(String, String)}, while {@link #formDataFields()} keeps only the last
+     * value of a given field name.
+     *
+     * @since 1.21.0
      */
     @Experimental
     public List<Map.Entry<String, String>> formDataFieldEntries() {
@@ -213,10 +217,38 @@ public class HttpRequest {
         }
 
         /**
+         * Sets the value of the given form-data field, replacing the value set by a previous call with the same name.
+         *
          * @since 1.10.0
          */
         @Experimental
         public Builder addFormDataField(String name, String value) {
+            ensureNotBlank(name, "name");
+            ensureNotNull(value, "value");
+
+            if (this.formDataFields == null) {
+                this.formDataFields = new LinkedHashMap<>();
+            }
+            this.formDataFields.put(name, value);
+
+            if (this.formDataFieldEntries == null) {
+                this.formDataFieldEntries = new ArrayList<>();
+            }
+            this.formDataFieldEntries.removeIf(entry -> entry.getKey().equals(name));
+            this.formDataFieldEntries.add(new SimpleImmutableEntry<>(name, value));
+
+            return this;
+        }
+
+        /**
+         * Adds an additional value for the given form-data field, keeping the values set by previous calls with the
+         * same name. Use this method for fields that have to be repeated in the request, for example
+         * {@code timestamp_granularities[]}.
+         *
+         * @since 1.21.0
+         */
+        @Experimental
+        public Builder addRepeatedFormDataField(String name, String value) {
             ensureNotBlank(name, "name");
             ensureNotNull(value, "value");
 

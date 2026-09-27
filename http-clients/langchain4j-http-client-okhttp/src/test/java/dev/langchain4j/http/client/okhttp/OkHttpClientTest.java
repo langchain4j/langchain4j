@@ -31,8 +31,8 @@ class OkHttpClientTest {
             HttpRequest request = HttpRequest.builder()
                     .method(POST)
                     .url("http://localhost:" + server.getAddress().getPort() + "/upload")
-                    .addFormDataField("timestamp_granularities[]", "word")
-                    .addFormDataField("timestamp_granularities[]", "segment")
+                    .addRepeatedFormDataField("timestamp_granularities[]", "word")
+                    .addRepeatedFormDataField("timestamp_granularities[]", "segment")
                     .build();
 
             SuccessfulHttpResponse response = OkHttpClient.builder().build().execute(request);
