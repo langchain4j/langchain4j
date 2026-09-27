@@ -1,5 +1,6 @@
 package dev.langchain4j.store.embedding.qdrant;
 
+import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.junit.jupiter.api.Test;
@@ -30,5 +31,28 @@ class QdrantEmbeddingStoreHybridBuilderTest {
                         .build())
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("SparseEncoder");
+    }
+
+    @Test
+    void should_reject_both_sparse_encoder_and_sparse_model() {
+        assertThatThrownBy(() -> QdrantEmbeddingStore.builder()
+                        .collectionName("c")
+                        .searchMode(SearchMode.HYBRID)
+                        .sparseEncoder(text -> null)
+                        .sparseModel(QdrantSparseModel.bm25())
+                        .build())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Only one");
+    }
+
+    @Test
+    void should_accept_hybrid_with_sparse_model_only() {
+        assertThatNoException()
+                .isThrownBy(() -> QdrantEmbeddingStore.builder()
+                        .collectionName("c")
+                        .searchMode(SearchMode.HYBRID)
+                        .sparseModel(QdrantSparseModel.bm25())
+                        .build()
+                        .close());
     }
 }

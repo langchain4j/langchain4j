@@ -67,7 +67,7 @@ public class QdrantEmbeddingStore implements EmbeddingStore<TextSegment> {
     private final String collectionName;
 
     private final SearchMode searchMode;
-    private final SparseEncoder sparseEncoder;
+    private final SparseVectorizer sparseVectorizer;
     private final String denseVectorName;
     private final String sparseVectorName;
 
@@ -126,8 +126,34 @@ public class QdrantEmbeddingStore implements EmbeddingStore<TextSegment> {
             @Nullable SparseEncoder sparseEncoder,
             String denseVectorName,
             String sparseVectorName) {
+        this(
+                collectionName,
+                host,
+                port,
+                useTls,
+                payloadTextKey,
+                apiKey,
+                searchMode,
+                sparseEncoder,
+                null,
+                denseVectorName,
+                sparseVectorName);
+    }
 
-        validateHybridConfig(searchMode, sparseEncoder);
+    private QdrantEmbeddingStore(
+            String collectionName,
+            String host,
+            int port,
+            boolean useTls,
+            String payloadTextKey,
+            @Nullable String apiKey,
+            SearchMode searchMode,
+            @Nullable SparseEncoder sparseEncoder,
+            @Nullable QdrantSparseModel sparseModel,
+            String denseVectorName,
+            String sparseVectorName) {
+
+        validateHybridConfig(searchMode, sparseEncoder, sparseModel);
 
         QdrantGrpcClient.Builder grpcClientBuilder = QdrantGrpcClient.newBuilder(host, port, useTls);
 
@@ -139,7 +165,7 @@ public class QdrantEmbeddingStore implements EmbeddingStore<TextSegment> {
         this.collectionName = collectionName;
         this.payloadTextKey = payloadTextKey;
         this.searchMode = searchMode;
-        this.sparseEncoder = sparseEncoder;
+        this.sparseVectorizer = sparseVectorizer(sparseEncoder, sparseModel);
         this.denseVectorName = denseVectorName;
         this.sparseVectorName = sparseVectorName;
     }
@@ -180,14 +206,34 @@ public class QdrantEmbeddingStore implements EmbeddingStore<TextSegment> {
             @Nullable SparseEncoder sparseEncoder,
             String denseVectorName,
             String sparseVectorName) {
+        this(
+                client,
+                collectionName,
+                payloadTextKey,
+                searchMode,
+                sparseEncoder,
+                null,
+                denseVectorName,
+                sparseVectorName);
+    }
 
-        validateHybridConfig(searchMode, sparseEncoder);
+    private QdrantEmbeddingStore(
+            QdrantClient client,
+            String collectionName,
+            String payloadTextKey,
+            SearchMode searchMode,
+            @Nullable SparseEncoder sparseEncoder,
+            @Nullable QdrantSparseModel sparseModel,
+            String denseVectorName,
+            String sparseVectorName) {
+
+        validateHybridConfig(searchMode, sparseEncoder, sparseModel);
 
         this.client = client;
         this.collectionName = collectionName;
         this.payloadTextKey = payloadTextKey;
         this.searchMode = searchMode;
-        this.sparseEncoder = sparseEncoder;
+        this.sparseVectorizer = sparseVectorizer(sparseEncoder, sparseModel);
         this.denseVectorName = denseVectorName;
         this.sparseVectorName = sparseVectorName;
     }
@@ -244,11 +290,9 @@ public class QdrantEmbeddingStore implements EmbeddingStore<TextSegment> {
                         throw new IllegalArgumentException(
                                 "HYBRID mode requires textSegments (to build sparse vectors)");
                     }
-                    SparseVector sv = sparseEncoder.encode(textSegment.text());
-                    validateSparse(sv);
                     pointVectors = namedVectors(Map.of(
                             denseVectorName, vector(embedding.vector()),
-                            sparseVectorName, vector(sv.values(), sv.indices())));
+                            sparseVectorName, sparseVectorizer.toVector(textSegment.text())));
                 } else {
                     pointVectors = vectors(embedding.vector());
                 }
@@ -363,9 +407,6 @@ public class QdrantEmbeddingStore implements EmbeddingStore<TextSegment> {
             throw new IllegalArgumentException("HYBRID search requires a non-blank query text");
         }
 
-        SparseVector sv = sparseEncoder.encode(queryText);
-        validateSparse(sv);
-
         List<Float> dv = request.queryEmbedding().vectorAsList();
         int limit = request.maxResults();
         int prefetchLimit = Math.max(40, limit * 8);
@@ -376,7 +417,7 @@ public class QdrantEmbeddingStore implements EmbeddingStore<TextSegment> {
                 request.filter() != null ? QdrantFilterConverter.convertExpression(request.filter()) : null;
 
         Points.PrefetchQuery.Builder sparsePrefetch = Points.PrefetchQuery.newBuilder()
-                .setQuery(nearest(sv.values(), sv.indices()))
+                .setQuery(sparseVectorizer.toQuery(queryText))
                 .setUsing(sparseVectorName)
                 .setLimit(prefetchLimit);
         if (qdrantFilter != null) sparsePrefetch.setFilter(qdrantFilter);
@@ -501,10 +542,63 @@ public class QdrantEmbeddingStore implements EmbeddingStore<TextSegment> {
         throw new IllegalStateException("ScoredPoint vectors present, but no dense vector data found");
     }
 
-    private static void validateHybridConfig(SearchMode searchMode, SparseEncoder sparseEncoder) {
-        if (searchMode == SearchMode.HYBRID && sparseEncoder == null) {
-            throw new IllegalArgumentException("SparseEncoder is required for HYBRID search mode");
+    private static void validateHybridConfig(
+            SearchMode searchMode, SparseEncoder sparseEncoder, QdrantSparseModel sparseModel) {
+        if (sparseEncoder != null && sparseModel != null) {
+            throw new IllegalArgumentException("Only one of SparseEncoder and QdrantSparseModel can be set");
         }
+        if (searchMode == SearchMode.HYBRID && sparseEncoder == null && sparseModel == null) {
+            throw new IllegalArgumentException("SparseEncoder or QdrantSparseModel is required for HYBRID search mode");
+        }
+    }
+
+    /**
+     * Turns text into the sparse part of a point or query, either client-side
+     * ({@link SparseEncoder}) or server-side ({@link QdrantSparseModel}).
+     */
+    private interface SparseVectorizer {
+
+        Points.Vector toVector(String text);
+
+        Points.Query toQuery(String text);
+    }
+
+    private static SparseVectorizer sparseVectorizer(SparseEncoder sparseEncoder, QdrantSparseModel sparseModel) {
+        if (sparseEncoder != null) {
+            return new SparseVectorizer() {
+                @Override
+                public Points.Vector toVector(String text) {
+                    SparseVector sv = encode(text);
+                    return vector(sv.values(), sv.indices());
+                }
+
+                @Override
+                public Points.Query toQuery(String text) {
+                    SparseVector sv = encode(text);
+                    return nearest(sv.values(), sv.indices());
+                }
+
+                private SparseVector encode(String text) {
+                    SparseVector sv = sparseEncoder.encode(text);
+                    validateSparse(sv);
+                    return sv;
+                }
+            };
+        }
+        if (sparseModel != null) {
+            return new SparseVectorizer() {
+                @Override
+                public Points.Vector toVector(String text) {
+                    return vector(sparseModel.toDocument(text));
+                }
+
+                @Override
+                public Points.Query toQuery(String text) {
+                    return nearest(sparseModel.toDocument(text));
+                }
+            };
+        }
+        return null;
     }
 
     private static void validateSparse(SparseVector sv) {
@@ -535,6 +629,7 @@ public class QdrantEmbeddingStore implements EmbeddingStore<TextSegment> {
         private QdrantClient client = null;
         private SearchMode searchMode = SearchMode.VECTOR;
         private SparseEncoder sparseEncoder = null;
+        private QdrantSparseModel sparseModel = null;
         private String denseVectorName = DEFAULT_DENSE_VECTOR_NAME;
         private String sparseVectorName = DEFAULT_SPARSE_VECTOR_NAME;
 
@@ -608,11 +703,22 @@ public class QdrantEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
 
         /**
-         * @param sparseEncoder Required when {@code searchMode} is
-         * {@link SearchMode#HYBRID}.
+         * @param sparseEncoder Client-side sparse encoder. Alternative to
+         * {@link #sparseModel(QdrantSparseModel)}; one of the two is required when
+         * {@code searchMode} is {@link SearchMode#HYBRID}.
          */
         public Builder sparseEncoder(SparseEncoder sparseEncoder) {
             this.sparseEncoder = sparseEncoder;
+            return this;
+        }
+
+        /**
+         * @param sparseModel A sparse model executed server-side by Qdrant, e.g.
+         * {@link QdrantSparseModel#bm25()}. Alternative to {@link #sparseEncoder(SparseEncoder)};
+         * one of the two is required when {@code searchMode} is {@link SearchMode#HYBRID}.
+         */
+        public Builder sparseModel(QdrantSparseModel sparseModel) {
+            this.sparseModel = sparseModel;
             return this;
         }
 
@@ -644,6 +750,7 @@ public class QdrantEmbeddingStore implements EmbeddingStore<TextSegment> {
                         payloadTextKey,
                         searchMode,
                         sparseEncoder,
+                        sparseModel,
                         denseVectorName,
                         sparseVectorName);
             }
@@ -656,6 +763,7 @@ public class QdrantEmbeddingStore implements EmbeddingStore<TextSegment> {
                     apiKey,
                     searchMode,
                     sparseEncoder,
+                    sparseModel,
                     denseVectorName,
                     sparseVectorName);
         }
