@@ -101,14 +101,10 @@ public class MistralAiModerationModel implements ModerationModel {
                 || Boolean.TRUE.equals(categories.getHateAndDiscrimination())
                 || Boolean.TRUE.equals(categories.getViolenceAndThreats())
                 || Boolean.TRUE.equals(categories.getDangerousAndCriminalContent())
-                || Boolean.TRUE.equals(categories.getDangerous())
-                || Boolean.TRUE.equals(categories.getCriminal())
                 || Boolean.TRUE.equals(categories.getSelfHarm())
                 || Boolean.TRUE.equals(categories.getHealth())
-                || Boolean.TRUE.equals(categories.getFinancial())
                 || Boolean.TRUE.equals(categories.getLaw())
-                || Boolean.TRUE.equals(categories.getPii())
-                || Boolean.TRUE.equals(categories.getJailbreaking());
+                || Boolean.TRUE.equals(categories.getPii());
     }
 
     private static MistralAiModerationResponseMetadata createMetadata(
