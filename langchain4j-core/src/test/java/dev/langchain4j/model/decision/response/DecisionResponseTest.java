@@ -22,6 +22,19 @@ class DecisionResponseTest {
         assertThat(YesNoAnswer.builder().probability(1.0).build().probability()).isEqualTo(1.0);
     }
 
+    @Test
+    void yes_no_answer_should_be_created_with_of_and_compared_with_threshold() {
+
+        YesNoAnswer answer = YesNoAnswer.of(0.7);
+
+        assertThat(answer).isEqualTo(YesNoAnswer.builder().probability(0.7).build());
+        assertThat(answer.isYes(0.7)).isTrue();
+        assertThat(answer.isYes(0.8)).isFalse();
+        assertThatThrownBy(() -> answer.isYes(1.5))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("threshold");
+    }
+
     @ParameterizedTest
     @ValueSource(doubles = {-0.1, 1.1, Double.NaN, Double.POSITIVE_INFINITY})
     void should_reject_invalid_yes_no_probability(double probability) {
@@ -100,40 +113,40 @@ class DecisionResponseTest {
     }
 
     @Test
-    void should_create_score_answer() {
+    void should_create_scale_answer() {
 
-        ScoreAnswer answer = ScoreAnswer.builder()
-                .score(1.99)
+        ScaleAnswer answer = ScaleAnswer.builder()
+                .value(1.99)
                 .probabilities(List.of(0.0, 0.01, 0.99))
                 .confidence(0.99)
                 .build();
 
-        assertThat(answer.score()).isEqualTo(1.99);
+        assertThat(answer.value()).isEqualTo(1.99);
         assertThat(answer.probabilities()).containsExactly(0.0, 0.01, 0.99);
         assertThat(answer.confidence()).isEqualTo(0.99);
     }
 
     @Test
-    void score_answer_probabilities_and_confidence_should_be_optional() {
+    void scale_answer_probabilities_and_confidence_should_be_optional() {
 
-        ScoreAnswer answer = ScoreAnswer.builder().score(0.5).build();
+        ScaleAnswer answer = ScaleAnswer.builder().value(0.5).build();
 
         assertThat(answer.probabilities()).isEmpty();
         assertThat(answer.confidence()).isNull();
     }
 
     @Test
-    void should_reject_invalid_score_answer() {
+    void should_reject_invalid_scale_answer() {
 
-        assertThatThrownBy(() -> ScoreAnswer.builder().build())
+        assertThatThrownBy(() -> ScaleAnswer.builder().build())
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("score");
+                .hasMessageContaining("value");
 
-        assertThatThrownBy(() -> ScoreAnswer.builder().score(Double.NaN).build())
+        assertThatThrownBy(() -> ScaleAnswer.builder().value(Double.NaN).build())
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("score");
+                .hasMessageContaining("value");
 
-        assertThatThrownBy(() -> ScoreAnswer.builder().probabilities(List.of(0.5, -0.5)))
+        assertThatThrownBy(() -> ScaleAnswer.builder().probabilities(List.of(0.5, -0.5)))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("probability");
     }
@@ -212,7 +225,7 @@ class DecisionResponseTest {
     void should_return_typed_answers() {
 
         ChoiceAnswer team = ChoiceAnswer.builder().value("billing").build();
-        ScoreAnswer mood = ScoreAnswer.builder().score(1.4).build();
+        ScaleAnswer mood = ScaleAnswer.builder().value(1.4).build();
 
         DecisionResponse response = DecisionResponse.builder()
                 .answer("urgent", YES_NO)
@@ -222,7 +235,7 @@ class DecisionResponseTest {
 
         assertThat(response.yesNo("urgent")).isSameAs(YES_NO);
         assertThat(response.choice("team")).isSameAs(team);
-        assertThat(response.score("mood")).isSameAs(mood);
+        assertThat(response.scale("mood")).isSameAs(mood);
         assertThat(response.answer("team", ChoiceAnswer.class)).isSameAs(team);
     }
 
@@ -274,8 +287,8 @@ class DecisionResponseTest {
                 .isEqualTo(ChoiceAnswer.builder().value("a").confidence(0.5).build())
                 .isNotEqualTo(ChoiceAnswer.builder().value("a").build());
 
-        assertThat(ScoreAnswer.builder().score(1.0).build())
-                .isEqualTo(ScoreAnswer.builder().score(1.0).build())
-                .isNotEqualTo(ScoreAnswer.builder().score(2.0).build());
+        assertThat(ScaleAnswer.builder().value(1.0).build())
+                .isEqualTo(ScaleAnswer.builder().value(1.0).build())
+                .isNotEqualTo(ScaleAnswer.builder().value(2.0).build());
     }
 }

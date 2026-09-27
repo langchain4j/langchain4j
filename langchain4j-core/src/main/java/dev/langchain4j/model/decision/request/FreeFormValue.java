@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Validates free-form values (state and criteria) and normalizes them into an immutable tree of maps, lists,
+ * Validates free-form values (input and descriptions) and normalizes them into an immutable tree of maps, lists,
  * strings, numbers, booleans and {@code null}s. Other objects are converted with their Java field names, so what the
  * model receives does not depend on how a particular {@code DecisionModel} implementation serializes objects.
  */

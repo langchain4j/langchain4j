@@ -25,6 +25,20 @@ public final class YesNoAnswer implements DecisionAnswer {
         return probability;
     }
 
+    /**
+     * Returns {@code true} if the probability of "yes" is greater than or equal to the given threshold.
+     */
+    public boolean isYes(double threshold) {
+        return probability >= Probabilities.ensureProbability(threshold, "threshold");
+    }
+
+    /**
+     * Creates an answer with the given probability of "yes", from 0 to 1.
+     */
+    public static YesNoAnswer of(double probability) {
+        return builder().probability(probability).build();
+    }
+
     public static Builder builder() {
         return new Builder();
     }

@@ -74,12 +74,12 @@ public class DecisionResponse {
     }
 
     /**
-     * Returns the answer to the {@link dev.langchain4j.model.decision.request.ScoreQuestion} with the given name.
+     * Returns the answer to the {@link dev.langchain4j.model.decision.request.ScaleQuestion} with the given name.
      *
-     * @throws IllegalArgumentException if there is no answer with this name, or it is not a {@link ScoreAnswer}.
+     * @throws IllegalArgumentException if there is no answer with this name, or it is not a {@link ScaleAnswer}.
      */
-    public ScoreAnswer score(String name) {
-        return answer(name, ScoreAnswer.class);
+    public ScaleAnswer scale(String name) {
+        return answer(name, ScaleAnswer.class);
     }
 
     /**

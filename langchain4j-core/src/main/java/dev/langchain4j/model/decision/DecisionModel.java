@@ -30,7 +30,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * <p>
  * The supported question types are {@link dev.langchain4j.model.decision.request.YesNoQuestion} (a yes/no
  * judgment answered with a probability), {@link dev.langchain4j.model.decision.request.ChoiceQuestion} (one option
- * out of a named set) and {@link dev.langchain4j.model.decision.request.ScoreQuestion} (a position on an ordered
+ * out of a named set) and {@link dev.langchain4j.model.decision.request.ScaleQuestion} (a position on an ordered
  * scale). Implementations may support additional question types.
  *
  * @since 1.21.0
@@ -152,7 +152,7 @@ public interface DecisionModel {
 
     private DecisionRequest withDefaultParameters(DecisionRequest request) {
         return DecisionRequest.builder()
-                .state(request.state())
+                .input(request.input())
                 .questions(request.questions())
                 .parameters(defaultRequestParameters().overrideWith(request.parameters()))
                 .build();

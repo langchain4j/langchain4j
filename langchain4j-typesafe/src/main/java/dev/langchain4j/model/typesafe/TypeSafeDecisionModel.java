@@ -20,12 +20,12 @@ import dev.langchain4j.model.decision.request.DecisionRequest;
 import dev.langchain4j.model.decision.request.DecisionRequestParameters;
 import dev.langchain4j.model.decision.request.YesNoQuestion;
 import dev.langchain4j.model.decision.request.Question;
-import dev.langchain4j.model.decision.request.ScoreQuestion;
+import dev.langchain4j.model.decision.request.ScaleQuestion;
 import dev.langchain4j.model.decision.response.ChoiceAnswer;
 import dev.langchain4j.model.decision.response.DecisionAnswer;
 import dev.langchain4j.model.decision.response.DecisionResponse;
 import dev.langchain4j.model.decision.response.YesNoAnswer;
-import dev.langchain4j.model.decision.response.ScoreAnswer;
+import dev.langchain4j.model.decision.response.ScaleAnswer;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.model.typesafe.internal.TypeSafeAnswer;
 import dev.langchain4j.model.typesafe.internal.TypeSafeClient;
@@ -131,7 +131,7 @@ public class TypeSafeDecisionModel implements DecisionModel {
         Map<String, Object> body = new LinkedHashMap<>();
         String modelName = getOrDefault(request.modelName(), defaultRequestParameters.modelName());
         body.put("model", ensureNotBlank(modelName, "modelName"));
-        body.put("state", request.state());
+        body.put("state", request.input());
         body.put("questions", questions);
         return body;
     }
@@ -140,25 +140,25 @@ public class TypeSafeDecisionModel implements DecisionModel {
         Map<String, Object> result = new LinkedHashMap<>();
         if (question instanceof YesNoQuestion yesNo) {
             result.put("type", "noul");
-            result.put("instructions", yesNo.instructions());
+            result.put("instructions", yesNo.text());
             Map<String, Object> criteria = new LinkedHashMap<>();
-            if (yesNo.whenYes() != null) {
-                criteria.put("true", yesNo.whenYes());
+            if (yesNo.yesWhen() != null) {
+                criteria.put("true", yesNo.yesWhen());
             }
-            if (yesNo.whenNo() != null) {
-                criteria.put("false", yesNo.whenNo());
+            if (yesNo.noWhen() != null) {
+                criteria.put("false", yesNo.noWhen());
             }
             if (!criteria.isEmpty()) {
                 result.put("criteria", criteria);
             }
         } else if (question instanceof ChoiceQuestion choice) {
             result.put("type", "choice");
-            result.put("instructions", choice.instructions());
+            result.put("instructions", choice.text());
             result.put("criteria", choice.options());
-        } else if (question instanceof ScoreQuestion score) {
+        } else if (question instanceof ScaleQuestion scale) {
             result.put("type", "score");
-            result.put("instructions", score.instructions());
-            result.put("criteria", score.levels());
+            result.put("instructions", scale.text());
+            result.put("criteria", scale.levels());
         } else {
             throw new UnsupportedFeatureException(
                     "TypeSafe does not support " + question.getClass().getName() + " questions");
@@ -214,9 +214,9 @@ public class TypeSafeDecisionModel implements DecisionModel {
                     .confidence(answer.confidence == null ? null : probability(name, "confidence", answer.confidence))
                     .build();
         }
-        ScoreQuestion score = (ScoreQuestion) question;
+        ScaleQuestion scale = (ScaleQuestion) question;
         ensureType(name, answer, "score");
-        int levels = score.levels().size();
+        int levels = scale.levels().size();
         List<Double> probabilities = new ArrayList<>();
         if (answer.probabilities != null && !answer.probabilities.isEmpty()) {
             answer.probabilities.keySet().forEach(level -> {
@@ -229,8 +229,8 @@ public class TypeSafeDecisionModel implements DecisionModel {
                 probabilities.add(probability(name, "probability of level " + level, probability));
             }
         }
-        return ScoreAnswer.builder()
-                .score(required(name, "score", answer.score))
+        return ScaleAnswer.builder()
+                .value(required(name, "score", answer.score))
                 .probabilities(probabilities)
                 .confidence(answer.confidence == null ? null : probability(name, "confidence", answer.confidence))
                 .build();

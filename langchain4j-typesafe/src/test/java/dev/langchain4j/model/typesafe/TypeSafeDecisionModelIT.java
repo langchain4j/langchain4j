@@ -44,10 +44,10 @@ class TypeSafeDecisionModelIT extends AbstractDecisionModelIT {
 
         // given
         DecisionRequest request = DecisionRequest.builder()
-                .state("Congratulations! You won a free cruise, click here to claim your prize.")
+                .input("Congratulations! You won a free cruise, click here to claim your prize.")
                 .question(
                         "spam",
-                        YesNoQuestion.builder().instructions("Is this message spam?").build())
+                        YesNoQuestion.builder().text("Is this message spam?").build())
                 .parameters(DecisionRequestParameters.builder()
                         .modelName("jev-1.13.0")
                         .build())
@@ -71,8 +71,8 @@ class TypeSafeDecisionModelIT extends AbstractDecisionModelIT {
                 .build();
 
         DecisionRequest request = DecisionRequest.builder()
-                .state("Hello")
-                .question("greeting", YesNoQuestion.builder().instructions("Is this a greeting?").build())
+                .input("Hello")
+                .question("greeting", YesNoQuestion.builder().text("Is this a greeting?").build())
                 .build();
 
         // when-then

@@ -9,7 +9,7 @@ The `DecisionModel` API is experimental and may change in future releases.
 :::
 
 A decision model answers typed questions about some input, instead of generating text.
-You give it a **state** (for example a support ticket) and a set of named **questions**,
+You give it an **input** (for example a support ticket) and a set of named **questions**,
 and it returns one typed **answer** per question, together with probabilities.
 
 Typical uses are:
@@ -18,7 +18,7 @@ Typical uses are:
 - **Grading**: how urgent is this incident? How frustrated is the customer? How well does this answer address the question?
 
 Decision models are built for these tasks: they return typed answers with probabilities,
-so there is no text to parse, and all questions of a request are answered against the same state in a single call.
+so there is no text to parse, and all questions of a request are answered against the same input in a single call.
 Providers of decision models report that they are much faster and cheaper than chat models for such tasks;
 check the numbers for your own use case.
 
@@ -36,7 +36,7 @@ Available implementations are listed [here](/category/decision-models).
 
 ## Asking questions
 
-A `DecisionRequest` contains the state and the questions, each registered under a name of your choice:
+A `DecisionRequest` contains the input and the questions, each registered under a name of your choice:
 
 ```java
 DecisionModel decisionModel = TypeSafeDecisionModel.builder()
@@ -45,18 +45,18 @@ DecisionModel decisionModel = TypeSafeDecisionModel.builder()
         .build();
 
 DecisionRequest request = DecisionRequest.builder()
-        .state("Help! My payouts have been failing for 3 days and nobody answers my emails.")
+        .input("Help! My payouts have been failing for 3 days and nobody answers my emails.")
         .question("team", ChoiceQuestion.builder()
-                .instructions("Which team should handle this ticket?")
+                .text("Which team should handle this ticket?")
                 .option("billing", "Payments, payouts, invoices, refunds")
                 .option("support", "Problems using the product")
                 .option("sales", "Pricing, upgrades, new accounts")
                 .build())
         .question("urgent", YesNoQuestion.builder()
-                .instructions("Does this need attention today?")
+                .text("Does this need attention today?")
                 .build())
-        .question("frustration", ScoreQuestion.builder()
-                .instructions("How frustrated is the customer?")
+        .question("frustration", ScaleQuestion.builder()
+                .text("How frustrated is the customer?")
                 .level("Calm")
                 .level("Frustrated")
                 .level("Angry")
@@ -71,12 +71,12 @@ The response contains one answer per question, under the same name:
 ```java
 ChoiceAnswer team = response.choice("team");
 YesNoAnswer urgent = response.yesNo("urgent");
-ScoreAnswer frustration = response.score("frustration");
+ScaleAnswer frustration = response.scale("frustration");
 
 team.value();               // "billing"
 team.probabilities();       // {billing=0.88, support=0.1, sales=0.02}
 urgent.probability();       // 0.93
-frustration.score();        // 1.4
+frustration.value();        // 1.4
 frustration.probabilities(); // [0.05, 0.5, 0.45]
 ```
 
@@ -94,9 +94,9 @@ Optionally, describe when the answer should be "yes" and when it should be "no":
 
 ```java
 YesNoQuestion refundRequested = YesNoQuestion.builder()
-        .instructions("Does the customer ask for a refund?")
-        .whenYes("The customer explicitly asks for their money back")
-        .whenNo("The customer only asks about a charge")
+        .text("Does the customer ask for a refund?")
+        .yesWhen("The customer explicitly asks for their money back")
+        .noWhen("The customer only asks about a charge")
         .build();
 ```
 
@@ -110,27 +110,27 @@ It is answered with a `ChoiceAnswer`:
   likely options
 - `confidence()`: how confident the model is, or `null` if the model does not report it (see [below](#probabilities-and-confidence))
 
-### Score questions
+### Scale questions
 
-A `ScoreQuestion` places the state on an ordered scale.
+A `ScaleQuestion` places the input on an ordered scale.
 Levels are added from lowest to highest, and a level's number is its index, starting at 0.
-It is answered with a `ScoreAnswer`:
-- `score()`: the probability-weighted mean of the level indexes, from 0 to `n - 1`.
+It is answered with a `ScaleAnswer`:
+- `value()`: the probability-weighted mean of the level indexes, from 0 to `n - 1`.
   It can fall between two levels: with the levels "Calm", "Frustrated" and "Angry",
-  a score of 1.4 means "between frustrated and angry, closer to frustrated".
+  a value of 1.4 means "between frustrated and angry, closer to frustrated".
 - `probabilities()`: the probability of each level, in the same order as the levels
 - `confidence()`: how confident the model is, or `null` if the model does not report it
 
 ## Describing options and levels
 
-Options, levels and the `whenYes`/`whenNo` descriptions can be plain text, as in the examples above,
+Options, levels and the `yesWhen`/`noWhen` descriptions can be plain text, as in the examples above,
 or structured content (a `Map` or a `List`), which is passed to the model as is.
 Structured descriptions are useful to separate what an option covers from what it does not,
 or to add examples:
 
 ```java
 ChoiceQuestion team = ChoiceQuestion.builder()
-        .instructions("Which team should handle this ticket?")
+        .text("Which team should handle this ticket?")
         .option("billing", Map.of(
                 "what", "Payments, payouts, invoices, refunds",
                 "not_for", "Questions about pricing plans",
@@ -141,28 +141,28 @@ ChoiceQuestion team = ChoiceQuestion.builder()
 
 The keys are not predefined: choose names that describe the content well, because the model sees them.
 
-## Describing the state
+## Describing the input
 
-The state can be plain text, a `Map` or a `List`.
+The input can be plain text, a `Map` or a `List`.
 Use a `Map` to give the model several pieces of information that belong together.
 Objects inside a `Map` or a `List` are converted to maps using their Java field names,
-so the model receives the same state whatever the `DecisionModel` implementation:
+so the model receives the same input whatever the `DecisionModel` implementation:
 
 ```java
 DecisionRequest request = DecisionRequest.builder()
-        .state(Map.of(
+        .input(Map.of(
                 "ticket", "My payouts have been failing for 3 days",
                 "customer_plan", "enterprise",
                 "open_tickets", 3))
         .question("urgent", YesNoQuestion.builder()
-                .instructions("Does this need attention today?")
+                .text("Does this need attention today?")
                 .build())
         .build();
 ```
 
 ## Probabilities and confidence
 
-A yes/no answer is always a probability. Choice and score answers carry the probability of each option or level,
+A yes/no answer is always a probability. Choice and scale answers carry the probability of each option or level,
 if the model reports them (otherwise `probabilities()` is empty).
 Probabilities are the best basis for decisions in your code,
 for example "escalate to a human when the model hesitates between the two most likely options":
@@ -174,7 +174,7 @@ if (team.margin() < 0.2) {   // the difference between the two highest probabili
 }
 ```
 
-Choice and score answers can also carry a `confidence()` value from 0 to 1.
+Choice and scale answers can also carry a `confidence()` value from 0 to 1.
 How it is computed is defined by each model and differs between models.
 
 Probabilities have the same meaning for every model, but not the same calibration:
@@ -188,7 +188,7 @@ It can also be set per request, which overrides the configured one:
 
 ```java
 DecisionRequest request = DecisionRequest.builder()
-        .state(ticket)
+        .input(ticket)
         .question("urgent", urgentQuestion)
         .parameters(DecisionRequestParameters.builder()
                 .modelName("jev-1.13.0")
@@ -250,9 +250,9 @@ so you can tell which version made it.
 
 ## Data protection
 
-The state is sent to the provider of the model, so treat it like any other data you send to a third party:
+The input is sent to the provider of the model, so treat it like any other data you send to a third party:
 - send only what the model needs to decide, for example a small record instead of a whole entity;
 - redact personal data that is not needed for the decision;
-- do not enable request and response logging in production if the state contains personal data.
+- do not enable request and response logging in production if the input contains personal data.
 
-`DecisionRequest.toString()` leaves the state out, so requests can be logged without it.
+`DecisionRequest.toString()` leaves the input out, so requests can be logged without it.

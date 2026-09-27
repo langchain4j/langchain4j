@@ -16,50 +16,50 @@ import org.junit.jupiter.params.provider.ValueSource;
 class DecisionRequestTest {
 
     private static final YesNoQuestion QUESTION =
-            YesNoQuestion.builder().instructions("Is this spam?").build();
+            YesNoQuestion.builder().text("Is this spam?").build();
 
     @ParameterizedTest
-    @MethodSource("validStates")
-    void should_accept_text_map_and_list_state(Object state) {
+    @MethodSource("validInputs")
+    void should_accept_text_map_and_list_input(Object state) {
 
         DecisionRequest request =
-                DecisionRequest.builder().state(state).question("spam", QUESTION).build();
+                DecisionRequest.builder().input(state).question("spam", QUESTION).build();
 
-        assertThat(request.state()).isEqualTo(state);
+        assertThat(request.input()).isEqualTo(state);
     }
 
-    static List<Object> validStates() {
+    static List<Object> validInputs() {
         return List.of("Buy now!", Map.of("subject", "Buy now!"), List.of("Buy now!", "Limited offer"));
     }
 
     @ParameterizedTest
-    @MethodSource("invalidStates")
-    void should_reject_invalid_state(Object state) {
+    @MethodSource("invalidInputs")
+    void should_reject_invalid_input(Object state) {
 
         assertThatThrownBy(() -> DecisionRequest.builder()
-                        .state(state)
+                        .input(state)
                         .question("spam", QUESTION)
                         .build())
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("state");
+                .hasMessageContaining("input");
     }
 
-    static List<Object> invalidStates() {
+    static List<Object> invalidInputs() {
         return List.of(" ", Map.of(), List.of(), 42);
     }
 
     @Test
-    void should_reject_missing_state() {
+    void should_reject_missing_input() {
 
         assertThatThrownBy(() -> DecisionRequest.builder().question("spam", QUESTION).build())
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("state");
+                .hasMessageContaining("input");
     }
 
     @Test
     void should_require_at_least_one_question() {
 
-        assertThatThrownBy(() -> DecisionRequest.builder().state("Buy now!").build())
+        assertThatThrownBy(() -> DecisionRequest.builder().input("Buy now!").build())
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("questions");
     }
@@ -77,7 +77,7 @@ class DecisionRequestTest {
     void should_keep_question_order() {
 
         DecisionRequest request = DecisionRequest.builder()
-                .state("Buy now!")
+                .input("Buy now!")
                 .question("c", QUESTION)
                 .question("a", QUESTION)
                 .question("b", QUESTION)
@@ -88,17 +88,17 @@ class DecisionRequestTest {
     }
 
     @Test
-    void should_copy_state_and_questions() {
+    void should_copy_input_and_questions() {
 
         Map<String, Object> state = new HashMap<>(Map.of("subject", "Buy now!"));
         Map<String, Question> questions = new LinkedHashMap<>(Map.of("spam", QUESTION));
 
         DecisionRequest request =
-                DecisionRequest.builder().state(state).questions(questions).build();
+                DecisionRequest.builder().input(state).questions(questions).build();
         state.put("body", "Limited offer");
         questions.put("phishing", QUESTION);
 
-        assertThat(request.state()).isEqualTo(Map.of("subject", "Buy now!"));
+        assertThat(request.input()).isEqualTo(Map.of("subject", "Buy now!"));
         assertThat(request.questions()).containsOnlyKeys("spam");
         assertThatThrownBy(() -> request.questions().put("phishing", QUESTION))
                 .isInstanceOf(UnsupportedOperationException.class);
@@ -108,7 +108,7 @@ class DecisionRequestTest {
     void should_default_to_empty_parameters() {
 
         DecisionRequest request =
-                DecisionRequest.builder().state("Buy now!").question("spam", QUESTION).build();
+                DecisionRequest.builder().input("Buy now!").question("spam", QUESTION).build();
 
         assertThat(request.parameters()).isEqualTo(DecisionRequestParameters.EMPTY);
         assertThat(request.modelName()).isNull();
@@ -118,7 +118,7 @@ class DecisionRequestTest {
     void should_expose_model_name_from_parameters() {
 
         DecisionRequest request = DecisionRequest.builder()
-                .state("Buy now!")
+                .input("Buy now!")
                 .question("spam", QUESTION)
                 .parameters(DecisionRequestParameters.builder().modelName("model").build())
                 .build();
@@ -129,10 +129,10 @@ class DecisionRequestTest {
     @Test
     void should_accept_custom_question_types() {
 
-        record RankQuestion(String instructions, List<String> candidates) implements Question {}
+        record RankQuestion(String text, List<String> candidates) implements Question {}
 
         DecisionRequest request = DecisionRequest.builder()
-                .state("Refactor the parser")
+                .input("Refactor the parser")
                 .question("next_step", new RankQuestion("Which step is best?", List.of("test", "edit")))
                 .build();
 
@@ -163,44 +163,44 @@ class DecisionRequestTest {
     record Customer(String name, Plan plan, int openTickets, List<String> tags) {}
 
     @Test
-    void should_normalize_objects_in_state_using_java_field_names() {
+    void should_normalize_objects_in_input_using_java_field_names() {
 
         DecisionRequest request = DecisionRequest.builder()
-                .state(Map.of("customer", new Customer("Anna", Plan.ENTERPRISE, 3, List.of("vip"))))
+                .input(Map.of("customer", new Customer("Anna", Plan.ENTERPRISE, 3, List.of("vip"))))
                 .question("spam", QUESTION)
                 .build();
 
-        assertThat(request.state())
+        assertThat(request.input())
                 .isEqualTo(Map.of(
                         "customer",
                         Map.of("name", "Anna", "plan", "ENTERPRISE", "openTickets", 3, "tags", List.of("vip"))));
     }
 
     @Test
-    void normalized_state_should_be_deeply_immutable() {
+    void normalized_input_should_be_deeply_immutable() {
 
         List<String> tags = new ArrayList<>(List.of("vip"));
         Map<String, Object> customer = new HashMap<>(Map.of("tags", tags));
 
         DecisionRequest request = DecisionRequest.builder()
-                .state(Map.of("customer", customer))
+                .input(Map.of("customer", customer))
                 .question("spam", QUESTION)
                 .build();
         tags.add("new");
 
         @SuppressWarnings("unchecked")
         Map<String, Object> normalizedCustomer =
-                (Map<String, Object>) ((Map<String, Object>) request.state()).get("customer");
+                (Map<String, Object>) ((Map<String, Object>) request.input()).get("customer");
         assertThat(normalizedCustomer.get("tags")).isEqualTo(List.of("vip"));
         assertThatThrownBy(() -> normalizedCustomer.put("name", "Bob"))
                 .isInstanceOf(UnsupportedOperationException.class);
     }
 
     @Test
-    void to_string_should_not_contain_state() {
+    void to_string_should_not_contain_input() {
 
         DecisionRequest request = DecisionRequest.builder()
-                .state("My IBAN is DE89 3704 0044 0532 0130 00")
+                .input("My IBAN is DE89 3704 0044 0532 0130 00")
                 .question("spam", QUESTION)
                 .build();
 

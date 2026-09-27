@@ -131,11 +131,11 @@ class DecisionModelTest {
 
     private static DecisionRequest request(DecisionRequestParameters parameters) {
         return DecisionRequest.builder()
-                .state("My payouts have been failing for 3 days")
+                .input("My payouts have been failing for 3 days")
                 .question(
                         "urgent",
                         YesNoQuestion.builder()
-                                .instructions("Does this need attention today?")
+                                .text("Does this need attention today?")
                                 .build())
                 .parameters(parameters)
                 .build();

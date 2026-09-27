@@ -24,11 +24,11 @@ import dev.langchain4j.model.decision.request.DecisionRequest;
 import dev.langchain4j.model.decision.request.DecisionRequestParameters;
 import dev.langchain4j.model.decision.request.YesNoQuestion;
 import dev.langchain4j.model.decision.request.Question;
-import dev.langchain4j.model.decision.request.ScoreQuestion;
+import dev.langchain4j.model.decision.request.ScaleQuestion;
 import dev.langchain4j.model.decision.response.ChoiceAnswer;
 import dev.langchain4j.model.decision.response.DecisionResponse;
 import dev.langchain4j.model.decision.response.YesNoAnswer;
-import dev.langchain4j.model.decision.response.ScoreAnswer;
+import dev.langchain4j.model.decision.response.ScaleAnswer;
 import dev.langchain4j.model.output.TokenUsage;
 import java.util.ArrayList;
 import java.util.List;
@@ -68,24 +68,24 @@ class TypeSafeDecisionModelTest {
             """;
 
     private static final DecisionRequest REQUEST = DecisionRequest.builder()
-            .state(Map.of("ticket", "Help! My payouts have been failing for 3 days."))
+            .input(Map.of("ticket", "Help! My payouts have been failing for 3 days."))
             .question(
                     "team",
                     ChoiceQuestion.builder()
-                            .instructions("Which team should handle this?")
+                            .text("Which team should handle this?")
                             .option("billing", "Payments, invoicing, refunds")
                             .option("support", Map.of("what", "Bugs", "not_for", "Invoices"))
                             .build())
             .question(
                     "urgent",
                     YesNoQuestion.builder()
-                            .instructions("Does this need attention today?")
-                            .whenYes("Money is not reaching the customer")
+                            .text("Does this need attention today?")
+                            .yesWhen("Money is not reaching the customer")
                             .build())
             .question(
                     "frustration",
-                    ScoreQuestion.builder()
-                            .instructions("How frustrated is the customer?")
+                    ScaleQuestion.builder()
+                            .text("How frustrated is the customer?")
                             .level("Calm")
                             .level("Frustrated")
                             .level("Angry")
@@ -149,8 +149,8 @@ class TypeSafeDecisionModelTest {
 
         // when
         model.decide(DecisionRequest.builder()
-                .state("Hi, are we still meeting tomorrow?")
-                .question("spam", YesNoQuestion.builder().instructions("Is this spam?").build())
+                .input("Hi, are we still meeting tomorrow?")
+                .question("spam", YesNoQuestion.builder().text("Is this spam?").build())
                 .build());
 
         // then
@@ -180,8 +180,8 @@ class TypeSafeDecisionModelTest {
         assertThat(response.answers().get("urgent"))
                 .isEqualTo(YesNoAnswer.builder().probability(0.95).build());
         assertThat(response.answers().get("frustration"))
-                .isEqualTo(ScoreAnswer.builder()
-                        .score(1.44)
+                .isEqualTo(ScaleAnswer.builder()
+                        .value(1.44)
                         .probabilities(List.of(0.06, 0.44, 0.5))
                         .confidence(0.78)
                         .build());
@@ -213,7 +213,7 @@ class TypeSafeDecisionModelTest {
         assertThat(team.probabilities()).isEmpty();
         assertThat(team.confidence()).isNull();
         assertThat(response.yesNo("urgent").probability()).isEqualTo(1.0);
-        assertThat(response.score("frustration").probabilities())
+        assertThat(response.scale("frustration").probabilities())
                 .isEmpty();
         assertThat(response.tokenUsage()).isNull();
     }
@@ -247,7 +247,7 @@ class TypeSafeDecisionModelTest {
 
         // when
         model.decide(DecisionRequest.builder()
-                .state(REQUEST.state())
+                .input(REQUEST.input())
                 .questions(REQUEST.questions())
                 .parameters(DecisionRequestParameters.builder()
                         .modelName("jev-1.13.0")
@@ -278,12 +278,12 @@ class TypeSafeDecisionModelTest {
     void should_reject_unsupported_question_type_before_sending_request() {
 
         // given
-        record RankQuestion(String instructions) implements Question {}
+        record RankQuestion(String text) implements Question {}
 
         MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(RESPONSE));
         TypeSafeDecisionModel model = model(httpClient);
         DecisionRequest request = DecisionRequest.builder()
-                .state("Refactor the parser")
+                .input("Refactor the parser")
                 .question("next_step", new RankQuestion("Which step is best?"))
                 .build();
 
@@ -342,7 +342,7 @@ class TypeSafeDecisionModelTest {
 
         // when
         model.decide(DecisionRequest.builder()
-                .state(REQUEST.state())
+                .input(REQUEST.input())
                 .questions(REQUEST.questions())
                 .parameters(DecisionRequestParameters.builder()
                         .modelName("jev-1.13.0")
@@ -409,7 +409,7 @@ class TypeSafeDecisionModelTest {
 
         // when
         model.decide(DecisionRequest.builder()
-                .state(Map.of("customer", new Customer("enterprise", 3)))
+                .input(Map.of("customer", new Customer("enterprise", 3)))
                 .questions(REQUEST.questions())
                 .build());
 

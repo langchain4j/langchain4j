@@ -10,38 +10,38 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * The answer to a {@link dev.langchain4j.model.decision.request.ScoreQuestion}: a score, the probability of each
+ * The answer to a {@link dev.langchain4j.model.decision.request.ScaleQuestion}: a value, the probability of each
  * level and, if the model reports one, a confidence.
  *
  * @since 1.21.0
  */
 @Experimental
-public final class ScoreAnswer implements DecisionAnswer {
+public final class ScaleAnswer implements DecisionAnswer {
 
-    private final double score;
+    private final double value;
     private final List<Double> probabilities;
     private final Double confidence;
 
-    private ScoreAnswer(Builder builder) {
-        ensureNotNull(builder.score, "score");
-        ensureTrue(Double.isFinite(builder.score), "score must be a finite number, but was " + builder.score);
-        this.score = builder.score;
+    private ScaleAnswer(Builder builder) {
+        ensureNotNull(builder.value, "value");
+        ensureTrue(Double.isFinite(builder.value), "value must be a finite number, but was " + builder.value);
+        this.value = builder.value;
         this.probabilities = copy(builder.probabilities);
         this.confidence = Probabilities.ensureNullableProbability(builder.confidence, "confidence");
     }
 
     /**
      * The probability-weighted mean of the level indexes, from 0 (the lowest level) to {@code n - 1} (the highest
-     * level). It can fall between two levels: with levels "Calm", "Frustrated" and "Angry", a score of 1.4 means
+     * level). It can fall between two levels: with levels "Calm", "Frustrated" and "Angry", a value of 1.4 means
      * "between frustrated and angry, closer to frustrated".
      */
-    public double score() {
-        return score;
+    public double value() {
+        return value;
     }
 
     /**
      * The probability of each level, indexed like
-     * {@link dev.langchain4j.model.decision.request.ScoreQuestion#levels()}. Empty if the model does not report
+     * {@link dev.langchain4j.model.decision.request.ScaleQuestion#levels()}. Empty if the model does not report
      * probabilities.
      */
     public List<Double> probabilities() {
@@ -49,7 +49,7 @@ public final class ScoreAnswer implements DecisionAnswer {
     }
 
     /**
-     * How confident the model is in {@link #score()}, from 0 to 1, or {@code null} if the model does not report a
+     * How confident the model is in {@link #value()}, from 0 to 1, or {@code null} if the model does not report a
      * confidence.
      * <p>
      * The formula is defined by each model and differs between models, so a threshold tuned for one model does not
@@ -66,30 +66,30 @@ public final class ScoreAnswer implements DecisionAnswer {
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (!(o instanceof ScoreAnswer that)) return false;
-        return Double.compare(score, that.score) == 0
+        if (!(o instanceof ScaleAnswer that)) return false;
+        return Double.compare(value, that.value) == 0
                 && Objects.equals(probabilities, that.probabilities)
                 && Objects.equals(confidence, that.confidence);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(score, probabilities, confidence);
+        return Objects.hash(value, probabilities, confidence);
     }
 
     @Override
     public String toString() {
-        return "ScoreAnswer{score=" + score + ", probabilities=" + probabilities + ", confidence=" + confidence + '}';
+        return "ScaleAnswer{value=" + value + ", probabilities=" + probabilities + ", confidence=" + confidence + '}';
     }
 
     public static final class Builder {
 
-        private Double score;
+        private Double value;
         private final List<Double> probabilities = new ArrayList<>();
         private Double confidence;
 
-        public Builder score(Double score) {
-            this.score = score;
+        public Builder value(Double value) {
+            this.value = value;
             return this;
         }
 
@@ -110,8 +110,8 @@ public final class ScoreAnswer implements DecisionAnswer {
             return this;
         }
 
-        public ScoreAnswer build() {
-            return new ScoreAnswer(this);
+        public ScaleAnswer build() {
+            return new ScaleAnswer(this);
         }
     }
 }

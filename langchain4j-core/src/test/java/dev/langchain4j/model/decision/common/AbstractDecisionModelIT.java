@@ -9,11 +9,11 @@ import dev.langchain4j.model.decision.listener.DecisionModelRequestContext;
 import dev.langchain4j.model.decision.listener.DecisionModelResponseContext;
 import dev.langchain4j.model.decision.request.ChoiceQuestion;
 import dev.langchain4j.model.decision.request.DecisionRequest;
-import dev.langchain4j.model.decision.request.ScoreQuestion;
+import dev.langchain4j.model.decision.request.ScaleQuestion;
 import dev.langchain4j.model.decision.request.YesNoQuestion;
 import dev.langchain4j.model.decision.response.ChoiceAnswer;
 import dev.langchain4j.model.decision.response.DecisionResponse;
-import dev.langchain4j.model.decision.response.ScoreAnswer;
+import dev.langchain4j.model.decision.response.ScaleAnswer;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -33,17 +33,17 @@ public abstract class AbstractDecisionModelIT {
     }
 
     private static final YesNoQuestion SPAM =
-            YesNoQuestion.builder().instructions("Is this message spam?").build();
+            YesNoQuestion.builder().text("Is this message spam?").build();
 
     private static final ChoiceQuestion TEAM = ChoiceQuestion.builder()
-            .instructions("Which team should handle this ticket?")
+            .text("Which team should handle this ticket?")
             .option("billing", "Payments, payouts, charges, invoices, refunds")
             .option("support", Map.of("what", "Problems using the product", "not_for", "Questions about charges"))
             .option("sales", "Pricing, upgrades, new accounts")
             .build();
 
-    private static final ScoreQuestion FRUSTRATION = ScoreQuestion.builder()
-            .instructions("How frustrated is the customer?")
+    private static final ScaleQuestion FRUSTRATION = ScaleQuestion.builder()
+            .text("How frustrated is the customer?")
             .level("Calm")
             .level("Frustrated")
             .level("Angry")
@@ -63,7 +63,7 @@ public abstract class AbstractDecisionModelIT {
     void should_answer_several_questions_in_one_call() {
 
         DecisionResponse response = model().decide(DecisionRequest.builder()
-                .state(Map.of(
+                .input(Map.of(
                         "ticket", "I was charged twice this month and nobody answers my emails!",
                         "customer", Map.of("plan", "enterprise")))
                 .question("team", TEAM)
@@ -78,8 +78,8 @@ public abstract class AbstractDecisionModelIT {
             assertThat(team.probability("billing")).isGreaterThan(0.5);
         }
 
-        ScoreAnswer frustration = response.score("frustration");
-        assertThat(frustration.score()).isBetween(0.5, 2.0);
+        ScaleAnswer frustration = response.scale("frustration");
+        assertThat(frustration.value()).isBetween(0.5, 2.0);
         if (!frustration.probabilities().isEmpty()) {
             assertThat(frustration.probabilities()).hasSize(3);
         }
@@ -121,6 +121,6 @@ public abstract class AbstractDecisionModelIT {
     }
 
     private static DecisionRequest request(String message) {
-        return DecisionRequest.builder().state(message).question("spam", SPAM).build();
+        return DecisionRequest.builder().input(message).question("spam", SPAM).build();
     }
 }

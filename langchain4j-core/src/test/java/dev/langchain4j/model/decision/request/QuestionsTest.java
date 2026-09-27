@@ -13,24 +13,24 @@ class QuestionsTest {
     void should_create_yes_no_question_without_criteria() {
 
         YesNoQuestion question =
-                YesNoQuestion.builder().instructions("Is this spam?").build();
+                YesNoQuestion.builder().text("Is this spam?").build();
 
-        assertThat(question.instructions()).isEqualTo("Is this spam?");
-        assertThat(question.whenYes()).isNull();
-        assertThat(question.whenNo()).isNull();
+        assertThat(question.text()).isEqualTo("Is this spam?");
+        assertThat(question.yesWhen()).isNull();
+        assertThat(question.noWhen()).isNull();
     }
 
     @Test
     void should_create_yes_no_question_with_text_and_structured_criteria() {
 
         YesNoQuestion question = YesNoQuestion.builder()
-                .instructions("Does the customer ask for a refund?")
-                .whenYes("The customer explicitly asks for their money back")
-                .whenNo(Map.of("what", "A question about a charge", "examples", List.of("Why was I charged?")))
+                .text("Does the customer ask for a refund?")
+                .yesWhen("The customer explicitly asks for their money back")
+                .noWhen(Map.of("what", "A question about a charge", "examples", List.of("Why was I charged?")))
                 .build();
 
-        assertThat(question.whenYes()).isEqualTo("The customer explicitly asks for their money back");
-        assertThat(question.whenNo())
+        assertThat(question.yesWhen()).isEqualTo("The customer explicitly asks for their money back");
+        assertThat(question.noWhen())
                 .isEqualTo(Map.of("what", "A question about a charge", "examples", List.of("Why was I charged?")));
     }
 
@@ -38,44 +38,44 @@ class QuestionsTest {
     void should_reject_invalid_yes_no_criteria() {
 
         assertThatThrownBy(() -> YesNoQuestion.builder()
-                        .instructions("Is this spam?")
-                        .whenYes(" ")
+                        .text("Is this spam?")
+                        .yesWhen(" ")
                         .build())
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("whenYes");
+                .hasMessageContaining("yesWhen");
 
         assertThatThrownBy(() -> YesNoQuestion.builder()
-                        .instructions("Is this spam?")
-                        .whenNo(42)
+                        .text("Is this spam?")
+                        .noWhen(42)
                         .build())
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("whenNo");
+                .hasMessageContaining("noWhen");
     }
 
     @Test
-    void should_require_instructions() {
+    void should_require_text() {
 
         assertThatThrownBy(() -> YesNoQuestion.builder().build())
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("instructions");
+                .hasMessageContaining("text");
 
         assertThatThrownBy(() -> ChoiceQuestion.builder()
                         .option("a", "A")
                         .option("b", "B")
                         .build())
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("instructions");
+                .hasMessageContaining("text");
 
-        assertThatThrownBy(() -> ScoreQuestion.builder().level("low").level("high").build())
+        assertThatThrownBy(() -> ScaleQuestion.builder().level("low").level("high").build())
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("instructions");
+                .hasMessageContaining("text");
     }
 
     @Test
     void should_create_choice_question_keeping_option_order() {
 
         ChoiceQuestion question = ChoiceQuestion.builder()
-                .instructions("Which team should handle this ticket?")
+                .text("Which team should handle this ticket?")
                 .option("support", Map.of("what", "Problems using the product", "not_for", "Invoices"))
                 .option("billing", "Payments, invoices, refunds")
                 .option("sales", List.of("Pricing", "Upgrades"))
@@ -91,7 +91,7 @@ class QuestionsTest {
     void should_replace_choice_options() {
 
         ChoiceQuestion question = ChoiceQuestion.builder()
-                .instructions("Which team?")
+                .text("Which team?")
                 .option("old", "Old team")
                 .options(Map.of("billing", "Payments", "support", "Bugs"))
                 .build();
@@ -103,7 +103,7 @@ class QuestionsTest {
     void should_reject_invalid_choice_options() {
 
         assertThatThrownBy(() -> ChoiceQuestion.builder()
-                        .instructions("Which team?")
+                        .text("Which team?")
                         .option("billing", "Payments")
                         .build())
                 .isInstanceOf(IllegalArgumentException.class)
@@ -123,10 +123,10 @@ class QuestionsTest {
     }
 
     @Test
-    void should_create_score_question_keeping_level_order() {
+    void should_create_scale_question_keeping_level_order() {
 
-        ScoreQuestion question = ScoreQuestion.builder()
-                .instructions("How frustrated is the customer?")
+        ScaleQuestion question = ScaleQuestion.builder()
+                .text("How frustrated is the customer?")
                 .level("Calm")
                 .level("Frustrated")
                 .level(Map.of("what", "Angry", "examples", List.of("This is unacceptable!")))
@@ -138,10 +138,10 @@ class QuestionsTest {
     }
 
     @Test
-    void should_replace_score_levels() {
+    void should_replace_scale_levels() {
 
-        ScoreQuestion question = ScoreQuestion.builder()
-                .instructions("How urgent?")
+        ScaleQuestion question = ScaleQuestion.builder()
+                .text("How urgent?")
                 .level("old")
                 .levels(List.of("Can wait", "This week", "Now"))
                 .build();
@@ -150,16 +150,16 @@ class QuestionsTest {
     }
 
     @Test
-    void should_reject_invalid_score_levels() {
+    void should_reject_invalid_scale_levels() {
 
-        assertThatThrownBy(() -> ScoreQuestion.builder()
-                        .instructions("How urgent?")
+        assertThatThrownBy(() -> ScaleQuestion.builder()
+                        .text("How urgent?")
                         .level("Now")
                         .build())
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("at least 2 levels");
 
-        assertThatThrownBy(() -> ScoreQuestion.builder().level(List.of()))
+        assertThatThrownBy(() -> ScaleQuestion.builder().level(List.of()))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("level");
     }
@@ -168,12 +168,12 @@ class QuestionsTest {
     void questions_should_be_immutable() {
 
         ChoiceQuestion choice = ChoiceQuestion.builder()
-                .instructions("Which team?")
+                .text("Which team?")
                 .option("billing", "Payments")
                 .option("support", "Bugs")
                 .build();
-        ScoreQuestion score = ScoreQuestion.builder()
-                .instructions("How urgent?")
+        ScaleQuestion score = ScaleQuestion.builder()
+                .text("How urgent?")
                 .level("Low")
                 .level("High")
                 .build();
@@ -186,41 +186,41 @@ class QuestionsTest {
     @Test
     void should_implement_equals_and_hash_code() {
 
-        assertThat(YesNoQuestion.builder().instructions("Spam?").whenYes("Ads").build())
-                .isEqualTo(YesNoQuestion.builder().instructions("Spam?").whenYes("Ads").build())
+        assertThat(YesNoQuestion.builder().text("Spam?").yesWhen("Ads").build())
+                .isEqualTo(YesNoQuestion.builder().text("Spam?").yesWhen("Ads").build())
                 .hasSameHashCodeAs(
-                        YesNoQuestion.builder().instructions("Spam?").whenYes("Ads").build())
+                        YesNoQuestion.builder().text("Spam?").yesWhen("Ads").build())
                 .isNotEqualTo(
-                        YesNoQuestion.builder().instructions("Spam?").whenNo("Ads").build());
+                        YesNoQuestion.builder().text("Spam?").noWhen("Ads").build());
 
         assertThat(ChoiceQuestion.builder()
-                        .instructions("Team?")
+                        .text("Team?")
                         .option("a", "A")
                         .option("b", "B")
                         .build())
                 .isEqualTo(ChoiceQuestion.builder()
-                        .instructions("Team?")
+                        .text("Team?")
                         .option("a", "A")
                         .option("b", "B")
                         .build())
                 .isNotEqualTo(ChoiceQuestion.builder()
-                        .instructions("Team?")
+                        .text("Team?")
                         .option("a", "A")
                         .option("c", "C")
                         .build());
 
-        assertThat(ScoreQuestion.builder()
-                        .instructions("Urgency?")
+        assertThat(ScaleQuestion.builder()
+                        .text("Urgency?")
                         .level("Low")
                         .level("High")
                         .build())
-                .isEqualTo(ScoreQuestion.builder()
-                        .instructions("Urgency?")
+                .isEqualTo(ScaleQuestion.builder()
+                        .text("Urgency?")
                         .level("Low")
                         .level("High")
                         .build())
-                .isNotEqualTo(ScoreQuestion.builder()
-                        .instructions("Urgency?")
+                .isNotEqualTo(ScaleQuestion.builder()
+                        .text("Urgency?")
                         .level("High")
                         .level("Low")
                         .build());

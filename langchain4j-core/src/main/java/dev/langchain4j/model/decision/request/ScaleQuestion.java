@@ -11,14 +11,14 @@ import java.util.Objects;
 
 /**
  * A question that places the state on an ordered scale, answered with a score and the probability of each level
- * (see {@link dev.langchain4j.model.decision.response.ScoreAnswer}).
+ * (see {@link dev.langchain4j.model.decision.response.ScaleAnswer}).
  * <p>
  * Levels are ordered from lowest to highest; a level's number is its index, starting at 0. Each level is described
  * either with plain text or with structured content (a {@link java.util.Map} or a {@link java.util.List}) that is
  * passed to the model as is:
  * <pre>{@code
- * ScoreQuestion frustration = ScoreQuestion.builder()
- *         .instructions("How frustrated is the customer?")
+ * ScaleQuestion frustration = ScaleQuestion.builder()
+ *         .text("How frustrated is the customer?")
  *         .level("Calm")        // 0
  *         .level("Frustrated")  // 1
  *         .level("Angry")       // 2
@@ -28,20 +28,20 @@ import java.util.Objects;
  * @since 1.21.0
  */
 @Experimental
-public final class ScoreQuestion implements Question {
+public final class ScaleQuestion implements Question {
 
-    private final String instructions;
+    private final String text;
     private final List<Object> levels;
 
-    private ScoreQuestion(Builder builder) {
-        this.instructions = ensureNotBlank(builder.instructions, "instructions");
-        ensureTrue(builder.levels.size() >= 2, "ScoreQuestion requires at least 2 levels");
+    private ScaleQuestion(Builder builder) {
+        this.text = ensureNotBlank(builder.text, "text");
+        ensureTrue(builder.levels.size() >= 2, "ScaleQuestion requires at least 2 levels");
         this.levels = copy(builder.levels);
     }
 
     @Override
-    public String instructions() {
-        return instructions;
+    public String text() {
+        return text;
     }
 
     /**
@@ -59,27 +59,27 @@ public final class ScoreQuestion implements Question {
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (!(o instanceof ScoreQuestion that)) return false;
-        return Objects.equals(instructions, that.instructions) && Objects.equals(levels, that.levels);
+        if (!(o instanceof ScaleQuestion that)) return false;
+        return Objects.equals(text, that.text) && Objects.equals(levels, that.levels);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(instructions, levels);
+        return Objects.hash(text, levels);
     }
 
     @Override
     public String toString() {
-        return "ScoreQuestion{instructions=" + instructions + ", levels=" + levels + '}';
+        return "ScaleQuestion{text=" + text + ", levels=" + levels + '}';
     }
 
     public static final class Builder {
 
-        private String instructions;
+        private String text;
         private final List<Object> levels = new ArrayList<>();
 
-        public Builder instructions(String instructions) {
-            this.instructions = instructions;
+        public Builder text(String text) {
+            this.text = text;
             return this;
         }
 
@@ -111,8 +111,8 @@ public final class ScoreQuestion implements Question {
             return this;
         }
 
-        public ScoreQuestion build() {
-            return new ScoreQuestion(this);
+        public ScaleQuestion build() {
+            return new ScaleQuestion(this);
         }
     }
 }

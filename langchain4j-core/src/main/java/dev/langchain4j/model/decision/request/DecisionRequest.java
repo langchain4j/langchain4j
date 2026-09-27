@@ -12,23 +12,23 @@ import java.util.Map;
 import java.util.Objects;
 
 /**
- * A request to a {@link dev.langchain4j.model.decision.DecisionModel}: the {@link #state()} to evaluate and the
+ * A request to a {@link dev.langchain4j.model.decision.DecisionModel}: the {@link #input()} to evaluate and the
  * named {@link #questions()} to answer about it.
  * <p>
- * The state is either plain text or structured content (a {@link java.util.Map} or a {@link java.util.List}), for
+ * The input is either plain text or structured content (a {@link java.util.Map} or a {@link java.util.List}), for
  * example a support ticket together with the customer's plan. Objects inside structured content are converted to
- * maps using their Java field names, so the model receives the same state whatever the implementation. Every question is answered against the same state,
- * and each answer is returned under the name of its question:
+ * maps using their Java field names, so the model receives the same input whatever the implementation.
+ * Every question is answered against the same input, and each answer is returned under the name of its question:
  * <pre>{@code
  * DecisionRequest request = DecisionRequest.builder()
- *         .state(Map.of("ticket", "My payouts have been failing for 3 days", "plan", "enterprise"))
+ *         .input(Map.of("ticket", "My payouts have been failing for 3 days", "plan", "enterprise"))
  *         .question("team", ChoiceQuestion.builder()
- *                 .instructions("Which team should handle this ticket?")
+ *                 .text("Which team should handle this ticket?")
  *                 .option("billing", "Payments, invoices, refunds")
  *                 .option("support", "Problems using the product")
  *                 .build())
  *         .question("urgent", YesNoQuestion.builder()
- *                 .instructions("Does this need attention today?")
+ *                 .text("Does this need attention today?")
  *                 .build())
  *         .build();
  * }</pre>
@@ -38,21 +38,21 @@ import java.util.Objects;
 @Experimental
 public class DecisionRequest {
 
-    private final Object state;
+    private final Object input;
     private final Map<String, Question> questions;
     private final DecisionRequestParameters parameters;
 
     protected DecisionRequest(Builder builder) {
-        this.state = FreeFormValue.ensureValid(builder.state, "state");
+        this.input = FreeFormValue.ensureValid(builder.input, "input");
         this.questions = copy(ensureNotEmpty(builder.questions, "questions"));
         this.parameters = getOrDefault(builder.parameters, DecisionRequestParameters.EMPTY);
     }
 
     /**
-     * The state to evaluate: a {@link String}, a {@link java.util.Map} or a {@link java.util.List}.
+     * The input to evaluate: a {@link String}, a {@link java.util.Map} or a {@link java.util.List}.
      */
-    public Object state() {
-        return state;
+    public Object input() {
+        return input;
     }
 
     /**
@@ -79,33 +79,33 @@ public class DecisionRequest {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         DecisionRequest that = (DecisionRequest) o;
-        return Objects.equals(state, that.state)
+        return Objects.equals(input, that.input)
                 && Objects.equals(questions, that.questions)
                 && Objects.equals(parameters, that.parameters);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(state, questions, parameters);
+        return Objects.hash(input, questions, parameters);
     }
 
     @Override
     public String toString() {
-        // the state is left out on purpose: it can contain personal data
+        // the input is left out on purpose: it can contain personal data
         return "DecisionRequest{questions=" + questions + ", parameters=" + parameters + '}';
     }
 
     public static class Builder {
 
-        private Object state;
+        private Object input;
         private final Map<String, Question> questions = new LinkedHashMap<>();
         private DecisionRequestParameters parameters;
 
         /**
-         * Sets the state to evaluate, as a {@link String}, a {@link java.util.Map} or a {@link java.util.List}.
+         * Sets the input to evaluate, as a {@link String}, a {@link java.util.Map} or a {@link java.util.List}.
          */
-        public Builder state(Object state) {
-            this.state = state;
+        public Builder input(Object input) {
+            this.input = input;
             return this;
         }
 

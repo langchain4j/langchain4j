@@ -17,7 +17,7 @@ import java.util.Objects;
  * content (a {@link java.util.Map} or a {@link java.util.List}) that is passed to the model as is:
  * <pre>{@code
  * ChoiceQuestion team = ChoiceQuestion.builder()
- *         .instructions("Which team should handle this ticket?")
+ *         .text("Which team should handle this ticket?")
  *         .option("billing", "Payments, invoices, refunds")
  *         .option("support", Map.of(
  *                 "what", "Problems using the product",
@@ -30,18 +30,18 @@ import java.util.Objects;
 @Experimental
 public final class ChoiceQuestion implements Question {
 
-    private final String instructions;
+    private final String text;
     private final Map<String, Object> options;
 
     private ChoiceQuestion(Builder builder) {
-        this.instructions = ensureNotBlank(builder.instructions, "instructions");
+        this.text = ensureNotBlank(builder.text, "text");
         ensureTrue(builder.options.size() >= 2, "ChoiceQuestion requires at least 2 options");
         this.options = copy(builder.options);
     }
 
     @Override
-    public String instructions() {
-        return instructions;
+    public String text() {
+        return text;
     }
 
     /**
@@ -60,26 +60,26 @@ public final class ChoiceQuestion implements Question {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (!(o instanceof ChoiceQuestion that)) return false;
-        return Objects.equals(instructions, that.instructions) && Objects.equals(options, that.options);
+        return Objects.equals(text, that.text) && Objects.equals(options, that.options);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(instructions, options);
+        return Objects.hash(text, options);
     }
 
     @Override
     public String toString() {
-        return "ChoiceQuestion{instructions=" + instructions + ", options=" + options + '}';
+        return "ChoiceQuestion{text=" + text + ", options=" + options + '}';
     }
 
     public static final class Builder {
 
-        private String instructions;
+        private String text;
         private final Map<String, Object> options = new LinkedHashMap<>();
 
-        public Builder instructions(String instructions) {
-            this.instructions = instructions;
+        public Builder text(String text) {
+            this.text = text;
             return this;
         }
 

@@ -38,14 +38,14 @@ DecisionModel decisionModel = TypeSafeDecisionModel.builder()
         .build();
 
 DecisionRequest request = DecisionRequest.builder()
-        .state("Help! My payouts have been failing for 3 days.")
+        .input("Help! My payouts have been failing for 3 days.")
         .question("team", ChoiceQuestion.builder()
-                .instructions("Which team should handle this ticket?")
+                .text("Which team should handle this ticket?")
                 .option("billing", "Payments, payouts, invoices, refunds")
                 .option("support", "Problems using the product")
                 .build())
         .question("urgent", YesNoQuestion.builder()
-                .instructions("Does this need attention today?")
+                .text("Does this need attention today?")
                 .build())
         .build();
 
@@ -82,14 +82,15 @@ The HTTP client can be customized with `httpClientBuilder(...)`, see [Customizab
 
 Both `decide()` and `decideAsync()` are supported.
 
-The model supports the `YesNoQuestion`, `ChoiceQuestion` and `ScoreQuestion` question types.
-In the TypeSafe documentation, yes/no questions are called "noul" questions.
-The confidence of choice and score answers is computed by the server.
+The model supports the `YesNoQuestion`, `ChoiceQuestion` and `ScaleQuestion` question types.
+In the TypeSafe documentation, yes/no questions are called "noul" questions, scale questions are called "score"
+questions, and the input is called the "state".
+The confidence of choice and scale answers is computed by the server.
 
 Answers are validated against the request: a missing answer, an answer of the wrong type, an option that was not
 offered, or a probability outside of 0 to 1 throws `InvalidDecisionResponseException`.
 
-The state and the questions are sent to the server you configure. When using a hosted service, check its data
+The input and the questions are sent to the server you configure. When using a hosted service, check its data
 processing and retention terms, and see [Data protection](/tutorials/decision-models#data-protection).
 
 ## Other servers
