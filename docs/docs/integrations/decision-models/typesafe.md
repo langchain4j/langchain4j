@@ -50,8 +50,8 @@ DecisionRequest request = DecisionRequest.builder()
 
 DecisionResponse response = decisionModel.decide(request);
 
-ChoiceAnswer team = (ChoiceAnswer) response.answers().get("team");
-NoulAnswer urgent = (NoulAnswer) response.answers().get("urgent");
+ChoiceAnswer team = response.choice("team");
+NoulAnswer urgent = response.noul("urgent");
 ```
 
 See the [Decision Models](/tutorials/decision-models) tutorial for all question types and how to use the answers.

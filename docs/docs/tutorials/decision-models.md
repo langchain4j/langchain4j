@@ -58,9 +58,9 @@ DecisionResponse response = decisionModel.decide(request);
 The response contains one answer per question, under the same name:
 
 ```java
-ChoiceAnswer team = (ChoiceAnswer) response.answers().get("team");
-NoulAnswer urgent = (NoulAnswer) response.answers().get("urgent");
-ScoreAnswer frustration = (ScoreAnswer) response.answers().get("frustration");
+ChoiceAnswer team = response.choice("team");
+NoulAnswer urgent = response.noul("urgent");
+ScoreAnswer frustration = response.score("frustration");
 
 team.choice();              // "billing"
 team.probabilities();       // {billing=0.88, support=0.1, sales=0.02}
@@ -190,3 +190,6 @@ Implementations that do not support non-blocking calls return a future that fail
 `Question` and `DecisionAnswer` are interfaces, so an implementation can support additional question types
 with their own answer types. An implementation that receives a question type it does not support
 throws `UnsupportedFeatureException` without calling the model.
+
+Answers of such types can be read with `response.answer(name, type)`, for example
+`response.answer("next_step", RankAnswer.class)`.

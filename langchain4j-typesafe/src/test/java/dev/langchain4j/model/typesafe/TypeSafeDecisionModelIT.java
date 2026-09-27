@@ -56,14 +56,14 @@ class TypeSafeDecisionModelIT {
         DecisionResponse response = model.decide(request);
 
         // then
-        ChoiceAnswer team = (ChoiceAnswer) response.answers().get("team");
+        ChoiceAnswer team = response.choice("team");
         assertThat(team.choice()).isEqualTo("billing");
         assertThat(team.probabilities()).containsOnlyKeys("billing", "sales");
 
-        NoulAnswer urgent = (NoulAnswer) response.answers().get("urgent");
+        NoulAnswer urgent = response.noul("urgent");
         assertThat(urgent.probability()).isGreaterThan(0.5);
 
-        ScoreAnswer frustration = (ScoreAnswer) response.answers().get("frustration");
+        ScoreAnswer frustration = response.score("frustration");
         assertThat(frustration.score()).isGreaterThan(0.5);
         assertThat(frustration.probabilities()).hasSize(3);
 

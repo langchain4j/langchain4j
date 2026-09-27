@@ -193,6 +193,48 @@ class DecisionResponseTest {
     }
 
     @Test
+    void should_return_typed_answers() {
+
+        ChoiceAnswer team = ChoiceAnswer.builder().choice("billing").build();
+        ScoreAnswer mood = ScoreAnswer.builder().score(1.4).build();
+
+        DecisionResponse response = DecisionResponse.builder()
+                .answer("urgent", NOUL)
+                .answer("team", team)
+                .answer("mood", mood)
+                .build();
+
+        assertThat(response.noul("urgent")).isSameAs(NOUL);
+        assertThat(response.choice("team")).isSameAs(team);
+        assertThat(response.score("mood")).isSameAs(mood);
+        assertThat(response.answer("team", ChoiceAnswer.class)).isSameAs(team);
+    }
+
+    @Test
+    void typed_accessors_should_fail_for_unknown_name() {
+
+        DecisionResponse response =
+                DecisionResponse.builder().answer("urgent", NOUL).build();
+
+        assertThatThrownBy(() -> response.noul("spam"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("'spam'")
+                .hasMessageContaining("[urgent]");
+    }
+
+    @Test
+    void typed_accessors_should_fail_for_wrong_answer_type() {
+
+        DecisionResponse response =
+                DecisionResponse.builder().answer("urgent", NOUL).build();
+
+        assertThatThrownBy(() -> response.choice("urgent"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("NoulAnswer")
+                .hasMessageContaining("ChoiceAnswer");
+    }
+
+    @Test
     void should_accept_custom_answer_types() {
 
         record RankAnswer(List<String> ranked) implements DecisionAnswer {}

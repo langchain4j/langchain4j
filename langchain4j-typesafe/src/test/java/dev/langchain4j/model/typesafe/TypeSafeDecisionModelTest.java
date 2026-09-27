@@ -200,11 +200,11 @@ class TypeSafeDecisionModelTest {
         DecisionResponse response = model.decide(REQUEST);
 
         // then
-        ChoiceAnswer team = (ChoiceAnswer) response.answers().get("team");
+        ChoiceAnswer team = response.choice("team");
         assertThat(team.probabilities()).isEmpty();
         assertThat(team.confidence()).isNull();
-        assertThat(((NoulAnswer) response.answers().get("urgent")).probability()).isEqualTo(1.0);
-        assertThat(((ScoreAnswer) response.answers().get("frustration")).probabilities())
+        assertThat(response.noul("urgent").probability()).isEqualTo(1.0);
+        assertThat(response.score("frustration").probabilities())
                 .isEmpty();
         assertThat(response.tokenUsage()).isNull();
     }

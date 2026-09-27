@@ -18,8 +18,8 @@ import java.util.Objects;
  * <pre>{@code
  * DecisionResponse response = decisionModel.decide(request);
  *
- * ChoiceAnswer team = (ChoiceAnswer) response.answers().get("team");
- * NoulAnswer urgent = (NoulAnswer) response.answers().get("urgent");
+ * ChoiceAnswer team = response.choice("team");
+ * NoulAnswer urgent = response.noul("urgent");
  *
  * if (urgent.probability() > 0.8) {
  *     escalate(team.choice());
@@ -53,6 +53,53 @@ public class DecisionResponse {
      */
     public Map<String, DecisionAnswer> answers() {
         return answers;
+    }
+
+    /**
+     * Returns the answer to the {@link dev.langchain4j.model.decision.request.NoulQuestion} with the given name.
+     *
+     * @throws IllegalArgumentException if there is no answer with this name, or it is not a {@link NoulAnswer}.
+     */
+    public NoulAnswer noul(String name) {
+        return answer(name, NoulAnswer.class);
+    }
+
+    /**
+     * Returns the answer to the {@link dev.langchain4j.model.decision.request.ChoiceQuestion} with the given name.
+     *
+     * @throws IllegalArgumentException if there is no answer with this name, or it is not a {@link ChoiceAnswer}.
+     */
+    public ChoiceAnswer choice(String name) {
+        return answer(name, ChoiceAnswer.class);
+    }
+
+    /**
+     * Returns the answer to the {@link dev.langchain4j.model.decision.request.ScoreQuestion} with the given name.
+     *
+     * @throws IllegalArgumentException if there is no answer with this name, or it is not a {@link ScoreAnswer}.
+     */
+    public ScoreAnswer score(String name) {
+        return answer(name, ScoreAnswer.class);
+    }
+
+    /**
+     * Returns the answer with the given name, as the given answer type. Useful for answer types defined by
+     * integrations.
+     *
+     * @throws IllegalArgumentException if there is no answer with this name, or it is not of the given type.
+     */
+    public <A extends DecisionAnswer> A answer(String name, Class<A> type) {
+        DecisionAnswer answer = answers.get(name);
+        if (answer == null) {
+            throw new IllegalArgumentException("There is no answer to a question named '%s'. Available answers: %s"
+                    .formatted(name, answers.keySet()));
+        }
+        if (!type.isInstance(answer)) {
+            throw new IllegalArgumentException("The answer to the question '%s' is a %s, not a %s"
+                    .formatted(
+                            name, answer.getClass().getSimpleName(), type.getSimpleName()));
+        }
+        return type.cast(answer);
     }
 
     public DecisionResponseMetadata metadata() {
