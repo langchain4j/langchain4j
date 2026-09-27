@@ -33,6 +33,9 @@ returning a `boolean` or an enum. Consider a decision model when:
 Use a chat model when the task needs generated text, reasoning over several steps, or tools.
 
 Available implementations are listed [here](/category/decision-models).
+The `DecisionModel` API itself is part of `langchain4j-core`, which comes with every implementation:
+requests and questions are in `dev.langchain4j.model.decision.request`, answers in
+`dev.langchain4j.model.decision.response` and listeners in `dev.langchain4j.model.decision.listener`.
 
 ## Asking questions
 
@@ -174,6 +177,10 @@ if (team.margin() < 0.2) {   // the difference between the two highest probabili
 }
 ```
 
+`margin()` and `probability(option)` throw `IllegalStateException` when the model did not report probabilities.
+When it reported probabilities for only some of the options, `margin()` assumes that the rest belongs to one other
+option, so it never overestimates how sure the model is.
+
 Choice and scale answers can also carry a `confidence()` value from 0 to 1.
 How it is computed is defined by each model and differs between models.
 
@@ -212,16 +219,18 @@ Answers of such types can be read with `response.answer(name, type)`, for exampl
 
 ## Errors
 
-- An invalid request, for example a blank question or a choice question with a single option,
-  throws `IllegalArgumentException` when the request is built.
-- An answer that does not match the request (a missing answer, an answer of the wrong type,
-  or an option that was not offered) throws `InvalidDecisionResponseException`.
+- An invalid question or request, for example a blank question or a choice question with a single option,
+  throws `IllegalArgumentException` when it is built.
+- Implementations validate the answers against the request: an answer that does not match it (a missing answer,
+  an answer of the wrong type, or an option that was not offered) throws `InvalidDecisionResponseException`.
 - Errors of the provider (authentication, rate limits, timeouts, server errors) throw the corresponding
   `LangChain4jException` subclasses, such as `AuthenticationException`, `RateLimitException` or `TimeoutException`.
-  Implementations usually retry transient errors (see their `maxRetries` setting).
+  Implementations usually retry transient errors (see their `maxRetries` setting), so a call can take several times
+  the configured timeout. For decisions on a synchronous path, consider a shorter timeout and fewer retries.
 
-Decide what should happen when the model cannot be reached: a gate protecting against abuse or fraud should
-usually fail closed (reject or hold the input), while routing can fall back to a default.
+All of these exceptions extend `LangChain4jException`. Decide what should happen when the model cannot answer:
+a gate protecting against abuse or fraud should usually fail closed (reject or hold the input when a
+`LangChain4jException` is thrown), while routing can fall back to a default.
 
 ## Observability
 

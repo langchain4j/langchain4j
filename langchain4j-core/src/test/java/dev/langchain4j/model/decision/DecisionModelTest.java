@@ -78,7 +78,7 @@ class DecisionModelTest {
     }
 
     @Test
-    void should_keep_state_and_questions_when_applying_default_parameters() {
+    void should_keep_input_and_questions_when_applying_default_parameters() {
 
         // given
         TestDecisionModel model = new TestDecisionModel(DecisionRequestParameters.EMPTY);
@@ -261,5 +261,26 @@ class DecisionModelTest {
         assertThat(model.provider()).isEqualTo(dev.langchain4j.model.ModelProvider.OTHER);
         assertThat(model.modelName()).isEqualTo("default-model");
         assertThat(model.listeners()).isEmpty();
+    }
+
+    @Test
+    void cancelling_decide_async_should_cancel_the_call_without_notifying_an_error() {
+
+        // given
+        CompletableFuture<DecisionResponse> call = new CompletableFuture<>();
+        RecordingListener listener = new RecordingListener();
+        DecisionModel model = new ListenedDecisionModel(null, listener) {
+            @Override
+            public CompletableFuture<DecisionResponse> doDecideAsync(DecisionRequest request) {
+                return call;
+            }
+        };
+
+        // when
+        model.decideAsync(request(DecisionRequestParameters.EMPTY)).cancel(true);
+
+        // then
+        assertThat(call).isCancelled();
+        assertThat(listener.events).containsExactly("request:default-model:OTHER");
     }
 }

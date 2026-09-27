@@ -362,6 +362,68 @@ class TypeSafeDecisionModelTest {
     }
 
     @Test
+    void should_require_api_key_when_default_base_url_is_set_explicitly() {
+
+        assertThatThrownBy(() -> TypeSafeDecisionModel.builder()
+                        .baseUrl("https://api.typesafe.ai/")
+                        .apiKey(" ")
+                        .build())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("apiKey");
+    }
+
+    @Test
+    void should_not_send_blank_api_key_to_other_servers() {
+
+        MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(RESPONSE));
+        TypeSafeDecisionModel model = TypeSafeDecisionModel.builder()
+                .httpClientBuilder(new MockHttpClientBuilder(httpClient))
+                .baseUrl("http://localhost:8000")
+                .apiKey(" ")
+                .modelName("local")
+                .build();
+
+        model.decide(REQUEST);
+
+        assertThat(httpClient.request().headers()).doesNotContainKey("Authorization");
+    }
+
+    @Test
+    void cancelling_decide_async_should_cancel_the_http_call() {
+
+        // given
+        CompletableFuture<SuccessfulHttpResponse> httpCall = new CompletableFuture<>();
+        HttpClient httpClient = new HttpClient() {
+
+            @Override
+            public SuccessfulHttpResponse execute(HttpRequest request) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public CompletableFuture<SuccessfulHttpResponse> executeAsync(HttpRequest request) {
+                return httpCall;
+            }
+
+            @Override
+            public void execute(HttpRequest request, ServerSentEventParser parser, ServerSentEventListener listener) {
+                throw new UnsupportedOperationException();
+            }
+        };
+        TypeSafeDecisionModel model = TypeSafeDecisionModel.builder()
+                .httpClientBuilder(new MockHttpClientBuilder(httpClient))
+                .apiKey("test-key")
+                .modelName("jev-latest")
+                .build();
+
+        // when
+        model.decideAsync(REQUEST).cancel(true);
+
+        // then
+        assertThat(httpCall).isCancelled();
+    }
+
+    @Test
     void should_not_require_api_key_for_other_servers() {
 
         // given
@@ -492,7 +554,10 @@ class TypeSafeDecisionModelTest {
                                 team,
                                 "\"frustration\": {\"type\": \"score\", \"score\": 1.0,"
                                         + " \"probabilities\": {\"Calm\": 1.0}}"),
-                        "level 'Calm', but the levels are 0 to 2"));
+                        "level 'Calm', but the levels are 0 to 2"),
+                Arguments.of(
+                        answers(urgent, team, "\"frustration\": {\"type\": \"score\", \"score\": 7.0}"),
+                        "invalid score: 7.0, but the levels are 0 to 2"));
     }
 
     private static String answers(String... answers) {

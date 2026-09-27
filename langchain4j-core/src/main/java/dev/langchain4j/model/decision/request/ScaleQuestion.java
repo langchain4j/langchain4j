@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * A question that places the state on an ordered scale, answered with a score and the probability of each level
+ * A question that places the input on an ordered scale, answered with a value and the probability of each level
  * (see {@link dev.langchain4j.model.decision.response.ScaleAnswer}).
  * <p>
  * Levels are ordered from lowest to highest; a level's number is its index, starting at 0. Each level is described

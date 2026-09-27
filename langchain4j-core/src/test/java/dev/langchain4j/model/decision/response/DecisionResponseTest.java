@@ -82,6 +82,13 @@ class DecisionResponseTest {
         assertThat(answer.margin()).isCloseTo(0.15, org.assertj.core.data.Offset.offset(1e-9));
         assertThatThrownBy(() -> ChoiceAnswer.builder().value("billing").build().margin())
                 .isInstanceOf(IllegalStateException.class);
+
+        // probability that was not reported may belong to another option
+        ChoiceAnswer partial = ChoiceAnswer.builder()
+                .value("billing")
+                .probability("billing", 0.55)
+                .build();
+        assertThat(partial.margin()).isCloseTo(0.10, org.assertj.core.data.Offset.offset(1e-9));
     }
 
     @Test

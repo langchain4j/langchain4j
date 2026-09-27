@@ -5,6 +5,7 @@ import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptionsAsync;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.ModelProvider.TYPESAFE;
 
@@ -44,7 +45,7 @@ import org.slf4j.Logger;
  * ({@code POST /v1/systemone}), which serves decision models such as Jev.
  * <p>
  * Other servers that implement the same API (for example OpenRouter, or self-hosted open models) can be used by
- * setting {@link Builder#baseUrl(String)}.
+ * setting {@link TypeSafeDecisionModelBuilder#baseUrl(String)}.
  * <pre>{@code
  * DecisionModel model = TypeSafeDecisionModel.builder()
  *         .apiKey(System.getenv("TYPESAFE_API_KEY"))
@@ -65,11 +66,11 @@ public class TypeSafeDecisionModel implements DecisionModel {
     private final DecisionRequestParameters defaultRequestParameters;
     private final List<DecisionModelListener> listeners;
 
-    public TypeSafeDecisionModel(Builder builder) {
+    public TypeSafeDecisionModel(TypeSafeDecisionModelBuilder builder) {
         this.client = TypeSafeClient.builder()
                 .httpClientBuilder(builder.httpClientBuilder)
                 .baseUrl(getOrDefault(builder.baseUrl, DEFAULT_BASE_URL))
-                .apiKey(builder.baseUrl == null ? ensureNotBlank(builder.apiKey, "apiKey") : builder.apiKey)
+                .apiKey(apiKey(builder))
                 .customHeaders(builder.customHeadersSupplier)
                 .timeout(builder.timeout)
                 .logRequests(getOrDefault(builder.logRequests, false))
@@ -82,8 +83,17 @@ public class TypeSafeDecisionModel implements DecisionModel {
         this.listeners = copy(builder.listeners);
     }
 
-    public static Builder builder() {
-        return new Builder();
+    private static String apiKey(TypeSafeDecisionModelBuilder builder) {
+        boolean defaultBaseUrl = builder.baseUrl == null
+                || DEFAULT_BASE_URL.equals(builder.baseUrl.replaceAll("/+$", ""));
+        if (defaultBaseUrl) {
+            return ensureNotBlank(builder.apiKey, "apiKey");
+        }
+        return isNullOrBlank(builder.apiKey) ? null : builder.apiKey;
+    }
+
+    public static TypeSafeDecisionModelBuilder builder() {
+        return new TypeSafeDecisionModelBuilder();
     }
 
     @Override
@@ -230,7 +240,7 @@ public class TypeSafeDecisionModel implements DecisionModel {
             }
         }
         return ScaleAnswer.builder()
-                .value(required(name, "score", answer.score))
+                .value(level(name, required(name, "score", answer.score), levels))
                 .probabilities(probabilities)
                 .confidence(answer.confidence == null ? null : probability(name, "confidence", answer.confidence))
                 .build();
@@ -256,6 +266,13 @@ public class TypeSafeDecisionModel implements DecisionModel {
         return Math.min(1.0, Math.max(0.0, value)); // absorbs rounding errors such as 1.0000000002
     }
 
+    private static double level(String name, double value, int levels) {
+        if (Double.isNaN(value) || value < -PROBABILITY_TOLERANCE || value > levels - 1 + PROBABILITY_TOLERANCE) {
+            throw invalid(name, "has an invalid score: %s, but the levels are 0 to %s", value, levels - 1);
+        }
+        return Math.min(levels - 1, Math.max(0.0, value));
+    }
+
     private static boolean isLevelIndex(String level, int levels) {
         try {
             int index = Integer.parseInt(level);
@@ -270,7 +287,7 @@ public class TypeSafeDecisionModel implements DecisionModel {
                 "The answer to question '%s' %s".formatted(name, format.formatted(args)));
     }
 
-    public static class Builder {
+    public static class TypeSafeDecisionModelBuilder {
 
         private HttpClientBuilder httpClientBuilder;
         private String baseUrl;
@@ -288,7 +305,7 @@ public class TypeSafeDecisionModel implements DecisionModel {
          * Sets a custom HTTP client builder, allowing fine-grained control over the HTTP client configuration such as
          * timeouts and proxy settings.
          */
-        public Builder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
+        public TypeSafeDecisionModelBuilder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
             this.httpClientBuilder = httpClientBuilder;
             return this;
         }
@@ -297,7 +314,7 @@ public class TypeSafeDecisionModel implements DecisionModel {
          * The base URL of the API. Defaults to {@code https://api.typesafe.ai}. Set it to use another server that
          * implements the System One API.
          */
-        public Builder baseUrl(String baseUrl) {
+        public TypeSafeDecisionModelBuilder baseUrl(String baseUrl) {
             this.baseUrl = baseUrl;
             return this;
         }
@@ -305,7 +322,7 @@ public class TypeSafeDecisionModel implements DecisionModel {
         /**
          * The API key. Required when using the default base URL; optional for other servers.
          */
-        public Builder apiKey(String apiKey) {
+        public TypeSafeDecisionModelBuilder apiKey(String apiKey) {
             this.apiKey = apiKey;
             return this;
         }
@@ -314,7 +331,7 @@ public class TypeSafeDecisionModel implements DecisionModel {
          * The model to use when a request does not specify one, for example {@code jev-latest}. The model name must
          * be set either here or on each request.
          */
-        public Builder modelName(String modelName) {
+        public TypeSafeDecisionModelBuilder modelName(String modelName) {
             this.modelName = modelName;
             return this;
         }
@@ -323,22 +340,22 @@ public class TypeSafeDecisionModel implements DecisionModel {
          * The connect and read timeout. When not set, the timeouts of the {@link #httpClientBuilder(HttpClientBuilder)}
          * are used, or 15 seconds (connect) and 60 seconds (read).
          */
-        public Builder timeout(Duration timeout) {
+        public TypeSafeDecisionModelBuilder timeout(Duration timeout) {
             this.timeout = timeout;
             return this;
         }
 
-        public Builder maxRetries(Integer maxRetries) {
+        public TypeSafeDecisionModelBuilder maxRetries(Integer maxRetries) {
             this.maxRetries = maxRetries;
             return this;
         }
 
-        public Builder logRequests(Boolean logRequests) {
+        public TypeSafeDecisionModelBuilder logRequests(Boolean logRequests) {
             this.logRequests = logRequests;
             return this;
         }
 
-        public Builder logResponses(Boolean logResponses) {
+        public TypeSafeDecisionModelBuilder logResponses(Boolean logResponses) {
             this.logResponses = logResponses;
             return this;
         }
@@ -346,7 +363,7 @@ public class TypeSafeDecisionModel implements DecisionModel {
         /**
          * An alternate {@link Logger} to be used instead of the default one for logging requests and responses.
          */
-        public Builder logger(Logger logger) {
+        public TypeSafeDecisionModelBuilder logger(Logger logger) {
             this.logger = logger;
             return this;
         }
@@ -354,7 +371,7 @@ public class TypeSafeDecisionModel implements DecisionModel {
         /**
          * Sets custom HTTP headers.
          */
-        public Builder customHeaders(Map<String, String> customHeaders) {
+        public TypeSafeDecisionModelBuilder customHeaders(Map<String, String> customHeaders) {
             this.customHeadersSupplier = () -> customHeaders;
             return this;
         }
@@ -363,17 +380,17 @@ public class TypeSafeDecisionModel implements DecisionModel {
          * Sets a supplier for custom HTTP headers. The supplier is called before each request, allowing dynamic
          * header values, for example OAuth2 tokens that expire and need refreshing.
          */
-        public Builder customHeaders(Supplier<Map<String, String>> customHeadersSupplier) {
+        public TypeSafeDecisionModelBuilder customHeaders(Supplier<Map<String, String>> customHeadersSupplier) {
             this.customHeadersSupplier = customHeadersSupplier;
             return this;
         }
 
-        public Builder listeners(List<DecisionModelListener> listeners) {
+        public TypeSafeDecisionModelBuilder listeners(List<DecisionModelListener> listeners) {
             this.listeners = listeners;
             return this;
         }
 
-        public Builder listeners(DecisionModelListener... listeners) {
+        public TypeSafeDecisionModelBuilder listeners(DecisionModelListener... listeners) {
             return listeners(List.of(listeners));
         }
 

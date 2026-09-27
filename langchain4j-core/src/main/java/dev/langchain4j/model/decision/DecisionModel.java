@@ -21,12 +21,12 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * A model that evaluates a state against a set of named, typed questions and returns one typed answer per
+ * A model that evaluates an input against a set of named, typed questions and returns one typed answer per
  * question, instead of generated text.
  * <p>
  * Typical uses are classification, routing, gating and grading: for example, deciding which team should handle a
  * support ticket, whether a message is spam, or how urgent an incident is. All questions of a request are answered
- * against the same state in a single call.
+ * against the same input in a single call.
  * <p>
  * The supported question types are {@link dev.langchain4j.model.decision.request.YesNoQuestion} (a yes/no
  * judgment answered with a probability), {@link dev.langchain4j.model.decision.request.ChoiceQuestion} (one option
@@ -44,7 +44,7 @@ public interface DecisionModel {
      * This applies the model's {@link #defaultRequestParameters() default parameters}, notifies the
      * {@link #listeners() listeners} and dispatches to {@link #doDecide(DecisionRequest)}.
      *
-     * @param request the state, the questions and the per-call parameters.
+     * @param request the input, the questions and the per-call parameters.
      * @return one answer per question, keyed by question name.
      */
     default DecisionResponse decide(DecisionRequest request) {
@@ -77,7 +77,7 @@ public interface DecisionModel {
      * This applies the model's {@link #defaultRequestParameters() default parameters}, notifies the
      * {@link #listeners() listeners} and dispatches to {@link #doDecideAsync(DecisionRequest)}.
      *
-     * @param request the state, the questions and the per-call parameters.
+     * @param request the input, the questions and the per-call parameters.
      * @return a {@link CompletableFuture} of the answers, keyed by question name.
      */
     default CompletableFuture<DecisionResponse> decideAsync(DecisionRequest request) {

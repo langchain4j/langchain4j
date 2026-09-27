@@ -12,7 +12,7 @@ sidebar_position: 1
 
 The same API is also implemented by other servers, for example
 [OpenRouter](https://openrouter.ai/docs/guides/community/jev) and inference servers such as
-[SGLang](https://github.com/sgl-project/sglang/pull/41208) running open models.
+[SGLang](https://docs.sglang.io/docs/supported-models/decision_models) running open models.
 `TypeSafeDecisionModel` can be used with any of them by setting the base URL (see [below](#other-servers)).
 
 :::note
@@ -64,7 +64,7 @@ TypeSafeDecisionModel decisionModel = TypeSafeDecisionModel.builder()
         .apiKey(...)              // required for api.typesafe.ai, optional for other servers
         .modelName(...)           // required here or on each request, for example "jev-1.13.0"
         .baseUrl(...)             // defaults to "https://api.typesafe.ai"
-        .timeout(...)             // connect and read timeout; defaults to the HTTP client's, or 15s/60s
+        .timeout(...)             // defaults to the HTTP client builder's timeouts, otherwise 15s connect / 60s read
         .maxRetries(...)          // retries after the first attempt; defaults to 2
         .customHeaders(...)       // additional HTTP headers, as a Map or a Supplier<Map>
         .listeners(...)           // DecisionModelListeners, see Observability in the Decision Models tutorial
@@ -88,7 +88,8 @@ questions, and the input is called the "state".
 The confidence of choice and scale answers is computed by the server.
 
 Answers are validated against the request: a missing answer, an answer of the wrong type, an option that was not
-offered, or a probability outside of 0 to 1 throws `InvalidDecisionResponseException`.
+offered, a probability outside of 0 to 1, or a scale value outside of the levels throws
+`InvalidDecisionResponseException`. Levels of a scale answer without a reported probability get a probability of 0.
 
 The input and the questions are sent to the server you configure. When using a hosted service, check its data
 processing and retention terms, and see [Data protection](/tutorials/decision-models#data-protection).

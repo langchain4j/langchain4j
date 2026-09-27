@@ -60,6 +60,9 @@ public final class ChoiceAnswer implements DecisionAnswer {
     /**
      * The difference between the two highest probabilities, from 0 to 1. A small margin means the model hesitated
      * between two options, which is a common signal to escalate, for example to a human.
+     * <p>
+     * If the model reported probabilities for only some of the options, the probability it did not report is
+     * assumed to belong to a single other option, so the margin is never overestimated.
      *
      * @throws IllegalStateException if the model did not report probabilities.
      */
@@ -68,7 +71,9 @@ public final class ChoiceAnswer implements DecisionAnswer {
         List<Double> sorted = probabilities.values().stream()
                 .sorted(Comparator.reverseOrder())
                 .toList();
-        return sorted.size() < 2 ? sorted.get(0) : sorted.get(0) - sorted.get(1);
+        double unreported = 1 - sorted.stream().mapToDouble(Double::doubleValue).sum();
+        double second = Math.max(sorted.size() < 2 ? 0 : sorted.get(1), unreported);
+        return Math.max(0, sorted.get(0) - second);
     }
 
     private void ensureProbabilities() {
