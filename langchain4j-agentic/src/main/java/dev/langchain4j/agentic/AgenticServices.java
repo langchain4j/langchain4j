@@ -752,13 +752,18 @@ public class AgenticServices {
     private static <T> T createA2AClient(Class<T> agentServiceClass, Method a2aMethod) {
         var a2aClient = a2aMethod.getAnnotation(A2AClientAgent.class);
         String a2aServerUrl = resolveA2AServerUrl(agentServiceClass, a2aClient);
-        var a2aClientBuilder = a2aBuilder(a2aServerUrl, agentServiceClass)
+        var a2aClientBuilder = a2aBuilder(a2aServerUrl, agentServiceClass);
+
+        if (!isNullOrBlank(a2aClient.tenant())) {
+            a2aClientBuilder.tenant(a2aClient.tenant());
+        }
+
+        a2aClientBuilder
                 .inputKeys(Stream.of(a2aMethod.getParameters())
                         .map(AgentInvoker::parameterName)
                         .toArray(String[]::new))
                 .outputKey(AgentUtil.outputKey(a2aClient.outputKey(), a2aClient.typedOutputKey()))
                 .async(a2aClient.async());
-
         selectMethod(
                         agentServiceClass,
                         method -> method.isAnnotationPresent(A2AClientCustomizer.class)
