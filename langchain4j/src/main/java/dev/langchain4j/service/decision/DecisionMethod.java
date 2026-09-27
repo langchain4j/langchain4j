@@ -3,6 +3,7 @@ package dev.langchain4j.service.decision;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
 
+import dev.langchain4j.exception.LangChain4jException;
 import dev.langchain4j.model.decision.DecisionModel;
 import dev.langchain4j.model.decision.request.ChoiceQuestion;
 import dev.langchain4j.model.decision.request.DecisionRequest;
@@ -92,15 +93,24 @@ final class DecisionMethod {
     }
 
     Object invoke(DecisionModel decisionModel, Object[] args, Function<String, Double> thresholdProvider) {
-        DecisionRequest request = DecisionRequest.builder()
+        if (!async) {
+            return result(decisionModel.decide(request(args)), args, thresholdProvider);
+        }
+        DecisionRequest request;
+        try {
+            request = request(args);
+        } catch (RuntimeException e) {
+            return CompletableFuture.failedFuture(e);
+        }
+        return decisionModel.decideAsync(request).thenApply(response -> result(response, args, thresholdProvider));
+    }
+
+    private DecisionRequest request(Object[] args) {
+        return DecisionRequest.builder()
                 .state(state(args))
                 .questions(questions)
                 .parameters(requestParameters(args))
                 .build();
-        if (async) {
-            return decisionModel.decideAsync(request).thenApply(response -> result(response, args, thresholdProvider));
-        }
-        return result(decisionModel.decide(request), args, thresholdProvider);
     }
 
     private Object result(DecisionResponse response, Object[] args, Function<String, Double> thresholdProvider) {
@@ -404,7 +414,7 @@ final class DecisionMethod {
             try {
                 return Enum.valueOf((Class) enumType, option);
             } catch (IllegalArgumentException e) {
-                throw new IllegalStateException("The model chose '%s' for '%s', which is not a constant of %s"
+                throw new LangChain4jException("The model chose '%s' for '%s', which is not a constant of %s"
                         .formatted(option, name, enumType.getSimpleName()));
             }
         }

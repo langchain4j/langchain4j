@@ -3,6 +3,7 @@ package dev.langchain4j.service.decision;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import dev.langchain4j.exception.LangChain4jException;
 import dev.langchain4j.model.decision.DecisionModel;
 import dev.langchain4j.model.decision.request.ChoiceQuestion;
 import dev.langchain4j.model.decision.request.DecisionRequest;
@@ -299,6 +300,25 @@ class DecisionServicesTest {
     }
 
     @Test
+    void choice_should_expose_probability_and_margin() {
+
+        Choice<Team> choice = new Choice<>(Team.BILLING, Map.of(Team.BILLING, 0.55, Team.SUPPORT, 0.4), null);
+
+        assertThat(choice.probability(Team.BILLING)).isEqualTo(0.55);
+        assertThat(choice.probability(Team.SALES)).isZero();
+        assertThat(choice.margin()).isCloseTo(0.15, org.assertj.core.data.Offset.offset(1e-9));
+    }
+
+    @Test
+    void choice_should_fail_when_model_did_not_report_probabilities() {
+
+        Choice<Team> choice = new Choice<>(Team.BILLING, Map.of(), null);
+
+        assertThatThrownBy(() -> choice.probability(Team.BILLING)).isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(choice::margin).isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
     void should_fail_when_model_chooses_unknown_option() {
 
         Router router = DecisionServices.builder(Router.class)
@@ -307,7 +327,7 @@ class DecisionServicesTest {
                 .build();
 
         assertThatThrownBy(() -> router.route("Hello"))
-                .isInstanceOf(IllegalStateException.class)
+                .isInstanceOf(LangChain4jException.class)
                 .hasMessageContaining("MARKETING");
     }
 
@@ -437,6 +457,27 @@ class DecisionServicesTest {
         assertThat(router.routeAsync("I was charged twice").get()).isEqualTo(Team.BILLING);
         assertThat(router.routeAsyncWithDetails("I was charged twice").get().content().value())
                 .isEqualTo(Team.BILLING);
+    }
+
+    interface AsyncSpamFilter {
+
+        @Decide("Is this message spam?")
+        CompletableFuture<Boolean> isSpam(@V("message") String message, DecisionRequestParameters parameters);
+    }
+
+    @Test
+    void async_methods_should_report_invalid_arguments_through_the_future() {
+
+        AsyncSpamFilter spamFilter = DecisionServices.builder(AsyncSpamFilter.class)
+                .decisionModel(new FakeDecisionModel(Map.of("isSpam", noul(0.7))))
+                .build();
+
+        CompletableFuture<Boolean> future = spamFilter.isSpam("Hello", null);
+
+        assertThat(future)
+                .failsWithin(java.time.Duration.ZERO)
+                .withThrowableOfType(java.util.concurrent.ExecutionException.class)
+                .withCauseInstanceOf(IllegalArgumentException.class);
     }
 
     // other methods
