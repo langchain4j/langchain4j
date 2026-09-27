@@ -1,6 +1,7 @@
 package dev.langchain4j.model.typesafe;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.langchain4j.model.decision.DecisionModel;
 import dev.langchain4j.model.decision.request.ChoiceQuestion;
@@ -11,6 +12,10 @@ import dev.langchain4j.model.decision.response.ChoiceAnswer;
 import dev.langchain4j.model.decision.response.DecisionResponse;
 import dev.langchain4j.model.decision.response.NoulAnswer;
 import dev.langchain4j.model.decision.response.ScoreAnswer;
+import dev.langchain4j.exception.AuthenticationException;
+import dev.langchain4j.model.decision.request.DecisionRequestParameters;
+import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
@@ -69,5 +74,85 @@ class TypeSafeDecisionModelIT {
 
         assertThat(response.modelName()).startsWith("jev");
         assertThat(response.tokenUsage().inputTokenCount()).isPositive();
+    }
+
+    @Test
+    void should_accept_structured_criteria() {
+
+        // given
+        DecisionRequest request = DecisionRequest.builder()
+                .state(Map.of(
+                        "ticket", "I was charged twice for my subscription this month.",
+                        "customer_plan", "enterprise"))
+                .question(
+                        "team",
+                        ChoiceQuestion.builder()
+                                .instructions("Which team should handle this ticket?")
+                                .option(
+                                        "billing",
+                                        Map.of(
+                                                "what", "Payments, charges, invoices, refunds",
+                                                "examples", List.of("I was charged twice", "Where is my invoice?")))
+                                .option(
+                                        "support",
+                                        Map.of(
+                                                "what", "Problems using the product",
+                                                "not_for", "Questions about charges or invoices"))
+                                .build())
+                .question(
+                        "refund",
+                        NoulQuestion.builder()
+                                .instructions("Does the customer ask for money back?")
+                                .whenTrue("The customer wants a charge reversed or refunded")
+                                .whenFalse("The customer only asks what a charge is for")
+                                .build())
+                .build();
+
+        // when
+        DecisionResponse response = model.decide(request);
+
+        // then
+        assertThat(response.choice("team").choice()).isEqualTo("billing");
+        assertThat(response.noul("refund").probability()).isBetween(0.0, 1.0);
+    }
+
+    @Test
+    void should_decide_async_with_model_name_from_request() throws Exception {
+
+        // given
+        DecisionRequest request = DecisionRequest.builder()
+                .state("Congratulations! You won a free cruise, click here to claim your prize.")
+                .question(
+                        "spam",
+                        NoulQuestion.builder().instructions("Is this message spam?").build())
+                .parameters(DecisionRequestParameters.builder()
+                        .modelName("jev-1.13.0")
+                        .build())
+                .build();
+
+        // when
+        DecisionResponse response = model.decideAsync(request).get();
+
+        // then
+        assertThat(response.noul("spam").probability()).isGreaterThan(0.5);
+        assertThat(response.modelName()).isEqualTo("jev-1.13.0");
+    }
+
+    @Test
+    void should_fail_with_wrong_api_key() {
+
+        // given
+        DecisionModel model = TypeSafeDecisionModel.builder()
+                .apiKey("wrong-key")
+                .modelName("jev-latest")
+                .build();
+
+        DecisionRequest request = DecisionRequest.builder()
+                .state("Hello")
+                .question("greeting", NoulQuestion.builder().instructions("Is this a greeting?").build())
+                .build();
+
+        // when-then
+        assertThatThrownBy(() -> model.decide(request)).isInstanceOf(AuthenticationException.class);
     }
 }
