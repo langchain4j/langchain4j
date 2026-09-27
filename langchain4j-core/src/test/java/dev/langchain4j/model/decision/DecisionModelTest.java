@@ -5,9 +5,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.model.decision.request.DecisionRequest;
 import dev.langchain4j.model.decision.request.DecisionRequestParameters;
-import dev.langchain4j.model.decision.request.NoulQuestion;
+import dev.langchain4j.model.decision.request.YesNoQuestion;
 import dev.langchain4j.model.decision.response.DecisionResponse;
-import dev.langchain4j.model.decision.response.NoulAnswer;
+import dev.langchain4j.model.decision.response.YesNoAnswer;
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -29,7 +29,7 @@ class DecisionModelTest {
         public DecisionResponse doDecide(DecisionRequest request) {
             received.set(request);
             return DecisionResponse.builder()
-                    .answer("urgent", NoulAnswer.builder().probability(0.9).build())
+                    .answer("urgent", YesNoAnswer.builder().probability(0.9).build())
                     .build();
         }
 
@@ -126,7 +126,7 @@ class DecisionModelTest {
                 .state("My payouts have been failing for 3 days")
                 .question(
                         "urgent",
-                        NoulQuestion.builder()
+                        YesNoQuestion.builder()
                                 .instructions("Does this need attention today?")
                                 .build())
                 .parameters(parameters)

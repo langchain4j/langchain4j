@@ -10,10 +10,10 @@ import org.junit.jupiter.api.Test;
 class QuestionsTest {
 
     @Test
-    void should_create_noul_question_without_criteria() {
+    void should_create_yes_no_question_without_criteria() {
 
-        NoulQuestion question =
-                NoulQuestion.builder().instructions("Is this spam?").build();
+        YesNoQuestion question =
+                YesNoQuestion.builder().instructions("Is this spam?").build();
 
         assertThat(question.instructions()).isEqualTo("Is this spam?");
         assertThat(question.whenTrue()).isNull();
@@ -21,9 +21,9 @@ class QuestionsTest {
     }
 
     @Test
-    void should_create_noul_question_with_text_and_structured_criteria() {
+    void should_create_yes_no_question_with_text_and_structured_criteria() {
 
-        NoulQuestion question = NoulQuestion.builder()
+        YesNoQuestion question = YesNoQuestion.builder()
                 .instructions("Does the customer ask for a refund?")
                 .whenTrue("The customer explicitly asks for their money back")
                 .whenFalse(Map.of("what", "A question about a charge", "examples", List.of("Why was I charged?")))
@@ -35,16 +35,16 @@ class QuestionsTest {
     }
 
     @Test
-    void should_reject_invalid_noul_criteria() {
+    void should_reject_invalid_yes_no_criteria() {
 
-        assertThatThrownBy(() -> NoulQuestion.builder()
+        assertThatThrownBy(() -> YesNoQuestion.builder()
                         .instructions("Is this spam?")
                         .whenTrue(" ")
                         .build())
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("whenTrue");
 
-        assertThatThrownBy(() -> NoulQuestion.builder()
+        assertThatThrownBy(() -> YesNoQuestion.builder()
                         .instructions("Is this spam?")
                         .whenFalse(42)
                         .build())
@@ -55,7 +55,7 @@ class QuestionsTest {
     @Test
     void should_require_instructions() {
 
-        assertThatThrownBy(() -> NoulQuestion.builder().build())
+        assertThatThrownBy(() -> YesNoQuestion.builder().build())
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("instructions");
 
@@ -186,12 +186,12 @@ class QuestionsTest {
     @Test
     void should_implement_equals_and_hash_code() {
 
-        assertThat(NoulQuestion.builder().instructions("Spam?").whenTrue("Ads").build())
-                .isEqualTo(NoulQuestion.builder().instructions("Spam?").whenTrue("Ads").build())
+        assertThat(YesNoQuestion.builder().instructions("Spam?").whenTrue("Ads").build())
+                .isEqualTo(YesNoQuestion.builder().instructions("Spam?").whenTrue("Ads").build())
                 .hasSameHashCodeAs(
-                        NoulQuestion.builder().instructions("Spam?").whenTrue("Ads").build())
+                        YesNoQuestion.builder().instructions("Spam?").whenTrue("Ads").build())
                 .isNotEqualTo(
-                        NoulQuestion.builder().instructions("Spam?").whenFalse("Ads").build());
+                        YesNoQuestion.builder().instructions("Spam?").whenFalse("Ads").build());
 
         assertThat(ChoiceQuestion.builder()
                         .instructions("Team?")

@@ -15,8 +15,8 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 class DecisionRequestTest {
 
-    private static final NoulQuestion QUESTION =
-            NoulQuestion.builder().instructions("Is this spam?").build();
+    private static final YesNoQuestion QUESTION =
+            YesNoQuestion.builder().instructions("Is this spam?").build();
 
     @ParameterizedTest
     @MethodSource("validStates")

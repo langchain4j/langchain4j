@@ -4,17 +4,17 @@ import dev.langchain4j.Experimental;
 import java.util.Objects;
 
 /**
- * The answer to a {@link dev.langchain4j.model.decision.request.NoulQuestion}: the {@link #probability()} that the
+ * The answer to a {@link dev.langchain4j.model.decision.request.YesNoQuestion}: the {@link #probability()} that the
  * answer is "yes".
  *
  * @since 1.21.0
  */
 @Experimental
-public final class NoulAnswer implements DecisionAnswer {
+public final class YesNoAnswer implements DecisionAnswer {
 
     private final double probability;
 
-    private NoulAnswer(Builder builder) {
+    private YesNoAnswer(Builder builder) {
         this.probability = Probabilities.ensureProbability(builder.probability, "probability");
     }
 
@@ -32,7 +32,7 @@ public final class NoulAnswer implements DecisionAnswer {
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (!(o instanceof NoulAnswer that)) return false;
+        if (!(o instanceof YesNoAnswer that)) return false;
         return Double.compare(probability, that.probability) == 0;
     }
 
@@ -43,7 +43,7 @@ public final class NoulAnswer implements DecisionAnswer {
 
     @Override
     public String toString() {
-        return "NoulAnswer{probability=" + probability + '}';
+        return "YesNoAnswer{probability=" + probability + '}';
     }
 
     public static final class Builder {
@@ -55,8 +55,8 @@ public final class NoulAnswer implements DecisionAnswer {
             return this;
         }
 
-        public NoulAnswer build() {
-            return new NoulAnswer(this);
+        public YesNoAnswer build() {
+            return new YesNoAnswer(this);
         }
     }
 }

@@ -13,28 +13,28 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 class DecisionResponseTest {
 
-    private static final NoulAnswer NOUL = NoulAnswer.builder().probability(0.9).build();
+    private static final YesNoAnswer YES_NO = YesNoAnswer.builder().probability(0.9).build();
 
     @Test
-    void should_create_noul_answer() {
+    void should_create_yes_no_answer() {
 
-        assertThat(NoulAnswer.builder().probability(0.0).build().probability()).isZero();
-        assertThat(NoulAnswer.builder().probability(1.0).build().probability()).isEqualTo(1.0);
+        assertThat(YesNoAnswer.builder().probability(0.0).build().probability()).isZero();
+        assertThat(YesNoAnswer.builder().probability(1.0).build().probability()).isEqualTo(1.0);
     }
 
     @ParameterizedTest
     @ValueSource(doubles = {-0.1, 1.1, Double.NaN, Double.POSITIVE_INFINITY})
-    void should_reject_invalid_noul_probability(double probability) {
+    void should_reject_invalid_yes_no_probability(double probability) {
 
-        assertThatThrownBy(() -> NoulAnswer.builder().probability(probability).build())
+        assertThatThrownBy(() -> YesNoAnswer.builder().probability(probability).build())
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("probability");
     }
 
     @Test
-    void should_reject_missing_noul_probability() {
+    void should_reject_missing_yes_no_probability() {
 
-        assertThatThrownBy(() -> NoulAnswer.builder().build())
+        assertThatThrownBy(() -> YesNoAnswer.builder().build())
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("probability");
     }
@@ -128,7 +128,7 @@ class DecisionResponseTest {
         TokenUsage tokenUsage = new TokenUsage(318, 34);
 
         DecisionResponse response = DecisionResponse.builder()
-                .answer("urgent", NOUL)
+                .answer("urgent", YES_NO)
                 .answer("team", ChoiceAnswer.builder().choice("billing").build())
                 .modelName("jev-1.13.0")
                 .tokenUsage(tokenUsage)
@@ -151,7 +151,7 @@ class DecisionResponseTest {
                 DecisionResponseMetadata.builder().modelName("jev-1.13.0").build();
 
         DecisionResponse response = DecisionResponse.builder()
-                .answer("urgent", NOUL)
+                .answer("urgent", YES_NO)
                 .metadata(metadata)
                 .build();
 
@@ -163,7 +163,7 @@ class DecisionResponseTest {
     void should_reject_both_metadata_and_model_name() {
 
         assertThatThrownBy(() -> DecisionResponse.builder()
-                        .answer("urgent", NOUL)
+                        .answer("urgent", YES_NO)
                         .metadata(DecisionResponseMetadata.builder().build())
                         .modelName("jev-1.13.0")
                         .build())
@@ -182,13 +182,13 @@ class DecisionResponseTest {
     @Test
     void answers_should_be_immutable_copies() {
 
-        Map<String, DecisionAnswer> answers = new LinkedHashMap<>(Map.of("urgent", NOUL));
+        Map<String, DecisionAnswer> answers = new LinkedHashMap<>(Map.of("urgent", YES_NO));
 
         DecisionResponse response = DecisionResponse.builder().answers(answers).build();
-        answers.put("spam", NOUL);
+        answers.put("spam", YES_NO);
 
         assertThat(response.answers()).containsOnlyKeys("urgent");
-        assertThatThrownBy(() -> response.answers().put("spam", NOUL))
+        assertThatThrownBy(() -> response.answers().put("spam", YES_NO))
                 .isInstanceOf(UnsupportedOperationException.class);
     }
 
@@ -199,12 +199,12 @@ class DecisionResponseTest {
         ScoreAnswer mood = ScoreAnswer.builder().score(1.4).build();
 
         DecisionResponse response = DecisionResponse.builder()
-                .answer("urgent", NOUL)
+                .answer("urgent", YES_NO)
                 .answer("team", team)
                 .answer("mood", mood)
                 .build();
 
-        assertThat(response.noul("urgent")).isSameAs(NOUL);
+        assertThat(response.yesNo("urgent")).isSameAs(YES_NO);
         assertThat(response.choice("team")).isSameAs(team);
         assertThat(response.score("mood")).isSameAs(mood);
         assertThat(response.answer("team", ChoiceAnswer.class)).isSameAs(team);
@@ -214,9 +214,9 @@ class DecisionResponseTest {
     void typed_accessors_should_fail_for_unknown_name() {
 
         DecisionResponse response =
-                DecisionResponse.builder().answer("urgent", NOUL).build();
+                DecisionResponse.builder().answer("urgent", YES_NO).build();
 
-        assertThatThrownBy(() -> response.noul("spam"))
+        assertThatThrownBy(() -> response.yesNo("spam"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("'spam'")
                 .hasMessageContaining("[urgent]");
@@ -226,11 +226,11 @@ class DecisionResponseTest {
     void typed_accessors_should_fail_for_wrong_answer_type() {
 
         DecisionResponse response =
-                DecisionResponse.builder().answer("urgent", NOUL).build();
+                DecisionResponse.builder().answer("urgent", YES_NO).build();
 
         assertThatThrownBy(() -> response.choice("urgent"))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("NoulAnswer")
+                .hasMessageContaining("YesNoAnswer")
                 .hasMessageContaining("ChoiceAnswer");
     }
 
@@ -249,10 +249,10 @@ class DecisionResponseTest {
     @Test
     void answers_should_implement_equals_and_hash_code() {
 
-        assertThat(NoulAnswer.builder().probability(0.9).build())
-                .isEqualTo(NOUL)
-                .hasSameHashCodeAs(NOUL)
-                .isNotEqualTo(NoulAnswer.builder().probability(0.8).build());
+        assertThat(YesNoAnswer.builder().probability(0.9).build())
+                .isEqualTo(YES_NO)
+                .hasSameHashCodeAs(YES_NO)
+                .isNotEqualTo(YesNoAnswer.builder().probability(0.8).build());
 
         assertThat(ChoiceAnswer.builder().choice("a").confidence(0.5).build())
                 .isEqualTo(ChoiceAnswer.builder().choice("a").confidence(0.5).build())

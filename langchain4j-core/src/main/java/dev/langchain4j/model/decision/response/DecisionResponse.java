@@ -19,7 +19,7 @@ import java.util.Objects;
  * DecisionResponse response = decisionModel.decide(request);
  *
  * ChoiceAnswer team = response.choice("team");
- * NoulAnswer urgent = response.noul("urgent");
+ * YesNoAnswer urgent = response.yesNo("urgent");
  *
  * if (urgent.probability() > 0.8) {
  *     escalate(team.choice());
@@ -56,12 +56,12 @@ public class DecisionResponse {
     }
 
     /**
-     * Returns the answer to the {@link dev.langchain4j.model.decision.request.NoulQuestion} with the given name.
+     * Returns the answer to the {@link dev.langchain4j.model.decision.request.YesNoQuestion} with the given name.
      *
-     * @throws IllegalArgumentException if there is no answer with this name, or it is not a {@link NoulAnswer}.
+     * @throws IllegalArgumentException if there is no answer with this name, or it is not a {@link YesNoAnswer}.
      */
-    public NoulAnswer noul(String name) {
-        return answer(name, NoulAnswer.class);
+    public YesNoAnswer yesNo(String name) {
+        return answer(name, YesNoAnswer.class);
     }
 
     /**

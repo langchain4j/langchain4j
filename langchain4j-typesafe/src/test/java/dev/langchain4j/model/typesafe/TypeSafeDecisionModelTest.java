@@ -17,12 +17,12 @@ import dev.langchain4j.internal.Json;
 import dev.langchain4j.model.decision.request.ChoiceQuestion;
 import dev.langchain4j.model.decision.request.DecisionRequest;
 import dev.langchain4j.model.decision.request.DecisionRequestParameters;
-import dev.langchain4j.model.decision.request.NoulQuestion;
+import dev.langchain4j.model.decision.request.YesNoQuestion;
 import dev.langchain4j.model.decision.request.Question;
 import dev.langchain4j.model.decision.request.ScoreQuestion;
 import dev.langchain4j.model.decision.response.ChoiceAnswer;
 import dev.langchain4j.model.decision.response.DecisionResponse;
-import dev.langchain4j.model.decision.response.NoulAnswer;
+import dev.langchain4j.model.decision.response.YesNoAnswer;
 import dev.langchain4j.model.decision.response.ScoreAnswer;
 import dev.langchain4j.model.output.TokenUsage;
 import java.util.List;
@@ -69,7 +69,7 @@ class TypeSafeDecisionModelTest {
                             .build())
             .question(
                     "urgent",
-                    NoulQuestion.builder()
+                    YesNoQuestion.builder()
                             .instructions("Does this need attention today?")
                             .whenTrue("Money is not reaching the customer")
                             .build())
@@ -129,7 +129,7 @@ class TypeSafeDecisionModelTest {
     }
 
     @Test
-    void should_omit_noul_criteria_when_not_set() {
+    void should_omit_yes_no_criteria_when_not_set() {
 
         // given
         MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(
@@ -141,7 +141,7 @@ class TypeSafeDecisionModelTest {
         // when
         model.decide(DecisionRequest.builder()
                 .state("Hi, are we still meeting tomorrow?")
-                .question("spam", NoulQuestion.builder().instructions("Is this spam?").build())
+                .question("spam", YesNoQuestion.builder().instructions("Is this spam?").build())
                 .build());
 
         // then
@@ -169,7 +169,7 @@ class TypeSafeDecisionModelTest {
                         .confidence(0.81)
                         .build());
         assertThat(response.answers().get("urgent"))
-                .isEqualTo(NoulAnswer.builder().probability(0.95).build());
+                .isEqualTo(YesNoAnswer.builder().probability(0.95).build());
         assertThat(response.answers().get("frustration"))
                 .isEqualTo(ScoreAnswer.builder()
                         .score(1.44)
@@ -203,7 +203,7 @@ class TypeSafeDecisionModelTest {
         ChoiceAnswer team = response.choice("team");
         assertThat(team.probabilities()).isEmpty();
         assertThat(team.confidence()).isNull();
-        assertThat(response.noul("urgent").probability()).isEqualTo(1.0);
+        assertThat(response.yesNo("urgent").probability()).isEqualTo(1.0);
         assertThat(response.score("frustration").probabilities())
                 .isEmpty();
         assertThat(response.tokenUsage()).isNull();

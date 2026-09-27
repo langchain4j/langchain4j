@@ -41,7 +41,7 @@ DecisionRequest request = DecisionRequest.builder()
                 .option("support", "Problems using the product")
                 .option("sales", "Pricing, upgrades, new accounts")
                 .build())
-        .question("urgent", NoulQuestion.builder()
+        .question("urgent", YesNoQuestion.builder()
                 .instructions("Does this need attention today?")
                 .build())
         .question("frustration", ScoreQuestion.builder()
@@ -59,7 +59,7 @@ The response contains one answer per question, under the same name:
 
 ```java
 ChoiceAnswer team = response.choice("team");
-NoulAnswer urgent = response.noul("urgent");
+YesNoAnswer urgent = response.yesNo("urgent");
 ScoreAnswer frustration = response.score("frustration");
 
 team.choice();              // "billing"
@@ -76,13 +76,13 @@ The response also carries the name of the model that produced the answers and th
 
 ### Yes/no questions
 
-A `NoulQuestion` asks a yes/no question and is answered with a `NoulAnswer`,
+A `YesNoQuestion` asks a yes/no question and is answered with a `YesNoAnswer`,
 whose `probability()` is the probability that the answer is "yes", from 0 to 1.
 
 Optionally, describe when the answer should be "yes" and when it should be "no":
 
 ```java
-NoulQuestion refundRequested = NoulQuestion.builder()
+YesNoQuestion refundRequested = YesNoQuestion.builder()
         .instructions("Does the customer ask for a refund?")
         .whenTrue("The customer explicitly asks for their money back")
         .whenFalse("The customer only asks about a charge")
@@ -139,7 +139,7 @@ DecisionRequest request = DecisionRequest.builder()
                 "ticket", "My payouts have been failing for 3 days",
                 "customer_plan", "enterprise",
                 "open_tickets", 3))
-        .question("urgent", NoulQuestion.builder()
+        .question("urgent", YesNoQuestion.builder()
                 .instructions("Does this need attention today?")
                 .build())
         .build();

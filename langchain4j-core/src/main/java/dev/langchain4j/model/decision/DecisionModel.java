@@ -15,7 +15,7 @@ import java.util.concurrent.CompletableFuture;
  * support ticket, whether a message is spam, or how urgent an incident is. All questions of a request are answered
  * against the same state in a single call.
  * <p>
- * The supported question types are {@link dev.langchain4j.model.decision.request.NoulQuestion} (a yes/no
+ * The supported question types are {@link dev.langchain4j.model.decision.request.YesNoQuestion} (a yes/no
  * judgment answered with a probability), {@link dev.langchain4j.model.decision.request.ChoiceQuestion} (one option
  * out of a named set) and {@link dev.langchain4j.model.decision.request.ScoreQuestion} (a position on an ordered
  * scale). Implementations may support additional question types.

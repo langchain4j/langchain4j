@@ -14,13 +14,13 @@ import dev.langchain4j.model.decision.DecisionModel;
 import dev.langchain4j.model.decision.request.ChoiceQuestion;
 import dev.langchain4j.model.decision.request.DecisionRequest;
 import dev.langchain4j.model.decision.request.DecisionRequestParameters;
-import dev.langchain4j.model.decision.request.NoulQuestion;
+import dev.langchain4j.model.decision.request.YesNoQuestion;
 import dev.langchain4j.model.decision.request.Question;
 import dev.langchain4j.model.decision.request.ScoreQuestion;
 import dev.langchain4j.model.decision.response.ChoiceAnswer;
 import dev.langchain4j.model.decision.response.DecisionAnswer;
 import dev.langchain4j.model.decision.response.DecisionResponse;
-import dev.langchain4j.model.decision.response.NoulAnswer;
+import dev.langchain4j.model.decision.response.YesNoAnswer;
 import dev.langchain4j.model.decision.response.ScoreAnswer;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.model.typesafe.internal.TypeSafeAnswer;
@@ -119,15 +119,15 @@ public class TypeSafeDecisionModel implements DecisionModel {
 
     private static Map<String, Object> toQuestion(Question question) {
         Map<String, Object> result = new LinkedHashMap<>();
-        if (question instanceof NoulQuestion noul) {
+        if (question instanceof YesNoQuestion yesNo) {
             result.put("type", "noul");
-            result.put("instructions", noul.instructions());
+            result.put("instructions", yesNo.instructions());
             Map<String, Object> criteria = new LinkedHashMap<>();
-            if (noul.whenTrue() != null) {
-                criteria.put("true", noul.whenTrue());
+            if (yesNo.whenTrue() != null) {
+                criteria.put("true", yesNo.whenTrue());
             }
-            if (noul.whenFalse() != null) {
-                criteria.put("false", noul.whenFalse());
+            if (yesNo.whenFalse() != null) {
+                criteria.put("false", yesNo.whenFalse());
             }
             if (!criteria.isEmpty()) {
                 result.put("criteria", criteria);
@@ -164,8 +164,8 @@ public class TypeSafeDecisionModel implements DecisionModel {
     }
 
     private static DecisionAnswer toAnswer(TypeSafeAnswer answer, Question question) {
-        if (question instanceof NoulQuestion) {
-            return NoulAnswer.builder().probability(clamp(answer.noul)).build();
+        if (question instanceof YesNoQuestion) {
+            return YesNoAnswer.builder().probability(clamp(answer.noul)).build();
         }
         if (question instanceof ChoiceQuestion) {
             Map<String, Double> probabilities = new LinkedHashMap<>();

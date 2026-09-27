@@ -26,7 +26,7 @@ import java.util.Objects;
  *                 .option("billing", "Payments, invoices, refunds")
  *                 .option("support", "Problems using the product")
  *                 .build())
- *         .question("urgent", NoulQuestion.builder()
+ *         .question("urgent", YesNoQuestion.builder()
  *                 .instructions("Does this need attention today?")
  *                 .build())
  *         .build();

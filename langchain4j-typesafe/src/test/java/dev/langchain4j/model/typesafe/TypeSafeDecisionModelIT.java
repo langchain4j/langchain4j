@@ -6,11 +6,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import dev.langchain4j.model.decision.DecisionModel;
 import dev.langchain4j.model.decision.request.ChoiceQuestion;
 import dev.langchain4j.model.decision.request.DecisionRequest;
-import dev.langchain4j.model.decision.request.NoulQuestion;
+import dev.langchain4j.model.decision.request.YesNoQuestion;
 import dev.langchain4j.model.decision.request.ScoreQuestion;
 import dev.langchain4j.model.decision.response.ChoiceAnswer;
 import dev.langchain4j.model.decision.response.DecisionResponse;
-import dev.langchain4j.model.decision.response.NoulAnswer;
+import dev.langchain4j.model.decision.response.YesNoAnswer;
 import dev.langchain4j.model.decision.response.ScoreAnswer;
 import dev.langchain4j.exception.AuthenticationException;
 import dev.langchain4j.model.decision.request.DecisionRequestParameters;
@@ -44,7 +44,7 @@ class TypeSafeDecisionModelIT {
                                 .build())
                 .question(
                         "urgent",
-                        NoulQuestion.builder()
+                        YesNoQuestion.builder()
                                 .instructions("Does this need attention today?")
                                 .build())
                 .question(
@@ -65,7 +65,7 @@ class TypeSafeDecisionModelIT {
         assertThat(team.choice()).isEqualTo("billing");
         assertThat(team.probabilities()).containsOnlyKeys("billing", "sales");
 
-        NoulAnswer urgent = response.noul("urgent");
+        YesNoAnswer urgent = response.yesNo("urgent");
         assertThat(urgent.probability()).isGreaterThan(0.5);
 
         ScoreAnswer frustration = response.score("frustration");
@@ -101,7 +101,7 @@ class TypeSafeDecisionModelIT {
                                 .build())
                 .question(
                         "refund",
-                        NoulQuestion.builder()
+                        YesNoQuestion.builder()
                                 .instructions("Does the customer ask for money back?")
                                 .whenTrue("The customer wants a charge reversed or refunded")
                                 .whenFalse("The customer only asks what a charge is for")
@@ -113,7 +113,7 @@ class TypeSafeDecisionModelIT {
 
         // then
         assertThat(response.choice("team").choice()).isEqualTo("billing");
-        assertThat(response.noul("refund").probability()).isBetween(0.0, 1.0);
+        assertThat(response.yesNo("refund").probability()).isBetween(0.0, 1.0);
     }
 
     @Test
@@ -124,7 +124,7 @@ class TypeSafeDecisionModelIT {
                 .state("Congratulations! You won a free cruise, click here to claim your prize.")
                 .question(
                         "spam",
-                        NoulQuestion.builder().instructions("Is this message spam?").build())
+                        YesNoQuestion.builder().instructions("Is this message spam?").build())
                 .parameters(DecisionRequestParameters.builder()
                         .modelName("jev-1.13.0")
                         .build())
@@ -134,7 +134,7 @@ class TypeSafeDecisionModelIT {
         DecisionResponse response = model.decideAsync(request).get();
 
         // then
-        assertThat(response.noul("spam").probability()).isGreaterThan(0.5);
+        assertThat(response.yesNo("spam").probability()).isGreaterThan(0.5);
         assertThat(response.modelName()).isEqualTo("jev-1.13.0");
     }
 
@@ -149,7 +149,7 @@ class TypeSafeDecisionModelIT {
 
         DecisionRequest request = DecisionRequest.builder()
                 .state("Hello")
-                .question("greeting", NoulQuestion.builder().instructions("Is this a greeting?").build())
+                .question("greeting", YesNoQuestion.builder().instructions("Is this a greeting?").build())
                 .build();
 
         // when-then

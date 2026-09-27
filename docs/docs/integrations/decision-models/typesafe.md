@@ -43,7 +43,7 @@ DecisionRequest request = DecisionRequest.builder()
                 .option("billing", "Payments, payouts, invoices, refunds")
                 .option("support", "Problems using the product")
                 .build())
-        .question("urgent", NoulQuestion.builder()
+        .question("urgent", YesNoQuestion.builder()
                 .instructions("Does this need attention today?")
                 .build())
         .build();
@@ -51,7 +51,7 @@ DecisionRequest request = DecisionRequest.builder()
 DecisionResponse response = decisionModel.decide(request);
 
 ChoiceAnswer team = response.choice("team");
-NoulAnswer urgent = response.noul("urgent");
+YesNoAnswer urgent = response.yesNo("urgent");
 ```
 
 See the [Decision Models](/tutorials/decision-models) tutorial for all question types and how to use the answers.
@@ -78,7 +78,8 @@ The HTTP client can be customized with `httpClientBuilder(...)`, see [Customizab
 
 Both `decide()` and `decideAsync()` are supported.
 
-The model supports the `NoulQuestion`, `ChoiceQuestion` and `ScoreQuestion` question types.
+The model supports the `YesNoQuestion`, `ChoiceQuestion` and `ScoreQuestion` question types.
+In the TypeSafe documentation, yes/no questions are called "noul" questions.
 The confidence of choice and score answers is computed by the server.
 
 ## Other servers

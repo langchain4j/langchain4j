@@ -5,7 +5,7 @@ import dev.langchain4j.Experimental;
 /**
  * A question asked to a {@link dev.langchain4j.model.decision.DecisionModel}.
  * <p>
- * The built-in question types are {@link NoulQuestion}, {@link ChoiceQuestion} and {@link ScoreQuestion}.
+ * The built-in question types are {@link YesNoQuestion}, {@link ChoiceQuestion} and {@link ScoreQuestion}.
  * Implementations may define additional question types; a model that receives a question type it does not support
  * throws {@link dev.langchain4j.exception.UnsupportedFeatureException}.
  *
