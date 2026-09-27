@@ -8,7 +8,7 @@ sidebar_position: 39
 Decision Services are experimental and may change in future releases.
 :::
 
-[Decision models](/tutorials/decision-models) answer typed questions about some input: yes/no questions,
+[Decision models](/tutorials/decision-models) answer typed questions about some input (state): yes/no questions,
 questions choosing one of several options, and so on.
 Decision Services let you use them through a plain Java interface:
 you declare what you want to know as methods, and LangChain4j implements the interface for you.
@@ -73,7 +73,7 @@ The types used below come from these packages:
 ## How it works
 
 For every call, the Decision Service:
-1. Sends the method parameters to the model as the input, keyed by parameter name,
+1. Sends the method parameters to the model as the input (state), keyed by parameter name,
    for example `{"message": "Congratulations! You won a free cruise!"}`.
 2. Asks the question(s) derived from the method's return type and the `@Decide` annotation.
 3. Converts the answer(s) back to the return type.
@@ -188,7 +188,7 @@ class Triage {
 
 ## Parameters
 
-All parameters are sent to the model as the input, keyed by parameter name.
+All parameters are sent to the model as the input (state), keyed by parameter name.
 Parameters that are `null` are left out.
 
 ```java
