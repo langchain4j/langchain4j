@@ -8,11 +8,11 @@ import dev.langchain4j.model.decision.DecisionModel;
 import dev.langchain4j.model.decision.request.ChoiceQuestion;
 import dev.langchain4j.model.decision.request.DecisionRequest;
 import dev.langchain4j.model.decision.request.DecisionRequestParameters;
-import dev.langchain4j.model.decision.request.NoulQuestion;
+import dev.langchain4j.model.decision.request.YesNoQuestion;
 import dev.langchain4j.model.decision.response.ChoiceAnswer;
 import dev.langchain4j.model.decision.response.DecisionAnswer;
 import dev.langchain4j.model.decision.response.DecisionResponse;
-import dev.langchain4j.model.decision.response.NoulAnswer;
+import dev.langchain4j.model.decision.response.YesNoAnswer;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.model.output.structured.Description;
 import dev.langchain4j.service.IllegalConfigurationException;
@@ -64,8 +64,8 @@ class DecisionServicesTest {
         }
     }
 
-    private static NoulAnswer noul(double probability) {
-        return NoulAnswer.builder().probability(probability).build();
+    private static YesNoAnswer yesNo(double probability) {
+        return YesNoAnswer.builder().probability(probability).build();
     }
 
     private static final ChoiceAnswer BILLING_ANSWER = ChoiceAnswer.builder()
@@ -88,7 +88,7 @@ class DecisionServicesTest {
     void should_ask_yes_no_question_and_return_boolean() {
 
         // given
-        FakeDecisionModel model = new FakeDecisionModel(Map.of("isSpam", noul(0.7)));
+        FakeDecisionModel model = new FakeDecisionModel(Map.of("isSpam", yesNo(0.7)));
         SpamFilter spamFilter =
                 DecisionServices.builder(SpamFilter.class).decisionModel(model).build();
 
@@ -101,7 +101,7 @@ class DecisionServicesTest {
         assertThat(model.request().questions())
                 .isEqualTo(Map.of(
                         "isSpam",
-                        NoulQuestion.builder()
+                        YesNoQuestion.builder()
                                 .instructions("Is this message spam?")
                                 .build()));
     }
@@ -110,7 +110,7 @@ class DecisionServicesTest {
     void should_use_default_threshold_of_0_5() {
 
         SpamFilter spamFilter = DecisionServices.builder(SpamFilter.class)
-                .decisionModel(new FakeDecisionModel(Map.of("isSpam", noul(0.49))))
+                .decisionModel(new FakeDecisionModel(Map.of("isSpam", yesNo(0.49))))
                 .build();
 
         assertThat(spamFilter.isSpam("Hello")).isFalse();
@@ -123,7 +123,7 @@ class DecisionServicesTest {
         List<String> requestedThresholds = new ArrayList<>();
         Map<String, Double> config = new java.util.HashMap<>(Map.of("isSpam", 0.9));
         SpamFilter spamFilter = DecisionServices.builder(SpamFilter.class)
-                .decisionModel(new FakeDecisionModel(Map.of("isSpam", noul(0.7))))
+                .decisionModel(new FakeDecisionModel(Map.of("isSpam", yesNo(0.7))))
                 .thresholdProvider(question -> {
                     requestedThresholds.add(question);
                     return config.get(question);
@@ -146,7 +146,7 @@ class DecisionServicesTest {
     void should_reject_invalid_threshold() {
 
         SpamFilter spamFilter = DecisionServices.builder(SpamFilter.class)
-                .decisionModel(new FakeDecisionModel(Map.of("isSpam", noul(0.7))))
+                .decisionModel(new FakeDecisionModel(Map.of("isSpam", yesNo(0.7))))
                 .thresholdProvider(question -> 1.5)
                 .build();
 
@@ -165,7 +165,7 @@ class DecisionServicesTest {
     void should_return_yes_no() {
 
         SpamScorer spamScorer = DecisionServices.builder(SpamScorer.class)
-                .decisionModel(new FakeDecisionModel(Map.of("isSpam", noul(0.7))))
+                .decisionModel(new FakeDecisionModel(Map.of("isSpam", yesNo(0.7))))
                 .build();
 
         YesNo spam = spamScorer.isSpam("You won a cruise!");
@@ -185,7 +185,7 @@ class DecisionServicesTest {
     void should_pass_request_parameters_and_not_send_them_as_state() {
 
         // given
-        FakeDecisionModel model = new FakeDecisionModel(Map.of("isSpam", noul(0.7)));
+        FakeDecisionModel model = new FakeDecisionModel(Map.of("isSpam", yesNo(0.7)));
         SpamFilterWithParameters spamFilter = DecisionServices.builder(SpamFilterWithParameters.class)
                 .decisionModel(model)
                 .build();
@@ -204,7 +204,7 @@ class DecisionServicesTest {
     void should_reject_null_request_parameters() {
 
         SpamFilterWithParameters spamFilter = DecisionServices.builder(SpamFilterWithParameters.class)
-                .decisionModel(new FakeDecisionModel(Map.of("isSpam", noul(0.7))))
+                .decisionModel(new FakeDecisionModel(Map.of("isSpam", yesNo(0.7))))
                 .build();
 
         assertThatThrownBy(() -> spamFilter.isSpam("Hello", null))
@@ -333,7 +333,7 @@ class DecisionServicesTest {
 
         // given
         FakeDecisionModel model = new FakeDecisionModel(
-                Map.of("team", BILLING_ANSWER, "urgent", noul(0.9), "refund", noul(0.3)));
+                Map.of("team", BILLING_ANSWER, "urgent", yesNo(0.9), "refund", yesNo(0.3)));
         SupportDesk supportDesk =
                 DecisionServices.builder(SupportDesk.class).decisionModel(model).build();
 
@@ -349,11 +349,11 @@ class DecisionServicesTest {
         assertThat(request.state()).isEqualTo(Map.of("ticket", "I was charged twice", "plan", "enterprise"));
         assertThat(request.questions()).containsOnlyKeys("team", "urgent", "refund");
         assertThat(request.questions().get("urgent"))
-                .isEqualTo(NoulQuestion.builder()
+                .isEqualTo(YesNoQuestion.builder()
                         .instructions("Does this need attention today?")
                         .build());
         assertThat(request.questions().get("refund"))
-                .isEqualTo(NoulQuestion.builder().instructions("refund").build());
+                .isEqualTo(YesNoQuestion.builder().instructions("refund").build());
     }
 
     @Test
@@ -361,7 +361,7 @@ class DecisionServicesTest {
 
         // given
         FakeDecisionModel model = new FakeDecisionModel(
-                Map.of("team", BILLING_ANSWER, "urgent", noul(0.7), "refund", noul(0.7)));
+                Map.of("team", BILLING_ANSWER, "urgent", yesNo(0.7), "refund", yesNo(0.7)));
         SupportDesk supportDesk = DecisionServices.builder(SupportDesk.class)
                 .decisionModel(model)
                 .thresholdProvider(question -> question.equals("urgent") ? 0.8 : null)
@@ -443,7 +443,7 @@ class DecisionServicesTest {
     void async_methods_should_report_invalid_arguments_through_the_future() {
 
         AsyncSpamFilter spamFilter = DecisionServices.builder(AsyncSpamFilter.class)
-                .decisionModel(new FakeDecisionModel(Map.of("isSpam", noul(0.7))))
+                .decisionModel(new FakeDecisionModel(Map.of("isSpam", yesNo(0.7))))
                 .build();
 
         CompletableFuture<Boolean> future = spamFilter.isSpam("Hello", null);
@@ -470,7 +470,7 @@ class DecisionServicesTest {
     void should_support_default_and_object_methods() {
 
         ServiceWithDefaultMethod service = DecisionServices.builder(ServiceWithDefaultMethod.class)
-                .decisionModel(new FakeDecisionModel(Map.of("isSpam", noul(0.1))))
+                .decisionModel(new FakeDecisionModel(Map.of("isSpam", yesNo(0.1))))
                 .build();
 
         assertThat(service.isHam("Hello")).isTrue();

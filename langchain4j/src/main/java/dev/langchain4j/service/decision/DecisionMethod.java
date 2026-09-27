@@ -8,7 +8,7 @@ import dev.langchain4j.model.decision.DecisionModel;
 import dev.langchain4j.model.decision.request.ChoiceQuestion;
 import dev.langchain4j.model.decision.request.DecisionRequest;
 import dev.langchain4j.model.decision.request.DecisionRequestParameters;
-import dev.langchain4j.model.decision.request.NoulQuestion;
+import dev.langchain4j.model.decision.request.YesNoQuestion;
 import dev.langchain4j.model.decision.request.Question;
 import dev.langchain4j.model.decision.response.ChoiceAnswer;
 import dev.langchain4j.model.decision.response.DecisionResponse;
@@ -278,7 +278,7 @@ final class DecisionMethod {
             return new QuestionMapping(name, null, kind, enumType);
         }
         Question question = enumType == null
-                ? NoulQuestion.builder().instructions(questionText).build()
+                ? YesNoQuestion.builder().instructions(questionText).build()
                 : choiceQuestion(name, questionText, enumType);
         return new QuestionMapping(name, question, kind, enumType);
     }
@@ -358,8 +358,8 @@ final class DecisionMethod {
 
         Object value(DecisionResponse response, DoubleSupplier threshold) {
             return switch (kind) {
-                case BOOLEAN -> response.noul(name).probability() >= threshold.getAsDouble();
-                case YES_NO -> new YesNo(response.noul(name).probability());
+                case BOOLEAN -> response.yesNo(name).probability() >= threshold.getAsDouble();
+                case YES_NO -> new YesNo(response.yesNo(name).probability());
                 case ENUM -> constant(response.choice(name).choice());
                 case CHOICE -> choice(response.choice(name));
             };
