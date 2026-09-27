@@ -1,11 +1,24 @@
 package dev.langchain4j.model.decision;
 
+import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
+import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
+import static dev.langchain4j.model.ModelProvider.OTHER;
+import static dev.langchain4j.model.decision.DecisionModelListenerUtils.onError;
+import static dev.langchain4j.model.decision.DecisionModelListenerUtils.onRequest;
+import static dev.langchain4j.model.decision.DecisionModelListenerUtils.onResponse;
+
 import dev.langchain4j.Experimental;
 import dev.langchain4j.internal.AsyncNotSupported;
+import dev.langchain4j.model.ModelProvider;
+import dev.langchain4j.model.decision.listener.DecisionModelListener;
 import dev.langchain4j.model.decision.request.DecisionRequest;
 import dev.langchain4j.model.decision.request.DecisionRequestParameters;
 import dev.langchain4j.model.decision.response.DecisionResponse;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * A model that evaluates a state against a set of named, typed questions and returns one typed answer per
@@ -28,14 +41,26 @@ public interface DecisionModel {
     /**
      * Answers the questions of the given request.
      * <p>
-     * This applies the model's {@link #defaultRequestParameters() default parameters} and dispatches to
-     * {@link #doDecide(DecisionRequest)}.
+     * This applies the model's {@link #defaultRequestParameters() default parameters}, notifies the
+     * {@link #listeners() listeners} and dispatches to {@link #doDecide(DecisionRequest)}.
      *
      * @param request the state, the questions and the per-call parameters.
      * @return one answer per question, keyed by question name.
      */
     default DecisionResponse decide(DecisionRequest request) {
-        return doDecide(withDefaultParameters(request));
+        DecisionRequest finalRequest = withDefaultParameters(request);
+        List<DecisionModelListener> listeners = listeners();
+        Map<Object, Object> attributes = new ConcurrentHashMap<>();
+
+        onRequest(finalRequest, provider(), attributes, listeners);
+        try {
+            DecisionResponse response = doDecide(finalRequest);
+            onResponse(response, finalRequest, provider(), attributes, listeners);
+            return response;
+        } catch (Exception error) {
+            onError(error, finalRequest, provider(), attributes, listeners);
+            throw error;
+        }
     }
 
     /**
@@ -49,14 +74,40 @@ public interface DecisionModel {
     /**
      * Non-blocking counterpart of {@link #decide(DecisionRequest)}.
      * <p>
-     * This applies the model's {@link #defaultRequestParameters() default parameters} and dispatches to
-     * {@link #doDecideAsync(DecisionRequest)}.
+     * This applies the model's {@link #defaultRequestParameters() default parameters}, notifies the
+     * {@link #listeners() listeners} and dispatches to {@link #doDecideAsync(DecisionRequest)}.
      *
      * @param request the state, the questions and the per-call parameters.
      * @return a {@link CompletableFuture} of the answers, keyed by question name.
      */
     default CompletableFuture<DecisionResponse> decideAsync(DecisionRequest request) {
-        return doDecideAsync(withDefaultParameters(request));
+        DecisionRequest finalRequest = withDefaultParameters(request);
+        List<DecisionModelListener> listeners = listeners();
+        Map<Object, Object> attributes = new ConcurrentHashMap<>();
+
+        onRequest(finalRequest, provider(), attributes, listeners);
+
+        CompletableFuture<DecisionResponse> source;
+        try {
+            source = doDecideAsync(finalRequest);
+        } catch (Exception error) {
+            onError(error, finalRequest, provider(), attributes, listeners);
+            return CompletableFuture.failedFuture(error);
+        }
+
+        CompletableFuture<DecisionResponse> result = source.whenComplete((response, error) -> {
+            if (error != null) {
+                Throwable cause = unwrapCompletionException(error);
+                if (!(cause instanceof CancellationException)) {
+                    onError(cause, finalRequest, provider(), attributes, listeners);
+                }
+            } else {
+                onResponse(response, finalRequest, provider(), attributes, listeners);
+            }
+        });
+
+        propagateCancellation(result, source);
+        return result;
     }
 
     /**
@@ -76,6 +127,27 @@ public interface DecisionModel {
      */
     default DecisionRequestParameters defaultRequestParameters() {
         return DecisionRequestParameters.EMPTY;
+    }
+
+    /**
+     * The listeners notified of every request, response and error of this model.
+     */
+    default List<DecisionModelListener> listeners() {
+        return List.of();
+    }
+
+    /**
+     * The provider of this model.
+     */
+    default ModelProvider provider() {
+        return OTHER;
+    }
+
+    /**
+     * The name of the model used when a request does not specify one, or {@code null} if there is none.
+     */
+    default String modelName() {
+        return defaultRequestParameters().modelName();
     }
 
     private DecisionRequest withDefaultParameters(DecisionRequest request) {

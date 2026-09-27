@@ -14,6 +14,11 @@ import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.http.client.sse.ServerSentEventParser;
 import dev.langchain4j.internal.Json;
+import dev.langchain4j.model.ModelProvider;
+import dev.langchain4j.model.decision.InvalidDecisionResponseException;
+import dev.langchain4j.model.decision.listener.DecisionModelListener;
+import dev.langchain4j.model.decision.listener.DecisionModelRequestContext;
+import dev.langchain4j.model.decision.listener.DecisionModelResponseContext;
 import dev.langchain4j.model.decision.request.ChoiceQuestion;
 import dev.langchain4j.model.decision.request.DecisionRequest;
 import dev.langchain4j.model.decision.request.DecisionRequestParameters;
@@ -25,11 +30,15 @@ import dev.langchain4j.model.decision.response.DecisionResponse;
 import dev.langchain4j.model.decision.response.YesNoAnswer;
 import dev.langchain4j.model.decision.response.ScoreAnswer;
 import dev.langchain4j.model.output.TokenUsage;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 class TypeSafeDecisionModelTest {
 
@@ -163,7 +172,7 @@ class TypeSafeDecisionModelTest {
         assertThat(response.answers().keySet()).containsExactly("team", "urgent", "frustration");
         assertThat(response.answers().get("team"))
                 .isEqualTo(ChoiceAnswer.builder()
-                        .choice("billing")
+                        .value("billing")
                         .probability("billing", 0.88)
                         .probability("support", 0.12)
                         .confidence(0.81)
@@ -345,11 +354,149 @@ class TypeSafeDecisionModelTest {
     }
 
     @Test
-    void should_require_api_key() {
+    void should_require_api_key_for_default_base_url() {
 
         assertThatThrownBy(() -> TypeSafeDecisionModel.builder().build())
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("apiKey");
+    }
+
+    @Test
+    void should_not_require_api_key_for_other_servers() {
+
+        // given
+        MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(RESPONSE));
+        TypeSafeDecisionModel model = TypeSafeDecisionModel.builder()
+                .httpClientBuilder(new MockHttpClientBuilder(httpClient))
+                .baseUrl("http://localhost:8000")
+                .modelName("local")
+                .build();
+
+        // when
+        model.decide(REQUEST);
+
+        // then
+        assertThat(httpClient.request().headers()).doesNotContainKey("Authorization");
+    }
+
+    @Test
+    void should_send_custom_headers() {
+
+        // given
+        MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(RESPONSE));
+        TypeSafeDecisionModel model = TypeSafeDecisionModel.builder()
+                .httpClientBuilder(new MockHttpClientBuilder(httpClient))
+                .apiKey("test-key")
+                .modelName("jev-latest")
+                .customHeaders(Map.of("X-Tenant", "acme"))
+                .build();
+
+        // when
+        model.decide(REQUEST);
+
+        // then
+        assertThat(httpClient.request().headers().get("X-Tenant")).containsExactly("acme");
+    }
+
+    @Test
+    void should_send_objects_in_state_with_java_field_names() {
+
+        // given
+        record Customer(String customerPlan, int openTickets) {}
+
+        MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(RESPONSE));
+        TypeSafeDecisionModel model = model(httpClient);
+
+        // when
+        model.decide(DecisionRequest.builder()
+                .state(Map.of("customer", new Customer("enterprise", 3)))
+                .questions(REQUEST.questions())
+                .build());
+
+        // then
+        assertThat(Json.fromJson(httpClient.request().body(), Map.class))
+                .containsEntry("state", Map.of("customer", Map.of("customerPlan", "enterprise", "openTickets", 3)));
+    }
+
+    @Test
+    void should_notify_listeners_and_report_provider() {
+
+        // given
+        List<String> events = new ArrayList<>();
+        TypeSafeDecisionModel model = TypeSafeDecisionModel.builder()
+                .httpClientBuilder(new MockHttpClientBuilder(MockHttpClient.thatAlwaysResponds(ok(RESPONSE))))
+                .apiKey("test-key")
+                .modelName("jev-latest")
+                .listeners(new DecisionModelListener() {
+
+                    @Override
+                    public void onRequest(DecisionModelRequestContext context) {
+                        events.add("request:" + context.modelProvider() + ":" + context.decisionRequest().modelName());
+                    }
+
+                    @Override
+                    public void onResponse(DecisionModelResponseContext context) {
+                        events.add("response:" + context.decisionResponse().modelName());
+                    }
+                })
+                .build();
+
+        // when
+        model.decide(REQUEST);
+
+        // then
+        assertThat(events).containsExactly("request:TYPESAFE:jev-latest", "response:jev-1.13.0");
+        assertThat(model.provider()).isEqualTo(ModelProvider.TYPESAFE);
+        assertThat(model.modelName()).isEqualTo("jev-latest");
+    }
+
+    @ParameterizedTest
+    @MethodSource("invalidResponses")
+    void should_reject_responses_that_do_not_match_the_request(String body, String expectedMessage) {
+
+        TypeSafeDecisionModel model = model(MockHttpClient.thatAlwaysResponds(ok(body)));
+
+        assertThatThrownBy(() -> model.decide(REQUEST))
+                .isInstanceOf(InvalidDecisionResponseException.class)
+                .hasMessageContaining(expectedMessage);
+    }
+
+    static List<Arguments> invalidResponses() {
+        String urgent = "\"urgent\": {\"type\": \"noul\", \"noul\": 0.9}";
+        String frustration = "\"frustration\": {\"type\": \"score\", \"score\": 1.0}";
+        String team = "\"team\": {\"type\": \"choice\", \"choice\": \"billing\"}";
+        return List.of(
+                Arguments.of("{\"model\": \"jev\"}", "no answers"),
+                Arguments.of(answers(urgent, frustration), "no answer to question 'team'"),
+                Arguments.of(
+                        answers(urgent, frustration, "\"team\": {\"type\": \"choice\", \"choice\": \"sales\"}"),
+                        "'sales', which is not one of the options"),
+                Arguments.of(
+                        answers(urgent, frustration, "\"team\": {\"type\": \"noul\", \"noul\": 0.5}"),
+                        "has type 'noul' instead of 'choice'"),
+                Arguments.of(
+                        answers(frustration, team, "\"urgent\": {\"type\": \"noul\"}"), "'urgent' has no 'noul'"),
+                Arguments.of(
+                        answers(frustration, team, "\"urgent\": {\"type\": \"noul\", \"noul\": 1.3}"),
+                        "invalid noul: 1.3"),
+                Arguments.of(
+                        answers(
+                                urgent,
+                                frustration,
+                                "\"team\": {\"type\": \"choice\", \"choice\": \"billing\","
+                                        + " \"probabilities\": {\"billing\": 0.9, \"sales\": 0.1}}"),
+                        "probability for 'sales'"),
+                Arguments.of(
+                        answers(
+                                urgent,
+                                team,
+                                "\"frustration\": {\"type\": \"score\", \"score\": 1.0,"
+                                        + " \"probabilities\": {\"Calm\": 1.0}}"),
+                        "level 'Calm', but the levels are 0 to 2"));
+    }
+
+    private static String answers(String... answers) {
+        return "{\"model\": \"jev-1.13.0\", \"answers\": {" + String.join(", ", answers) + "}}";
     }
 
     private static TypeSafeDecisionModel model(MockHttpClient httpClient) {

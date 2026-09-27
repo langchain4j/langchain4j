@@ -2,13 +2,21 @@ package dev.langchain4j.model.decision;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import dev.langchain4j.exception.AsyncNotSupportedException;
+import dev.langchain4j.model.decision.listener.DecisionModelErrorContext;
+import dev.langchain4j.model.decision.listener.DecisionModelListener;
+import dev.langchain4j.model.decision.listener.DecisionModelRequestContext;
+import dev.langchain4j.model.decision.listener.DecisionModelResponseContext;
 import dev.langchain4j.model.decision.request.DecisionRequest;
 import dev.langchain4j.model.decision.request.DecisionRequestParameters;
 import dev.langchain4j.model.decision.request.YesNoQuestion;
 import dev.langchain4j.model.decision.response.DecisionResponse;
 import dev.langchain4j.model.decision.response.YesNoAnswer;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicReference;
@@ -131,5 +139,127 @@ class DecisionModelTest {
                                 .build())
                 .parameters(parameters)
                 .build();
+    }
+
+    static class RecordingListener implements DecisionModelListener {
+
+        final List<String> events = new ArrayList<>();
+
+        @Override
+        public void onRequest(DecisionModelRequestContext context) {
+            context.attributes().put("id", "42");
+            events.add("request:" + context.decisionRequest().modelName() + ":" + context.modelProvider());
+        }
+
+        @Override
+        public void onResponse(DecisionModelResponseContext context) {
+            events.add("response:" + context.attributes().get("id") + ":"
+                    + context.decisionResponse().answers().keySet());
+        }
+
+        @Override
+        public void onError(DecisionModelErrorContext context) {
+            events.add("error:" + context.attributes().get("id") + ":" + context.error().getMessage());
+        }
+    }
+
+    static class ListenedDecisionModel extends TestDecisionModel {
+
+        final List<DecisionModelListener> listeners;
+        final RuntimeException failure;
+
+        ListenedDecisionModel(RuntimeException failure, DecisionModelListener... listeners) {
+            super(DecisionRequestParameters.builder().modelName("default-model").build());
+            this.failure = failure;
+            this.listeners = List.of(listeners);
+        }
+
+        @Override
+        public DecisionResponse doDecide(DecisionRequest request) {
+            if (failure != null) {
+                throw failure;
+            }
+            return super.doDecide(request);
+        }
+
+        @Override
+        public CompletableFuture<DecisionResponse> doDecideAsync(DecisionRequest request) {
+            return failure != null
+                    ? CompletableFuture.failedFuture(failure)
+                    : CompletableFuture.completedFuture(super.doDecide(request));
+        }
+
+        @Override
+        public List<DecisionModelListener> listeners() {
+            return listeners;
+        }
+    }
+
+    @Test
+    void should_notify_listeners_on_response() {
+
+        RecordingListener listener = new RecordingListener();
+        DecisionModel model = new ListenedDecisionModel(null, listener);
+
+        model.decide(request(DecisionRequestParameters.EMPTY));
+
+        assertThat(listener.events).containsExactly("request:default-model:OTHER", "response:42:[urgent]");
+    }
+
+    @Test
+    void should_notify_listeners_on_error_and_rethrow() {
+
+        RecordingListener listener = new RecordingListener();
+        DecisionModel model = new ListenedDecisionModel(new RuntimeException("boom"), listener);
+
+        assertThatThrownBy(() -> model.decide(request(DecisionRequestParameters.EMPTY)))
+                .hasMessage("boom");
+        assertThat(listener.events).containsExactly("request:default-model:OTHER", "error:42:boom");
+    }
+
+    @Test
+    void should_notify_listeners_on_async_response_and_error() {
+
+        RecordingListener listener = new RecordingListener();
+
+        new ListenedDecisionModel(null, listener)
+                .decideAsync(request(DecisionRequestParameters.EMPTY))
+                .join();
+        assertThat(listener.events).containsExactly("request:default-model:OTHER", "response:42:[urgent]");
+
+        listener.events.clear();
+        CompletableFuture<DecisionResponse> failed = new ListenedDecisionModel(new RuntimeException("boom"), listener)
+                .decideAsync(request(DecisionRequestParameters.EMPTY));
+        assertThat(failed).isCompletedExceptionally();
+        assertThat(listener.events).containsExactly("request:default-model:OTHER", "error:42:boom");
+    }
+
+    @Test
+    void should_ignore_exceptions_thrown_by_listeners() {
+
+        DecisionModelListener failingListener = new DecisionModelListener() {
+            @Override
+            public void onRequest(DecisionModelRequestContext context) {
+                throw new RuntimeException("listener failure");
+            }
+        };
+        RecordingListener listener = new RecordingListener();
+        DecisionModel model = new ListenedDecisionModel(null, failingListener, listener);
+
+        DecisionResponse response = model.decide(request(DecisionRequestParameters.EMPTY));
+
+        assertThat(response.answers()).containsKey("urgent");
+        assertThat(listener.events).hasSize(2);
+    }
+
+    @Test
+    void should_expose_provider_and_model_name_defaults() {
+
+        DecisionModel model = new TestDecisionModel(
+                DecisionRequestParameters.builder().modelName("default-model").build());
+
+        assertThat(model.provider()).isEqualTo(dev.langchain4j.model.ModelProvider.OTHER);
+        assertThat(model.modelName()).isEqualTo("default-model");
+        assertThat(model.listeners()).isEmpty();
     }
 }

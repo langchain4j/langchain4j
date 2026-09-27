@@ -22,7 +22,7 @@ import java.util.Objects;
  * YesNoAnswer urgent = response.yesNo("urgent");
  *
  * if (urgent.probability() > 0.8) {
- *     escalate(team.choice());
+ *     escalate(team.value());
  * }
  * }</pre>
  *

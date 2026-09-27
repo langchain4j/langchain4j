@@ -4,7 +4,9 @@ import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
 import dev.langchain4j.Experimental;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -17,12 +19,12 @@ import java.util.Objects;
 @Experimental
 public final class ChoiceAnswer implements DecisionAnswer {
 
-    private final String choice;
+    private final String value;
     private final Map<String, Double> probabilities;
     private final Double confidence;
 
     private ChoiceAnswer(Builder builder) {
-        this.choice = ensureNotBlank(builder.choice, "choice");
+        this.value = ensureNotBlank(builder.value, "value");
         this.probabilities = copy(builder.probabilities);
         this.confidence = Probabilities.ensureNullableProbability(builder.confidence, "confidence");
     }
@@ -30,22 +32,53 @@ public final class ChoiceAnswer implements DecisionAnswer {
     /**
      * The name of the chosen option, usually the one with the highest probability.
      */
-    public String choice() {
-        return choice;
+    public String value() {
+        return value;
     }
 
     /**
      * The probability of each option, keyed by option name. Empty if the model does not report probabilities.
      * <p>
-     * Unlike {@link #confidence()}, probabilities mean the same thing for every model, which makes them the better
-     * basis for thresholds, for example "escalate to a human when the two most likely options are close".
+     * Unlike {@link #confidence()}, probabilities have the same meaning for every model, which makes them the better
+     * basis for thresholds. Their calibration still differs between models, so thresholds need to be tuned again
+     * when the model changes.
      */
     public Map<String, Double> probabilities() {
         return probabilities;
     }
 
     /**
-     * How confident the model is in {@link #choice()}, from 0 to 1, or {@code null} if the model does not report
+     * The probability of the given option, or 0 if the model reported probabilities but none for this option.
+     *
+     * @throws IllegalStateException if the model did not report probabilities.
+     */
+    public double probability(String option) {
+        ensureProbabilities();
+        return probabilities.getOrDefault(option, 0.0);
+    }
+
+    /**
+     * The difference between the two highest probabilities, from 0 to 1. A small margin means the model hesitated
+     * between two options, which is a common signal to escalate, for example to a human.
+     *
+     * @throws IllegalStateException if the model did not report probabilities.
+     */
+    public double margin() {
+        ensureProbabilities();
+        List<Double> sorted = probabilities.values().stream()
+                .sorted(Comparator.reverseOrder())
+                .toList();
+        return sorted.size() < 2 ? sorted.get(0) : sorted.get(0) - sorted.get(1);
+    }
+
+    private void ensureProbabilities() {
+        if (probabilities.isEmpty()) {
+            throw new IllegalStateException("The model did not report probabilities");
+        }
+    }
+
+    /**
+     * How confident the model is in {@link #value()}, from 0 to 1, or {@code null} if the model does not report
      * a confidence.
      * <p>
      * The formula is defined by each model and differs between models, so a threshold tuned for one model does not
@@ -63,30 +96,30 @@ public final class ChoiceAnswer implements DecisionAnswer {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (!(o instanceof ChoiceAnswer that)) return false;
-        return Objects.equals(choice, that.choice)
+        return Objects.equals(value, that.value)
                 && Objects.equals(probabilities, that.probabilities)
                 && Objects.equals(confidence, that.confidence);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(choice, probabilities, confidence);
+        return Objects.hash(value, probabilities, confidence);
     }
 
     @Override
     public String toString() {
-        return "ChoiceAnswer{choice=" + choice + ", probabilities=" + probabilities + ", confidence=" + confidence
+        return "ChoiceAnswer{value=" + value + ", probabilities=" + probabilities + ", confidence=" + confidence
                 + '}';
     }
 
     public static final class Builder {
 
-        private String choice;
+        private String value;
         private final Map<String, Double> probabilities = new LinkedHashMap<>();
         private Double confidence;
 
-        public Builder choice(String choice) {
-            this.choice = choice;
+        public Builder value(String value) {
+            this.value = value;
             return this;
         }
 

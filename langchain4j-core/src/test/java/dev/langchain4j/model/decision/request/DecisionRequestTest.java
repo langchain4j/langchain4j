@@ -155,4 +155,55 @@ class DecisionRequestTest {
                 .isEqualTo("override");
         assertThat(defaults.modelName()).isEqualTo("default");
     }
+
+    enum Plan {
+        ENTERPRISE
+    }
+
+    record Customer(String name, Plan plan, int openTickets, List<String> tags) {}
+
+    @Test
+    void should_normalize_objects_in_state_using_java_field_names() {
+
+        DecisionRequest request = DecisionRequest.builder()
+                .state(Map.of("customer", new Customer("Anna", Plan.ENTERPRISE, 3, List.of("vip"))))
+                .question("spam", QUESTION)
+                .build();
+
+        assertThat(request.state())
+                .isEqualTo(Map.of(
+                        "customer",
+                        Map.of("name", "Anna", "plan", "ENTERPRISE", "openTickets", 3, "tags", List.of("vip"))));
+    }
+
+    @Test
+    void normalized_state_should_be_deeply_immutable() {
+
+        List<String> tags = new ArrayList<>(List.of("vip"));
+        Map<String, Object> customer = new HashMap<>(Map.of("tags", tags));
+
+        DecisionRequest request = DecisionRequest.builder()
+                .state(Map.of("customer", customer))
+                .question("spam", QUESTION)
+                .build();
+        tags.add("new");
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> normalizedCustomer =
+                (Map<String, Object>) ((Map<String, Object>) request.state()).get("customer");
+        assertThat(normalizedCustomer.get("tags")).isEqualTo(List.of("vip"));
+        assertThatThrownBy(() -> normalizedCustomer.put("name", "Bob"))
+                .isInstanceOf(UnsupportedOperationException.class);
+    }
+
+    @Test
+    void to_string_should_not_contain_state() {
+
+        DecisionRequest request = DecisionRequest.builder()
+                .state("My IBAN is DE89 3704 0044 0532 0130 00")
+                .question("spam", QUESTION)
+                .build();
+
+        assertThat(request.toString()).doesNotContain("IBAN").contains("questions");
+    }
 }

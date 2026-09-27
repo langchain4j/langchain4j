@@ -16,7 +16,8 @@ import java.util.Objects;
  * named {@link #questions()} to answer about it.
  * <p>
  * The state is either plain text or structured content (a {@link java.util.Map} or a {@link java.util.List}), for
- * example a support ticket together with the customer's plan. Every question is answered against the same state,
+ * example a support ticket together with the customer's plan. Objects inside structured content are converted to
+ * maps using their Java field names, so the model receives the same state whatever the implementation. Every question is answered against the same state,
  * and each answer is returned under the name of its question:
  * <pre>{@code
  * DecisionRequest request = DecisionRequest.builder()
@@ -90,7 +91,8 @@ public class DecisionRequest {
 
     @Override
     public String toString() {
-        return "DecisionRequest{state=" + state + ", questions=" + questions + ", parameters=" + parameters + '}';
+        // the state is left out on purpose: it can contain personal data
+        return "DecisionRequest{questions=" + questions + ", parameters=" + parameters + '}';
     }
 
     public static class Builder {

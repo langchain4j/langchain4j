@@ -43,22 +43,38 @@ class DecisionResponseTest {
     void should_create_choice_answer() {
 
         ChoiceAnswer answer = ChoiceAnswer.builder()
-                .choice("billing")
+                .value("billing")
                 .probability("billing", 0.88)
                 .probability("support", 0.12)
                 .confidence(0.81)
                 .build();
 
-        assertThat(answer.choice()).isEqualTo("billing");
+        assertThat(answer.value()).isEqualTo("billing");
         assertThat(answer.probabilities().keySet()).containsExactly("billing", "support");
         assertThat(answer.probabilities()).containsEntry("support", 0.12);
         assertThat(answer.confidence()).isEqualTo(0.81);
     }
 
     @Test
+    void choice_answer_should_expose_probability_and_margin() {
+
+        ChoiceAnswer answer = ChoiceAnswer.builder()
+                .value("billing")
+                .probability("billing", 0.55)
+                .probability("support", 0.4)
+                .build();
+
+        assertThat(answer.probability("billing")).isEqualTo(0.55);
+        assertThat(answer.probability("sales")).isZero();
+        assertThat(answer.margin()).isCloseTo(0.15, org.assertj.core.data.Offset.offset(1e-9));
+        assertThatThrownBy(() -> ChoiceAnswer.builder().value("billing").build().margin())
+                .isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
     void choice_answer_probabilities_and_confidence_should_be_optional() {
 
-        ChoiceAnswer answer = ChoiceAnswer.builder().choice("billing").build();
+        ChoiceAnswer answer = ChoiceAnswer.builder().value("billing").build();
 
         assertThat(answer.probabilities()).isEmpty();
         assertThat(answer.confidence()).isNull();
@@ -69,14 +85,14 @@ class DecisionResponseTest {
 
         assertThatThrownBy(() -> ChoiceAnswer.builder().build())
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("choice");
+                .hasMessageContaining("value");
 
         assertThatThrownBy(() -> ChoiceAnswer.builder().probability("billing", 1.5))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("probability");
 
         assertThatThrownBy(() -> ChoiceAnswer.builder()
-                        .choice("billing")
+                        .value("billing")
                         .confidence(Double.NaN)
                         .build())
                 .isInstanceOf(IllegalArgumentException.class)
@@ -129,7 +145,7 @@ class DecisionResponseTest {
 
         DecisionResponse response = DecisionResponse.builder()
                 .answer("urgent", YES_NO)
-                .answer("team", ChoiceAnswer.builder().choice("billing").build())
+                .answer("team", ChoiceAnswer.builder().value("billing").build())
                 .modelName("jev-1.13.0")
                 .tokenUsage(tokenUsage)
                 .build();
@@ -195,7 +211,7 @@ class DecisionResponseTest {
     @Test
     void should_return_typed_answers() {
 
-        ChoiceAnswer team = ChoiceAnswer.builder().choice("billing").build();
+        ChoiceAnswer team = ChoiceAnswer.builder().value("billing").build();
         ScoreAnswer mood = ScoreAnswer.builder().score(1.4).build();
 
         DecisionResponse response = DecisionResponse.builder()
@@ -254,9 +270,9 @@ class DecisionResponseTest {
                 .hasSameHashCodeAs(YES_NO)
                 .isNotEqualTo(YesNoAnswer.builder().probability(0.8).build());
 
-        assertThat(ChoiceAnswer.builder().choice("a").confidence(0.5).build())
-                .isEqualTo(ChoiceAnswer.builder().choice("a").confidence(0.5).build())
-                .isNotEqualTo(ChoiceAnswer.builder().choice("a").build());
+        assertThat(ChoiceAnswer.builder().value("a").confidence(0.5).build())
+                .isEqualTo(ChoiceAnswer.builder().value("a").confidence(0.5).build())
+                .isNotEqualTo(ChoiceAnswer.builder().value("a").build());
 
         assertThat(ScoreAnswer.builder().score(1.0).build())
                 .isEqualTo(ScoreAnswer.builder().score(1.0).build())

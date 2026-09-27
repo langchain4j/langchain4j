@@ -17,9 +17,20 @@ Typical uses are:
 - **Gating**: is this message spam? Does this answer contain personal data? Does this query need retrieval at all?
 - **Grading**: how urgent is this incident? How frustrated is the customer? How well does this answer address the question?
 
-Decision models are usually much faster and cheaper than chat models for these tasks,
-and because they return typed answers, there is no text to parse.
-All questions of a request are answered against the same state in a single call.
+Decision models are built for these tasks: they return typed answers with probabilities,
+so there is no text to parse, and all questions of a request are answered against the same state in a single call.
+Providers of decision models report that they are much faster and cheaper than chat models for such tasks;
+check the numbers for your own use case.
+
+### When to use a decision model
+
+A chat model can also answer such questions, for example through an [AI Service](/tutorials/ai-services)
+returning a `boolean` or an enum. Consider a decision model when:
+- you need **probabilities**, for example to escalate uncertain cases to a human or to tune thresholds;
+- you ask **many questions about the same input**, and want them answered in one call;
+- the decision is on a **hot path** (every request, every message) where latency and cost matter.
+
+Use a chat model when the task needs generated text, reasoning over several steps, or tools.
 
 Available implementations are listed [here](/category/decision-models).
 
@@ -62,7 +73,7 @@ ChoiceAnswer team = response.choice("team");
 YesNoAnswer urgent = response.yesNo("urgent");
 ScoreAnswer frustration = response.score("frustration");
 
-team.choice();              // "billing"
+team.value();               // "billing"
 team.probabilities();       // {billing=0.88, support=0.1, sales=0.02}
 urgent.probability();       // 0.93
 frustration.score();        // 1.4
@@ -130,8 +141,10 @@ The keys are not predefined: choose names that describe the content well, becaus
 
 ## Describing the state
 
-The state can also be plain text, a `Map` or a `List`.
-Use a `Map` to give the model several pieces of information that belong together:
+The state can be plain text, a `Map` or a `List`.
+Use a `Map` to give the model several pieces of information that belong together.
+Objects inside a `Map` or a `List` are converted to maps using their Java field names,
+so the model receives the same state whatever the `DecisionModel` implementation:
 
 ```java
 DecisionRequest request = DecisionRequest.builder()
@@ -147,23 +160,24 @@ DecisionRequest request = DecisionRequest.builder()
 
 ## Probabilities and confidence
 
-Every answer comes with probabilities, which are the best basis for decisions in your code,
-for example "escalate to a human when the two most likely options are close":
+A yes/no answer is always a probability. Choice and score answers carry the probability of each option or level,
+if the model reports them (otherwise `probabilities()` is empty).
+Probabilities are the best basis for decisions in your code,
+for example "escalate to a human when the model hesitates between the two most likely options":
 
 ```java
-List<Double> top = team.probabilities().values().stream()
-        .sorted(Comparator.reverseOrder())
-        .limit(2)
-        .toList();
-
-if (top.get(0) - top.get(1) < 0.2) {
+ChoiceAnswer team = response.choice("team");
+if (team.margin() < 0.2) {   // the difference between the two highest probabilities
     escalateToHuman(ticket);
 }
 ```
 
 Choice and score answers can also carry a `confidence()` value from 0 to 1.
-How it is computed is defined by each model and differs between models,
-so a threshold tuned for one model does not carry over to another. Probabilities do.
+How it is computed is defined by each model and differs between models.
+
+Probabilities have the same meaning for every model, but not the same calibration:
+a threshold of 0.9 tuned for one model does not necessarily work for another model, or for another version of
+the same model. Tune thresholds on your own data, and tune them again when you change the model or its version.
 
 ## Model name and other parameters
 
@@ -192,4 +206,51 @@ with their own answer types. An implementation that receives a question type it 
 throws `UnsupportedFeatureException` without calling the model.
 
 Answers of such types can be read with `response.answer(name, type)`, for example
-`response.answer("next_step", RankAnswer.class)`.
+`response.answer("next_step", RankAnswer.class)`, where `RankAnswer` is an answer type defined by the implementation.
+
+## Errors
+
+- An invalid request, for example a blank question or a choice question with a single option,
+  throws `IllegalArgumentException` when the request is built.
+- An answer that does not match the request (a missing answer, an answer of the wrong type,
+  or an option that was not offered) throws `InvalidDecisionResponseException`.
+- Errors of the provider (authentication, rate limits, timeouts, server errors) throw the corresponding
+  `LangChain4jException` subclasses, such as `AuthenticationException`, `RateLimitException` or `TimeoutException`.
+  Implementations usually retry transient errors (see their `maxRetries` setting).
+
+Decide what should happen when the model cannot be reached: a gate protecting against abuse or fraud should
+usually fail closed (reject or hold the input), while routing can fall back to a default.
+
+## Observability
+
+Register `DecisionModelListener`s on the `DecisionModel` to be notified of every request, response and error,
+for example to log decisions for audit, or to record metrics:
+
+```java
+DecisionModel decisionModel = TypeSafeDecisionModel.builder()
+        ...
+        .listeners(new DecisionModelListener() {
+
+            @Override
+            public void onResponse(DecisionModelResponseContext context) {
+                auditLog.record(context.decisionRequest(), context.decisionResponse());
+            }
+        })
+        .build();
+```
+
+## Model versions
+
+Model aliases such as `jev-latest` can start pointing to a new version at any time,
+which changes the answers and the calibration of the probabilities.
+In production, use a fixed version, and record `response.modelName()` together with each decision,
+so you can tell which version made it.
+
+## Data protection
+
+The state is sent to the provider of the model, so treat it like any other data you send to a third party:
+- send only what the model needs to decide, for example a small record instead of a whole entity;
+- redact personal data that is not needed for the decision;
+- do not enable request and response logging in production if the state contains personal data.
+
+`DecisionRequest.toString()` leaves the state out, so requests can be logged without it.

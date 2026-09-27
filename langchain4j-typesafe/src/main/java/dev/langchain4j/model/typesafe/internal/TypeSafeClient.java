@@ -5,6 +5,7 @@ import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellat
 import static dev.langchain4j.internal.Utils.ensureTrailingForwardSlash;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static java.time.Duration.ofSeconds;
 
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpClientBuilder;
@@ -18,6 +19,7 @@ import dev.langchain4j.internal.ProviderJsonSpec;
 import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Supplier;
 import org.slf4j.Logger;
 
 public class TypeSafeClient {
@@ -30,13 +32,15 @@ public class TypeSafeClient {
     private final HttpClient httpClient;
     private final String baseUrl;
     private final String authorizationHeader;
+    private final Supplier<Map<String, String>> customHeadersSupplier;
 
     private TypeSafeClient(Builder builder) {
         HttpClientBuilder httpClientBuilder =
                 getOrDefault(builder.httpClientBuilder, HttpClientBuilderLoader::loadHttpClientBuilder);
         HttpClient httpClient = httpClientBuilder
-                .connectTimeout(builder.timeout)
-                .readTimeout(builder.timeout)
+                .connectTimeout(getOrDefault(
+                        getOrDefault(builder.timeout, httpClientBuilder.connectTimeout()), ofSeconds(15)))
+                .readTimeout(getOrDefault(getOrDefault(builder.timeout, httpClientBuilder.readTimeout()), ofSeconds(60)))
                 .build();
         if (builder.logRequests || builder.logResponses) {
             this.httpClient =
@@ -45,7 +49,8 @@ public class TypeSafeClient {
             this.httpClient = httpClient;
         }
         this.baseUrl = ensureTrailingForwardSlash(ensureNotBlank(builder.baseUrl, "baseUrl"));
-        this.authorizationHeader = "Bearer " + ensureNotBlank(builder.apiKey, "apiKey");
+        this.authorizationHeader = builder.apiKey == null ? null : "Bearer " + builder.apiKey;
+        this.customHeadersSupplier = getOrDefault(builder.customHeadersSupplier, () -> Map::of);
     }
 
     public static Builder builder() {
@@ -66,13 +71,19 @@ public class TypeSafeClient {
     }
 
     private HttpRequest toHttpRequest(Map<String, Object> request) {
-        return HttpRequest.builder()
+        HttpRequest.Builder builder = HttpRequest.builder()
                 .method(POST)
                 .url(baseUrl + "v1/systemone")
                 .addHeader("Content-Type", "application/json")
-                .addHeader("Authorization", authorizationHeader)
-                .body(CODEC.toJson(request))
-                .build();
+                .body(CODEC.toJson(request));
+        if (authorizationHeader != null) {
+            builder.addHeader("Authorization", authorizationHeader);
+        }
+        Map<String, String> customHeaders = customHeadersSupplier.get();
+        if (customHeaders != null) {
+            customHeaders.forEach(builder::addHeader);
+        }
+        return builder.build();
     }
 
     public static class Builder {
@@ -84,6 +95,7 @@ public class TypeSafeClient {
         private boolean logRequests;
         private boolean logResponses;
         private Logger logger;
+        private Supplier<Map<String, String>> customHeadersSupplier;
 
         public Builder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
             this.httpClientBuilder = httpClientBuilder;
@@ -117,6 +129,11 @@ public class TypeSafeClient {
 
         public Builder logger(Logger logger) {
             this.logger = logger;
+            return this;
+        }
+
+        public Builder customHeaders(Supplier<Map<String, String>> customHeadersSupplier) {
+            this.customHeadersSupplier = customHeadersSupplier;
             return this;
         }
 

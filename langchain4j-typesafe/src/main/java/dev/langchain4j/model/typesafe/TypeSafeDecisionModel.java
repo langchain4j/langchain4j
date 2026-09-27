@@ -3,14 +3,18 @@ package dev.langchain4j.model.typesafe;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptionsAsync;
+import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static java.time.Duration.ofSeconds;
+import static dev.langchain4j.model.ModelProvider.TYPESAFE;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.http.client.HttpClientBuilder;
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.decision.DecisionModel;
+import dev.langchain4j.model.decision.InvalidDecisionResponseException;
+import dev.langchain4j.model.decision.listener.DecisionModelListener;
 import dev.langchain4j.model.decision.request.ChoiceQuestion;
 import dev.langchain4j.model.decision.request.DecisionRequest;
 import dev.langchain4j.model.decision.request.DecisionRequestParameters;
@@ -32,6 +36,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Supplier;
 import org.slf4j.Logger;
 
 /**
@@ -53,17 +58,20 @@ import org.slf4j.Logger;
 public class TypeSafeDecisionModel implements DecisionModel {
 
     private static final String DEFAULT_BASE_URL = "https://api.typesafe.ai";
+    private static final double PROBABILITY_TOLERANCE = 1e-6;
 
     private final TypeSafeClient client;
     private final Integer maxRetries;
     private final DecisionRequestParameters defaultRequestParameters;
+    private final List<DecisionModelListener> listeners;
 
     public TypeSafeDecisionModel(Builder builder) {
         this.client = TypeSafeClient.builder()
                 .httpClientBuilder(builder.httpClientBuilder)
                 .baseUrl(getOrDefault(builder.baseUrl, DEFAULT_BASE_URL))
-                .apiKey(builder.apiKey)
-                .timeout(getOrDefault(builder.timeout, ofSeconds(60)))
+                .apiKey(builder.baseUrl == null ? ensureNotBlank(builder.apiKey, "apiKey") : builder.apiKey)
+                .customHeaders(builder.customHeadersSupplier)
+                .timeout(builder.timeout)
                 .logRequests(getOrDefault(builder.logRequests, false))
                 .logResponses(getOrDefault(builder.logResponses, false))
                 .logger(builder.logger)
@@ -71,6 +79,7 @@ public class TypeSafeDecisionModel implements DecisionModel {
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
         this.defaultRequestParameters =
                 DecisionRequestParameters.builder().modelName(builder.modelName).build();
+        this.listeners = copy(builder.listeners);
     }
 
     public static Builder builder() {
@@ -103,6 +112,16 @@ public class TypeSafeDecisionModel implements DecisionModel {
     @Override
     public DecisionRequestParameters defaultRequestParameters() {
         return defaultRequestParameters;
+    }
+
+    @Override
+    public List<DecisionModelListener> listeners() {
+        return listeners;
+    }
+
+    @Override
+    public ModelProvider provider() {
+        return TYPESAFE;
     }
 
     private Map<String, Object> toRequestBody(DecisionRequest request) {
@@ -148,55 +167,107 @@ public class TypeSafeDecisionModel implements DecisionModel {
     }
 
     private static DecisionResponse toDecisionResponse(TypeSafeResponse response, DecisionRequest request) {
+        if (response.answers == null || response.answers.isEmpty()) {
+            throw new InvalidDecisionResponseException("The response contains no answers");
+        }
         DecisionResponse.Builder builder = DecisionResponse.builder().modelName(response.model);
         if (response.usage != null) {
             builder.tokenUsage(new TokenUsage(response.usage.inputTokens, response.usage.outputTokens));
         }
-        if (response.answers != null) {
-            request.questions().forEach((name, question) -> {
-                TypeSafeAnswer answer = response.answers.get(name);
-                if (answer != null) {
-                    builder.answer(name, toAnswer(answer, question));
-                }
-            });
-        }
+        request.questions().forEach((name, question) -> {
+            TypeSafeAnswer answer = response.answers.get(name);
+            if (answer == null) {
+                throw new InvalidDecisionResponseException("The response contains no answer to question '%s'"
+                        .formatted(name));
+            }
+            builder.answer(name, toAnswer(name, answer, question));
+        });
         return builder.build();
     }
 
-    private static DecisionAnswer toAnswer(TypeSafeAnswer answer, Question question) {
+    private static DecisionAnswer toAnswer(String name, TypeSafeAnswer answer, Question question) {
         if (question instanceof YesNoQuestion) {
-            return YesNoAnswer.builder().probability(clamp(answer.noul)).build();
+            ensureType(name, answer, "noul");
+            return YesNoAnswer.builder()
+                    .probability(probability(name, "noul", required(name, "noul", answer.noul)))
+                    .build();
         }
-        if (question instanceof ChoiceQuestion) {
+        if (question instanceof ChoiceQuestion choice) {
+            ensureType(name, answer, "choice");
+            String value = required(name, "choice", answer.choice);
+            if (!choice.options().containsKey(value)) {
+                throw invalid(name, "chose '%s', which is not one of the options %s", value, choice.options().keySet());
+            }
             Map<String, Double> probabilities = new LinkedHashMap<>();
             if (answer.probabilities != null) {
-                answer.probabilities.forEach((option, probability) -> probabilities.put(option, clamp(probability)));
+                answer.probabilities.forEach((option, probability) -> {
+                    if (!choice.options().containsKey(option)) {
+                        throw invalid(name, "has a probability for '%s', which is not one of the options %s",
+                                option, choice.options().keySet());
+                    }
+                    probabilities.put(option, probability(name, "probability of '" + option + "'", probability));
+                });
             }
             return ChoiceAnswer.builder()
-                    .choice(answer.choice)
+                    .value(value)
                     .probabilities(probabilities)
-                    .confidence(clamp(answer.confidence))
+                    .confidence(answer.confidence == null ? null : probability(name, "confidence", answer.confidence))
                     .build();
         }
         ScoreQuestion score = (ScoreQuestion) question;
+        ensureType(name, answer, "score");
+        int levels = score.levels().size();
         List<Double> probabilities = new ArrayList<>();
         if (answer.probabilities != null && !answer.probabilities.isEmpty()) {
-            for (int level = 0; level < score.levels().size(); level++) {
-                probabilities.add(clamp(answer.probabilities.getOrDefault(String.valueOf(level), 0.0)));
+            answer.probabilities.keySet().forEach(level -> {
+                if (!isLevelIndex(level, levels)) {
+                    throw invalid(name, "has a probability for level '%s', but the levels are 0 to %s", level, levels - 1);
+                }
+            });
+            for (int level = 0; level < levels; level++) {
+                Double probability = answer.probabilities.getOrDefault(String.valueOf(level), 0.0);
+                probabilities.add(probability(name, "probability of level " + level, probability));
             }
         }
         return ScoreAnswer.builder()
-                .score(answer.score)
+                .score(required(name, "score", answer.score))
                 .probabilities(probabilities)
-                .confidence(clamp(answer.confidence))
+                .confidence(answer.confidence == null ? null : probability(name, "confidence", answer.confidence))
                 .build();
     }
 
-    private static Double clamp(Double probability) {
-        if (probability == null) {
-            return null;
+    private static void ensureType(String name, TypeSafeAnswer answer, String expectedType) {
+        if (answer.type != null && !answer.type.equals(expectedType)) {
+            throw invalid(name, "has type '%s' instead of '%s'", answer.type, expectedType);
         }
-        return Math.min(1.0, Math.max(0.0, probability)); // absorbs rounding errors such as 1.0000000002
+    }
+
+    private static <T> T required(String name, String field, T value) {
+        if (value == null) {
+            throw invalid(name, "has no '%s'", field);
+        }
+        return value;
+    }
+
+    private static double probability(String name, String field, Double value) {
+        if (value == null || value.isNaN() || value < -PROBABILITY_TOLERANCE || value > 1 + PROBABILITY_TOLERANCE) {
+            throw invalid(name, "has an invalid %s: %s", field, value);
+        }
+        return Math.min(1.0, Math.max(0.0, value)); // absorbs rounding errors such as 1.0000000002
+    }
+
+    private static boolean isLevelIndex(String level, int levels) {
+        try {
+            int index = Integer.parseInt(level);
+            return index >= 0 && index < levels;
+        } catch (NumberFormatException e) {
+            return false;
+        }
+    }
+
+    private static InvalidDecisionResponseException invalid(String name, String format, Object... args) {
+        return new InvalidDecisionResponseException(
+                "The answer to question '%s' %s".formatted(name, format.formatted(args)));
     }
 
     public static class Builder {
@@ -210,6 +281,8 @@ public class TypeSafeDecisionModel implements DecisionModel {
         private Boolean logRequests;
         private Boolean logResponses;
         private Logger logger;
+        private Supplier<Map<String, String>> customHeadersSupplier;
+        private List<DecisionModelListener> listeners;
 
         /**
          * Sets a custom HTTP client builder, allowing fine-grained control over the HTTP client configuration such as
@@ -229,6 +302,9 @@ public class TypeSafeDecisionModel implements DecisionModel {
             return this;
         }
 
+        /**
+         * The API key. Required when using the default base URL; optional for other servers.
+         */
         public Builder apiKey(String apiKey) {
             this.apiKey = apiKey;
             return this;
@@ -243,6 +319,10 @@ public class TypeSafeDecisionModel implements DecisionModel {
             return this;
         }
 
+        /**
+         * The connect and read timeout. When not set, the timeouts of the {@link #httpClientBuilder(HttpClientBuilder)}
+         * are used, or 15 seconds (connect) and 60 seconds (read).
+         */
         public Builder timeout(Duration timeout) {
             this.timeout = timeout;
             return this;
@@ -269,6 +349,32 @@ public class TypeSafeDecisionModel implements DecisionModel {
         public Builder logger(Logger logger) {
             this.logger = logger;
             return this;
+        }
+
+        /**
+         * Sets custom HTTP headers.
+         */
+        public Builder customHeaders(Map<String, String> customHeaders) {
+            this.customHeadersSupplier = () -> customHeaders;
+            return this;
+        }
+
+        /**
+         * Sets a supplier for custom HTTP headers. The supplier is called before each request, allowing dynamic
+         * header values, for example OAuth2 tokens that expire and need refreshing.
+         */
+        public Builder customHeaders(Supplier<Map<String, String>> customHeadersSupplier) {
+            this.customHeadersSupplier = customHeadersSupplier;
+            return this;
+        }
+
+        public Builder listeners(List<DecisionModelListener> listeners) {
+            this.listeners = listeners;
+            return this;
+        }
+
+        public Builder listeners(DecisionModelListener... listeners) {
+            return listeners(List.of(listeners));
         }
 
         public TypeSafeDecisionModel build() {

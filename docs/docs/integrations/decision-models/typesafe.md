@@ -10,9 +10,10 @@ sidebar_position: 1
 [TypeSafe](https://typesafe.ai) provides decision models, such as Jev, through its System One API.
 `TypeSafeDecisionModel` implements the [`DecisionModel`](/tutorials/decision-models) API on top of it.
 
-The same API is also implemented by other servers, for example [OpenRouter](https://openrouter.ai)
-and several self-hosted open models. `TypeSafeDecisionModel` can be used with any of them
-by setting the base URL (see [below](#other-servers)).
+The same API is also implemented by other servers, for example
+[OpenRouter](https://openrouter.ai/docs/guides/community/jev) and inference servers such as
+[SGLang](https://github.com/sgl-project/sglang/pull/41208) running open models.
+`TypeSafeDecisionModel` can be used with any of them by setting the base URL (see [below](#other-servers)).
 
 :::note
 This integration is experimental and may change in future releases.
@@ -60,11 +61,13 @@ See the [Decision Models](/tutorials/decision-models) tutorial for all question 
 
 ```java
 TypeSafeDecisionModel decisionModel = TypeSafeDecisionModel.builder()
-        .apiKey(...)              // required
-        .modelName(...)           // required here or on each request, for example "jev-latest"
+        .apiKey(...)              // required for api.typesafe.ai, optional for other servers
+        .modelName(...)           // required here or on each request, for example "jev-1.13.0"
         .baseUrl(...)             // defaults to "https://api.typesafe.ai"
-        .timeout(...)             // defaults to 60 seconds
-        .maxRetries(...)          // defaults to 2
+        .timeout(...)             // connect and read timeout; defaults to the HTTP client's, or 15s/60s
+        .maxRetries(...)          // retries after the first attempt; defaults to 2
+        .customHeaders(...)       // additional HTTP headers, as a Map or a Supplier<Map>
+        .listeners(...)           // DecisionModelListeners, see Observability in the Decision Models tutorial
         .logRequests(...)         // defaults to false
         .logResponses(...)        // defaults to false
         .logger(...)              // an alternate SLF4J logger for requests and responses
@@ -73,6 +76,7 @@ TypeSafeDecisionModel decisionModel = TypeSafeDecisionModel.builder()
 ```
 
 The available models are listed in the [TypeSafe documentation](https://docs.typesafe.ai/models).
+Aliases such as `jev-latest` can move to a new version at any time; in production, use a fixed version.
 
 The HTTP client can be customized with `httpClientBuilder(...)`, see [Customizable HTTP Client](/tutorials/customizable-http-client).
 
@@ -81,6 +85,12 @@ Both `decide()` and `decideAsync()` are supported.
 The model supports the `YesNoQuestion`, `ChoiceQuestion` and `ScoreQuestion` question types.
 In the TypeSafe documentation, yes/no questions are called "noul" questions.
 The confidence of choice and score answers is computed by the server.
+
+Answers are validated against the request: a missing answer, an answer of the wrong type, an option that was not
+offered, or a probability outside of 0 to 1 throws `InvalidDecisionResponseException`.
+
+The state and the questions are sent to the server you configure. When using a hosted service, check its data
+processing and retention terms, and see [Data protection](/tutorials/decision-models#data-protection).
 
 ## Other servers
 
@@ -100,7 +110,6 @@ Or with a self-hosted server:
 ```java
 DecisionModel decisionModel = TypeSafeDecisionModel.builder()
         .baseUrl("http://localhost:8000")
-        .apiKey("not-used")
         .modelName("my-local-model")
         .build();
 ```
