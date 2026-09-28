@@ -98,6 +98,49 @@ McpTransport transport = DockerMcpTransport.builder()
     .build();
 ```
 
+### Authorization
+
+MCP servers reachable over HTTP are often protected with OAuth 2.0, as described in the
+[MCP authorization specification](https://modelcontextprotocol.io/specification/latest/basic/authorization).
+The Streamable HTTP transport delegates credentials to an `McpAuthProvider`, which supplies the
+`Authorization` header for every request (including the subsidiary SSE channel) and is told about
+`401`/`403` rejections so that it can obtain fresh credentials, after which the transport retries
+the rejected request once.
+
+For a token you already have, for example one propagated from the current user's session:
+
+```java
+McpTransport transport = StreamableHttpMcpTransport.builder()
+        .url("https://mcp.example.com/mcp")
+        .authProvider(McpAuthProvider.bearer(() -> currentUserAccessToken()))
+        .build();
+```
+
+For a service that acts on its own behalf, `OAuth2ClientCredentialsAuthProvider` obtains a token
+from the authorization server with the `client_credentials` grant, caches it until shortly before
+it expires, replaces it when the MCP server answers `401`, and adds the scopes named in a
+`403 insufficient_scope` challenge to the next token request:
+
+```java
+McpAuthProvider auth = OAuth2ClientCredentialsAuthProvider.builder()
+        .tokenEndpoint("https://auth.example.com/oauth2/token")
+        .clientId("my-agent")
+        .clientSecret(System.getenv("MCP_CLIENT_SECRET"))
+        .scopes("mcp:tools")
+        .resource("https://mcp.example.com/mcp") // RFC 8707 resource indicator, the canonical URI of the MCP server
+        .build();
+
+McpTransport transport = StreamableHttpMcpTransport.builder()
+        .url("https://mcp.example.com/mcp")
+        .authProvider(auth)
+        .build();
+```
+
+Implement `McpAuthProvider` yourself to plug in another token source, for example an
+authorization-code flow or a framework's OAuth2 client. The `McpAuthChallenge` passed to
+`onChallenge` exposes the `WWW-Authenticate` parameters of the rejection (`resource_metadata`,
+`scope`, `error`), which is what a provider needs to discover the authorization server.
+
 ### MCP Client
 
 To create an MCP client from the transport:
