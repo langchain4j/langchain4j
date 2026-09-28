@@ -14,7 +14,7 @@
     <name>LangChain4j :: Document Parser :: Apache Tika</name>
 
     <properties>
-        <apache-tika.version>3.2.3</apache-tika.version>
+        <apache-tika.version>4.0.0</apache-tika.version>
         <!-- TODO: remove enforcer.skipRules -->
         <enforcer.skipRules>dependencyConvergence,requireUpperBoundDeps</enforcer.skipRules>
     </properties>
@@ -37,6 +37,8 @@
             <groupId>org.apache.tika</groupId>
             <artifactId>tika-parsers-standard-package</artifactId>
             <version>${apache-tika.version}</version>
+            <!-- Since Tika 4.0, this artifact is an aggregate POM that pulls in the parser modules -->
+            <type>pom</type>
         </dependency>
 
     </dependencies>
