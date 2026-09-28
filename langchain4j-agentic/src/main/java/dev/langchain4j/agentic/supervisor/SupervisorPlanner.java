@@ -263,15 +263,25 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
                         .plan(agenticScope.memoryId(), agentsList, request, lastResponse, supervisorContext));
         LOG.info("Agent Invocation: {}", agentInvocation);
 
-        if (agentInvocation.getAgentName().equalsIgnoreCase("done")) {
+        String agentName = agentInvocation.getAgentName();
+        if (agentName == null || agentName.isBlank()) {
+            // Some model providers/JSON codecs produce an invocation without an agent name;
+            // fail with a descriptive error instead of a NullPointerException.
+            throw new IllegalStateException("Invalid agent invocation, no agent name specified: " + agentInvocation);
+        }
+
+        if (agentName.equalsIgnoreCase("done")) {
             return doneAction(agenticScope, lastResponse, agentInvocation);
         }
 
-        AgentInstance agent = findAgentByName(agentInvocation.getAgentName());
+        AgentInstance agent = findAgentByName(agentName);
 
-        agentInvocation.getArguments().entrySet().stream()
-                .filter(entry -> writeArgumentToScope(agenticScope, agent, entry.getKey(), entry.getValue()))
-                .forEach(entry -> agenticScope.writeState(entry.getKey(), entry.getValue()));
+        Map<String, Object> arguments = agentInvocation.getArguments();
+        if (arguments != null) {
+            arguments.entrySet().stream()
+                    .filter(entry -> writeArgumentToScope(agenticScope, agent, entry.getKey(), entry.getValue()))
+                    .forEach(entry -> agenticScope.writeState(entry.getKey(), entry.getValue()));
+        }
         return call(agent);
     }
 
