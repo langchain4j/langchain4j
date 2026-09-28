@@ -1,5 +1,6 @@
 package dev.langchain4j.model.typesafe.internal;
 
+import dev.langchain4j.Internal;
 import static dev.langchain4j.http.client.HttpMethod.POST;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.Utils.ensureTrailingForwardSlash;
@@ -22,6 +23,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
 import org.slf4j.Logger;
 
+@Internal
 public class TypeSafeClient {
 
     private static final Json.JsonCodec CODEC = ProviderJson.codec(ProviderJsonSpec.builder()
