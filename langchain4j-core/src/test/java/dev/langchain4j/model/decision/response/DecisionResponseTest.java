@@ -77,8 +77,8 @@ class DecisionResponseTest {
                 .probability("support", 0.4)
                 .build();
 
-        assertThat(answer.probability("billing")).isEqualTo(0.55);
-        assertThat(answer.probability("sales")).isZero();
+        assertThat(answer.probabilityOf("billing")).isEqualTo(0.55);
+        assertThat(answer.probabilityOf("sales")).isZero();
         assertThat(answer.margin()).isCloseTo(0.15, org.assertj.core.data.Offset.offset(1e-9));
         assertThatThrownBy(() -> ChoiceAnswer.builder().value("billing").build().margin())
                 .isInstanceOf(IllegalStateException.class);

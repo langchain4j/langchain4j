@@ -75,7 +75,7 @@ public abstract class AbstractDecisionModelIT {
         assertThat(team.value()).isEqualTo("billing");
         if (!team.probabilities().isEmpty()) {
             assertThat(team.probabilities().keySet()).isSubsetOf("billing", "support", "sales");
-            assertThat(team.probability("billing")).isGreaterThan(0.5);
+            assertThat(team.probabilityOf("billing")).isGreaterThan(0.5);
         }
 
         ScaleAnswer frustration = response.scale("frustration");

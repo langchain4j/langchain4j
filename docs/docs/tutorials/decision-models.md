@@ -109,7 +109,7 @@ A `ChoiceQuestion` selects exactly one option out of a named set (at least 2 opt
 It is answered with a `ChoiceAnswer`:
 - `value()`: the name of the chosen option
 - `probabilities()`: the probability of each option, keyed by option name
-- `probability(option)` and `margin()`: the probability of one option, and the difference between the two most
+- `probabilityOf(option)` and `margin()`: the probability of one option, and the difference between the two most
   likely options
 - `confidence()`: how confident the model is, or `null` if the model does not report it (see [below](#probabilities-and-confidence))
 
@@ -177,7 +177,7 @@ if (team.margin() < 0.2) {   // the difference between the two highest probabili
 }
 ```
 
-`margin()` and `probability(option)` throw `IllegalStateException` when the model did not report probabilities.
+`margin()` and `probabilityOf(option)` throw `IllegalStateException` when the model did not report probabilities.
 When it reported probabilities for only some of the options, `margin()` assumes that the rest belongs to one other
 option, so it never overestimates how sure the model is.
 

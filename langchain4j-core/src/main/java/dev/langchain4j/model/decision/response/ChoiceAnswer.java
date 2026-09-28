@@ -52,7 +52,7 @@ public final class ChoiceAnswer implements DecisionAnswer {
      *
      * @throws IllegalStateException if the model did not report probabilities.
      */
-    public double probability(String option) {
+    public double probabilityOf(String option) {
         ensureProbabilities();
         return probabilities.getOrDefault(option, 0.0);
     }
