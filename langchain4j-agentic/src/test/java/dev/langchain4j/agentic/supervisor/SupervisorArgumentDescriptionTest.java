@@ -6,7 +6,7 @@ import org.junit.jupiter.api.Test;
 
 /**
  * Tests the generation of the argument descriptions the supervisor includes in
- * its agent cards ({@link SupervisorPlanner#argumentDescription(Class, String)}),
+ * its agent cards ({@link SupervisorPlanner#argumentDescription(java.lang.reflect.Type, String)}),
  * in particular for argument types extending a base class.
  */
 class SupervisorArgumentDescriptionTest {

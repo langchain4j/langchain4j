@@ -21,7 +21,11 @@ import dev.langchain4j.service.IllegalConfigurationException;
 import dev.langchain4j.service.ParameterNameResolver;
 import dev.langchain4j.service.memory.ChatMemoryAccess;
 import java.lang.reflect.Field;
+import java.lang.reflect.GenericArrayType;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -135,33 +139,94 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
     private static String argumentDescription(AgentArgument arg) {
         String description = arg.description();
         if (description != null && !description.isBlank()) {
-            return argumentDescription(arg.rawType(), arg.name()) + " - " + description;
+            return argumentDescription(arg.type(), arg.name()) + " - " + description;
         }
-        return argumentDescription(arg.rawType(), arg.name());
+        return argumentDescription(arg.type(), arg.name());
     }
 
-    static String argumentDescription(Class<?> type, String name) {
+    /**
+     * Describes one agent argument the way the supervisor's planning prompt expects it, for example
+     * {@code fields: List<String>} or {@code task: {title: String, priority: int}}.
+     *
+     * <p>The declared {@link Type} is used instead of its erased {@link Class}, because the planner
+     * has to know the shape of an argument to invoke the agent with usable values. An erased
+     * {@code List} tells it nothing, and it ends up sending a comma separated string where a list
+     * was expected.
+     */
+    static String argumentDescription(Type type, String name) {
         if (name == null) {
             return "";
         }
 
-        if (type.isPrimitive()
+        return name + ": " + typeDescription(type);
+    }
+
+    private static String typeDescription(Type type) {
+        if (type instanceof GenericArrayType genericArrayType) {
+            return typeDescription(genericArrayType.getGenericComponentType()) + "[]";
+        }
+
+        if (type instanceof ParameterizedType parameterizedType) {
+            Class<?> rawType = (Class<?>) parameterizedType.getRawType();
+            if (Collection.class.isAssignableFrom(rawType) || Map.class.isAssignableFrom(rawType)) {
+                return typeName(parameterizedType);
+            }
+            return objectDescription(rawType);
+        }
+
+        if (!(type instanceof Class<?> clazz)) {
+            return type.getTypeName();
+        }
+
+        if (clazz.isArray()) {
+            return typeDescription(clazz.getComponentType()) + "[]";
+        }
+
+        if (isSimpleType(clazz)
+                || clazz == Object.class
+                || Collection.class.isAssignableFrom(clazz)
+                || Map.class.isAssignableFrom(clazz)) {
+            return clazz.getSimpleName();
+        }
+
+        return objectDescription(clazz);
+    }
+
+    private static boolean isSimpleType(Class<?> type) {
+        return type.isPrimitive()
                 || type.isEnum()
                 || type == String.class
                 || type == Boolean.class
-                || Number.class.isAssignableFrom(type)) {
-            return name + ": " + type.getSimpleName();
-        }
+                || Number.class.isAssignableFrom(type);
+    }
 
+    private static String objectDescription(Class<?> type) {
         String fieldsDescription = type.isRecord()
                 ? Stream.of(type.getDeclaredConstructors()[0].getParameters())
-                        .map(p -> argumentDescription(p.getType(), ParameterNameResolver.name(p)))
+                        .map(p -> argumentDescription(p.getParameterizedType(), ParameterNameResolver.name(p)))
                         .collect(Collectors.joining(", "))
                 : fieldsIncludingInherited(type).stream()
-                        .map(f -> argumentDescription(f.getType(), f.getName()))
+                        .map(f -> argumentDescription(f.getGenericType(), f.getName()))
                         .collect(Collectors.joining(", "));
 
-        return name + ": {" + fieldsDescription + "}";
+        return "{" + fieldsDescription + "}";
+    }
+
+    private static String typeName(Type type) {
+        if (type instanceof Class<?> clazz) {
+            return clazz.isArray() ? typeName(clazz.getComponentType()) + "[]" : clazz.getSimpleName();
+        }
+        if (type instanceof GenericArrayType genericArrayType) {
+            return typeName(genericArrayType.getGenericComponentType()) + "[]";
+        }
+        if (type instanceof ParameterizedType parameterizedType) {
+            return typeName(parameterizedType.getRawType()) + "<"
+                    + Stream.of(parameterizedType.getActualTypeArguments())
+                            .map(SupervisorPlanner::typeName)
+                            .collect(Collectors.joining(", "))
+                    + ">";
+        }
+        return type.getTypeName();
     }
 
     private static List<Field> fieldsIncludingInherited(Class<?> type) {

@@ -116,6 +116,42 @@ class CompressingQueryTransformerTest {
     }
 
     @Test
+    void should_not_compress_when_query_has_no_metadata() {
+
+        // given
+        Query query = Query.from("Hello");
+
+        ChatModel model = mock(ChatModel.class);
+        CompressingQueryTransformer transformer = new CompressingQueryTransformer(model);
+
+        // when
+        Collection<Query> queries = transformer.transform(query);
+
+        // then
+        assertThat(queries).containsExactly(query);
+
+        verifyNoInteractions(model);
+    }
+
+    @Test
+    void transformAsync_should_not_compress_when_query_has_no_metadata() throws Exception {
+
+        // given
+        Query query = Query.from("Hello");
+
+        ChatModel model = mock(ChatModel.class);
+        CompressingQueryTransformer transformer = new CompressingQueryTransformer(model);
+
+        // when
+        Collection<Query> queries = transformer.transformAsync(query).get(5, SECONDS);
+
+        // then
+        assertThat(queries).containsExactly(query);
+
+        verifyNoInteractions(model);
+    }
+
+    @Test
     void should_compress_query_and_chat_memory_into_single_query_using_custom_prompt_template() {
 
         // given

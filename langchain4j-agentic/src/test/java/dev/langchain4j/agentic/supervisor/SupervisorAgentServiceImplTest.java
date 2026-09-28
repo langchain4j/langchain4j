@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.mockito.Mockito.mock;
 
+import dev.langchain4j.agentic.declarative.DeclarativeUtil;
+import dev.langchain4j.agentic.declarative.SupplierParameterResolver;
 import dev.langchain4j.agentic.internal.PlannerBasedInvocationHandler;
 import dev.langchain4j.agentic.planner.Planner;
 import dev.langchain4j.model.chat.ChatModel;
@@ -12,9 +14,15 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.util.function.Supplier;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 class SupervisorAgentServiceImplTest {
+
+    @AfterEach
+    void clearResolvers() {
+        DeclarativeUtil.getSupplierParameterResolvers().clear();
+    }
 
     @Test
     void summarizer_should_be_shared_by_planners_created_for_separate_invocations() throws Exception {
@@ -75,6 +83,43 @@ class SupervisorAgentServiceImplTest {
                 .withMessage("A ChatModel is required to summarize context for a supervisor agent.");
     }
 
+    @Test
+    void zero_param_chat_model_supplier_is_used_on_supervisor() throws Exception {
+        Method supervisorMethod = AgentWithZeroParamSupplier.class.getMethod("invoke", String.class);
+        SupervisorAgentServiceImpl<AgentWithZeroParamSupplier> service =
+                new SupervisorAgentServiceImpl<>(AgentWithZeroParamSupplier.class, supervisorMethod);
+
+        AgentWithZeroParamSupplier proxy = service.build();
+        SupervisorPlanner planner = (SupervisorPlanner) plannerSupplier(proxy).get();
+
+        assertThat(chatModel(planner)).isSameAs(AgentWithZeroParamSupplier.SUPPLIED_MODEL);
+    }
+
+    @Test
+    void parameterized_chat_model_supplier_is_used_on_supervisor() throws Exception {
+        ChatModel resolved = mock(ChatModel.class);
+        DeclarativeUtil.addSupplierParameterResolver(new SupplierParameterResolver() {
+            @Override
+            public boolean supports(SupplierParameterResolver.Context context) {
+                return context.parameter().getType() == ChatModel.class;
+            }
+
+            @Override
+            public Object resolve(SupplierParameterResolver.Context context) {
+                return resolved;
+            }
+        });
+
+        Method supervisorMethod = AgentWithParameterizedSupplier.class.getMethod("invoke", String.class);
+        SupervisorAgentServiceImpl<AgentWithParameterizedSupplier> service =
+                new SupervisorAgentServiceImpl<>(AgentWithParameterizedSupplier.class, supervisorMethod);
+
+        AgentWithParameterizedSupplier proxy = service.build();
+        SupervisorPlanner planner = (SupervisorPlanner) plannerSupplier(proxy).get();
+
+        assertThat(chatModel(planner)).isSameAs(resolved);
+    }
+
     @SuppressWarnings("unchecked")
     private static Supplier<Planner> plannerSupplier(SupervisorAgent supervisor) throws Exception {
         PlannerBasedInvocationHandler handler = (PlannerBasedInvocationHandler) Proxy.getInvocationHandler(supervisor);
@@ -87,5 +132,11 @@ class SupervisorAgentServiceImplTest {
         Field summarizerField = SupervisorPlanner.class.getDeclaredField("contextSummarizer");
         summarizerField.setAccessible(true);
         return summarizerField.get(planner);
+    }
+
+    private static ChatModel chatModel(SupervisorPlanner planner) throws Exception {
+        Field chatModelField = SupervisorPlanner.class.getDeclaredField("chatModel");
+        chatModelField.setAccessible(true);
+        return (ChatModel) chatModelField.get(planner);
     }
 }

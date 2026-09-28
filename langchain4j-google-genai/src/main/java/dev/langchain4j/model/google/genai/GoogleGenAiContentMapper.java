@@ -10,6 +10,7 @@ import com.google.genai.types.FunctionCall;
 import com.google.genai.types.FunctionResponse;
 import com.google.genai.types.GenerateContentResponse;
 import com.google.genai.types.Part;
+import com.google.genai.types.Transcription;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.audio.Audio;
 import dev.langchain4j.data.image.Image;
@@ -297,6 +298,8 @@ class GoogleGenAiContentMapper {
                     } else {
                         textBuilder.append(part.text().get());
                     }
+                } else if (part.audioTranscription().isPresent()) {
+                    appendTranscription(textBuilder, part.audioTranscription().get());
                 }
 
                 if (part.functionCall().isPresent()) {
@@ -370,6 +373,25 @@ class GoogleGenAiContentMapper {
                 .build();
 
         return ChatResponse.builder().aiMessage(aiMessage).metadata(metadata).build();
+    }
+
+    private static void appendTranscription(StringBuilder textBuilder, Transcription transcription) {
+        String text = transcription
+                .text()
+                .orElseGet(() -> transcription.words().orElse(List.of()).stream()
+                        .map(word -> word.word().orElse(""))
+                        .filter(word -> !word.isEmpty())
+                        .collect(Collectors.joining(" ")));
+        if (text.isEmpty()) {
+            return;
+        }
+        boolean needsSeparator = textBuilder.length() > 0
+                && !Character.isWhitespace(textBuilder.charAt(textBuilder.length() - 1))
+                && !Character.isWhitespace(text.charAt(0));
+        if (needsSeparator) {
+            textBuilder.append(' ');
+        }
+        textBuilder.append(text);
     }
 
     private static List<Part> toParts(UserMessage userMessage) {

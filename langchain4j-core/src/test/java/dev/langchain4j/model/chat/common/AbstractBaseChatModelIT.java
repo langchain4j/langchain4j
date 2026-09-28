@@ -229,16 +229,18 @@ public abstract class AbstractBaseChatModelIT<M> {
         // given
         ChatRequest chatRequest = ChatRequest.builder()
                 .messages(
-                        UserMessage.from("Hi, my favorite color is green"),
-                        AiMessage.from("Hi, nice to meet you"),
-                        UserMessage.from("What is my favorite color?"))
+                        // asking the model about its own previous answer instead of about the user,
+                        // as Amazon Nova refuses to repeat anything the user said, treating it as personal information
+                        UserMessage.from(WHAT_IS_THE_CAPITAL_OF_GERMANY),
+                        AiMessage.from("Berlin"),
+                        UserMessage.from("What was your previous answer?"))
                 .build();
 
         // when
         ChatResponse chatResponse = chat(model, chatRequest).chatResponse();
 
         // then
-        assertThat(chatResponse.aiMessage().text()).containsIgnoringCase("green");
+        assertThat(chatResponse.aiMessage().text()).containsIgnoringCase("Berlin");
     }
 
     // CHAT PARAMETERS

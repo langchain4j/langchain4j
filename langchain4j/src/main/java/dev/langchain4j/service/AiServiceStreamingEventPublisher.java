@@ -555,15 +555,28 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
          * Combines the tools that were already started eagerly (on their CompleteToolCall) into a single
          * future of results, in request order. Any requested tool that was not started eagerly (e.g. a
          * provider emitted no matching CompleteToolCall) is started now, so the result set is always complete.
+         * <p>
+         * A tool call is matched to what was started for it by position, because the same call is not always
+         * {@link Object#equals(Object) equal} on both sides: some providers rebuild the request for the final
+         * response, re-serializing the arguments JSON with a different key order or spacing. Tool calls are
+         * announced in the order they appear in the response, so positions line up whenever every call was
+         * announced; otherwise each request is looked up on its own and the missing ones are started here.
          */
         private CompletableFuture<ToolService.CombinedToolResults> combineEagerlyStartedTools(
                 List<ToolExecutionRequest> toolRequests,
                 Map<ToolExecutionRequest, CompletableFuture<ToolExecutionResult>> startedTools,
                 ToolServiceContext currentToolContext) {
 
+            List<CompletableFuture<ToolExecutionResult>> startedInAnnouncedOrder =
+                    new ArrayList<>(startedTools.values());
+            boolean everyToolCallWasAnnounced = startedInAnnouncedOrder.size() == toolRequests.size();
+
             Map<ToolExecutionRequest, CompletableFuture<ToolExecutionResult>> orderedFutures = new LinkedHashMap<>();
-            for (ToolExecutionRequest toolRequest : toolRequests) {
-                CompletableFuture<ToolExecutionResult> future = startedTools.get(toolRequest);
+            for (int i = 0; i < toolRequests.size(); i++) {
+                ToolExecutionRequest toolRequest = toolRequests.get(i);
+                CompletableFuture<ToolExecutionResult> future = everyToolCallWasAnnounced
+                        ? startedInAnnouncedOrder.get(i)
+                        : startedTools.get(toolRequest);
                 if (future == null) {
                     future = context.toolService.startTool(
                             toolRequest,
