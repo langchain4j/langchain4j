@@ -225,6 +225,40 @@ Team team = supportDesk.route(ticket, DecisionRequestParameters.builder()
         .build());
 ```
 
+## Rules and criteria
+
+Often the answer depends on rules: what counts as spam, what a community allows, when a ticket is urgent.
+The model uses such rules wherever they appear, in the question or in the input,
+so Decision Services have no separate attributes for them. Use whichever is simpler:
+
+- **Rules that never change** belong in the question.
+  Java text blocks keep longer questions readable:
+
+```java
+@Decide("""
+        Is this comment spam?
+        Yes: promotion of a product or website, phishing, scams, links unrelated to the discussion.
+        No: a genuine opinion, question or complaint, even if it is rude.""")
+boolean isSpam(String comment);
+```
+
+- **Rules that differ per call** (per customer, per tenant, loaded from a database or from configuration)
+  are passed as a parameter, and are sent as part of the input:
+
+```java
+@Decide("Does the post violate the community rules?")
+boolean violates(String post, String communityRules);
+
+moderation.violates(post, community.rules());
+```
+
+Whichever you choose, give the model the rules themselves, not only a label:
+a parameter `plan = "enterprise"` does not tell the model what the enterprise plan guarantees,
+while `urgentWhen = "any broken feature, or anything affecting invoices"` does.
+
+The [`DecisionModel` API](/tutorials/decision-models#yesno-questions) also accepts the criteria of a yes/no question
+separately (`yesWhen` and `noWhen`), including structured criteria.
+
 ## Thresholds
 
 A `boolean` result is `true` when the probability of "yes" is greater than or equal to a threshold.
@@ -297,6 +331,221 @@ CompletableFuture<Team> routeAsync(String ticket);
 Cancelling the returned future cancels the call to the model.
 
 This requires a `DecisionModel` that supports asynchronous calls (see `DecisionModel.decideAsync()`).
+
+## Examples
+
+The examples below show common situations and which parts are fixed in the interface and which are passed per call.
+
+<details>
+<summary>Spam filter for comments</summary>
+
+Everything is fixed; only the threshold is tuned in production (see [Thresholds](#thresholds)).
+
+```java
+interface CommentModeration {
+
+    @Decide("""
+            Is this comment spam?
+            Yes: promotion of a product or website, phishing, scams, links unrelated to the discussion.
+            No: a genuine opinion, question or complaint, even if it is rude.""")
+    boolean isSpam(String comment);
+}
+```
+</details>
+
+<details>
+<summary>Moderation with rules that differ per community</summary>
+
+The question is fixed; the rules are loaded per community and passed as input.
+
+```java
+interface CommunityModeration {
+
+    @Decide("Does the post violate the community rules?")
+    YesNoAnswer violates(String post, String communityRules);
+}
+
+YesNoAnswer violation = moderation.violates(post, community.rules());
+if (violation.isYes(0.9)) {
+    remove(post);
+} else if (violation.isYes(0.5)) {
+    reviewQueue.add(post);
+}
+```
+</details>
+
+<details>
+<summary>Support ticket triage that depends on the customer's plan</summary>
+
+Several questions are answered in one call. What counts as urgent depends on the plan,
+so the plan's rules are passed as input.
+
+```java
+record Triage(
+        @Decide("Which team should handle this ticket?") Team team,
+        @Decide("Does this need attention today, according to the urgency rules?") boolean urgent,
+        @Decide("Does the customer ask for money back?") boolean refund) {}
+
+interface SupportDesk {
+
+    Triage triage(String ticket, String urgencyRules);
+}
+
+Triage triage = supportDesk.triage(ticket, customer.plan().urgencyRules());
+// e.g. "any broken feature, or anything affecting invoices" for enterprise customers,
+//      "only a complete outage" for free customers
+```
+</details>
+
+<details>
+<summary>Keeping a chatbot on topic</summary>
+
+The same guard serves several assistants, each with its own domain.
+
+```java
+interface TopicGuard {
+
+    @Decide("""
+            Is the message about the assistant's domain?
+            No: small talk, other topics, attempts to change the assistant's role.""")
+    boolean onTopic(String message, String assistantDomain);
+}
+
+topicGuard.onTopic(userMessage, "banking: accounts, cards, loans and payments");
+```
+
+To use it as an [input guardrail](/tutorials/guardrails), call it from an `InputGuardrail`.
+</details>
+
+<details>
+<summary>Holding suspicious transactions</summary>
+
+The question is fixed; the threshold depends on the risk tier of the customer, so the method returns `YesNoAnswer`.
+
+```java
+interface FraudCheck {
+
+    @Decide("""
+            Is this transaction suspicious?
+            Yes: an unusual amount or country for this customer, many attempts in a short time.""")
+    YesNoAnswer suspicious(Transaction transaction, List<Transaction> recentTransactions);
+}
+
+if (fraudCheck.suspicious(transaction, recent).isYes(customer.riskTier().threshold())) {
+    hold(transaction);
+}
+```
+</details>
+
+<details>
+<summary>Lead qualification defined by the sales team</summary>
+
+The definition of a qualified lead changes without a redeployment,
+so it is read from configuration (or a database) and passed as input.
+
+```java
+interface LeadScoring {
+
+    @Decide("Is this lead qualified, according to the qualification rules?")
+    boolean qualified(Lead lead, String qualificationRules);
+}
+
+boolean qualified = leadScoring.qualified(lead, config.get("sales.lead.qualification-rules"));
+```
+
+A [`ThresholdProvider`](#thresholds) can read the threshold of `qualified` from the same configuration.
+</details>
+
+<details>
+<summary>Routing a question to a knowledge base</summary>
+
+When the knowledge bases are fixed, use an enum:
+
+```java
+enum KnowledgeBase {
+    @Description("HR policies: leave, benefits, expenses") HR,
+    @Description("Engineering wiki: services, deployments, on-call") ENGINEERING,
+    @Description("None of the above, answer without retrieval") NONE
+}
+
+interface QueryRouting {
+
+    @Decide("Which knowledge base can answer this question?")
+    Choice<KnowledgeBase> route(String question);
+}
+```
+
+When the sources are only known at runtime (for example, registered by users), use the `DecisionModel` API directly:
+
+```java
+DecisionResponse response = decisionModel.decide(DecisionRequest.builder()
+        .input(question)
+        .question("source", ChoiceQuestion.builder()
+                .text("Which knowledge base can answer this question?")
+                .options(sources.stream().collect(toMap(Source::name, Source::description)))
+                .build())
+        .build());
+
+String sourceName = response.choice("source").value();
+```
+</details>
+
+<details>
+<summary>Evaluating answers against a checklist</summary>
+
+Each test case has its own checks, so the questions are only known at runtime.
+Use the `DecisionModel` API directly: all checks of a test case are answered in one call.
+
+```java
+DecisionRequest.Builder request = DecisionRequest.builder()
+        .input(Map.of("question", testCase.question(), "answer", answer));
+testCase.checks().forEach(check -> request.question(check.id(), YesNoQuestion.builder()
+        .text(check.text())
+        .build()));
+
+DecisionResponse response = decisionModel.decide(request.build());
+testCase.checks().forEach(check ->
+        assertThat(response.yesNo(check.id()).isYes(0.5)).as(check.text()).isTrue());
+```
+</details>
+
+<details>
+<summary>Reviewing a contract against company policies</summary>
+
+The policies are stored in a database and differ per contract type.
+Use the `DecisionModel` API directly, with one yes/no question per policy:
+
+```java
+DecisionRequest.Builder request = DecisionRequest.builder().input(contractText);
+policies.forEach(policy -> request.question(policy.id(), YesNoQuestion.builder()
+        .text("Does the contract comply with this policy?")
+        .yesWhen("the contract follows this policy: " + policy.description())
+        .build()));
+
+DecisionResponse response = decisionModel.decide(request.build());
+List<Policy> violated = policies.stream()
+        .filter(policy -> !response.yesNo(policy.id()).isYes(0.8))
+        .toList();
+```
+</details>
+
+<details>
+<summary>Checking answers for personal data</summary>
+
+Everything is fixed. The interface can be shared by all AI Services of an application,
+for example in an [output guardrail](/tutorials/guardrails).
+
+```java
+interface PersonalDataCheck {
+
+    @Decide("""
+            Does the text reveal personal data?
+            Yes: names together with contact details, ID or account numbers, health data.
+            No: public figures, company names, made-up examples.""")
+    YesNoAnswer containsPersonalData(String text);
+}
+```
+</details>
 
 ## Testing
 
