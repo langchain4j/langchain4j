@@ -79,7 +79,7 @@ public abstract class AbstractDecisionModelIT {
         }
 
         ScaleAnswer frustration = response.scale("frustration");
-        assertThat(frustration.value()).isBetween(0.5, 2.0);
+        assertThat(frustration.mean()).isBetween(0.5, 2.0);
         if (!frustration.probabilities().isEmpty()) {
             assertThat(frustration.probabilities()).hasSize(3);
         }

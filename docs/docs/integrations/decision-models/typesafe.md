@@ -44,9 +44,7 @@ DecisionRequest request = DecisionRequest.builder()
                 .option("billing", "Payments, payouts, invoices, refunds")
                 .option("support", "Problems using the product")
                 .build())
-        .question("urgent", YesNoQuestion.builder()
-                .text("Does this need attention today?")
-                .build())
+        .question("urgent", YesNoQuestion.of("Does this need attention today?"))
         .build();
 
 DecisionResponse response = decisionModel.decide(request);
@@ -88,7 +86,7 @@ questions, and the input is called the "state".
 The confidence of choice and scale answers is computed by the server.
 
 Answers are validated against the request: a missing answer, an answer of the wrong type, an option that was not
-offered, a probability outside of 0 to 1, or a scale value outside of the levels throws
+offered, a probability outside of 0 to 1, or a scale mean outside of the levels throws
 `InvalidDecisionResponseException`. Levels of a scale answer without a reported probability get a probability of 0.
 
 The input and the questions are sent to the server you configure. When using a hosted service, check its data

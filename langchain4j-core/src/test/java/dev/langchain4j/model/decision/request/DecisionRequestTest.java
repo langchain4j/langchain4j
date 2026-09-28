@@ -20,12 +20,12 @@ class DecisionRequestTest {
 
     @ParameterizedTest
     @MethodSource("validInputs")
-    void should_accept_text_map_and_list_input(Object state) {
+    void should_accept_text_map_and_list_input(Object input) {
 
         DecisionRequest request =
-                DecisionRequest.builder().input(state).question("spam", QUESTION).build();
+                DecisionRequest.builder().input(input).question("spam", QUESTION).build();
 
-        assertThat(request.input()).isEqualTo(state);
+        assertThat(request.input()).isEqualTo(input);
     }
 
     static List<Object> validInputs() {
@@ -34,10 +34,10 @@ class DecisionRequestTest {
 
     @ParameterizedTest
     @MethodSource("invalidInputs")
-    void should_reject_invalid_input(Object state) {
+    void should_reject_invalid_input(Object input) {
 
         assertThatThrownBy(() -> DecisionRequest.builder()
-                        .input(state)
+                        .input(input)
                         .question("spam", QUESTION)
                         .build())
                 .isInstanceOf(IllegalArgumentException.class)
@@ -90,12 +90,12 @@ class DecisionRequestTest {
     @Test
     void should_copy_input_and_questions() {
 
-        Map<String, Object> state = new HashMap<>(Map.of("subject", "Buy now!"));
+        Map<String, Object> input = new HashMap<>(Map.of("subject", "Buy now!"));
         Map<String, Question> questions = new LinkedHashMap<>(Map.of("spam", QUESTION));
 
         DecisionRequest request =
-                DecisionRequest.builder().input(state).questions(questions).build();
-        state.put("body", "Limited offer");
+                DecisionRequest.builder().input(input).questions(questions).build();
+        input.put("body", "Limited offer");
         questions.put("phishing", QUESTION);
 
         assertThat(request.input()).isEqualTo(Map.of("subject", "Buy now!"));
@@ -174,6 +174,18 @@ class DecisionRequestTest {
                 .isEqualTo(Map.of(
                         "customer",
                         Map.of("name", "Anna", "plan", "ENTERPRISE", "openTickets", 3, "tags", List.of("vip"))));
+    }
+
+    @Test
+    void should_convert_object_input_using_java_field_names() {
+
+        DecisionRequest request = DecisionRequest.builder()
+                .input(new Customer("Anna", Plan.ENTERPRISE, 3, List.of("vip")))
+                .question("spam", QUESTION)
+                .build();
+
+        assertThat(request.input())
+                .isEqualTo(Map.of("name", "Anna", "plan", "ENTERPRISE", "openTickets", 3, "tags", List.of("vip")));
     }
 
     @Test

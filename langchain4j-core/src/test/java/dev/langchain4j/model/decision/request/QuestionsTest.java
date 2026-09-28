@@ -165,6 +165,23 @@ class QuestionsTest {
     }
 
     @Test
+    void should_create_questions_with_factory_methods() {
+
+        assertThat(YesNoQuestion.of("Is this spam?"))
+                .isEqualTo(YesNoQuestion.builder().text("Is this spam?").build());
+        assertThat(ChoiceQuestion.of("Which team?", Map.of("billing", "Payments", "sales", "Pricing")))
+                .isEqualTo(ChoiceQuestion.builder()
+                        .text("Which team?")
+                        .options(Map.of("billing", "Payments", "sales", "Pricing"))
+                        .build());
+        assertThat(ScaleQuestion.of("How frustrated?", List.of("Calm", "Angry")))
+                .isEqualTo(ScaleQuestion.builder()
+                        .text("How frustrated?")
+                        .levels(List.of("Calm", "Angry"))
+                        .build());
+    }
+
+    @Test
     void questions_should_be_immutable() {
 
         ChoiceQuestion choice = ChoiceQuestion.builder()

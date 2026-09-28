@@ -55,9 +55,7 @@ DecisionRequest request = DecisionRequest.builder()
                 .option("support", "Problems using the product")
                 .option("sales", "Pricing, upgrades, new accounts")
                 .build())
-        .question("urgent", YesNoQuestion.builder()
-                .text("Does this need attention today?")
-                .build())
+        .question("urgent", YesNoQuestion.of("Does this need attention today?"))
         .question("frustration", ScaleQuestion.builder()
                 .text("How frustrated is the customer?")
                 .level("Calm")
@@ -69,6 +67,9 @@ DecisionRequest request = DecisionRequest.builder()
 DecisionResponse response = decisionModel.decide(request);
 ```
 
+Each question type has a builder, and a shorter factory method for the common case:
+`YesNoQuestion.of(text)`, `ChoiceQuestion.of(text, options)` and `ScaleQuestion.of(text, levels)`.
+
 The response contains one answer per question, under the same name:
 
 ```java
@@ -79,7 +80,7 @@ ScaleAnswer frustration = response.scale("frustration");
 team.value();               // "billing"
 team.probabilities();       // {billing=0.88, support=0.1, sales=0.02}
 urgent.probability();       // 0.93
-frustration.value();        // 1.4
+frustration.mean();         // 1.4
 frustration.probabilities(); // [0.05, 0.5, 0.45]
 ```
 
@@ -118,9 +119,9 @@ It is answered with a `ChoiceAnswer`:
 A `ScaleQuestion` places the input on an ordered scale.
 Levels are added from lowest to highest, and a level's number is its index, starting at 0.
 It is answered with a `ScaleAnswer`:
-- `value()`: the probability-weighted mean of the level indexes, from 0 to `n - 1`.
+- `mean()`: the probability-weighted mean of the level indexes, from 0 to `n - 1`.
   It can fall between two levels: with the levels "Calm", "Frustrated" and "Angry",
-  a value of 1.4 means "between frustrated and angry, closer to frustrated".
+  a mean of 1.4 means "between frustrated and angry, closer to frustrated".
 - `probabilities()`: the probability of each level, in the same order as the levels
 - `confidence()`: how confident the model is, or `null` if the model does not report it
 
@@ -146,9 +147,9 @@ The keys are not predefined: choose names that describe the content well, becaus
 
 ## Describing the input (state)
 
-The input can be plain text, a `Map` or a `List`.
-Use a `Map` to give the model several pieces of information that belong together.
-Objects inside a `Map` or a `List` are converted to maps using their Java field names,
+The input can be plain text, a `Map`, a `List` or an object.
+Use a `Map` or an object to give the model several pieces of information that belong together.
+Objects (also inside a `Map` or a `List`) are converted to maps using their Java field names,
 so the model receives the same input whatever the `DecisionModel` implementation:
 
 ```java
@@ -157,11 +158,12 @@ DecisionRequest request = DecisionRequest.builder()
                 "ticket", "My payouts have been failing for 3 days",
                 "customer_plan", "enterprise",
                 "open_tickets", 3))
-        .question("urgent", YesNoQuestion.builder()
-                .text("Does this need attention today?")
-                .build())
+        .question("urgent", YesNoQuestion.of("Does this need attention today?"))
         .build();
 ```
+
+An object works the same way, for example `.input(new Ticket("My payouts have been failing for 3 days", "enterprise", 3))`
+with `record Ticket(String ticket, String customerPlan, int openTickets)`.
 
 ## Probabilities and confidence
 

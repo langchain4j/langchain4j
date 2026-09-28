@@ -56,6 +56,13 @@ public final class YesNoQuestion implements Question {
         return noWhen;
     }
 
+    /**
+     * Creates a yes/no question with the given text.
+     */
+    public static YesNoQuestion of(String text) {
+        return builder().text(text).build();
+    }
+
     public static Builder builder() {
         return new Builder();
     }
@@ -92,26 +99,12 @@ public final class YesNoQuestion implements Question {
         }
 
         /**
-         * Describes when the answer should be "yes".
-         */
-        public Builder yesWhen(String description) {
-            return yesWhen((Object) description);
-        }
-
-        /**
          * Describes when the answer should be "yes", as a {@link String}, a {@link java.util.Map} or a
          * {@link java.util.List}.
          */
         public Builder yesWhen(Object description) {
             this.yesWhen = description;
             return this;
-        }
-
-        /**
-         * Describes when the answer should be "no".
-         */
-        public Builder noWhen(String description) {
-            return noWhen((Object) description);
         }
 
         /**

@@ -32,8 +32,12 @@ final class FreeFormValue {
         if (value instanceof List<?> list) {
             return normalize(ensureNotEmpty(list, name));
         }
+        Object converted = normalize(value);
+        if (converted instanceof String || converted instanceof Map<?, ?> || converted instanceof List<?>) {
+            return ensureValid(converted, name);
+        }
         throw new IllegalArgumentException(
-                name + " must be a String, a Map or a List, but was " + value.getClass().getName());
+                name + " must be a String, a Map, a List or an object, but was " + value.getClass().getName());
     }
 
     private static Object normalize(Object value) {

@@ -181,7 +181,7 @@ class TypeSafeDecisionModelTest {
                 .isEqualTo(YesNoAnswer.builder().probability(0.95).build());
         assertThat(response.answers().get("frustration"))
                 .isEqualTo(ScaleAnswer.builder()
-                        .value(1.44)
+                        .mean(1.44)
                         .probabilities(List.of(0.06, 0.44, 0.5))
                         .confidence(0.78)
                         .build());
@@ -528,7 +528,7 @@ class TypeSafeDecisionModelTest {
         String frustration = "\"frustration\": {\"type\": \"score\", \"score\": 1.0}";
         String team = "\"team\": {\"type\": \"choice\", \"choice\": \"billing\"}";
         return List.of(
-                Arguments.of("{\"model\": \"jev\"}", "no answers"),
+                Arguments.of("{\"model\": \"jev\"}", "no answer to question"),
                 Arguments.of(answers(urgent, frustration), "no answer to question 'team'"),
                 Arguments.of(
                         answers(urgent, frustration, "\"team\": {\"type\": \"choice\", \"choice\": \"sales\"}"),

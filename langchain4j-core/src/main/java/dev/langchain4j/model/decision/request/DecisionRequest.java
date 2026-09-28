@@ -102,7 +102,8 @@ public class DecisionRequest {
         private DecisionRequestParameters parameters;
 
         /**
-         * Sets the input to evaluate, as a {@link String}, a {@link java.util.Map} or a {@link java.util.List}.
+         * Sets the input to evaluate, as a {@link String}, a {@link java.util.Map}, a {@link java.util.List} or an object,
+         * which is converted to a {@link java.util.Map} using its Java field names.
          */
         public Builder input(Object input) {
             this.input = input;

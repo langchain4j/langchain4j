@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * A question that places the input on an ordered scale, answered with a value and the probability of each level
+ * A question that places the input on an ordered scale, answered with the mean level and the probability of each level
  * (see {@link dev.langchain4j.model.decision.response.ScaleAnswer}).
  * <p>
  * Levels are ordered from lowest to highest; a level's number is its index, starting at 0. Each level is described
@@ -50,6 +50,14 @@ public final class ScaleQuestion implements Question {
      */
     public List<Object> levels() {
         return levels;
+    }
+
+    /**
+     * Creates a scale question with the given text and levels, ordered from lowest to highest. Each level is a
+     * {@link String}, a {@link java.util.Map} or a {@link java.util.List}.
+     */
+    public static ScaleQuestion of(String text, List<?> levels) {
+        return builder().text(text).levels(levels).build();
     }
 
     public static Builder builder() {
@@ -93,13 +101,6 @@ public final class ScaleQuestion implements Question {
                 levels.forEach(this::level);
             }
             return this;
-        }
-
-        /**
-         * Adds the next (higher) level with a plain-text description.
-         */
-        public Builder level(String description) {
-            return level((Object) description);
         }
 
         /**

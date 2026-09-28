@@ -52,6 +52,14 @@ public final class ChoiceQuestion implements Question {
         return options;
     }
 
+    /**
+     * Creates a choice question with the given text and options, keyed by option name. Each description is a
+     * {@link String}, a {@link java.util.Map} or a {@link java.util.List}.
+     */
+    public static ChoiceQuestion of(String text, Map<String, ?> options) {
+        return builder().text(text).options(options).build();
+    }
+
     public static Builder builder() {
         return new Builder();
     }
@@ -92,13 +100,6 @@ public final class ChoiceQuestion implements Question {
                 options.forEach(this::option);
             }
             return this;
-        }
-
-        /**
-         * Adds an option with a plain-text description of when it applies.
-         */
-        public Builder option(String name, String description) {
-            return option(name, (Object) description);
         }
 
         /**

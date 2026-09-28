@@ -105,12 +105,7 @@ public class TypeSafeDecisionModel implements DecisionModel {
 
     @Override
     public CompletableFuture<DecisionResponse> doDecideAsync(DecisionRequest request) {
-        Map<String, Object> body;
-        try {
-            body = toRequestBody(request);
-        } catch (RuntimeException e) {
-            return CompletableFuture.failedFuture(e);
-        }
+        Map<String, Object> body = toRequestBody(request);
         CompletableFuture<TypeSafeResponse> responseFuture =
                 withRetryMappingExceptionsAsync(() -> client.decideAsync(body), maxRetries);
         CompletableFuture<DecisionResponse> result =
@@ -139,8 +134,7 @@ public class TypeSafeDecisionModel implements DecisionModel {
         request.questions().forEach((name, question) -> questions.put(name, toQuestion(question)));
 
         Map<String, Object> body = new LinkedHashMap<>();
-        String modelName = getOrDefault(request.modelName(), defaultRequestParameters.modelName());
-        body.put("model", ensureNotBlank(modelName, "modelName"));
+        body.put("model", ensureNotBlank(request.modelName(), "modelName"));
         body.put("state", request.input());
         body.put("questions", questions);
         return body;
@@ -177,15 +171,13 @@ public class TypeSafeDecisionModel implements DecisionModel {
     }
 
     private static DecisionResponse toDecisionResponse(TypeSafeResponse response, DecisionRequest request) {
-        if (response.answers == null || response.answers.isEmpty()) {
-            throw new InvalidDecisionResponseException("The response contains no answers");
-        }
+        Map<String, TypeSafeAnswer> answers = getOrDefault(response.answers, Map.of());
         DecisionResponse.Builder builder = DecisionResponse.builder().modelName(response.model);
         if (response.usage != null) {
             builder.tokenUsage(new TokenUsage(response.usage.inputTokens, response.usage.outputTokens));
         }
         request.questions().forEach((name, question) -> {
-            TypeSafeAnswer answer = response.answers.get(name);
+            TypeSafeAnswer answer = answers.get(name);
             if (answer == null) {
                 throw new InvalidDecisionResponseException("The response contains no answer to question '%s'"
                         .formatted(name));
@@ -240,7 +232,7 @@ public class TypeSafeDecisionModel implements DecisionModel {
             }
         }
         return ScaleAnswer.builder()
-                .value(level(name, required(name, "score", answer.score), levels))
+                .mean(level(name, required(name, "score", answer.score), levels))
                 .probabilities(probabilities)
                 .confidence(answer.confidence == null ? null : probability(name, "confidence", answer.confidence))
                 .build();

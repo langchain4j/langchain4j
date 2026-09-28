@@ -123,12 +123,12 @@ class DecisionResponseTest {
     void should_create_scale_answer() {
 
         ScaleAnswer answer = ScaleAnswer.builder()
-                .value(1.99)
+                .mean(1.99)
                 .probabilities(List.of(0.0, 0.01, 0.99))
                 .confidence(0.99)
                 .build();
 
-        assertThat(answer.value()).isEqualTo(1.99);
+        assertThat(answer.mean()).isEqualTo(1.99);
         assertThat(answer.probabilities()).containsExactly(0.0, 0.01, 0.99);
         assertThat(answer.confidence()).isEqualTo(0.99);
     }
@@ -136,7 +136,7 @@ class DecisionResponseTest {
     @Test
     void scale_answer_probabilities_and_confidence_should_be_optional() {
 
-        ScaleAnswer answer = ScaleAnswer.builder().value(0.5).build();
+        ScaleAnswer answer = ScaleAnswer.builder().mean(0.5).build();
 
         assertThat(answer.probabilities()).isEmpty();
         assertThat(answer.confidence()).isNull();
@@ -147,11 +147,11 @@ class DecisionResponseTest {
 
         assertThatThrownBy(() -> ScaleAnswer.builder().build())
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("value");
+                .hasMessageContaining("mean");
 
-        assertThatThrownBy(() -> ScaleAnswer.builder().value(Double.NaN).build())
+        assertThatThrownBy(() -> ScaleAnswer.builder().mean(Double.NaN).build())
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("value");
+                .hasMessageContaining("mean");
 
         assertThatThrownBy(() -> ScaleAnswer.builder().probabilities(List.of(0.5, -0.5)))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -232,7 +232,7 @@ class DecisionResponseTest {
     void should_return_typed_answers() {
 
         ChoiceAnswer team = ChoiceAnswer.builder().value("billing").build();
-        ScaleAnswer mood = ScaleAnswer.builder().value(1.4).build();
+        ScaleAnswer mood = ScaleAnswer.builder().mean(1.4).build();
 
         DecisionResponse response = DecisionResponse.builder()
                 .answer("urgent", YES_NO)
@@ -294,8 +294,8 @@ class DecisionResponseTest {
                 .isEqualTo(ChoiceAnswer.builder().value("a").confidence(0.5).build())
                 .isNotEqualTo(ChoiceAnswer.builder().value("a").build());
 
-        assertThat(ScaleAnswer.builder().value(1.0).build())
-                .isEqualTo(ScaleAnswer.builder().value(1.0).build())
-                .isNotEqualTo(ScaleAnswer.builder().value(2.0).build());
+        assertThat(ScaleAnswer.builder().mean(1.0).build())
+                .isEqualTo(ScaleAnswer.builder().mean(1.0).build())
+                .isNotEqualTo(ScaleAnswer.builder().mean(2.0).build());
     }
 }
