@@ -98,6 +98,94 @@ McpTransport transport = DockerMcpTransport.builder()
     .build();
 ```
 
+### Authorization
+
+MCP servers reachable over HTTP are often protected with OAuth 2.0, as described in the
+[MCP authorization specification](https://modelcontextprotocol.io/specification/latest/basic/authorization).
+The Streamable HTTP transport delegates credentials to an `McpAuthProvider`, which supplies the
+`Authorization` header for every request (including the subsidiary SSE channel) and is told about
+`401`/`403` rejections so that it can obtain fresh credentials, after which the transport retries
+the rejected request once.
+
+For a token you already have, for example one propagated from the current user's session:
+
+```java
+McpTransport transport = StreamableHttpMcpTransport.builder()
+        .url("https://mcp.example.com/mcp")
+        .authProvider(McpAuthProvider.bearer(() -> currentUserAccessToken()))
+        .build();
+```
+
+For a service that acts on its own behalf, `OAuth2ClientCredentialsAuthProvider` obtains a token
+from the authorization server with the `client_credentials` grant, caches it until shortly before
+it expires, replaces it when the MCP server answers `401`, and adds the scopes named in a
+`403 insufficient_scope` challenge to the next token request:
+
+```java
+McpAuthProvider auth = OAuth2ClientCredentialsAuthProvider.builder()
+        .tokenEndpoint("https://auth.example.com/oauth2/token")
+        .clientId("my-agent")
+        .clientSecret(System.getenv("MCP_CLIENT_SECRET"))
+        .scopes("mcp:tools")
+        .resource("https://mcp.example.com/mcp") // RFC 8707 resource indicator, the canonical URI of the MCP server
+        .build();
+
+McpTransport transport = StreamableHttpMcpTransport.builder()
+        .url("https://mcp.example.com/mcp")
+        .authProvider(auth)
+        .build();
+```
+
+The token endpoint does not have to be configured. Without one, the provider follows the discovery
+flow of the [MCP authorization specification](https://modelcontextprotocol.io/specification/latest/basic/authorization/authorization-server-discovery):
+the first request is sent without credentials, the server answers `401` with a `WWW-Authenticate`
+challenge, and the provider fetches the server's protected resource metadata (RFC 9728) from the
+`resource_metadata` URL of the challenge (or from the well-known URIs derived from the server URL),
+then the metadata of the authorization server it names (RFC 8414 or OpenID Connect Discovery, trying
+the well-known URIs in the order the specification prescribes). The token endpoint, the `resource`
+indicator and, unless configured, the scopes (from the challenge, else from `scopes_supported`) and
+the client authentication method come from what was discovered. Metadata is validated as the
+specification requires: the resource metadata must describe the MCP server it was fetched for, the
+authorization server metadata must declare the issuer it was fetched for, and authorization servers
+must be served over HTTPS (loopback addresses excepted, for development).
+
+```java
+McpAuthProvider auth = OAuth2ClientCredentialsAuthProvider.builder()
+        .clientId("my-agent")
+        .clientSecret(System.getenv("MCP_CLIENT_SECRET"))
+        .build(); // token endpoint, resource and scopes are discovered from the MCP server
+```
+
+:::note
+The authorization server is whatever the MCP server's metadata names, and the provider presents its
+client credentials to that server's token endpoint. The client secret therefore goes wherever the MCP
+server points, which matters if the server is not fully trusted: unlike an access token, which is
+bound to that one server through the `resource` parameter, the secret can obtain tokens for every
+resource and scope the client is allowed. Applications that do not want to rely on the MCP server for
+this can list the issuers they expect, and no token is ever requested from an authorization server
+that is not among them (when the provider performs the discovery itself, such a server is not
+contacted at all). The token endpoint remains the one the accepted issuer's own metadata names, which
+may be on another host:
+
+```java
+McpAuthProvider auth = OAuth2ClientCredentialsAuthProvider.builder()
+        .clientId("my-agent")
+        .clientSecret(System.getenv("MCP_CLIENT_SECRET"))
+        .allowedIssuers("https://auth.example.com") // compared as exact strings
+        .build();
+```
+
+Configuring `tokenEndpoint` explicitly has the same effect, since no discovery takes place then.
+:::
+
+`McpAuthorizationDiscovery` can also be used on its own, for example by a custom provider that
+implements another grant.
+
+Implement `McpAuthProvider` yourself to plug in another token source, for example an
+authorization-code flow or a framework's OAuth2 client. The `McpAuthChallenge` passed to
+`onChallenge` exposes the `WWW-Authenticate` parameters of the rejection (`resource_metadata`,
+`scope`, `error`), which is what a provider needs to discover the authorization server.
+
 ### MCP Client
 
 To create an MCP client from the transport:
