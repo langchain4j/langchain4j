@@ -8,6 +8,8 @@ import dev.langchain4j.service.decision.DecisionResult;
 import dev.langchain4j.service.decision.Decide;
 import dev.langchain4j.service.decision.Choice;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
 
@@ -39,7 +41,6 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -87,13 +88,13 @@ public final class DecisionMethod {
         this.contentType = type;
 
         Decide decide = method.getAnnotation(Decide.class);
-        QuestionMapping single = analysis.mappingFor(method.getName(), type, decide == null ? null : decide.value());
-        if (single != null) {
+        if (kindOf(type) != null) {
             if (decide == null) {
                 throw illegalConfiguration(
                         "Method '%s' must be annotated with @Decide, which contains the question to answer",
                         method.getName());
             }
+            QuestionMapping single = analysis.mappingFor(method.getName(), type, decide.value());
             analysis.add(single);
             this.resultFactory = values -> values.get(single.name());
         } else if (type instanceof Class<?> objectType && isObjectType(objectType)) {
@@ -270,9 +271,8 @@ public final class DecisionMethod {
         if (thresholdProvider == null) {
             return questionName -> null;
         }
-        String modelName = response.modelName() != null
-                ? response.modelName()
-                : decisionModel.defaultRequestParameters().overrideWith(request.parameters()).modelName();
+        String modelName = getOrDefault(
+                response.modelName(), () -> getOrDefault(request.modelName(), decisionModel.modelName()));
         return questionName -> thresholdProvider.threshold(ThresholdContext.builder()
                 .serviceInterface(serviceInterface)
                 .method(method)
@@ -282,22 +282,27 @@ public final class DecisionMethod {
     }
 
     private static double threshold(String questionName, Function<String, Double> thresholds) {
-        Double threshold = thresholds == null ? null : thresholds.apply(questionName);
-        double value = threshold == null ? DEFAULT_THRESHOLD : threshold;
-        if (!(value >= 0 && value <= 1)) {
-            throw new IllegalArgumentException(
-                    "The threshold for '%s' must be between 0 and 1, but was %s".formatted(questionName, value));
-        }
-        return value;
+        return getOrDefault(thresholds == null ? null : thresholds.apply(questionName), DEFAULT_THRESHOLD);
     }
 
     private DecisionRequestParameters requestParameters(Object[] args) {
         if (requestParametersIndex < 0) {
             return null;
         }
-        return ensureNotNull(
-                (DecisionRequestParameters) args[requestParametersIndex],
-                DecisionRequestParameters.class.getSimpleName());
+        return (DecisionRequestParameters) args[requestParametersIndex];
+    }
+
+    private static Kind kindOf(Type type) {
+        if (type == boolean.class || type == Boolean.class) {
+            return Kind.BOOLEAN;
+        } else if (type == YesNoAnswer.class) {
+            return Kind.YES_NO;
+        } else if (type instanceof Class<?> c && c.isEnum()) {
+            return Kind.ENUM;
+        } else if (isParameterizedBy(type, Choice.class)) {
+            return Kind.CHOICE;
+        }
+        return null;
     }
 
     private static boolean isObjectType(Class<?> type) {
@@ -439,16 +444,14 @@ public final class DecisionMethod {
         }
 
         private QuestionMapping fieldMapping(Field field, Type type) {
-            String questionText = Optional.ofNullable(field.getAnnotation(Decide.class))
-                    .map(Decide::value)
-                    .or(() -> Optional.ofNullable(field.getAnnotation(Description.class))
-                            .map(description -> String.join(" ", description.value())))
-                    .orElseThrow(() -> illegalConfiguration(
-                            "Field '%s' of %s, returned by method '%s', must be annotated with @Decide "
-                                    + "(or @Description), which contains the question to answer",
-                            field.getName(), field.getDeclaringClass().getSimpleName(), method.getName()));
-            QuestionMapping mapping = mappingFor(field.getName(), type, questionText);
-            if (mapping == null) {
+            Decide decide = field.getAnnotation(Decide.class);
+            if (decide == null) {
+                throw illegalConfiguration(
+                        "Field '%s' of %s, returned by method '%s', must be annotated with @Decide, "
+                                + "which contains the question to answer",
+                        field.getName(), field.getDeclaringClass().getSimpleName(), method.getName());
+            }
+            if (kindOf(type) == null) {
                 throw illegalConfiguration(
                         "Field '%s' of %s, returned by method '%s', has an unsupported type: %s. "
                                 + "Supported types are boolean, YesNoAnswer, an enum and Choice<enum>",
@@ -457,42 +460,41 @@ public final class DecisionMethod {
                         method.getName(),
                         type.getTypeName());
             }
-            return mapping;
+            return mappingFor(field.getName(), type, decide.value());
         }
 
         private void add(QuestionMapping mapping) {
+            if (mappings.containsKey(mapping.name())) {
+                throw illegalConfiguration(
+                        "The object returned by method '%s' has several fields named '%s' (for example, one of them "
+                                + "in a superclass), but each question needs a unique name",
+                        method.getName(), mapping.name());
+            }
             mappings.put(mapping.name(), mapping);
             questions.put(mapping.name(), mapping.question());
         }
 
         private QuestionMapping mappingFor(String name, Type type, String questionText) {
-            Kind kind;
+            if (isNullOrBlank(questionText)) {
+                throw illegalConfiguration(
+                        "The question of '%s' of method '%s' in @Decide must not be blank", name, method.getName());
+            }
+            Kind kind = kindOf(type);
             Class<?> enumType = null;
-            if (type == boolean.class || type == Boolean.class) {
-                kind = Kind.BOOLEAN;
-            } else if (type == YesNoAnswer.class) {
-                kind = Kind.YES_NO;
-            } else if (type instanceof Class<?> c && c.isEnum()) {
-                kind = Kind.ENUM;
-                enumType = c;
-            } else if (isParameterizedBy(type, Choice.class)) {
-                kind = Kind.CHOICE;
+            if (kind == Kind.ENUM) {
+                enumType = (Class<?>) type;
+            } else if (kind == Kind.CHOICE) {
                 if (!(typeArgument(type) instanceof Class<?> c) || !c.isEnum()) {
                     throw illegalConfiguration(
                             "'%s' of method '%s': Choice must be parameterized with an enum", name, method.getName());
                 }
                 enumType = c;
-            } else {
-                return null;
-            }
-            if (questionText == null) {
-                return new QuestionMapping(name, null, kind, enumType);
             }
             if (enumType != null) {
                 reflectiveTypes.add(enumType);
             }
             Question question = enumType == null
-                    ? YesNoQuestion.builder().text(questionText).build()
+                    ? YesNoQuestion.of(questionText)
                     : choiceQuestion(name, questionText, enumType);
             return new QuestionMapping(name, question, kind, enumType);
         }
@@ -539,7 +541,7 @@ public final class DecisionMethod {
 
         Object value(DecisionResponse response, DoubleSupplier threshold) {
             return switch (kind) {
-                case BOOLEAN -> response.yesNo(name).probability() >= threshold.getAsDouble();
+                case BOOLEAN -> response.yesNo(name).isYes(threshold.getAsDouble());
                 case YES_NO -> response.yesNo(name);
                 case ENUM -> constant(response.choice(name).value());
                 case CHOICE -> choice(response.choice(name));

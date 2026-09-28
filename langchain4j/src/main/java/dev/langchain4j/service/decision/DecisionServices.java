@@ -36,9 +36,9 @@ import java.util.Map;
  * A parameter of type {@link dev.langchain4j.model.decision.request.DecisionRequestParameters} is not sent as part of
  * the input: it sets the parameters of the call, such as the model name, overriding the model's defaults.
  * <p>
- * The question is set with {@link Decide @Decide}: on the method, or on the fields of the returned object (where
- * {@link dev.langchain4j.model.output.structured.Description @Description} is also accepted).
- * The meaning of enum constants is described with {@code @Description}:
+ * The question is set with {@link Decide @Decide}: on the method, or on the fields of the returned object.
+ * The meaning of enum constants is described with
+ * {@link dev.langchain4j.model.output.structured.Description @Description}:
  * <pre>{@code
  * enum Team {
  *     @Description("Payments, invoices, refunds") BILLING,

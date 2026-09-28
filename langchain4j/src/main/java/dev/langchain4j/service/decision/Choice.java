@@ -3,17 +3,17 @@ package dev.langchain4j.service.decision;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.Experimental;
+import dev.langchain4j.model.decision.response.ChoiceAnswer;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
 /**
  * The answer to a question of a decision service that chooses one of several options: the chosen option, the
- * probability of each option and, if the model reports one, a confidence.
- *
+ * probability of each option and, if the model reports one, a confidence. It is the typed counterpart of
+ * {@link ChoiceAnswer}.
+ * <p>
  * Decision services currently create it for enums only: the enum constants are the options.
  *
  * @param <E> the type of the options, for example an enum whose constants are the options
@@ -24,26 +24,23 @@ public final class Choice<E> {
 
     private final E value;
     private final Map<E, Double> probabilities;
-    private final Double confidence;
+    private final ChoiceAnswer answer;
 
     private Choice(Builder<E> builder) {
         this.value = ensureNotNull(builder.value, "value");
         Map<E, Double> probabilities = new LinkedHashMap<>();
         if (builder.probabilities != null) {
-            builder.probabilities.forEach((option, probability) -> probabilities.put(
-                    ensureNotNull(option, "option"),
-                    ensureProbability(ensureNotNull(probability, "probability"), "probability")));
+            builder.probabilities.forEach(
+                    (option, probability) -> probabilities.put(ensureNotNull(option, "option"), probability));
         }
         this.probabilities = Collections.unmodifiableMap(probabilities);
-        this.confidence =
-                builder.confidence == null ? null : ensureProbability(builder.confidence, "confidence");
+        ChoiceAnswer.Builder answer = ChoiceAnswer.builder().value(name(value)).confidence(builder.confidence);
+        probabilities.forEach((option, probability) -> answer.probability(name(option), probability));
+        this.answer = answer.build();
     }
 
-    private static double ensureProbability(double value, String name) {
-        if (!(value >= 0 && value <= 1)) {
-            throw new IllegalArgumentException(name + " must be between 0 and 1, but was " + value);
-        }
-        return value;
+    private static String name(Object option) {
+        return option instanceof Enum<?> constant ? constant.name() : String.valueOf(option);
     }
 
     public static <E> Builder<E> builder() {
@@ -70,8 +67,7 @@ public final class Choice<E> {
      * @throws IllegalStateException if the model did not report probabilities.
      */
     public double probabilityOf(E option) {
-        ensureProbabilities();
-        return probabilities.getOrDefault(option, 0.0);
+        return answer.probabilityOf(name(option));
     }
 
     /**
@@ -84,19 +80,7 @@ public final class Choice<E> {
      * @throws IllegalStateException if the model did not report probabilities.
      */
     public double margin() {
-        ensureProbabilities();
-        List<Double> sorted = probabilities.values().stream()
-                .sorted(Comparator.reverseOrder())
-                .toList();
-        double unreported = 1 - sorted.stream().mapToDouble(Double::doubleValue).sum();
-        double second = Math.max(sorted.size() < 2 ? 0 : sorted.get(1), unreported);
-        return Math.max(0, sorted.get(0) - second);
-    }
-
-    private void ensureProbabilities() {
-        if (probabilities.isEmpty()) {
-            throw new IllegalStateException("The model did not report probabilities");
-        }
+        return answer.margin();
     }
 
     /**
@@ -104,7 +88,7 @@ public final class Choice<E> {
      * confidence. The formula is defined by each model, so prefer {@link #probabilities()} for thresholds.
      */
     public Double confidence() {
-        return confidence;
+        return answer.confidence();
     }
 
     @Override
@@ -113,17 +97,17 @@ public final class Choice<E> {
         if (!(o instanceof Choice<?> that)) return false;
         return Objects.equals(value, that.value)
                 && Objects.equals(probabilities, that.probabilities)
-                && Objects.equals(confidence, that.confidence);
+                && Objects.equals(confidence(), that.confidence());
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(value, probabilities, confidence);
+        return Objects.hash(value, probabilities, confidence());
     }
 
     @Override
     public String toString() {
-        return "Choice{value=" + value + ", probabilities=" + probabilities + ", confidence=" + confidence + '}';
+        return "Choice{value=" + value + ", probabilities=" + probabilities + ", confidence=" + confidence() + '}';
     }
 
     public static final class Builder<E> {

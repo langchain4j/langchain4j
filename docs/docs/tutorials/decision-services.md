@@ -64,11 +64,7 @@ Decision Services send the names of the method parameters to the model, so compi
 </plugin>
 ```
 
-The types used below come from these packages:
-- `dev.langchain4j.service.decision`: `DecisionServices`, `@Decide`, `Choice`, `DecisionResult`, `ThresholdProvider`
-- `dev.langchain4j.model.decision.response`: `YesNoAnswer`
-- `dev.langchain4j.model.decision.request`: `DecisionRequestParameters`
-- `dev.langchain4j.model.output.structured.Description` and `dev.langchain4j.service.V`
+The `@Description` annotation used on enum constants is `dev.langchain4j.model.output.structured.Description`.
 
 ## How it works
 
@@ -168,9 +164,7 @@ triage.urgent();                   // true
 triage.refund().probability();     // 0.99
 ```
 
-Every field needs a question: `@Decide`, or `@Description` if there is no `@Decide`
-(so classes written for [structured outputs](/tutorials/structured-outputs) can be reused).
-A field without either fails when `build()` is called.
+Every field needs a question in `@Decide`; a field without it fails when `build()` is called.
 `@Decide` on the method itself is not supported for such methods.
 
 A regular class works as well, as long as it has a no-argument constructor:
@@ -292,15 +286,30 @@ To find a good threshold, run the model once per example of a labelled dataset a
 collected probabilities, without calling the model again:
 
 ```java
-List<Double> probabilities = dataset.stream()
-        .map(example -> moderation.spamProbability(example.text()).probability())
+record Example(String text, boolean spam) {}
+
+List<Example> dataset = ...;   // messages labelled by humans
+List<YesNoAnswer> answers = dataset.stream()
+        .map(example -> moderation.spamProbability(example.text()))
         .toList();
 
-for (int step = 10; step < 20; step++) {
-    double threshold = step * 0.05;   // 0.50, 0.55, ..., 0.95
-    // compare probabilities >= threshold with the labels, compute precision and recall
+for (double threshold = 0.5; threshold < 1; threshold += 0.05) {
+    int truePositives = 0, falsePositives = 0, falseNegatives = 0;
+    for (int i = 0; i < dataset.size(); i++) {
+        boolean predicted = answers.get(i).isYes(threshold);
+        boolean actual = dataset.get(i).spam();
+        if (predicted && actual) truePositives++;
+        if (predicted && !actual) falsePositives++;
+        if (!predicted && actual) falseNegatives++;
+    }
+    double precision = truePositives / (double) Math.max(1, truePositives + falsePositives);
+    double recall = truePositives / (double) Math.max(1, truePositives + falseNegatives);
+    System.out.printf("threshold %.2f: precision %.2f, recall %.2f%n", threshold, precision, recall);
 }
 ```
+
+Pick the lowest threshold whose precision is acceptable for your use case:
+a higher threshold flags fewer messages by mistake, but also misses more spam.
 
 ## Response metadata
 
@@ -499,9 +508,7 @@ Use the `DecisionModel` API directly: all checks of a test case are answered in 
 ```java
 DecisionRequest.Builder request = DecisionRequest.builder()
         .input(Map.of("question", testCase.question(), "answer", answer));
-testCase.checks().forEach(check -> request.question(check.id(), YesNoQuestion.builder()
-        .text(check.text())
-        .build()));
+testCase.checks().forEach(check -> request.question(check.id(), YesNoQuestion.of(check.text())));
 
 DecisionResponse response = decisionModel.decide(request.build());
 testCase.checks().forEach(check ->

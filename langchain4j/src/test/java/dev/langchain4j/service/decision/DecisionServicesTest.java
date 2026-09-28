@@ -213,15 +213,15 @@ class DecisionServicesTest {
     }
 
     @Test
-    void should_reject_null_request_parameters() {
+    void should_treat_null_request_parameters_as_no_override() {
 
+        FakeDecisionModel model = new FakeDecisionModel(Map.of("isSpam", yesNo(0.7)));
         SpamFilterWithParameters spamFilter = DecisionServices.builder(SpamFilterWithParameters.class)
-                .decisionModel(new FakeDecisionModel(Map.of("isSpam", yesNo(0.7))))
+                .decisionModel(model)
                 .build();
 
-        assertThatThrownBy(() -> spamFilter.isSpam("Hello", null))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("DecisionRequestParameters");
+        assertThat(spamFilter.isSpam("Hello", null)).isTrue();
+        assertThat(model.request().modelName()).isEqualTo("fake-default-model");
     }
 
     // choice questions
@@ -329,7 +329,7 @@ class DecisionServicesTest {
         @Decide("Which team should handle this ticket?")
         Team team;
 
-        @Description("Does this need attention today?")
+        @Decide("Does this need attention today?")
         boolean urgent;
 
         @Decide("Does the customer ask for money back?")
@@ -468,7 +468,7 @@ class DecisionServicesTest {
                 .decisionModel(new FakeDecisionModel(Map.of("isSpam", yesNo(0.7))))
                 .build();
 
-        CompletableFuture<Boolean> future = spamFilter.isSpam("Hello", null);
+        CompletableFuture<Boolean> future = spamFilter.isSpam(null, null);
 
         assertThat(future)
                 .failsWithin(java.time.Duration.ZERO)
@@ -766,6 +766,34 @@ class DecisionServicesTest {
         ONLY
     }
 
+    interface BlankQuestion {
+        @Decide(" ")
+        boolean isSpam(@V("message") String message);
+    }
+
+    static class DescriptionOnField {
+        @Description("Is this message spam?")
+        boolean spam;
+    }
+
+    interface DescriptionInsteadOfDecide {
+        DescriptionOnField analyze(@V("message") String message);
+    }
+
+    static class BaseAnalysis {
+        @Decide("Is this message spam?")
+        boolean spam;
+    }
+
+    static class DuplicateFieldAnalysis extends BaseAnalysis {
+        @Decide("Is this message a phishing attempt?")
+        boolean spam;
+    }
+
+    interface DuplicateFieldNames {
+        DuplicateFieldAnalysis analyze(@V("message") String message);
+    }
+
     interface SingleConstantEnum {
         @Decide("Which one?")
         SingleConstant pick(@V("ticket") String ticket);
@@ -831,6 +859,24 @@ class DecisionServicesTest {
                         .build())
                 .isInstanceOf(IllegalConfigurationException.class)
                 .hasMessageContaining("at least 2 constants");
+
+        assertThatThrownBy(() -> DecisionServices.builder(BlankQuestion.class)
+                        .decisionModel(model)
+                        .build())
+                .isInstanceOf(IllegalConfigurationException.class)
+                .hasMessageContaining("must not be blank");
+
+        assertThatThrownBy(() -> DecisionServices.builder(DescriptionInsteadOfDecide.class)
+                        .decisionModel(model)
+                        .build())
+                .isInstanceOf(IllegalConfigurationException.class)
+                .hasMessageContaining("must be annotated with @Decide");
+
+        assertThatThrownBy(() -> DecisionServices.builder(DuplicateFieldNames.class)
+                        .decisionModel(model)
+                        .build())
+                .isInstanceOf(IllegalConfigurationException.class)
+                .hasMessageContaining("several fields named 'spam'");
 
         assertThatThrownBy(() -> DecisionServices.builder(Triage.class)
                         .decisionModel(model)
