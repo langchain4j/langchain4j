@@ -194,7 +194,7 @@ class DecisionServicesTest {
     }
 
     @Test
-    void should_pass_request_parameters_and_not_send_them_as_state() {
+    void should_pass_request_parameters_and_not_send_them_as_input() {
 
         // given
         FakeDecisionModel model = new FakeDecisionModel(Map.of("isSpam", yesNo(0.7)));
@@ -757,7 +757,7 @@ class DecisionServicesTest {
                 @V("message") String message, DecisionRequestParameters first, DecisionRequestParameters second);
     }
 
-    interface NoState {
+    interface NoInput {
         @Decide("Is this message spam?")
         boolean isSpam(DecisionRequestParameters parameters);
     }
@@ -820,7 +820,7 @@ class DecisionServicesTest {
                 .isInstanceOf(IllegalConfigurationException.class)
                 .hasMessageContaining("several DecisionRequestParameters");
 
-        assertThatThrownBy(() -> DecisionServices.builder(NoState.class)
+        assertThatThrownBy(() -> DecisionServices.builder(NoInput.class)
                         .decisionModel(model)
                         .build())
                 .isInstanceOf(IllegalConfigurationException.class)

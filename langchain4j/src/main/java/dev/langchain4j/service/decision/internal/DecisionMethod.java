@@ -63,7 +63,7 @@ public final class DecisionMethod {
     private final boolean async;
     private final boolean withResponse;
     private final Type contentType;
-    private final List<StateParameter> stateParameters;
+    private final List<InputParameter> inputParameters;
     private final int requestParametersIndex;
     private final Map<String, QuestionMapping> mappings;
     private final Map<String, Question> questions;
@@ -114,12 +114,12 @@ public final class DecisionMethod {
         }
 
         analysis.analyzeParameters();
-        this.stateParameters = List.copyOf(analysis.stateParameters);
+        this.inputParameters = List.copyOf(analysis.inputParameters);
         this.requestParametersIndex = analysis.requestParametersIndex;
         this.mappings = Collections.unmodifiableMap(analysis.mappings);
         this.questions = Collections.unmodifiableMap(analysis.questions);
         this.reflectiveTypes = Collections.unmodifiableSet(analysis.reflectiveTypes);
-        this.inputTypes = analysis.stateParameters.stream()
+        this.inputTypes = analysis.inputParameters.stream()
                 .map(parameter -> method.getGenericParameterTypes()[parameter.index()])
                 .toList();
     }
@@ -193,7 +193,7 @@ public final class DecisionMethod {
      */
     public DecisionRequest toRequest(Object[] args) {
         Map<String, Object> input = new LinkedHashMap<>();
-        for (StateParameter parameter : stateParameters) {
+        for (InputParameter parameter : inputParameters) {
             Object value = args[parameter.index()];
             if (value != null) {
                 input.put(parameter.name(), value);
@@ -203,7 +203,7 @@ public final class DecisionMethod {
             throw new IllegalArgumentException("All arguments of method '%s' that are sent to the model (%s) are null"
                     .formatted(
                             method.getName(),
-                            stateParameters.stream().map(StateParameter::name).toList()));
+                            inputParameters.stream().map(InputParameter::name).toList()));
         }
         return DecisionRequest.builder()
                 .input(input)
@@ -342,7 +342,7 @@ public final class DecisionMethod {
     private static final class Analysis {
 
         private final Method method;
-        private final List<StateParameter> stateParameters = new ArrayList<>();
+        private final List<InputParameter> inputParameters = new ArrayList<>();
         private int requestParametersIndex = -1;
         private final Map<String, QuestionMapping> mappings = new LinkedHashMap<>();
         private final Map<String, Question> questions = new LinkedHashMap<>();
@@ -372,13 +372,13 @@ public final class DecisionMethod {
                             i, method.getName());
                 }
                 String name = ParameterNameResolver.name(parameter);
-                if (stateParameters.stream().anyMatch(p -> p.name().equals(name))) {
+                if (inputParameters.stream().anyMatch(p -> p.name().equals(name))) {
                     throw illegalConfiguration(
                             "Method '%s' has several parameters named '%s'", method.getName(), name);
                 }
-                stateParameters.add(new StateParameter(name, i));
+                inputParameters.add(new InputParameter(name, i));
             }
-            if (stateParameters.isEmpty()) {
+            if (inputParameters.isEmpty()) {
                 throw illegalConfiguration(
                         "Method '%s' must have at least one parameter that is not DecisionRequestParameters: "
                                 + "the parameters are what the model evaluates",
@@ -533,7 +533,7 @@ public final class DecisionMethod {
         CHOICE
     }
 
-    private record StateParameter(String name, int index) {}
+    private record InputParameter(String name, int index) {}
 
     private record QuestionMapping(String name, Question question, Kind kind, Class<?> enumType) {
 
