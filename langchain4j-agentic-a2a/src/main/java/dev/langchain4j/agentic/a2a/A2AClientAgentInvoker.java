@@ -56,6 +56,14 @@ public class A2AClientAgentInvoker implements AgentInvoker {
                         && ParameterNameResolver.hasName(p))
                 .map(ParameterNameResolver::name)
                 .collect(Collectors.toSet());
+        if (a2AClientInstance.tenant() != null) {
+            return argumentsFromMethod(method, optionalProtocolArgs).stream()
+                    .filter(arg -> Stream.of(method.getParameters())
+                            .noneMatch(p -> p.isAnnotationPresent(A2ATenantId.class)
+                                    && ParameterNameResolver.hasName(p)
+                                    && ParameterNameResolver.name(p).equals(arg.name())))
+                    .toList();
+        }
         return argumentsFromMethod(method, optionalProtocolArgs);
     }
 
