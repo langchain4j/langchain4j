@@ -4,6 +4,12 @@ sidebar_position: 1
 
 # Model Router
 
+:::tip
+`langchain4j-core` also provides `RoutingChatModel` and `RoutingStreamingChatModel`, which route each request with a
+`ChatModelRouter`, for example based on a [decision model](/tutorials/decision-models).
+See [Model Routing](/tutorials/model-routing).
+:::
+
 This is the documentation for the `ModelRouter`, which acts as a router for messages to multiple ChatModel instances and uses pluggable RoutingStrategies.
 The module comes with two default implementations: FailoverStrategy and LowestTokenUsageRoutingStrategy.
 
