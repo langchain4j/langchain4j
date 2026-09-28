@@ -281,8 +281,8 @@ class DecisionServicesTest {
                 .probabilities(Map.of(Team.BILLING, 0.55, Team.SUPPORT, 0.4))
                 .build();
 
-        assertThat(choice.probability(Team.BILLING)).isEqualTo(0.55);
-        assertThat(choice.probability(Team.SALES)).isZero();
+        assertThat(choice.probabilityOf(Team.BILLING)).isEqualTo(0.55);
+        assertThat(choice.probabilityOf(Team.SALES)).isZero();
         assertThat(choice.margin()).isCloseTo(0.15, org.assertj.core.data.Offset.offset(1e-9));
     }
 
@@ -296,7 +296,7 @@ class DecisionServicesTest {
                 .build();
 
         assertThat(choice.value()).isEqualTo("refunds-agent");
-        assertThat(choice.probability("billing-agent")).isEqualTo(0.3);
+        assertThat(choice.probabilityOf("billing-agent")).isEqualTo(0.3);
         assertThat(choice.margin()).isCloseTo(0.4, org.assertj.core.data.Offset.offset(1e-9));
     }
 
@@ -305,7 +305,7 @@ class DecisionServicesTest {
 
         Choice<Team> choice = Choice.<Team>builder().value(Team.BILLING).build();
 
-        assertThatThrownBy(() -> choice.probability(Team.BILLING)).isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> choice.probabilityOf(Team.BILLING)).isInstanceOf(IllegalStateException.class);
         assertThatThrownBy(choice::margin).isInstanceOf(IllegalStateException.class);
     }
 

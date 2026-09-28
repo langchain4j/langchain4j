@@ -69,7 +69,7 @@ public final class Choice<E> {
      *
      * @throws IllegalStateException if the model did not report probabilities.
      */
-    public double probability(E option) {
+    public double probabilityOf(E option) {
         ensureProbabilities();
         return probabilities.getOrDefault(option, 0.0);
     }

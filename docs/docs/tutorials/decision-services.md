@@ -127,7 +127,7 @@ Choice<Team> routeWithProbabilities(String ticket);
 Choice<Team> choice = supportDesk.routeWithProbabilities(ticket);
 choice.value();                      // BILLING
 choice.probabilities();              // {BILLING=0.88, SUPPORT=0.1, SALES=0.02}
-choice.probability(Team.SUPPORT);    // 0.1
+choice.probabilityOf(Team.SUPPORT);  // 0.1
 choice.margin();                     // 0.78, the difference between the two most likely constants
 choice.confidence();                 // provided by some models, see below
 ```
