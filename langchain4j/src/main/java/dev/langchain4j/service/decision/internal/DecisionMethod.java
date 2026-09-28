@@ -7,6 +7,7 @@ import dev.langchain4j.service.decision.DecisionServices;
 import dev.langchain4j.service.decision.DecisionResult;
 import dev.langchain4j.service.decision.Decide;
 import dev.langchain4j.service.decision.Choice;
+import dev.langchain4j.service.decision.Scale;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
@@ -20,9 +21,11 @@ import dev.langchain4j.model.decision.request.ChoiceQuestion;
 import dev.langchain4j.model.decision.request.DecisionRequest;
 import dev.langchain4j.model.decision.request.DecisionRequestParameters;
 import dev.langchain4j.model.decision.request.Question;
+import dev.langchain4j.model.decision.request.ScaleQuestion;
 import dev.langchain4j.model.decision.request.YesNoQuestion;
 import dev.langchain4j.model.decision.response.ChoiceAnswer;
 import dev.langchain4j.model.decision.response.DecisionResponse;
+import dev.langchain4j.model.decision.response.ScaleAnswer;
 import dev.langchain4j.model.output.structured.Description;
 import dev.langchain4j.service.ParameterNameResolver;
 import java.lang.reflect.Constructor;
@@ -109,7 +112,7 @@ public final class DecisionMethod {
         } else {
             throw illegalConfiguration(
                     "Method '%s' has an unsupported return type: %s. Supported types are boolean, YesNoAnswer, an enum, "
-                            + "Choice<enum>, and objects whose fields are of these types, optionally wrapped in "
+                            + "Choice<enum>, Scale<enum>, and objects whose fields are of these types, optionally wrapped in "
                             + "DecisionResult<> and/or CompletableFuture<> (or CompletionStage<>)",
                     method.getName(), returnType.getTypeName());
         }
@@ -301,6 +304,8 @@ public final class DecisionMethod {
             return Kind.ENUM;
         } else if (isParameterizedBy(type, Choice.class)) {
             return Kind.CHOICE;
+        } else if (isParameterizedBy(type, Scale.class)) {
+            return Kind.SCALE;
         }
         return null;
     }
@@ -454,7 +459,7 @@ public final class DecisionMethod {
             if (kindOf(type) == null) {
                 throw illegalConfiguration(
                         "Field '%s' of %s, returned by method '%s', has an unsupported type: %s. "
-                                + "Supported types are boolean, YesNoAnswer, an enum and Choice<enum>",
+                                + "Supported types are boolean, YesNoAnswer, an enum, Choice<enum> and Scale<enum>",
                         field.getName(),
                         field.getDeclaringClass().getSimpleName(),
                         method.getName(),
@@ -483,36 +488,42 @@ public final class DecisionMethod {
             Class<?> enumType = null;
             if (kind == Kind.ENUM) {
                 enumType = (Class<?>) type;
-            } else if (kind == Kind.CHOICE) {
+            } else if (kind == Kind.CHOICE || kind == Kind.SCALE) {
                 if (!(typeArgument(type) instanceof Class<?> c) || !c.isEnum()) {
                     throw illegalConfiguration(
-                            "'%s' of method '%s': Choice must be parameterized with an enum", name, method.getName());
+                            "'%s' of method '%s': %s must be parameterized with an enum",
+                            name, method.getName(), kind == Kind.CHOICE ? "Choice" : "Scale");
                 }
                 enumType = c;
             }
             if (enumType != null) {
                 reflectiveTypes.add(enumType);
             }
-            Question question = enumType == null
-                    ? YesNoQuestion.of(questionText)
-                    : choiceQuestion(name, questionText, enumType);
+            Question question;
+            if (enumType == null) {
+                question = YesNoQuestion.of(questionText);
+            } else if (kind == Kind.SCALE) {
+                question = ScaleQuestion.of(questionText, descriptions(name, enumType).values().stream().toList());
+            } else {
+                question = ChoiceQuestion.of(questionText, descriptions(name, enumType));
+            }
             return new QuestionMapping(name, question, kind, enumType);
         }
 
-        private ChoiceQuestion choiceQuestion(String name, String questionText, Class<?> enumType) {
+        private Map<String, String> descriptions(String name, Class<?> enumType) {
             Object[] constants = enumType.getEnumConstants();
             if (constants.length < 2) {
                 throw illegalConfiguration(
                         "'%s' of method '%s': enum %s must have at least 2 constants",
                         name, method.getName(), enumType.getSimpleName());
             }
-            ChoiceQuestion.Builder builder = ChoiceQuestion.builder().text(questionText);
+            Map<String, String> descriptions = new LinkedHashMap<>();
             for (Object constant : constants) {
-                String option = ((Enum<?>) constant).name();
-                Description description = declaredField(enumType, option).getAnnotation(Description.class);
-                builder.option(option, description == null ? option : String.join(" ", description.value()));
+                String constantName = ((Enum<?>) constant).name();
+                Description description = declaredField(enumType, constantName).getAnnotation(Description.class);
+                descriptions.put(constantName, description == null ? constantName : String.join(" ", description.value()));
             }
-            return builder.build();
+            return descriptions;
         }
 
         private Constructor<?> constructor(Class<?> type, Class<?>... parameterTypes) {
@@ -532,7 +543,8 @@ public final class DecisionMethod {
         BOOLEAN,
         YES_NO,
         ENUM,
-        CHOICE
+        CHOICE,
+        SCALE
     }
 
     private record InputParameter(String name, int index) {}
@@ -545,6 +557,7 @@ public final class DecisionMethod {
                 case YES_NO -> response.yesNo(name);
                 case ENUM -> constant(response.choice(name).value());
                 case CHOICE -> choice(response.choice(name));
+                case SCALE -> scale(response.scale(name));
             };
         }
 
@@ -556,6 +569,26 @@ public final class DecisionMethod {
                 throw new InvalidDecisionResponseException("The model chose '%s' for '%s', which is not a constant of %s"
                         .formatted(option, name, enumType.getSimpleName()));
             }
+        }
+
+        @SuppressWarnings({"unchecked", "rawtypes"})
+        private Scale scale(ScaleAnswer answer) {
+            Object[] levels = enumType.getEnumConstants();
+            List<Double> reported = answer.probabilities();
+            if (!reported.isEmpty() && reported.size() != levels.length) {
+                throw new InvalidDecisionResponseException(
+                        "The model reported %s probabilities for '%s', but %s has %s levels"
+                                .formatted(reported.size(), name, enumType.getSimpleName(), levels.length));
+            }
+            Map probabilities = new EnumMap(enumType);
+            for (int i = 0; i < reported.size(); i++) {
+                probabilities.put(levels[i], reported.get(i));
+            }
+            return Scale.builder((Class) enumType)
+                    .mean(answer.mean())
+                    .probabilities(probabilities)
+                    .confidence(answer.confidence())
+                    .build();
         }
 
         @SuppressWarnings({"unchecked", "rawtypes"})

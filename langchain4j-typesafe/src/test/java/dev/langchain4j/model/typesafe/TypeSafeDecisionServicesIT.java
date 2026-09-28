@@ -8,6 +8,7 @@ import dev.langchain4j.model.decision.request.DecisionRequestParameters;
 import dev.langchain4j.model.output.structured.Description;
 import dev.langchain4j.service.V;
 import dev.langchain4j.service.decision.Choice;
+import dev.langchain4j.service.decision.Scale;
 import dev.langchain4j.service.decision.Decide;
 import dev.langchain4j.service.decision.DecisionResult;
 import dev.langchain4j.service.decision.DecisionServices;
@@ -27,6 +28,15 @@ class TypeSafeDecisionServicesIT {
         SALES
     }
 
+    enum Severity {
+        @Description("Cosmetic issue, no impact on customers")
+        LOW,
+        @Description("A feature is degraded for some customers, a workaround exists")
+        MEDIUM,
+        @Description("Outage or data loss for many customers")
+        HIGH
+    }
+
     record Triage(
             @Decide("Which team should handle this ticket?") Team team,
             @Decide("Does this need attention today?") boolean urgent,
@@ -38,6 +48,9 @@ class TypeSafeDecisionServicesIT {
 
         @Decide("Is this message spam?")
         boolean isSpam(@V("message") String message);
+
+        @Decide("How severe is this incident?")
+        Scale<Severity> severity(@V("incident") String incident);
 
         @Decide("Which team should handle this ticket?")
         DecisionResult<Choice<Team>> route(@V("ticket") String ticket);
@@ -81,6 +94,18 @@ class TypeSafeDecisionServicesIT {
         assertThat(supportDesk.isSpam(spam)).isTrue();
         assertThat(supportDesk.isSpam("Hi Anna, are we still meeting tomorrow at 10?"))
                 .isFalse();
+    }
+
+    @Test
+    void should_place_input_on_a_scale() {
+
+        Scale<Severity> outage = supportDesk.severity("The whole platform is down and customers lost their data.");
+        Scale<Severity> typo = supportDesk.severity("There is a typo in the footer of the pricing page.");
+
+        assertThat(outage.mostLikely()).isEqualTo(Severity.HIGH);
+        assertThat(typo.mostLikely()).isEqualTo(Severity.LOW);
+        assertThat(outage.mean()).isGreaterThan(typo.mean());
+        assertThat(outage.probabilityAtLeast(Severity.MEDIUM)).isGreaterThan(0.5);
     }
 
     @Test

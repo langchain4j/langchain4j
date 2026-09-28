@@ -27,6 +27,8 @@ import java.util.Map;
  *     <li>{@link YesNoAnswer}: a yes/no question, with the probability of "yes"</li>
  *     <li>an enum: a question choosing one of its constants</li>
  *     <li>{@link Choice Choice&lt;enum&gt;}: the same, with the probability of each constant</li>
+ *     <li>{@link Scale Scale&lt;enum&gt;}: a question placing the input on an ordered scale, whose levels are the
+ *     constants from the first (lowest) to the last (highest)</li>
  *     <li>an object or record whose fields are of the types above: one question per field, in a single call</li>
  * </ul>
  * Any of these can be wrapped in {@link DecisionResult} (to also get the raw response) and/or in

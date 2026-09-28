@@ -85,6 +85,7 @@ All methods are checked when `build()` is called, so a misconfigured method
 | `YesNoAnswer` | yes/no | the probability of "yes" |
 | an enum | choice between the enum constants | the chosen constant |
 | `Choice<E>` (`E` is an enum) | choice between the enum constants | the chosen constant and the probability of each constant |
+| `Scale<E>` (`E` is an enum) | position on an ordered scale, whose levels are the enum constants | the mean level, the most likely level and the probability of each level |
 | a class or record whose fields have the types above | one question per field, all in a single call | an instance with every field set |
 
 Any of these can also be wrapped in [`DecisionResult<T>`](#response-metadata)
@@ -141,6 +142,48 @@ if (choice.margin() < 0.2) {
 
 `confidence()` is computed differently by each model, so prefer probabilities for thresholds
 (see [Probabilities and confidence](/tutorials/decision-models#probabilities-and-confidence)).
+
+### Scale questions
+
+When the options are ordered (severity, urgency, frustration, quality), return `Scale<E>`.
+The levels are the enum constants, from the first declared (lowest) to the last (highest),
+described with `@Description` like the options of a choice:
+
+```java
+enum Severity {
+    @Description("Cosmetic issue, no impact") LOW,
+    @Description("A feature is degraded, a workaround exists") MEDIUM,
+    @Description("A feature is broken for some customers") HIGH,
+    @Description("Outage or data loss") CRITICAL
+}
+
+interface IncidentTriage {
+
+    @Decide("How severe is this incident?")
+    Scale<Severity> severity(String incident);
+}
+
+Scale<Severity> severity = incidentTriage.severity(report);
+severity.mean();                              // 2.3, from 0 (LOW) to 3 (CRITICAL)
+severity.mostLikely();                        // HIGH
+severity.probabilities();                     // {LOW=0.02, MEDIUM=0.1, HIGH=0.46, CRITICAL=0.42}
+severity.probabilityOf(Severity.CRITICAL);    // 0.42
+severity.probabilityAtLeast(Severity.HIGH);   // 0.88
+```
+
+`mean()` is the probability-weighted average of the level indexes, so it can fall between two levels.
+It is useful to compare inputs or to follow a trend over time, for example the average frustration of customers.
+`probabilityAtLeast(level)` is useful to act on a level or anything above it, for example to page the on-call
+engineer when an incident is likely to be at least of high severity:
+
+```java
+if (severity.probabilityAtLeast(Severity.HIGH) > 0.5) {
+    pageOnCall(report);
+}
+```
+
+A plain enum return type is always a [choice question](#choice-questions), where the order of the constants does
+not matter.
 
 ### Several questions in one call
 
@@ -572,7 +615,7 @@ CommentService commentService = new CommentService(spamCheck);
 assertThat(commentService.accept("Buy now!")).isFalse();
 ```
 
-Results are easy to create in tests: `YesNoAnswer.of(0.97)`, `Choice.builder()` and `DecisionResult.builder()`.
+Results are easy to create in tests: `YesNoAnswer.of(0.97)`, `Choice.builder()`, `Scale.builder(Severity.class)` and `DecisionResult.builder()`.
 
 ## Errors
 
@@ -588,5 +631,3 @@ Results are easy to create in tests: `YesNoAnswer.of(0.97)`, `Choice.builder()` 
 - Options are defined with enums. When the options are only known at runtime
   (for example, agents or tools registered in a database), use the
   [`DecisionModel` API](/tutorials/decision-models#choice-questions) directly.
-- Scale questions are not supported yet. Use the [`DecisionModel` API](/tutorials/decision-models#scale-questions)
-  directly.

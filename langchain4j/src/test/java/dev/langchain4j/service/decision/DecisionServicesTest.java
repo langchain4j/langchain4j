@@ -2,10 +2,13 @@ package dev.langchain4j.service.decision;
 
 import dev.langchain4j.service.decision.internal.DecisionMethod;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.offset;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.langchain4j.model.decision.InvalidDecisionResponseException;
 import dev.langchain4j.model.decision.DecisionModel;
+import dev.langchain4j.model.decision.response.ScaleAnswer;
+import dev.langchain4j.model.decision.request.ScaleQuestion;
 import dev.langchain4j.model.decision.request.ChoiceQuestion;
 import dev.langchain4j.model.decision.request.DecisionRequest;
 import dev.langchain4j.model.decision.request.DecisionRequestParameters;
@@ -320,6 +323,107 @@ class DecisionServicesTest {
         assertThatThrownBy(() -> router.route("Hello"))
                 .isInstanceOf(InvalidDecisionResponseException.class)
                 .hasMessageContaining("MARKETING");
+    }
+
+    // scale questions
+
+    enum Severity {
+        @Description("Cosmetic issue, no impact")
+        LOW,
+        @Description("A feature is degraded, a workaround exists")
+        MEDIUM,
+        HIGH
+    }
+
+    interface IncidentTriage {
+
+        @Decide("How severe is this incident?")
+        Scale<Severity> severity(@V("incident") String incident);
+    }
+
+    @Test
+    void should_ask_scale_question_with_enum_constants_as_levels() {
+
+        FakeDecisionModel model = new FakeDecisionModel(Map.of(
+                "severity",
+                ScaleAnswer.builder()
+                        .mean(1.3)
+                        .probabilities(List.of(0.1, 0.5, 0.4))
+                        .confidence(0.6)
+                        .build()));
+        IncidentTriage triage = DecisionServices.builder(IncidentTriage.class)
+                .decisionModel(model)
+                .build();
+
+        Scale<Severity> severity = triage.severity("Checkout is slow for some customers");
+
+        assertThat(model.request().questions())
+                .containsExactly(Map.entry(
+                        "severity",
+                        ScaleQuestion.of(
+                                "How severe is this incident?",
+                                List.of(
+                                        "Cosmetic issue, no impact",
+                                        "A feature is degraded, a workaround exists",
+                                        "HIGH"))));
+        assertThat(severity.mean()).isEqualTo(1.3);
+        assertThat(severity.mostLikely()).isEqualTo(Severity.MEDIUM);
+        assertThat(severity.probabilities()).containsExactly(
+                Map.entry(Severity.LOW, 0.1), Map.entry(Severity.MEDIUM, 0.5), Map.entry(Severity.HIGH, 0.4));
+        assertThat(severity.probabilityAtLeast(Severity.MEDIUM)).isCloseTo(0.9, offset(1e-9));
+        assertThat(severity.confidence()).isEqualTo(0.6);
+    }
+
+    @Test
+    void should_reject_scale_answer_with_wrong_number_of_levels() {
+
+        IncidentTriage triage = DecisionServices.builder(IncidentTriage.class)
+                .decisionModel(new FakeDecisionModel(Map.of(
+                        "severity",
+                        ScaleAnswer.builder().mean(0.5).probabilities(List.of(0.5, 0.5)).build())))
+                .build();
+
+        assertThatThrownBy(() -> triage.severity("Checkout is slow"))
+                .isInstanceOf(InvalidDecisionResponseException.class)
+                .hasMessageContaining("reported 2 probabilities for 'severity', but Severity has 3 levels");
+    }
+
+    @Test
+    void scale_should_fall_back_to_the_closest_level_without_probabilities() {
+
+        Scale<Severity> severity = Scale.builder(Severity.class).mean(1.6).build();
+
+        assertThat(severity.mostLikely()).isEqualTo(Severity.HIGH);
+        assertThat(severity.probabilities()).isEmpty();
+        assertThatThrownBy(() -> severity.probabilityAtLeast(Severity.HIGH))
+                .isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> severity.probabilityOf(Severity.HIGH)).isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    void scale_should_validate_mean_and_probabilities() {
+
+        assertThatThrownBy(() -> Scale.builder(Severity.class).build())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("mean");
+        assertThatThrownBy(() -> Scale.builder(Severity.class).mean(2.5).build())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("mean must be between 0 and 2");
+        assertThatThrownBy(() -> Scale.builder(Severity.class)
+                        .mean(1.0)
+                        .probabilities(Map.of(Severity.LOW, 1.5))
+                        .build())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("probability");
+        assertThat(Scale.builder(Severity.class)
+                        .mean(1.0)
+                        .probabilities(Map.of(Severity.HIGH, 0.2, Severity.LOW, 0.3))
+                        .build()
+                        .probabilityOf(Severity.MEDIUM))
+                .isZero();
+        assertThat(Scale.builder(Severity.class).mean(1.0).build())
+                .isEqualTo(Scale.builder(Severity.class).mean(1.0).build())
+                .isNotEqualTo(Scale.builder(Severity.class).mean(1.5).build());
     }
 
     // objects with several questions
