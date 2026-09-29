@@ -1,8 +1,9 @@
-package dev.langchain4j.guardrails;
+package dev.langchain4j.decision.it;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.guardrails.DecisionModelInputGuardrail;
 import dev.langchain4j.model.decision.DecisionModel;
 import dev.langchain4j.model.typesafe.TypeSafeDecisionModel;
 import org.junit.jupiter.api.Test;

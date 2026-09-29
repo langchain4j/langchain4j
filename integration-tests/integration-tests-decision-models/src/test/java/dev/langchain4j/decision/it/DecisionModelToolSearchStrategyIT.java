@@ -1,4 +1,4 @@
-package dev.langchain4j.service.tool.search.decision;
+package dev.langchain4j.decision.it;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -8,6 +8,7 @@ import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.model.decision.DecisionModel;
 import dev.langchain4j.model.typesafe.TypeSafeDecisionModel;
 import dev.langchain4j.service.tool.search.ToolSearchRequest;
+import dev.langchain4j.service.tool.search.decision.DecisionModelToolSearchStrategy;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;

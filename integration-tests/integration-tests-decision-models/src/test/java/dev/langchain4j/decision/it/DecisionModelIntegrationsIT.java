@@ -1,4 +1,4 @@
-package dev.langchain4j.model.typesafe;
+package dev.langchain4j.decision.it;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -12,6 +12,7 @@ import dev.langchain4j.model.chat.router.DecisionModelChatModelRouter;
 import dev.langchain4j.model.chat.router.RoutingChatModel;
 import dev.langchain4j.model.decision.DecisionModel;
 import dev.langchain4j.model.scoring.DecisionModelScoringModel;
+import dev.langchain4j.model.typesafe.TypeSafeDecisionModel;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.rag.query.router.DecisionModelQueryRouter;
@@ -22,7 +23,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 @EnabledIfEnvironmentVariable(named = "TYPESAFE_API_KEY", matches = ".+")
-class TypeSafeDecisionModelIntegrationsIT {
+class DecisionModelIntegrationsIT {
 
     DecisionModel decisionModel = TypeSafeDecisionModel.builder()
             .apiKey(System.getenv("TYPESAFE_API_KEY"))
