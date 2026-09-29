@@ -16,7 +16,7 @@ import static dev.langchain4j.service.IllegalConfigurationException.illegalConfi
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.model.decision.DecisionModel;
-import dev.langchain4j.model.decision.InvalidDecisionResponseException;
+import dev.langchain4j.exception.InvalidDecisionResponseException;
 import dev.langchain4j.model.decision.request.ChoiceQuestion;
 import dev.langchain4j.model.decision.request.DecisionRequest;
 import dev.langchain4j.model.decision.request.DecisionRequestParameters;
@@ -28,6 +28,7 @@ import dev.langchain4j.model.decision.response.DecisionResponse;
 import dev.langchain4j.model.decision.response.ScaleAnswer;
 import dev.langchain4j.model.output.structured.Description;
 import dev.langchain4j.service.ParameterNameResolver;
+import dev.langchain4j.internal.Json;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -200,7 +201,7 @@ public final class DecisionMethod {
         for (InputParameter parameter : inputParameters) {
             Object value = args[parameter.index()];
             if (value != null) {
-                input.put(parameter.name(), value);
+                input.put(parameter.name(), toInputValue(value));
             }
         }
         if (input.isEmpty()) {
@@ -214,6 +215,30 @@ public final class DecisionMethod {
                 .questions(questions)
                 .parameters(requestParameters(args))
                 .build();
+    }
+
+    /**
+     * Converts an argument into the structured content accepted by {@link DecisionRequest}: enums become their names
+     * and other objects become maps, using the JSON codec (by default, with their Java field names).
+     */
+    private static Object toInputValue(Object value) {
+        if (value == null || value instanceof String || value instanceof Number || value instanceof Boolean) {
+            return value;
+        }
+        if (value instanceof Enum<?> constant) {
+            return constant.name();
+        }
+        if (value instanceof Map<?, ?> map) {
+            Map<String, Object> result = new LinkedHashMap<>();
+            map.forEach((key, item) -> result.put(String.valueOf(key), toInputValue(item)));
+            return result;
+        }
+        if (value instanceof Collection<?> collection) {
+            List<Object> result = new ArrayList<>();
+            collection.forEach(item -> result.add(toInputValue(item)));
+            return result;
+        }
+        return toInputValue(Json.fromJson(Json.toJson(value), Object.class));
     }
 
     /**
@@ -575,11 +600,6 @@ public final class DecisionMethod {
         private Scale scale(ScaleAnswer answer) {
             Object[] levels = enumType.getEnumConstants();
             List<Double> reported = answer.probabilities();
-            if (!reported.isEmpty() && reported.size() != levels.length) {
-                throw new InvalidDecisionResponseException(
-                        "The model reported %s probabilities for '%s', but %s has %s levels"
-                                .formatted(reported.size(), name, enumType.getSimpleName(), levels.length));
-            }
             Map probabilities = new EnumMap(enumType);
             for (int i = 0; i < reported.size(); i++) {
                 probabilities.put(levels[i], reported.get(i));

@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.offset;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import dev.langchain4j.model.decision.InvalidDecisionResponseException;
+import dev.langchain4j.exception.InvalidDecisionResponseException;
 import dev.langchain4j.model.decision.DecisionModel;
 import dev.langchain4j.model.decision.response.ScaleAnswer;
 import dev.langchain4j.model.decision.request.ScaleQuestion;
@@ -385,7 +385,7 @@ class DecisionServicesTest {
 
         assertThatThrownBy(() -> triage.severity("Checkout is slow"))
                 .isInstanceOf(InvalidDecisionResponseException.class)
-                .hasMessageContaining("reported 2 probabilities for 'severity', but Severity has 3 levels");
+                .hasMessageContaining("'severity' has 2 level probabilities, but the question has 3 levels");
     }
 
     @Test
@@ -527,7 +527,8 @@ class DecisionServicesTest {
         DecisionResult<Team> result = router.route("I was charged twice");
 
         assertThat(result.content()).isEqualTo(Team.BILLING);
-        assertThat(result.response().choice("route")).isEqualTo(BILLING_ANSWER);
+        assertThat(result.response().choice("route").value()).isEqualTo(BILLING_ANSWER.value());
+        assertThat(result.response().choice("route").probabilities()).isEqualTo(BILLING_ANSWER.probabilities());
         assertThat(result.modelName()).isEqualTo("fake-model");
         assertThat(result.tokenUsage()).isEqualTo(new TokenUsage(10, 2));
     }
