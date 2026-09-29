@@ -1033,9 +1033,9 @@ class ToolSpecificationHelperTest {
         List<Map<String, Object>> json = toolList(text);
         List<ToolSpecification> tools = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
         assertThat(tools).hasSize(1);
-        Map<String, String> headers =
-                (Map<String, String>) tools.get(0).metadata().get(MCP_PARAM_HEADERS);
-        assertThat(headers).containsExactly(Map.entry("region", "Region"));
+        Map<List<String>, String> headers =
+                (Map<List<String>, String>) tools.get(0).metadata().get(MCP_PARAM_HEADERS);
+        assertThat(headers).containsExactly(Map.entry(List.of("region"), "Region"));
     }
 
     @SuppressWarnings("unchecked")
@@ -1064,9 +1064,9 @@ class ToolSpecificationHelperTest {
                 """;
         List<Map<String, Object>> json = toolList(text);
         List<ToolSpecification> tools = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
-        Map<String, String> headers =
-                (Map<String, String>) tools.get(0).metadata().get(MCP_PARAM_HEADERS);
-        assertThat(headers).containsExactly(Map.entry("config.region", "Region"));
+        Map<List<String>, String> headers =
+                (Map<List<String>, String>) tools.get(0).metadata().get(MCP_PARAM_HEADERS);
+        assertThat(headers).containsExactly(Map.entry(List.of("config", "region"), "Region"));
     }
 
     @Test
@@ -1252,7 +1252,7 @@ class ToolSpecificationHelperTest {
         List<Map<String, Object>> json = toolList(text);
         List<ToolSpecification> tools = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
         assertThat(tools).hasSize(1);
-        assertThat(tools.get(0).metadata().get(MCP_PARAM_HEADERS)).isEqualTo(Map.of("tenant", "X-Tenant"));
+        assertThat(tools.get(0).metadata().get(MCP_PARAM_HEADERS)).isEqualTo(Map.of(List.of("tenant"), "X-Tenant"));
     }
 
     @Test
@@ -1642,8 +1642,7 @@ class ToolSpecificationHelperTest {
         JsonObjectSchema parameters = toolSpecification.parameters();
 
         assertThat(parameters.properties().get("config")).isInstanceOf(JsonObjectSchema.class);
-        JsonObjectSchema config =
-                (JsonObjectSchema) parameters.properties().get("config");
+        JsonObjectSchema config = (JsonObjectSchema) parameters.properties().get("config");
         assertThat(config.properties()).containsOnlyKeys("identifier");
         assertThat(config.properties().get("identifier")).isInstanceOf(JsonStringSchema.class);
     }
