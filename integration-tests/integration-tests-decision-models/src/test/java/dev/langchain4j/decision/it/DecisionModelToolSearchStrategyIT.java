@@ -6,7 +6,6 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.model.decision.DecisionModel;
-import dev.langchain4j.model.typesafe.TypeSafeDecisionModel;
 import dev.langchain4j.service.tool.search.ToolSearchRequest;
 import dev.langchain4j.service.tool.search.decision.DecisionModelToolSearchStrategy;
 import java.util.List;
@@ -16,15 +15,10 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 @EnabledIfEnvironmentVariable(named = "TYPESAFE_API_KEY", matches = ".+")
 class DecisionModelToolSearchStrategyIT {
 
-    DecisionModel decisionModel = TypeSafeDecisionModel.builder()
-            .apiKey(System.getenv("TYPESAFE_API_KEY"))
-            .modelName("jev-1.13.0")
-            .logRequests(true)
-            .logResponses(true)
-            .build();
+    DecisionModel decisionModel = DecisionModels.typeSafe();
 
     @Test
-    void tool_search_strategy_should_find_relevant_tools() {
+    void should_find_relevant_tools() {
 
         DecisionModelToolSearchStrategy strategy = new DecisionModelToolSearchStrategy(decisionModel);
 
@@ -41,7 +35,8 @@ class DecisionModelToolSearchStrategyIT {
                         .build())
                 .foundToolNames();
 
-        assertThat(found).containsExactly("get_weather_forecast");
+        assertThat(found).first().isEqualTo("get_weather_forecast");
+        assertThat(found).doesNotContain("send_email", "create_invoice");
     }
 
     static ToolSpecification tool(String name, String description) {

@@ -5,22 +5,16 @@ import static org.assertj.core.api.Assertions.assertThat;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.guardrails.DecisionModelInputGuardrail;
 import dev.langchain4j.model.decision.DecisionModel;
-import dev.langchain4j.model.typesafe.TypeSafeDecisionModel;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 @EnabledIfEnvironmentVariable(named = "TYPESAFE_API_KEY", matches = ".+")
 class DecisionModelGuardrailsIT {
 
-    DecisionModel decisionModel = TypeSafeDecisionModel.builder()
-            .apiKey(System.getenv("TYPESAFE_API_KEY"))
-            .modelName("jev-1.13.0")
-            .logRequests(true)
-            .logResponses(true)
-            .build();
+    DecisionModel decisionModel = DecisionModels.typeSafe();
 
     @Test
-    void input_guardrail_should_reject_prompt_injection() {
+    void should_reject_prompt_injection() {
 
         DecisionModelInputGuardrail guardrail = DecisionModelInputGuardrail.builder()
                 .decisionModel(decisionModel)

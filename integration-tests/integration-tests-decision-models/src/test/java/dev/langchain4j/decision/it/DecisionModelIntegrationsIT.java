@@ -12,7 +12,6 @@ import dev.langchain4j.model.chat.router.DecisionModelChatModelRouter;
 import dev.langchain4j.model.chat.router.RoutingChatModel;
 import dev.langchain4j.model.decision.DecisionModel;
 import dev.langchain4j.model.scoring.DecisionModelScoringModel;
-import dev.langchain4j.model.typesafe.TypeSafeDecisionModel;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.rag.query.router.DecisionModelQueryRouter;
@@ -25,15 +24,10 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 @EnabledIfEnvironmentVariable(named = "TYPESAFE_API_KEY", matches = ".+")
 class DecisionModelIntegrationsIT {
 
-    DecisionModel decisionModel = TypeSafeDecisionModel.builder()
-            .apiKey(System.getenv("TYPESAFE_API_KEY"))
-            .modelName("jev-1.13.0")
-            .logRequests(true)
-            .logResponses(true)
-            .build();
+    DecisionModel decisionModel = DecisionModels.typeSafe();
 
     @Test
-    void scoring_model_should_rank_relevant_documents_first() {
+    void should_rank_relevant_documents_first() {
 
         List<Double> scores = new DecisionModelScoringModel(decisionModel)
                 .scoreAll(
@@ -48,7 +42,7 @@ class DecisionModelIntegrationsIT {
     }
 
     @Test
-    void query_router_should_route_to_relevant_retrievers_only() {
+    void should_route_query_to_relevant_retrievers_only() {
 
         ContentRetriever hr = mock(ContentRetriever.class);
         ContentRetriever wiki = mock(ContentRetriever.class);
@@ -63,7 +57,7 @@ class DecisionModelIntegrationsIT {
     }
 
     @Test
-    void routing_chat_model_should_route_by_description() {
+    void should_route_chat_requests_by_description() {
 
         ChatModel small = new FixedChatModel("small");
         ChatModel large = new FixedChatModel("large");
