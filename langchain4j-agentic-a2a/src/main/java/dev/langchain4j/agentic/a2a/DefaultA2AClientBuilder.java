@@ -50,6 +50,7 @@ import org.a2aproject.sdk.client.transport.jsonrpc.JSONRPCTransportConfigBuilder
 import org.a2aproject.sdk.spec.A2AClientError;
 import org.a2aproject.sdk.spec.A2AClientException;
 import org.a2aproject.sdk.spec.AgentCard;
+import org.a2aproject.sdk.spec.AgentInterface;
 import org.a2aproject.sdk.spec.Artifact;
 import org.a2aproject.sdk.spec.Message;
 import org.a2aproject.sdk.spec.MessageSendParams;
@@ -80,6 +81,7 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
     private final String name;
     private String agentId;
     private InternalAgent parent;
+    private String tenant;
 
     private String[] inputKeys;
     private String outputKey;
@@ -97,6 +99,7 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
         this.name = agentCard.name();
         this.agentId = this.name;
         this.agentServiceClass = agentServiceClass;
+        this.tenant = tenant != null ? tenant : extractTenantFromAgentCard(agentCard);
     }
 
     // For testing only: bypasses URL fetch and pre-sets the client.
@@ -163,6 +166,7 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
             return switch (method.getName()) {
                 case "agentCard" -> agentCard;
                 case "inputKeys" -> inputKeys;
+                case "tenant" -> tenant;
                 default ->
                     throw new UnsupportedOperationException(
                             "Unknown method on A2AClientInstance class : " + method.getName());
@@ -212,8 +216,8 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
         String contextId = null;
         String taskId = null;
         // Per-call tenant extracted from the @A2ATenantId-annotated parameter at invocation time.
-        // Distinct from the instance field 'tenant', which is used only during agent-card discovery.
-        String callTenant = null;
+        // Falls back to the instance-level tenant (from agent card URL or @A2AClientAgent.tenant()).
+        String callTenant = this.tenant;
         String contextIdKey = null;
         String taskIdKey = null;
 
@@ -236,7 +240,10 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
                         taskIdKey = ParameterNameResolver.name(parameters[i]);
                     }
                 } else if (parameters[i].getAnnotation(A2ATenantId.class) != null) {
-                    callTenant = args[i] != null && !args[i].toString().isEmpty() ? args[i].toString() : null;
+                    // @A2ATenantId parameter overrides the instance-level tenant only if non-empty
+                    if (args[i] != null && !args[i].toString().isEmpty()) {
+                        callTenant = args[i].toString();
+                    }
                 } else {
                     parts.add(new TextPart(args[i].toString()));
                 }
@@ -613,5 +620,24 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
     @Override
     public AgenticSystemTopology topology() {
         return AgenticSystemTopology.AI_AGENT;
+    }
+
+    @Override
+    public DefaultA2AClientBuilder<T> tenant(String tenant) {
+        if (tenant != null && !tenant.isEmpty()) {
+            this.tenant = tenant;
+        }
+        return this;
+    }
+
+    static String extractTenantFromAgentCard(AgentCard agentCard) {
+        if (agentCard == null || agentCard.supportedInterfaces() == null) {
+            return null;
+        }
+        return agentCard.supportedInterfaces().stream()
+                .map(AgentInterface::tenant)
+                .filter(t -> t != null && !t.isEmpty())
+                .findFirst()
+                .orElse(null);
     }
 }

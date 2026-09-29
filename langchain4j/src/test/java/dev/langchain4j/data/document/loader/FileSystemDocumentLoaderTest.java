@@ -185,6 +185,7 @@ class FileSystemDocumentLoaderTest implements WithAssertions {
                         "test-file-4.banana",
                         "junit-platform.properties",
                         "dev.langchain4j.spi.services.CompletableFutureAdapter",
+                        "dev.langchain4j.spi.services.DecisionServicesFactory",
                         "dev.langchain4j.spi.services.PublisherAdapter");
 
         // when-then
