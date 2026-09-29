@@ -94,7 +94,8 @@ public class DecisionModelInputGuardrail implements InputGuardrail {
         }
 
         /**
-         * Adds checks, as yes/no questions keyed by check name. See {@link #check(String, String)}.
+         * Adds checks, as yes/no questions keyed by check name, to the checks added so far. See
+         * {@link #check(String, String)}.
          */
         public Builder checks(Map<String, String> checks) {
             if (checks != null) {

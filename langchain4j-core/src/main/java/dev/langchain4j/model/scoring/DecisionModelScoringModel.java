@@ -1,5 +1,6 @@
 package dev.langchain4j.model.scoring;
 
+import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
@@ -17,9 +18,11 @@ import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.model.scoring.request.ScoringRequest;
 import dev.langchain4j.model.scoring.response.ScoringResponse;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * A {@link ScoringModel} backed by a {@link DecisionModel}: the score of a segment is the probability that the
@@ -44,7 +47,8 @@ import java.util.concurrent.CompletableFuture;
 public class DecisionModelScoringModel implements ScoringModel {
 
     /**
-     * The default template of the question asked for each segment.
+     * The default template of the question asked for each segment:
+     * {@code "Does the document help answer the query?\nDocument: {{document}}"}.
      */
     public static final PromptTemplate DEFAULT_QUESTION_TEMPLATE =
             PromptTemplate.from("Does the document help answer the query?\nDocument: {{document}}");
@@ -60,7 +64,7 @@ public class DecisionModelScoringModel implements ScoringModel {
     protected DecisionModelScoringModel(Builder builder) {
         this.decisionModel = ensureNotNull(builder.decisionModel, "decisionModel");
         this.questionTemplate = getOrDefault(builder.questionTemplate, DEFAULT_QUESTION_TEMPLATE);
-        ensureContains(questionTemplate, "document");
+        validate(questionTemplate);
         this.maxSegmentsPerRequest = builder.maxSegmentsPerRequest == null
                 ? Integer.MAX_VALUE
                 : ensureGreaterThanZero(builder.maxSegmentsPerRequest, "maxSegmentsPerRequest");
@@ -87,21 +91,55 @@ public class DecisionModelScoringModel implements ScoringModel {
         List<String> documents = ensureNotNull(request.documents(), "documents");
         String query = ensureNotBlank(request.query(), "query");
 
-        CompletableFuture<ScoringResponse> result = CompletableFuture.completedFuture(
-                ScoringResponse.builder().scores(List.of()).build());
-        for (List<String> batch : batches(documents)) {
-            result = result.thenCompose(previous -> decisionModel
-                    .decideAsync(toRequest(batch, query))
-                    .thenApply(response -> {
-                        List<Double> scores = new ArrayList<>(previous.scores());
-                        scores.addAll(scores(response, batch.size()));
-                        return ScoringResponse.builder()
-                                .scores(scores)
-                                .tokenUsage(TokenUsage.sum(previous.tokenUsage(), response.tokenUsage()))
-                                .build();
-                    }));
-        }
+        CompletableFuture<ScoringResponse> result = new CompletableFuture<>();
+        AtomicReference<CompletableFuture<?>> inFlight = new AtomicReference<>();
+        result.whenComplete((response, error) -> {
+            if (result.isCancelled() && inFlight.get() != null) {
+                inFlight.get().cancel(true);
+            }
+        });
+        scoreBatches(batches(documents).iterator(), query, List.of(), null, result, inFlight);
         return result;
+    }
+
+    private void scoreBatches(
+            Iterator<List<String>> batches,
+            String query,
+            List<Double> scores,
+            TokenUsage tokenUsage,
+            CompletableFuture<ScoringResponse> result,
+            AtomicReference<CompletableFuture<?>> inFlight) {
+        if (result.isDone()) {
+            return;
+        }
+        if (!batches.hasNext()) {
+            result.complete(ScoringResponse.builder().scores(scores).tokenUsage(tokenUsage).build());
+            return;
+        }
+        List<String> batch = batches.next();
+        CompletableFuture<DecisionResponse> response;
+        try {
+            response = decisionModel.decideAsync(toRequest(batch, query));
+        } catch (RuntimeException e) {
+            result.completeExceptionally(e);
+            return;
+        }
+        inFlight.set(response);
+        response.whenComplete((decisionResponse, error) -> {
+            if (error != null) {
+                result.completeExceptionally(unwrapCompletionException(error));
+                return;
+            }
+            List<Double> allScores = new ArrayList<>(scores);
+            allScores.addAll(scores(decisionResponse, batch.size()));
+            scoreBatches(
+                    batches,
+                    query,
+                    allScores,
+                    TokenUsage.sum(tokenUsage, decisionResponse.tokenUsage()),
+                    result,
+                    inFlight);
+        });
     }
 
     private List<List<String>> batches(List<String> documents) {
@@ -133,10 +171,17 @@ public class DecisionModelScoringModel implements ScoringModel {
         return request.build();
     }
 
-    static void ensureContains(PromptTemplate template, String variable) {
-        if (!template.template().contains("{{" + variable + "}}")) {
+    private static void validate(PromptTemplate template) {
+        if (!template.template().contains("{{document}}")) {
             throw new IllegalArgumentException(
-                    "The question template must contain {{%s}}, but was: %s".formatted(variable, template.template()));
+                    "The question template must contain {{document}}, but was: " + template.template());
+        }
+        try {
+            template.apply(Map.of("document", "document"));
+        } catch (RuntimeException e) {
+            throw new IllegalArgumentException(
+                    "The question template can only use the {{document}} variable, but was: " + template.template(),
+                    e);
         }
     }
 
@@ -166,9 +211,7 @@ public class DecisionModelScoringModel implements ScoringModel {
          * Sets the template of the yes/no question asked for each segment, which must contain the
          * {@code {{document}}} variable (the text of the segment). The score is the probability of "yes".
          * <p>
-         * Default value is {@link DecisionModelScoringModel#DEFAULT_QUESTION_TEMPLATE}:
-         * "Does the document help answer the query?
-Document: {{document}}".
+         * Default value is {@link DecisionModelScoringModel#DEFAULT_QUESTION_TEMPLATE}.
          */
         public Builder questionTemplate(PromptTemplate questionTemplate) {
             this.questionTemplate = questionTemplate;

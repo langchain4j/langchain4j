@@ -42,6 +42,13 @@ import java.util.function.Function;
 @Experimental
 public class DecisionModelToolSearchStrategy implements ToolSearchStrategy {
 
+    /**
+     * The default template of the question asked for each tool:
+     * {@code "Would this tool help to handle the request?\nTool: {{name}}\nDescription: {{description}}"}.
+     */
+    public static final PromptTemplate DEFAULT_QUESTION_TEMPLATE = DecisionModelToolSelector.DEFAULT_QUESTION_TEMPLATE;
+
+
     private static final String DEFAULT_TOOL_NAME = "tool_search_tool";
     private static final String DEFAULT_TOOL_DESCRIPTION = "Finds available tools that can help with a task";
     private static final String DEFAULT_TOOL_ARGUMENT_NAME = "query";
@@ -156,10 +163,7 @@ public class DecisionModelToolSearchStrategy implements ToolSearchStrategy {
          * variable (the name of the tool) and can contain {@code {{description}}} (its description, empty if it has
          * none).
          * <p>
-         * Default value is {@link DecisionModelToolSelector#DEFAULT_QUESTION_TEMPLATE}: "Would this tool help to
-         * handle the request?
-Tool: {{name}}
-Description: {{description}}".
+         * Default value is {@link DecisionModelToolSearchStrategy#DEFAULT_QUESTION_TEMPLATE}.
          */
         public Builder questionTemplate(PromptTemplate questionTemplate) {
             this.questionTemplate = questionTemplate;
@@ -169,7 +173,7 @@ Description: {{description}}".
         /**
          * Sets the maximum number of tools returned by a search.
          * <p>
-         * Default value is {@value DecisionModelToolSelector#DEFAULT_MAX_RESULTS}.
+         * Default value is 5.
          */
         public Builder maxResults(Integer maxResults) {
             this.maxResults = maxResults;
@@ -179,7 +183,7 @@ Description: {{description}}".
         /**
          * Sets the minimum probability of "yes" for a tool to be returned.
          * <p>
-         * Default value is {@value DecisionModelToolSelector#DEFAULT_MIN_PROBABILITY}.
+         * Default value is 0.5.
          */
         public Builder minProbability(Double minProbability) {
             this.minProbability = minProbability;

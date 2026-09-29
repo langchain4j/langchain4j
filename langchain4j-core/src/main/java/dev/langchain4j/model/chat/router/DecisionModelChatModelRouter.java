@@ -5,11 +5,13 @@ import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureBetween;
+import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.util.stream.Collectors.joining;
 
 import dev.langchain4j.Experimental;
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.UserMessage;
@@ -19,8 +21,10 @@ import dev.langchain4j.model.decision.request.ChoiceQuestion;
 import dev.langchain4j.model.decision.request.DecisionRequest;
 import dev.langchain4j.model.decision.response.ChoiceAnswer;
 import dev.langchain4j.model.decision.response.DecisionResponse;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
@@ -41,9 +45,11 @@ import org.slf4j.LoggerFactory;
  * }</pre>
  * Every route needs a description; this is checked when the routing chat model is created.
  * <p>
- * The decision model receives the text of the last user message of the request, as sent to the chat model. In an AI
- * Service, this is the user message after the prompt template, retrieved content and output format instructions were
- * added to it.
+ * The decision model receives the last user message of the request, as sent to the chat model. In an AI Service, this
+ * is the user message after the prompt template, retrieved content and output format instructions were added to it.
+ * Content other than text is represented by a marker, such as {@code [attached image]}, so that a route whose
+ * description mentions images can be chosen for it. To also take the previous messages of the conversation into
+ * account, which helps with short follow-ups such as "yes, go ahead", set {@link Builder#maxMessages(Integer)}.
  * <p>
  * The router returns {@code null} (so the default route of the routing chat model is used) when the request contains
  * no user message, and when the probability of the chosen route is below {@link Builder#minProbability(Double)} or the
@@ -89,6 +95,7 @@ public class DecisionModelChatModelRouter implements ChatModelRouter {
     private final String question;
     private final Double minProbability;
     private final FallbackStrategy fallbackStrategy;
+    private final int maxMessages;
 
     public DecisionModelChatModelRouter(DecisionModel decisionModel) {
         this(builder().decisionModel(decisionModel));
@@ -101,6 +108,7 @@ public class DecisionModelChatModelRouter implements ChatModelRouter {
                 ? null
                 : ensureBetween(builder.minProbability, 0, 1, "minProbability");
         this.fallbackStrategy = getOrDefault(builder.fallbackStrategy, FallbackStrategy.DEFAULT_ROUTE);
+        this.maxMessages = ensureGreaterThanZero(getOrDefault(builder.maxMessages, 1), "maxMessages");
     }
 
     @Override
@@ -168,15 +176,15 @@ public class DecisionModelChatModelRouter implements ChatModelRouter {
     }
 
     private DecisionRequest toDecisionRequest(ChatModelRoutingRequest request) {
-        String userMessage = lastUserMessageText(request.chatRequest().messages());
-        if (userMessage == null) {
+        Object input = input(request.chatRequest().messages());
+        if (input == null) {
             return null;
         }
         validate(request.routes());
         Map<String, String> options = new LinkedHashMap<>();
         request.routes().forEach(route -> options.put(route.name(), route.description()));
         return DecisionRequest.builder()
-                .input(userMessage)
+                .input(input)
                 .question(QUESTION_NAME, ChoiceQuestion.of(question, options))
                 .build();
     }
@@ -189,17 +197,49 @@ public class DecisionModelChatModelRouter implements ChatModelRouter {
         return answer.value();
     }
 
-    private static String lastUserMessageText(List<ChatMessage> messages) {
-        for (int i = messages.size() - 1; i >= 0; i--) {
-            if (messages.get(i) instanceof UserMessage userMessage) {
-                String text = userMessage.contents().stream()
-                        .filter(TextContent.class::isInstance)
-                        .map(content -> ((TextContent) content).text())
-                        .collect(joining("\n"));
-                return text.isBlank() ? null : text;
+    /**
+     * The last user message or, with {@code maxMessages > 1}, the last messages of the conversation up to and
+     * including the last user message. Returns {@code null} if there is no user message with content.
+     */
+    private Object input(List<ChatMessage> messages) {
+        int lastUserMessage = -1;
+        for (int i = messages.size() - 1; i >= 0 && lastUserMessage < 0; i--) {
+            if (messages.get(i) instanceof UserMessage) {
+                lastUserMessage = i;
             }
         }
-        return null;
+        if (lastUserMessage < 0) {
+            return null;
+        }
+        String userMessage = text(messages.get(lastUserMessage));
+        if (userMessage.isBlank()) {
+            return null;
+        }
+        if (maxMessages == 1) {
+            return userMessage;
+        }
+        List<Map<String, String>> conversation = new ArrayList<>();
+        for (ChatMessage message : messages.subList(0, lastUserMessage + 1)) {
+            String text = text(message);
+            if (!text.isBlank()) {
+                conversation.add(Map.of("role", message instanceof UserMessage ? "user" : "assistant", "text", text));
+            }
+        }
+        return conversation.subList(Math.max(0, conversation.size() - maxMessages), conversation.size());
+    }
+
+    private static String text(ChatMessage message) {
+        if (message instanceof UserMessage userMessage) {
+            return userMessage.contents().stream()
+                    .map(content -> content instanceof TextContent textContent
+                            ? textContent.text()
+                            : "[attached " + content.type().name().toLowerCase(Locale.ROOT) + "]")
+                    .collect(joining("\n"));
+        }
+        if (message instanceof AiMessage aiMessage && aiMessage.text() != null) {
+            return aiMessage.text();
+        }
+        return "";
     }
 
     public static Builder builder() {
@@ -212,6 +252,7 @@ public class DecisionModelChatModelRouter implements ChatModelRouter {
         private String question;
         private Double minProbability;
         private FallbackStrategy fallbackStrategy;
+        private Integer maxMessages;
 
         /**
          * Sets the decision model that selects the route. Required.
@@ -249,6 +290,18 @@ public class DecisionModelChatModelRouter implements ChatModelRouter {
          */
         public Builder fallbackStrategy(FallbackStrategy fallbackStrategy) {
             this.fallbackStrategy = fallbackStrategy;
+            return this;
+        }
+
+        /**
+         * Sets the maximum number of messages of the conversation (user messages and text responses of the AI, up to
+         * and including the last user message) that the decision model receives. Values greater than 1 help with
+         * follow-ups whose meaning depends on the previous messages, but make the decision slower.
+         * <p>
+         * Default value is 1: only the last user message.
+         */
+        public Builder maxMessages(Integer maxMessages) {
+            this.maxMessages = maxMessages;
             return this;
         }
 

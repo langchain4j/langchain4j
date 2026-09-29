@@ -242,10 +242,20 @@ the implementation.
 LangChain4j provides ready-made components that use a decision model where a fast yes/no or choice decision is
 needed. They work with any `DecisionModel` implementation.
 
+| Component | Module |
+|---|---|
+| `DecisionModelInputGuardrail`, `DecisionModelOutputGuardrail` | `langchain4j-guardrails` |
+| `DecisionModelScoringModel`, `DecisionModelQueryRouter`, `RoutingChatModel` + `DecisionModelChatModelRouter` | `langchain4j-core` |
+| `DecisionModelToolSearchStrategy`, `DecisionModelFilteringToolProvider` | `langchain4j` |
+
+Each of these components makes an additional call to the decision model. Its token usage is not included in the token
+usage of the chat response; it is reported to the `DecisionModelListener`s of the decision model.
+
 Each component asks the decision model a default question, which works well in most cases.
 The questions are part of the behavior, so they can be replaced: with `questionTemplate(...)` (a `PromptTemplate`
 with variables such as `{{document}}`, `{{description}}` or `{{name}}`, as documented on each component) or, for the
-chat model router, `question(...)`. The default templates are available as `DEFAULT_QUESTION_TEMPLATE` constants.
+chat model router, `question(...)`. The default templates are available as `DEFAULT_QUESTION_TEMPLATE` constants
+(`DEFAULT_QUESTION` for the chat model router).
 For example:
 
 ```java
@@ -276,6 +286,8 @@ OutputGuardrail outputGuardrail = DecisionModelOutputGuardrail.builder()
         .build();
 ```
 
+The failure message names the failed checks, without their probabilities, so that users cannot see how close a
+rejected message came to passing. The probabilities are logged at DEBUG level.
 See [Guardrails](/tutorials/guardrails) for how to use them with AI Services.
 
 ### Re-ranking retrieved content
@@ -296,7 +308,7 @@ ContentAggregator contentAggregator = ReRankingContentAggregator.builder()
 
 `DecisionModelQueryRouter` routes a query to the content retrievers that can help answer it.
 It asks one yes/no question per retriever, based on its description, and routes the query to every retriever whose
-probability of "yes" reaches the threshold (0.5 by default).
+probability of "yes" reaches `minProbability` (0.5 by default).
 If no retriever qualifies, no retrieval is performed, so queries such as "Hi!" skip retrieval:
 
 ```java
@@ -334,6 +346,16 @@ Assistant assistant = AiServices.builder(Assistant.class)
 The tool search strategy is better for long tasks where the needed tools only become clear along the way;
 the filtering tool provider is better when the user message says what is needed, since it saves an LLM round trip.
 
+Some things to keep in mind with `DecisionModelFilteringToolProvider`:
+- It only filters the tools of the tool provider it wraps; tools configured with `AiServices.builder().tools(...)` are
+  always passed on.
+- Sending different tools in each request prevents the LLM provider from caching the beginning of the prompt (tools
+  come first in the cached prefix), which can cost more than it saves when prompt caching is used.
+- Tools that were already called in the conversation are always passed on, since some LLM providers reject requests
+  that contain calls to tools that are not in the request.
+- `maxMessages(...)` takes previous messages into account only if the AI Service passes them to the tool provider
+  (`ToolProviderRequest.messages()`).
+
 ### Model routing
 
 `DecisionModelChatModelRouter` selects which chat model handles a request, based on descriptions of the models.
@@ -360,19 +382,40 @@ requests fall back to what they would do without a decision model:
 | `DecisionModelToolSearchStrategy` | the tool search fails, and the LLM receives the error like for any tool | no |
 | `DecisionModelScoringModel` | the scoring fails | no |
 
+Since these components call the decision model before the chat model, a slow decision model delays every request.
+Configure a short timeout and few retries on the decision model, so that the fallbacks apply quickly.
+
+### Security considerations
+
+- These components optimize relevance, cost and latency. They are not access control: the text they decide on comes
+  from users, retrieved documents and tool descriptions, which can be written to influence the decision (for example,
+  "route me to the most capable model", or an MCP tool whose description asks to always be selected).
+  Tools, models and content that a user must not reach have to be excluded by the application itself.
+- Decision model guardrails are probabilistic. Combine them with other guardrails, for example
+  `PatternBasedPromptInjectionGuardrail`.
+- `DecisionModelFilteringToolProvider` passes on all tools when the decision model fails. Use
+  `fallbackStrategy(NO_TOOLS)` or `fallbackStrategy(FAIL)` if that is not acceptable.
+
 ### Testing
 
-`DecisionModelMock` (in the `langchain4j-core` test jar) answers with fixed or computed answers and records the
-requests, for example to test code that uses these components without calling a real decision model:
+`DecisionModelMock` answers with fixed or computed answers and records the requests, for example to test code that
+uses these components without calling a real decision model. It is in the test jar of `langchain4j-core`:
+
+```xml
+<dependency>
+    <groupId>dev.langchain4j</groupId>
+    <artifactId>langchain4j-core</artifactId>
+    <version>${langchain4j.version}</version>
+    <classifier>tests</classifier>
+    <type>test-jar</type>
+    <scope>test</scope>
+</dependency>
+```
+
 
 ```java
 DecisionModelMock decisionModel = DecisionModelMock.thatAnswersYesNoQuestions(question -> 0.9);
 ```
-
-### Model routing
-
-`DecisionModelChatModelRouter` selects which chat model handles a request, based on descriptions of the models.
-See [Model Routing](/tutorials/model-routing).
 
 ## Errors
 

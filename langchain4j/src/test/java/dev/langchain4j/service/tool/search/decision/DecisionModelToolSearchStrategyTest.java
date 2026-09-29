@@ -122,6 +122,45 @@ class DecisionModelToolSearchStrategyTest {
     }
 
     @Test
+    void should_reject_question_template_with_unknown_variables() {
+
+        assertThatThrownBy(() -> DecisionModelToolSearchStrategy.builder()
+                        .decisionModel(decisionModel)
+                        .questionTemplate(PromptTemplate.from("Is {{name}} useful for {{task}}?"))
+                        .build())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("can only use the {{name}} and {{description}} variables");
+    }
+
+    @Test
+    void should_propagate_decision_model_errors() {
+
+        DecisionModelToolSearchStrategy strategy = new DecisionModelToolSearchStrategy(
+                DecisionModelMock.thatAlwaysThrowsExceptionWithMessage("down"));
+
+        assertThatThrownBy(() -> strategy.search(searchRequest("{\"query\": \"weather\"}")))
+                .hasMessage("down");
+    }
+
+    @Test
+    void should_not_call_decision_model_without_searchable_tools() {
+
+        ToolSearchResult result = new DecisionModelToolSearchStrategy(decisionModel)
+                .search(ToolSearchRequest.builder()
+                        .toolExecutionRequest(ToolExecutionRequest.builder()
+                                .name("tool_search_tool")
+                                .arguments("{\"query\": \"weather\"}")
+                                .build())
+                        .searchableTools(List.of())
+                        .invocationContext(InvocationContext.builder().build())
+                        .build());
+
+        assertThat(result.foundToolNames()).isEmpty();
+        assertThat(result.toolResultMessageText()).isEqualTo("No matching tools found");
+        assertThat(decisionModel.requests()).isEmpty();
+    }
+
+    @Test
     void should_describe_search_tool() {
 
         List<ToolSpecification> tools =

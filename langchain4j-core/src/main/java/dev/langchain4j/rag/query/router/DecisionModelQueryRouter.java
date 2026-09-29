@@ -7,7 +7,6 @@ import static dev.langchain4j.internal.ValidationUtils.ensureBetween;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static dev.langchain4j.rag.query.router.LanguageModelQueryRouter.FallbackStrategy.DO_NOT_ROUTE;
 import static java.util.Collections.emptyList;
 
 import dev.langchain4j.Experimental;
@@ -19,7 +18,6 @@ import dev.langchain4j.model.decision.request.YesNoQuestion;
 import dev.langchain4j.model.decision.response.DecisionResponse;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.query.Query;
-import dev.langchain4j.rag.query.router.LanguageModelQueryRouter.FallbackStrategy;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
@@ -35,10 +33,13 @@ import org.slf4j.LoggerFactory;
  * A {@link QueryRouter} that uses a {@link DecisionModel} to decide which {@link ContentRetriever}s can help answer
  * the query.
  * <p>
- * For each retriever, the decision model answers a yes/no question ("Could this data source contain information that
- * helps answer the query?"), all in a single call. The query is routed to every retriever whose probability of "yes"
- * reaches the minimum probability (0.5 by default). When no retriever qualifies, no retrieval is performed, which is useful for queries that do
- * not need retrieval at all (e.g. "Hi!").
+ * For each retriever, the decision model answers a yes/no question about whether the retriever, described by its
+ * description, could help answer the query (see {@link #DEFAULT_QUESTION_TEMPLATE}), all in a single call. The query is
+ * routed to every retriever whose probability of "yes" reaches the minimum probability (0.5 by default). When no
+ * retriever qualifies, no retrieval is performed, which is useful for queries that do not need retrieval at all
+ * (e.g. "Hi!"). The decision model only sees the query itself, so for follow-up questions in a conversation, combine
+ * it with a query transformer that makes queries self-contained, such as
+ * {@link dev.langchain4j.rag.query.transformer.CompressingQueryTransformer}.
  * <pre>{@code
  * QueryRouter queryRouter = DecisionModelQueryRouter.builder()
  *         .decisionModel(decisionModel)
@@ -47,8 +48,8 @@ import org.slf4j.LoggerFactory;
  *                 wikiRetriever, "Engineering wiki: services, deployments, on-call"))
  *         .build();
  * }</pre>
- * If the decision model fails, the {@link FallbackStrategy} applies, like in {@link LanguageModelQueryRouter}: by
- * default, no content is retrieved and a warning is logged.
+ * If the decision model fails, the {@link FallbackStrategy} applies: by default, no content is retrieved and a warning
+ * is logged.
  *
  * @since 1.21.0
  */
@@ -58,11 +59,33 @@ public class DecisionModelQueryRouter implements QueryRouter {
     private static final Logger log = LoggerFactory.getLogger(DecisionModelQueryRouter.class);
 
     /**
-     * The default template of the question asked for each retriever.
+     * The default template of the question asked for each retriever:
+     * {@code "Could the following data source contain information that helps answer the query?\n{{description}}"}.
      */
     public static final PromptTemplate DEFAULT_QUESTION_TEMPLATE = PromptTemplate.from(
             "Could the following data source contain information that helps answer the query?\n{{description}}");
     private static final double DEFAULT_MIN_PROBABILITY = 0.5;
+
+    /**
+     * What the router does when the decision model fails.
+     */
+    public enum FallbackStrategy {
+
+        /**
+         * The query is not routed to any retriever, so no content is retrieved, and a warning is logged.
+         */
+        DO_NOT_ROUTE,
+
+        /**
+         * The query is routed to all retrievers, and a warning is logged.
+         */
+        ROUTE_TO_ALL,
+
+        /**
+         * The error of the decision model is rethrown, so the request fails.
+         */
+        FAIL
+    }
 
     private final DecisionModel decisionModel;
     private final Map<String, ContentRetriever> retrievers;
@@ -84,7 +107,7 @@ public class DecisionModelQueryRouter implements QueryRouter {
         }
         this.minProbability = ensureBetween(
                 getOrDefault(builder.minProbability, DEFAULT_MIN_PROBABILITY), 0, 1, "minProbability");
-        this.fallbackStrategy = getOrDefault(builder.fallbackStrategy, DO_NOT_ROUTE);
+        this.fallbackStrategy = getOrDefault(builder.fallbackStrategy, FallbackStrategy.DO_NOT_ROUTE);
 
         Map<String, ContentRetriever> retrievers = new LinkedHashMap<>();
         Map<String, YesNoQuestion> questions = new LinkedHashMap<>();
@@ -108,7 +131,7 @@ public class DecisionModelQueryRouter implements QueryRouter {
         try {
             return select(decisionModel.decide(toRequest(query)));
         } catch (Exception e) {
-            return fallback(e);
+            return fallback(query, e);
         }
     }
 
@@ -119,7 +142,7 @@ public class DecisionModelQueryRouter implements QueryRouter {
             source = decisionModel.decideAsync(toRequest(query));
         } catch (Exception e) {
             try {
-                return CompletableFuture.completedFuture(fallback(e));
+                return CompletableFuture.completedFuture(fallback(query, e));
             } catch (RuntimeException fallbackError) {
                 return CompletableFuture.failedFuture(fallbackError);
             }
@@ -131,7 +154,7 @@ public class DecisionModelQueryRouter implements QueryRouter {
                     if (cause instanceof Exception e
                             && !(cause instanceof CancellationException)
                             && !(cause instanceof AsyncNotSupportedException)) {
-                        return fallback(e);
+                        return fallback(query, e);
                     }
                     throw cause instanceof RuntimeException re ? re : new CompletionException(cause);
                 });
@@ -156,7 +179,7 @@ public class DecisionModelQueryRouter implements QueryRouter {
         return selected;
     }
 
-    protected Collection<ContentRetriever> fallback(Exception e) {
+    protected Collection<ContentRetriever> fallback(Query query, Exception e) {
         return switch (fallbackStrategy) {
             case DO_NOT_ROUTE -> {
                 log.warn("Failed to route the query, no content will be retrieved", e);
@@ -166,7 +189,7 @@ public class DecisionModelQueryRouter implements QueryRouter {
                 log.warn("Failed to route the query, it will be routed to all content retrievers", e);
                 yield new ArrayList<>(retrievers.values());
             }
-            default -> throw e instanceof RuntimeException re ? re : new RuntimeException(e);
+            case FAIL -> throw e instanceof RuntimeException re ? re : new RuntimeException(e);
         };
     }
 
@@ -202,9 +225,7 @@ public class DecisionModelQueryRouter implements QueryRouter {
          * Sets the template of the yes/no question asked for each retriever, which must contain the
          * {@code {{description}}} variable (the description of the retriever). The query is the input.
          * <p>
-         * Default value is {@link DecisionModelQueryRouter#DEFAULT_QUESTION_TEMPLATE}: "Could the following data
-         * source contain information that helps answer the query?
-{{description}}".
+         * Default value is {@link DecisionModelQueryRouter#DEFAULT_QUESTION_TEMPLATE}.
          */
         public Builder questionTemplate(PromptTemplate questionTemplate) {
             this.questionTemplate = questionTemplate;

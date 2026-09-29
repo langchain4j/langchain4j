@@ -3,8 +3,10 @@ package dev.langchain4j.service.tool;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.model.decision.mock.DecisionModelMock;
@@ -183,23 +185,67 @@ class DecisionModelFilteringToolProviderTest {
     }
 
     @Test
-    void should_reuse_selection_for_same_user_message_and_tools() {
+    void should_always_include_tools_already_called_in_conversation() {
 
         ToolProvider toolProvider = new DecisionModelFilteringToolProvider(allTools, decisionModel);
+        UserMessage userMessage = UserMessage.from("Will it rain?");
 
-        toolProvider.provideTools(providerRequest(UserMessage.from("Will it rain?")));
-        toolProvider.provideTools(providerRequest(UserMessage.from("Will it rain?")));
+        ToolProviderResult result = toolProvider.provideTools(ToolProviderRequest.builder()
+                .invocationContext(InvocationContext.builder().build())
+                .userMessage(userMessage)
+                .messages(List.of(
+                        UserMessage.from("Send the invoice to Klaus"),
+                        AiMessage.from(ToolExecutionRequest.builder()
+                                .id("1")
+                                .name("send_email")
+                                .arguments("{}")
+                                .build()),
+                        ToolExecutionResultMessage.from("1", "send_email", "sent"),
+                        AiMessage.from("Done."),
+                        userMessage))
+                .build());
 
-        assertThat(decisionModel.requests()).hasSize(1);
+        assertThat(result.aiServiceTools())
+                .extracting(AiServiceTool::name)
+                .containsExactlyInAnyOrder("send_email", "get_weather", "get_forecast");
+        assertThat(decisionModel.request().questions()).hasSize(3);
+    }
 
-        ToolProvider withoutCache = DecisionModelFilteringToolProvider.builder()
+    @Test
+    void should_not_call_decision_model_when_all_tools_are_always_included() {
+
+        ToolProvider toolProvider = DecisionModelFilteringToolProvider.builder()
                 .toolProvider(allTools)
                 .decisionModel(decisionModel)
-                .cacheSelections(false)
+                .alwaysInclude("send_email", "get_weather", "create_invoice", "get_forecast")
                 .build();
-        withoutCache.provideTools(providerRequest(UserMessage.from("Will it rain?")));
-        withoutCache.provideTools(providerRequest(UserMessage.from("Will it rain?")));
 
-        assertThat(decisionModel.requests()).hasSize(3);
+        assertThat(toolProvider.provideTools(providerRequest(UserMessage.from("Will it rain?"))).aiServiceTools())
+                .hasSize(4);
+        assertThat(decisionModel.requests()).isEmpty();
+    }
+
+    @Test
+    void should_validate_configuration() {
+
+        assertThatThrownBy(() -> DecisionModelFilteringToolProvider.builder()
+                        .decisionModel(decisionModel)
+                        .build())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("toolProvider");
+        assertThatThrownBy(() -> DecisionModelFilteringToolProvider.builder()
+                        .toolProvider(allTools)
+                        .decisionModel(decisionModel)
+                        .maxMessages(0)
+                        .build())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("maxMessages");
+        assertThatThrownBy(() -> DecisionModelFilteringToolProvider.builder()
+                        .toolProvider(allTools)
+                        .decisionModel(decisionModel)
+                        .minProbability(1.5)
+                        .build())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("minProbability");
     }
 }

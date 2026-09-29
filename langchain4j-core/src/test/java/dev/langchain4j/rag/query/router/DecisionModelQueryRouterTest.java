@@ -1,7 +1,7 @@
 package dev.langchain4j.rag.query.router;
 
-import static dev.langchain4j.rag.query.router.LanguageModelQueryRouter.FallbackStrategy.FAIL;
-import static dev.langchain4j.rag.query.router.LanguageModelQueryRouter.FallbackStrategy.ROUTE_TO_ALL;
+import static dev.langchain4j.rag.query.router.DecisionModelQueryRouter.FallbackStrategy.FAIL;
+import static dev.langchain4j.rag.query.router.DecisionModelQueryRouter.FallbackStrategy.ROUTE_TO_ALL;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
@@ -167,6 +167,17 @@ class DecisionModelQueryRouterTest {
 
     @Test
     void should_validate_configuration() {
+
+        assertThatThrownBy(() -> DecisionModelQueryRouter.builder()
+                        .decisionModel(answering(0, 0))
+                        .retrieverToDescription(retrievers)
+                        .minProbability(1.5)
+                        .build())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("minProbability");
+        assertThatThrownBy(() -> new DecisionModelQueryRouter(null, retrievers))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("decisionModel");
 
         assertThatThrownBy(() -> new DecisionModelQueryRouter(answering(0, 0), Map.of()))
                 .isInstanceOf(IllegalArgumentException.class)

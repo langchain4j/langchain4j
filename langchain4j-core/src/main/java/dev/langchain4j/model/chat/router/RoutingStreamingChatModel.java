@@ -22,9 +22,12 @@ import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.Executor;
 import java.util.concurrent.Flow.Publisher;
 import java.util.concurrent.Flow.Subscriber;
 import java.util.concurrent.Flow.Subscription;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * The streaming counterpart of {@link RoutingChatModel}: a {@link StreamingChatModel} that sends each request to one
@@ -39,19 +42,26 @@ import java.util.concurrent.Flow.Subscription;
  * }</pre>
  * See {@link RoutingChatModel} for how requests are routed and where the selected route is recorded (with
  * {@link #chat(ChatRequest)}, which takes no options, only in the attributes of the response). The route is selected
- * with
- * {@link ChatModelRouter#routeAsync(ChatModelRoutingRequest)}, so streaming does not block when the router does not.
+ * with {@link ChatModelRouter#routeAsync(ChatModelRoutingRequest)}. Routers that do not implement it, such as routers
+ * written as lambdas, run on an executor (see {@link Builder#executor(Executor)}), so the calling thread is never
+ * blocked by the router.
  *
  * @since 1.21.0
  */
 @Experimental
 public class RoutingStreamingChatModel implements StreamingChatModel {
 
+    private static final Logger log = LoggerFactory.getLogger(RoutingStreamingChatModel.class);
+
     private final RouteSelector<StreamingChatModel> selector;
 
     protected RoutingStreamingChatModel(Builder builder) {
         this.selector = new RouteSelector<>(
-                builder.routes, builder.router, builder.defaultRoute, StreamingChatModel::supportedCapabilities);
+                builder.routes,
+                builder.router,
+                builder.defaultRoute,
+                StreamingChatModel::supportedCapabilities,
+                builder.executor);
     }
 
     @Override
@@ -60,7 +70,7 @@ public class RoutingStreamingChatModel implements StreamingChatModel {
         ensureNotNull(handler, "handler");
         selector.selectAsync(request, options).whenComplete((routeName, routingError) -> {
             if (routingError != null) {
-                handler.onError(unwrapCompletionException(routingError));
+                onError(handler, unwrapCompletionException(routingError));
                 return;
             }
             try {
@@ -70,9 +80,17 @@ public class RoutingStreamingChatModel implements StreamingChatModel {
                                 RouteSelector.withRoute(options, routeName),
                                 new RouteRecordingHandler(handler, routeName));
             } catch (Exception e) {
-                handler.onError(e);
+                onError(handler, e);
             }
         });
+    }
+
+    private static void onError(StreamingChatResponseHandler handler, Throwable error) {
+        try {
+            handler.onError(error);
+        } catch (Exception e) {
+            log.warn("Exception while calling onError() of the streaming response handler", e);
+        }
     }
 
     @Override
@@ -161,7 +179,7 @@ public class RoutingStreamingChatModel implements StreamingChatModel {
     private static final class DeferredSubscription implements Subscription {
 
         private final Subscriber<? super ChatModelStreamingEvent> downstream;
-        private Subscription upstream;
+        private volatile Subscription upstream;
         private long pendingDemand;
         private boolean cancelled;
 
@@ -170,28 +188,44 @@ public class RoutingStreamingChatModel implements StreamingChatModel {
         }
 
         @Override
-        public synchronized void request(long n) {
-            if (cancelled) {
+        public void request(long n) {
+            Subscription current = upstream;
+            if (current != null) {
+                current.request(n); // the upstream validates n and serializes its own signals
                 return;
             }
-            if (n <= 0) {
-                cancel();
+            boolean invalid = false;
+            synchronized (this) {
+                if (cancelled) {
+                    return;
+                }
+                current = upstream;
+                if (current == null) {
+                    if (n <= 0) {
+                        cancelled = true;
+                        invalid = true;
+                    } else {
+                        pendingDemand = pendingDemand + n < 0 ? Long.MAX_VALUE : pendingDemand + n;
+                    }
+                }
+            }
+            if (current != null) {
+                current.request(n);
+            } else if (invalid) {
                 downstream.onError(new IllegalArgumentException(
                         "The number of requested elements must be positive, but was " + n));
-                return;
-            }
-            if (upstream == null) {
-                pendingDemand = pendingDemand + n < 0 ? Long.MAX_VALUE : pendingDemand + n;
-            } else {
-                upstream.request(n);
             }
         }
 
         @Override
-        public synchronized void cancel() {
-            cancelled = true;
-            if (upstream != null) {
-                upstream.cancel();
+        public void cancel() {
+            Subscription current;
+            synchronized (this) {
+                cancelled = true;
+                current = upstream;
+            }
+            if (current != null) {
+                current.cancel();
             }
         }
 
@@ -199,13 +233,18 @@ public class RoutingStreamingChatModel implements StreamingChatModel {
             return cancelled;
         }
 
-        synchronized void setUpstream(Subscription upstream) {
-            this.upstream = upstream;
-            if (cancelled) {
-                upstream.cancel();
-            } else if (pendingDemand > 0) {
-                long demand = pendingDemand;
+        void setUpstream(Subscription upstream) {
+            long demand;
+            boolean cancel;
+            synchronized (this) {
+                demand = pendingDemand;
                 pendingDemand = 0;
+                cancel = cancelled;
+                this.upstream = upstream;
+            }
+            if (cancel) {
+                upstream.cancel();
+            } else if (demand > 0) {
                 upstream.request(demand);
             }
         }
@@ -295,6 +334,7 @@ public class RoutingStreamingChatModel implements StreamingChatModel {
         private final List<RouteSelector.Route<StreamingChatModel>> routes = new ArrayList<>();
         private ChatModelRouter router;
         private String defaultRoute;
+        private Executor executor;
 
         /**
          * Adds a route without a description, for routers that do not decide based on descriptions.
@@ -328,11 +368,24 @@ public class RoutingStreamingChatModel implements StreamingChatModel {
         }
 
         /**
-         * Sets the route used when the router does not select one (returns {@code null}). Optional: without a default
-         * route, such requests fail.
+         * Sets the route used when the router does not select one (returns {@code null}), for example when a router
+         * that calls a model is unsure or fails. Required.
          */
         public Builder defaultRoute(String defaultRoute) {
             this.defaultRoute = defaultRoute;
+            return this;
+        }
+
+        /**
+         * Sets the executor that runs the router when it cannot route without blocking (its
+         * {@link ChatModelRouter#routeAsync(ChatModelRoutingRequest)} fails with an
+         * {@link dev.langchain4j.exception.AsyncNotSupportedException}).
+         * <p>
+         * By default, the default executor of LangChain4j is used
+         * ({@link dev.langchain4j.internal.DefaultExecutorProvider}).
+         */
+        public Builder executor(Executor executor) {
+            this.executor = executor;
             return this;
         }
 

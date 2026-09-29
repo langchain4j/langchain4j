@@ -32,11 +32,14 @@ For streaming, use `RoutingStreamingChatModel` with `StreamingChatModel`s; it wo
 ## Routers
 
 A `ChatModelRouter` returns the name of the route for a request, or `null` to use the default route.
+The default route is required, so that there is always a model to send the request to, for example when a router that
+calls a model is unsure or fails.
 
 ### Decision model router
 
 `DecisionModelChatModelRouter` uses a [decision model](/tutorials/decision-models) to choose the route whose
-description fits the last user message best. Decision models are typically much faster and cheaper than chat
+description fits the last user message best. Content other than text, such as an image, is represented by a marker
+(for example `[attached image]`), so that a route whose description mentions images can be chosen for it. Decision models are typically much faster and cheaper than chat
 models, so routing adds little latency and cost compared to the chat model call. Every route needs a description.
 
 It returns `null` (so the default route is used) when the request has no user message, and when the probability of
@@ -45,10 +48,15 @@ the decision model is not sure about to the larger model. When the decision mode
 and a warning is logged; set `fallbackStrategy(FAIL)` to fail the request instead.
 The routes' descriptions are checked when the routing chat model is created.
 
+By default, only the last user message is taken into account. A short follow-up such as "yes, go ahead" only makes
+sense together with the previous messages: set `maxMessages` to also send the previous messages of the conversation
+to the decision model.
+
 ```java
 ChatModelRouter router = DecisionModelChatModelRouter.builder()
         .decisionModel(decisionModel)
         .minProbability(0.7)
+        .maxMessages(3)
         .build();
 ```
 
@@ -61,12 +69,15 @@ ChatModel chatModel = RoutingChatModel.builder()
         .route("simple", smallModel)
         .route("complex", largeModel)
         .router(request -> request.chatRequest().messages().size() > 20 ? "complex" : "simple")
+        .defaultRoute("simple")
         .build();
 ```
 
 The router receives the `ChatRequest` and the routes that can handle it (`ChatModelRoute`: name and description).
-A router that calls a remote service should also implement `routeAsync(...)`, which is used by the asynchronous and
-streaming methods; by default, it calls `route(...)`. A router can also check the routes when the routing chat model
+The asynchronous and streaming methods use `routeAsync(...)`. By default, it is not implemented, so `route(...)` is
+called on an executor: a router that blocks (for example, one that looks up the user in a database) never blocks the
+calling thread. A router that can route without blocking, for example by calling a remote service asynchronously, can
+implement `routeAsync(...)` to avoid the thread switch. A router can also check the routes when the routing chat model
 is created, by implementing `validate(...)`.
 
 ## How requests are routed
@@ -81,10 +92,30 @@ is created, by implementing `validate(...)`.
   stored in the `AiMessage` that requested the tools, without asking the router. This also works with a persistent
   chat memory, as long as it keeps the attributes of the messages (the default serialization does).
 - `supportedCapabilities()` returns the capabilities supported by at least one route. A request that needs a
-  capability (for example, a JSON schema response format) is only routed to the routes that support it:
-  the router only sees those routes, and if the default route does not support it, the first route that does is used.
-- `chatAsync(...)` and streaming select the route with `ChatModelRouter.routeAsync(...)`, so they don't block the
-  calling thread when the router doesn't. `DecisionModelChatModelRouter` uses `DecisionModel.decideAsync(...)`; if the
-  decision model does not support asynchronous calls, the router is called on the default executor instead.
-- If the router returns an unknown route, or no route when there is no default route, the request fails with an
-  `IllegalStateException`.
+  capability (for example, a JSON schema response format) is only routed to the routes that declare it:
+  the router only sees those routes, and if the default route does not declare it, the first route that does is used.
+  If no route declares the capability, all routes remain candidates, and the selected model accepts or rejects the
+  request itself, as when it is called directly.
+- `chatAsync(...)` and streaming select the route with `ChatModelRouter.routeAsync(...)`.
+  `DecisionModelChatModelRouter` implements it with `DecisionModel.decideAsync(...)`; routers that don't implement it,
+  and decision models that do not support asynchronous calls, are called on the default executor instead
+  (or the one configured with `executor(...)`).
+- If the router returns an unknown route, the request fails with an `IllegalStateException`.
+- The selected model is called on the thread that completed the routing: the calling thread for synchronous routers,
+  the thread of the decision model's response, or the executor configured with `executor(...)`.
+- When routing chat models are nested, the name stored in the `AiMessage` is the one of the outer routing chat model.
+
+## Things to keep in mind
+
+- All routes share the conversation: after a new user message, a different route can receive the messages that
+  another route produced. Routes of different providers must be able to read each other's messages. This can fail
+  with provider-specific content, for example returned thinking with signatures or tool call ids in a format another
+  provider does not accept. Routing between models of the same provider avoids this.
+- `DecisionModelChatModelRouter` sees the text of the messages, not the content of images or other attachments: it
+  only knows that they are attached.
+- The routing chat model has no default request parameters of its own, and `provider()` returns `OTHER`: code that
+  reads the default request parameters from the chat model (for example to adjust `toolChoice`) sees empty
+  parameters, not those of the routes. The default parameters of the selected model still apply to each request.
+- When the routing chat model and its routes are all beans of the same type (for example in Spring or Quarkus),
+  mark the routing chat model as the primary or default one, so that it is the one injected.
+- Routing selects a model before the request is sent; it does not retry a failed request on another model.

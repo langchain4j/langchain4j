@@ -16,12 +16,16 @@ import dev.langchain4j.model.decision.response.DecisionResponse;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * The yes/no checks of a decision model guardrail, all answered in a single call. A check fails when the probability
  * of "yes" reaches the threshold.
  */
 final class DecisionModelChecks {
+
+    private static final Logger log = LoggerFactory.getLogger(DecisionModelChecks.class);
 
     private static final double DEFAULT_THRESHOLD = 0.5;
 
@@ -41,16 +45,20 @@ final class DecisionModelChecks {
     }
 
     /**
-     * Returns the names of the failed checks, with the probability of "yes", for example
-     * {@code promptInjection (0.97)}.
+     * Returns the names of the failed checks. The probabilities are only logged (at DEBUG level), so that they do not
+     * reach the users through the failure message, where they would show how close a rejected input came to passing.
      */
     List<String> failedChecks(Object input) {
         DecisionResponse response = decisionModel.decide(
                 DecisionRequest.builder().input(input).questions(questions).build());
-        return questions.keySet().stream()
+        List<String> failedChecks = questions.keySet().stream()
                 .filter(name -> response.yesNo(name).isYes(threshold))
-                .map(name -> "%s (%.2f)".formatted(name, response.yesNo(name).probability()))
                 .toList();
+        if (log.isDebugEnabled()) {
+            failedChecks.forEach(name -> log.debug(
+                    "Check '{}' failed with a probability of {}", name, response.yesNo(name).probability()));
+        }
+        return failedChecks;
     }
 
     static String text(UserMessage userMessage) {

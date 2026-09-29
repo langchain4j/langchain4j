@@ -16,9 +16,7 @@ import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.service.tool.search.decision.DecisionModelToolSelector;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -44,8 +42,11 @@ import org.slf4j.LoggerFactory;
  * {@link Builder#maxMessages(Integer)}, previous messages of the conversation are also taken into account, which helps
  * with follow-up messages such as "do the same for Berlin".
  * <p>
- * If the user message has no text, all tools are passed on. If the decision model fails, the {@link FallbackStrategy}
- * applies: by default, all tools are passed on and a warning is logged.
+ * Only the tools of the wrapped tool provider are filtered: tools configured directly on the AI Service are always
+ * passed on. Tools that were already called in the conversation are also always passed on, since some LLM providers
+ * reject requests whose messages contain calls to tools that are not in the request. This is similar to a
+ * {@link dev.langchain4j.service.tool.search.ToolSearchStrategy}, whose previously found tools stay available. If the user message has no text, all tools are passed on. If the decision model fails, the
+ * {@link FallbackStrategy} applies: by default, all tools are passed on and a warning is logged.
  *
  * @see dev.langchain4j.service.tool.search.decision.DecisionModelToolSearchStrategy
  * @since 1.21.0
@@ -53,10 +54,16 @@ import org.slf4j.LoggerFactory;
 @Experimental
 public class DecisionModelFilteringToolProvider implements ToolProvider {
 
+    /**
+     * The default template of the question asked for each tool:
+     * {@code "Would this tool help to handle the request?\nTool: {{name}}\nDescription: {{description}}"}.
+     */
+    public static final PromptTemplate DEFAULT_QUESTION_TEMPLATE = DecisionModelToolSelector.DEFAULT_QUESTION_TEMPLATE;
+
+
     private static final Logger log = LoggerFactory.getLogger(DecisionModelFilteringToolProvider.class);
 
     private static final int DEFAULT_MAX_MESSAGES = 1;
-    private static final int MAX_CACHED_SELECTIONS = 100;
 
     /**
      * What the tool provider does when the decision model fails.
@@ -69,7 +76,8 @@ public class DecisionModelFilteringToolProvider implements ToolProvider {
         ALL_TOOLS,
 
         /**
-         * Pass on only the tools configured with {@link Builder#alwaysInclude(String...)}, and log a warning.
+         * Pass on only the tools configured with {@link Builder#alwaysInclude(String...)} and the tools already called in
+         * the conversation, and log a warning.
          */
         NO_TOOLS,
 
@@ -84,7 +92,6 @@ public class DecisionModelFilteringToolProvider implements ToolProvider {
     private final Set<String> alwaysIncludedTools;
     private final int maxMessages;
     private final FallbackStrategy fallbackStrategy;
-    private final Map<List<Object>, Set<String>> cache;
 
     public DecisionModelFilteringToolProvider(ToolProvider toolProvider, DecisionModel decisionModel) {
         this(builder().toolProvider(toolProvider).decisionModel(decisionModel));
@@ -101,14 +108,6 @@ public class DecisionModelFilteringToolProvider implements ToolProvider {
         this.alwaysIncludedTools = Set.copyOf(builder.alwaysIncludedTools);
         this.maxMessages = ensureGreaterThanZero(getOrDefault(builder.maxMessages, DEFAULT_MAX_MESSAGES), "maxMessages");
         this.fallbackStrategy = getOrDefault(builder.fallbackStrategy, FallbackStrategy.ALL_TOOLS);
-        this.cache = getOrDefault(builder.cacheSelections, true)
-                ? Collections.synchronizedMap(new LinkedHashMap<>(16, 0.75f, true) {
-                    @Override
-                    protected boolean removeEldestEntry(Map.Entry<List<Object>, Set<String>> eldest) {
-                        return size() > MAX_CACHED_SELECTIONS;
-                    }
-                })
-                : null;
     }
 
     @Override
@@ -122,11 +121,12 @@ public class DecisionModelFilteringToolProvider implements ToolProvider {
             return result;
         }
 
+        Set<String> selected = new HashSet<>(alwaysIncludedTools);
+        selected.addAll(calledTools(request.messages()));
         List<ToolSpecification> candidates = result.aiServiceTools().stream()
                 .map(AiServiceTool::toolSpecification)
-                .filter(tool -> !alwaysIncludedTools.contains(tool.name()))
+                .filter(tool -> !selected.contains(tool.name()))
                 .toList();
-        Set<String> selected = new HashSet<>(alwaysIncludedTools);
         if (!candidates.isEmpty()) {
             Set<String> selectedCandidates = select(input, candidates);
             if (selectedCandidates == null) {
@@ -143,16 +143,8 @@ public class DecisionModelFilteringToolProvider implements ToolProvider {
      * Returns the names of the selected tools, or {@code null} if all tools should be passed on.
      */
     private Set<String> select(Object input, List<ToolSpecification> candidates) {
-        List<Object> cacheKey = cache == null ? null : List.of(input, candidates);
-        if (cacheKey != null) {
-            Set<String> cached = cache.get(cacheKey);
-            if (cached != null) {
-                return cached;
-            }
-        }
-        Set<String> selected;
         try {
-            selected = Set.copyOf(selector.select(input, candidates));
+            return Set.copyOf(selector.select(input, candidates));
         } catch (RuntimeException e) {
             return switch (fallbackStrategy) {
                 case ALL_TOOLS -> {
@@ -166,10 +158,16 @@ public class DecisionModelFilteringToolProvider implements ToolProvider {
                 case FAIL -> throw e;
             };
         }
-        if (cacheKey != null) {
-            cache.put(cacheKey, selected);
+    }
+
+    private static Set<String> calledTools(List<ChatMessage> messages) {
+        Set<String> calledTools = new HashSet<>();
+        for (ChatMessage message : messages) {
+            if (message instanceof AiMessage aiMessage && aiMessage.hasToolExecutionRequests()) {
+                aiMessage.toolExecutionRequests().forEach(toolCall -> calledTools.add(toolCall.name()));
+            }
         }
-        return selected;
+        return calledTools;
     }
 
     /**
@@ -229,7 +227,6 @@ public class DecisionModelFilteringToolProvider implements ToolProvider {
         private final Set<String> alwaysIncludedTools = new HashSet<>();
         private Integer maxMessages;
         private FallbackStrategy fallbackStrategy;
-        private Boolean cacheSelections;
 
         /**
          * Sets the tool provider whose tools are filtered. Required.
@@ -252,10 +249,7 @@ public class DecisionModelFilteringToolProvider implements ToolProvider {
          * variable (the name of the tool) and can contain {@code {{description}}} (its description, empty if it has
          * none).
          * <p>
-         * Default value is {@link DecisionModelToolSelector#DEFAULT_QUESTION_TEMPLATE}: "Would this tool help to
-         * handle the request?
-Tool: {{name}}
-Description: {{description}}".
+         * Default value is {@link DecisionModelFilteringToolProvider#DEFAULT_QUESTION_TEMPLATE}.
          */
         public Builder questionTemplate(PromptTemplate questionTemplate) {
             this.questionTemplate = questionTemplate;
@@ -265,7 +259,7 @@ Description: {{description}}".
         /**
          * Sets the maximum number of selected tools, in addition to the always included ones.
          * <p>
-         * Default value is {@value DecisionModelToolSelector#DEFAULT_MAX_RESULTS}.
+         * Default value is 5.
          */
         public Builder maxResults(Integer maxResults) {
             this.maxResults = maxResults;
@@ -275,7 +269,7 @@ Description: {{description}}".
         /**
          * Sets the minimum probability of "yes" for a tool to be selected.
          * <p>
-         * Default value is {@value DecisionModelToolSelector#DEFAULT_MIN_PROBABILITY}.
+         * Default value is 0.5.
          */
         public Builder minProbability(Double minProbability) {
             this.minProbability = minProbability;
@@ -294,14 +288,14 @@ Description: {{description}}".
         }
 
         /**
-         * Sets tools that are always passed on, without asking the decision model.
+         * Sets tools that are always passed on, without asking the decision model. Replaces the previously set tools.
          */
         public Builder alwaysInclude(String... toolNames) {
             return alwaysInclude(List.of(toolNames));
         }
 
         /**
-         * Sets tools that are always passed on, without asking the decision model.
+         * Sets tools that are always passed on, without asking the decision model. Replaces the previously set tools.
          */
         public Builder alwaysInclude(Collection<String> toolNames) {
             this.alwaysIncludedTools.clear();
@@ -316,6 +310,7 @@ Description: {{description}}".
          * one being the user message) the decision model receives.
          * <p>
          * Default value is {@value DecisionModelFilteringToolProvider#DEFAULT_MAX_MESSAGES}: only the user message.
+         * Previous messages are only available if the AI Service passes them in {@link ToolProviderRequest#messages()}.
          */
         public Builder maxMessages(Integer maxMessages) {
             this.maxMessages = maxMessages;
@@ -329,18 +324,6 @@ Description: {{description}}".
          */
         public Builder fallbackStrategy(FallbackStrategy fallbackStrategy) {
             this.fallbackStrategy = fallbackStrategy;
-            return this;
-        }
-
-        /**
-         * Sets whether the selection is reused when the same conversation and tools are seen again, for example when
-         * the wrapped tool provider is {@link ToolProvider#isDynamic() dynamic} and is called before each LLM call of
-         * the tool-calling loop. The last 100 selections are kept.
-         * <p>
-         * Default value is {@code true}.
-         */
-        public Builder cacheSelections(Boolean cacheSelections) {
-            this.cacheSelections = cacheSelections;
             return this;
         }
 

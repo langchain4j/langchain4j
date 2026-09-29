@@ -2,6 +2,7 @@ package dev.langchain4j.model.chat.router;
 
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
@@ -27,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 import java.util.function.Function;
 
 /**
@@ -37,7 +39,7 @@ import java.util.function.Function;
  *     a request that ends with tool results goes to the route that requested the tools, even after the message was
  *     stored in and loaded from a chat memory;</li>
  *     <li>the router only sees the routes whose model supports the capabilities the request needs (e.g. a JSON
- *     schema response format).</li>
+ *     schema response format), if at least one route declares them; otherwise it sees all routes.</li>
  * </ul>
  */
 final class RouteSelector<M> {
@@ -49,12 +51,14 @@ final class RouteSelector<M> {
     private final ChatModelRouter router;
     private final String defaultRoute;
     private final Function<M, Set<Capability>> capabilities;
+    private final Executor executor;
 
     RouteSelector(
             List<Route<M>> routes,
             ChatModelRouter router,
             String defaultRoute,
-            Function<M, Set<Capability>> capabilities) {
+            Function<M, Set<Capability>> capabilities,
+            Executor executor) {
         Map<String, M> models = new LinkedHashMap<>();
         List<ChatModelRoute> chatModelRoutes = new ArrayList<>();
         for (Route<M> route : ensureNotEmpty(routes, "routes")) {
@@ -65,7 +69,8 @@ final class RouteSelector<M> {
             models.put(route.name(), ensureNotNull(route.model(), "model of route '%s'".formatted(route.name())));
             chatModelRoutes.add(new ChatModelRoute(route.name(), route.description()));
         }
-        if (defaultRoute != null && !models.containsKey(defaultRoute)) {
+        ensureNotBlank(defaultRoute, "defaultRoute");
+        if (!models.containsKey(defaultRoute)) {
             throw new IllegalArgumentException("The default route '%s' is not one of the routes %s"
                     .formatted(defaultRoute, models.keySet()));
         }
@@ -74,6 +79,7 @@ final class RouteSelector<M> {
         this.router = ensureNotNull(router, "router");
         this.defaultRoute = defaultRoute;
         this.capabilities = capabilities;
+        this.executor = getOrDefault(executor, DefaultExecutorProvider::getDefaultExecutor);
         router.validate(this.routes);
     }
 
@@ -126,8 +132,7 @@ final class RouteSelector<M> {
     }
 
     private CompletableFuture<String> offload(ChatModelRoutingRequest routingRequest) {
-        return CompletableFuture.supplyAsync(
-                () -> router.route(routingRequest), DefaultExecutorProvider.getDefaultExecutor());
+        return CompletableFuture.supplyAsync(() -> router.route(routingRequest), executor);
     }
 
     M model(String routeName) {
@@ -194,11 +199,7 @@ final class RouteSelector<M> {
         List<ChatModelRoute> candidates = routes.stream()
                 .filter(route -> capabilities.apply(models.get(route.name())).containsAll(required))
                 .toList();
-        if (candidates.isEmpty()) {
-            throw new IllegalStateException("None of the routes %s supports %s, which the request needs"
-                    .formatted(models.keySet(), required));
-        }
-        return candidates;
+        return candidates.isEmpty() ? routes : candidates;
     }
 
     private static Set<Capability> requiredCapabilities(ChatRequest chatRequest) {
@@ -213,10 +214,6 @@ final class RouteSelector<M> {
 
     private String validate(String routeName, List<ChatModelRoute> candidates) {
         if (routeName == null) {
-            if (defaultRoute == null) {
-                throw new IllegalStateException(
-                        "The router did not select a route and no default route is configured");
-            }
             return isCandidate(defaultRoute, candidates)
                     ? defaultRoute
                     : candidates.get(0).name();

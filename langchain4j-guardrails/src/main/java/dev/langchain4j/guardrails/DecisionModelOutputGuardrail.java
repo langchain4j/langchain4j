@@ -1,5 +1,7 @@
 package dev.langchain4j.guardrails;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
@@ -50,7 +52,7 @@ public class DecisionModelOutputGuardrail implements OutputGuardrail {
 
     protected DecisionModelOutputGuardrail(Builder builder) {
         this.checks = new DecisionModelChecks(builder.decisionModel, builder.checks, builder.threshold);
-        this.reprompt = builder.reprompt;
+        this.reprompt = builder.reprompt == null ? null : ensureNotBlank(builder.reprompt, "reprompt");
     }
 
     @Override
@@ -122,7 +124,8 @@ public class DecisionModelOutputGuardrail implements OutputGuardrail {
         }
 
         /**
-         * Adds checks, as yes/no questions keyed by check name. See {@link #check(String, String)}.
+         * Adds checks, as yes/no questions keyed by check name, to the checks added so far. See
+         * {@link #check(String, String)}.
          */
         public Builder checks(Map<String, String> checks) {
             if (checks != null) {

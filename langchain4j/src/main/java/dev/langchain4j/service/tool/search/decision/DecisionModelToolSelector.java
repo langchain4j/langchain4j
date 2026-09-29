@@ -49,6 +49,14 @@ public final class DecisionModelToolSelector {
             throw new IllegalArgumentException("The question template must contain {{name}}, but was: "
                     + this.questionTemplate.template());
         }
+        try {
+            this.questionTemplate.apply(Map.of("name", "name", "description", "description"));
+        } catch (RuntimeException e) {
+            throw new IllegalArgumentException(
+                    "The question template can only use the {{name}} and {{description}} variables, but was: "
+                            + this.questionTemplate.template(),
+                    e);
+        }
         this.maxResults = ensureGreaterThanZero(getOrDefault(maxResults, DEFAULT_MAX_RESULTS), "maxResults");
         this.minProbability =
                 ensureBetween(getOrDefault(minProbability, DEFAULT_MIN_PROBABILITY), 0, 1, "minProbability");

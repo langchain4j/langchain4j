@@ -1,6 +1,7 @@
 package dev.langchain4j.model.chat.router;
 
 import dev.langchain4j.Experimental;
+import dev.langchain4j.internal.AsyncNotSupported;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
@@ -29,23 +30,19 @@ public interface ChatModelRouter {
 
     /**
      * Non-blocking counterpart of {@link #route(ChatModelRoutingRequest)}, used by the asynchronous and streaming
-     * methods of the routing chat models. The default calls {@link #route(ChatModelRoutingRequest)} on the calling
-     * thread, which is fine for routers that do not block, such as simple rules. Routers that call a model override
-     * it.
+     * methods of the routing chat models. Routers that can route without blocking, such as routers that call a model
+     * asynchronously, override it.
      * <p>
-     * A router may complete the future with a {@link dev.langchain4j.exception.AsyncNotSupportedException} when it
-     * cannot route without blocking; the routing chat models then call {@link #route(ChatModelRoutingRequest)} on
-     * the default executor instead.
+     * The default returns a future failed with an {@link dev.langchain4j.exception.AsyncNotSupportedException}: the
+     * routing chat models then call {@link #route(ChatModelRoutingRequest)} on an executor, so that a router that
+     * blocks (for example, one that looks up the user in a database) never blocks the calling thread, which may be an
+     * event loop.
      *
      * @param request the chat request to route and the routes that can handle it. Never {@code null}.
      * @return a future of the name of one of the routes, or of {@code null} to use the default route.
      */
     default CompletableFuture<String> routeAsync(ChatModelRoutingRequest request) {
-        try {
-            return CompletableFuture.completedFuture(route(request));
-        } catch (Exception e) {
-            return CompletableFuture.failedFuture(e);
-        }
+        return AsyncNotSupported.failedFuture(getClass(), "routeAsync");
     }
 
     /**

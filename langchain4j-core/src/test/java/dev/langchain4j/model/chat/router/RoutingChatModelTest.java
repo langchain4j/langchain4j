@@ -131,19 +131,11 @@ class RoutingChatModelTest {
     }
 
     @Test
-    void should_fail_when_router_selects_unknown_route_or_no_route_without_default() {
+    void should_fail_when_router_selects_unknown_route() {
 
         assertThatThrownBy(() -> routingModel(request -> "medium").chat("Hi!"))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("unknown route 'medium'");
-
-        ChatModel withoutDefault = RoutingChatModel.builder()
-                .route("simple", small)
-                .router(request -> null)
-                .build();
-        assertThatThrownBy(() -> withoutDefault.chat("Hi!"))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("no default route");
     }
 
     @Test
@@ -260,6 +252,74 @@ class RoutingChatModelTest {
         assertThat(large.requests).hasSize(1);
     }
 
+    static ToolExecutionRequest toolCall() {
+        return ToolExecutionRequest.builder()
+                .id("1")
+                .name("weather")
+                .arguments("{}")
+                .build();
+    }
+
+    static AiMessage toolCallFrom(String route) {
+        return AiMessage.builder()
+                .toolExecutionRequests(List.of(toolCall()))
+                .attributes(Map.of(RoutingChatModel.ROUTE_ATTRIBUTE, route))
+                .build();
+    }
+
+    @Test
+    void should_ask_router_again_when_stored_route_is_no_longer_configured() {
+
+        List<String> routed = new ArrayList<>();
+        ChatModel chatModel = routingModel(request -> {
+            routed.add("asked");
+            return "complex";
+        });
+
+        chatModel.chat(ChatRequest.builder()
+                .messages(
+                        UserMessage.from("Weather?"),
+                        toolCallFrom("removed-route"),
+                        ToolExecutionResultMessage.from(toolCall(), "sunny"))
+                .build());
+
+        assertThat(routed).hasSize(1);
+        assertThat(large.requests).hasSize(1);
+    }
+
+    @Test
+    void should_record_route_in_async_response() {
+
+        ChatResponse response = routingModel(byLength())
+                .chatAsync(ChatRequest.builder().messages(UserMessage.from("Hi!")).build())
+                .join();
+
+        assertThat(response.aiMessage().attributes()).containsEntry(RoutingChatModel.ROUTE_ATTRIBUTE, "simple");
+    }
+
+    @Test
+    void should_offload_routing_to_configured_executor() {
+
+        List<Runnable> tasks = new ArrayList<>();
+        ChatModel chatModel = RoutingChatModel.builder()
+                .route("simple", small)
+                .route("complex", large)
+                .router(request -> "complex")
+                .defaultRoute("simple")
+                .executor(task -> {
+                    tasks.add(task);
+                    task.run();
+                })
+                .build();
+
+        ChatResponse response = chatModel
+                .chatAsync(ChatRequest.builder().messages(UserMessage.from("Hi!")).build())
+                .join();
+
+        assertThat(tasks).hasSize(1);
+        assertThat(response.aiMessage().text()).isEqualTo("answer from large");
+    }
+
     @Test
     void should_validate_routes_with_router_when_created() {
 
@@ -267,6 +327,7 @@ class RoutingChatModelTest {
                         .route("simple", small)
                         .route("complex", large)
                         .router(new DecisionModelChatModelRouter(DecisionModelMock.thatAlwaysThrowsException()))
+                        .defaultRoute("complex")
                         .build())
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Route 'simple' has no description");
@@ -303,6 +364,7 @@ class RoutingChatModelTest {
         assertThat(RoutingChatModel.builder()
                         .route("complex", large)
                         .router(request -> "complex")
+                        .defaultRoute("complex")
                         .build()
                         .supportedCapabilities())
                 .isEmpty();
@@ -345,13 +407,26 @@ class RoutingChatModelTest {
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("Route 'complex' does not support");
 
-        ChatModel withoutSupport = RoutingChatModel.builder()
-                .route("complex", large)
-                .router(request -> "complex")
+    }
+
+    @Test
+    void should_route_requests_needing_a_capability_to_all_routes_when_no_route_declares_it() {
+
+        List<ChatModelRoute> seen = new ArrayList<>();
+        ChatModel chatModel = RoutingChatModel.builder()
+                .route("simple", new FakeChatModel("small", Set.of()), "Short questions")
+                .route("complex", large, "Everything else")
+                .router(request -> {
+                    seen.addAll(request.routes());
+                    return "complex";
+                })
+                .defaultRoute("simple")
                 .build();
-        assertThatThrownBy(() -> withoutSupport.chat(jsonSchemaRequest("Hi!")))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("None of the routes");
+
+        ChatResponse response = chatModel.chat(jsonSchemaRequest("Hi!"));
+
+        assertThat(response.aiMessage().text()).isEqualTo("answer from large");
+        assertThat(seen).extracting(ChatModelRoute::name).containsExactly("simple", "complex");
     }
 
     @Test
@@ -447,6 +522,7 @@ class RoutingChatModelTest {
                         .route("simple", small)
                         .route("simple", large)
                         .router(request -> "simple")
+                        .defaultRoute("simple")
                         .build())
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("more than one route named 'simple'");
@@ -457,7 +533,16 @@ class RoutingChatModelTest {
                         .build())
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("default route 'complex'");
-        assertThatThrownBy(() -> RoutingChatModel.builder().route("simple", small).build())
+        assertThatThrownBy(() -> RoutingChatModel.builder()
+                        .route("simple", small)
+                        .router(request -> "simple")
+                        .build())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("defaultRoute");
+        assertThatThrownBy(() -> RoutingChatModel.builder()
+                        .route("simple", small)
+                        .defaultRoute("simple")
+                        .build())
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("router");
         assertThatThrownBy(() -> RoutingChatModel.builder().router(request -> "x").build())
@@ -518,6 +603,7 @@ class RoutingChatModelTest {
                 .route("complex", largeStreaming, "Everything else")
                 .router(router)
                 .defaultRoute("complex")
+                .executor(Runnable::run) // routers written as lambdas run on the executor, here on the calling thread
                 .build();
     }
 
@@ -547,6 +633,40 @@ class RoutingChatModelTest {
         assertThat(partials).hasToString("answer from small");
         assertThat(completed).hasSize(1);
         assertThat(largeStreaming.requests).isEmpty();
+    }
+
+    @Test
+    void should_record_route_and_keep_tool_calling_loop_when_streaming() {
+
+        List<ChatResponse> completed = new ArrayList<>();
+        StreamingChatResponseHandler handler = new StreamingChatResponseHandler() {
+            @Override
+            public void onCompleteResponse(ChatResponse completeResponse) {
+                completed.add(completeResponse);
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                throw new AssertionError(error);
+            }
+        };
+        RoutingStreamingChatModel model = routingStreamingModel(request -> "complex");
+
+        model.chat(
+                ChatRequest.builder()
+                        .messages(
+                                UserMessage.from("Weather?"),
+                                toolCallFrom("simple"),
+                                ToolExecutionResultMessage.from(toolCall(), "sunny"))
+                        .build(),
+                handler);
+
+        assertThat(smallStreaming.requests).hasSize(1);
+        assertThat(largeStreaming.requests).isEmpty();
+        assertThat(completed)
+                .singleElement()
+                .satisfies(response -> assertThat(response.aiMessage().attributes())
+                        .containsEntry(RoutingChatModel.ROUTE_ATTRIBUTE, "simple"));
     }
 
     @Test
@@ -660,6 +780,8 @@ class RoutingChatModelTest {
         RoutingStreamingChatModel.builder()
                 .route("only", failing)
                 .router(request -> "only")
+                .defaultRoute("only")
+                .executor(Runnable::run)
                 .build()
                 .chat("Hi!", new StreamingChatResponseHandler() {
                     @Override
@@ -792,6 +914,8 @@ class RoutingChatModelTest {
 
         assertThat(routed).hasSize(1);
         assertThat(events).singleElement().isInstanceOf(CompleteResponse.class);
+        assertThat(((CompleteResponse) events.get(0)).chatResponse().aiMessage().attributes())
+                .containsEntry(RoutingChatModel.ROUTE_ATTRIBUTE, "complex");
         assertThat(largeStreaming.requests).hasSize(1);
     }
 }

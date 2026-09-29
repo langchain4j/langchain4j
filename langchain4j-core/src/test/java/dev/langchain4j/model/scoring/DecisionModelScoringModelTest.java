@@ -6,6 +6,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.decision.DecisionModel;
 import dev.langchain4j.model.decision.mock.DecisionModelMock;
+import dev.langchain4j.model.decision.response.DecisionResponse;
+import dev.langchain4j.model.decision.request.DecisionRequest;
 import dev.langchain4j.model.decision.request.YesNoQuestion;
 import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.model.output.Response;
@@ -14,6 +16,8 @@ import dev.langchain4j.model.scoring.request.ScoringRequest;
 import dev.langchain4j.model.scoring.response.ScoringResponse;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.time.Duration;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
@@ -46,7 +50,7 @@ class DecisionModelScoringModelTest {
     }
 
     @Test
-    void should_score_in_batches_and_sum_token_usage() {
+    void should_score_in_batches_with_custom_question_template() {
 
         ScoringModel scoringModel = DecisionModelScoringModel.builder()
                 .decisionModel(decisionModel)
@@ -136,6 +140,61 @@ class DecisionModelScoringModelTest {
                         .build())
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("{{document}}");
+    }
+
+    @Test
+    void should_reject_question_template_with_unknown_variables() {
+
+        assertThatThrownBy(() -> DecisionModelScoringModel.builder()
+                        .decisionModel(decisionModel)
+                        .questionTemplate(PromptTemplate.from("Does {{document}} answer {{question}}?"))
+                        .build())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("can only use the {{document}} variable");
+    }
+
+    @Test
+    void should_propagate_decision_model_errors() {
+
+        ScoringModel scoringModel =
+                new DecisionModelScoringModel(DecisionModelMock.thatAlwaysThrowsExceptionWithMessage("down"));
+
+        assertThatThrownBy(() -> scoringModel.scoreAll(List.of(TextSegment.from("text")), "query"))
+                .hasMessage("down");
+        assertThat(scoringModel.scoreAsync(ScoringRequest.builder()
+                        .documents(List.of("text"))
+                        .query("query")
+                        .build()))
+                .failsWithin(Duration.ofSeconds(1))
+                .withThrowableThat()
+                .havingRootCause()
+                .withMessage("down");
+    }
+
+    @Test
+    void should_cancel_decision_model_call_when_async_scoring_is_cancelled() {
+
+        CompletableFuture<DecisionResponse> inFlight = new CompletableFuture<>();
+        DecisionModel pending = new DecisionModel() {
+            @Override
+            public DecisionResponse doDecide(DecisionRequest request) {
+                throw new AssertionError("must not block");
+            }
+
+            @Override
+            public CompletableFuture<DecisionResponse> doDecideAsync(DecisionRequest request) {
+                return inFlight;
+            }
+        };
+
+        new DecisionModelScoringModel(pending)
+                .scoreAsync(ScoringRequest.builder()
+                        .documents(List.of("text"))
+                        .query("query")
+                        .build())
+                .cancel(true);
+
+        assertThat(inFlight).isCancelled();
     }
 
     @Test
