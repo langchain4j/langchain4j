@@ -2,7 +2,6 @@ package dev.langchain4j.model.chat.router;
 
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
-import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
@@ -79,7 +78,7 @@ final class RouteSelector<M> {
         this.router = ensureNotNull(router, "router");
         this.defaultRoute = defaultRoute;
         this.capabilities = capabilities;
-        this.executor = getOrDefault(executor, DefaultExecutorProvider::getDefaultExecutor);
+        this.executor = executor;
         router.validate(this.routes);
     }
 
@@ -132,7 +131,9 @@ final class RouteSelector<M> {
     }
 
     private CompletableFuture<String> offload(ChatModelRoutingRequest routingRequest) {
-        return CompletableFuture.supplyAsync(() -> router.route(routingRequest), executor);
+        return CompletableFuture.supplyAsync(
+                () -> router.route(routingRequest),
+                executor != null ? executor : DefaultExecutorProvider.getDefaultExecutor());
     }
 
     M model(String routeName) {

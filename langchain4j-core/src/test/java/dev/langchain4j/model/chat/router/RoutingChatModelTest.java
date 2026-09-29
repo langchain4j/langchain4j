@@ -839,7 +839,7 @@ class RoutingChatModelTest {
     }
 
     @Test
-    void should_not_call_model_when_cancelled_before_routing() {
+    void should_cancel_routing_and_not_call_model_when_cancelled_before_routing() {
 
         CompletableFuture<String> route = new CompletableFuture<>();
         ChatModelRouter asyncRouter = new ChatModelRouter() {
@@ -872,8 +872,8 @@ class RoutingChatModelTest {
                     @Override
                     public void onComplete() {}
                 });
-        route.complete("simple");
 
+        assertThat(route).isCancelled();
         assertThat(smallStreaming.requests).isEmpty();
     }
 

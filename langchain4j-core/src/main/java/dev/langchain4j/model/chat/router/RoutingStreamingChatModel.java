@@ -22,6 +22,7 @@ import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Flow.Publisher;
 import java.util.concurrent.Flow.Subscriber;
@@ -104,7 +105,9 @@ public class RoutingStreamingChatModel implements StreamingChatModel {
         return downstream -> {
             DeferredSubscription subscription = new DeferredSubscription(downstream);
             downstream.onSubscribe(subscription);
-            selector.selectAsync(request, ChatRequestOptions.EMPTY).whenComplete((routeName, routingError) -> {
+            CompletableFuture<String> route = selector.selectAsync(request, ChatRequestOptions.EMPTY);
+            subscription.setRouting(route);
+            route.whenComplete((routeName, routingError) -> {
                 if (subscription.isCancelled()) {
                     return;
                 }
@@ -180,6 +183,7 @@ public class RoutingStreamingChatModel implements StreamingChatModel {
 
         private final Subscriber<? super ChatModelStreamingEvent> downstream;
         private volatile Subscription upstream;
+        private CompletableFuture<?> routing;
         private long pendingDemand;
         private boolean cancelled;
 
@@ -220,12 +224,28 @@ public class RoutingStreamingChatModel implements StreamingChatModel {
         @Override
         public void cancel() {
             Subscription current;
+            CompletableFuture<?> currentRouting;
             synchronized (this) {
                 cancelled = true;
                 current = upstream;
+                currentRouting = routing;
+            }
+            if (currentRouting != null) {
+                currentRouting.cancel(true);
             }
             if (current != null) {
                 current.cancel();
+            }
+        }
+
+        void setRouting(CompletableFuture<?> routing) {
+            boolean cancel;
+            synchronized (this) {
+                this.routing = routing;
+                cancel = cancelled;
+            }
+            if (cancel) {
+                routing.cancel(true);
             }
         }
 
@@ -258,7 +278,7 @@ public class RoutingStreamingChatModel implements StreamingChatModel {
     }
 
     /**
-     * The name of the default route, or {@code null} if there is none.
+     * The name of the default route, used when the router does not select one.
      */
     public String defaultRoute() {
         return selector.defaultRoute();

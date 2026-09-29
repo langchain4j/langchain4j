@@ -3,21 +3,27 @@ package dev.langchain4j.model.chat.router;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.decision.DecisionModel;
 import dev.langchain4j.model.decision.mock.DecisionModelMock;
+import dev.langchain4j.model.decision.request.DecisionRequest;
+import dev.langchain4j.model.decision.response.DecisionResponse;
 import dev.langchain4j.model.decision.request.ChoiceQuestion;
 import dev.langchain4j.model.decision.response.ChoiceAnswer;
 import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.Test;
 
 class DecisionModelChatModelRouterTest {
@@ -85,6 +91,55 @@ class DecisionModelChatModelRouterTest {
 
         assertThat(router.route(request(UserMessage.from("Hi!")))).isNull();
         assertThat(router.routeAsync(request(UserMessage.from("Hi!"))).join()).isNull();
+    }
+
+    @Test
+    void should_not_select_a_route_when_async_decision_model_call_throws() {
+
+        DecisionModel throwing = new DecisionModel() {
+            @Override
+            public DecisionResponse doDecide(DecisionRequest request) {
+                throw new AssertionError("must not block");
+            }
+
+            @Override
+            public CompletableFuture<DecisionResponse> decideAsync(DecisionRequest request) {
+                throw new RuntimeException("down");
+            }
+        };
+        ChatModelRouter router = new DecisionModelChatModelRouter(throwing);
+
+        assertThat(router.routeAsync(request(UserMessage.from("Hi!"))).join()).isNull();
+    }
+
+    @Test
+    void should_include_only_text_of_user_and_assistant_messages_in_previous_messages() {
+
+        ChatModelRouter router = DecisionModelChatModelRouter.builder()
+                .decisionModel(choosing("complex", 0.9))
+                .maxMessages(10)
+                .build();
+
+        ToolExecutionRequest toolCall = ToolExecutionRequest.builder()
+                .id("1")
+                .name("weather")
+                .arguments("{}")
+                .build();
+        router.route(request(
+                SystemMessage.from("You are a helpful assistant"),
+                UserMessage.from("What is the weather?"),
+                AiMessage.from(toolCall),
+                ToolExecutionResultMessage.from(toolCall, "sunny"),
+                AiMessage.from("It is sunny."),
+                UserMessage.from("And tomorrow?")));
+
+        assertThat(decisionModel.request().input())
+                .isEqualTo(Map.of(
+                        "messages",
+                        List.of(
+                                Map.of("role", "user", "text", "What is the weather?"),
+                                Map.of("role", "assistant", "text", "It is sunny."),
+                                Map.of("role", "user", "text", "And tomorrow?"))));
     }
 
     @Test

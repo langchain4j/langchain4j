@@ -142,7 +142,7 @@ public class RoutingChatModel implements ChatModel {
     }
 
     /**
-     * The name of the default route, or {@code null} if there is none.
+     * The name of the default route, used when the router does not select one.
      */
     public String defaultRoute() {
         return selector.defaultRoute();

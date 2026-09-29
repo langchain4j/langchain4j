@@ -27,6 +27,10 @@ ChatModel chatModel = RoutingChatModel.builder()
 Assistant assistant = AiServices.create(Assistant.class, chatModel);
 ```
 
+`smallModel` and `largeModel` are any `ChatModel`s, and `decisionModel` is any `DecisionModel`, for example
+`TypeSafeDecisionModel` (see [Decision Models](/tutorials/decision-models)). Routers that need no model are shown
+below.
+
 For streaming, use `RoutingStreamingChatModel` with `StreamingChatModel`s; it works the same way.
 
 ## Routers
@@ -39,8 +43,9 @@ calls a model is unsure or fails.
 
 `DecisionModelChatModelRouter` uses a [decision model](/tutorials/decision-models) to choose the route whose
 description fits the last user message best. Content other than text, such as an image, is represented by a marker
-(for example `[attached image]`), so that a route whose description mentions images can be chosen for it. Decision models are typically much faster and cheaper than chat
-models, so routing adds little latency and cost compared to the chat model call. Every route needs a description.
+(for example `[attached image]`), so that a route whose description mentions images can be chosen for it. Decision
+models are typically much faster and cheaper than chat models, so routing adds little latency and cost compared to the
+chat model call. Every route needs a description.
 
 It returns `null` (so the default route is used) when the request has no user message, and when the probability of
 the chosen route is below `minProbability` (or no probabilities are reported), which is useful to send the requests
@@ -116,6 +121,9 @@ is created, by implementing `validate(...)`.
 - The routing chat model has no default request parameters of its own, and `provider()` returns `OTHER`: code that
   reads the default request parameters from the chat model (for example to adjust `toolChoice`) sees empty
   parameters, not those of the routes. The default parameters of the selected model still apply to each request.
-- When the routing chat model and its routes are all beans of the same type (for example in Spring or Quarkus),
-  mark the routing chat model as the primary or default one, so that it is the one injected.
+- When the routing chat model and its routes are all beans of the same type, make sure that the AI Service uses the
+  routing chat model, for example in Spring Boot with
+  `@AiService(wiringMode = EXPLICIT, chatModel = "routingChatModel")`.
+- Listeners are configured on the route models, not on the routing chat model: the listeners of the selected model
+  observe each call, and the route name is available in their attributes (`RoutingChatModel.ROUTE_ATTRIBUTE`).
 - Routing selects a model before the request is sent; it does not retry a failed request on another model.

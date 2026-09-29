@@ -10,6 +10,7 @@ import dev.langchain4j.Experimental;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.decision.DecisionModel;
 import dev.langchain4j.model.decision.request.DecisionRequest;
+import dev.langchain4j.model.decision.request.DecisionRequestParameters;
 import dev.langchain4j.model.decision.request.YesNoQuestion;
 import dev.langchain4j.model.decision.response.DecisionResponse;
 import dev.langchain4j.model.input.PromptTemplate;
@@ -79,7 +80,7 @@ public class DecisionModelScoringModel implements ScoringModel {
         List<Double> scores = new ArrayList<>(texts.size());
         TokenUsage tokenUsage = null;
         for (List<String> batch : batches(texts)) {
-            DecisionResponse response = decisionModel.decide(toRequest(batch, query));
+            DecisionResponse response = decisionModel.decide(toRequest(batch, query, DecisionRequestParameters.EMPTY));
             scores.addAll(scores(response, batch.size()));
             tokenUsage = TokenUsage.sum(tokenUsage, response.tokenUsage());
         }
@@ -98,13 +99,17 @@ public class DecisionModelScoringModel implements ScoringModel {
                 inFlight.get().cancel(true);
             }
         });
-        scoreBatches(batches(documents).iterator(), query, List.of(), null, result, inFlight);
+        DecisionRequestParameters parameters = DecisionRequestParameters.builder()
+                .modelName(request.parameters().modelName())
+                .build();
+        scoreBatches(batches(documents).iterator(), query, parameters, List.of(), null, result, inFlight);
         return result;
     }
 
     private void scoreBatches(
             Iterator<List<String>> batches,
             String query,
+            DecisionRequestParameters parameters,
             List<Double> scores,
             TokenUsage tokenUsage,
             CompletableFuture<ScoringResponse> result,
@@ -119,26 +124,31 @@ public class DecisionModelScoringModel implements ScoringModel {
         List<String> batch = batches.next();
         CompletableFuture<DecisionResponse> response;
         try {
-            response = decisionModel.decideAsync(toRequest(batch, query));
+            response = decisionModel.decideAsync(toRequest(batch, query, parameters));
         } catch (RuntimeException e) {
             result.completeExceptionally(e);
             return;
         }
         inFlight.set(response);
+        if (result.isCancelled()) {
+            response.cancel(true);
+            return;
+        }
         response.whenComplete((decisionResponse, error) -> {
             if (error != null) {
                 result.completeExceptionally(unwrapCompletionException(error));
                 return;
             }
             List<Double> allScores = new ArrayList<>(scores);
-            allScores.addAll(scores(decisionResponse, batch.size()));
-            scoreBatches(
-                    batches,
-                    query,
-                    allScores,
-                    TokenUsage.sum(tokenUsage, decisionResponse.tokenUsage()),
-                    result,
-                    inFlight);
+            TokenUsage allTokenUsage;
+            try {
+                allScores.addAll(scores(decisionResponse, batch.size()));
+                allTokenUsage = TokenUsage.sum(tokenUsage, decisionResponse.tokenUsage());
+            } catch (RuntimeException e) {
+                result.completeExceptionally(e);
+                return;
+            }
+            scoreBatches(batches, query, parameters, allScores, allTokenUsage, result, inFlight);
         });
     }
 
@@ -161,8 +171,9 @@ public class DecisionModelScoringModel implements ScoringModel {
         return scores;
     }
 
-    private DecisionRequest toRequest(List<String> batch, String query) {
-        DecisionRequest.Builder request = DecisionRequest.builder().input(Map.of("query", query));
+    private DecisionRequest toRequest(List<String> batch, String query, DecisionRequestParameters parameters) {
+        DecisionRequest.Builder request =
+                DecisionRequest.builder().input(Map.of("query", query)).parameters(parameters);
         for (int i = 1; i <= batch.size(); i++) {
             request.question(
                     questionName(i),

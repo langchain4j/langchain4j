@@ -7,11 +7,13 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.decision.DecisionModel;
 import dev.langchain4j.model.decision.mock.DecisionModelMock;
 import dev.langchain4j.model.decision.response.DecisionResponse;
+import dev.langchain4j.model.decision.response.YesNoAnswer;
 import dev.langchain4j.model.decision.request.DecisionRequest;
 import dev.langchain4j.model.decision.request.YesNoQuestion;
 import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
+import dev.langchain4j.model.scoring.request.DefaultScoringRequestParameters;
 import dev.langchain4j.model.scoring.request.ScoringRequest;
 import dev.langchain4j.model.scoring.response.ScoringResponse;
 import java.util.ArrayList;
@@ -129,6 +131,50 @@ class DecisionModelScoringModelTest {
 
         assertThat(response.scores()).containsExactly(0.9, 0.1, 0.9);
         assertThat(response.tokenUsage()).isEqualTo(new TokenUsage(20, 2));
+    }
+
+    @Test
+    void should_pass_model_name_of_async_request_to_decision_model() {
+
+        new DecisionModelScoringModel(decisionModel)
+                .scoreAsync(ScoringRequest.builder()
+                        .documents(List.of("relevant"))
+                        .query("query")
+                        .parameters(DefaultScoringRequestParameters.builder()
+                                .modelName("my-model")
+                                .build())
+                        .build())
+                .join();
+
+        assertThat(decisionModel.request().modelName()).isEqualTo("my-model");
+    }
+
+    @Test
+    void should_fail_async_scoring_when_response_has_no_answer() {
+
+        DecisionModel withoutAnswers = new DecisionModel() {
+            @Override
+            public DecisionResponse doDecide(DecisionRequest request) {
+                throw new AssertionError("must not block");
+            }
+
+            @Override
+            public CompletableFuture<DecisionResponse> decideAsync(DecisionRequest request) {
+                return CompletableFuture.completedFuture(DecisionResponse.builder()
+                        .answers(Map.of("unknown", YesNoAnswer.of(0.9)))
+                        .build());
+            }
+        };
+
+        assertThat(new DecisionModelScoringModel(withoutAnswers)
+                        .scoreAsync(ScoringRequest.builder()
+                                .documents(List.of("text"))
+                                .query("query")
+                                .build()))
+                .failsWithin(Duration.ofSeconds(1))
+                .withThrowableThat()
+                .havingRootCause()
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test

@@ -320,6 +320,9 @@ QueryRouter queryRouter = DecisionModelQueryRouter.builder()
         .build();
 ```
 
+The decision model only sees the query, so for follow-up questions such as "and for contractors?", combine the router
+with a query transformer that makes queries self-contained, such as `CompressingQueryTransformer`.
+
 ### Selecting tools
 
 When there are many tools (for example, from MCP servers), sending all of them to the LLM on every request is slow
@@ -397,6 +400,8 @@ Configure a short timeout and few retries on the decision model, so that the fal
   `PatternBasedPromptInjectionGuardrail`.
 - `DecisionModelFilteringToolProvider` passes on all tools when the decision model fails. Use
   `fallbackStrategy(NO_TOOLS)` or `fallbackStrategy(FAIL)` if that is not acceptable.
+- `DecisionModelOutputGuardrail` checks the text of the response only: the arguments of tool calls are not checked.
+  Tools that can leak data, such as sending an email, have to validate their arguments themselves.
 
 ### Testing
 

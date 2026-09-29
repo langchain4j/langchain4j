@@ -45,7 +45,11 @@ import org.slf4j.LoggerFactory;
  * Only the tools of the wrapped tool provider are filtered: tools configured directly on the AI Service are always
  * passed on. Tools that were already called in the conversation are also always passed on, since some LLM providers
  * reject requests whose messages contain calls to tools that are not in the request. This is similar to a
- * {@link dev.langchain4j.service.tool.search.ToolSearchStrategy}, whose previously found tools stay available. If the user message has no text, all tools are passed on. If the decision model fails, the
+ * {@link dev.langchain4j.service.tool.search.ToolSearchStrategy}, whose previously found tools stay available. The
+ * previous messages, used both for this and for {@link Builder#maxMessages(Integer)}, are only known if the caller
+ * passes them in {@link ToolProviderRequest#messages()}, as LangChain4j AI Services do.
+ * <p>
+ * If the user message has no text, all tools are passed on. If the decision model fails, the
  * {@link FallbackStrategy} applies: by default, all tools are passed on and a warning is logged.
  *
  * @see dev.langchain4j.service.tool.search.decision.DecisionModelToolSearchStrategy

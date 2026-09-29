@@ -9,7 +9,9 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.invocation.InvocationContext;
+import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.decision.mock.DecisionModelMock;
+import dev.langchain4j.service.AiServices;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -187,6 +189,34 @@ class DecisionModelFilteringToolProviderTest {
     }
 
     @Test
+    void should_append_user_message_when_conversation_does_not_end_with_it() {
+
+        ToolProvider toolProvider = DecisionModelFilteringToolProvider.builder()
+                .toolProvider(allTools)
+                .decisionModel(decisionModel)
+                .maxMessages(3)
+                .build();
+
+        toolProvider.provideTools(ToolProviderRequest.builder()
+                .invocationContext(InvocationContext.builder().build())
+                .userMessage(UserMessage.from("Do the same for Berlin"))
+                .messages(List.of(
+                        UserMessage.from("Hi"),
+                        AiMessage.from("Hello!"),
+                        UserMessage.from("Will it rain in Paris?"),
+                        AiMessage.from("No rain in Paris today.")))
+                .build());
+
+        assertThat(decisionModel.request().input())
+                .isEqualTo(Map.of(
+                        "messages",
+                        List.of(
+                                Map.of("role", "user", "text", "Will it rain in Paris?"),
+                                Map.of("role", "assistant", "text", "No rain in Paris today."),
+                                Map.of("role", "user", "text", "Do the same for Berlin"))));
+    }
+
+    @Test
     void should_always_include_tools_already_called_in_conversation() {
 
         ToolProvider toolProvider = new DecisionModelFilteringToolProvider(allTools, decisionModel);
@@ -225,6 +255,40 @@ class DecisionModelFilteringToolProviderTest {
         assertThat(toolProvider.provideTools(providerRequest(UserMessage.from("Will it rain?"))).aiServiceTools())
                 .hasSize(4);
         assertThat(decisionModel.requests()).isEmpty();
+    }
+
+    interface Assistant {
+
+        String chat(String userMessage);
+    }
+
+    @Test
+    void should_pass_on_only_relevant_tools_in_ai_service() {
+
+        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds(
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .id("1")
+                        .name("get_weather")
+                        .arguments("{}")
+                        .build()),
+                AiMessage.from("It will not rain."));
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(chatModel)
+                .toolProvider(DecisionModelFilteringToolProvider.builder()
+                        .toolProvider(allTools)
+                        .decisionModel(decisionModel)
+                        .build())
+                .build();
+
+        String answer = assistant.chat("Will it rain?");
+
+        assertThat(answer).isEqualTo("It will not rain.");
+        assertThat(chatModel.requests()).hasSize(2);
+        assertThat(chatModel.requests())
+                .allSatisfy(request -> assertThat(request.toolSpecifications())
+                        .extracting(ToolSpecification::name)
+                        .containsExactlyInAnyOrder("get_weather", "get_forecast"));
+        assertThat(decisionModel.request().input()).isEqualTo("Will it rain?");
     }
 
     @Test

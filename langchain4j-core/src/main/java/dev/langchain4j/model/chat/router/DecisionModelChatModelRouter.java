@@ -152,7 +152,12 @@ public class DecisionModelChatModelRouter implements ChatModelRouter {
         if (decisionRequest == null) {
             return CompletableFuture.completedFuture(null);
         }
-        CompletableFuture<DecisionResponse> source = decisionModel.decideAsync(decisionRequest);
+        CompletableFuture<DecisionResponse> source;
+        try {
+            source = decisionModel.decideAsync(decisionRequest);
+        } catch (RuntimeException e) {
+            source = CompletableFuture.failedFuture(e);
+        }
         CompletableFuture<String> result = source.thenApply(response -> select(response.choice(QUESTION_NAME)))
                 .exceptionally(error -> {
                     Throwable cause = unwrapCompletionException(error);

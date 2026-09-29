@@ -5,6 +5,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.guardrail.OutputGuardrail;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
 import dev.langchain4j.guardrail.OutputGuardrailResult;
@@ -18,7 +19,7 @@ import java.util.Map;
  * An {@link OutputGuardrail} that checks the responses of the model with a {@link DecisionModel}.
  * <p>
  * Each check is a yes/no question where "yes" means the response must be rejected. All checks are answered in a
- * single call. The decision model receives the response and, when a chat memory is available, the last user message:
+ * single call. The decision model receives the response and the last user message:
  * <pre>{@code
  * OutputGuardrail guardrail = DecisionModelOutputGuardrail.builder()
  *         .decisionModel(decisionModel)
@@ -63,7 +64,7 @@ public class DecisionModelOutputGuardrail implements OutputGuardrail {
         }
 
         Map<String, Object> input = new LinkedHashMap<>();
-        String userMessage = lastUserMessage(request.requestParams().chatMemory());
+        String userMessage = userMessage(request.requestParams());
         if (userMessage != null) {
             input.put("userMessage", userMessage);
         }
@@ -77,15 +78,26 @@ public class DecisionModelOutputGuardrail implements OutputGuardrail {
         return reprompt == null ? fatal(message) : reprompt(message, reprompt);
     }
 
-    private static String lastUserMessage(ChatMemory chatMemory) {
+    private static String userMessage(GuardrailRequestParams params) {
+        UserMessage userMessage = lastUserMessage(params.chatMemory());
+        if (userMessage == null && params.invocationContext() != null) {
+            userMessage = params.invocationContext().userMessage();
+        }
+        if (userMessage == null) {
+            return null;
+        }
+        String text = DecisionModelChecks.text(userMessage);
+        return text.isBlank() ? null : text;
+    }
+
+    private static UserMessage lastUserMessage(ChatMemory chatMemory) {
         if (chatMemory == null) {
             return null;
         }
         List<ChatMessage> messages = chatMemory.messages();
         for (int i = messages.size() - 1; i >= 0; i--) {
             if (messages.get(i) instanceof UserMessage userMessage) {
-                String text = DecisionModelChecks.text(userMessage);
-                return text.isBlank() ? null : text;
+                return userMessage;
             }
         }
         return null;

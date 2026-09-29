@@ -13,6 +13,7 @@ import dev.langchain4j.guardrail.GuardrailResult;
 import dev.langchain4j.guardrail.InputGuardrailResult;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
 import dev.langchain4j.guardrail.OutputGuardrailResult;
+import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -194,6 +195,33 @@ class DecisionModelGuardrailsTest {
                 .isEqualTo("The response was rejected by the following checks: personalData");
         assertThat(decisionModel.request().input())
                 .isEqualTo(Map.of("userMessage", "What is John's phone number?", "response", "It is +1 555 0100"));
+    }
+
+    @Test
+    void should_send_user_message_of_invocation_context_to_output_checks_without_chat_memory() {
+
+        DecisionModelOutputGuardrail guardrail = DecisionModelOutputGuardrail.builder()
+                .decisionModel(answering(Map.of("unanswered", 0.1)))
+                .check("unanswered", "Does the response fail to address the user message?")
+                .build();
+        OutputGuardrailRequest request = OutputGuardrailRequest.builder()
+                .responseFromLLM(ChatResponse.builder()
+                        .aiMessage(AiMessage.from("It is sunny."))
+                        .build())
+                .chatExecutor(mock(ChatExecutor.class))
+                .requestParams(GuardrailRequestParams.builder()
+                        .userMessageTemplate("")
+                        .variables(Map.of())
+                        .invocationContext(InvocationContext.builder()
+                                .chatMemoryId("default")
+                                .userMessage(UserMessage.from("What is the weather?"))
+                                .build())
+                        .build())
+                .build();
+
+        assertThat(guardrail.validate(request).isSuccess()).isTrue();
+        assertThat(decisionModel.request().input())
+                .isEqualTo(Map.of("userMessage", "What is the weather?", "response", "It is sunny."));
     }
 
     @Test

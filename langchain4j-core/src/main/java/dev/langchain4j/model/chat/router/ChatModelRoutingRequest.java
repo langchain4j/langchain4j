@@ -24,7 +24,7 @@ public class ChatModelRoutingRequest {
     private final List<ChatModelRoute> routes;
     private final ChatRequestOptions options;
 
-    public ChatModelRoutingRequest(Builder builder) {
+    protected ChatModelRoutingRequest(Builder builder) {
         this.chatRequest = ensureNotNull(builder.chatRequest, "chatRequest");
         this.routes = copy(ensureNotEmpty(builder.routes, "routes"));
         this.options = getOrDefault(builder.options, ChatRequestOptions.EMPTY);
