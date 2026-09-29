@@ -19,8 +19,8 @@ import org.junit.jupiter.api.Test;
 class DecisionModelToolSearchStrategyTest {
 
     static final Map<String, Double> RELEVANCE = Map.of(
-            "get_weather", 0.95,
-            "get_forecast", 0.8,
+            "get_weather", 0.8,
+            "get_forecast", 0.95,
             "send_email", 0.05,
             "create_invoice", 0.3);
 
@@ -61,8 +61,8 @@ class DecisionModelToolSearchStrategyTest {
 
         ToolSearchResult result = strategy.search(searchRequest("{\"query\": \"Will it rain tomorrow in Berlin?\"}"));
 
-        assertThat(result.foundToolNames()).containsExactly("get_weather", "get_forecast");
-        assertThat(result.toolResultMessageText()).isEqualTo("Tools found: get_weather, get_forecast");
+        assertThat(result.foundToolNames()).containsExactly("get_forecast", "get_weather");
+        assertThat(result.toolResultMessageText()).isEqualTo("Tools found: get_forecast, get_weather");
         assertThat(decisionModel.requests()).singleElement().satisfies(request -> {
             assertThat(request.input()).isEqualTo("Will it rain tomorrow in Berlin?");
             assertThat(request.questions())
@@ -89,7 +89,7 @@ class DecisionModelToolSearchStrategyTest {
 
         ToolSearchResult result = strategy.search(searchRequest("{\"query\": \"weather\"}"));
 
-        assertThat(result.foundToolNames()).containsExactly("get_weather");
+        assertThat(result.foundToolNames()).containsExactly("get_forecast");
         assertThat(decisionModel.requests()).hasSize(2);
         assertThat(decisionModel.requests().get(1).questions()).hasSize(1);
     }

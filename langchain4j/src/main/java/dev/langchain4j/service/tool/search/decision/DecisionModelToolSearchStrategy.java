@@ -32,9 +32,10 @@ import java.util.function.Function;
  *         .build();
  * }</pre>
  * Unlike an embedding-based search, the decision model reads the descriptions of the tools and the query together,
- * so it can find tools that match by meaning rather than by wording.
+ * so it can find tools that match by meaning rather than by wording. If the decision model fails, the exception is
+ * propagated to the tool-calling loop like the error of any tool.
  *
- * @see dev.langchain4j.service.tool.DecisionModelToolProvider to select tools before the first LLM call, without a tool search round trip
+ * @see dev.langchain4j.service.tool.DecisionModelFilteringToolProvider to select tools before the first LLM call, without a tool search round trip
  * @since 1.21.0
  */
 @Experimental
@@ -152,7 +153,7 @@ public class DecisionModelToolSearchStrategy implements ToolSearchStrategy {
         /**
          * Sets the yes/no question asked for each tool, followed by the name and description of the tool.
          * <p>
-         * Default value is "Would this tool help to handle the request?"
+         * Default value is {@value DecisionModelToolSelector#DEFAULT_QUESTION}.
          */
         public Builder question(String question) {
             this.question = question;
@@ -162,7 +163,7 @@ public class DecisionModelToolSearchStrategy implements ToolSearchStrategy {
         /**
          * Sets the maximum number of tools returned by a search.
          * <p>
-         * Default value is 5.
+         * Default value is {@value DecisionModelToolSelector#DEFAULT_MAX_RESULTS}.
          */
         public Builder maxResults(Integer maxResults) {
             this.maxResults = maxResults;
@@ -172,7 +173,7 @@ public class DecisionModelToolSearchStrategy implements ToolSearchStrategy {
         /**
          * Sets the minimum probability of "yes" for a tool to be returned.
          * <p>
-         * Default value is 0.5.
+         * Default value is {@value DecisionModelToolSelector#DEFAULT_MIN_PROBABILITY}.
          */
         public Builder minProbability(Double minProbability) {
             this.minProbability = minProbability;
@@ -243,6 +244,8 @@ public class DecisionModelToolSearchStrategy implements ToolSearchStrategy {
 
         /**
          * Sets the function that creates the text of the tool result message from the names of the found tools.
+         * <p>
+         * By default, the text lists the names of the found tools, or says that no matching tools were found.
          */
         public Builder toolResultMessageTextProvider(Function<List<String>, String> toolResultMessageTextProvider) {
             this.toolResultMessageTextProvider = toolResultMessageTextProvider;

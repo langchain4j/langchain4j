@@ -300,18 +300,58 @@ and expensive. There are two ways to select the relevant ones with a decision mo
 
 - `DecisionModelToolSearchStrategy` is a [tool search strategy](/tutorials/tools#tool-search):
   the LLM searches for tools when it needs them, and the decision model decides which tools match the search.
-- `DecisionModelToolProvider` wraps a `ToolProvider` and passes on only the tools that are relevant to the user
-  message, before the first LLM call, so no tool search round trip is needed.
+- `DecisionModelFilteringToolProvider` wraps a `ToolProvider` and passes on only the tools that are relevant to the
+  conversation, before the first LLM call, so no tool search round trip is needed.
 
 ```java
 Assistant assistant = AiServices.builder(Assistant.class)
         .chatModel(chatModel)
-        .toolProvider(DecisionModelToolProvider.builder()
+        .toolProvider(DecisionModelFilteringToolProvider.builder()
                 .toolProvider(mcpToolProvider)
                 .decisionModel(decisionModel)
                 .maxResults(5)
+                .alwaysInclude("get_current_time")   // optional: tools that are always passed on
+                .maxMessages(3)                      // optional: also consider the previous messages
                 .build())
         .build();
+```
+
+The tool search strategy is better for long tasks where the needed tools only become clear along the way;
+the filtering tool provider is better when the user message says what is needed, since it saves an LLM round trip.
+
+### Model routing
+
+`DecisionModelChatModelRouter` selects which chat model handles a request, based on descriptions of the models.
+See [Model Routing](/tutorials/model-routing).
+
+### What the components send to the decision model
+
+The components send the text of the messages as the chat model will see it. In an AI Service, the user message is
+checked after the prompt template, retrieved content and output format instructions were added to it:
+for example, an instruction hidden in a retrieved document can make an input guardrail reject the message.
+Images and other non-text content are not sent, so a message with only images passes the input guardrail.
+
+### When the decision model fails
+
+Components that protect the application fail when the decision model fails; components that only optimize
+requests fall back to what they would do without a decision model:
+
+| Component | Default behavior when the decision model fails | Configurable |
+|---|---|---|
+| `DecisionModelInputGuardrail`, `DecisionModelOutputGuardrail` | the request fails | no |
+| `DecisionModelChatModelRouter` | the default route is used, a warning is logged | `fallbackStrategy` |
+| `DecisionModelQueryRouter` | no retrieval, a warning is logged | `fallbackStrategy` |
+| `DecisionModelFilteringToolProvider` | all tools are passed on, a warning is logged | `fallbackStrategy` |
+| `DecisionModelToolSearchStrategy` | the tool search fails, and the LLM receives the error like for any tool | no |
+| `DecisionModelScoringModel` | the scoring fails | no |
+
+### Testing
+
+`DecisionModelMock` (in the `langchain4j-core` test jar) answers with fixed or computed answers and records the
+requests, for example to test code that uses these components without calling a real decision model:
+
+```java
+DecisionModelMock decisionModel = DecisionModelMock.thatAnswersYesNoQuestions(question -> 0.9);
 ```
 
 ### Model routing

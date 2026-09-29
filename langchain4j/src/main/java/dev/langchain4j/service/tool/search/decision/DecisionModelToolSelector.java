@@ -24,9 +24,9 @@ import java.util.List;
 @Internal
 public final class DecisionModelToolSelector {
 
-    static final String DEFAULT_QUESTION = "Would this tool help to handle the request?";
-    static final int DEFAULT_MAX_RESULTS = 5;
-    static final double DEFAULT_MIN_PROBABILITY = 0.5;
+    public static final String DEFAULT_QUESTION = "Would this tool help to handle the request?";
+    public static final int DEFAULT_MAX_RESULTS = 5;
+    public static final double DEFAULT_MIN_PROBABILITY = 0.5;
 
     private final DecisionModel decisionModel;
     private final String question;
@@ -50,12 +50,12 @@ public final class DecisionModelToolSelector {
                 : ensureGreaterThanZero(maxToolsPerRequest, "maxToolsPerRequest");
     }
 
-    public List<String> select(String request, List<ToolSpecification> tools) {
+    public List<String> select(Object input, List<ToolSpecification> tools) {
         List<ScoredTool> scoredTools = new ArrayList<>();
         for (int start = 0; start < tools.size(); ) {
             List<ToolSpecification> batch = tools.subList(start, start + Math.min(maxToolsPerRequest, tools.size() - start));
             start += batch.size();
-            DecisionRequest.Builder decisionRequest = DecisionRequest.builder().input(request);
+            DecisionRequest.Builder decisionRequest = DecisionRequest.builder().input(input);
             for (int i = 0; i < batch.size(); i++) {
                 decisionRequest.question("tool" + i, YesNoQuestion.of(question + "\n" + describe(batch.get(i))));
             }
