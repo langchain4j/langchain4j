@@ -1,6 +1,7 @@
 package dev.langchain4j.service.decision;
 
 import dev.langchain4j.service.decision.internal.DecisionMethod;
+import dev.langchain4j.service.decision.internal.DecisionServiceConfig;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.offset;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -291,8 +292,17 @@ class DecisionServicesTest {
                                 .text("Which team should handle this ticket?")
                                 .option("BILLING", "Payments, invoices, refunds")
                                 .option("SUPPORT", "Problems using the product")
-                                .option("SALES", "SALES")
+                                .option("SALES")
                                 .build()));
+    }
+
+    @Test
+    void should_create_service_with_model_only() {
+
+        SpamFilter spamFilter =
+                DecisionServices.create(SpamFilter.class, new FakeDecisionModel(Map.of("isSpam", yesNo(0.7))));
+
+        assertThat(spamFilter.isSpam("You won a cruise!")).isTrue();
     }
 
     @Test
@@ -397,8 +407,8 @@ class DecisionServicesTest {
                         ScaleQuestion.of(
                                 "How severe is this incident?",
                                 List.of(
-                                        "Cosmetic issue, no impact",
-                                        "A feature is degraded, a workaround exists",
+                                        "LOW: Cosmetic issue, no impact",
+                                        "MEDIUM: A feature is degraded, a workaround exists",
                                         "HIGH"))));
         assertThat(severity.mean()).isEqualTo(1.3);
         assertThat(severity.mostLikely()).isEqualTo(Severity.MEDIUM);
@@ -812,7 +822,12 @@ class DecisionServicesTest {
 
         // when
         CompletableFuture<Object> result =
-                method.invokeAsync(model, new Object[] {"I was charged twice"}, LazyRouter.class, null);
+                method.invokeAsync(
+                        DecisionServiceConfig.builder()
+                                .serviceInterface(LazyRouter.class)
+                                .decisionModel(model)
+                                .build(),
+                        new Object[] {"I was charged twice"});
 
         // then
         assertThat(result.get()).isEqualTo(Team.BILLING);

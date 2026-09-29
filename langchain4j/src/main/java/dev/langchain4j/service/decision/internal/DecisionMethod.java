@@ -15,7 +15,6 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
 
 import dev.langchain4j.Internal;
-import dev.langchain4j.model.decision.DecisionModel;
 import dev.langchain4j.exception.InvalidDecisionResponseException;
 import dev.langchain4j.model.decision.request.ChoiceQuestion;
 import dev.langchain4j.model.decision.request.DecisionRequest;
@@ -142,7 +141,7 @@ public final class DecisionMethod {
     /**
      * Analyzes the given method as if it returned the given type. Frameworks can use this for return types that are
      * not supported here, for example a reactive type such as Mutiny's {@code Uni<T>}: they pass {@code T} and call
-     * {@link #invokeAsync(DecisionModel, Object[], Class, ThresholdProvider)}.
+     * {@link #invokeAsync(DecisionServiceConfig, Object[])}.
      *
      * @throws dev.langchain4j.service.IllegalConfigurationException if the method cannot be implemented.
      */
@@ -258,16 +257,15 @@ public final class DecisionMethod {
     }
 
     /**
-     * Invokes this method with the given model.
+     * Invokes this method with the given configuration of the decision service.
      */
-    public Object invoke(
-            DecisionModel decisionModel, Object[] args, Class<?> serviceInterface, ThresholdProvider thresholdProvider) {
+    public Object invoke(DecisionServiceConfig config, Object[] args) {
         if (async) {
-            return invokeAsync(decisionModel, args, serviceInterface, thresholdProvider);
+            return invokeAsync(config, args);
         }
         DecisionRequest request = toRequest(args);
-        DecisionResponse response = decisionModel.decide(request);
-        return toResult(response, thresholds(decisionModel, request, response, serviceInterface, thresholdProvider));
+        DecisionResponse response = config.decisionModel().decide(request);
+        return toResult(response, thresholds(config, request, response));
     }
 
     /**
@@ -276,35 +274,31 @@ public final class DecisionMethod {
      *
      * @return a future of the result, without the {@link CompletableFuture} wrapper of the method's return type.
      */
-    public CompletableFuture<Object> invokeAsync(
-            DecisionModel decisionModel, Object[] args, Class<?> serviceInterface, ThresholdProvider thresholdProvider) {
+    public CompletableFuture<Object> invokeAsync(DecisionServiceConfig config, Object[] args) {
         DecisionRequest request;
         CompletableFuture<DecisionResponse> source;
         try {
             request = toRequest(args);
-            source = ensureNotNull(decisionModel.decideAsync(request), "decideAsync result");
+            source = ensureNotNull(config.decisionModel().decideAsync(request), "decideAsync result");
         } catch (RuntimeException e) {
             return CompletableFuture.failedFuture(e);
         }
-        CompletableFuture<Object> result = source.thenApply(response -> toResult(
-                response, thresholds(decisionModel, request, response, serviceInterface, thresholdProvider)));
+        CompletableFuture<Object> result =
+                source.thenApply(response -> toResult(response, thresholds(config, request, response)));
         propagateCancellation(result, source);
         return result;
     }
 
     private Function<String, Double> thresholds(
-            DecisionModel decisionModel,
-            DecisionRequest request,
-            DecisionResponse response,
-            Class<?> serviceInterface,
-            ThresholdProvider thresholdProvider) {
+            DecisionServiceConfig config, DecisionRequest request, DecisionResponse response) {
+        ThresholdProvider thresholdProvider = config.thresholdProvider();
         if (thresholdProvider == null) {
             return questionName -> null;
         }
         String modelName = getOrDefault(
-                response.modelName(), () -> getOrDefault(request.modelName(), decisionModel.modelName()));
+                response.modelName(), () -> getOrDefault(request.modelName(), config.decisionModel().modelName()));
         return questionName -> thresholdProvider.threshold(ThresholdContext.builder()
-                .serviceInterface(serviceInterface)
+                .serviceInterface(config.serviceInterface())
                 .method(method)
                 .questionName(questionName)
                 .modelName(modelName)
@@ -550,13 +544,27 @@ public final class DecisionMethod {
             if (enumType == null) {
                 question = YesNoQuestion.of(questionText);
             } else if (kind == Kind.SCALE) {
-                question = ScaleQuestion.of(questionText, descriptions(name, enumType).values().stream().toList());
+                List<String> levels = new ArrayList<>();
+                descriptions(name, enumType).forEach((constantName, description) ->
+                        levels.add(description == null ? constantName : constantName + ": " + description));
+                question = ScaleQuestion.of(questionText, levels);
             } else {
-                question = ChoiceQuestion.of(questionText, descriptions(name, enumType));
+                ChoiceQuestion.Builder choice = ChoiceQuestion.builder().text(questionText);
+                descriptions(name, enumType).forEach((constantName, description) -> {
+                    if (description == null) {
+                        choice.option(constantName);
+                    } else {
+                        choice.option(constantName, description);
+                    }
+                });
+                question = choice.build();
             }
             return new QuestionMapping(name, question, kind, enumType);
         }
 
+        /**
+         * The {@code @Description} of each constant, or {@code null} for a constant without one.
+         */
         private Map<String, String> descriptions(String name, Class<?> enumType) {
             Object[] constants = enumType.getEnumConstants();
             if (constants.length < 2) {
@@ -568,7 +576,7 @@ public final class DecisionMethod {
             for (Object constant : constants) {
                 String constantName = ((Enum<?>) constant).name();
                 Description description = declaredField(enumType, constantName).getAnnotation(Description.class);
-                descriptions.put(constantName, description == null ? constantName : String.join(" ", description.value()));
+                descriptions.put(constantName, description == null ? null : String.join(" ", description.value()));
             }
             return descriptions;
         }

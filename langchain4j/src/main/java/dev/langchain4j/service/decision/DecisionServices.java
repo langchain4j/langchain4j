@@ -2,6 +2,7 @@ package dev.langchain4j.service.decision;
 
 import dev.langchain4j.model.decision.response.YesNoAnswer;
 import dev.langchain4j.service.decision.internal.DecisionMethod;
+import dev.langchain4j.service.decision.internal.DecisionServiceConfig;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
 import static dev.langchain4j.spi.ServiceHelper.loadFactory;
@@ -81,6 +82,14 @@ public final class DecisionServices {
     }
 
     /**
+     * Creates an implementation of the given interface whose methods are answered by the given decision model.
+     * Equivalent to {@code builder(serviceInterface).decisionModel(decisionModel).build()}.
+     */
+    public static <T> T create(Class<T> serviceInterface, DecisionModel decisionModel) {
+        return builder(serviceInterface).decisionModel(decisionModel).build();
+    }
+
+    /**
      * Creates a builder for an implementation of the given interface.
      */
     public static <T> Builder<T> builder(Class<T> serviceInterface) {
@@ -149,8 +158,11 @@ public final class DecisionServices {
             }
             Map<Method, DecisionMethod> decisionMethods = Map.copyOf(methods);
 
-            DecisionModel model = decisionModel;
-            ThresholdProvider thresholds = thresholdProvider;
+            DecisionServiceConfig config = DecisionServiceConfig.builder()
+                    .serviceInterface(serviceInterface)
+                    .decisionModel(decisionModel)
+                    .thresholdProvider(thresholdProvider)
+                    .build();
             InvocationHandler handler = (proxy, method, args) -> {
                 if (method.getDeclaringClass() == Object.class) {
                     return switch (method.getName()) {
@@ -163,9 +175,7 @@ public final class DecisionServices {
                 if (method.isDefault()) {
                     return InvocationHandler.invokeDefault(proxy, method, args);
                 }
-                return decisionMethods
-                        .get(method)
-                        .invoke(model, args == null ? new Object[0] : args, serviceInterface, thresholds);
+                return decisionMethods.get(method).invoke(config, args == null ? new Object[0] : args);
             };
 
             @SuppressWarnings("unchecked")

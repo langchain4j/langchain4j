@@ -1,5 +1,5 @@
 ---
-sidebar_position: 39
+sidebar_position: 38
 ---
 
 # Decision Services
@@ -29,15 +29,17 @@ interface SupportDesk {
     Team route(String ticket);
 }
 
-SupportDesk supportDesk = DecisionServices.builder(SupportDesk.class)
-        .decisionModel(decisionModel)
-        .build();
+SupportDesk supportDesk = DecisionServices.create(SupportDesk.class, decisionModel);
 
 boolean spam = supportDesk.isSpam("Congratulations! You won a free cruise!");   // true
 Team team = supportDesk.route("I was charged twice this month");                // BILLING
 ```
 
 Any `DecisionModel` can be used, for example [TypeSafe](/integrations/decision-models/typesafe).
+`DecisionServices.builder(SupportDesk.class)` offers more options, such as [thresholds](#thresholds).
+
+Decision Services are not related to the decision services of DMN (Decision Model and Notation), as found in Drools,
+Kogito or Camunda: they answer questions with a decision model, and can be called like any other Java service.
 
 ## Maven dependency
 
@@ -116,8 +118,8 @@ or to [evaluate several thresholds](#evaluating-thresholds) without calling the 
 ### Choice questions
 
 The constants of an enum are the options.
-The model sees the name of each constant together with its `@Description`,
-so choose names and descriptions that explain what each option covers:
+The model sees the name of each constant together with its `@Description` (or only the name, when the constant has no
+`@Description`), so choose names and descriptions that explain what each option covers:
 
 ```java
 @Decide("Which team should handle this ticket?")
@@ -148,8 +150,9 @@ if (choice.margin() < 0.2) {
 ### Scale questions
 
 When the options are ordered (severity, urgency, frustration, quality), return `Scale<E>`.
-The levels are the enum constants, from the first declared (lowest) to the last (highest),
-described with `@Description` like the options of a choice:
+The levels are the enum constants, from the first declared (lowest) to the last (highest).
+The model sees each level as the name of the constant followed by its `@Description`, for example
+`CRITICAL: Outage or data loss`:
 
 ```java
 enum Severity {

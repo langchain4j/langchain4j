@@ -14,9 +14,10 @@ import java.util.Objects;
  * probability of each option and, if the model reports one, a confidence. It is the typed counterpart of
  * {@link ChoiceAnswer}.
  * <p>
- * Decision services currently create it for enums only: the enum constants are the options.
+ * Decision services create it for enums, whose constants are the options. It can also be built for options that are
+ * only known at runtime, such as strings, for example from a {@link ChoiceAnswer} of the {@code DecisionModel} API.
  *
- * @param <E> the type of the options, for example an enum whose constants are the options
+ * @param <E> the type of the options: an enum whose constants are the options, or for example {@link String}
  * @since 1.21.0
  */
 @Experimental
