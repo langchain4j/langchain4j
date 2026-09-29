@@ -11,11 +11,16 @@ import dev.langchain4j.model.decision.response.DecisionAnswer;
 import dev.langchain4j.model.decision.response.DecisionResponse;
 import dev.langchain4j.model.decision.response.ScaleAnswer;
 import dev.langchain4j.model.decision.response.YesNoAnswer;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 /**
  * Checks that a response matches its request, whatever the {@link DecisionModel} implementation: every question has
  * an answer of the matching type, a choice answer chooses one of the offered options, and a scale answer stays within
  * the levels. Answers to question types other than the built-in ones are not checked.
+ * <p>
+ * Choice answers are returned with the names of the offered options, so that
+ * {@link ChoiceAnswer#probabilityOf(String)} can reject a misspelled option.
  */
 final class DecisionResponseValidator {
 
@@ -25,8 +30,26 @@ final class DecisionResponseValidator {
         if (response == null) {
             throw new InvalidDecisionResponseException("The decision model returned no response");
         }
-        request.questions().forEach((name, question) -> validate(name, question, response.answers().get(name)));
-        return response;
+        Map<String, DecisionAnswer> answers = new LinkedHashMap<>(response.answers());
+        request.questions().forEach((name, question) -> {
+            validate(name, question, answers.get(name));
+            if (question instanceof ChoiceQuestion choice && answers.get(name) instanceof ChoiceAnswer answer) {
+                answers.put(name, withOptions(answer, choice));
+            }
+        });
+        return DecisionResponse.builder()
+                .answers(answers)
+                .metadata(response.metadata())
+                .build();
+    }
+
+    private static ChoiceAnswer withOptions(ChoiceAnswer answer, ChoiceQuestion question) {
+        return ChoiceAnswer.builder()
+                .value(answer.value())
+                .probabilities(answer.probabilities())
+                .confidence(answer.confidence())
+                .options(question.options().keySet())
+                .build();
     }
 
     private static void validate(String name, Question question, DecisionAnswer answer) {

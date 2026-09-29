@@ -47,6 +47,26 @@ class DecisionResponseValidationTest {
         assertThat(model.decide(REQUEST).choice("team").value()).isEqualTo("billing");
     }
 
+    @Test
+    void should_attach_offered_options_to_choice_answers_so_that_misspelled_options_are_rejected() {
+
+        DecisionModelMock model = DecisionModelMock.thatAlwaysAnswers(Map.of(
+                "urgent",
+                URGENT,
+                "team",
+                ChoiceAnswer.builder().value("billing").probability("billing", 0.9).build(),
+                "frustration",
+                FRUSTRATION));
+
+        ChoiceAnswer team = model.decide(REQUEST).choice("team");
+
+        assertThat(team.options()).containsExactlyInAnyOrder("billing", "support");
+        assertThat(team.probabilityOf("support")).isEqualTo(0.0);
+        assertThatThrownBy(() -> team.probabilityOf("suport"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("'suport' is not one of the options");
+    }
+
     @ParameterizedTest
     @MethodSource("invalidAnswers")
     void should_reject_response_that_does_not_match_the_request(

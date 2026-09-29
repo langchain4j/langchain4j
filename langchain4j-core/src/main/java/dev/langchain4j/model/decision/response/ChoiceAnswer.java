@@ -4,6 +4,8 @@ import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
 import dev.langchain4j.Experimental;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -22,11 +24,16 @@ public final class ChoiceAnswer implements DecisionAnswer {
     private final String value;
     private final Map<String, Double> probabilities;
     private final Double confidence;
+    private final List<String> options;
 
     private ChoiceAnswer(Builder builder) {
         this.value = ensureNotBlank(builder.value, "value");
         this.probabilities = copy(builder.probabilities);
         this.confidence = Probabilities.ensureNullableProbability(builder.confidence, "confidence");
+        this.options = copy(builder.options);
+        if (!options.isEmpty() && !options.contains(value)) {
+            throw new IllegalArgumentException("'%s' is not one of the options %s".formatted(value, options));
+        }
     }
 
     /**
@@ -48,11 +55,27 @@ public final class ChoiceAnswer implements DecisionAnswer {
     }
 
     /**
+     * The names of the options that were offered, in the order of the question.
+     * <p>
+     * They are set by the {@link dev.langchain4j.model.decision.DecisionModel} after checking the answer against the
+     * question, so they are always present in a {@link DecisionResponse} returned by a decision model. They are empty
+     * for an answer that was built without them.
+     */
+    public List<String> options() {
+        return options;
+    }
+
+    /**
      * The probability of the given option, or 0 if the model reported probabilities but none for this option.
      *
-     * @throws IllegalStateException if the model did not report probabilities.
+     * @throws IllegalArgumentException if the option was not offered (see {@link #options()}), for example because
+     *                                  its name is misspelled.
+     * @throws IllegalStateException    if the model did not report probabilities.
      */
     public double probabilityOf(String option) {
+        if (!options.isEmpty() && !options.contains(option)) {
+            throw new IllegalArgumentException("'%s' is not one of the options %s".formatted(option, options));
+        }
         ensureProbabilities();
         return probabilities.getOrDefault(option, 0.0);
     }
@@ -103,18 +126,19 @@ public final class ChoiceAnswer implements DecisionAnswer {
         if (!(o instanceof ChoiceAnswer that)) return false;
         return Objects.equals(value, that.value)
                 && Objects.equals(probabilities, that.probabilities)
-                && Objects.equals(confidence, that.confidence);
+                && Objects.equals(confidence, that.confidence)
+                && Objects.equals(options, that.options);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(value, probabilities, confidence);
+        return Objects.hash(value, probabilities, confidence, options);
     }
 
     @Override
     public String toString() {
         return "ChoiceAnswer{value=" + value + ", probabilities=" + probabilities + ", confidence=" + confidence
-                + '}';
+                + ", options=" + options + '}';
     }
 
     public static final class Builder {
@@ -122,6 +146,7 @@ public final class ChoiceAnswer implements DecisionAnswer {
         private String value;
         private final Map<String, Double> probabilities = new LinkedHashMap<>();
         private Double confidence;
+        private List<String> options;
 
         public Builder value(String value) {
             this.value = value;
@@ -144,6 +169,15 @@ public final class ChoiceAnswer implements DecisionAnswer {
 
         public Builder confidence(Double confidence) {
             this.confidence = confidence;
+            return this;
+        }
+
+        /**
+         * Sets the names of the options that were offered. Usually not needed: the
+         * {@link dev.langchain4j.model.decision.DecisionModel} sets them after checking the answer against the question.
+         */
+        public Builder options(Collection<String> options) {
+            this.options = options == null ? null : new ArrayList<>(options);
             return this;
         }
 

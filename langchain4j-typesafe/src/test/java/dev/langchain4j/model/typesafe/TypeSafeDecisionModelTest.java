@@ -223,6 +223,7 @@ class TypeSafeDecisionModelTest {
                         .probability("billing", 0.88)
                         .probability("support", 0.12)
                         .confidence(0.81)
+                        .options(List.of("billing", "support"))
                         .build());
         assertThat(response.answers().get("urgent"))
                 .isEqualTo(YesNoAnswer.builder().probability(0.95).build());

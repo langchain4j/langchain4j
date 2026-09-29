@@ -193,7 +193,9 @@ if (team.margin() < 0.2) {   // the difference between the two highest probabili
 }
 ```
 
-`margin()` and `probabilityOf(option)` throw `IllegalStateException` when the model did not report probabilities.
+`margin()` and `probabilityOf(option)` throw `IllegalStateException` when the model did not report probabilities,
+and `probabilityOf(option)` throws `IllegalArgumentException` for an option that was not offered, for example a
+misspelled one.
 When it reported probabilities for only some of the options, `margin()` assumes that the rest belongs to one other
 option, so it never overestimates how sure the model is.
 
