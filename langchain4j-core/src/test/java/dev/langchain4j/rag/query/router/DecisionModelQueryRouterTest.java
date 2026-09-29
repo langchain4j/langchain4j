@@ -7,17 +7,13 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 
 import dev.langchain4j.model.decision.DecisionModel;
-import dev.langchain4j.model.decision.request.DecisionRequest;
+import dev.langchain4j.model.decision.mock.DecisionModelMock;
 import dev.langchain4j.model.decision.request.YesNoQuestion;
-import dev.langchain4j.model.decision.response.DecisionResponse;
 import dev.langchain4j.model.decision.response.YesNoAnswer;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.query.Query;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.Test;
 
 class DecisionModelQueryRouterTest {
@@ -31,30 +27,16 @@ class DecisionModelQueryRouterTest {
         retrievers.put(wiki, "Engineering wiki");
     }
 
-    final List<DecisionRequest> requests = new ArrayList<>();
+    DecisionModelMock decisionModel;
 
-    DecisionModel answering(double hrProbability, double wikiProbability) {
-        return new DecisionModel() {
-
-            @Override
-            public DecisionResponse doDecide(DecisionRequest request) {
-                requests.add(request);
-                return DecisionResponse.builder()
-                        .answer("source1", YesNoAnswer.of(hrProbability))
-                        .answer("source2", YesNoAnswer.of(wikiProbability))
-                        .build();
-            }
-
-            @Override
-            public CompletableFuture<DecisionResponse> doDecideAsync(DecisionRequest request) {
-                return CompletableFuture.completedFuture(doDecide(request));
-            }
-        };
+    DecisionModelMock answering(double hrProbability, double wikiProbability) {
+        decisionModel = DecisionModelMock.thatAlwaysAnswers(Map.of(
+                "source1", YesNoAnswer.of(hrProbability),
+                "source2", YesNoAnswer.of(wikiProbability)));
+        return decisionModel;
     }
 
-    final DecisionModel failing = request -> {
-        throw new RuntimeException("decision model is down");
-    };
+    final DecisionModel failing = DecisionModelMock.thatAlwaysThrowsExceptionWithMessage("decision model is down");
 
     @Test
     void should_route_to_retrievers_above_threshold() {
@@ -62,8 +44,8 @@ class DecisionModelQueryRouterTest {
         QueryRouter router = new DecisionModelQueryRouter(answering(0.9, 0.2), retrievers);
 
         assertThat(router.route(Query.from("How many vacation days do I have?"))).containsExactly(hr);
-        assertThat(requests.get(0).input()).isEqualTo("How many vacation days do I have?");
-        assertThat(requests.get(0).questions())
+        assertThat(decisionModel.request().input()).isEqualTo("How many vacation days do I have?");
+        assertThat(decisionModel.request().questions())
                 .containsEntry(
                         "source1",
                         YesNoQuestion.of(
@@ -119,6 +101,10 @@ class DecisionModelQueryRouterTest {
         QueryRouter router = new DecisionModelQueryRouter(answering(0.2, 0.9), retrievers);
 
         assertThat(router.routeAsync(Query.from("How do I deploy?")).join()).containsExactly(wiki);
+        assertThat(new DecisionModelQueryRouter(failing, retrievers)
+                        .routeAsync(Query.from("query"))
+                        .join())
+                .isEmpty();
     }
 
     @Test

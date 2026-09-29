@@ -30,8 +30,8 @@ import java.util.Map;
  *         .minScore(0.5)
  *         .build();
  * }</pre>
- * Segments are scored in batches: all segments of a batch are sent in a single request, with one yes/no question per
- * segment.
+ * All segments are scored in a single request, with one yes/no question per segment. If the segments together exceed
+ * the input size accepted by the decision model, set {@link Builder#maxSegmentsPerRequest(Integer)}.
  *
  * @since 1.21.0
  */
@@ -39,7 +39,6 @@ import java.util.Map;
 public class DecisionModelScoringModel implements ScoringModel {
 
     private static final String DEFAULT_QUESTION = "Does the document help answer the query?";
-    private static final int DEFAULT_MAX_SEGMENTS_PER_REQUEST = 20;
 
     private final DecisionModel decisionModel;
     private final String question;
@@ -52,9 +51,9 @@ public class DecisionModelScoringModel implements ScoringModel {
     protected DecisionModelScoringModel(Builder builder) {
         this.decisionModel = ensureNotNull(builder.decisionModel, "decisionModel");
         this.question = ensureNotBlank(getOrDefault(builder.question, DEFAULT_QUESTION), "question");
-        this.maxSegmentsPerRequest = ensureGreaterThanZero(
-                getOrDefault(builder.maxSegmentsPerRequest, DEFAULT_MAX_SEGMENTS_PER_REQUEST),
-                "maxSegmentsPerRequest");
+        this.maxSegmentsPerRequest = builder.maxSegmentsPerRequest == null
+                ? Integer.MAX_VALUE
+                : ensureGreaterThanZero(builder.maxSegmentsPerRequest, "maxSegmentsPerRequest");
     }
 
     @Override
@@ -64,8 +63,10 @@ public class DecisionModelScoringModel implements ScoringModel {
 
         List<Double> scores = new ArrayList<>(segments.size());
         TokenUsage tokenUsage = null;
-        for (int start = 0; start < segments.size(); start += maxSegmentsPerRequest) {
-            List<TextSegment> batch = segments.subList(start, Math.min(start + maxSegmentsPerRequest, segments.size()));
+        for (int start = 0; start < segments.size(); ) {
+            List<TextSegment> batch =
+                    segments.subList(start, start + Math.min(maxSegmentsPerRequest, segments.size() - start));
+            start += batch.size();
             DecisionResponse response = decisionModel.decide(toRequest(batch, query));
             for (int i = 1; i <= batch.size(); i++) {
                 scores.add(response.yesNo(questionName(i)).probability());
@@ -118,9 +119,10 @@ public class DecisionModelScoringModel implements ScoringModel {
         }
 
         /**
-         * Sets the maximum number of segments sent in a single request to the decision model.
+         * Sets the maximum number of segments sent in a single request to the decision model, for when the segments
+         * together exceed the input size accepted by the decision model.
          * <p>
-         * Default value is {@value DecisionModelScoringModel#DEFAULT_MAX_SEGMENTS_PER_REQUEST}.
+         * By default, all segments are sent in a single request.
          */
         public Builder maxSegmentsPerRequest(Integer maxSegmentsPerRequest) {
             this.maxSegmentsPerRequest = maxSegmentsPerRequest;
