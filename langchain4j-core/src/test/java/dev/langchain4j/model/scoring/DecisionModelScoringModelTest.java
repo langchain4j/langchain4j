@@ -10,6 +10,9 @@ import dev.langchain4j.model.decision.request.YesNoQuestion;
 import dev.langchain4j.model.decision.response.DecisionAnswer;
 import dev.langchain4j.model.decision.response.YesNoAnswer;
 import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.output.TokenUsage;
+import dev.langchain4j.model.scoring.request.ScoringRequest;
+import dev.langchain4j.model.scoring.response.ScoringResponse;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -82,6 +85,60 @@ class DecisionModelScoringModelTest {
 
         assertThat(response.content()).hasSize(50).containsOnly(0.9);
         assertThat(decisionModel.requests()).hasSize(1);
+    }
+
+    @Test
+    void should_sum_token_usage_of_batches() {
+
+        decisionModel.withTokenUsage(new TokenUsage(10, 1));
+        ScoringModel scoringModel = DecisionModelScoringModel.builder()
+                .decisionModel(decisionModel)
+                .maxSegmentsPerRequest(2)
+                .build();
+
+        Response<List<Double>> response = scoringModel.scoreAll(
+                List.of(TextSegment.from("relevant"), TextSegment.from("other"), TextSegment.from("relevant")),
+                "query");
+
+        assertThat(response.tokenUsage()).isEqualTo(new TokenUsage(20, 2));
+    }
+
+    @Test
+    void should_send_query_before_documents() {
+
+        new DecisionModelScoringModel(decisionModel).scoreAll(List.of(TextSegment.from("relevant")), "query");
+
+        assertThat(new ArrayList<Object>(((Map<?, ?>) decisionModel.request().input()).keySet()))
+                .containsExactly("query", "documents");
+    }
+
+    @Test
+    void should_return_no_scores_for_no_segments() {
+
+        Response<List<Double>> response = new DecisionModelScoringModel(decisionModel).scoreAll(List.of(), "query");
+
+        assertThat(response.content()).isEmpty();
+        assertThat(decisionModel.requests()).isEmpty();
+    }
+
+    @Test
+    void should_score_asynchronously() {
+
+        decisionModel.withTokenUsage(new TokenUsage(10, 1));
+        ScoringModel scoringModel = DecisionModelScoringModel.builder()
+                .decisionModel(decisionModel)
+                .maxSegmentsPerRequest(2)
+                .build();
+
+        ScoringResponse response = scoringModel
+                .scoreAsync(ScoringRequest.builder()
+                        .documents(List.of("relevant", "other", "relevant"))
+                        .query("query")
+                        .build())
+                .join();
+
+        assertThat(response.scores()).containsExactly(0.9, 0.1, 0.9);
+        assertThat(response.tokenUsage()).isEqualTo(new TokenUsage(20, 2));
     }
 
     @Test

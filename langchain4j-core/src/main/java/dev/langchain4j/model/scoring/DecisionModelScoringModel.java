@@ -13,10 +13,13 @@ import dev.langchain4j.model.decision.request.YesNoQuestion;
 import dev.langchain4j.model.decision.response.DecisionResponse;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
+import dev.langchain4j.model.scoring.request.ScoringRequest;
+import dev.langchain4j.model.scoring.response.ScoringResponse;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * A {@link ScoringModel} backed by a {@link DecisionModel}: the score of a segment is the probability that the
@@ -32,6 +35,10 @@ import java.util.Map;
  * }</pre>
  * All segments are scored in a single request, with one yes/no question per segment. If the segments together exceed
  * the input size accepted by the decision model, set {@link Builder#maxSegmentsPerRequest(Integer)}.
+ * <p>
+ * Since the decision model reads all segments of a request together, the score of a segment can vary slightly with
+ * the other segments of the request. Scores are best used to rank the segments of the same request; when filtering
+ * with a fixed minimum score, leave some margin.
  *
  * @since 1.21.0
  */
@@ -61,29 +68,69 @@ public class DecisionModelScoringModel implements ScoringModel {
         ensureNotNull(segments, "segments");
         ensureNotBlank(query, "query");
 
-        List<Double> scores = new ArrayList<>(segments.size());
+        List<String> texts = segments.stream().map(TextSegment::text).toList();
+        List<Double> scores = new ArrayList<>(texts.size());
         TokenUsage tokenUsage = null;
-        for (int start = 0; start < segments.size(); ) {
-            List<TextSegment> batch =
-                    segments.subList(start, start + Math.min(maxSegmentsPerRequest, segments.size() - start));
-            start += batch.size();
+        for (List<String> batch : batches(texts)) {
             DecisionResponse response = decisionModel.decide(toRequest(batch, query));
-            for (int i = 1; i <= batch.size(); i++) {
-                scores.add(response.yesNo(questionName(i)).probability());
-            }
+            scores.addAll(scores(response, batch.size()));
             tokenUsage = TokenUsage.sum(tokenUsage, response.tokenUsage());
         }
         return Response.from(scores, tokenUsage);
     }
 
-    private DecisionRequest toRequest(List<TextSegment> batch, String query) {
+    @Override
+    public CompletableFuture<ScoringResponse> doScoreAsync(ScoringRequest request) {
+        List<String> documents = ensureNotNull(request.documents(), "documents");
+        String query = ensureNotBlank(request.query(), "query");
+
+        CompletableFuture<ScoringResponse> result = CompletableFuture.completedFuture(
+                ScoringResponse.builder().scores(List.of()).build());
+        for (List<String> batch : batches(documents)) {
+            result = result.thenCompose(previous -> decisionModel
+                    .decideAsync(toRequest(batch, query))
+                    .thenApply(response -> {
+                        List<Double> scores = new ArrayList<>(previous.scores());
+                        scores.addAll(scores(response, batch.size()));
+                        return ScoringResponse.builder()
+                                .scores(scores)
+                                .tokenUsage(TokenUsage.sum(previous.tokenUsage(), response.tokenUsage()))
+                                .build();
+                    }));
+        }
+        return result;
+    }
+
+    private List<List<String>> batches(List<String> documents) {
+        List<List<String>> batches = new ArrayList<>();
+        for (int start = 0; start < documents.size(); ) {
+            List<String> batch =
+                    documents.subList(start, start + Math.min(maxSegmentsPerRequest, documents.size() - start));
+            batches.add(batch);
+            start += batch.size();
+        }
+        return batches;
+    }
+
+    private static List<Double> scores(DecisionResponse response, int size) {
+        List<Double> scores = new ArrayList<>(size);
+        for (int i = 1; i <= size; i++) {
+            scores.add(response.yesNo(questionName(i)).probability());
+        }
+        return scores;
+    }
+
+    private DecisionRequest toRequest(List<String> batch, String query) {
         Map<String, String> documents = new LinkedHashMap<>();
         DecisionRequest.Builder request = DecisionRequest.builder();
         for (int i = 1; i <= batch.size(); i++) {
-            documents.put(String.valueOf(i), batch.get(i - 1).text());
+            documents.put(String.valueOf(i), batch.get(i - 1));
             request.question(questionName(i), YesNoQuestion.of("Document " + i + ": " + question));
         }
-        return request.input(Map.of("query", query, "documents", documents)).build();
+        Map<String, Object> input = new LinkedHashMap<>();
+        input.put("query", query);
+        input.put("documents", documents);
+        return request.input(input).build();
     }
 
     private static String questionName(int index) {
@@ -111,7 +158,7 @@ public class DecisionModelScoringModel implements ScoringModel {
         /**
          * Sets the yes/no question asked for each segment. The score is the probability of "yes".
          * <p>
-         * Default value is {@value DecisionModelScoringModel#DEFAULT_QUESTION}
+         * Default value is {@value DecisionModelScoringModel#DEFAULT_QUESTION}.
          */
         public Builder question(String question) {
             this.question = question;

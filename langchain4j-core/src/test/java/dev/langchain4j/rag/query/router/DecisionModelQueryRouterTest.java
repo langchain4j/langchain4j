@@ -6,12 +6,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 
+import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.model.decision.DecisionModel;
 import dev.langchain4j.model.decision.mock.DecisionModelMock;
 import dev.langchain4j.model.decision.request.YesNoQuestion;
 import dev.langchain4j.model.decision.response.YesNoAnswer;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.query.Query;
+import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -59,7 +61,7 @@ class DecisionModelQueryRouterTest {
         QueryRouter router = DecisionModelQueryRouter.builder()
                 .decisionModel(answering(0.6, 0.7))
                 .retrieverToDescription(retrievers)
-                .threshold(0.55)
+                .minProbability(0.55)
                 .build();
 
         assertThat(router.route(Query.from("Who is on call for the payroll service?")))
@@ -105,6 +107,35 @@ class DecisionModelQueryRouterTest {
                         .routeAsync(Query.from("query"))
                         .join())
                 .isEmpty();
+    }
+
+    @Test
+    void should_fail_asynchronously_with_fail_strategy() {
+
+        QueryRouter router = DecisionModelQueryRouter.builder()
+                .decisionModel(failing)
+                .retrieverToDescription(retrievers)
+                .fallbackStrategy(FAIL)
+                .build();
+
+        assertThat(router.routeAsync(Query.from("query")))
+                .failsWithin(Duration.ofSeconds(1))
+                .withThrowableThat()
+                .havingRootCause()
+                .withMessage("decision model is down");
+    }
+
+    @Test
+    void should_propagate_missing_async_support_so_that_retrieval_augmentor_can_offload_routing() {
+
+        QueryRouter router = new DecisionModelQueryRouter(answering(0.9, 0.1).withoutAsyncSupport(), retrievers);
+
+        assertThat(router.routeAsync(Query.from("query")))
+                .failsWithin(Duration.ofSeconds(1))
+                .withThrowableThat()
+                .havingRootCause()
+                .isInstanceOf(AsyncNotSupportedException.class);
+        assertThat(router.route(Query.from("query"))).containsExactly(hr);
     }
 
     @Test

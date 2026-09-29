@@ -11,6 +11,7 @@ import static dev.langchain4j.rag.query.router.LanguageModelQueryRouter.Fallback
 import static java.util.Collections.emptyList;
 
 import dev.langchain4j.Experimental;
+import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.model.decision.DecisionModel;
 import dev.langchain4j.model.decision.request.DecisionRequest;
 import dev.langchain4j.model.decision.request.YesNoQuestion;
@@ -26,6 +27,8 @@ import java.util.Map;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A {@link QueryRouter} that uses a {@link DecisionModel} to decide which {@link ContentRetriever}s can help answer
@@ -33,7 +36,7 @@ import java.util.concurrent.CompletionException;
  * <p>
  * For each retriever, the decision model answers a yes/no question ("Could this data source contain information that
  * helps answer the query?"), all in a single call. The query is routed to every retriever whose probability of "yes"
- * reaches the threshold. When no retriever qualifies, no retrieval is performed, which is useful for queries that do
+ * reaches the minimum probability (0.5 by default). When no retriever qualifies, no retrieval is performed, which is useful for queries that do
  * not need retrieval at all (e.g. "Hi!").
  * <pre>{@code
  * QueryRouter queryRouter = DecisionModelQueryRouter.builder()
@@ -43,21 +46,24 @@ import java.util.concurrent.CompletionException;
  *                 wikiRetriever, "Engineering wiki: services, deployments, on-call"))
  *         .build();
  * }</pre>
- * If the decision model fails, the {@link FallbackStrategy} applies, like in {@link LanguageModelQueryRouter}.
+ * If the decision model fails, the {@link FallbackStrategy} applies, like in {@link LanguageModelQueryRouter}: by
+ * default, no content is retrieved and a warning is logged.
  *
  * @since 1.21.0
  */
 @Experimental
 public class DecisionModelQueryRouter implements QueryRouter {
 
+    private static final Logger log = LoggerFactory.getLogger(DecisionModelQueryRouter.class);
+
     private static final String DEFAULT_QUESTION =
             "Could the following data source contain information that helps answer the query?";
-    private static final double DEFAULT_THRESHOLD = 0.5;
+    private static final double DEFAULT_MIN_PROBABILITY = 0.5;
 
     private final DecisionModel decisionModel;
     private final Map<String, ContentRetriever> retrievers;
     private final Map<String, YesNoQuestion> questions;
-    private final double threshold;
+    private final double minProbability;
     private final FallbackStrategy fallbackStrategy;
 
     public DecisionModelQueryRouter(DecisionModel decisionModel, Map<ContentRetriever, String> retrieverToDescription) {
@@ -68,7 +74,8 @@ public class DecisionModelQueryRouter implements QueryRouter {
         this.decisionModel = ensureNotNull(builder.decisionModel, "decisionModel");
         ensureNotEmpty(builder.retrieverToDescription, "retrieverToDescription");
         String question = ensureNotBlank(getOrDefault(builder.question, DEFAULT_QUESTION), "question");
-        this.threshold = ensureBetween(getOrDefault(builder.threshold, DEFAULT_THRESHOLD), 0, 1, "threshold");
+        this.minProbability = ensureBetween(
+                getOrDefault(builder.minProbability, DEFAULT_MIN_PROBABILITY), 0, 1, "minProbability");
         this.fallbackStrategy = getOrDefault(builder.fallbackStrategy, DO_NOT_ROUTE);
 
         Map<String, ContentRetriever> retrievers = new LinkedHashMap<>();
@@ -101,12 +108,19 @@ public class DecisionModelQueryRouter implements QueryRouter {
         try {
             source = decisionModel.decideAsync(toRequest(query));
         } catch (Exception e) {
-            return CompletableFuture.completedFuture(fallback(e));
+            try {
+                return CompletableFuture.completedFuture(fallback(e));
+            } catch (RuntimeException fallbackError) {
+                return CompletableFuture.failedFuture(fallbackError);
+            }
         }
         CompletableFuture<Collection<ContentRetriever>> result = source.thenApply(this::select)
                 .exceptionally(error -> {
                     Throwable cause = unwrapCompletionException(error);
-                    if (cause instanceof Exception e && !(cause instanceof CancellationException)) {
+                    // AsyncNotSupportedException is propagated, so that the caller can call route() instead
+                    if (cause instanceof Exception e
+                            && !(cause instanceof CancellationException)
+                            && !(cause instanceof AsyncNotSupportedException)) {
                         return fallback(e);
                     }
                     throw cause instanceof RuntimeException re ? re : new CompletionException(cause);
@@ -125,7 +139,7 @@ public class DecisionModelQueryRouter implements QueryRouter {
     private Collection<ContentRetriever> select(DecisionResponse response) {
         List<ContentRetriever> selected = new ArrayList<>();
         retrievers.forEach((name, retriever) -> {
-            if (response.yesNo(name).isYes(threshold)) {
+            if (response.yesNo(name).isYes(minProbability)) {
                 selected.add(retriever);
             }
         });
@@ -134,8 +148,14 @@ public class DecisionModelQueryRouter implements QueryRouter {
 
     protected Collection<ContentRetriever> fallback(Exception e) {
         return switch (fallbackStrategy) {
-            case DO_NOT_ROUTE -> emptyList();
-            case ROUTE_TO_ALL -> new ArrayList<>(retrievers.values());
+            case DO_NOT_ROUTE -> {
+                log.warn("Failed to route the query, no content will be retrieved", e);
+                yield emptyList();
+            }
+            case ROUTE_TO_ALL -> {
+                log.warn("Failed to route the query, it will be routed to all content retrievers", e);
+                yield new ArrayList<>(retrievers.values());
+            }
             default -> throw e instanceof RuntimeException re ? re : new RuntimeException(e);
         };
     }
@@ -149,7 +169,7 @@ public class DecisionModelQueryRouter implements QueryRouter {
         private DecisionModel decisionModel;
         private Map<ContentRetriever, String> retrieverToDescription;
         private String question;
-        private Double threshold;
+        private Double minProbability;
         private FallbackStrategy fallbackStrategy;
 
         /**
@@ -171,7 +191,7 @@ public class DecisionModelQueryRouter implements QueryRouter {
         /**
          * Sets the yes/no question asked for each retriever, followed by the description of the retriever.
          * <p>
-         * Default value is {@value DecisionModelQueryRouter#DEFAULT_QUESTION}
+         * Default value is {@value DecisionModelQueryRouter#DEFAULT_QUESTION}.
          */
         public Builder question(String question) {
             this.question = question;
@@ -181,10 +201,10 @@ public class DecisionModelQueryRouter implements QueryRouter {
         /**
          * Sets the minimum probability of "yes" for a retriever to be used.
          * <p>
-         * Default value is {@value DecisionModelQueryRouter#DEFAULT_THRESHOLD}.
+         * Default value is {@value DecisionModelQueryRouter#DEFAULT_MIN_PROBABILITY}.
          */
-        public Builder threshold(Double threshold) {
-            this.threshold = threshold;
+        public Builder minProbability(Double minProbability) {
+            this.minProbability = minProbability;
             return this;
         }
 
