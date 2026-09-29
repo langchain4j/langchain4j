@@ -286,6 +286,10 @@ OutputGuardrail outputGuardrail = DecisionModelOutputGuardrail.builder()
         .build();
 ```
 
+A check fails when the probability of "yes" is greater than or equal to `threshold` (0.5 by default). It is called
+`threshold` rather than `minProbability`, as in the other components, because reaching it rejects the message
+instead of selecting something.
+
 The failure message names the failed checks, without their probabilities, so that users cannot see how close a
 rejected message came to passing. The probabilities are logged at DEBUG level.
 See [Guardrails](/tutorials/guardrails) for how to use them with AI Services.

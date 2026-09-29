@@ -151,7 +151,8 @@ public class DecisionModelOutputGuardrail implements OutputGuardrail {
         /**
          * Sets the probability of "yes" from which a check fails.
          * <p>
-         * Default value is 0.5. A check fails when the probability of "yes" is greater than or equal to it.
+         * Default value is 0.5. A check fails when the probability of "yes" is greater than or equal to it. Unlike the
+         * {@code minProbability} of components that select something, reaching it rejects the response.
          */
         public Builder threshold(Double threshold) {
             this.threshold = threshold;
