@@ -13,6 +13,7 @@ import dev.langchain4j.Experimental;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.model.decision.DecisionModel;
 import dev.langchain4j.model.decision.request.ChoiceQuestion;
 import dev.langchain4j.model.decision.request.DecisionRequest;
@@ -23,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,11 +39,22 @@ import org.slf4j.LoggerFactory;
  *         .defaultRoute("complex")
  *         .build();
  * }</pre>
- * Every route needs a description. The router returns {@code null} (so the default route of the routing chat model
- * is used) when the request contains no user message, when the probability of the chosen route is below
- * {@link Builder#minProbability(Double)}, or when the decision model fails. When only one route can handle the
- * request (for example, the only route supporting a JSON schema response format), that route is selected without
- * calling the decision model.
+ * Every route needs a description; this is checked when the routing chat model is created.
+ * <p>
+ * The decision model receives the text of the last user message of the request, as sent to the chat model. In an AI
+ * Service, this is the user message after the prompt template, retrieved content and output format instructions were
+ * added to it.
+ * <p>
+ * The router returns {@code null} (so the default route of the routing chat model is used) when the request contains
+ * no user message, and when the probability of the chosen route is below {@link Builder#minProbability(Double)} or the
+ * decision model reports no probabilities while a minimum is set. When the decision model fails, the
+ * {@link FallbackStrategy} applies: by default, the default route is used and a warning is logged. When only one
+ * route can handle the request (for example, the only route supporting a JSON schema response format), that route is
+ * selected without calling the decision model.
+ * <p>
+ * {@link #routeAsync(ChatModelRoutingRequest)} uses {@link DecisionModel#decideAsync(DecisionRequest)}. If the
+ * decision model does not support asynchronous calls, the routing chat models call
+ * {@link #route(ChatModelRoutingRequest)} on the default executor instead.
  *
  * @since 1.21.0
  */
@@ -53,9 +66,26 @@ public class DecisionModelChatModelRouter implements ChatModelRouter {
     private static final String DEFAULT_QUESTION = "Which model should handle this request?";
     private static final String QUESTION_NAME = "route";
 
+    /**
+     * What the router does when the decision model fails.
+     */
+    public enum FallbackStrategy {
+
+        /**
+         * Do not select a route, so the default route of the routing chat model is used, and log a warning.
+         */
+        DEFAULT_ROUTE,
+
+        /**
+         * Fail the request with the error of the decision model.
+         */
+        FAIL
+    }
+
     private final DecisionModel decisionModel;
     private final String question;
     private final Double minProbability;
+    private final FallbackStrategy fallbackStrategy;
 
     public DecisionModelChatModelRouter(DecisionModel decisionModel) {
         this(builder().decisionModel(decisionModel));
@@ -67,6 +97,18 @@ public class DecisionModelChatModelRouter implements ChatModelRouter {
         this.minProbability = builder.minProbability == null
                 ? null
                 : ensureBetween(builder.minProbability, 0, 1, "minProbability");
+        this.fallbackStrategy = getOrDefault(builder.fallbackStrategy, FallbackStrategy.DEFAULT_ROUTE);
+    }
+
+    @Override
+    public void validate(List<ChatModelRoute> routes) {
+        for (ChatModelRoute route : routes) {
+            if (isNullOrBlank(route.description())) {
+                throw new IllegalArgumentException(("Route '%s' has no description. "
+                                + "%s decides based on the descriptions of the routes, so each route needs one")
+                        .formatted(route.name(), getClass().getSimpleName()));
+            }
+        }
     }
 
     @Override
@@ -81,8 +123,7 @@ public class DecisionModelChatModelRouter implements ChatModelRouter {
         try {
             return select(decisionModel.decide(decisionRequest).choice(QUESTION_NAME));
         } catch (RuntimeException e) {
-            log.warn("Failed to select a route, the default route will be used", e);
-            return null;
+            return fallback(e);
         }
     }
 
@@ -104,14 +145,23 @@ public class DecisionModelChatModelRouter implements ChatModelRouter {
         CompletableFuture<String> result = source.thenApply(response -> select(response.choice(QUESTION_NAME)))
                 .exceptionally(error -> {
                     Throwable cause = unwrapCompletionException(error);
-                    if (cause instanceof CancellationException cancellation) {
-                        throw cancellation;
+                    if (cause instanceof CancellationException
+                            || cause instanceof AsyncNotSupportedException
+                            || !(cause instanceof RuntimeException)) {
+                        throw cause instanceof RuntimeException re ? re : new CompletionException(cause);
                     }
-                    log.warn("Failed to select a route, the default route will be used", cause);
-                    return null;
+                    return fallback((RuntimeException) cause);
                 });
         propagateCancellation(result, source);
         return result;
+    }
+
+    private String fallback(RuntimeException error) {
+        if (fallbackStrategy == FallbackStrategy.FAIL) {
+            throw error;
+        }
+        log.warn("Failed to select a route, the default route will be used", error);
+        return null;
     }
 
     private DecisionRequest toDecisionRequest(ChatModelRoutingRequest request) {
@@ -119,15 +169,9 @@ public class DecisionModelChatModelRouter implements ChatModelRouter {
         if (userMessage == null) {
             return null;
         }
+        validate(request.routes());
         Map<String, String> options = new LinkedHashMap<>();
-        for (ChatModelRoute route : request.routes()) {
-            if (isNullOrBlank(route.description())) {
-                throw new IllegalArgumentException(("Route '%s' has no description. "
-                                + "%s decides based on the descriptions of the routes, so each route needs one")
-                        .formatted(route.name(), getClass().getSimpleName()));
-            }
-            options.put(route.name(), route.description());
-        }
+        request.routes().forEach(route -> options.put(route.name(), route.description()));
         return DecisionRequest.builder()
                 .input(userMessage)
                 .question(QUESTION_NAME, ChoiceQuestion.of(question, options))
@@ -136,8 +180,7 @@ public class DecisionModelChatModelRouter implements ChatModelRouter {
 
     private String select(ChoiceAnswer answer) {
         if (minProbability != null
-                && !answer.probabilities().isEmpty()
-                && answer.probabilityOf(answer.value()) < minProbability) {
+                && (answer.probabilities().isEmpty() || answer.probabilityOf(answer.value()) < minProbability)) {
             return null;
         }
         return answer.value();
@@ -165,6 +208,7 @@ public class DecisionModelChatModelRouter implements ChatModelRouter {
         private DecisionModel decisionModel;
         private String question;
         private Double minProbability;
+        private FallbackStrategy fallbackStrategy;
 
         /**
          * Sets the decision model that selects the route. Required.
@@ -177,7 +221,7 @@ public class DecisionModelChatModelRouter implements ChatModelRouter {
         /**
          * Sets the question asked to choose between the routes, whose descriptions are the options.
          * <p>
-         * Default value is {@value DecisionModelChatModelRouter#DEFAULT_QUESTION}
+         * Default value is {@value DecisionModelChatModelRouter#DEFAULT_QUESTION}.
          */
         public Builder question(String question) {
             this.question = question;
@@ -185,12 +229,23 @@ public class DecisionModelChatModelRouter implements ChatModelRouter {
         }
 
         /**
-         * Sets the minimum probability of the chosen route. Below it, the router does not select a route, so the
-         * default route of the routing chat model is used, for example a larger model when the decision model is not
-         * sure. Optional: by default, the chosen route is always used.
+         * Sets the minimum probability of the chosen route. Below it, or if the decision model reports no
+         * probabilities, the router does not select a route, so the default route of the routing chat model is used,
+         * for example a larger model when the decision model is not sure. Optional: by default, the chosen route is
+         * always used.
          */
         public Builder minProbability(Double minProbability) {
             this.minProbability = minProbability;
+            return this;
+        }
+
+        /**
+         * Sets what happens when the decision model fails.
+         * <p>
+         * Default value is {@link FallbackStrategy#DEFAULT_ROUTE}.
+         */
+        public Builder fallbackStrategy(FallbackStrategy fallbackStrategy) {
+            this.fallbackStrategy = fallbackStrategy;
             return this;
         }
 

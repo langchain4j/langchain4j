@@ -1,7 +1,6 @@
 package dev.langchain4j.model.chat.router;
 
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.Experimental;
@@ -21,9 +20,7 @@ import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.PartialToolCallContext;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Flow.Publisher;
 import java.util.concurrent.Flow.Subscriber;
@@ -40,7 +37,9 @@ import java.util.concurrent.Flow.Subscription;
  *         .defaultRoute("complex")
  *         .build();
  * }</pre>
- * See {@link RoutingChatModel} for how requests are routed. The route is selected with
+ * See {@link RoutingChatModel} for how requests are routed and where the selected route is recorded (with
+ * {@link #chat(ChatRequest)}, which takes no options, only in the attributes of the response). The route is selected
+ * with
  * {@link ChatModelRouter#routeAsync(ChatModelRoutingRequest)}, so streaming does not block when the router does not.
  *
  * @since 1.21.0
@@ -52,23 +51,27 @@ public class RoutingStreamingChatModel implements StreamingChatModel {
 
     protected RoutingStreamingChatModel(Builder builder) {
         this.selector = new RouteSelector<>(
-                builder.models,
-                builder.routes,
-                builder.router,
-                builder.defaultRoute,
-                StreamingChatModel::supportedCapabilities);
+                builder.routes, builder.router, builder.defaultRoute, StreamingChatModel::supportedCapabilities);
     }
 
     @Override
     public void chat(ChatRequest request, ChatRequestOptions options, StreamingChatResponseHandler handler) {
         ensureNotNull(request, "request");
         ensureNotNull(handler, "handler");
-        selector.selectAsync(request).whenComplete((routeName, routingError) -> {
+        selector.selectAsync(request, options).whenComplete((routeName, routingError) -> {
             if (routingError != null) {
                 handler.onError(unwrapCompletionException(routingError));
                 return;
             }
-            selector.model(routeName).chat(request, options, new RouteRecordingHandler(handler, routeName));
+            try {
+                selector.model(routeName)
+                        .chat(
+                                request,
+                                RouteSelector.withRoute(options, routeName),
+                                new RouteRecordingHandler(handler, routeName));
+            } catch (Exception e) {
+                handler.onError(e);
+            }
         });
     }
 
@@ -81,9 +84,9 @@ public class RoutingStreamingChatModel implements StreamingChatModel {
     public Publisher<ChatModelStreamingEvent> chat(ChatRequest request) {
         ensureNotNull(request, "request");
         return downstream -> {
-            DeferredSubscription subscription = new DeferredSubscription();
+            DeferredSubscription subscription = new DeferredSubscription(downstream);
             downstream.onSubscribe(subscription);
-            selector.selectAsync(request).whenComplete((routeName, routingError) -> {
+            selector.selectAsync(request, ChatRequestOptions.EMPTY).whenComplete((routeName, routingError) -> {
                 if (subscription.isCancelled()) {
                     return;
                 }
@@ -91,40 +94,53 @@ public class RoutingStreamingChatModel implements StreamingChatModel {
                     downstream.onError(unwrapCompletionException(routingError));
                     return;
                 }
-                Publisher<ChatModelStreamingEvent> publisher;
                 try {
-                    publisher = selector.model(routeName).chat(request);
+                    selector.model(routeName).chat(request).subscribe(new RouteRecordingSubscriber(downstream, subscription, routeName));
                 } catch (Throwable error) {
                     downstream.onError(error);
-                    return;
                 }
-                publisher.subscribe(new Subscriber<>() {
-
-                    @Override
-                    public void onSubscribe(Subscription upstream) {
-                        subscription.setUpstream(upstream);
-                    }
-
-                    @Override
-                    public void onNext(ChatModelStreamingEvent event) {
-                        if (event instanceof CompleteResponse completeResponse) {
-                            selector.onResponse(routeName, completeResponse.chatResponse());
-                        }
-                        downstream.onNext(event);
-                    }
-
-                    @Override
-                    public void onError(Throwable error) {
-                        downstream.onError(error);
-                    }
-
-                    @Override
-                    public void onComplete() {
-                        downstream.onComplete();
-                    }
-                });
             });
         };
+    }
+
+    private static final class RouteRecordingSubscriber implements Subscriber<ChatModelStreamingEvent> {
+
+        private final Subscriber<? super ChatModelStreamingEvent> downstream;
+        private final DeferredSubscription subscription;
+        private final String routeName;
+
+        private RouteRecordingSubscriber(
+                Subscriber<? super ChatModelStreamingEvent> downstream,
+                DeferredSubscription subscription,
+                String routeName) {
+            this.downstream = downstream;
+            this.subscription = subscription;
+            this.routeName = routeName;
+        }
+
+        @Override
+        public void onSubscribe(Subscription upstream) {
+            subscription.setUpstream(upstream);
+        }
+
+        @Override
+        public void onNext(ChatModelStreamingEvent event) {
+            if (event instanceof CompleteResponse completeResponse) {
+                downstream.onNext(new CompleteResponse(RouteSelector.withRoute(completeResponse.chatResponse(), routeName)));
+            } else {
+                downstream.onNext(event);
+            }
+        }
+
+        @Override
+        public void onError(Throwable error) {
+            downstream.onError(error);
+        }
+
+        @Override
+        public void onComplete() {
+            downstream.onComplete();
+        }
     }
 
     @Override
@@ -139,36 +155,43 @@ public class RoutingStreamingChatModel implements StreamingChatModel {
 
     /**
      * The subscription given to the subscriber before the route is selected: demand and cancellation are passed on
-     * to the subscription of the selected model once it is available.
+     * to the subscription of the selected model once it is available. Calls to the upstream subscription are
+     * serialized.
      */
     private static final class DeferredSubscription implements Subscription {
 
+        private final Subscriber<? super ChatModelStreamingEvent> downstream;
         private Subscription upstream;
         private long pendingDemand;
         private boolean cancelled;
 
-        @Override
-        public void request(long n) {
-            Subscription current;
-            synchronized (this) {
-                if (upstream == null) {
-                    pendingDemand = pendingDemand + n < 0 ? Long.MAX_VALUE : pendingDemand + n;
-                    return;
-                }
-                current = upstream;
-            }
-            current.request(n);
+        private DeferredSubscription(Subscriber<? super ChatModelStreamingEvent> downstream) {
+            this.downstream = downstream;
         }
 
         @Override
-        public void cancel() {
-            Subscription current;
-            synchronized (this) {
-                cancelled = true;
-                current = upstream;
+        public synchronized void request(long n) {
+            if (cancelled) {
+                return;
             }
-            if (current != null) {
-                current.cancel();
+            if (n <= 0) {
+                cancel();
+                downstream.onError(new IllegalArgumentException(
+                        "The number of requested elements must be positive, but was " + n));
+                return;
+            }
+            if (upstream == null) {
+                pendingDemand = pendingDemand + n < 0 ? Long.MAX_VALUE : pendingDemand + n;
+            } else {
+                upstream.request(n);
+            }
+        }
+
+        @Override
+        public synchronized void cancel() {
+            cancelled = true;
+            if (upstream != null) {
+                upstream.cancel();
             }
         }
 
@@ -176,28 +199,37 @@ public class RoutingStreamingChatModel implements StreamingChatModel {
             return cancelled;
         }
 
-        void setUpstream(Subscription upstream) {
-            long demand;
-            boolean cancel;
-            synchronized (this) {
-                this.upstream = upstream;
-                demand = pendingDemand;
-                pendingDemand = 0;
-                cancel = cancelled;
-            }
-            if (cancel) {
+        synchronized void setUpstream(Subscription upstream) {
+            this.upstream = upstream;
+            if (cancelled) {
                 upstream.cancel();
-            } else if (demand > 0) {
+            } else if (pendingDemand > 0) {
+                long demand = pendingDemand;
+                pendingDemand = 0;
                 upstream.request(demand);
             }
         }
+    }
+
+    /**
+     * The routes, in the order in which they were configured.
+     */
+    public List<ChatModelRoute> routes() {
+        return selector.routes();
+    }
+
+    /**
+     * The name of the default route, or {@code null} if there is none.
+     */
+    public String defaultRoute() {
+        return selector.defaultRoute();
     }
 
     public static Builder builder() {
         return new Builder();
     }
 
-    private class RouteRecordingHandler implements StreamingChatResponseHandler {
+    private static final class RouteRecordingHandler implements StreamingChatResponseHandler {
 
         private final StreamingChatResponseHandler delegate;
         private final String routeName;
@@ -249,8 +281,7 @@ public class RoutingStreamingChatModel implements StreamingChatModel {
 
         @Override
         public void onCompleteResponse(ChatResponse completeResponse) {
-            selector.onResponse(routeName, completeResponse);
-            delegate.onCompleteResponse(completeResponse);
+            delegate.onCompleteResponse(RouteSelector.withRoute(completeResponse, routeName));
         }
 
         @Override
@@ -261,20 +292,22 @@ public class RoutingStreamingChatModel implements StreamingChatModel {
 
     public static class Builder {
 
-        private final Map<String, StreamingChatModel> models = new LinkedHashMap<>();
-        private final List<ChatModelRoute> routes = new ArrayList<>();
+        private final List<RouteSelector.Route<StreamingChatModel>> routes = new ArrayList<>();
         private ChatModelRouter router;
         private String defaultRoute;
 
         /**
-         * Adds a route without a description.
+         * Adds a route without a description, for routers that do not decide based on descriptions.
+         *
+         * @param name  the unique name of the route.
+         * @param model the streaming chat model that handles the requests sent to this route.
          */
         public Builder route(String name, StreamingChatModel model) {
             return route(name, model, null);
         }
 
         /**
-         * Adds a route.
+         * Adds a route. At least one route is required.
          *
          * @param name        the unique name of the route.
          * @param model       the streaming chat model that handles the requests sent to this route.
@@ -282,12 +315,7 @@ public class RoutingStreamingChatModel implements StreamingChatModel {
          *                    the content of the request, such as {@link DecisionModelChatModelRouter}.
          */
         public Builder route(String name, StreamingChatModel model, String description) {
-            ensureNotBlank(name, "name");
-            if (models.containsKey(name)) {
-                throw new IllegalArgumentException("There is already a route named '%s'".formatted(name));
-            }
-            models.put(name, ensureNotNull(model, "model"));
-            routes.add(new ChatModelRoute(name, description));
+            routes.add(new RouteSelector.Route<>(name, model, description));
             return this;
         }
 

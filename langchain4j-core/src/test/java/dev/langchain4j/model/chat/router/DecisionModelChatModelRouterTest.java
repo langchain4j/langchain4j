@@ -4,12 +4,17 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.decision.mock.DecisionModelMock;
 import dev.langchain4j.model.decision.request.ChoiceQuestion;
 import dev.langchain4j.model.decision.response.ChoiceAnswer;
+import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -32,8 +37,11 @@ class DecisionModelChatModelRouterTest {
         return decisionModel;
     }
 
-    static ChatModelRoutingRequest request(dev.langchain4j.data.message.ChatMessage... messages) {
-        return new ChatModelRoutingRequest(ChatRequest.builder().messages(messages).build(), ROUTES);
+    static ChatModelRoutingRequest request(ChatMessage... messages) {
+        return ChatModelRoutingRequest.builder()
+                .chatRequest(ChatRequest.builder().messages(messages).build())
+                .routes(ROUTES)
+                .build();
     }
 
     @Test
@@ -101,8 +109,10 @@ class DecisionModelChatModelRouterTest {
     void should_select_the_only_route_without_asking_the_decision_model() {
 
         ChatModelRouter router = new DecisionModelChatModelRouter(choosing("simple", 0.9));
-        ChatModelRoutingRequest request = new ChatModelRoutingRequest(
-                ChatRequest.builder().messages(UserMessage.from("Hi!")).build(), List.of(ROUTES.get(1)));
+        ChatModelRoutingRequest request = ChatModelRoutingRequest.builder()
+                .chatRequest(ChatRequest.builder().messages(UserMessage.from("Hi!")).build())
+                .routes(List.of(ROUTES.get(1)))
+                .build();
 
         assertThat(router.route(request)).isEqualTo("complex");
         assertThat(router.routeAsync(request).join()).isEqualTo("complex");
@@ -114,10 +124,75 @@ class DecisionModelChatModelRouterTest {
 
         ChatModelRouter router = new DecisionModelChatModelRouter(choosing("simple", 0.9));
 
-        assertThatThrownBy(() -> router.route(new ChatModelRoutingRequest(
-                        ChatRequest.builder().messages(UserMessage.from("Hi!")).build(),
-                        List.of(new ChatModelRoute("simple", null), ROUTES.get(1)))))
+        assertThatThrownBy(() -> router.validate(List.of(new ChatModelRoute("simple", null), ROUTES.get(1))))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Route 'simple' has no description");
+        router.validate(ROUTES);
+    }
+
+    @Test
+    void should_fail_when_decision_model_fails_with_fail_strategy() {
+
+        ChatModelRouter router = DecisionModelChatModelRouter.builder()
+                .decisionModel(DecisionModelMock.thatAlwaysThrowsExceptionWithMessage("down"))
+                .fallbackStrategy(DecisionModelChatModelRouter.FallbackStrategy.FAIL)
+                .build();
+
+        assertThatThrownBy(() -> router.route(request(UserMessage.from("Hi!")))).hasMessage("down");
+        assertThat(router.routeAsync(request(UserMessage.from("Hi!"))))
+                .failsWithin(Duration.ofSeconds(1))
+                .withThrowableThat()
+                .havingRootCause()
+                .withMessage("down");
+    }
+
+    @Test
+    void should_not_select_a_route_when_min_probability_is_set_but_no_probabilities_are_reported() {
+
+        ChatModelRouter router = DecisionModelChatModelRouter.builder()
+                .decisionModel(DecisionModelMock.thatAlwaysAnswers(Map.of(
+                        "route", ChoiceAnswer.builder().value("simple").build())))
+                .minProbability(0.5)
+                .build();
+
+        assertThat(router.route(request(UserMessage.from("Hi!")))).isNull();
+    }
+
+    @Test
+    void should_select_a_route_at_exactly_min_probability() {
+
+        ChatModelRouter router = DecisionModelChatModelRouter.builder()
+                .decisionModel(choosing("simple", 0.7))
+                .minProbability(0.7)
+                .build();
+
+        assertThat(router.route(request(UserMessage.from("Hi!")))).isEqualTo("simple");
+    }
+
+    @Test
+    void should_propagate_missing_async_support_so_that_routing_can_be_offloaded() {
+
+        ChatModelRouter router = new DecisionModelChatModelRouter(DecisionModelMock.thatAlwaysAnswers(Map.of(
+                        "route", ChoiceAnswer.builder().value("simple").build()))
+                .withoutAsyncSupport());
+
+        assertThat(router.routeAsync(request(UserMessage.from("Hi!"))))
+                .failsWithin(Duration.ofSeconds(1))
+                .withThrowableThat()
+                .havingRootCause()
+                .isInstanceOf(AsyncNotSupportedException.class);
+    }
+
+    @Test
+    void should_use_text_of_multimodal_user_message() {
+
+        ChatModelRouter router = new DecisionModelChatModelRouter(choosing("simple", 0.9));
+
+        router.route(request(UserMessage.from(
+                TextContent.from("What is in this picture?"), ImageContent.from("https://example.com/cat.png"))));
+
+        assertThat(decisionModel.request().input()).isEqualTo("What is in this picture?");
+        assertThat(router.route(request(UserMessage.from(ImageContent.from("https://example.com/cat.png")))))
+                .isNull();
     }
 }
