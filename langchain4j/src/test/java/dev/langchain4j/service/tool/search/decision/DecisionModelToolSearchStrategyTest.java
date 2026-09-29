@@ -5,27 +5,18 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.invocation.InvocationContext;
-import dev.langchain4j.model.decision.DecisionModel;
-import dev.langchain4j.model.decision.request.DecisionRequest;
+import dev.langchain4j.model.decision.mock.DecisionModelMock;
 import dev.langchain4j.model.decision.request.YesNoQuestion;
-import dev.langchain4j.model.decision.response.DecisionResponse;
-import dev.langchain4j.model.decision.response.YesNoAnswer;
-import dev.langchain4j.service.tool.AiServiceTool;
-import dev.langchain4j.service.tool.ToolProvider;
-import dev.langchain4j.service.tool.ToolProviderRequest;
-import dev.langchain4j.service.tool.ToolProviderResult;
 import dev.langchain4j.service.tool.search.ToolSearchRequest;
 import dev.langchain4j.service.tool.search.ToolSearchResult;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
-class DecisionModelToolSearchTest {
+class DecisionModelToolSearchStrategyTest {
 
     static final Map<String, Double> RELEVANCE = Map.of(
             "get_weather", 0.95,
@@ -33,23 +24,12 @@ class DecisionModelToolSearchTest {
             "send_email", 0.05,
             "create_invoice", 0.3);
 
-    final List<DecisionRequest> requests = new ArrayList<>();
-
     // answers each tool question with the relevance of the tool whose name is in the question
-    final DecisionModel decisionModel = request -> {
-        requests.add(request);
-        DecisionResponse.Builder response = DecisionResponse.builder();
-        request.questions().forEach((name, question) -> {
-            String text = ((YesNoQuestion) question).text();
-            double probability = RELEVANCE.entrySet().stream()
-                    .filter(entry -> text.contains(entry.getKey()))
-                    .mapToDouble(Map.Entry::getValue)
-                    .findFirst()
-                    .orElseThrow();
-            response.answer(name, YesNoAnswer.of(probability));
-        });
-        return response.build();
-    };
+    final DecisionModelMock decisionModel = DecisionModelMock.thatAnswersYesNoQuestions(question -> RELEVANCE.entrySet().stream()
+            .filter(entry -> question.text().contains(entry.getKey()))
+            .mapToDouble(Map.Entry::getValue)
+            .findFirst()
+            .orElseThrow());
 
     static final List<ToolSpecification> TOOLS = List.of(
             tool("send_email", "Sends an email"),
@@ -83,7 +63,7 @@ class DecisionModelToolSearchTest {
 
         assertThat(result.foundToolNames()).containsExactly("get_weather", "get_forecast");
         assertThat(result.toolResultMessageText()).isEqualTo("Tools found: get_weather, get_forecast");
-        assertThat(requests).singleElement().satisfies(request -> {
+        assertThat(decisionModel.requests()).singleElement().satisfies(request -> {
             assertThat(request.input()).isEqualTo("Will it rain tomorrow in Berlin?");
             assertThat(request.questions())
                     .containsEntry(
@@ -110,8 +90,8 @@ class DecisionModelToolSearchTest {
         ToolSearchResult result = strategy.search(searchRequest("{\"query\": \"weather\"}"));
 
         assertThat(result.foundToolNames()).containsExactly("get_weather");
-        assertThat(requests).hasSize(2);
-        assertThat(requests.get(1).questions()).hasSize(1);
+        assertThat(decisionModel.requests()).hasSize(2);
+        assertThat(decisionModel.requests().get(1).questions()).hasSize(1);
     }
 
     @Test
@@ -141,75 +121,11 @@ class DecisionModelToolSearchTest {
                 .hasMessageContaining("Failed to parse tool search arguments");
     }
 
-    // tool provider
-
-    static AiServiceTool aiServiceTool(ToolSpecification specification) {
-        return AiServiceTool.builder()
-                .toolSpecification(specification)
-                .toolExecutor((request, memoryId) -> "result")
-                .build();
-    }
-
-    final ToolProvider allTools = request -> new ToolProviderResult(
-            TOOLS.stream().map(DecisionModelToolSearchTest::aiServiceTool).toList());
-
-    static ToolProviderRequest providerRequest(UserMessage userMessage) {
-        return ToolProviderRequest.builder()
-                .invocationContext(InvocationContext.builder().build())
-                .userMessage(userMessage)
-                .build();
-    }
-
     @Test
-    void tool_provider_should_pass_on_only_relevant_tools() {
+    void should_evaluate_all_tools_in_a_single_request_by_default() {
 
-        ToolProvider toolProvider = DecisionModelToolProvider.builder()
-                .toolProvider(allTools)
-                .decisionModel(decisionModel)
-                .build();
+        new DecisionModelToolSearchStrategy(decisionModel).search(searchRequest("{\"query\": \"weather\"}"));
 
-        ToolProviderResult result = toolProvider.provideTools(providerRequest(UserMessage.from("Will it rain?")));
-
-        assertThat(result.aiServiceTools())
-                .extracting(AiServiceTool::name)
-                .containsExactly("get_weather", "get_forecast");
-        assertThat(requests.get(0).input()).isEqualTo("Will it rain?");
-        assertThat(toolProvider.isDynamic()).isFalse();
-    }
-
-    @Test
-    void tool_provider_should_pass_on_all_tools_without_user_message_text() {
-
-        ToolProvider toolProvider = DecisionModelToolProvider.builder()
-                .toolProvider(allTools)
-                .decisionModel(decisionModel)
-                .build();
-
-        assertThat(toolProvider.provideTools(providerRequest(UserMessage.from(" "))).aiServiceTools())
-                .hasSize(4);
-        assertThat(requests).isEmpty();
-    }
-
-    @Test
-    void tool_provider_should_keep_dynamic_behavior_of_delegate() {
-
-        ToolProvider dynamic = new ToolProvider() {
-            @Override
-            public ToolProviderResult provideTools(ToolProviderRequest request) {
-                return allTools.provideTools(request);
-            }
-
-            @Override
-            public boolean isDynamic() {
-                return true;
-            }
-        };
-
-        assertThat(DecisionModelToolProvider.builder()
-                        .toolProvider(dynamic)
-                        .decisionModel(decisionModel)
-                        .build()
-                        .isDynamic())
-                .isTrue();
+        assertThat(decisionModel.request().questions()).hasSize(4);
     }
 }

@@ -23,7 +23,7 @@ import java.util.function.Function;
 /**
  * A {@link ToolSearchStrategy} that uses a {@link DecisionModel} to find the tools matching the search query of the
  * LLM: for each searchable tool, the decision model answers whether the tool would help with the query (all tools in
- * a few calls), and the most relevant tools are returned.
+ * a single call), and the most relevant tools are returned.
  * <pre>{@code
  * Assistant assistant = AiServices.builder(Assistant.class)
  *         .chatModel(chatModel)
@@ -34,7 +34,7 @@ import java.util.function.Function;
  * Unlike an embedding-based search, the decision model reads the descriptions of the tools and the query together,
  * so it can find tools that match by meaning rather than by wording.
  *
- * @see DecisionModelToolProvider to select tools before the first LLM call, without a tool search round trip
+ * @see dev.langchain4j.service.tool.DecisionModelToolProvider to select tools before the first LLM call, without a tool search round trip
  * @since 1.21.0
  */
 @Experimental
@@ -180,9 +180,10 @@ public class DecisionModelToolSearchStrategy implements ToolSearchStrategy {
         }
 
         /**
-         * Sets the maximum number of tools evaluated in a single request to the decision model.
+         * Sets the maximum number of tools evaluated in a single request to the decision model, for when the tools
+         * together exceed the input size accepted by the decision model.
          * <p>
-         * Default value is 50.
+         * By default, all tools are evaluated in a single request.
          */
         public Builder maxToolsPerRequest(Integer maxToolsPerRequest) {
             this.maxToolsPerRequest = maxToolsPerRequest;

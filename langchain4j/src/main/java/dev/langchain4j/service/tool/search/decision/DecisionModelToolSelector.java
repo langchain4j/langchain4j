@@ -7,6 +7,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
+import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.model.decision.DecisionModel;
 import dev.langchain4j.model.decision.request.DecisionRequest;
@@ -18,14 +19,14 @@ import java.util.List;
 
 /**
  * Selects the tools relevant to a request with a {@link DecisionModel}: one yes/no question per tool, answered in
- * batches, keeping the tools whose probability of "yes" reaches the minimum, most relevant first.
+ * one request (or in batches, if configured), keeping the tools whose probability of "yes" reaches the minimum, most relevant first.
  */
-final class DecisionModelToolSelector {
+@Internal
+public final class DecisionModelToolSelector {
 
     static final String DEFAULT_QUESTION = "Would this tool help to handle the request?";
     static final int DEFAULT_MAX_RESULTS = 5;
     static final double DEFAULT_MIN_PROBABILITY = 0.5;
-    static final int DEFAULT_MAX_TOOLS_PER_REQUEST = 50;
 
     private final DecisionModel decisionModel;
     private final String question;
@@ -33,7 +34,7 @@ final class DecisionModelToolSelector {
     private final double minProbability;
     private final int maxToolsPerRequest;
 
-    DecisionModelToolSelector(
+    public DecisionModelToolSelector(
             DecisionModel decisionModel,
             String question,
             Integer maxResults,
@@ -44,14 +45,16 @@ final class DecisionModelToolSelector {
         this.maxResults = ensureGreaterThanZero(getOrDefault(maxResults, DEFAULT_MAX_RESULTS), "maxResults");
         this.minProbability =
                 ensureBetween(getOrDefault(minProbability, DEFAULT_MIN_PROBABILITY), 0, 1, "minProbability");
-        this.maxToolsPerRequest = ensureGreaterThanZero(
-                getOrDefault(maxToolsPerRequest, DEFAULT_MAX_TOOLS_PER_REQUEST), "maxToolsPerRequest");
+        this.maxToolsPerRequest = maxToolsPerRequest == null
+                ? Integer.MAX_VALUE
+                : ensureGreaterThanZero(maxToolsPerRequest, "maxToolsPerRequest");
     }
 
-    List<String> select(String request, List<ToolSpecification> tools) {
+    public List<String> select(String request, List<ToolSpecification> tools) {
         List<ScoredTool> scoredTools = new ArrayList<>();
-        for (int start = 0; start < tools.size(); start += maxToolsPerRequest) {
-            List<ToolSpecification> batch = tools.subList(start, Math.min(start + maxToolsPerRequest, tools.size()));
+        for (int start = 0; start < tools.size(); ) {
+            List<ToolSpecification> batch = tools.subList(start, start + Math.min(maxToolsPerRequest, tools.size() - start));
+            start += batch.size();
             DecisionRequest.Builder decisionRequest = DecisionRequest.builder().input(request);
             for (int i = 0; i < batch.size(); i++) {
                 decisionRequest.question("tool" + i, YesNoQuestion.of(question + "\n" + describe(batch.get(i))));
