@@ -268,7 +268,9 @@ See [Guardrails](/tutorials/guardrails) for how to use them with AI Services.
 ### Re-ranking retrieved content
 
 `DecisionModelScoringModel` is a `ScoringModel`: the score of a segment is the probability that the answer to
-"Does the document help answer the query?" is "yes". It can be used to re-rank and filter content in RAG:
+"Does the document help answer the query?" is "yes". All segments are scored in a single request, but each segment
+is judged on its own, so its score does not depend on the other segments. It can be used to re-rank and filter content
+in RAG:
 
 ```java
 ContentAggregator contentAggregator = ReRankingContentAggregator.builder()

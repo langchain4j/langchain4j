@@ -16,7 +16,6 @@ import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.model.scoring.request.ScoringRequest;
 import dev.langchain4j.model.scoring.response.ScoringResponse;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -33,12 +32,10 @@ import java.util.concurrent.CompletableFuture;
  *         .minScore(0.5)
  *         .build();
  * }</pre>
- * All segments are scored in a single request, with one yes/no question per segment. If the segments together exceed
- * the input size accepted by the decision model, set {@link Builder#maxSegmentsPerRequest(Integer)}.
- * <p>
- * Since the decision model reads all segments of a request together, the score of a segment can vary slightly with
- * the other segments of the request. Scores are best used to rank the segments of the same request; when filtering
- * with a fixed minimum score, leave some margin.
+ * All segments are scored in a single request: the input is the query, and each segment is part of its own yes/no
+ * question, so the score of a segment depends only on the query and the segment, not on the other segments of the
+ * request. If the segments together exceed the input size accepted by the decision model, set
+ * {@link Builder#maxSegmentsPerRequest(Integer)}.
  *
  * @since 1.21.0
  */
@@ -121,16 +118,11 @@ public class DecisionModelScoringModel implements ScoringModel {
     }
 
     private DecisionRequest toRequest(List<String> batch, String query) {
-        Map<String, String> documents = new LinkedHashMap<>();
-        DecisionRequest.Builder request = DecisionRequest.builder();
+        DecisionRequest.Builder request = DecisionRequest.builder().input(Map.of("query", query));
         for (int i = 1; i <= batch.size(); i++) {
-            documents.put(String.valueOf(i), batch.get(i - 1));
-            request.question(questionName(i), YesNoQuestion.of("Document " + i + ": " + question));
+            request.question(questionName(i), YesNoQuestion.of(question + "\nDocument: " + batch.get(i - 1)));
         }
-        Map<String, Object> input = new LinkedHashMap<>();
-        input.put("query", query);
-        input.put("documents", documents);
-        return request.input(input).build();
+        return request.build();
     }
 
     private static String questionName(int index) {
@@ -156,7 +148,8 @@ public class DecisionModelScoringModel implements ScoringModel {
         }
 
         /**
-         * Sets the yes/no question asked for each segment. The score is the probability of "yes".
+         * Sets the yes/no question asked for each segment, followed by the text of the segment. The score is the
+         * probability of "yes".
          * <p>
          * Default value is {@value DecisionModelScoringModel#DEFAULT_QUESTION}.
          */

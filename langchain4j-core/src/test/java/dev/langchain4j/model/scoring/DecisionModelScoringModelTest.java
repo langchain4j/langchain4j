@@ -7,14 +7,11 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.decision.DecisionModel;
 import dev.langchain4j.model.decision.mock.DecisionModelMock;
 import dev.langchain4j.model.decision.request.YesNoQuestion;
-import dev.langchain4j.model.decision.response.DecisionAnswer;
-import dev.langchain4j.model.decision.response.YesNoAnswer;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.model.scoring.request.ScoringRequest;
 import dev.langchain4j.model.scoring.response.ScoringResponse;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -22,14 +19,8 @@ import org.junit.jupiter.api.Test;
 class DecisionModelScoringModelTest {
 
     // answers "yes" with a probability derived from the document text: "relevant" -> 0.9, otherwise 0.1
-    final DecisionModelMock decisionModel = DecisionModelMock.thatAnswers(request -> {
-        @SuppressWarnings("unchecked")
-        Map<String, String> documents = (Map<String, String>) ((Map<String, Object>) request.input()).get("documents");
-        Map<String, DecisionAnswer> answers = new LinkedHashMap<>();
-        documents.forEach((index, text) ->
-                answers.put("document" + index, YesNoAnswer.of(text.contains("relevant") ? 0.9 : 0.1)));
-        return answers;
-    });
+    final DecisionModelMock decisionModel = DecisionModelMock.thatAnswersYesNoQuestions(question ->
+            question.text().substring(question.text().indexOf("Document: ")).contains("relevant") ? 0.9 : 0.1);
 
     @Test
     void should_score_segments_with_the_probability_of_yes() {
@@ -40,14 +31,14 @@ class DecisionModelScoringModelTest {
                 List.of(TextSegment.from("a relevant document"), TextSegment.from("something else")), "the query");
 
         assertThat(response.content()).containsExactly(0.9, 0.1);
-        assertThat(decisionModel.requests()).hasSize(1);
-        assertThat(decisionModel.requests().get(0).input())
-                .isEqualTo(Map.of(
-                        "query", "the query",
-                        "documents", Map.of("1", "a relevant document", "2", "something else")));
-        assertThat(decisionModel.requests().get(0).questions())
-                .containsEntry("document1", YesNoQuestion.of("Document 1: Does the document help answer the query?"))
-                .containsEntry("document2", YesNoQuestion.of("Document 2: Does the document help answer the query?"));
+        assertThat(decisionModel.request().input()).isEqualTo(Map.of("query", "the query"));
+        assertThat(decisionModel.request().questions())
+                .containsEntry(
+                        "document1",
+                        YesNoQuestion.of("Does the document help answer the query?\nDocument: a relevant document"))
+                .containsEntry(
+                        "document2",
+                        YesNoQuestion.of("Does the document help answer the query?\nDocument: something else"));
     }
 
     @Test
@@ -56,7 +47,7 @@ class DecisionModelScoringModelTest {
         ScoringModel scoringModel = DecisionModelScoringModel.builder()
                 .decisionModel(decisionModel)
                 .maxSegmentsPerRequest(2)
-                .question("Is the document relevant?")
+                .question("Is the document useful?")
                 .build();
 
         Response<List<Double>> response = scoringModel.scoreAll(
@@ -70,7 +61,7 @@ class DecisionModelScoringModelTest {
         assertThat(decisionModel.requests()).hasSize(2);
         assertThat(decisionModel.requests().get(1).questions())
                 .containsOnlyKeys("document1")
-                .containsEntry("document1", YesNoQuestion.of("Document 1: Is the document relevant?"));
+                .containsEntry("document1", YesNoQuestion.of("Is the document useful?\nDocument: relevant 2"));
     }
 
     @Test
@@ -101,15 +92,6 @@ class DecisionModelScoringModelTest {
                 "query");
 
         assertThat(response.tokenUsage()).isEqualTo(new TokenUsage(20, 2));
-    }
-
-    @Test
-    void should_send_query_before_documents() {
-
-        new DecisionModelScoringModel(decisionModel).scoreAll(List.of(TextSegment.from("relevant")), "query");
-
-        assertThat(new ArrayList<Object>(((Map<?, ?>) decisionModel.request().input()).keySet()))
-                .containsExactly("query", "documents");
     }
 
     @Test
