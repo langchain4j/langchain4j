@@ -58,12 +58,12 @@ public class TypeSafeClient {
         return new Builder();
     }
 
-    public TypeSafeResponse decide(Map<String, Object> request) {
+    public TypeSafeResponse decide(TypeSafeRequest request) {
         SuccessfulHttpResponse response = httpClient.execute(toHttpRequest(request));
         return CODEC.fromJson(response.body(), TypeSafeResponse.class);
     }
 
-    public CompletableFuture<TypeSafeResponse> decideAsync(Map<String, Object> request) {
+    public CompletableFuture<TypeSafeResponse> decideAsync(TypeSafeRequest request) {
         CompletableFuture<SuccessfulHttpResponse> httpFuture = httpClient.executeAsync(toHttpRequest(request));
         CompletableFuture<TypeSafeResponse> result =
                 httpFuture.thenApply(response -> CODEC.fromJson(response.body(), TypeSafeResponse.class));
@@ -71,7 +71,7 @@ public class TypeSafeClient {
         return result;
     }
 
-    private HttpRequest toHttpRequest(Map<String, Object> request) {
+    private HttpRequest toHttpRequest(TypeSafeRequest request) {
         HttpRequest.Builder builder = HttpRequest.builder()
                 .method(POST)
                 .url(baseUrl + "v1/systemone")

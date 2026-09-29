@@ -12,8 +12,8 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Validates free-form values (input and descriptions) and copies them into an immutable tree of maps, lists, strings,
- * numbers, booleans and {@code null}s.
+ * Validates the input of a request and copies it into an immutable tree of maps, lists, strings, numbers, booleans
+ * and {@code null}s.
  */
 final class FreeFormValue {
 
@@ -27,11 +27,8 @@ final class FreeFormValue {
         if (value instanceof Map<?, ?> map) {
             return copy(ensureNotEmpty(map, name), name);
         }
-        if (value instanceof List<?> list) {
-            return copy(ensureNotEmpty(list, name), name);
-        }
         throw new IllegalArgumentException(
-                name + " must be a String, a Map or a List, but was " + value.getClass().getName());
+                name + " must be a String or a Map, but was " + value.getClass().getName());
     }
 
     private static Object copy(Object value, String name) {

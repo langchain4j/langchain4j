@@ -79,7 +79,7 @@ class TypeSafeDecisionModelTest {
                     ChoiceQuestion.builder()
                             .text("Which team should handle this?")
                             .option("billing", "Payments, invoicing, refunds")
-                            .option("support", Map.of("what", "Bugs", "not_for", "Invoices"))
+                            .option("support", "Bugs. Not for invoices")
                             .build())
             .question(
                     "urgent",
@@ -125,16 +125,13 @@ class TypeSafeDecisionModelTest {
                                                         "criteria",
                                                                 Map.of(
                                                                         "billing", "Payments, invoicing, refunds",
-                                                                        "support",
-                                                                                Map.of(
-                                                                                        "what", "Bugs",
-                                                                                        "not_for", "Invoices"))),
+                                                                        "support", "Bugs. Not for invoices")),
                                         "urgent",
                                                 Map.of(
                                                         "type", "noul",
                                                         "instructions", "Does this need attention today?",
                                                         "criteria",
-                                                                Map.of("true", "Money is not reaching the customer")),
+                                                                Map.of("true", "Money is not reaching the customer", "false", "")),
                                         "frustration",
                                                 Map.of(
                                                         "type", "score",
@@ -294,9 +291,7 @@ class TypeSafeDecisionModelTest {
         TypeSafeDecisionModel model = model(httpClient);
 
         // when
-        model.decide(DecisionRequest.builder()
-                .input(REQUEST.input())
-                .questions(REQUEST.questions())
+        model.decide(REQUEST.toBuilder()
                 .parameters(DecisionRequestParameters.builder()
                         .modelName("jev-1.13.0")
                         .build())
@@ -389,9 +384,7 @@ class TypeSafeDecisionModelTest {
                 .build();
 
         // when
-        model.decide(DecisionRequest.builder()
-                .input(REQUEST.input())
-                .questions(REQUEST.questions())
+        model.decide(REQUEST.toBuilder()
                 .parameters(DecisionRequestParameters.builder()
                         .modelName("jev-1.13.0")
                         .build())

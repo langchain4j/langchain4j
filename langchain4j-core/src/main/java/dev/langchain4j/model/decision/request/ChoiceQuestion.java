@@ -14,17 +14,14 @@ import java.util.Objects;
  * A question that selects exactly one option out of a named set, answered with the chosen option and the
  * probability of each option (see {@link dev.langchain4j.model.decision.response.ChoiceAnswer}).
  * <p>
- * Each option has a name and, optionally, a description of when it applies. The description is either plain text or
- * structured content (a {@link java.util.Map} or a {@link java.util.List}) that is passed to the model as is.
- * Options whose name says it all, such as sentiments, need no description
+ * Each option has a name and, optionally, a description of when it applies. Options whose name says it all, such as
+ * sentiments, need no description
  * ({@code ChoiceQuestion.of("What is the sentiment?", List.of("positive", "negative", "neutral"))}):
  * <pre>{@code
  * ChoiceQuestion team = ChoiceQuestion.builder()
  *         .text("Which team should handle this ticket?")
  *         .option("billing", "Payments, invoices, refunds")
- *         .option("support", Map.of(
- *                 "what", "Problems using the product",
- *                 "not_for", "Questions about invoices"))
+ *         .option("support", "Problems using the product. Not for questions about invoices")
  *         .build();
  * }</pre>
  *
@@ -34,7 +31,7 @@ import java.util.Objects;
 public final class ChoiceQuestion implements Question {
 
     private final String text;
-    private final Map<String, Object> options;
+    private final Map<String, String> options;
 
     private ChoiceQuestion(Builder builder) {
         this.text = ensureNotBlank(builder.text, "text");
@@ -48,18 +45,17 @@ public final class ChoiceQuestion implements Question {
     }
 
     /**
-     * The options, keyed by name, in the order they were added. Each value is a {@link String}, a
-     * {@link java.util.Map}, a {@link java.util.List}, or {@code null} for an option without a description.
+     * The descriptions of the options, keyed by option name, in the order they were added. The description is
+     * {@code null} for an option without a description.
      */
-    public Map<String, Object> options() {
+    public Map<String, String> options() {
         return options;
     }
 
     /**
-     * Creates a choice question with the given text and options, keyed by option name. Each description is a
-     * {@link String}, a {@link java.util.Map} or a {@link java.util.List}.
+     * Creates a choice question with the given text and the descriptions of the options, keyed by option name.
      */
-    public static ChoiceQuestion of(String text, Map<String, ?> options) {
+    public static ChoiceQuestion of(String text, Map<String, String> options) {
         return builder().text(text).options(options).build();
     }
 
@@ -99,7 +95,7 @@ public final class ChoiceQuestion implements Question {
     public static final class Builder {
 
         private String text;
-        private final Map<String, Object> options = new LinkedHashMap<>();
+        private final Map<String, String> options = new LinkedHashMap<>();
 
         public Builder text(String text) {
             this.text = text;
@@ -107,12 +103,14 @@ public final class ChoiceQuestion implements Question {
         }
 
         /**
-         * Replaces all options. Each value is a {@link String}, a {@link java.util.Map} or a {@link java.util.List}.
+         * Replaces all options with the given descriptions, keyed by option name. A {@code null} description adds an
+         * option without a description.
          */
-        public Builder options(Map<String, ?> options) {
+        public Builder options(Map<String, String> options) {
             this.options.clear();
             if (options != null) {
-                options.forEach(this::option);
+                options.forEach((name, description) ->
+                        addOption(name, description == null ? null : ensureNotBlank(description, "description")));
             }
             return this;
         }
@@ -125,14 +123,13 @@ public final class ChoiceQuestion implements Question {
         }
 
         /**
-         * Adds an option with a description of when it applies, as a {@link String}, a {@link java.util.Map} or a
-         * {@link java.util.List}. Option names must be unique.
+         * Adds an option with a description of when it applies. Option names must be unique.
          */
-        public Builder option(String name, Object description) {
-            return addOption(name, FreeFormValue.ensureValid(description, "description"));
+        public Builder option(String name, String description) {
+            return addOption(name, ensureNotBlank(description, "description"));
         }
 
-        private Builder addOption(String name, Object description) {
+        private Builder addOption(String name, String description) {
             if (options.containsKey(ensureNotBlank(name, "option name"))) {
                 throw new IllegalArgumentException("Option '%s' is already defined".formatted(name));
             }

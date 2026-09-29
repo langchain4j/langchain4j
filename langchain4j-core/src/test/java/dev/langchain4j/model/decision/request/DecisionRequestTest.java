@@ -18,34 +18,38 @@ class DecisionRequestTest {
     private static final YesNoQuestion QUESTION =
             YesNoQuestion.builder().text("Is this spam?").build();
 
-    @ParameterizedTest
-    @MethodSource("validInputs")
-    void should_accept_text_map_and_list_input(Object input) {
+    @Test
+    void should_accept_text_and_map_input() {
 
-        DecisionRequest request =
-                DecisionRequest.builder().input(input).question("spam", QUESTION).build();
-
-        assertThat(request.input()).isEqualTo(input);
+        assertThat(DecisionRequest.builder()
+                        .input("Buy now!")
+                        .question("spam", QUESTION)
+                        .build()
+                        .input())
+                .isEqualTo("Buy now!");
+        assertThat(DecisionRequest.builder()
+                        .input(Map.of("subject", "Buy now!", "tags", List.of("promo")))
+                        .question("spam", QUESTION)
+                        .build()
+                        .input())
+                .isEqualTo(Map.of("subject", "Buy now!", "tags", List.of("promo")));
     }
 
-    static List<Object> validInputs() {
-        return List.of("Buy now!", Map.of("subject", "Buy now!"), List.of("Buy now!", "Limited offer"));
-    }
-
-    @ParameterizedTest
-    @MethodSource("invalidInputs")
-    void should_reject_invalid_input(Object input) {
+    @Test
+    void should_reject_blank_or_empty_input() {
 
         assertThatThrownBy(() -> DecisionRequest.builder()
-                        .input(input)
+                        .input(" ")
                         .question("spam", QUESTION)
                         .build())
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("input");
-    }
-
-    static List<Object> invalidInputs() {
-        return List.of(" ", Map.of(), List.of(), 42);
+        assertThatThrownBy(() -> DecisionRequest.builder()
+                        .input(Map.of())
+                        .question("spam", QUESTION)
+                        .build())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("input");
     }
 
     @Test
@@ -172,13 +176,6 @@ class DecisionRequestTest {
 
     @Test
     void should_reject_objects_in_input() {
-
-        assertThatThrownBy(() -> DecisionRequest.builder()
-                        .input(new Customer("Anna", Plan.ENTERPRISE, 3, List.of("vip")))
-                        .question("spam", QUESTION)
-                        .build())
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("input must be a String, a Map or a List");
 
         assertThatThrownBy(() -> DecisionRequest.builder()
                         .input(Map.of("customer", new Customer("Anna", Plan.ENTERPRISE, 3, List.of("vip"))))

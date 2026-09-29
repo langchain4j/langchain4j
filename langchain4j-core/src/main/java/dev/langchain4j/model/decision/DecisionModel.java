@@ -161,9 +161,7 @@ public interface DecisionModel {
     }
 
     private DecisionRequest withDefaultParameters(DecisionRequest request) {
-        return DecisionRequest.builder()
-                .input(request.input())
-                .questions(request.questions())
+        return request.toBuilder()
                 .parameters(defaultRequestParameters().overrideWith(request.parameters()))
                 .build();
     }
