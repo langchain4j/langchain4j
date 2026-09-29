@@ -9,11 +9,13 @@ import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.mcp.client.transport.http.StreamableHttpMcpTransport;
 import dev.langchain4j.mcp.protocol.McpInitializeRequest;
 import dev.langchain4j.mcp.protocol.McpListToolsRequest;
+import dev.langchain4j.mcp.protocol.McpPingResponse;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
@@ -30,6 +32,7 @@ class StreamableHttpMcpTransportStatusCodeTest {
 
     private HttpServer server;
     private StreamableHttpMcpTransport transport;
+    private Map<Long, CompletableFuture<String>> pendingOperations;
 
     private void startServer(int toolsListStatus) throws IOException {
         server = HttpServer.create(new InetSocketAddress("localhost", 0), 0);
@@ -52,8 +55,9 @@ class StreamableHttpMcpTransportStatusCodeTest {
                 .url("http://localhost:" + server.getAddress().getPort() + "/mcp")
                 .setHttpVersion1_1()
                 .build();
+        pendingOperations = new ConcurrentHashMap<>();
         transport.start(new McpOperationHandler(
-                new ConcurrentHashMap<>(),
+                pendingOperations,
                 () -> Collections.emptyList(),
                 transport,
                 null,
@@ -115,6 +119,15 @@ class StreamableHttpMcpTransportStatusCodeTest {
         CompletableFuture<String> response = transport.sendRequest(new McpListToolsRequest(1L, null));
 
         assertThat(response.get(5, TimeUnit.SECONDS)).contains("\"tools\":[]");
+    }
+
+    @Test
+    void response_to_server_request_is_not_registered_as_pending_client_operation() throws Exception {
+        startServer(200);
+
+        transport.sendMessage(new McpPingResponse(42L));
+
+        assertThat(pendingOperations).isEmpty();
     }
 
     private static HttpException failureOf(CompletableFuture<String> response) {
