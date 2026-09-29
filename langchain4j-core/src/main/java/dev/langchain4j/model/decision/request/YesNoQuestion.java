@@ -10,8 +10,7 @@ import java.util.Objects;
  * (see {@link dev.langchain4j.model.decision.response.YesNoAnswer}).
  * <p>
  * Optionally, {@link #yesWhen()} and {@link #noWhen()} describe when the answer should be "yes" and when it
- * should be "no". Each description is either plain text or structured content (a {@link java.util.Map} or a
- * {@link java.util.List}) that is passed to the model as is:
+ * should be "no":
  * <pre>{@code
  * YesNoQuestion refundRequested = YesNoQuestion.builder()
  *         .text("Does the customer ask for a refund?")
@@ -26,13 +25,13 @@ import java.util.Objects;
 public final class YesNoQuestion implements Question {
 
     private final String text;
-    private final Object yesWhen;
-    private final Object noWhen;
+    private final String yesWhen;
+    private final String noWhen;
 
     private YesNoQuestion(Builder builder) {
         this.text = ensureNotBlank(builder.text, "text");
-        this.yesWhen = builder.yesWhen == null ? null : FreeFormValue.ensureValid(builder.yesWhen, "yesWhen");
-        this.noWhen = builder.noWhen == null ? null : FreeFormValue.ensureValid(builder.noWhen, "noWhen");
+        this.yesWhen = builder.yesWhen == null ? null : ensureNotBlank(builder.yesWhen, "yesWhen");
+        this.noWhen = builder.noWhen == null ? null : ensureNotBlank(builder.noWhen, "noWhen");
     }
 
     @Override
@@ -41,18 +40,16 @@ public final class YesNoQuestion implements Question {
     }
 
     /**
-     * When the answer should be "yes": a {@link String}, a {@link java.util.Map} or a {@link java.util.List}, or
-     * {@code null} if not set.
+     * When the answer should be "yes", or {@code null} if not set.
      */
-    public Object yesWhen() {
+    public String yesWhen() {
         return yesWhen;
     }
 
     /**
-     * When the answer should be "no": a {@link String}, a {@link java.util.Map} or a {@link java.util.List}, or
-     * {@code null} if not set.
+     * When the answer should be "no", or {@code null} if not set.
      */
-    public Object noWhen() {
+    public String noWhen() {
         return noWhen;
     }
 
@@ -90,8 +87,8 @@ public final class YesNoQuestion implements Question {
     public static final class Builder {
 
         private String text;
-        private Object yesWhen;
-        private Object noWhen;
+        private String yesWhen;
+        private String noWhen;
 
         public Builder text(String text) {
             this.text = text;
@@ -99,19 +96,17 @@ public final class YesNoQuestion implements Question {
         }
 
         /**
-         * Describes when the answer should be "yes", as a {@link String}, a {@link java.util.Map} or a
-         * {@link java.util.List}.
+         * Describes when the answer should be "yes".
          */
-        public Builder yesWhen(Object description) {
+        public Builder yesWhen(String description) {
             this.yesWhen = description;
             return this;
         }
 
         /**
-         * Describes when the answer should be "no", as a {@link String}, a {@link java.util.Map} or a
-         * {@link java.util.List}.
+         * Describes when the answer should be "no".
          */
-        public Builder noWhen(Object description) {
+        public Builder noWhen(String description) {
             this.noWhen = description;
             return this;
         }

@@ -37,4 +37,9 @@ class TypeSafeDecisionModelOpenRouterIT extends AbstractDecisionModelIT {
     protected DecisionModel modelWithListener(DecisionModelListener listener) {
         return openRouter().listeners(listener).build();
     }
+
+    @Override
+    protected String requestModelName() {
+        return "typesafe/jev-1.13";
+    }
 }

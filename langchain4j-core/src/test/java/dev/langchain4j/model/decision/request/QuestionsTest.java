@@ -22,17 +22,16 @@ class QuestionsTest {
     }
 
     @Test
-    void should_create_yes_no_question_with_text_and_structured_criteria() {
+    void should_create_yes_no_question_with_criteria() {
 
         YesNoQuestion question = YesNoQuestion.builder()
                 .text("Does the customer ask for a refund?")
                 .yesWhen("The customer explicitly asks for their money back")
-                .noWhen(Map.of("what", "A question about a charge", "examples", List.of("Why was I charged?")))
+                .noWhen("A question about a charge, e.g. 'Why was I charged?'")
                 .build();
 
         assertThat(question.yesWhen()).isEqualTo("The customer explicitly asks for their money back");
-        assertThat(question.noWhen())
-                .isEqualTo(Map.of("what", "A question about a charge", "examples", List.of("Why was I charged?")));
+        assertThat(question.noWhen()).isEqualTo("A question about a charge, e.g. 'Why was I charged?'");
     }
 
     @Test
@@ -47,7 +46,7 @@ class QuestionsTest {
 
         assertThatThrownBy(() -> YesNoQuestion.builder()
                         .text("Is this spam?")
-                        .noWhen(42)
+                        .noWhen("")
                         .build())
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("noWhen");
@@ -77,15 +76,14 @@ class QuestionsTest {
 
         ChoiceQuestion question = ChoiceQuestion.builder()
                 .text("Which team should handle this ticket?")
-                .option("support", Map.of("what", "Problems using the product", "not_for", "Invoices"))
+                .option("support", "Problems using the product")
                 .option("billing", "Payments, invoices, refunds")
-                .option("sales", List.of("Pricing", "Upgrades"))
+                .option("sales")
                 .build();
 
         assertThat(question.options().keySet()).containsExactly("support", "billing", "sales");
         assertThat(question.options().get("billing")).isEqualTo("Payments, invoices, refunds");
-        assertThat(question.options().get("support"))
-                .isEqualTo(Map.of("what", "Problems using the product", "not_for", "Invoices"));
+        assertThat(question.options().get("sales")).isNull();
     }
 
     @Test
@@ -105,7 +103,7 @@ class QuestionsTest {
 
         ChoiceQuestion question = ChoiceQuestion.of("What is the sentiment?", List.of("positive", "negative"));
 
-        Map<String, Object> expected = new LinkedHashMap<>();
+        Map<String, String> expected = new LinkedHashMap<>();
         expected.put("positive", null);
         expected.put("negative", null);
         assertThat(question.options()).containsExactlyEntriesOf(expected);
@@ -138,11 +136,11 @@ class QuestionsTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("option name");
 
-        assertThatThrownBy(() -> ChoiceQuestion.builder().option("billing", Map.of()))
+        assertThatThrownBy(() -> ChoiceQuestion.builder().option("billing", " "))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("description");
 
-        assertThatThrownBy(() -> ChoiceQuestion.builder().option("billing", (Object) null))
+        assertThatThrownBy(() -> ChoiceQuestion.builder().option("billing", null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("description");
     }
@@ -154,12 +152,10 @@ class QuestionsTest {
                 .text("How frustrated is the customer?")
                 .level("Calm")
                 .level("Frustrated")
-                .level(Map.of("what", "Angry", "examples", List.of("This is unacceptable!")))
+                .level("Angry")
                 .build();
 
-        assertThat(question.levels())
-                .containsExactly(
-                        "Calm", "Frustrated", Map.of("what", "Angry", "examples", List.of("This is unacceptable!")));
+        assertThat(question.levels()).containsExactly("Calm", "Frustrated", "Angry");
     }
 
     @Test
@@ -184,7 +180,7 @@ class QuestionsTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("at least 2 levels");
 
-        assertThatThrownBy(() -> ScaleQuestion.builder().level(List.of()))
+        assertThatThrownBy(() -> ScaleQuestion.builder().level(" "))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("level");
     }

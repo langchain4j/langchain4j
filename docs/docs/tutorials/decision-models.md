@@ -142,27 +142,21 @@ It is answered with a `ScaleAnswer`:
 
 ## Describing options and levels
 
-Options, levels and the `yesWhen`/`noWhen` descriptions can be plain text, as in the examples above,
-or structured content (a `Map` or a `List`), which is passed to the model as is.
-Structured descriptions are useful to separate what an option covers from what it does not,
-or to add examples:
+Options, levels and the `yesWhen`/`noWhen` criteria are described with text.
+A good description says what an option covers, what it does not cover, and can include examples:
 
 ```java
 ChoiceQuestion team = ChoiceQuestion.builder()
         .text("Which team should handle this ticket?")
-        .option("billing", Map.of(
-                "what", "Payments, payouts, invoices, refunds",
-                "not_for", "Questions about pricing plans",
-                "examples", List.of("I was charged twice", "Where is my payout?")))
-        .option("sales", "Pricing, upgrades, new accounts")
+        .option("billing", "Payments, payouts, invoices, refunds. Not for questions about pricing plans. "
+                + "Examples: 'I was charged twice', 'Where is my payout?'")
+        .option("sales", "Pricing, plans, upgrades, new accounts")
         .build();
 ```
 
-The keys are not predefined: choose names that describe the content well, because the model sees them.
-
 ## Describing the input (state)
 
-The input can be plain text, a `Map` or a `List`.
+The input is either text or a `Map` of named values.
 Use a `Map` to give the model several pieces of information that belong together:
 
 ```java
@@ -175,7 +169,7 @@ DecisionRequest request = DecisionRequest.builder()
         .build();
 ```
 
-Structured content can contain strings, numbers, booleans, `null`s, maps and lists. Other objects are rejected,
+The values of the map can be strings, numbers, booleans, `null`s, maps and lists. Other objects are rejected,
 so that you decide which fields are sent to the model provider: convert them to a `Map` that holds only what the
 decision needs.
 

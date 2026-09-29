@@ -28,4 +28,14 @@ class TypeSafeDecisionModelSelfHostedIT extends AbstractDecisionModelIT {
     protected DecisionModel modelWithListener(DecisionModelListener listener) {
         return selfHosted().listeners(listener).build();
     }
+
+    @Override
+    protected String requestModelName() {
+        return System.getenv("SYSTEM_ONE_MODEL_NAME");
+    }
+
+    @Override
+    protected boolean rejectsUnknownModelNames() {
+        return false; // self-hosted servers usually serve a single model and accept any name
+    }
 }

@@ -13,9 +13,7 @@ import java.util.Objects;
  * A question that places the input on an ordered scale, answered with the mean level and the probability of each level
  * (see {@link dev.langchain4j.model.decision.response.ScaleAnswer}).
  * <p>
- * Levels are ordered from lowest to highest; a level's number is its index, starting at 0. Each level is described
- * either with plain text or with structured content (a {@link java.util.Map} or a {@link java.util.List}) that is
- * passed to the model as is:
+ * Levels are described with text and ordered from lowest to highest; a level's number is its index, starting at 0:
  * <pre>{@code
  * ScaleQuestion frustration = ScaleQuestion.builder()
  *         .text("How frustrated is the customer?")
@@ -31,7 +29,7 @@ import java.util.Objects;
 public final class ScaleQuestion implements Question {
 
     private final String text;
-    private final List<Object> levels;
+    private final List<String> levels;
 
     private ScaleQuestion(Builder builder) {
         this.text = ensureNotBlank(builder.text, "text");
@@ -45,18 +43,16 @@ public final class ScaleQuestion implements Question {
     }
 
     /**
-     * The levels, from lowest (index 0) to highest. Each level is a {@link String}, a {@link java.util.Map} or a
-     * {@link java.util.List}.
+     * The levels, from lowest (index 0) to highest.
      */
-    public List<Object> levels() {
+    public List<String> levels() {
         return levels;
     }
 
     /**
-     * Creates a scale question with the given text and levels, ordered from lowest to highest. Each level is a
-     * {@link String}, a {@link java.util.Map} or a {@link java.util.List}.
+     * Creates a scale question with the given text and levels, ordered from lowest to highest.
      */
-    public static ScaleQuestion of(String text, List<?> levels) {
+    public static ScaleQuestion of(String text, List<String> levels) {
         return builder().text(text).levels(levels).build();
     }
 
@@ -84,7 +80,7 @@ public final class ScaleQuestion implements Question {
     public static final class Builder {
 
         private String text;
-        private final List<Object> levels = new ArrayList<>();
+        private final List<String> levels = new ArrayList<>();
 
         public Builder text(String text) {
             this.text = text;
@@ -92,10 +88,9 @@ public final class ScaleQuestion implements Question {
         }
 
         /**
-         * Replaces all levels, ordered from lowest to highest. Each level is a {@link String}, a
-         * {@link java.util.Map} or a {@link java.util.List}.
+         * Replaces all levels, ordered from lowest to highest.
          */
-        public Builder levels(List<?> levels) {
+        public Builder levels(List<String> levels) {
             this.levels.clear();
             if (levels != null) {
                 levels.forEach(this::level);
@@ -104,11 +99,10 @@ public final class ScaleQuestion implements Question {
         }
 
         /**
-         * Adds the next (higher) level, described as a {@link String}, a {@link java.util.Map} or a
-         * {@link java.util.List}.
+         * Adds the next (higher) level, described with text.
          */
-        public Builder level(Object description) {
-            levels.add(FreeFormValue.ensureValid(description, "level"));
+        public Builder level(String description) {
+            levels.add(ensureNotBlank(description, "level"));
             return this;
         }
 

@@ -88,4 +88,9 @@ class TypeSafeDecisionModelIT extends AbstractDecisionModelIT {
         // when-then
         assertThatThrownBy(() -> model.decide(request)).isInstanceOf(AuthenticationException.class);
     }
+
+    @Override
+    protected String requestModelName() {
+        return "jev-latest";
+    }
 }

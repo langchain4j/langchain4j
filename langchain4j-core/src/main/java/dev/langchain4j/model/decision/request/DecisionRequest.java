@@ -15,8 +15,8 @@ import java.util.Objects;
  * A request to a {@link dev.langchain4j.model.decision.DecisionModel}: the {@link #input()} to evaluate and the
  * named {@link #questions()} to answer about it.
  * <p>
- * The input is either plain text or structured content (a {@link java.util.Map} or a {@link java.util.List} of
- * strings, numbers, booleans, maps and lists), for example a support ticket together with the customer's plan.
+ * The input is either plain text or a {@link java.util.Map} of named values (strings, numbers, booleans, maps and
+ * lists), for example a support ticket together with the customer's plan.
  * Every question is answered against the same input, and each answer is returned under the name of its question:
  * <pre>{@code
  * DecisionRequest request = DecisionRequest.builder()
@@ -48,7 +48,7 @@ public final class DecisionRequest {
     }
 
     /**
-     * The input to evaluate: a {@link String}, a {@link java.util.Map} or a {@link java.util.List}.
+     * The input to evaluate: a {@link String}, or an unmodifiable {@link java.util.Map} with {@link String} keys.
      */
     public Object input() {
         return input;
@@ -71,6 +71,15 @@ public final class DecisionRequest {
 
     public static Builder builder() {
         return new Builder();
+    }
+
+    /**
+     * Creates a builder initialized with the input, the questions and the parameters of this request.
+     */
+    public Builder toBuilder() {
+        Builder builder = new Builder().questions(questions).parameters(parameters);
+        builder.input = input;
+        return builder;
     }
 
     @Override
@@ -101,11 +110,18 @@ public final class DecisionRequest {
         private DecisionRequestParameters parameters;
 
         /**
-         * Sets the input to evaluate: a {@link String}, or a {@link java.util.Map} or a {@link java.util.List} whose
-         * values are strings, numbers, booleans, {@code null}s, maps and lists. Other objects are rejected: convert
-         * them to a {@link java.util.Map} that holds only what the decision needs.
+         * Sets the input to evaluate as text.
          */
-        public Builder input(Object input) {
+        public Builder input(String input) {
+            this.input = input;
+            return this;
+        }
+
+        /**
+         * Sets the input to evaluate as named values: strings, numbers, booleans, {@code null}s, maps and lists.
+         * Other objects are rejected: convert them to a {@link java.util.Map} that holds only what the decision needs.
+         */
+        public Builder input(Map<String, ?> input) {
             this.input = input;
             return this;
         }
