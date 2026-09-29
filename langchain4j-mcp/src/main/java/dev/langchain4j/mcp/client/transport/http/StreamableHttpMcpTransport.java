@@ -194,7 +194,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
 
     @Override
     public void sendMessage(McpCallContext context) {
-        execute(context, false);
+        execute(context, false, false);
     }
 
     @Override
@@ -252,6 +252,10 @@ public class StreamableHttpMcpTransport implements McpTransport {
     }
 
     private CompletableFuture<String> execute(McpCallContext context, boolean isRetry) {
+        return execute(context, isRetry, true);
+    }
+
+    private CompletableFuture<String> execute(McpCallContext context, boolean isRetry, boolean expectsResponse) {
         Long id = context.message().getId();
         if (!(context.message() instanceof McpInitializeRequest)) {
             CompletableFuture<String> reinitializeInProgress = this.initializeInProgress.get();
@@ -266,7 +270,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
             return CompletableFuture.failedFuture(e);
         }
         CompletableFuture<String> future = new CompletableFuture<>();
-        if (id != null) {
+        if (expectsResponse && id != null) {
             operationHandler.expectResponse(id, future);
         }
 
@@ -280,7 +284,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
                             if (!isRetry) {
                                 sendInitializeRequest(StreamableHttpMcpTransport.this.initializeRequest)
                                         .thenAccept(ignored -> {
-                                            execute(context, true)
+                                            execute(context, true, expectsResponse)
                                                     .thenAccept(future::complete)
                                                     .exceptionally(t -> {
                                                         future.completeExceptionally(t);
@@ -313,7 +317,8 @@ public class StreamableHttpMcpTransport implements McpTransport {
                                 StreamableHttpMcpTransport.this.mcpSessionId.set(mcpSessionId.get());
                             }
                         }
-                        if (id != null
+                        if (expectsResponse
+                                && id != null
                                 && contentType.isPresent()
                                 && contentType.get().contains("text/event-stream")) {
                             // the server has started an SSE stream
@@ -334,7 +339,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
                                         if (logResponses) {
                                             trafficLog.info("Response: {}", responseBody);
                                         }
-                                        if (id == null) {
+                                        if (!expectsResponse || id == null) {
                                             future.complete(null);
                                         }
                                         try {

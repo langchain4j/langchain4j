@@ -9,6 +9,7 @@ import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.mcp.client.transport.http.StreamableHttpMcpTransport;
 import dev.langchain4j.mcp.protocol.McpInitializeRequest;
 import dev.langchain4j.mcp.protocol.McpListToolsRequest;
+import dev.langchain4j.mcp.protocol.McpPingResponse;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
@@ -30,6 +31,7 @@ class StreamableHttpMcpTransportStatusCodeTest {
 
     private HttpServer server;
     private StreamableHttpMcpTransport transport;
+    private final ConcurrentHashMap<Long, CompletableFuture<String>> pendingOperations = new ConcurrentHashMap<>();
 
     private void startServer(int toolsListStatus) throws IOException {
         server = HttpServer.create(new InetSocketAddress("localhost", 0), 0);
@@ -53,7 +55,7 @@ class StreamableHttpMcpTransportStatusCodeTest {
                 .setHttpVersion1_1()
                 .build();
         transport.start(new McpOperationHandler(
-                new ConcurrentHashMap<>(),
+                pendingOperations,
                 () -> Collections.emptyList(),
                 transport,
                 null,
@@ -115,6 +117,28 @@ class StreamableHttpMcpTransportStatusCodeTest {
         CompletableFuture<String> response = transport.sendRequest(new McpListToolsRequest(1L, null));
 
         assertThat(response.get(5, TimeUnit.SECONDS)).contains("\"tools\":[]");
+    }
+
+    @Test
+    void reply_to_server_request_is_not_registered_as_pending() throws Exception {
+        startServer(200);
+        transport.sendInitializeRequest(new McpInitializeRequest(0L)).get(5, TimeUnit.SECONDS);
+
+        transport.sendMessage(new McpPingResponse(42L));
+
+        assertThat(pendingOperations).doesNotContainKey(42L);
+    }
+
+    @Test
+    void reply_to_server_request_does_not_replace_a_client_request_with_the_same_id() throws Exception {
+        startServer(200);
+        transport.sendInitializeRequest(new McpInitializeRequest(0L)).get(5, TimeUnit.SECONDS);
+        CompletableFuture<String> clientRequest = new CompletableFuture<>();
+        pendingOperations.put(42L, clientRequest);
+
+        transport.sendMessage(new McpPingResponse(42L));
+
+        assertThat(pendingOperations.get(42L)).isSameAs(clientRequest);
     }
 
     private static HttpException failureOf(CompletableFuture<String> response) {
