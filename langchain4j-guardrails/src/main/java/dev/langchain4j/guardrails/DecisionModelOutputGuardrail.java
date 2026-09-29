@@ -1,7 +1,5 @@
 package dev.langchain4j.guardrails;
 
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
@@ -28,7 +26,8 @@ import java.util.Map;
  *         .build();
  * }</pre>
  * A rejected response fails with a fatal result or, if {@link Builder#reprompt(String)} is set, the model is asked
- * again with that instruction. Responses without text (for example, only tool calls) are not checked.
+ * again with that instruction. Responses without text (for example, only tool calls) are not checked. If the decision
+ * model fails, the exception is propagated, so the request fails.
  *
  * @since 1.21.0
  */
@@ -37,6 +36,17 @@ public class DecisionModelOutputGuardrail implements OutputGuardrail {
 
     private final DecisionModelChecks checks;
     private final String reprompt;
+
+    /**
+     * Creates a guardrail with the given checks and the default threshold.
+     *
+     * @param decisionModel the decision model that answers the checks.
+     * @param checks        the checks, as yes/no questions keyed by check name, where "yes" means the response must be
+     *                      rejected.
+     */
+    public DecisionModelOutputGuardrail(DecisionModel decisionModel, Map<String, String> checks) {
+        this(builder().decisionModel(decisionModel).checks(checks));
+    }
 
     protected DecisionModelOutputGuardrail(Builder builder) {
         this.checks = new DecisionModelChecks(builder.decisionModel, builder.checks, builder.threshold);
@@ -107,14 +117,24 @@ public class DecisionModelOutputGuardrail implements OutputGuardrail {
          *                 {@code "Does the response reveal personal data?"}.
          */
         public Builder check(String name, String question) {
-            checks.put(ensureNotBlank(name, "name"), ensureNotBlank(question, "question"));
+            checks.put(name, question);
+            return this;
+        }
+
+        /**
+         * Adds checks, as yes/no questions keyed by check name. See {@link #check(String, String)}.
+         */
+        public Builder checks(Map<String, String> checks) {
+            if (checks != null) {
+                this.checks.putAll(checks);
+            }
             return this;
         }
 
         /**
          * Sets the probability of "yes" from which a check fails.
          * <p>
-         * Default value is 0.5.
+         * Default value is 0.5. A check fails when the probability of "yes" is greater than or equal to it.
          */
         public Builder threshold(Double threshold) {
             this.threshold = threshold;

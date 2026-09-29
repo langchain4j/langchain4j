@@ -2,6 +2,7 @@ package dev.langchain4j.guardrails;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureBetween;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.util.stream.Collectors.joining;
@@ -31,7 +32,10 @@ final class DecisionModelChecks {
     DecisionModelChecks(DecisionModel decisionModel, Map<String, String> questions, Double threshold) {
         this.decisionModel = ensureNotNull(decisionModel, "decisionModel");
         Map<String, YesNoQuestion> yesNoQuestions = new LinkedHashMap<>();
-        ensureNotEmpty(questions, "questions").forEach((name, text) -> yesNoQuestions.put(name, YesNoQuestion.of(text)));
+        ensureNotEmpty(questions, "checks")
+                .forEach((name, text) -> yesNoQuestions.put(
+                        ensureNotBlank(name, "check name"),
+                        YesNoQuestion.of(ensureNotBlank(text, "question of check '%s'".formatted(name)))));
         this.questions = yesNoQuestions;
         this.threshold = ensureBetween(getOrDefault(threshold, DEFAULT_THRESHOLD), 0, 1, "threshold");
     }
