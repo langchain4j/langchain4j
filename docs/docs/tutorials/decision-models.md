@@ -366,7 +366,9 @@ See [Model Routing](/tutorials/model-routing).
 The components send the text of the messages as the chat model will see it. In an AI Service, the user message is
 checked after the prompt template, retrieved content and output format instructions were added to it:
 for example, an instruction hidden in a retrieved document can make an input guardrail reject the message.
-Images and other non-text content are not sent, so a message with only images passes the input guardrail.
+Images and other non-text content are not sent, so a message with only images passes the input guardrail
+(the chat model router only marks that they are attached, for example `[attached image]`).
+With `maxMessages(...)`, the previous messages are sent as `{"messages": [{"role": "user", "text": "..."}, ...]}`.
 
 ### When the decision model fails
 

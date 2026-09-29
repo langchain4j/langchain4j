@@ -65,12 +65,16 @@ public final class DecisionModelToolSelector {
                 : ensureGreaterThanZero(maxToolsPerRequest, "maxToolsPerRequest");
     }
 
+    /**
+     * Selects the tools relevant to the given input: a {@link String} or a {@link Map}.
+     */
     public List<String> select(Object input, List<ToolSpecification> tools) {
         List<ScoredTool> scoredTools = new ArrayList<>();
         for (int start = 0; start < tools.size(); ) {
             List<ToolSpecification> batch = tools.subList(start, start + Math.min(maxToolsPerRequest, tools.size() - start));
             start += batch.size();
-            DecisionRequest.Builder decisionRequest = DecisionRequest.builder().input(input);
+            DecisionRequest.Builder decisionRequest = DecisionRequest.builder();
+            setInput(decisionRequest, input);
             for (int i = 0; i < batch.size(); i++) {
                 decisionRequest.question("tool" + i, YesNoQuestion.of(question(batch.get(i))));
             }
@@ -87,6 +91,15 @@ public final class DecisionModelToolSelector {
                 .limit(maxResults)
                 .map(ScoredTool::name)
                 .toList();
+    }
+
+    @SuppressWarnings("unchecked")
+    private static void setInput(DecisionRequest.Builder decisionRequest, Object input) {
+        if (input instanceof String text) {
+            decisionRequest.input(text);
+        } else {
+            decisionRequest.input((Map<String, ?>) input);
+        }
     }
 
     private String question(ToolSpecification tool) {

@@ -48,9 +48,16 @@ final class DecisionModelChecks {
      * Returns the names of the failed checks. The probabilities are only logged (at DEBUG level), so that they do not
      * reach the users through the failure message, where they would show how close a rejected input came to passing.
      */
-    List<String> failedChecks(Object input) {
-        DecisionResponse response = decisionModel.decide(
-                DecisionRequest.builder().input(input).questions(questions).build());
+    List<String> failedChecks(String input) {
+        return failedChecks(DecisionRequest.builder().input(input));
+    }
+
+    List<String> failedChecks(Map<String, ?> input) {
+        return failedChecks(DecisionRequest.builder().input(input));
+    }
+
+    private List<String> failedChecks(DecisionRequest.Builder request) {
+        DecisionResponse response = decisionModel.decide(request.questions(questions).build());
         List<String> failedChecks = questions.keySet().stream()
                 .filter(name -> response.yesNo(name).isYes(threshold))
                 .toList();

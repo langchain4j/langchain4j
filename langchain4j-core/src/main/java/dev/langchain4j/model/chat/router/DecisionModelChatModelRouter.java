@@ -176,17 +176,22 @@ public class DecisionModelChatModelRouter implements ChatModelRouter {
     }
 
     private DecisionRequest toDecisionRequest(ChatModelRoutingRequest request) {
-        Object input = input(request.chatRequest().messages());
-        if (input == null) {
+        List<ChatMessage> messages = request.chatRequest().messages();
+        int lastUserMessage = lastUserMessage(messages);
+        if (lastUserMessage < 0 || text(messages.get(lastUserMessage)).isBlank()) {
             return null;
         }
         validate(request.routes());
         Map<String, String> options = new LinkedHashMap<>();
         request.routes().forEach(route -> options.put(route.name(), route.description()));
-        return DecisionRequest.builder()
-                .input(input)
-                .question(QUESTION_NAME, ChoiceQuestion.of(question, options))
-                .build();
+        DecisionRequest.Builder decisionRequest =
+                DecisionRequest.builder().question(QUESTION_NAME, ChoiceQuestion.of(question, options));
+        if (maxMessages == 1) {
+            decisionRequest.input(text(messages.get(lastUserMessage)));
+        } else {
+            decisionRequest.input(Map.of("messages", conversation(messages, lastUserMessage)));
+        }
+        return decisionRequest.build();
     }
 
     private String select(ChoiceAnswer answer) {
@@ -197,27 +202,19 @@ public class DecisionModelChatModelRouter implements ChatModelRouter {
         return answer.value();
     }
 
-    /**
-     * The last user message or, with {@code maxMessages > 1}, the last messages of the conversation up to and
-     * including the last user message. Returns {@code null} if there is no user message with content.
-     */
-    private Object input(List<ChatMessage> messages) {
-        int lastUserMessage = -1;
-        for (int i = messages.size() - 1; i >= 0 && lastUserMessage < 0; i--) {
+    private static int lastUserMessage(List<ChatMessage> messages) {
+        for (int i = messages.size() - 1; i >= 0; i--) {
             if (messages.get(i) instanceof UserMessage) {
-                lastUserMessage = i;
+                return i;
             }
         }
-        if (lastUserMessage < 0) {
-            return null;
-        }
-        String userMessage = text(messages.get(lastUserMessage));
-        if (userMessage.isBlank()) {
-            return null;
-        }
-        if (maxMessages == 1) {
-            return userMessage;
-        }
+        return -1;
+    }
+
+    /**
+     * The last {@code maxMessages} messages of the conversation with text, up to and including the last user message.
+     */
+    private List<Map<String, String>> conversation(List<ChatMessage> messages, int lastUserMessage) {
         List<Map<String, String>> conversation = new ArrayList<>();
         for (ChatMessage message : messages.subList(0, lastUserMessage + 1)) {
             String text = text(message);

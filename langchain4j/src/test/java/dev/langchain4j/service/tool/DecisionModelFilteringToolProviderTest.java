@@ -178,10 +178,12 @@ class DecisionModelFilteringToolProviderTest {
                 .build());
 
         assertThat(decisionModel.request().input())
-                .isEqualTo(List.of(
-                        Map.of("role", "user", "text", "Will it rain in Paris?"),
-                        Map.of("role", "assistant", "text", "No rain in Paris today."),
-                        Map.of("role", "user", "text", "Do the same for Berlin")));
+                .isEqualTo(Map.of(
+                        "messages",
+                        List.of(
+                                Map.of("role", "user", "text", "Will it rain in Paris?"),
+                                Map.of("role", "assistant", "text", "No rain in Paris today."),
+                                Map.of("role", "user", "text", "Do the same for Berlin"))));
     }
 
     @Test

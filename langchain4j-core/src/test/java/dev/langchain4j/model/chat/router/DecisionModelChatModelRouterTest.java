@@ -213,10 +213,12 @@ class DecisionModelChatModelRouterTest {
                 UserMessage.from("Java")));
 
         assertThat(decisionModel.request().input())
-                .isEqualTo(List.of(
-                        Map.of("role", "user", "text", "Can you write a parser for this grammar?"),
-                        Map.of("role", "assistant", "text", "Sure, which language?"),
-                        Map.of("role", "user", "text", "Java")));
+                .isEqualTo(Map.of(
+                        "messages",
+                        List.of(
+                                Map.of("role", "user", "text", "Can you write a parser for this grammar?"),
+                                Map.of("role", "assistant", "text", "Sure, which language?"),
+                                Map.of("role", "user", "text", "Java"))));
     }
 
     @Test

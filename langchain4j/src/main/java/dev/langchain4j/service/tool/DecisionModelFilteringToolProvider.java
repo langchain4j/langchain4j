@@ -194,7 +194,9 @@ public class DecisionModelFilteringToolProvider implements ToolProvider {
         if (conversation.isEmpty() || !conversation.get(conversation.size() - 1).equals(current)) {
             conversation.add(current);
         }
-        return conversation.subList(Math.max(0, conversation.size() - maxMessages), conversation.size());
+        return Map.of(
+                "messages",
+                conversation.subList(Math.max(0, conversation.size() - maxMessages), conversation.size()));
     }
 
     @Override
