@@ -16,27 +16,22 @@ import dev.langchain4j.guardrail.OutputGuardrailResult;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.decision.DecisionModel;
-import dev.langchain4j.model.decision.request.DecisionRequest;
+import dev.langchain4j.model.decision.mock.DecisionModelMock;
 import dev.langchain4j.model.decision.request.YesNoQuestion;
-import dev.langchain4j.model.decision.response.DecisionResponse;
 import dev.langchain4j.model.decision.response.YesNoAnswer;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 class DecisionModelGuardrailsTest {
 
-    final List<DecisionRequest> requests = new ArrayList<>();
+    DecisionModelMock decisionModel;
 
-    DecisionModel answering(Map<String, Double> probabilities) {
-        return request -> {
-            requests.add(request);
-            DecisionResponse.Builder response = DecisionResponse.builder();
-            probabilities.forEach((name, probability) -> response.answer(name, YesNoAnswer.of(probability)));
-            return response.build();
-        };
+    DecisionModelMock answering(Map<String, Double> probabilities) {
+        Map<String, YesNoAnswer> answers = new LinkedHashMap<>();
+        probabilities.forEach((name, probability) -> answers.put(name, YesNoAnswer.of(probability)));
+        decisionModel = DecisionModelMock.thatAlwaysAnswers(answers);
+        return decisionModel;
     }
 
     // input guardrail
@@ -53,7 +48,7 @@ class DecisionModelGuardrailsTest {
         InputGuardrailResult result = guardrail.validate(UserMessage.from("What is my balance?"));
 
         assertThat(result.result()).isEqualTo(GuardrailResult.Result.SUCCESS);
-        assertThat(requests).singleElement().satisfies(request -> {
+        assertThat(decisionModel.requests()).singleElement().satisfies(request -> {
             assertThat(request.input()).isEqualTo("What is my balance?");
             assertThat(request.questions())
                     .containsEntry(
@@ -88,7 +83,7 @@ class DecisionModelGuardrailsTest {
                 .build();
 
         assertThat(guardrail.validate(UserMessage.from(" ")).isSuccess()).isTrue();
-        assertThat(requests).isEmpty();
+        assertThat(decisionModel.requests()).isEmpty();
     }
 
     @Test
@@ -134,7 +129,7 @@ class DecisionModelGuardrailsTest {
                 guardrail.validate(outputRequest(AiMessage.from("It is +1 555 0100"), chatMemory));
 
         assertThat(result.isFatal()).isTrue();
-        assertThat(requests.get(0).input())
+        assertThat(decisionModel.request().input())
                 .isEqualTo(Map.of("userMessage", "What is John's phone number?", "response", "It is +1 555 0100"));
     }
 
@@ -151,7 +146,7 @@ class DecisionModelGuardrailsTest {
 
         assertThat(result.isFatal()).isTrue();
         assertThat(result.getReprompt()).contains("Answer without revealing personal data.");
-        assertThat(requests.get(0).input()).isEqualTo(Map.of("response", "It is +1 555 0100"));
+        assertThat(decisionModel.request().input()).isEqualTo(Map.of("response", "It is +1 555 0100"));
     }
 
     @Test
@@ -169,6 +164,6 @@ class DecisionModelGuardrailsTest {
                 .arguments("{}")
                 .build());
         assertThat(guardrail.validate(outputRequest(toolCall, null)).isSuccess()).isTrue();
-        assertThat(requests).hasSize(1);
+        assertThat(decisionModel.requests()).hasSize(1);
     }
 }
