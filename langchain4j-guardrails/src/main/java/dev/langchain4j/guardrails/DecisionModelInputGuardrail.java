@@ -4,6 +4,7 @@ import dev.langchain4j.Experimental;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.guardrail.InputGuardrail;
 import dev.langchain4j.guardrail.InputGuardrailResult;
+import dev.langchain4j.internal.DecisionModelInputUtils;
 import dev.langchain4j.model.decision.DecisionModel;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -23,9 +24,11 @@ import java.util.Map;
  *         .threshold(0.8)
  *         .build();
  * }</pre>
- * Only the text of the user message is checked, as it will be sent to the chat model: in an AI Service, after the
- * prompt template and retrieved content were added to it. Messages without text (for example, only images) are not
- * checked. If the decision model fails, the exception is propagated, so the request fails.
+ * The user message is checked as it will be sent to the chat model: in an AI Service, after the prompt template,
+ * retrieved content and output format instructions were added to it. The decision model cannot tell these apart from
+ * what the user wrote, so phrase the checks to apply to the whole message. Content other than text is represented by
+ * a marker, such as {@code [attached image]}: the decision model does not see what an image contains, but a check can
+ * reject messages with attachments. If the decision model fails, the exception is propagated, so the request fails.
  *
  * @since 1.21.0
  */
@@ -51,7 +54,7 @@ public class DecisionModelInputGuardrail implements InputGuardrail {
 
     @Override
     public InputGuardrailResult validate(UserMessage userMessage) {
-        String text = DecisionModelChecks.text(userMessage);
+        String text = DecisionModelInputUtils.text(userMessage);
         if (text.isBlank()) {
             return success();
         }
@@ -94,10 +97,11 @@ public class DecisionModelInputGuardrail implements InputGuardrail {
         }
 
         /**
-         * Adds checks, as yes/no questions keyed by check name, to the checks added so far. See
+         * Sets the checks, as yes/no questions keyed by check name, replacing the checks added so far. See
          * {@link #check(String, String)}.
          */
         public Builder checks(Map<String, String> checks) {
+            this.checks.clear();
             if (checks != null) {
                 this.checks.putAll(checks);
             }

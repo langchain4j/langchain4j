@@ -77,7 +77,7 @@ public class DecisionModelToolSearchStrategy implements ToolSearchStrategy {
                 builder.questionTemplate,
                 builder.maxResults,
                 builder.minProbability,
-                builder.maxToolsPerRequest);
+                builder.maxToolsPerDecisionRequest);
         this.toolArgumentName = getOrDefault(builder.toolArgumentName, DEFAULT_TOOL_ARGUMENT_NAME);
         this.toolSearchTool = ToolSpecification.builder()
                 .name(getOrDefault(builder.toolName, DEFAULT_TOOL_NAME))
@@ -142,7 +142,7 @@ public class DecisionModelToolSearchStrategy implements ToolSearchStrategy {
         private PromptTemplate questionTemplate;
         private Integer maxResults;
         private Double minProbability;
-        private Integer maxToolsPerRequest;
+        private Integer maxToolsPerDecisionRequest;
         private String toolName;
         private String toolDescription;
         private String toolArgumentName;
@@ -194,10 +194,11 @@ public class DecisionModelToolSearchStrategy implements ToolSearchStrategy {
          * Sets the maximum number of tools evaluated in a single request to the decision model, for when the tools
          * together exceed the input size accepted by the decision model.
          * <p>
-         * By default, all tools are evaluated in a single request.
+         * By default, all tools are evaluated in a single request. This does not limit the number of tools passed on
+         * to the LLM, see {@link #maxResults(Integer)}.
          */
-        public Builder maxToolsPerRequest(Integer maxToolsPerRequest) {
-            this.maxToolsPerRequest = maxToolsPerRequest;
+        public Builder maxToolsPerDecisionRequest(Integer maxToolsPerDecisionRequest) {
+            this.maxToolsPerDecisionRequest = maxToolsPerDecisionRequest;
             return this;
         }
 

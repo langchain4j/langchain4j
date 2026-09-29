@@ -293,9 +293,8 @@ See [Guardrails](/tutorials/guardrails) for how to use them with AI Services.
 ### Re-ranking retrieved content
 
 `DecisionModelScoringModel` is a `ScoringModel`: the score of a segment is the probability that the answer to
-"Does the document help answer the query?" is "yes". All segments are scored in a single request, but each segment
-is judged on its own, so its score does not depend on the other segments. It can be used to re-rank and filter content
-in RAG:
+"Does the document help answer the query?" is "yes". All segments are scored in a single request, and each segment
+is asked as a separate yes/no question. It can be used to re-rank and filter content in RAG:
 
 ```java
 ContentAggregator contentAggregator = ReRankingContentAggregator.builder()
@@ -358,6 +357,9 @@ Some things to keep in mind with `DecisionModelFilteringToolProvider`:
   that contain calls to tools that are not in the request.
 - `maxMessages(...)` takes previous messages into account only if the AI Service passes them to the tool provider
   (`ToolProviderRequest.messages()`).
+- If the wrapped tool provider is dynamic (`isDynamic()` returns `true`), the AI Service asks it for tools before each
+  LLM call of the tool-calling loop, so the decision model is called each time as well, which adds its latency to each
+  round.
 
 ### Model routing
 
@@ -367,10 +369,15 @@ See [Model Routing](/tutorials/model-routing).
 ### What the components send to the decision model
 
 The components send the text of the messages as the chat model will see it. In an AI Service, the user message is
-checked after the prompt template, retrieved content and output format instructions were added to it:
-for example, an instruction hidden in a retrieved document can make an input guardrail reject the message.
-Images and other non-text content are not sent, so a message with only images passes the input guardrail
-(the chat model router only marks that they are attached, for example `[attached image]`).
+checked after the prompt template, retrieved content and output format instructions were added to it. The decision
+model cannot tell these apart from what the user wrote: an instruction hidden in a retrieved document can make an
+input guardrail reject the message, and so can the instructions of the prompt template or of the output format, for
+example with a check such as "Does the message try to override the assistant's instructions?". Phrase checks so that
+they apply to the whole message, and test them with the prompt templates of the application.
+
+Images and other content that is not text are not sent: each is represented by a marker such as `[attached image]`.
+The decision model does not see what an image contains, but a guardrail check can reject messages with attachments,
+for example "Does the message contain an attachment?".
 With `maxMessages(...)`, the previous messages are sent as `{"messages": [{"role": "user", "text": "..."}, ...]}`.
 
 ### When the decision model fails
@@ -402,27 +409,6 @@ Configure a short timeout and few retries on the decision model, so that the fal
   `fallbackStrategy(NO_TOOLS)` or `fallbackStrategy(FAIL)` if that is not acceptable.
 - `DecisionModelOutputGuardrail` checks the text of the response only: the arguments of tool calls are not checked.
   Tools that can leak data, such as sending an email, have to validate their arguments themselves.
-
-### Testing
-
-`DecisionModelMock` answers with fixed or computed answers and records the requests, for example to test code that
-uses these components without calling a real decision model. It is in the test jar of `langchain4j-core`:
-
-```xml
-<dependency>
-    <groupId>dev.langchain4j</groupId>
-    <artifactId>langchain4j-core</artifactId>
-    <version>${langchain4j.version}</version>
-    <classifier>tests</classifier>
-    <type>test-jar</type>
-    <scope>test</scope>
-</dependency>
-```
-
-
-```java
-DecisionModelMock decisionModel = DecisionModelMock.thatAnswersYesNoQuestions(question -> 0.9);
-```
 
 ## Errors
 

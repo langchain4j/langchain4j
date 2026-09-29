@@ -86,7 +86,7 @@ class DecisionModelToolSearchStrategyTest {
                 .decisionModel(decisionModel)
                 .maxResults(1)
                 .minProbability(0.2)
-                .maxToolsPerRequest(3)
+                .maxToolsPerDecisionRequest(3)
                 .build();
 
         ToolSearchResult result = strategy.search(searchRequest("{\"query\": \"weather\"}"));

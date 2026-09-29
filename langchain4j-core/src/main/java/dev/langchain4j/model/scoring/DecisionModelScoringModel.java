@@ -38,9 +38,9 @@ import java.util.concurrent.atomic.AtomicReference;
  *         .build();
  * }</pre>
  * All segments are scored in a single request: the input is the query, and each segment is part of its own yes/no
- * question (see {@link Builder#questionTemplate(PromptTemplate)}), so the score of a segment depends only on the query and the segment, not on the other segments of the
- * request. If the segments together exceed the input size accepted by the decision model, set
- * {@link Builder#maxSegmentsPerRequest(Integer)}.
+ * question (see {@link Builder#questionTemplate(PromptTemplate)}). Whether the answer to one question can be
+ * influenced by the other questions of the request depends on the decision model. If the segments together exceed the
+ * input size accepted by the decision model, set {@link Builder#maxSegmentsPerRequest(Integer)}.
  *
  * @since 1.21.0
  */

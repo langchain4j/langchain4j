@@ -35,14 +35,14 @@ public final class DecisionModelToolSelector {
     private final PromptTemplate questionTemplate;
     private final int maxResults;
     private final double minProbability;
-    private final int maxToolsPerRequest;
+    private final int maxToolsPerDecisionRequest;
 
     public DecisionModelToolSelector(
             DecisionModel decisionModel,
             PromptTemplate questionTemplate,
             Integer maxResults,
             Double minProbability,
-            Integer maxToolsPerRequest) {
+            Integer maxToolsPerDecisionRequest) {
         this.decisionModel = ensureNotNull(decisionModel, "decisionModel");
         this.questionTemplate = getOrDefault(questionTemplate, DEFAULT_QUESTION_TEMPLATE);
         if (!this.questionTemplate.template().contains("{{name}}")) {
@@ -60,9 +60,9 @@ public final class DecisionModelToolSelector {
         this.maxResults = ensureGreaterThanZero(getOrDefault(maxResults, DEFAULT_MAX_RESULTS), "maxResults");
         this.minProbability =
                 ensureBetween(getOrDefault(minProbability, DEFAULT_MIN_PROBABILITY), 0, 1, "minProbability");
-        this.maxToolsPerRequest = maxToolsPerRequest == null
+        this.maxToolsPerDecisionRequest = maxToolsPerDecisionRequest == null
                 ? Integer.MAX_VALUE
-                : ensureGreaterThanZero(maxToolsPerRequest, "maxToolsPerRequest");
+                : ensureGreaterThanZero(maxToolsPerDecisionRequest, "maxToolsPerDecisionRequest");
     }
 
     /**
@@ -71,7 +71,8 @@ public final class DecisionModelToolSelector {
     public List<String> select(Object input, List<ToolSpecification> tools) {
         List<ScoredTool> scoredTools = new ArrayList<>();
         for (int start = 0; start < tools.size(); ) {
-            List<ToolSpecification> batch = tools.subList(start, start + Math.min(maxToolsPerRequest, tools.size() - start));
+            List<ToolSpecification> batch =
+                    tools.subList(start, start + Math.min(maxToolsPerDecisionRequest, tools.size() - start));
             start += batch.size();
             DecisionRequest.Builder decisionRequest = DecisionRequest.builder();
             setInput(decisionRequest, input);

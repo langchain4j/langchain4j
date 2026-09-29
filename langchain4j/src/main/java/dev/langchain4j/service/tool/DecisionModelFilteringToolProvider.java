@@ -3,14 +3,13 @@ package dev.langchain4j.service.tool;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static java.util.stream.Collectors.joining;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.internal.DecisionModelInputUtils;
 import dev.langchain4j.model.decision.DecisionModel;
 import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.service.tool.search.decision.DecisionModelToolSelector;
@@ -48,6 +47,9 @@ import org.slf4j.LoggerFactory;
  * {@link dev.langchain4j.service.tool.search.ToolSearchStrategy}, whose previously found tools stay available. The
  * previous messages, used both for this and for {@link Builder#maxMessages(Integer)}, are only known if the caller
  * passes them in {@link ToolProviderRequest#messages()}, as LangChain4j AI Services do.
+ * <p>
+ * If the wrapped tool provider is {@link ToolProvider#isDynamic() dynamic}, the tools are selected again, with a call
+ * to the decision model, before each LLM call of the tool-calling loop.
  * <p>
  * If the user message has no text, all tools are passed on. If the decision model fails, the
  * {@link FallbackStrategy} applies: by default, all tools are passed on and a warning is logged.
@@ -108,7 +110,7 @@ public class DecisionModelFilteringToolProvider implements ToolProvider {
                 builder.questionTemplate,
                 builder.maxResults,
                 builder.minProbability,
-                builder.maxToolsPerRequest);
+                builder.maxToolsPerDecisionRequest);
         this.alwaysIncludedTools = Set.copyOf(builder.alwaysIncludedTools);
         this.maxMessages = ensureGreaterThanZero(getOrDefault(builder.maxMessages, DEFAULT_MAX_MESSAGES), "maxMessages");
         this.fallbackStrategy = getOrDefault(builder.fallbackStrategy, FallbackStrategy.ALL_TOOLS);
@@ -179,22 +181,16 @@ public class DecisionModelFilteringToolProvider implements ToolProvider {
      * {@code null} if the user message has no text.
      */
     private Object input(ToolProviderRequest request) {
-        String userMessage = text(request.userMessage());
-        if (userMessage.isBlank()) {
+        UserMessage userMessage = request.userMessage();
+        if (userMessage == null || !DecisionModelInputUtils.hasText(userMessage)) {
             return null;
         }
+        String text = DecisionModelInputUtils.text(userMessage);
         if (maxMessages == 1) {
-            return userMessage;
+            return text;
         }
-        List<Map<String, String>> conversation = new ArrayList<>();
-        for (ChatMessage message : request.messages()) {
-            if (message instanceof UserMessage user && !text(user).isBlank()) {
-                conversation.add(Map.of("role", "user", "text", text(user)));
-            } else if (message instanceof AiMessage ai && ai.text() != null && !ai.text().isBlank()) {
-                conversation.add(Map.of("role", "assistant", "text", ai.text()));
-            }
-        }
-        Map<String, String> current = Map.of("role", "user", "text", userMessage);
+        List<Map<String, String>> conversation = new ArrayList<>(DecisionModelInputUtils.messages(request.messages()));
+        Map<String, String> current = Map.of("role", "user", "text", text);
         if (conversation.isEmpty() || !conversation.get(conversation.size() - 1).equals(current)) {
             conversation.add(current);
         }
@@ -208,16 +204,6 @@ public class DecisionModelFilteringToolProvider implements ToolProvider {
         return toolProvider.isDynamic();
     }
 
-    private static String text(UserMessage userMessage) {
-        if (userMessage == null) {
-            return "";
-        }
-        return userMessage.contents().stream()
-                .filter(TextContent.class::isInstance)
-                .map(content -> ((TextContent) content).text())
-                .collect(joining("\n"));
-    }
-
     public static Builder builder() {
         return new Builder();
     }
@@ -229,7 +215,7 @@ public class DecisionModelFilteringToolProvider implements ToolProvider {
         private PromptTemplate questionTemplate;
         private Integer maxResults;
         private Double minProbability;
-        private Integer maxToolsPerRequest;
+        private Integer maxToolsPerDecisionRequest;
         private final Set<String> alwaysIncludedTools = new HashSet<>();
         private Integer maxMessages;
         private FallbackStrategy fallbackStrategy;
@@ -286,10 +272,11 @@ public class DecisionModelFilteringToolProvider implements ToolProvider {
          * Sets the maximum number of tools evaluated in a single request to the decision model, for when the tools
          * together exceed the input size accepted by the decision model.
          * <p>
-         * By default, all tools are evaluated in a single request.
+         * By default, all tools are evaluated in a single request. This does not limit the number of tools passed on
+         * to the LLM, see {@link #maxResults(Integer)}.
          */
-        public Builder maxToolsPerRequest(Integer maxToolsPerRequest) {
-            this.maxToolsPerRequest = maxToolsPerRequest;
+        public Builder maxToolsPerDecisionRequest(Integer maxToolsPerDecisionRequest) {
+            this.maxToolsPerDecisionRequest = maxToolsPerDecisionRequest;
             return this;
         }
 

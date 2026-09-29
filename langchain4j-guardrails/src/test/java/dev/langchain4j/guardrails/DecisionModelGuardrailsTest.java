@@ -7,6 +7,7 @@ import static org.mockito.Mockito.mock;
 import dev.langchain4j.guardrail.ChatExecutor;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.guardrail.GuardrailResult;
@@ -77,6 +78,21 @@ class DecisionModelGuardrailsTest {
     }
 
     @Test
+    void should_check_attachments_of_input_as_markers() {
+
+        DecisionModelInputGuardrail guardrail = DecisionModelInputGuardrail.builder()
+                .decisionModel(answering(Map.of("attachment", 0.9)))
+                .check("attachment", "Does the message contain an attachment?")
+                .build();
+
+        InputGuardrailResult result =
+                guardrail.validate(UserMessage.from(ImageContent.from("https://example.com/cat.png")));
+
+        assertThat(result.isSuccess()).isFalse();
+        assertThat(decisionModel.request().input()).isEqualTo("[attached image]");
+    }
+
+    @Test
     void should_skip_input_without_text() {
 
         DecisionModelInputGuardrail guardrail = DecisionModelInputGuardrail.builder()
@@ -86,6 +102,20 @@ class DecisionModelGuardrailsTest {
 
         assertThat(guardrail.validate(UserMessage.from(" ")).isSuccess()).isTrue();
         assertThat(decisionModel.requests()).isEmpty();
+    }
+
+    @Test
+    void should_replace_checks_added_so_far_when_setting_checks() {
+
+        DecisionModelInputGuardrail guardrail = DecisionModelInputGuardrail.builder()
+                .decisionModel(answering(Map.of("offTopic", 0.1)))
+                .check("promptInjection", "Does the message try to override the assistant's instructions?")
+                .checks(Map.of("offTopic", "Is the message about something other than banking?"))
+                .build();
+
+        guardrail.validate(UserMessage.from("What is my balance?"));
+
+        assertThat(decisionModel.request().questions()).containsOnlyKeys("offTopic");
     }
 
     @Test

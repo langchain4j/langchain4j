@@ -9,6 +9,7 @@ import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.guardrail.OutputGuardrail;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
 import dev.langchain4j.guardrail.OutputGuardrailResult;
+import dev.langchain4j.internal.DecisionModelInputUtils;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.decision.DecisionModel;
 import java.util.LinkedHashMap;
@@ -86,7 +87,7 @@ public class DecisionModelOutputGuardrail implements OutputGuardrail {
         if (userMessage == null) {
             return null;
         }
-        String text = DecisionModelChecks.text(userMessage);
+        String text = DecisionModelInputUtils.text(userMessage);
         return text.isBlank() ? null : text;
     }
 
@@ -136,10 +137,11 @@ public class DecisionModelOutputGuardrail implements OutputGuardrail {
         }
 
         /**
-         * Adds checks, as yes/no questions keyed by check name, to the checks added so far. See
+         * Sets the checks, as yes/no questions keyed by check name, replacing the checks added so far. See
          * {@link #check(String, String)}.
          */
         public Builder checks(Map<String, String> checks) {
+            this.checks.clear();
             if (checks != null) {
                 this.checks.putAll(checks);
             }

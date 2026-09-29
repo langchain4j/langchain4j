@@ -8,23 +8,19 @@ import static dev.langchain4j.internal.ValidationUtils.ensureBetween;
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static java.util.stream.Collectors.joining;
 
 import dev.langchain4j.Experimental;
-import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.AsyncNotSupportedException;
+import dev.langchain4j.internal.DecisionModelInputUtils;
 import dev.langchain4j.model.decision.DecisionModel;
 import dev.langchain4j.model.decision.request.ChoiceQuestion;
 import dev.langchain4j.model.decision.request.DecisionRequest;
 import dev.langchain4j.model.decision.response.ChoiceAnswer;
 import dev.langchain4j.model.decision.response.DecisionResponse;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
@@ -183,7 +179,7 @@ public class DecisionModelChatModelRouter implements ChatModelRouter {
     private DecisionRequest toDecisionRequest(ChatModelRoutingRequest request) {
         List<ChatMessage> messages = request.chatRequest().messages();
         int lastUserMessage = lastUserMessage(messages);
-        if (lastUserMessage < 0 || text(messages.get(lastUserMessage)).isBlank()) {
+        if (lastUserMessage < 0 || DecisionModelInputUtils.text(messages.get(lastUserMessage)).isBlank()) {
             return null;
         }
         validate(request.routes());
@@ -192,7 +188,7 @@ public class DecisionModelChatModelRouter implements ChatModelRouter {
         DecisionRequest.Builder decisionRequest =
                 DecisionRequest.builder().question(QUESTION_NAME, ChoiceQuestion.of(question, options));
         if (maxMessages == 1) {
-            decisionRequest.input(text(messages.get(lastUserMessage)));
+            decisionRequest.input(DecisionModelInputUtils.text(messages.get(lastUserMessage)));
         } else {
             decisionRequest.input(Map.of("messages", conversation(messages, lastUserMessage)));
         }
@@ -220,28 +216,9 @@ public class DecisionModelChatModelRouter implements ChatModelRouter {
      * The last {@code maxMessages} messages of the conversation with text, up to and including the last user message.
      */
     private List<Map<String, String>> conversation(List<ChatMessage> messages, int lastUserMessage) {
-        List<Map<String, String>> conversation = new ArrayList<>();
-        for (ChatMessage message : messages.subList(0, lastUserMessage + 1)) {
-            String text = text(message);
-            if (!text.isBlank()) {
-                conversation.add(Map.of("role", message instanceof UserMessage ? "user" : "assistant", "text", text));
-            }
-        }
+        List<Map<String, String>> conversation =
+                DecisionModelInputUtils.messages(messages.subList(0, lastUserMessage + 1));
         return conversation.subList(Math.max(0, conversation.size() - maxMessages), conversation.size());
-    }
-
-    private static String text(ChatMessage message) {
-        if (message instanceof UserMessage userMessage) {
-            return userMessage.contents().stream()
-                    .map(content -> content instanceof TextContent textContent
-                            ? textContent.text()
-                            : "[attached " + content.type().name().toLowerCase(Locale.ROOT) + "]")
-                    .collect(joining("\n"));
-        }
-        if (message instanceof AiMessage aiMessage && aiMessage.text() != null) {
-            return aiMessage.text();
-        }
-        return "";
     }
 
     public static Builder builder() {
@@ -266,6 +243,9 @@ public class DecisionModelChatModelRouter implements ChatModelRouter {
 
         /**
          * Sets the question asked to choose between the routes, whose descriptions are the options.
+         * <p>
+         * It is a plain question rather than a template: all routes are the options of a single choice question, so
+         * there is nothing to insert into the question.
          * <p>
          * Default value is {@value DecisionModelChatModelRouter#DEFAULT_QUESTION}.
          */

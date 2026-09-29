@@ -5,10 +5,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureBetween;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static java.util.stream.Collectors.joining;
 
-import dev.langchain4j.data.message.TextContent;
-import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.decision.DecisionModel;
 import dev.langchain4j.model.decision.request.DecisionRequest;
 import dev.langchain4j.model.decision.request.YesNoQuestion;
@@ -66,12 +63,5 @@ final class DecisionModelChecks {
                     "Check '{}' failed with a probability of {}", name, response.yesNo(name).probability()));
         }
         return failedChecks;
-    }
-
-    static String text(UserMessage userMessage) {
-        return userMessage.contents().stream()
-                .filter(TextContent.class::isInstance)
-                .map(content -> ((TextContent) content).text())
-                .collect(joining("\n"));
     }
 }
