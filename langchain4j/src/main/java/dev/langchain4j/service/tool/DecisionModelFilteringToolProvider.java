@@ -12,6 +12,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.decision.DecisionModel;
+import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.service.tool.search.decision.DecisionModelToolSelector;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -93,7 +94,7 @@ public class DecisionModelFilteringToolProvider implements ToolProvider {
         this.toolProvider = ensureNotNull(builder.toolProvider, "toolProvider");
         this.selector = new DecisionModelToolSelector(
                 builder.decisionModel,
-                builder.question,
+                builder.questionTemplate,
                 builder.maxResults,
                 builder.minProbability,
                 builder.maxToolsPerRequest);
@@ -221,7 +222,7 @@ public class DecisionModelFilteringToolProvider implements ToolProvider {
 
         private ToolProvider toolProvider;
         private DecisionModel decisionModel;
-        private String question;
+        private PromptTemplate questionTemplate;
         private Integer maxResults;
         private Double minProbability;
         private Integer maxToolsPerRequest;
@@ -247,12 +248,17 @@ public class DecisionModelFilteringToolProvider implements ToolProvider {
         }
 
         /**
-         * Sets the yes/no question asked for each tool, followed by the name and description of the tool.
+         * Sets the template of the yes/no question asked for each tool, which must contain the {@code {{name}}}
+         * variable (the name of the tool) and can contain {@code {{description}}} (its description, empty if it has
+         * none).
          * <p>
-         * Default value is {@value DecisionModelToolSelector#DEFAULT_QUESTION}.
+         * Default value is {@link DecisionModelToolSelector#DEFAULT_QUESTION_TEMPLATE}: "Would this tool help to
+         * handle the request?
+Tool: {{name}}
+Description: {{description}}".
          */
-        public Builder question(String question) {
-            this.question = question;
+        public Builder questionTemplate(PromptTemplate questionTemplate) {
+            this.questionTemplate = questionTemplate;
             return this;
         }
 

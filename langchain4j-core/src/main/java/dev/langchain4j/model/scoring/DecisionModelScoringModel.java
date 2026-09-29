@@ -11,6 +11,7 @@ import dev.langchain4j.model.decision.DecisionModel;
 import dev.langchain4j.model.decision.request.DecisionRequest;
 import dev.langchain4j.model.decision.request.YesNoQuestion;
 import dev.langchain4j.model.decision.response.DecisionResponse;
+import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.model.scoring.request.ScoringRequest;
@@ -33,7 +34,7 @@ import java.util.concurrent.CompletableFuture;
  *         .build();
  * }</pre>
  * All segments are scored in a single request: the input is the query, and each segment is part of its own yes/no
- * question, so the score of a segment depends only on the query and the segment, not on the other segments of the
+ * question (see {@link Builder#questionTemplate(PromptTemplate)}), so the score of a segment depends only on the query and the segment, not on the other segments of the
  * request. If the segments together exceed the input size accepted by the decision model, set
  * {@link Builder#maxSegmentsPerRequest(Integer)}.
  *
@@ -42,10 +43,14 @@ import java.util.concurrent.CompletableFuture;
 @Experimental
 public class DecisionModelScoringModel implements ScoringModel {
 
-    private static final String DEFAULT_QUESTION = "Does the document help answer the query?";
+    /**
+     * The default template of the question asked for each segment.
+     */
+    public static final PromptTemplate DEFAULT_QUESTION_TEMPLATE =
+            PromptTemplate.from("Does the document help answer the query?\nDocument: {{document}}");
 
     private final DecisionModel decisionModel;
-    private final String question;
+    private final PromptTemplate questionTemplate;
     private final int maxSegmentsPerRequest;
 
     public DecisionModelScoringModel(DecisionModel decisionModel) {
@@ -54,7 +59,8 @@ public class DecisionModelScoringModel implements ScoringModel {
 
     protected DecisionModelScoringModel(Builder builder) {
         this.decisionModel = ensureNotNull(builder.decisionModel, "decisionModel");
-        this.question = ensureNotBlank(getOrDefault(builder.question, DEFAULT_QUESTION), "question");
+        this.questionTemplate = getOrDefault(builder.questionTemplate, DEFAULT_QUESTION_TEMPLATE);
+        ensureContains(questionTemplate, "document");
         this.maxSegmentsPerRequest = builder.maxSegmentsPerRequest == null
                 ? Integer.MAX_VALUE
                 : ensureGreaterThanZero(builder.maxSegmentsPerRequest, "maxSegmentsPerRequest");
@@ -120,9 +126,18 @@ public class DecisionModelScoringModel implements ScoringModel {
     private DecisionRequest toRequest(List<String> batch, String query) {
         DecisionRequest.Builder request = DecisionRequest.builder().input(Map.of("query", query));
         for (int i = 1; i <= batch.size(); i++) {
-            request.question(questionName(i), YesNoQuestion.of(question + "\nDocument: " + batch.get(i - 1)));
+            request.question(
+                    questionName(i),
+                    YesNoQuestion.of(questionTemplate.apply(Map.of("document", batch.get(i - 1))).text()));
         }
         return request.build();
+    }
+
+    static void ensureContains(PromptTemplate template, String variable) {
+        if (!template.template().contains("{{" + variable + "}}")) {
+            throw new IllegalArgumentException(
+                    "The question template must contain {{%s}}, but was: %s".formatted(variable, template.template()));
+        }
     }
 
     private static String questionName(int index) {
@@ -136,7 +151,7 @@ public class DecisionModelScoringModel implements ScoringModel {
     public static class Builder {
 
         private DecisionModel decisionModel;
-        private String question;
+        private PromptTemplate questionTemplate;
         private Integer maxSegmentsPerRequest;
 
         /**
@@ -148,13 +163,15 @@ public class DecisionModelScoringModel implements ScoringModel {
         }
 
         /**
-         * Sets the yes/no question asked for each segment, followed by the text of the segment. The score is the
-         * probability of "yes".
+         * Sets the template of the yes/no question asked for each segment, which must contain the
+         * {@code {{document}}} variable (the text of the segment). The score is the probability of "yes".
          * <p>
-         * Default value is {@value DecisionModelScoringModel#DEFAULT_QUESTION}.
+         * Default value is {@link DecisionModelScoringModel#DEFAULT_QUESTION_TEMPLATE}:
+         * "Does the document help answer the query?
+Document: {{document}}".
          */
-        public Builder question(String question) {
-            this.question = question;
+        public Builder questionTemplate(PromptTemplate questionTemplate) {
+            this.questionTemplate = questionTemplate;
             return this;
         }
 

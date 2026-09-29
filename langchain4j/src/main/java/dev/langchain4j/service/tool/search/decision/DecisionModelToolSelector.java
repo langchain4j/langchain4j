@@ -4,18 +4,20 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureBetween;
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.model.decision.DecisionModel;
+import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.model.decision.request.DecisionRequest;
 import dev.langchain4j.model.decision.request.YesNoQuestion;
 import dev.langchain4j.model.decision.response.DecisionResponse;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Selects the tools relevant to a request with a {@link DecisionModel}: one yes/no question per tool, answered in
@@ -24,24 +26,29 @@ import java.util.List;
 @Internal
 public final class DecisionModelToolSelector {
 
-    public static final String DEFAULT_QUESTION = "Would this tool help to handle the request?";
+    public static final PromptTemplate DEFAULT_QUESTION_TEMPLATE = PromptTemplate.from(
+            "Would this tool help to handle the request?\nTool: {{name}}\nDescription: {{description}}");
     public static final int DEFAULT_MAX_RESULTS = 5;
     public static final double DEFAULT_MIN_PROBABILITY = 0.5;
 
     private final DecisionModel decisionModel;
-    private final String question;
+    private final PromptTemplate questionTemplate;
     private final int maxResults;
     private final double minProbability;
     private final int maxToolsPerRequest;
 
     public DecisionModelToolSelector(
             DecisionModel decisionModel,
-            String question,
+            PromptTemplate questionTemplate,
             Integer maxResults,
             Double minProbability,
             Integer maxToolsPerRequest) {
         this.decisionModel = ensureNotNull(decisionModel, "decisionModel");
-        this.question = ensureNotBlank(getOrDefault(question, DEFAULT_QUESTION), "question");
+        this.questionTemplate = getOrDefault(questionTemplate, DEFAULT_QUESTION_TEMPLATE);
+        if (!this.questionTemplate.template().contains("{{name}}")) {
+            throw new IllegalArgumentException("The question template must contain {{name}}, but was: "
+                    + this.questionTemplate.template());
+        }
         this.maxResults = ensureGreaterThanZero(getOrDefault(maxResults, DEFAULT_MAX_RESULTS), "maxResults");
         this.minProbability =
                 ensureBetween(getOrDefault(minProbability, DEFAULT_MIN_PROBABILITY), 0, 1, "minProbability");
@@ -57,7 +64,7 @@ public final class DecisionModelToolSelector {
             start += batch.size();
             DecisionRequest.Builder decisionRequest = DecisionRequest.builder().input(input);
             for (int i = 0; i < batch.size(); i++) {
-                decisionRequest.question("tool" + i, YesNoQuestion.of(question + "\n" + describe(batch.get(i))));
+                decisionRequest.question("tool" + i, YesNoQuestion.of(question(batch.get(i))));
             }
             DecisionResponse response = decisionModel.decide(decisionRequest.build());
             for (int i = 0; i < batch.size(); i++) {
@@ -74,8 +81,11 @@ public final class DecisionModelToolSelector {
                 .toList();
     }
 
-    private static String describe(ToolSpecification tool) {
-        return isNullOrBlank(tool.description()) ? "Tool: " + tool.name() : "Tool: " + tool.name() + ": " + tool.description();
+    private String question(ToolSpecification tool) {
+        Map<String, Object> variables = new HashMap<>();
+        variables.put("name", tool.name());
+        variables.put("description", isNullOrBlank(tool.description()) ? "" : tool.description());
+        return questionTemplate.apply(variables).text().strip();
     }
 
     private record ScoredTool(String name, double probability) {}

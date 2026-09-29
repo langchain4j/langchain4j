@@ -63,7 +63,10 @@ public class DecisionModelChatModelRouter implements ChatModelRouter {
 
     private static final Logger log = LoggerFactory.getLogger(DecisionModelChatModelRouter.class);
 
-    private static final String DEFAULT_QUESTION = "Which model should handle this request?";
+    /**
+     * The default question asked to choose between the routes.
+     */
+    public static final String DEFAULT_QUESTION = "Which model should handle this request?";
     private static final String QUESTION_NAME = "route";
 
     /**

@@ -13,6 +13,7 @@ import static java.util.Collections.emptyList;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.model.decision.DecisionModel;
+import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.model.decision.request.DecisionRequest;
 import dev.langchain4j.model.decision.request.YesNoQuestion;
 import dev.langchain4j.model.decision.response.DecisionResponse;
@@ -56,8 +57,11 @@ public class DecisionModelQueryRouter implements QueryRouter {
 
     private static final Logger log = LoggerFactory.getLogger(DecisionModelQueryRouter.class);
 
-    private static final String DEFAULT_QUESTION =
-            "Could the following data source contain information that helps answer the query?";
+    /**
+     * The default template of the question asked for each retriever.
+     */
+    public static final PromptTemplate DEFAULT_QUESTION_TEMPLATE = PromptTemplate.from(
+            "Could the following data source contain information that helps answer the query?\n{{description}}");
     private static final double DEFAULT_MIN_PROBABILITY = 0.5;
 
     private final DecisionModel decisionModel;
@@ -73,7 +77,11 @@ public class DecisionModelQueryRouter implements QueryRouter {
     protected DecisionModelQueryRouter(Builder builder) {
         this.decisionModel = ensureNotNull(builder.decisionModel, "decisionModel");
         ensureNotEmpty(builder.retrieverToDescription, "retrieverToDescription");
-        String question = ensureNotBlank(getOrDefault(builder.question, DEFAULT_QUESTION), "question");
+        PromptTemplate questionTemplate = getOrDefault(builder.questionTemplate, DEFAULT_QUESTION_TEMPLATE);
+        if (!questionTemplate.template().contains("{{description}}")) {
+            throw new IllegalArgumentException("The question template must contain {{description}}, but was: "
+                    + questionTemplate.template());
+        }
         this.minProbability = ensureBetween(
                 getOrDefault(builder.minProbability, DEFAULT_MIN_PROBABILITY), 0, 1, "minProbability");
         this.fallbackStrategy = getOrDefault(builder.fallbackStrategy, DO_NOT_ROUTE);
@@ -84,10 +92,12 @@ public class DecisionModelQueryRouter implements QueryRouter {
         for (Map.Entry<ContentRetriever, String> entry : builder.retrieverToDescription.entrySet()) {
             String name = "source" + id++;
             retrievers.put(name, ensureNotNull(entry.getKey(), "ContentRetriever"));
+            String description = ensureNotBlank(entry.getValue(), "ContentRetriever description");
             questions.put(
                     name,
-                    YesNoQuestion.of(
-                            question + "\n" + ensureNotBlank(entry.getValue(), "ContentRetriever description")));
+                    YesNoQuestion.of(questionTemplate
+                            .apply(Map.of("description", description))
+                            .text()));
         }
         this.retrievers = retrievers;
         this.questions = questions;
@@ -168,7 +178,7 @@ public class DecisionModelQueryRouter implements QueryRouter {
 
         private DecisionModel decisionModel;
         private Map<ContentRetriever, String> retrieverToDescription;
-        private String question;
+        private PromptTemplate questionTemplate;
         private Double minProbability;
         private FallbackStrategy fallbackStrategy;
 
@@ -189,12 +199,15 @@ public class DecisionModelQueryRouter implements QueryRouter {
         }
 
         /**
-         * Sets the yes/no question asked for each retriever, followed by the description of the retriever.
+         * Sets the template of the yes/no question asked for each retriever, which must contain the
+         * {@code {{description}}} variable (the description of the retriever). The query is the input.
          * <p>
-         * Default value is {@value DecisionModelQueryRouter#DEFAULT_QUESTION}.
+         * Default value is {@link DecisionModelQueryRouter#DEFAULT_QUESTION_TEMPLATE}: "Could the following data
+         * source contain information that helps answer the query?
+{{description}}".
          */
-        public Builder question(String question) {
-            this.question = question;
+        public Builder questionTemplate(PromptTemplate questionTemplate) {
+            this.questionTemplate = questionTemplate;
             return this;
         }
 

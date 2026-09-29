@@ -7,6 +7,7 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.decision.DecisionModel;
 import dev.langchain4j.model.decision.mock.DecisionModelMock;
 import dev.langchain4j.model.decision.request.YesNoQuestion;
+import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.model.scoring.request.ScoringRequest;
@@ -19,8 +20,11 @@ import org.junit.jupiter.api.Test;
 class DecisionModelScoringModelTest {
 
     // answers "yes" with a probability derived from the document text: "relevant" -> 0.9, otherwise 0.1
-    final DecisionModelMock decisionModel = DecisionModelMock.thatAnswersYesNoQuestions(question ->
-            question.text().substring(question.text().indexOf("Document: ")).contains("relevant") ? 0.9 : 0.1);
+    final DecisionModelMock decisionModel = DecisionModelMock.thatAnswersYesNoQuestions(question -> question.text()
+                    .replace("Does the document help answer the query?", "")
+                    .contains("relevant")
+            ? 0.9
+            : 0.1);
 
     @Test
     void should_score_segments_with_the_probability_of_yes() {
@@ -47,7 +51,7 @@ class DecisionModelScoringModelTest {
         ScoringModel scoringModel = DecisionModelScoringModel.builder()
                 .decisionModel(decisionModel)
                 .maxSegmentsPerRequest(2)
-                .question("Is the document useful?")
+                .questionTemplate(PromptTemplate.from("Is this document useful? {{document}}"))
                 .build();
 
         Response<List<Double>> response = scoringModel.scoreAll(
@@ -61,7 +65,7 @@ class DecisionModelScoringModelTest {
         assertThat(decisionModel.requests()).hasSize(2);
         assertThat(decisionModel.requests().get(1).questions())
                 .containsOnlyKeys("document1")
-                .containsEntry("document1", YesNoQuestion.of("Is the document useful?\nDocument: relevant 2"));
+                .containsEntry("document1", YesNoQuestion.of("Is this document useful? relevant 2"));
     }
 
     @Test
@@ -121,6 +125,17 @@ class DecisionModelScoringModelTest {
 
         assertThat(response.scores()).containsExactly(0.9, 0.1, 0.9);
         assertThat(response.tokenUsage()).isEqualTo(new TokenUsage(20, 2));
+    }
+
+    @Test
+    void should_require_document_in_question_template() {
+
+        assertThatThrownBy(() -> DecisionModelScoringModel.builder()
+                        .decisionModel(decisionModel)
+                        .questionTemplate(PromptTemplate.from("Is it relevant?"))
+                        .build())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("{{document}}");
     }
 
     @Test

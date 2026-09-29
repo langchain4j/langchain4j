@@ -9,6 +9,7 @@ import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.model.decision.mock.DecisionModelMock;
+import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.model.decision.request.YesNoQuestion;
 import dev.langchain4j.service.tool.search.ToolSearchRequest;
 import dev.langchain4j.service.tool.search.ToolSearchResult;
@@ -68,12 +69,13 @@ class DecisionModelToolSearchStrategyTest {
             assertThat(request.questions())
                     .containsEntry(
                             "tool1",
-                            YesNoQuestion.of(
-                                    "Would this tool help to handle the request?\n"
-                                            + "Tool: get_weather: Returns the current weather"))
+                            YesNoQuestion.of("Would this tool help to handle the request?\n"
+                                    + "Tool: get_weather\n"
+                                    + "Description: Returns the current weather"))
                     .containsEntry(
                             "tool3",
-                            YesNoQuestion.of("Would this tool help to handle the request?\nTool: get_forecast"));
+                            YesNoQuestion.of(
+                                    "Would this tool help to handle the request?\nTool: get_forecast\nDescription:"));
         });
     }
 
@@ -92,6 +94,31 @@ class DecisionModelToolSearchStrategyTest {
         assertThat(result.foundToolNames()).containsExactly("get_forecast");
         assertThat(decisionModel.requests()).hasSize(2);
         assertThat(decisionModel.requests().get(1).questions()).hasSize(1);
+    }
+
+    @Test
+    void should_use_custom_question_template() {
+
+        DecisionModelToolSearchStrategy strategy = DecisionModelToolSearchStrategy.builder()
+                .decisionModel(decisionModel)
+                .questionTemplate(PromptTemplate.from("Is {{name}} ({{description}}) useful here?"))
+                .build();
+
+        strategy.search(searchRequest("{\"query\": \"weather\"}"));
+
+        assertThat(decisionModel.request().questions())
+                .containsEntry("tool0", YesNoQuestion.of("Is send_email (Sends an email) useful here?"));
+    }
+
+    @Test
+    void should_require_name_in_question_template() {
+
+        assertThatThrownBy(() -> DecisionModelToolSearchStrategy.builder()
+                        .decisionModel(decisionModel)
+                        .questionTemplate(PromptTemplate.from("Is this tool useful?"))
+                        .build())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("{{name}}");
     }
 
     @Test

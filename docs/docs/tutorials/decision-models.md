@@ -242,6 +242,19 @@ the implementation.
 LangChain4j provides ready-made components that use a decision model where a fast yes/no or choice decision is
 needed. They work with any `DecisionModel` implementation.
 
+Each component asks the decision model a default question, which works well in most cases.
+The questions are part of the behavior, so they can be replaced: with `questionTemplate(...)` (a `PromptTemplate`
+with variables such as `{{document}}`, `{{description}}` or `{{name}}`, as documented on each component) or, for the
+chat model router, `question(...)`. The default templates are available as `DEFAULT_QUESTION_TEMPLATE` constants.
+For example:
+
+```java
+ScoringModel scoringModel = DecisionModelScoringModel.builder()
+        .decisionModel(decisionModel)
+        .questionTemplate(PromptTemplate.from("Does this passage contain the answer to the question?\n{{document}}"))
+        .build();
+```
+
 ### Guardrails
 
 `DecisionModelInputGuardrail` and `DecisionModelOutputGuardrail` (in the `langchain4j-guardrails` module) check user

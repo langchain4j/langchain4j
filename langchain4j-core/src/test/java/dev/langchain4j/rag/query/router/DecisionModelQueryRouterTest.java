@@ -10,6 +10,7 @@ import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.model.decision.DecisionModel;
 import dev.langchain4j.model.decision.mock.DecisionModelMock;
 import dev.langchain4j.model.decision.request.YesNoQuestion;
+import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.model.decision.response.YesNoAnswer;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.query.Query;
@@ -136,6 +137,32 @@ class DecisionModelQueryRouterTest {
                 .havingRootCause()
                 .isInstanceOf(AsyncNotSupportedException.class);
         assertThat(router.route(Query.from("query"))).containsExactly(hr);
+    }
+
+    @Test
+    void should_use_custom_question_template() {
+
+        DecisionModelQueryRouter.builder()
+                .decisionModel(answering(0.9, 0.1))
+                .retrieverToDescription(retrievers)
+                .questionTemplate(PromptTemplate.from("Can this source answer the question? Source: {{description}}"))
+                .build()
+                .route(Query.from("query"));
+
+        assertThat(decisionModel.request().questions())
+                .containsEntry("source1", YesNoQuestion.of("Can this source answer the question? Source: HR policies"));
+    }
+
+    @Test
+    void should_require_description_in_question_template() {
+
+        assertThatThrownBy(() -> DecisionModelQueryRouter.builder()
+                        .decisionModel(answering(0.9, 0.1))
+                        .retrieverToDescription(retrievers)
+                        .questionTemplate(PromptTemplate.from("Can this source help?"))
+                        .build())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("{{description}}");
     }
 
     @Test
