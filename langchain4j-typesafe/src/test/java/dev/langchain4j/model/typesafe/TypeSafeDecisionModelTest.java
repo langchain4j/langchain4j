@@ -34,6 +34,7 @@ import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.model.decision.listener.DecisionModelErrorContext;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -161,6 +162,48 @@ class TypeSafeDecisionModelTest {
         Map<?, ?> body = Json.fromJson(httpClient.request().body(), Map.class);
         assertThat((Map<?, ?>) ((Map<?, ?>) body.get("questions")).get("spam"))
                 .isEqualTo(Map.of("type", "noul", "instructions", "Is this spam?"));
+    }
+
+    @Test
+    void should_send_options_without_descriptions_as_null() {
+
+        // given
+        MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(
+                """
+                {"model": "jev-1.13.0", "answers": {"sentiment": {"type": "choice", "choice": "positive"}}}
+                """));
+        TypeSafeDecisionModel model = model(httpClient);
+
+        // when
+        model.decide(DecisionRequest.builder()
+                .input("I love it!")
+                .question("sentiment", ChoiceQuestion.of("What is the sentiment?", List.of("positive", "negative")))
+                .build());
+
+        // then
+        assertThat(httpClient.request().body())
+                .contains("\"criteria\":{\"positive\":null,\"negative\":null}");
+    }
+
+    @Test
+    void should_keep_null_values_in_state() {
+
+        // given
+        MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(RESPONSE));
+        TypeSafeDecisionModel model = model(httpClient);
+        Map<String, Object> state = new LinkedHashMap<>();
+        state.put("ticket", "Help! My payouts have been failing for 3 days.");
+        state.put("assignee", null);
+
+        // when
+        model.decide(DecisionRequest.builder()
+                .input(state)
+                .questions(REQUEST.questions())
+                .build());
+
+        // then
+        assertThat(httpClient.request().body())
+                .contains("\"state\":{\"ticket\":\"Help! My payouts have been failing for 3 days.\",\"assignee\":null}");
     }
 
     @Test
@@ -462,26 +505,6 @@ class TypeSafeDecisionModelTest {
 
         // then
         assertThat(httpClient.request().headers().get("X-Tenant")).containsExactly("acme");
-    }
-
-    @Test
-    void should_send_objects_in_state_with_java_field_names() {
-
-        // given
-        record Customer(String customerPlan, int openTickets) {}
-
-        MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(RESPONSE));
-        TypeSafeDecisionModel model = model(httpClient);
-
-        // when
-        model.decide(DecisionRequest.builder()
-                .input(Map.of("customer", new Customer("enterprise", 3)))
-                .questions(REQUEST.questions())
-                .build());
-
-        // then
-        assertThat(Json.fromJson(httpClient.request().body(), Map.class))
-                .containsEntry("state", Map.of("customer", Map.of("customerPlan", "enterprise", "openTickets", 3)));
     }
 
     @Test

@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
@@ -97,6 +98,26 @@ class QuestionsTest {
                 .build();
 
         assertThat(question.options()).containsOnlyKeys("billing", "support");
+    }
+
+    @Test
+    void should_create_choice_question_with_options_without_descriptions() {
+
+        ChoiceQuestion question = ChoiceQuestion.of("What is the sentiment?", List.of("positive", "negative"));
+
+        Map<String, Object> expected = new LinkedHashMap<>();
+        expected.put("positive", null);
+        expected.put("negative", null);
+        assertThat(question.options()).containsExactlyEntriesOf(expected);
+        assertThat(question)
+                .isEqualTo(ChoiceQuestion.builder()
+                        .text("What is the sentiment?")
+                        .option("positive")
+                        .option("negative")
+                        .build());
+        assertThatThrownBy(() -> ChoiceQuestion.of("What is the sentiment?", List.of("positive", "positive")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Option 'positive' is already defined");
     }
 
     @Test

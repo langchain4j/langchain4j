@@ -28,7 +28,6 @@ public class TypeSafeClient {
 
     private static final Json.JsonCodec CODEC = ProviderJson.codec(ProviderJsonSpec.builder()
             .propertyNaming(ProviderJsonSpec.PropertyNaming.SNAKE_CASE)
-            .inclusion(ProviderJsonSpec.Inclusion.NON_NULL)
             .build());
 
     private final HttpClient httpClient;

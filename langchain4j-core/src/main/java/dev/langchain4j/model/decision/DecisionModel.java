@@ -46,7 +46,10 @@ public interface DecisionModel {
      * Answers the questions of the given request.
      * <p>
      * This applies the model's {@link #defaultRequestParameters() default parameters}, notifies the
-     * {@link #listeners() listeners} and dispatches to {@link #doDecide(DecisionRequest)}.
+     * {@link #listeners() listeners} and dispatches to {@link #doDecide(DecisionRequest)}. The response is checked
+     * against the request: a missing answer, an answer of the wrong type, a choice of an option that was not offered
+     * or a scale answer outside the levels throws an
+     * {@link dev.langchain4j.exception.InvalidDecisionResponseException}.
      *
      * @param request the input, the questions and the per-call parameters.
      * @return one answer per question, keyed by question name.
@@ -58,7 +61,7 @@ public interface DecisionModel {
 
         onRequest(finalRequest, provider(), attributes, listeners);
         try {
-            DecisionResponse response = doDecide(finalRequest);
+            DecisionResponse response = DecisionResponseValidator.validate(finalRequest, doDecide(finalRequest));
             onResponse(response, finalRequest, provider(), attributes, listeners);
             return response;
         } catch (Exception error) {
@@ -79,7 +82,8 @@ public interface DecisionModel {
      * Non-blocking counterpart of {@link #decide(DecisionRequest)}.
      * <p>
      * This applies the model's {@link #defaultRequestParameters() default parameters}, notifies the
-     * {@link #listeners() listeners} and dispatches to {@link #doDecideAsync(DecisionRequest)}.
+     * {@link #listeners() listeners} and dispatches to {@link #doDecideAsync(DecisionRequest)}. The response is
+     * checked against the request, as in {@link #decide(DecisionRequest)}.
      *
      * @param request the input, the questions and the per-call parameters.
      * @return a {@link CompletableFuture} of the answers, keyed by question name.
@@ -99,7 +103,9 @@ public interface DecisionModel {
             return CompletableFuture.failedFuture(error);
         }
 
-        CompletableFuture<DecisionResponse> result = source.whenComplete((response, error) -> {
+        CompletableFuture<DecisionResponse> validated =
+                source.thenApply(response -> DecisionResponseValidator.validate(finalRequest, response));
+        CompletableFuture<DecisionResponse> result = validated.whenComplete((response, error) -> {
             if (error != null) {
                 Throwable cause = unwrapCompletionException(error);
                 if (!(cause instanceof CancellationException)) {

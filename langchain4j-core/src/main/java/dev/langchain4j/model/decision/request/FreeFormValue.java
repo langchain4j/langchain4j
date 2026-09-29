@@ -4,7 +4,6 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
-import dev.langchain4j.internal.Json;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -13,9 +12,8 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Validates free-form values (input and descriptions) and normalizes them into an immutable tree of maps, lists,
- * strings, numbers, booleans and {@code null}s. Other objects are converted with their Java field names, so what the
- * model receives does not depend on how a particular {@code DecisionModel} implementation serializes objects.
+ * Validates free-form values (input and descriptions) and copies them into an immutable tree of maps, lists, strings,
+ * numbers, booleans and {@code null}s.
  */
 final class FreeFormValue {
 
@@ -27,36 +25,30 @@ final class FreeFormValue {
             return ensureNotBlank(text, name);
         }
         if (value instanceof Map<?, ?> map) {
-            return normalize(ensureNotEmpty(map, name));
+            return copy(ensureNotEmpty(map, name), name);
         }
         if (value instanceof List<?> list) {
-            return normalize(ensureNotEmpty(list, name));
-        }
-        Object converted = normalize(value);
-        if (converted instanceof String || converted instanceof Map<?, ?> || converted instanceof List<?>) {
-            return ensureValid(converted, name);
+            return copy(ensureNotEmpty(list, name), name);
         }
         throw new IllegalArgumentException(
-                name + " must be a String, a Map, a List or an object, but was " + value.getClass().getName());
+                name + " must be a String, a Map or a List, but was " + value.getClass().getName());
     }
 
-    private static Object normalize(Object value) {
+    private static Object copy(Object value, String name) {
         if (value == null || value instanceof String || value instanceof Number || value instanceof Boolean) {
             return value;
         }
-        if (value instanceof Enum<?> constant) {
-            return constant.name();
-        }
         if (value instanceof Map<?, ?> map) {
             Map<String, Object> result = new LinkedHashMap<>();
-            map.forEach((key, item) -> result.put(String.valueOf(key), normalize(item)));
+            map.forEach((key, item) -> result.put(String.valueOf(key), copy(item, name)));
             return Collections.unmodifiableMap(result);
         }
         if (value instanceof Collection<?> collection) {
             List<Object> result = new ArrayList<>();
-            collection.forEach(item -> result.add(normalize(item)));
+            collection.forEach(item -> result.add(copy(item, name)));
             return Collections.unmodifiableList(result);
         }
-        return normalize(Json.fromJson(Json.toJson(value), Object.class));
+        throw new IllegalArgumentException(name + " can only contain strings, numbers, booleans, nulls, maps and lists, "
+                + "but contains " + value.getClass().getName());
     }
 }

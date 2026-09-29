@@ -171,29 +171,28 @@ class DecisionRequestTest {
     record Customer(String name, Plan plan, int openTickets, List<String> tags) {}
 
     @Test
-    void should_normalize_objects_in_input_using_java_field_names() {
+    void should_reject_objects_in_input() {
 
-        DecisionRequest request = DecisionRequest.builder()
-                .input(Map.of("customer", new Customer("Anna", Plan.ENTERPRISE, 3, List.of("vip"))))
-                .question("spam", QUESTION)
-                .build();
+        assertThatThrownBy(() -> DecisionRequest.builder()
+                        .input(new Customer("Anna", Plan.ENTERPRISE, 3, List.of("vip")))
+                        .question("spam", QUESTION)
+                        .build())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("input must be a String, a Map or a List");
 
-        assertThat(request.input())
-                .isEqualTo(Map.of(
-                        "customer",
-                        Map.of("name", "Anna", "plan", "ENTERPRISE", "openTickets", 3, "tags", List.of("vip"))));
-    }
+        assertThatThrownBy(() -> DecisionRequest.builder()
+                        .input(Map.of("customer", new Customer("Anna", Plan.ENTERPRISE, 3, List.of("vip"))))
+                        .question("spam", QUESTION)
+                        .build())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("input can only contain strings, numbers, booleans, nulls, maps and lists");
 
-    @Test
-    void should_convert_object_input_using_java_field_names() {
-
-        DecisionRequest request = DecisionRequest.builder()
-                .input(new Customer("Anna", Plan.ENTERPRISE, 3, List.of("vip")))
-                .question("spam", QUESTION)
-                .build();
-
-        assertThat(request.input())
-                .isEqualTo(Map.of("name", "Anna", "plan", "ENTERPRISE", "openTickets", 3, "tags", List.of("vip")));
+        assertThatThrownBy(() -> DecisionRequest.builder()
+                        .input(Map.of("plan", Plan.ENTERPRISE))
+                        .question("spam", QUESTION)
+                        .build())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Plan");
     }
 
     @Test

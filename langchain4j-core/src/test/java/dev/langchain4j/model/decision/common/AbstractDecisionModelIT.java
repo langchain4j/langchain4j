@@ -72,6 +72,19 @@ public abstract class AbstractDecisionModelIT {
     }
 
     @Test
+    void should_answer_choice_question_with_options_without_descriptions() {
+
+        DecisionResponse response = model().decide(DecisionRequest.builder()
+                .input("I love this product, it works perfectly!")
+                .question(
+                        "sentiment",
+                        ChoiceQuestion.of("What is the sentiment?", List.of("positive", "negative", "neutral")))
+                .build());
+
+        assertThat(response.choice("sentiment").value()).isEqualTo("positive");
+    }
+
+    @Test
     void should_answer_several_questions_in_one_call() {
 
         DecisionResponse response = model().decide(DecisionRequest.builder()

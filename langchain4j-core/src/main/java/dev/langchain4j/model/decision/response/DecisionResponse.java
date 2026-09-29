@@ -29,12 +29,12 @@ import java.util.Objects;
  * @since 1.21.0
  */
 @Experimental
-public class DecisionResponse {
+public final class DecisionResponse {
 
     private final Map<String, DecisionAnswer> answers;
     private final DecisionResponseMetadata metadata;
 
-    protected DecisionResponse(Builder builder) {
+    private DecisionResponse(Builder builder) {
         this.answers = copy(ensureNotEmpty(builder.answers, "answers"));
         DecisionResponseMetadata.Builder<?> metadataBuilder = DecisionResponseMetadata.builder();
         if (builder.modelName != null) {
@@ -142,7 +142,7 @@ public class DecisionResponse {
         return "DecisionResponse{answers=" + answers + ", metadata=" + metadata + '}';
     }
 
-    public static class Builder {
+    public static final class Builder {
 
         private final Map<String, DecisionAnswer> answers = new LinkedHashMap<>();
         private DecisionResponseMetadata metadata;

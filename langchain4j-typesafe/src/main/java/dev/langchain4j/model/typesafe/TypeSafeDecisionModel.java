@@ -199,21 +199,13 @@ public class TypeSafeDecisionModel implements DecisionModel {
                     .probability(probability(name, "noul", required(name, "noul", answer.noul)))
                     .build();
         }
-        if (question instanceof ChoiceQuestion choice) {
+        if (question instanceof ChoiceQuestion) {
             ensureType(name, answer, "choice");
             String value = required(name, "choice", answer.choice);
-            if (!choice.options().containsKey(value)) {
-                throw invalid(name, "chose '%s', which is not one of the options %s", value, choice.options().keySet());
-            }
             Map<String, Double> probabilities = new LinkedHashMap<>();
             if (answer.probabilities != null) {
-                answer.probabilities.forEach((option, probability) -> {
-                    if (!choice.options().containsKey(option)) {
-                        throw invalid(name, "has a probability for '%s', which is not one of the options %s",
-                                option, choice.options().keySet());
-                    }
-                    probabilities.put(option, probability(name, "probability of '" + option + "'", probability));
-                });
+                answer.probabilities.forEach((option, probability) ->
+                        probabilities.put(option, probability(name, "probability of '" + option + "'", probability)));
             }
             return ChoiceAnswer.builder()
                     .value(value)

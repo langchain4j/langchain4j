@@ -116,6 +116,12 @@ YesNoQuestion refundRequested = YesNoQuestion.builder()
 ### Choice questions
 
 A `ChoiceQuestion` selects exactly one option out of a named set (at least 2 options).
+Options whose name says it all need no description:
+
+```java
+ChoiceQuestion sentiment = ChoiceQuestion.of("What is the sentiment?", List.of("positive", "negative", "neutral"));
+```
+
 It is answered with a `ChoiceAnswer`:
 - `value()`: the name of the chosen option
 - `probabilities()`: the probability of each option, keyed by option name
@@ -137,8 +143,7 @@ It is answered with a `ScaleAnswer`:
 ## Describing options and levels
 
 Options, levels and the `yesWhen`/`noWhen` descriptions can be plain text, as in the examples above,
-or structured content (a `Map`, a `List`, or an object, converted as described [below](#describing-the-input-state)),
-which is passed to the model as is.
+or structured content (a `Map` or a `List`), which is passed to the model as is.
 Structured descriptions are useful to separate what an option covers from what it does not,
 or to add examples:
 
@@ -157,8 +162,8 @@ The keys are not predefined: choose names that describe the content well, becaus
 
 ## Describing the input (state)
 
-The input can be plain text, a `Map`, a `List` or an object.
-Use a `Map` or an object to give the model several pieces of information that belong together:
+The input can be plain text, a `Map` or a `List`.
+Use a `Map` to give the model several pieces of information that belong together:
 
 ```java
 DecisionRequest request = DecisionRequest.builder()
@@ -170,15 +175,9 @@ DecisionRequest request = DecisionRequest.builder()
         .build();
 ```
 
-An object works the same way, for example `.input(new Ticket("My payouts have been failing for 3 days", "enterprise", 3))`
-with `record Ticket(String ticket, String customerPlan, int openTickets)`.
-Objects (also inside a `Map` or a `List`) are converted to maps when the request is built, with the JSON codec
-that LangChain4j uses, so by default the keys are the Java field names. Keep in mind that:
-- all fields are sent, including private ones: use a dedicated record that holds only what the decision needs;
-- frameworks can plug in their own JSON codec (for example with a different naming strategy), which changes the keys:
-  use a `Map` when you need exact control over them;
-- in a GraalVM native image, the classes of such objects must be registered for reflection
-  (for example with `@RegisterForReflection` in Quarkus), otherwise use a `Map`.
+Structured content can contain strings, numbers, booleans, `null`s, maps and lists. Other objects are rejected,
+so that you decide which fields are sent to the model provider: convert them to a `Map` that holds only what the
+decision needs.
 
 ## Probabilities and confidence
 
@@ -239,8 +238,9 @@ the implementation.
 
 - An invalid question or request, for example a blank question or a choice question with a single option,
   throws `IllegalArgumentException` when it is built.
-- Implementations validate the answers against the request: an answer that does not match it (a missing answer,
-  an answer of the wrong type, or an option that was not offered) throws `InvalidDecisionResponseException`.
+- The answers are checked against the request, whatever the implementation: an answer that does not match it
+  (a missing answer, an answer of the wrong type, an option that was not offered, or a scale answer outside the
+  levels) throws `InvalidDecisionResponseException`.
 - Errors of the provider (authentication, rate limits, timeouts, server errors) throw the corresponding
   `LangChain4jException` subclasses, such as `AuthenticationException`, `RateLimitException` or `TimeoutException`.
   Implementations usually retry transient errors (see their `maxRetries` setting), so a call can take several times

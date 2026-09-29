@@ -116,15 +116,7 @@ DecisionModel decisionModel = TypeSafeDecisionModel.builder()
 
 Self-hosted servers usually need no API key.
 
-The following servers have been tested with `TypeSafeDecisionModel` (September 2026):
-
-| Server | Kind | Base URL | Model name |
-|---|---|---|---|
-| [TypeSafe](https://typesafe.ai) | hosted | default (`https://api.typesafe.ai`) | e.g. `jev-1.13.0` |
-| [OpenRouter](https://openrouter.ai/docs/guides/community/jev) | hosted | `https://openrouter.ai/api` | e.g. `typesafe/jev-1.13` |
-| [Laya](https://github.com/NandhaKishorM/laya) (`laya-serve`, version 0.3.21) | self-hosted, runs on CPU | e.g. `http://localhost:8000` | any, e.g. `auto` |
-| [Kev](https://github.com/jaredpalmer/kev) (`python -m kev.serve`) | self-hosted, runs on CPU (0.8B model) | e.g. `http://localhost:8009` | e.g. `kev-0.8b` |
-| [jitLLM](https://github.com/beehive-lab/jitllm) (`jitllm serve`, version 1.0.2) | self-hosted, runs on the JVM, GPU recommended | e.g. `http://localhost:8080` | any |
+`TypeSafeDecisionModel` is tested with the TypeSafe API and with OpenRouter.
 
 Servers can differ in the limits they apply (for example, the maximum number of options),
 in how they compute confidence and in the quality of their answers: small models and general-purpose language models
