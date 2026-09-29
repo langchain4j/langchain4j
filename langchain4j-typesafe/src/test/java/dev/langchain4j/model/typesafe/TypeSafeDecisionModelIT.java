@@ -31,6 +31,16 @@ class TypeSafeDecisionModelIT extends AbstractDecisionModelIT {
     }
 
     @Override
+    protected boolean reportsProbabilities() {
+        return true;
+    }
+
+    @Override
+    protected boolean reportsTokenUsage() {
+        return true;
+    }
+
+    @Override
     protected DecisionModel modelWithListener(DecisionModelListener listener) {
         return TypeSafeDecisionModel.builder()
                 .apiKey(System.getenv("TYPESAFE_API_KEY"))

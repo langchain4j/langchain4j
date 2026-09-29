@@ -24,6 +24,16 @@ class TypeSafeDecisionModelOpenRouterIT extends AbstractDecisionModelIT {
     }
 
     @Override
+    protected boolean reportsProbabilities() {
+        return true;
+    }
+
+    @Override
+    protected boolean reportsTokenUsage() {
+        return true;
+    }
+
+    @Override
     protected DecisionModel modelWithListener(DecisionModelListener listener) {
         return openRouter().listeners(listener).build();
     }

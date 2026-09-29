@@ -109,6 +109,10 @@ class QuestionsTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("at least 2 options");
 
+        assertThatThrownBy(() -> ChoiceQuestion.builder().option("billing", "Payments").option("billing", "Refunds"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Option 'billing' is already defined");
+
         assertThatThrownBy(() -> ChoiceQuestion.builder().option(" ", "Payments"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("option name");

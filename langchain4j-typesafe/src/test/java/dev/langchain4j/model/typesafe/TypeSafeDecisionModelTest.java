@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.langchain4j.exception.AuthenticationException;
 import dev.langchain4j.exception.HttpException;
+import dev.langchain4j.exception.InternalServerException;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpRequest;
@@ -15,7 +16,7 @@ import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.http.client.sse.ServerSentEventParser;
 import dev.langchain4j.internal.Json;
 import dev.langchain4j.model.ModelProvider;
-import dev.langchain4j.model.decision.InvalidDecisionResponseException;
+import dev.langchain4j.exception.InvalidDecisionResponseException;
 import dev.langchain4j.model.decision.listener.DecisionModelListener;
 import dev.langchain4j.model.decision.listener.DecisionModelRequestContext;
 import dev.langchain4j.model.decision.listener.DecisionModelResponseContext;
@@ -30,11 +31,14 @@ import dev.langchain4j.model.decision.response.DecisionResponse;
 import dev.langchain4j.model.decision.response.YesNoAnswer;
 import dev.langchain4j.model.decision.response.ScaleAnswer;
 import dev.langchain4j.model.output.TokenUsage;
+import dev.langchain4j.model.decision.listener.DecisionModelErrorContext;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -292,7 +296,7 @@ class TypeSafeDecisionModelTest {
                 .isInstanceOf(UnsupportedFeatureException.class)
                 .hasMessageContaining("RankQuestion");
         assertThat(model.decideAsync(request))
-                .failsWithin(java.time.Duration.ZERO)
+                .failsWithin(Duration.ZERO)
                 .withThrowableOfType(ExecutionException.class)
                 .withCauseInstanceOf(UnsupportedFeatureException.class);
         assertThat(httpClient.requests()).isEmpty();
@@ -512,6 +516,165 @@ class TypeSafeDecisionModelTest {
         assertThat(model.modelName()).isEqualTo("jev-latest");
     }
 
+    @Test
+    void should_retry_server_errors_twice_by_default() {
+
+        // given
+        FailingHttpClient httpClient = new FailingHttpClient(503);
+        TypeSafeDecisionModel model = TypeSafeDecisionModel.builder()
+                .httpClientBuilder(new MockHttpClientBuilder(httpClient))
+                .apiKey("test-key")
+                .modelName("jev-latest")
+                .build();
+
+        // when-then
+        assertThatThrownBy(() -> model.decide(REQUEST)).isInstanceOf(InternalServerException.class);
+        assertThat(httpClient.attempts).hasValue(3);
+    }
+
+    @Test
+    void should_not_retry_client_errors() {
+
+        // given
+        FailingHttpClient httpClient = new FailingHttpClient(401);
+        TypeSafeDecisionModel model = TypeSafeDecisionModel.builder()
+                .httpClientBuilder(new MockHttpClientBuilder(httpClient))
+                .apiKey("wrong-key")
+                .modelName("jev-latest")
+                .build();
+
+        // when-then
+        assertThatThrownBy(() -> model.decide(REQUEST)).isInstanceOf(AuthenticationException.class);
+        assertThat(httpClient.attempts).hasValue(1);
+    }
+
+    @Test
+    void should_not_retry_responses_that_do_not_match_the_request() {
+
+        // given
+        MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(answers()));
+        TypeSafeDecisionModel model = model(httpClient);
+
+        // when-then
+        assertThatThrownBy(() -> model.decide(REQUEST)).isInstanceOf(InvalidDecisionResponseException.class);
+        assertThat(httpClient.requests()).hasSize(1);
+    }
+
+    @Test
+    void should_map_http_errors_async_and_notify_listeners_with_the_cause() {
+
+        // given
+        List<Throwable> errors = new ArrayList<>();
+        TypeSafeDecisionModel model = TypeSafeDecisionModel.builder()
+                .httpClientBuilder(new MockHttpClientBuilder(new FailingHttpClient(401)))
+                .apiKey("wrong-key")
+                .modelName("jev-latest")
+                .maxRetries(0)
+                .listeners(new DecisionModelListener() {
+                    @Override
+                    public void onError(DecisionModelErrorContext context) {
+                        errors.add(context.error());
+                    }
+                })
+                .build();
+
+        // when
+        CompletableFuture<DecisionResponse> future = model.decideAsync(REQUEST);
+
+        // then
+        assertThat(future)
+                .failsWithin(Duration.ofSeconds(5))
+                .withThrowableOfType(ExecutionException.class)
+                .withCauseInstanceOf(AuthenticationException.class);
+        assertThat(errors).singleElement().isInstanceOf(AuthenticationException.class);
+    }
+
+    @Test
+    void should_reject_async_responses_that_do_not_match_the_request_and_notify_listeners_with_the_cause() {
+
+        // given
+        List<Throwable> errors = new ArrayList<>();
+        TypeSafeDecisionModel model = TypeSafeDecisionModel.builder()
+                .httpClientBuilder(new MockHttpClientBuilder(MockHttpClient.thatAlwaysResponds(ok(answers()))))
+                .apiKey("test-key")
+                .modelName("jev-latest")
+                .listeners(new DecisionModelListener() {
+                    @Override
+                    public void onError(DecisionModelErrorContext context) {
+                        errors.add(context.error());
+                    }
+                })
+                .build();
+
+        // when
+        CompletableFuture<DecisionResponse> future = model.decideAsync(REQUEST);
+
+        // then
+        assertThat(future)
+                .failsWithin(Duration.ofSeconds(5))
+                .withThrowableOfType(ExecutionException.class)
+                .withCauseInstanceOf(InvalidDecisionResponseException.class);
+        assertThat(errors).singleElement().isInstanceOf(InvalidDecisionResponseException.class);
+    }
+
+    @Test
+    void should_fill_missing_level_probabilities_with_zero() {
+
+        // given
+        TypeSafeDecisionModel model = model(MockHttpClient.thatAlwaysResponds(ok(answers(
+                "\"urgent\": {\"type\": \"noul\", \"noul\": 0.9}",
+                "\"team\": {\"type\": \"choice\", \"choice\": \"billing\"}",
+                "\"frustration\": {\"type\": \"score\", \"score\": 0.6,"
+                        + " \"probabilities\": {\"0\": 0.7, \"2\": 0.3}}"))));
+
+        // when
+        DecisionResponse response = model.decide(REQUEST);
+
+        // then
+        assertThat(response.scale("frustration").probabilities()).containsExactly(0.7, 0.0, 0.3);
+    }
+
+    @Test
+    void should_accept_answers_without_type_and_clamp_rounding_errors_below_zero() {
+
+        // given
+        TypeSafeDecisionModel model = model(MockHttpClient.thatAlwaysResponds(ok(answers(
+                "\"urgent\": {\"noul\": -0.0000000001}",
+                "\"team\": {\"choice\": \"billing\"}",
+                "\"frustration\": {\"score\": -0.0000000001}"))));
+
+        // when
+        DecisionResponse response = model.decide(REQUEST);
+
+        // then
+        assertThat(response.yesNo("urgent").probability()).isEqualTo(0.0);
+        assertThat(response.choice("team").value()).isEqualTo("billing");
+        assertThat(response.scale("frustration").mean()).isEqualTo(0.0);
+    }
+
+    @Test
+    void should_call_custom_headers_supplier_for_each_request() {
+
+        // given
+        AtomicInteger calls = new AtomicInteger();
+        MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(RESPONSE));
+        TypeSafeDecisionModel model = TypeSafeDecisionModel.builder()
+                .httpClientBuilder(new MockHttpClientBuilder(httpClient))
+                .apiKey("test-key")
+                .modelName("jev-latest")
+                .customHeaders(() -> Map.of("X-Token", "token-" + calls.incrementAndGet()))
+                .build();
+
+        // when
+        model.decide(REQUEST);
+        model.decide(REQUEST);
+
+        // then
+        assertThat(httpClient.requests())
+                .extracting(request -> request.headers().get("X-Token"))
+                .containsExactly(List.of("token-1"), List.of("token-2"));
+    }
+
     @ParameterizedTest
     @MethodSource("invalidResponses")
     void should_reject_responses_that_do_not_match_the_request(String body, String expectedMessage) {
@@ -557,7 +720,30 @@ class TypeSafeDecisionModelTest {
                         "level 'Calm', but the levels are 0 to 2"),
                 Arguments.of(
                         answers(urgent, team, "\"frustration\": {\"type\": \"score\", \"score\": 7.0}"),
-                        "invalid score: 7.0, but the levels are 0 to 2"));
+                        "invalid score: 7.0, but the levels are 0 to 2"),
+                Arguments.of(
+                        answers(urgent, team, "\"frustration\": {\"type\": \"score\", \"score\": -1.0}"),
+                        "invalid score: -1.0, but the levels are 0 to 2"),
+                Arguments.of(
+                        answers(
+                                urgent,
+                                team,
+                                "\"frustration\": {\"type\": \"score\", \"score\": 1.0,"
+                                        + " \"probabilities\": {\"01\": 1.0}}"),
+                        "level '01', but the levels are 0 to 2"),
+                Arguments.of(
+                        answers(
+                                urgent,
+                                frustration,
+                                "\"team\": {\"type\": \"choice\", \"choice\": \"billing\","
+                                        + " \"probabilities\": {\"billing\": 1.5}}"),
+                        "invalid probability of 'billing': 1.5"),
+                Arguments.of(
+                        answers(
+                                urgent,
+                                frustration,
+                                "\"team\": {\"type\": \"choice\", \"choice\": \"billing\", \"confidence\": 1.5}"),
+                        "invalid confidence: 1.5"));
     }
 
     private static String answers(String... answers) {
@@ -576,16 +762,25 @@ class TypeSafeDecisionModelTest {
         return SuccessfulHttpResponse.builder().statusCode(200).body(body).build();
     }
 
-    private record FailingHttpClient(int statusCode) implements HttpClient {
+    private static class FailingHttpClient implements HttpClient {
+
+        private final int statusCode;
+        private final AtomicInteger attempts = new AtomicInteger();
+
+        FailingHttpClient(int statusCode) {
+            this.statusCode = statusCode;
+        }
 
         @Override
         public SuccessfulHttpResponse execute(HttpRequest request) {
-            throw new HttpException(statusCode, "{\"detail\": \"Invalid API key\"}");
+            attempts.incrementAndGet();
+            throw new HttpException(statusCode, "{\"detail\": \"error\"}");
         }
 
         @Override
         public CompletableFuture<SuccessfulHttpResponse> executeAsync(HttpRequest request) {
-            return CompletableFuture.failedFuture(new HttpException(statusCode, "{\"detail\": \"Invalid API key\"}"));
+            attempts.incrementAndGet();
+            return CompletableFuture.failedFuture(new HttpException(statusCode, "{\"detail\": \"error\"}"));
         }
 
         @Override

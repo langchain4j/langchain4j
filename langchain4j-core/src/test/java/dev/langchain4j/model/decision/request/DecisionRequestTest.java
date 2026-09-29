@@ -64,6 +64,14 @@ class DecisionRequestTest {
                 .hasMessageContaining("questions");
     }
 
+    @Test
+    void should_reject_duplicate_question_name() {
+
+        assertThatThrownBy(() -> DecisionRequest.builder().question("spam", QUESTION).question("spam", QUESTION))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Question 'spam' is already defined");
+    }
+
     @ParameterizedTest
     @ValueSource(strings = {"", " "})
     void should_reject_blank_question_name(String name) {

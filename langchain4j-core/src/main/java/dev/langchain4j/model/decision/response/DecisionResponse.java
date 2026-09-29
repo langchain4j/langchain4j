@@ -106,10 +106,16 @@ public class DecisionResponse {
         return metadata;
     }
 
+    /**
+     * The name of the model that produced the answers, or {@code null} if the model did not report it.
+     */
     public String modelName() {
         return metadata.modelName();
     }
 
+    /**
+     * The token usage of the call, or {@code null} if the model did not report it.
+     */
     public TokenUsage tokenUsage() {
         return metadata.tokenUsage();
     }

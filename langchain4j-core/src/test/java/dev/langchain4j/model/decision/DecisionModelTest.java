@@ -235,6 +235,54 @@ class DecisionModelTest {
     }
 
     @Test
+    void should_notify_listeners_with_the_cause_when_async_call_fails_later() {
+
+        // given
+        RecordingListener listener = new RecordingListener();
+        DecisionModel model = new ListenedDecisionModel(null, listener) {
+            @Override
+            public CompletableFuture<DecisionResponse> doDecideAsync(DecisionRequest request) {
+                return CompletableFuture.supplyAsync(() -> {
+                    throw new IllegalStateException("boom");
+                });
+            }
+        };
+
+        // when
+        CompletableFuture<DecisionResponse> future = model.decideAsync(request(DecisionRequestParameters.EMPTY));
+
+        // then
+        assertThat(future)
+                .failsWithin(Duration.ofSeconds(5))
+                .withThrowableOfType(ExecutionException.class)
+                .withCauseInstanceOf(IllegalStateException.class);
+        assertThat(listener.events).containsExactly("request:default-model:OTHER", "error:42:boom");
+    }
+
+    @Test
+    void should_return_failed_future_and_notify_listeners_when_doDecideAsync_throws() {
+
+        // given
+        RecordingListener listener = new RecordingListener();
+        DecisionModel model = new ListenedDecisionModel(null, listener) {
+            @Override
+            public CompletableFuture<DecisionResponse> doDecideAsync(DecisionRequest request) {
+                throw new IllegalStateException("boom");
+            }
+        };
+
+        // when
+        CompletableFuture<DecisionResponse> future = model.decideAsync(request(DecisionRequestParameters.EMPTY));
+
+        // then
+        assertThat(future)
+                .failsWithin(Duration.ZERO)
+                .withThrowableOfType(ExecutionException.class)
+                .withCauseInstanceOf(IllegalStateException.class);
+        assertThat(listener.events).containsExactly("request:default-model:OTHER", "error:42:boom");
+    }
+
+    @Test
     void should_ignore_exceptions_thrown_by_listeners() {
 
         DecisionModelListener failingListener = new DecisionModelListener() {

@@ -7,7 +7,8 @@ import dev.langchain4j.Experimental;
  * for example to log decisions for audit, or to record metrics and traces.
  * <p>
  * All methods are called on the thread that calls the model (or, for asynchronous calls, on the thread that completes
- * the call). Exceptions thrown by a listener are logged and ignored.
+ * the call, which can be an I/O thread: do not block in listeners). Exceptions thrown by a listener are logged and
+ * ignored.
  *
  * @since 1.21.0
  */

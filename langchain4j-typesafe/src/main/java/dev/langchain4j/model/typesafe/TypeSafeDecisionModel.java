@@ -14,7 +14,7 @@ import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.decision.DecisionModel;
-import dev.langchain4j.model.decision.InvalidDecisionResponseException;
+import dev.langchain4j.exception.InvalidDecisionResponseException;
 import dev.langchain4j.model.decision.listener.DecisionModelListener;
 import dev.langchain4j.model.decision.request.ChoiceQuestion;
 import dev.langchain4j.model.decision.request.DecisionRequest;
@@ -134,7 +134,12 @@ public class TypeSafeDecisionModel implements DecisionModel {
         request.questions().forEach((name, question) -> questions.put(name, toQuestion(question)));
 
         Map<String, Object> body = new LinkedHashMap<>();
-        body.put("model", ensureNotBlank(request.modelName(), "modelName"));
+        if (isNullOrBlank(request.modelName())) {
+            throw new IllegalArgumentException("The model name must be set, either with "
+                    + "TypeSafeDecisionModel.builder().modelName(...) or on the request with "
+                    + "DecisionRequestParameters.builder().modelName(...)");
+        }
+        body.put("model", request.modelName());
         body.put("state", request.input());
         body.put("questions", questions);
         return body;
@@ -268,7 +273,7 @@ public class TypeSafeDecisionModel implements DecisionModel {
     private static boolean isLevelIndex(String level, int levels) {
         try {
             int index = Integer.parseInt(level);
-            return index >= 0 && index < levels;
+            return index >= 0 && index < levels && String.valueOf(index).equals(level);
         } catch (NumberFormatException e) {
             return false;
         }
@@ -337,16 +342,26 @@ public class TypeSafeDecisionModel implements DecisionModel {
             return this;
         }
 
+        /**
+         * The number of retries after the first attempt, for transient errors such as timeouts, rate limits and
+         * server errors. Default value is 2.
+         */
         public TypeSafeDecisionModelBuilder maxRetries(Integer maxRetries) {
             this.maxRetries = maxRetries;
             return this;
         }
 
+        /**
+         * Whether to log requests. Default value is {@code false}.
+         */
         public TypeSafeDecisionModelBuilder logRequests(Boolean logRequests) {
             this.logRequests = logRequests;
             return this;
         }
 
+        /**
+         * Whether to log responses. Default value is {@code false}.
+         */
         public TypeSafeDecisionModelBuilder logResponses(Boolean logResponses) {
             this.logResponses = logResponses;
             return this;
@@ -377,6 +392,9 @@ public class TypeSafeDecisionModel implements DecisionModel {
             return this;
         }
 
+        /**
+         * Sets the listeners that are notified of every request, response and error.
+         */
         public TypeSafeDecisionModelBuilder listeners(List<DecisionModelListener> listeners) {
             this.listeners = listeners;
             return this;

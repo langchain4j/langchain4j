@@ -32,6 +32,18 @@ public abstract class AbstractDecisionModelIT {
         return true;
     }
 
+    /**
+     * Whether the model reports the probabilities of choice and scale answers. When it does, the test fails if they
+     * are missing, instead of skipping the assertions about them.
+     */
+    protected boolean reportsProbabilities() {
+        return false;
+    }
+
+    protected boolean reportsTokenUsage() {
+        return false;
+    }
+
     private static final YesNoQuestion SPAM =
             YesNoQuestion.builder().text("Is this message spam?").build();
 
@@ -73,6 +85,13 @@ public abstract class AbstractDecisionModelIT {
 
         ChoiceAnswer team = response.choice("team");
         assertThat(team.value()).isEqualTo("billing");
+        if (reportsProbabilities()) {
+            assertThat(team.probabilities()).isNotEmpty();
+            assertThat(response.scale("frustration").probabilities()).isNotEmpty();
+        }
+        if (reportsTokenUsage()) {
+            assertThat(response.tokenUsage()).isNotNull();
+        }
         if (!team.probabilities().isEmpty()) {
             assertThat(team.probabilities().keySet()).isSubsetOf("billing", "support", "sales");
             assertThat(team.probabilityOf("billing"))

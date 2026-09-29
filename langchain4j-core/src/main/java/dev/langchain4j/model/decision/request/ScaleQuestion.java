@@ -54,7 +54,8 @@ public final class ScaleQuestion implements Question {
 
     /**
      * Creates a scale question with the given text and levels, ordered from lowest to highest. Each level is a
-     * {@link String}, a {@link java.util.Map} or a {@link java.util.List}.
+     * {@link String}, a {@link java.util.Map}, a {@link java.util.List} or an object (see
+     * {@link DecisionRequest.Builder#input(Object)} for how objects are converted).
      */
     public static ScaleQuestion of(String text, List<?> levels) {
         return builder().text(text).levels(levels).build();
@@ -93,7 +94,8 @@ public final class ScaleQuestion implements Question {
 
         /**
          * Replaces all levels, ordered from lowest to highest. Each level is a {@link String}, a
-         * {@link java.util.Map} or a {@link java.util.List}.
+         * {@link java.util.Map}, a {@link java.util.List} or an object (see
+         * {@link DecisionRequest.Builder#input(Object)} for how objects are converted).
          */
         public Builder levels(List<?> levels) {
             this.levels.clear();
@@ -104,8 +106,9 @@ public final class ScaleQuestion implements Question {
         }
 
         /**
-         * Adds the next (higher) level, described as a {@link String}, a {@link java.util.Map} or a
-         * {@link java.util.List}.
+         * Adds the next (higher) level, described as a {@link String}, a {@link java.util.Map}, a
+         * {@link java.util.List} or an object (see {@link DecisionRequest.Builder#input(Object)} for how objects are
+         * converted).
          */
         public Builder level(Object description) {
             levels.add(FreeFormValue.ensureValid(description, "level"));

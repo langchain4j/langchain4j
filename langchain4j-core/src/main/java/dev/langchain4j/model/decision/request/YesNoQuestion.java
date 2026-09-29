@@ -99,8 +99,9 @@ public final class YesNoQuestion implements Question {
         }
 
         /**
-         * Describes when the answer should be "yes", as a {@link String}, a {@link java.util.Map} or a
-         * {@link java.util.List}.
+         * Describes when the answer should be "yes", as a {@link String}, a {@link java.util.Map}, a
+         * {@link java.util.List} or an object (see {@link DecisionRequest.Builder#input(Object)} for how objects are
+         * converted).
          */
         public Builder yesWhen(Object description) {
             this.yesWhen = description;
@@ -108,8 +109,9 @@ public final class YesNoQuestion implements Question {
         }
 
         /**
-         * Describes when the answer should be "no", as a {@link String}, a {@link java.util.Map} or a
-         * {@link java.util.List}.
+         * Describes when the answer should be "no", as a {@link String}, a {@link java.util.Map}, a
+         * {@link java.util.List} or an object (see {@link DecisionRequest.Builder#input(Object)} for how objects are
+         * converted).
          */
         public Builder noWhen(Object description) {
             this.noWhen = description;

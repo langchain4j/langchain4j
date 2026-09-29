@@ -34,7 +34,7 @@ This integration is experimental and may change in future releases.
 ```java
 DecisionModel decisionModel = TypeSafeDecisionModel.builder()
         .apiKey(System.getenv("TYPESAFE_API_KEY"))
-        .modelName("jev-latest")
+        .modelName("jev-1.13.0")
         .build();
 
 DecisionRequest request = DecisionRequest.builder()
@@ -60,7 +60,7 @@ See the [Decision Models](/tutorials/decision-models) tutorial for all question 
 ```java
 TypeSafeDecisionModel decisionModel = TypeSafeDecisionModel.builder()
         .apiKey(...)              // required for api.typesafe.ai, optional for other servers
-        .modelName(...)           // required here or on each request, for example "jev-1.13.0"
+        .modelName(...)           // required here or on each request (otherwise decide() fails), e.g. "jev-1.13.0"
         .baseUrl(...)             // defaults to "https://api.typesafe.ai"
         .timeout(...)             // defaults to the HTTP client builder's timeouts, otherwise 15s connect / 60s read
         .maxRetries(...)          // retries after the first attempt; defaults to 2
@@ -130,3 +130,5 @@ Servers can differ in the limits they apply (for example, the maximum number of 
 in how they compute confidence and in the quality of their answers: small models and general-purpose language models
 served as decision models are usually less accurate and less decisive than dedicated decision models.
 Check the documentation of the server you use, and evaluate the answers on your own data.
+
+Whatever the base URL, the model reports `ModelProvider.TYPESAFE` as its provider, for example in listeners and metrics.

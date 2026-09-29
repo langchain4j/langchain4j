@@ -32,6 +32,10 @@ import java.util.concurrent.ConcurrentHashMap;
  * judgment answered with a probability), {@link dev.langchain4j.model.decision.request.ChoiceQuestion} (one option
  * out of a named set) and {@link dev.langchain4j.model.decision.request.ScaleQuestion} (a position on an ordered
  * scale). Implementations may support additional question types.
+ * <p>
+ * Probabilities in the answers must be derived from the model's output distribution, since thresholds and
+ * escalation logic in applications rely on them. An implementation that cannot provide them for choice or scale
+ * answers leaves {@code probabilities()} empty instead of inventing values.
  *
  * @since 1.21.0
  */

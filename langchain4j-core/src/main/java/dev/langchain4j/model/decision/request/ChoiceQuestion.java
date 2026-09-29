@@ -54,7 +54,8 @@ public final class ChoiceQuestion implements Question {
 
     /**
      * Creates a choice question with the given text and options, keyed by option name. Each description is a
-     * {@link String}, a {@link java.util.Map} or a {@link java.util.List}.
+     * {@link String}, a {@link java.util.Map}, a {@link java.util.List} or an object (see
+     * {@link DecisionRequest.Builder#input(Object)} for how objects are converted).
      */
     public static ChoiceQuestion of(String text, Map<String, ?> options) {
         return builder().text(text).options(options).build();
@@ -92,7 +93,8 @@ public final class ChoiceQuestion implements Question {
         }
 
         /**
-         * Replaces all options. Each value is a {@link String}, a {@link java.util.Map} or a {@link java.util.List}.
+         * Replaces all options. Each value is a {@link String}, a {@link java.util.Map}, a {@link java.util.List} or
+         * an object (see {@link DecisionRequest.Builder#input(Object)} for how objects are converted).
          */
         public Builder options(Map<String, ?> options) {
             this.options.clear();
@@ -103,11 +105,15 @@ public final class ChoiceQuestion implements Question {
         }
 
         /**
-         * Adds an option with a description of when it applies, as a {@link String}, a {@link java.util.Map} or a
-         * {@link java.util.List}.
+         * Adds an option with a description of when it applies, as a {@link String}, a {@link java.util.Map}, a
+         * {@link java.util.List} or an object (see {@link DecisionRequest.Builder#input(Object)} for how objects are
+         * converted). Option names must be unique.
          */
         public Builder option(String name, Object description) {
-            options.put(ensureNotBlank(name, "option name"), FreeFormValue.ensureValid(description, "description"));
+            if (options.containsKey(ensureNotBlank(name, "option name"))) {
+                throw new IllegalArgumentException("Option '%s' is already defined".formatted(name));
+            }
+            options.put(name, FreeFormValue.ensureValid(description, "description"));
             return this;
         }
 
