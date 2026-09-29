@@ -1,11 +1,18 @@
 ---
-sidebar_position: 38
+sidebar_position: 39
 ---
 
 # Decision Models
 
 :::note
 The `DecisionModel` API is experimental and may change in future releases.
+:::
+
+:::tip
+Most applications start with [Decision Services](/tutorials/decision-services), which let you ask questions through
+plain Java interfaces returning `boolean`, enums or records.
+Use the `DecisionModel` API described on this page when the questions or options are only known at runtime,
+or to build your own integrations.
 :::
 
 A decision model answers typed questions about some input (state), instead of generating text.
