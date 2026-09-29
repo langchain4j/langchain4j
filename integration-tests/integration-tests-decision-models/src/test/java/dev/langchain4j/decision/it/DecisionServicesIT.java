@@ -1,13 +1,18 @@
-package dev.langchain4j.service.decision;
+package dev.langchain4j.decision.it;
 
-import dev.langchain4j.model.decision.response.YesNoAnswer;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.model.decision.DecisionModel;
-import dev.langchain4j.model.typesafe.TypeSafeDecisionModel;
 import dev.langchain4j.model.decision.request.DecisionRequestParameters;
+import dev.langchain4j.model.decision.response.YesNoAnswer;
 import dev.langchain4j.model.output.structured.Description;
+import dev.langchain4j.model.typesafe.TypeSafeDecisionModel;
 import dev.langchain4j.service.V;
+import dev.langchain4j.service.decision.Choice;
+import dev.langchain4j.service.decision.Decide;
+import dev.langchain4j.service.decision.DecisionResult;
+import dev.langchain4j.service.decision.DecisionServices;
+import dev.langchain4j.service.decision.Scale;
 import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;

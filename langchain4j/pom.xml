@@ -66,12 +66,6 @@
             <scope>test</scope>
         </dependency>
 
-        <dependency>
-            <groupId>dev.langchain4j</groupId>
-            <artifactId>langchain4j-typesafe</artifactId>
-            <version>1.21.0-beta31-SNAPSHOT</version>
-            <scope>test</scope>
-        </dependency>
 
         <dependency>
             <groupId>dev.langchain4j</groupId>
