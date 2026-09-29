@@ -7,6 +7,8 @@ import dev.langchain4j.Experimental;
  * probability of "yes" is greater than or equal to the threshold.
  * <p>
  * It is called on every invocation, so thresholds can come from configuration that changes at runtime.
+ * It can be called concurrently, and for asynchronous methods on the thread that completes the call to the model
+ * (for example an I/O thread), so it must be thread-safe, fast and non-blocking.
  * <pre>{@code
  * ThresholdProvider thresholds = context -> config.getDouble(
  *         context.serviceInterface().getSimpleName() + "." + context.questionName());

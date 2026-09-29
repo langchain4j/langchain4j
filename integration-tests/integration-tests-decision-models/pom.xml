@@ -32,12 +32,6 @@
 
         <dependency>
             <groupId>dev.langchain4j</groupId>
-            <artifactId>langchain4j-guardrails</artifactId>
-            <version>1.21.0-beta31-SNAPSHOT</version>
-        </dependency>
-
-        <dependency>
-            <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-typesafe</artifactId>
             <version>1.21.0-beta31-SNAPSHOT</version>
         </dependency>

@@ -72,6 +72,8 @@ For every call, the Decision Service:
 1. Sends the method parameters to the model as the input (state), keyed by parameter name,
    for example `{"message": "Congratulations! You won a free cruise!"}`.
 2. Asks the question(s) derived from the method's return type and the `@Decide` annotation.
+   Each question is named after the method, or after the field for methods returning an object,
+   and the model sees these names, so choose meaningful ones.
 3. Converts the answer(s) back to the return type.
 
 All methods are checked when `build()` is called, so a misconfigured method
@@ -198,10 +200,10 @@ record Triage(
 
 interface SupportDesk {
 
-    Triage triage(String ticket, String plan);
+    Triage triage(String ticket);
 }
 
-Triage triage = supportDesk.triage("I was charged twice and our payroll runs today!", "enterprise");
+Triage triage = supportDesk.triage("I was charged twice and our payroll runs today!");
 triage.team();                     // BILLING
 triage.urgent();                   // true
 triage.refund().probability();     // 0.99
@@ -210,7 +212,8 @@ triage.refund().probability();     // 0.99
 Every field needs a question in `@Decide`; a field without it fails when `build()` is called.
 `@Decide` on the method itself is not supported for such methods.
 
-A regular class works as well, as long as it has a no-argument constructor:
+A regular class works as well, as long as it is a top-level or static nested class with a no-argument constructor
+and non-final fields:
 
 ```java
 class Triage {
@@ -236,7 +239,7 @@ Triage triage(String ticket, Customer customer);
 The names help the model understand what each value means, so choose them well.
 Objects are converted to maps using their Java field names.
 All fields are sent, so to control exactly what the model sees (and to avoid sending personal data it does not
-need), pass a small record containing only the relevant fields.
+need), pass a small record containing only the relevant fields, rather than, for example, a JPA entity.
 If all parameters sent to the model are `null`, the call fails with an `IllegalArgumentException`.
 
 Parameter names are only available at runtime when the code is compiled with the `-parameters` option
@@ -307,7 +310,9 @@ It receives a `ThresholdContext` describing the question:
   an alias), so that each model version can have its own thresholds. If the provider does not report it,
   the requested model name.
 
-It is called on every invocation, so the thresholds can come from configuration that changes at runtime:
+It is called on every invocation, so the thresholds can come from configuration that changes at runtime.
+It can be called concurrently, and for asynchronous methods on the thread that completes the call to the model,
+so it must be thread-safe and must not block:
 
 ```java
 SupportDesk supportDesk = DecisionServices.builder(SupportDesk.class)
@@ -448,6 +453,13 @@ Triage triage = supportDesk.triage(ticket, customer.plan().urgencyRules());
 //      "only a complete outage" for free customers
 ```
 </details>
+
+:::note
+Checks like the following ones evaluate text that comes from users or from other models, and that text can contain
+instructions that try to influence the answer. For security-relevant checks, decide what happens when the model
+cannot answer (usually: fail closed), tune the threshold on your own data, and do not rely on a single decision as
+the only control.
+:::
 
 <details>
 <summary>Keeping a chatbot on topic</summary>

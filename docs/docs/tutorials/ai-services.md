@@ -487,7 +487,8 @@ Priority priority = priorityAnalyzer.analyzePriority("The main payment gateway i
 :::tip
 For yes/no questions and choices between fixed options (like the examples above), you can also consider
 [Decision Services](/tutorials/decision-services), which use a [decision model](/tutorials/decision-models)
-instead of a chat model: they return a probability for each answer and are typically faster and cheaper.
+instead of a chat model: they can return a probability for each answer and, with dedicated decision models,
+are typically faster and cheaper.
 :::
 
 ### POJO as a return type

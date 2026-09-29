@@ -131,6 +131,7 @@ class DecisionServicesIT {
     @Test
     void should_use_model_name_from_request_parameters() {
 
+        // pinned only to check that the model name is passed through; bump it when TypeSafe retires this version
         DecisionResult<Team> result = supportDesk.route(
                 "Where is my invoice for September?",
                 DecisionRequestParameters.builder().modelName("jev-1.13.0").build());

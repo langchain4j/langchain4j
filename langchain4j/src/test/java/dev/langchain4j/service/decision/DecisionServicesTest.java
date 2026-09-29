@@ -167,7 +167,41 @@ class DecisionServicesTest {
 
         assertThatThrownBy(() -> spamFilter.isSpam("Hello"))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("threshold");
+                .hasMessage("The threshold for question 'isSpam' of method 'isSpam' must be between 0 and 1, but was 1.5");
+    }
+
+    @Test
+    void async_methods_should_report_invalid_threshold_through_the_future() {
+
+        AsyncSpamFilter spamFilter = DecisionServices.builder(AsyncSpamFilter.class)
+                .decisionModel(new FakeDecisionModel(Map.of("isSpam", yesNo(0.7))))
+                .thresholdProvider(context -> 1.5)
+                .build();
+
+        assertThat(spamFilter.isSpam("Hello", null))
+                .failsWithin(java.time.Duration.ofSeconds(5))
+                .withThrowableOfType(java.util.concurrent.ExecutionException.class)
+                .withCauseInstanceOf(IllegalArgumentException.class)
+                .withMessageContaining("question 'isSpam'");
+    }
+
+    @Test
+    void async_methods_should_report_failures_of_the_model_call_through_the_future() {
+
+        DecisionModel failingModel = new FakeDecisionModel(Map.of()) {
+            @Override
+            public CompletableFuture<DecisionResponse> decideAsync(DecisionRequest request) {
+                throw new IllegalStateException("model misconfigured");
+            }
+        };
+        AsyncSpamFilter spamFilter = DecisionServices.builder(AsyncSpamFilter.class)
+                .decisionModel(failingModel)
+                .build();
+
+        assertThat(spamFilter.isSpam("Hello", null))
+                .failsWithin(java.time.Duration.ZERO)
+                .withThrowableOfType(java.util.concurrent.ExecutionException.class)
+                .withCauseInstanceOf(IllegalStateException.class);
     }
 
     interface SpamScorer {
@@ -406,6 +440,8 @@ class DecisionServicesTest {
         assertThatThrownBy(() -> Scale.builder(Severity.class).build())
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("mean");
+        assertThat(Scale.builder(Severity.class).mean(0.0).build().mean()).isZero();
+        assertThat(Scale.builder(Severity.class).mean(2.0).build().mean()).isEqualTo(2.0);
         assertThatThrownBy(() -> Scale.builder(Severity.class).mean(2.5).build())
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("mean must be between 0 and 2");
@@ -990,7 +1026,41 @@ class DecisionServicesTest {
                 .hasMessageContaining("must be an interface");
 
         assertThatThrownBy(() -> DecisionServices.builder(SpamFilter.class).build())
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("decisionModel");
+                .isInstanceOf(IllegalConfigurationException.class)
+                .hasMessageContaining("DecisionServices.builder(SpamFilter.class).decisionModel(...)");
+
+        assertThatThrownBy(() -> DecisionServices.builder(InnerClassTriageService.class)
+                        .decisionModel(model)
+                        .build())
+                .isInstanceOf(IllegalConfigurationException.class)
+                .hasMessageContaining("InnerClassTriage, returned by method 'triage', is an inner class");
+
+        assertThatThrownBy(() -> DecisionServices.builder(FinalFieldTriageService.class)
+                        .decisionModel(model)
+                        .build())
+                .isInstanceOf(IllegalConfigurationException.class)
+                .hasMessageContaining("Field 'urgent' of FinalFieldTriage, returned by method 'triage', is final");
+    }
+
+    class InnerClassTriage {
+
+        @Decide("Is this urgent?")
+        boolean urgent;
+    }
+
+    interface InnerClassTriageService {
+
+        InnerClassTriage triage(@V("ticket") String ticket);
+    }
+
+    static class FinalFieldTriage {
+
+        @Decide("Is this urgent?")
+        final boolean urgent = false;
+    }
+
+    interface FinalFieldTriageService {
+
+        FinalFieldTriage triage(@V("ticket") String ticket);
     }
 }

@@ -55,9 +55,9 @@ import java.util.function.Function;
  * The analysis of one decision service method: the questions it asks, how its parameters become the input, and how
  * the answers are mapped back to its return type.
  * <p>
- * All validation happens in {@link #of(Method)}, so frameworks can analyze methods at build time. They can then use
- * {@link #toRequest(Object[])} and {@link #toResult(DecisionResponse, Function)} to implement the method without the
- * proxy created by {@link DecisionServices}.
+ * All validation happens in {@link #of(Method)}, so frameworks can detect errors at build time. At runtime, they
+ * can call {@link #invoke} or {@link #invokeAsync} to implement the method without the proxy created by
+ * {@link DecisionServices}.
  */
 @Internal
 public final class DecisionMethod {
@@ -179,7 +179,8 @@ public final class DecisionMethod {
      * The classes accessed by reflection when mapping the answers, so that frameworks can register them for native
      * images: the returned object types and their superclasses (their declared fields and constructors are used, and
      * for records their components), and the enums whose constants are the options (their constant fields are read
-     * for {@code @Description}).
+     * for {@code @Description}). When {@link #of(Method)} itself runs in a native image, the service interface (its
+     * methods, with their parameters and annotations) must be registered as well.
      */
     public Set<Class<?>> reflectiveTypes() {
         return reflectiveTypes;
@@ -278,12 +279,13 @@ public final class DecisionMethod {
     public CompletableFuture<Object> invokeAsync(
             DecisionModel decisionModel, Object[] args, Class<?> serviceInterface, ThresholdProvider thresholdProvider) {
         DecisionRequest request;
+        CompletableFuture<DecisionResponse> source;
         try {
             request = toRequest(args);
+            source = ensureNotNull(decisionModel.decideAsync(request), "decideAsync result");
         } catch (RuntimeException e) {
             return CompletableFuture.failedFuture(e);
         }
-        CompletableFuture<DecisionResponse> source = decisionModel.decideAsync(request);
         CompletableFuture<Object> result = source.thenApply(response -> toResult(
                 response, thresholds(decisionModel, request, response, serviceInterface, thresholdProvider)));
         propagateCancellation(result, source);
@@ -309,8 +311,14 @@ public final class DecisionMethod {
                 .build());
     }
 
-    private static double threshold(String questionName, Function<String, Double> thresholds) {
-        return getOrDefault(thresholds == null ? null : thresholds.apply(questionName), DEFAULT_THRESHOLD);
+    private double threshold(String questionName, Function<String, Double> thresholds) {
+        Double threshold = thresholds == null ? null : thresholds.apply(questionName);
+        if (threshold != null && !(threshold >= 0 && threshold <= 1)) {
+            throw new IllegalArgumentException(
+                    "The threshold for question '%s' of method '%s' must be between 0 and 1, but was %s"
+                            .formatted(questionName, method.getName(), threshold));
+        }
+        return getOrDefault(threshold, DEFAULT_THRESHOLD);
     }
 
     private DecisionRequestParameters requestParameters(Object[] args) {
@@ -440,12 +448,26 @@ public final class DecisionMethod {
                 };
             }
 
+            if ((type.isMemberClass() && !Modifier.isStatic(type.getModifiers()))
+                    || type.isLocalClass()
+                    || type.isAnonymousClass()) {
+                throw illegalConfiguration(
+                        "%s, returned by method '%s', is an inner class: declare it as a static nested class,"
+                                + " a top-level class or a record",
+                        type.getSimpleName(), method.getName());
+            }
             List<Field> fields = new ArrayList<>();
             for (Class<?> c = type; c != null && c != Object.class; c = c.getSuperclass()) {
                 reflectiveTypes.add(c);
                 for (Field field : c.getDeclaredFields()) {
                     int modifiers = field.getModifiers();
                     if (!Modifier.isStatic(modifiers) && !Modifier.isTransient(modifiers) && !field.isSynthetic()) {
+                        if (Modifier.isFinal(modifiers)) {
+                            throw illegalConfiguration(
+                                    "Field '%s' of %s, returned by method '%s', is final: make it non-final,"
+                                            + " or return a record",
+                                    field.getName(), type.getSimpleName(), method.getName());
+                        }
                         fields.add(field);
                     }
                 }

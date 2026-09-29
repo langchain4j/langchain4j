@@ -54,7 +54,7 @@ import java.util.Map;
  *
  * interface SupportDesk {
  *
- *     Triage triage(String ticket, String plan);
+ *     Triage triage(String ticket);
  *
  *     @Decide("Is this message spam?")
  *     YesNoAnswer isSpam(String message);
@@ -67,6 +67,7 @@ import java.util.Map;
  *         .decisionModel(decisionModel)
  *         .build();
  * }</pre>
+ * The created implementation holds no state of its own, so it can be shared between threads.
  *
  * @since 1.21.0
  */
@@ -131,7 +132,11 @@ public final class DecisionServices {
         }
 
         public T build() {
-            ensureNotNull(decisionModel, "decisionModel");
+            if (decisionModel == null) {
+                throw illegalConfiguration(
+                        "The decision model must be set: DecisionServices.builder(%s.class).decisionModel(...)",
+                        serviceInterface.getSimpleName());
+            }
             if (!serviceInterface.isInterface()) {
                 throw illegalConfiguration("%s must be an interface", serviceInterface.getName());
             }
