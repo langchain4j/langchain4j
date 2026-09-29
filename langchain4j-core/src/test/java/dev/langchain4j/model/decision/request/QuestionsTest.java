@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.List;
-import java.util.LinkedHashMap;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
@@ -83,7 +82,7 @@ class QuestionsTest {
 
         assertThat(question.options().keySet()).containsExactly("support", "billing", "sales");
         assertThat(question.options().get("billing")).isEqualTo("Payments, invoices, refunds");
-        assertThat(question.options().get("sales")).isNull();
+        assertThat(question.options().get("sales")).isEqualTo("sales");
     }
 
     @Test
@@ -99,14 +98,12 @@ class QuestionsTest {
     }
 
     @Test
-    void should_create_choice_question_with_options_without_descriptions() {
+    void should_use_names_as_descriptions_of_options_without_descriptions() {
 
         ChoiceQuestion question = ChoiceQuestion.of("What is the sentiment?", List.of("positive", "negative"));
 
-        Map<String, String> expected = new LinkedHashMap<>();
-        expected.put("positive", null);
-        expected.put("negative", null);
-        assertThat(question.options()).containsExactlyEntriesOf(expected);
+        assertThat(question.options())
+                .containsExactly(Map.entry("positive", "positive"), Map.entry("negative", "negative"));
         assertThat(question)
                 .isEqualTo(ChoiceQuestion.builder()
                         .text("What is the sentiment?")

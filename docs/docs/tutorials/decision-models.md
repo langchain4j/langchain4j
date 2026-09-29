@@ -123,7 +123,7 @@ YesNoQuestion refundRequested = YesNoQuestion.builder()
 ### Choice questions
 
 A `ChoiceQuestion` selects exactly one option out of a named set (at least 2 options).
-Options whose name says it all need no description:
+For options whose name says it all, the name is also used as the description:
 
 ```java
 ChoiceQuestion sentiment = ChoiceQuestion.of("What is the sentiment?", List.of("positive", "negative", "neutral"));

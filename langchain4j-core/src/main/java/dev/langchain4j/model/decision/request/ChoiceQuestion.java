@@ -14,8 +14,8 @@ import java.util.Objects;
  * A question that selects exactly one option out of a named set, answered with the chosen option and the
  * probability of each option (see {@link dev.langchain4j.model.decision.response.ChoiceAnswer}).
  * <p>
- * Each option has a name and, optionally, a description of when it applies. Options whose name says it all, such as
- * sentiments, need no description
+ * Each option has a name and a description of when it applies. For options whose name says it all, such as
+ * sentiments, the name is used as the description
  * ({@code ChoiceQuestion.of("What is the sentiment?", List.of("positive", "negative", "neutral"))}):
  * <pre>{@code
  * ChoiceQuestion team = ChoiceQuestion.builder()
@@ -45,8 +45,8 @@ public final class ChoiceQuestion implements Question {
     }
 
     /**
-     * The descriptions of the options, keyed by option name, in the order they were added. The description is
-     * {@code null} for an option without a description.
+     * The descriptions of the options, keyed by option name, in the order they were added. For an option added without
+     * a description, the description is its name.
      */
     public Map<String, String> options() {
         return options;
@@ -60,8 +60,8 @@ public final class ChoiceQuestion implements Question {
     }
 
     /**
-     * Creates a choice question with the given text and options without descriptions, for options whose name says it
-     * all.
+     * Creates a choice question with the given text and options whose names say it all: each name is also used as
+     * the description.
      */
     public static ChoiceQuestion of(String text, List<String> options) {
         Builder builder = builder().text(text);
@@ -104,22 +104,28 @@ public final class ChoiceQuestion implements Question {
 
         /**
          * Replaces all options with the given descriptions, keyed by option name. A {@code null} description adds an
-         * option without a description.
+         * option whose name is used as the description (see {@link #option(String)}).
          */
         public Builder options(Map<String, String> options) {
             this.options.clear();
             if (options != null) {
-                options.forEach((name, description) ->
-                        addOption(name, description == null ? null : ensureNotBlank(description, "description")));
+                options.forEach((name, description) -> {
+                    if (description == null) {
+                        option(name);
+                    } else {
+                        option(name, description);
+                    }
+                });
             }
             return this;
         }
 
         /**
-         * Adds an option without a description, for an option whose name says it all. Option names must be unique.
+         * Adds an option whose name says it all: the name is also used as the description, since models decide with
+         * more confidence when an option has a description. Option names must be unique.
          */
         public Builder option(String name) {
-            return addOption(name, null);
+            return option(name, name);
         }
 
         /**
