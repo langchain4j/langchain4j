@@ -62,7 +62,9 @@ ChatModel chatModel = RoutingChatModel.builder()
         .build();
 ```
 
-The router receives the `ChatRequest` and the available routes (`ChatModelRoute`: name and description).
+The router receives the `ChatRequest` and the routes that can handle it (`ChatModelRoute`: name and description).
+A router that calls a remote service should also implement `routeAsync(...)`, which is used by the asynchronous and
+streaming methods; by default, it calls `route(...)`.
 
 ## How requests are routed
 
@@ -71,6 +73,10 @@ The router receives the `ChatRequest` and the available routes (`ChatModelRoute`
   (`ChatRequestParameters`), not provider-specific ones.
 - The rounds of a tool-calling loop stay on the same model: a request that ends with tool results goes to the model
   that requested the tools, without asking the router.
-- `supportedCapabilities()` returns the capabilities supported by all routes.
+- `supportedCapabilities()` returns the capabilities supported by at least one route. A request that needs a
+  capability (for example, a JSON schema response format) is only routed to the routes that support it:
+  the router only sees those routes.
+- `chatAsync(...)` and streaming select the route with `ChatModelRouter.routeAsync(...)`, so they don't block the
+  calling thread when the router doesn't (`DecisionModelChatModelRouter` uses `DecisionModel.decideAsync(...)`).
 - If the router returns an unknown route, or no route when there is no default route, the request fails with an
   `IllegalStateException`.

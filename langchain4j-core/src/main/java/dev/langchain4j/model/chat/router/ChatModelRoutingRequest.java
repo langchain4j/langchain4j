@@ -12,7 +12,9 @@ import java.util.List;
  * The input of a {@link ChatModelRouter}: the chat request to route and the available routes.
  *
  * @param chatRequest the chat request to route.
- * @param routes      the available routes, in the order in which they were configured.
+ * @param routes      the routes that can handle the request, in the order in which they were configured: all routes,
+ *                    or, if the request needs a capability (such as a JSON schema response format), the routes whose
+ *                    model supports it.
  * @since 1.21.0
  */
 @Experimental

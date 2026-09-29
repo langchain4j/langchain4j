@@ -1,6 +1,7 @@
 package dev.langchain4j.model.chat.router;
 
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
+import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
@@ -36,7 +37,12 @@ import java.util.concurrent.CompletableFuture;
  * The rounds of a tool-calling loop stay on the same model: a request that ends with tool results goes to the model
  * that requested the tools, without asking the router.
  * <p>
- * {@link #supportedCapabilities()} returns the capabilities supported by all routes.
+ * {@link #supportedCapabilities()} returns the capabilities supported by at least one route. A request that needs a
+ * capability (such as a JSON schema response format) is only routed to the routes that support it: the router only
+ * sees those routes.
+ * <p>
+ * The asynchronous method ({@link #chatAsync(ChatRequest)}) selects the route with
+ * {@link ChatModelRouter#routeAsync(ChatModelRoutingRequest)}, so it does not block when the router does not.
  *
  * @see RoutingStreamingChatModel
  * @since 1.21.0
@@ -47,7 +53,12 @@ public class RoutingChatModel implements ChatModel {
     private final RouteSelector<ChatModel> selector;
 
     protected RoutingChatModel(Builder builder) {
-        this.selector = new RouteSelector<>(builder.models, builder.routes, builder.router, builder.defaultRoute);
+        this.selector = new RouteSelector<>(
+                builder.models,
+                builder.routes,
+                builder.router,
+                builder.defaultRoute,
+                ChatModel::supportedCapabilities);
     }
 
     @Override
@@ -66,16 +77,32 @@ public class RoutingChatModel implements ChatModel {
 
     @Override
     public CompletableFuture<ChatResponse> chatAsync(ChatRequest chatRequest, ChatRequestOptions options) {
-        String routeName;
-        try {
-            routeName = selector.select(ensureNotNull(chatRequest, "chatRequest"));
-        } catch (Exception e) {
-            return CompletableFuture.failedFuture(e);
-        }
-        CompletableFuture<ChatResponse> source = selector.model(routeName).chatAsync(chatRequest, options);
-        CompletableFuture<ChatResponse> result =
-                source.whenComplete((response, error) -> selector.onResponse(routeName, response));
-        propagateCancellation(result, source);
+        ensureNotNull(chatRequest, "chatRequest");
+        CompletableFuture<String> route = selector.selectAsync(chatRequest);
+        CompletableFuture<ChatResponse> result = new CompletableFuture<>();
+        propagateCancellation(result, route);
+        route.whenComplete((routeName, routingError) -> {
+            if (routingError != null) {
+                result.completeExceptionally(unwrapCompletionException(routingError));
+                return;
+            }
+            CompletableFuture<ChatResponse> response;
+            try {
+                response = selector.model(routeName).chatAsync(chatRequest, options);
+            } catch (Exception e) {
+                result.completeExceptionally(e);
+                return;
+            }
+            propagateCancellation(result, response);
+            response.whenComplete((chatResponse, error) -> {
+                if (error != null) {
+                    result.completeExceptionally(unwrapCompletionException(error));
+                } else {
+                    selector.onResponse(routeName, chatResponse);
+                    result.complete(chatResponse);
+                }
+            });
+        });
         return result;
     }
 
@@ -86,7 +113,7 @@ public class RoutingChatModel implements ChatModel {
 
     @Override
     public Set<Capability> supportedCapabilities() {
-        return selector.supportedCapabilities(ChatModel::supportedCapabilities);
+        return selector.supportedCapabilities();
     }
 
     public static Builder builder() {

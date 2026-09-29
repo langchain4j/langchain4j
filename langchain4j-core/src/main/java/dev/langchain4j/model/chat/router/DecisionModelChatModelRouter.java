@@ -1,5 +1,7 @@
 package dev.langchain4j.model.chat.router;
 
+import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
+import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureBetween;
@@ -15,9 +17,12 @@ import dev.langchain4j.model.decision.DecisionModel;
 import dev.langchain4j.model.decision.request.ChoiceQuestion;
 import dev.langchain4j.model.decision.request.DecisionRequest;
 import dev.langchain4j.model.decision.response.ChoiceAnswer;
+import dev.langchain4j.model.decision.response.DecisionResponse;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.CompletableFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,7 +39,9 @@ import org.slf4j.LoggerFactory;
  * }</pre>
  * Every route needs a description. The router returns {@code null} (so the default route of the routing chat model
  * is used) when the request contains no user message, when the probability of the chosen route is below
- * {@link Builder#minProbability(Double)}, or when the decision model fails.
+ * {@link Builder#minProbability(Double)}, or when the decision model fails. When only one route can handle the
+ * request (for example, the only route supporting a JSON schema response format), that route is selected without
+ * calling the decision model.
  *
  * @since 1.21.0
  */
@@ -64,11 +71,54 @@ public class DecisionModelChatModelRouter implements ChatModelRouter {
 
     @Override
     public String route(ChatModelRoutingRequest request) {
+        if (request.routes().size() == 1) {
+            return request.routes().get(0).name();
+        }
+        DecisionRequest decisionRequest = toDecisionRequest(request);
+        if (decisionRequest == null) {
+            return null;
+        }
+        try {
+            return select(decisionModel.decide(decisionRequest).choice(QUESTION_NAME));
+        } catch (RuntimeException e) {
+            log.warn("Failed to select a route, the default route will be used", e);
+            return null;
+        }
+    }
+
+    @Override
+    public CompletableFuture<String> routeAsync(ChatModelRoutingRequest request) {
+        if (request.routes().size() == 1) {
+            return CompletableFuture.completedFuture(request.routes().get(0).name());
+        }
+        DecisionRequest decisionRequest;
+        try {
+            decisionRequest = toDecisionRequest(request);
+        } catch (RuntimeException e) {
+            return CompletableFuture.failedFuture(e);
+        }
+        if (decisionRequest == null) {
+            return CompletableFuture.completedFuture(null);
+        }
+        CompletableFuture<DecisionResponse> source = decisionModel.decideAsync(decisionRequest);
+        CompletableFuture<String> result = source.thenApply(response -> select(response.choice(QUESTION_NAME)))
+                .exceptionally(error -> {
+                    Throwable cause = unwrapCompletionException(error);
+                    if (cause instanceof CancellationException cancellation) {
+                        throw cancellation;
+                    }
+                    log.warn("Failed to select a route, the default route will be used", cause);
+                    return null;
+                });
+        propagateCancellation(result, source);
+        return result;
+    }
+
+    private DecisionRequest toDecisionRequest(ChatModelRoutingRequest request) {
         String userMessage = lastUserMessageText(request.chatRequest().messages());
         if (userMessage == null) {
             return null;
         }
-
         Map<String, String> options = new LinkedHashMap<>();
         for (ChatModelRoute route : request.routes()) {
             if (isNullOrBlank(route.description())) {
@@ -78,20 +128,13 @@ public class DecisionModelChatModelRouter implements ChatModelRouter {
             }
             options.put(route.name(), route.description());
         }
+        return DecisionRequest.builder()
+                .input(userMessage)
+                .question(QUESTION_NAME, ChoiceQuestion.of(question, options))
+                .build();
+    }
 
-        ChoiceAnswer answer;
-        try {
-            answer = decisionModel
-                    .decide(DecisionRequest.builder()
-                            .input(userMessage)
-                            .question(QUESTION_NAME, ChoiceQuestion.of(question, options))
-                            .build())
-                    .choice(QUESTION_NAME);
-        } catch (RuntimeException e) {
-            log.warn("Failed to select a route, the default route will be used", e);
-            return null;
-        }
-
+    private String select(ChoiceAnswer answer) {
         if (minProbability != null
                 && !answer.probabilities().isEmpty()
                 && answer.probabilityOf(answer.value()) < minProbability) {
