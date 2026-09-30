@@ -281,7 +281,7 @@ class BedrockStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     @Test
     void should_call_tool_with_chunked_parameters() {
-        StreamingChatModel model = TestedModels.STREAMING_CLAUDE_3_HAIKU;
+        StreamingChatModel model = TestedModels.STREAMING_CLAUDE_HAIKU_4_5;
 
         UserMessage userMessage = userMessage(
                 "Create a clear timeline to be displayed in mermaid.live with iconic dinosaurs and major milestones of the Mesozoic era.");
