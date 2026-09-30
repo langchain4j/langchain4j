@@ -13,7 +13,7 @@ import dev.langchain4j.exception.ToolExecutionException;
  * implements {@link ToolErrorVisibleToLlm}: error handlers that honor that interface send the
  * text to the LLM instead of failing the AI Service invocation.
  * <p>
- * It remains a {@link ToolExecutionException}, so existing code that catches that type is unaffected,
+ * It is a {@link ToolExecutionException}, so code that catches that type catches this one too,
  * while catching this type distinguishes an application-level error from a protocol error.
  *
  * @since 1.21.0

@@ -1895,7 +1895,7 @@ contain internal details, exactly like the message of your own exceptions.
 
 :::note
 `failInvocationUnlessVisibleToLlm()` is the behavior we are planning to make the default in an upcoming
-releases. Configuring it explicitly today means the change will not affect your application.
+release. Configuring it explicitly today means the change will not affect your application.
 :::
 
 ### Compensating Tool Actions
