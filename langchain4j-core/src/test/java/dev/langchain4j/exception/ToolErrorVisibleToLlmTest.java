@@ -11,7 +11,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 class ToolErrorVisibleToLlmTest {
 
     @Test
-    void of_should_create_an_exception_carrying_the_message_to_the_llm() {
+    void from_should_create_an_exception_carrying_the_message_to_the_llm() {
 
         ToolErrorVisibleToLlmException exception = ToolErrorVisibleToLlm.from("There is no order with this ID.");
 
@@ -21,7 +21,7 @@ class ToolErrorVisibleToLlmTest {
     }
 
     @Test
-    void of_should_keep_the_cause_without_exposing_it_to_the_llm() {
+    void from_should_keep_the_cause_without_exposing_it_to_the_llm() {
 
         Throwable cause = new IllegalStateException("jdbc:postgresql://db:5432/prod?password=hunter2");
 
@@ -35,7 +35,7 @@ class ToolErrorVisibleToLlmTest {
     @ParameterizedTest
     @NullAndEmptySource
     @ValueSource(strings = {" ", "\n"})
-    void of_should_reject_a_blank_message(String message) {
+    void from_should_reject_a_blank_message(String message) {
 
         assertThatThrownBy(() -> ToolErrorVisibleToLlm.from(message)).isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> ToolErrorVisibleToLlm.from(message, new RuntimeException()))

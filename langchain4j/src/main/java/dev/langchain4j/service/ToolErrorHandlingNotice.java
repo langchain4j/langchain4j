@@ -38,6 +38,9 @@ class ToolErrorHandlingNotice {
     private ToolErrorHandlingNotice() {}
 
     static void logOnceIfNeeded(AiServiceContext context, Predicate<Type> asynchronousOrReactive) {
+        if (ALREADY_LOGGED.get()) {
+            return;
+        }
         List<Default> unconfirmedDefaults = unconfirmedDefaults(context, asynchronousOrReactive);
         if (unconfirmedDefaults.isEmpty()) {
             return;

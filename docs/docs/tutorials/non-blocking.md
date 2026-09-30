@@ -217,7 +217,7 @@ deliberately different. If you are migrating an existing method, these are the o
 | | Synchronous / `TokenStream` | `CompletableFuture` / `Flow.Publisher` |
 |---|---|---|
 | Multiple tool calls | executed **sequentially** | executed **concurrently** |
-| Tool **execution** error | sent back to the LLM | **fails the invocation** |
+| Tool **execution** error | sent back to the LLM | **fails the invocation**, unless the exception implements `ToolErrorVisibleToLlm` |
 | Tool **argument-parse** error | **fails the invocation** | sent back to the LLM |
 | `@Moderate` | supported | rejected at AI Service creation |
 

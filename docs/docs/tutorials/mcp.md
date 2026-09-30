@@ -342,16 +342,17 @@ so they are stored in the chat memory together with the message.
 Keep this in mind when the chat memory is persisted, and see
 [Tool Result Attributes](/tutorials/tools#tool-result-attributes) for more details.
 
-If the tool returns an application-level error, the call ends with a `ToolExecutionException`
-and the `_meta` of the failed response is not available.
-It is still delivered to `McpClientListener.afterExecuteTool()`, which receives the complete raw response.
+If the tool returns an application-level error (`"isError": true` in the tool result), the call ends with an
+`McpApplicationErrorException`, a subclass of `ToolExecutionException`, and the `_meta` of the failed response
+is not available. It is still delivered to `McpClientListener.afterExecuteTool()`, which receives the complete
+raw response.
 
-An application-level error (`"isError": true` in the tool result) ends the call with an
-`McpApplicationErrorException`, a subclass of `ToolExecutionException`. It is how an MCP server tells the *model*
-that a tool did not succeed, so the text of such an error is written for the LLM. The exception therefore
-implements `ToolErrorVisibleToLlm`: with a tool execution error handler that honors it, such as
-`ToolExecutionErrorHandler.failInvocationUnlessVisibleToLlm()`, the server's text is sent to the LLM and it can react
-to it. A protocol error, which means the call itself went wrong, fails the AI Service invocation instead.
+An application-level error is how an MCP server tells the *model* that a tool did not succeed, so its text is
+written for the LLM. `McpApplicationErrorException` therefore implements `ToolErrorVisibleToLlm`: with a tool
+execution error handler that honors it, such as `ToolExecutionErrorHandler.failInvocationUnlessVisibleToLlm()`,
+the server's text is sent to the LLM and it can react to it. With that handler, a protocol error, which means
+the call itself went wrong, fails the AI Service invocation, and so does an application-level error without
+any text, which is a plain `ToolExecutionException`.
 See [Error Handling](/tutorials/tools#error-handling).
 
 ### Tool parameters carried as HTTP headers

@@ -1583,7 +1583,7 @@ so for those you do not have to write a handler yourself:
 |---------|--------------------------------|
 | `ToolArgumentsErrorHandler.sendExceptionMessageToLlm()` | The message of the error is sent to the LLM, so that it can correct the arguments and try again. The AI Service invocation continues. ⚠️ See the warning below. |
 | `ToolArgumentsErrorHandler.failInvocation()` | The error is rethrown: the AI Service invocation fails and nothing is sent to the LLM. |
-| `ToolExecutionErrorHandler.sendExceptionMessageToLlm()` | The message of the exception thrown by the tool is sent to the LLM, so that it can react to it. The AI Service invocation continues. ⚠️ See the warning below. |
+| `ToolExecutionErrorHandler.sendExceptionMessageToLlm()` | The message of the exception thrown by the tool is sent to the LLM (or the text from `messageForLlm()`, if the exception implements `ToolErrorVisibleToLlm`), so that it can react to it. The AI Service invocation continues. ⚠️ See the warning below. |
 | `ToolExecutionErrorHandler.failInvocationUnlessVisibleToLlm()` | Only exceptions implementing `ToolErrorVisibleToLlm` are shown to the LLM, using the text they provide. Every other exception fails the AI Service invocation. See [Deciding per exception what the LLM sees](#deciding-per-exception-what-the-llm-sees). |
 | `ToolExecutionErrorHandler.failInvocation()` | The exception is rethrown: the AI Service invocation fails and nothing is sent to the LLM. |
 
@@ -1640,6 +1640,9 @@ For the whole application, declare a class implementing `ToolExecutionErrorHandl
 `@DefaultToolExecutionErrorHandler` (the qualifier goes on a type, not on a producer method).
 
 Note that Quarkus builds its AI Services itself, so the warning described above is not logged there.
+Quarkus also uses a default tool execution error handler of its own, which sends the message of the exception
+to the LLM and does not look at `ToolErrorVisibleToLlm`. To have that interface honored, configure
+`failInvocationUnlessVisibleToLlm()` or `sendExceptionMessageToLlm()` explicitly, as shown above.
 
 
 #### Handling Tool Name Errors
@@ -1848,7 +1851,8 @@ public class OrderNotFoundException extends RuntimeException implements ToolErro
 }
 ```
 
-If you do not want to declare an exception class, throw a ready-made one instead:
+If you do not want to declare an exception class, throw a ready-made one instead.
+Log the original error yourself if you need it: it is kept as the cause, but it is not sent to the LLM.
 
 ```java
 @Tool("Returns the status of an order")
@@ -1857,7 +1861,8 @@ String orderStatus(String orderId) {
         return orderService.status(orderId);
     } catch (SQLException e) {
         // the LLM is told only what it needs to know; the cause is not sent to it
-        throw ToolErrorVisibleToLlm.from("The order service is temporarily unavailable.", e);
+        log.warn("Could not read the order database", e);
+        throw ToolErrorVisibleToLlm.from("The order database is temporarily unavailable.", e);
     }
 }
 ```

@@ -5,11 +5,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.mock.ChatModelMock;
+import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
 import dev.langchain4j.service.tool.ToolArgumentsErrorHandler;
 import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -33,6 +37,16 @@ class ToolErrorHandlingNoticeLoggingTest {
         String chat(String userMessage);
     }
 
+    interface AsyncAssistant {
+
+        CompletableFuture<String> chat(String userMessage);
+    }
+
+    interface StreamingAssistant {
+
+        TokenStream chat(String userMessage);
+    }
+
     static class Tools {
 
         @Tool("Returns the weather in the given city")
@@ -41,7 +55,8 @@ class ToolErrorHandlingNoticeLoggingTest {
         }
     }
 
-    private static final ChatModel CHAT_MODEL = new ChatModel() {};
+    private static final ChatModel CHAT_MODEL = ChatModelMock.thatAlwaysResponds("ok");
+    private static final StreamingChatModel STREAMING_CHAT_MODEL = StreamingChatModelMock.thatAlwaysStreams("ok");
 
     @BeforeEach
     void resetNotice() {
@@ -86,6 +101,28 @@ class ToolErrorHandlingNoticeLoggingTest {
                 .build());
 
         assertThat(logOutput).doesNotContain(ToolErrorHandlingNotice.class.getName());
+    }
+
+    @Test
+    void should_not_log_the_notice_for_an_ai_service_with_only_asynchronous_methods() {
+
+        String logOutput = captureStdErr(() -> AiServices.builder(AsyncAssistant.class)
+                .chatModel(CHAT_MODEL)
+                .tools(new Tools())
+                .build());
+
+        assertThat(logOutput).doesNotContain(ToolErrorHandlingNotice.class.getName());
+    }
+
+    @Test
+    void should_log_the_notice_for_an_ai_service_with_token_stream_methods() {
+
+        String logOutput = captureStdErr(() -> AiServices.builder(StreamingAssistant.class)
+                .streamingChatModel(STREAMING_CHAT_MODEL)
+                .tools(new Tools())
+                .build());
+
+        assertThat(logOutput).contains("WARN").contains(StreamingAssistant.class.getName());
     }
 
     private static String captureStdErr(Supplier<?> action) {
