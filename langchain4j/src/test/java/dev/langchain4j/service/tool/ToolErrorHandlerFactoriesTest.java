@@ -128,7 +128,7 @@ class ToolErrorHandlerFactoriesTest {
     }
 
     @Test
-    void send_generic_message_unless_visible_to_llm_should_send_the_generic_message_when_the_message_for_the_llm_is_blank() {
+    void send_generic_message_unless_visible_to_llm_should_send_the_generic_message_for_a_blank_message_for_llm() {
 
         assertThat(ToolExecutionErrorHandler.sendGenericMessageToLlmUnlessVisibleToLlm("The tool failed.")
                         .handle(new BlankMessageException(), CONTEXT))
