@@ -1,0 +1,15 @@
+[
+  {
+    "extension": "revapi.differences",
+    "configuration": {
+      "ignore": true,
+      "differences": [
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.model.chat.ChatModel",
+          "justification": "Core langchain4j type intentionally exposed by LlmBasedPromptInjectionGuardrail's constructors: the caller supplies the ChatModel that performs the injection classification"
+        }
+      ]
+    }
+  }
+]
