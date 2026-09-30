@@ -105,18 +105,24 @@ DecisionModel decisionModel = TypeSafeDecisionModel.builder()
         .build();
 ```
 
-Or with a self-hosted server:
+Or locally with [Ollama](https://docs.ollama.com/capabilities/decision) (v0.35.0 or later), after
+`ollama pull nimble` (or `ollama pull tev1`):
 
 ```java
 DecisionModel decisionModel = TypeSafeDecisionModel.builder()
-        .baseUrl("http://localhost:8000")
-        .modelName("my-local-model")
+        .baseUrl("http://localhost:11434")
+        .modelName("nimble")
         .build();
 ```
 
-Self-hosted servers usually need no API key.
+Local and self-hosted servers usually need no API key. Ollama's decision models accept text input only, with a
+prompt of at most 2,048 tokens, 2 to 26 options or levels per question, and at most 64 questions per request.
+Without a GPU, a request can take several seconds, so consider a longer `timeout(...)`. With more than 64 tools,
+set `maxToolsPerDecisionRequest(64)` on the [tool selection](/tutorials/decision-models#selecting-tools) components.
+For [re-ranking](/tutorials/decision-models#re-ranking-retrieved-content), lower `maxSegmentsPerRequest(...)` so that
+the segments of one request fit in the prompt.
 
-`TypeSafeDecisionModel` is tested with the TypeSafe API and with OpenRouter.
+`TypeSafeDecisionModel` is tested with the TypeSafe API, OpenRouter and Ollama (`nimble` and `tev1`).
 
 Servers can differ in the limits they apply (for example, the maximum number of options),
 in how they compute confidence and in the quality of their answers: small models and general-purpose language models

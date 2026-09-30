@@ -7,7 +7,8 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 /**
  * Runs the common decision model tests against a self-hosted server implementing the System One API
- * (for example Laya, Kev or jitLLM), whose base URL and model name are given by the {@code SYSTEM_ONE_BASE_URL} and
+ * (for example Ollama with {@code SYSTEM_ONE_BASE_URL=http://localhost:11434} and {@code SYSTEM_ONE_MODEL_NAME=nimble},
+ * or Laya, Kev or jitLLM), whose base URL and model name are given by the {@code SYSTEM_ONE_BASE_URL} and
  * {@code SYSTEM_ONE_MODEL_NAME} environment variables. Such servers usually need no API key.
  */
 @EnabledIfEnvironmentVariable(named = "SYSTEM_ONE_BASE_URL", matches = ".+")

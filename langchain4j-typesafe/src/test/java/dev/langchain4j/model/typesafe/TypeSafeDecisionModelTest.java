@@ -162,7 +162,7 @@ class TypeSafeDecisionModelTest {
     }
 
     @Test
-    void should_send_options_without_descriptions_as_null() {
+    void should_send_names_as_descriptions_of_options_without_descriptions() {
 
         // given
         MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(
@@ -179,7 +179,7 @@ class TypeSafeDecisionModelTest {
 
         // then
         assertThat(httpClient.request().body())
-                .contains("\"criteria\":{\"positive\":null,\"negative\":null}");
+                .contains("\"criteria\":{\"positive\":\"positive\",\"negative\":\"negative\"}");
     }
 
     @Test

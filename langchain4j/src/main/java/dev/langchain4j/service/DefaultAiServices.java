@@ -324,6 +324,9 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 userMessageTemplate, method, args);
                         UserMessage originalUserMessage =
                                 prepareUserMessage(method, args, userMessageTemplate, variables);
+                        invocationContext = invocationContext.toBuilder()
+                                .originalUserMessage(originalUserMessage)
+                                .build();
 
                         Type declaredReturnType =
                                 context.returnType != null ? context.returnType : method.getGenericReturnType();
