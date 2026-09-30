@@ -74,8 +74,8 @@ public interface ToolErrorVisibleToLlm {
      * (for example {@code return cause.getMessage()}): such messages are written for developers
      * and often contain internal details that should not reach the LLM provider.
      * <p>
-     * Must not be blank. A blank text is ignored, and the exception is treated as if it did not implement
-     * this interface: a handler that fails the invocation fails it, and a handler that sends the message of
+     * Must not be blank. A blank text is ignored (and a warning is logged), and the exception is treated
+     * as if it did not implement this interface: a handler that fails the invocation fails it, and a handler that sends the message of
      * the exception to the LLM sends that instead.
      */
     String messageForLlm();

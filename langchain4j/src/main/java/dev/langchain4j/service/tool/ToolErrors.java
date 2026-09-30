@@ -3,11 +3,15 @@ package dev.langchain4j.service.tool;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 
 import dev.langchain4j.exception.ToolErrorVisibleToLlm;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Shared logic of the ready-made {@link ToolExecutionErrorHandler}s and {@link ToolArgumentsErrorHandler}s.
  */
 final class ToolErrors {
+
+    private static final Logger log = LoggerFactory.getLogger(ToolErrors.class);
 
     private ToolErrors() {}
 
@@ -31,7 +35,10 @@ final class ToolErrors {
         if (result != null) {
             return result;
         }
-        return context == null ? null : messageForLlm(context.rawError());
+        if (context == null || context.rawError() == error) {
+            return null;
+        }
+        return messageForLlm(context.rawError());
     }
 
     private static ToolErrorHandlerResult messageForLlm(Throwable error) {
@@ -40,6 +47,10 @@ final class ToolErrors {
             if (!isNullOrBlank(message)) {
                 return ToolErrorHandlerResult.text(message);
             }
+            log.warn(
+                    "{} implements ToolErrorVisibleToLlm, but its messageForLlm() is blank, "
+                            + "so it is handled as if it did not implement ToolErrorVisibleToLlm",
+                    error.getClass().getName());
         }
         return null;
     }

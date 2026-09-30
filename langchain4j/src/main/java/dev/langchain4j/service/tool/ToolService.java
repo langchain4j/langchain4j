@@ -473,6 +473,9 @@ public class ToolService {
     }
 
     /**
+     * Lets code that builds AI Services, such as a framework integration, tell whether the default
+     * {@link ToolArgumentsErrorHandler} is used, for example to warn about it.
+     *
      * @return {@code true} if a {@link ToolArgumentsErrorHandler} was configured explicitly,
      * {@code false} if the default one is used.
      * @since 1.21.0
@@ -496,6 +499,9 @@ public class ToolService {
     }
 
     /**
+     * Lets code that builds AI Services, such as a framework integration, tell whether the default
+     * {@link ToolExecutionErrorHandler} is used, for example to warn about it.
+     *
      * @return {@code true} if a {@link ToolExecutionErrorHandler} was configured explicitly,
      * {@code false} if the default one is used.
      * @since 1.21.0
