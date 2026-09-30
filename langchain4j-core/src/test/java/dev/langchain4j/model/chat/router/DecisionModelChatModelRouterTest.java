@@ -187,12 +187,56 @@ class DecisionModelChatModelRouterTest {
 
         router.route(ChatModelRoutingRequest.builder()
                 .chatRequest(ChatRequest.builder().messages(UserMessage.from("Hi!")).build())
-                .routes(List.of(new ChatModelRoute("simple", null), ROUTES.get(1)))
+                .routes(List.of(new ChatModelRoute("simple", List.of()), ROUTES.get(1)))
                 .build());
 
         assertThat(((ChoiceQuestion) decisionModel.request().questions().get("route")).options())
                 .containsExactly(
                         Map.entry("simple", "simple"), Map.entry("complex", "Multi-step reasoning and code"));
+    }
+
+    @Test
+    void should_ask_about_each_description_and_sum_the_probabilities_of_a_route() {
+
+        List<ChatModelRoute> routes = List.of(
+                new ChatModelRoute("simple", "Greetings and small talk"),
+                new ChatModelRoute("complex", List.of("Writing or debugging code", "Legal contract analysis")));
+        Map<String, Double> probabilities = new LinkedHashMap<>();
+        probabilities.put("simple", 0.4);
+        probabilities.put("complex#1", 0.3);
+        probabilities.put("complex#2", 0.3);
+        decisionModel = DecisionModelMock.thatAlwaysAnswers(Map.of(
+                "route", ChoiceAnswer.builder().value("simple").probabilities(probabilities).build()));
+        ChatModelRouter router = DecisionModelChatModelRouter.builder()
+                .decisionModel(decisionModel)
+                .minProbability(0.55)
+                .build();
+
+        ChatModelRoutingResult result = router.route(ChatModelRoutingRequest.builder()
+                .chatRequest(ChatRequest.builder()
+                        .messages(UserMessage.from("Review this NDA"))
+                        .build())
+                .routes(routes)
+                .build());
+
+        assertThat(result).isEqualTo(ChatModelRoutingResult.route("complex"));
+        assertThat(((ChoiceQuestion) decisionModel.request().questions().get("route")).options())
+                .containsExactly(
+                        Map.entry("simple", "Greetings and small talk"),
+                        Map.entry("complex#1", "Writing or debugging code"),
+                        Map.entry("complex#2", "Legal contract analysis"));
+    }
+
+    @Test
+    void should_reject_routes_whose_options_collide() {
+
+        ChatModelRouter router = new DecisionModelChatModelRouter(choosing("simple", 0.9));
+
+        assertThatThrownBy(() -> router.validate(List.of(
+                        new ChatModelRoute("complex", List.of("Code", "Law")),
+                        new ChatModelRoute("complex#1", "Something else"))))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("complex#1");
     }
 
     @Test

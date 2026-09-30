@@ -140,6 +140,29 @@ class RoutingChatModelTest {
     }
 
     @Test
+    void should_pass_several_descriptions_of_a_route_to_the_router() {
+
+        List<ChatModelRoute> seen = new ArrayList<>();
+        ChatModel chatModel = RoutingChatModel.builder()
+                .route("simple", "Short questions", small)
+                .route("complex", List.of("Code", "Law"), large)
+                .router(request -> {
+                    seen.addAll(request.routes());
+                    return ChatModelRoutingResult.route("complex");
+                })
+                .defaultRoute("simple")
+                .build();
+
+        chatModel.chat("Review this NDA");
+
+        assertThat(seen)
+                .containsExactly(
+                        new ChatModelRoute("simple", "Short questions"),
+                        new ChatModelRoute("complex", List.of("Code", "Law")));
+        assertThat(seen.get(1).description()).isEqualTo("Code; Law");
+    }
+
+    @Test
     void routing_result_should_reject_blank_route_name() {
 
         assertThatThrownBy(() -> ChatModelRoutingResult.route(" "))

@@ -62,6 +62,21 @@ ChatModelRouter router = DecisionModelChatModelRouter.builder()
         .build();
 ```
 
+A route meant for requests about several unrelated topics can have several descriptions:
+
+```java
+ChatModel chatModel = RoutingChatModel.builder()
+        .route("simple", "Greetings, small talk and short factual questions", smallModel)
+        .route("complex", List.of("Writing or debugging code", "Legal contract analysis", "Tax planning"), largeModel)
+        .router(new DecisionModelChatModelRouter(decisionModel))
+        .defaultRoute("simple")
+        .build();
+```
+
+The decision model then considers each description as a separate option, and the probability of the route is the
+sum of the probabilities of its descriptions. Compared to one description that lists all topics, this can make
+the decision more confident, especially with smaller decision models.
+
 ### Custom routers
 
 A router can also be a simple rule:

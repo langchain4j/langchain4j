@@ -363,7 +363,7 @@ public class RoutingStreamingChatModel implements StreamingChatModel {
          * @param model the streaming chat model that handles the requests sent to this route.
          */
         public Builder route(String name, StreamingChatModel model) {
-            return route(name, null, model);
+            return route(name, List.of(), model);
         }
 
         /**
@@ -377,7 +377,21 @@ public class RoutingStreamingChatModel implements StreamingChatModel {
          * @param model       the streaming chat model that handles the requests sent to this route.
          */
         public Builder route(String name, String description, StreamingChatModel model) {
-            routes.add(new RouteSelector.Route<>(name, model, description));
+            return route(name, description == null ? List.of() : List.of(description), model);
+        }
+
+        /**
+         * Adds a route with several descriptions, for a route meant for requests about different topics, for example
+         * {@code route("complex", List.of("Writing or debugging code", "Legal contract analysis"), largeModel)}.
+         * Routers that decide based on the descriptions, such as {@link DecisionModelChatModelRouter}, consider each
+         * description separately, which can make them more confident than one description that mixes all topics.
+         *
+         * @param name         the unique name of the route, see {@link #route(String, String, StreamingChatModel)}.
+         * @param descriptions the kinds of requests this route is meant for, for example one per topic.
+         * @param model        the streaming chat model that handles the requests sent to this route.
+         */
+        public Builder route(String name, List<String> descriptions, StreamingChatModel model) {
+            routes.add(new RouteSelector.Route<>(name, model, descriptions));
             return this;
         }
 

@@ -3,6 +3,8 @@ package dev.langchain4j.model.chat.router;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
 import dev.langchain4j.Experimental;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -14,16 +16,28 @@ import java.util.Objects;
 public final class ChatModelRoute {
 
     private final String name;
-    private final String description;
+    private final List<String> descriptions;
 
     /**
      * @param name        the unique name of the route, for example {@code "simple"} or {@code "complex"}.
-     * @param description what kind of requests the route is meant for, or {@code null}. Routers that decide based on
-     *                    the content of the request, such as {@link DecisionModelChatModelRouter}, require it.
+     * @param description what kind of requests the route is meant for, or {@code null}.
      */
     public ChatModelRoute(String name, String description) {
+        this(name, description == null ? List.of() : List.of(description));
+    }
+
+    /**
+     * @param name         the unique name of the route, for example {@code "simple"} or {@code "complex"}.
+     * @param descriptions the kinds of requests the route is meant for, for example one description per topic. Can
+     *                     be empty.
+     */
+    public ChatModelRoute(String name, List<String> descriptions) {
         this.name = ensureNotBlank(name, "name");
-        this.description = description;
+        List<String> copy = new ArrayList<>();
+        if (descriptions != null) {
+            descriptions.forEach(description -> copy.add(ensureNotBlank(description, "description of route " + name)));
+        }
+        this.descriptions = List.copyOf(copy);
     }
 
     /**
@@ -34,26 +48,34 @@ public final class ChatModelRoute {
     }
 
     /**
-     * What kind of requests the route is meant for, or {@code null}.
+     * The kinds of requests the route is meant for. Empty if the route has no description.
+     */
+    public List<String> descriptions() {
+        return descriptions;
+    }
+
+    /**
+     * The descriptions of the route in a single text, separated by {@code "; "}, or {@code null} if the route has no
+     * description.
      */
     public String description() {
-        return description;
+        return descriptions.isEmpty() ? null : String.join("; ", descriptions);
     }
 
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (!(o instanceof ChatModelRoute that)) return false;
-        return Objects.equals(name, that.name) && Objects.equals(description, that.description);
+        return Objects.equals(name, that.name) && Objects.equals(descriptions, that.descriptions);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(name, description);
+        return Objects.hash(name, descriptions);
     }
 
     @Override
     public String toString() {
-        return "ChatModelRoute{name=" + name + ", description=" + description + '}';
+        return "ChatModelRoute{name=" + name + ", descriptions=" + descriptions + '}';
     }
 }

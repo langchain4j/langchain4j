@@ -73,6 +73,22 @@ class DecisionModelIntegrationsIT {
                 .isEqualTo("large");
     }
 
+    @Test
+    void should_route_chat_requests_by_one_of_several_descriptions() {
+
+        ChatModel chatModel = RoutingChatModel.builder()
+                .route("simple", List.of("Greetings and small talk", "Store opening hours", "Order tracking"),
+                        new FixedChatModel("small"))
+                .route("complex", List.of("Software debugging", "Contract law", "Tax planning"),
+                        new FixedChatModel("large"))
+                .router(new DecisionModelChatModelRouter(decisionModel))
+                .defaultRoute("complex")
+                .build();
+
+        assertThat(chatModel.chat("Where is my package? Order 5521")).isEqualTo("small");
+        assertThat(chatModel.chat("My landlord wants to keep the whole deposit for a scratch")).isEqualTo("large");
+    }
+
     static class FixedChatModel implements ChatModel {
 
         private final String answer;

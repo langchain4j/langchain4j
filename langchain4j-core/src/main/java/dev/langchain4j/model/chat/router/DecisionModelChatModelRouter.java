@@ -110,6 +110,11 @@ public class DecisionModelChatModelRouter implements ChatModelRouter {
     }
 
     @Override
+    public void validate(List<ChatModelRoute> routes) {
+        routeOptions(routes);
+    }
+
+    @Override
     public ChatModelRoutingResult route(ChatModelRoutingRequest request) {
         if (request.routes().size() == 1) {
             return ChatModelRoutingResult.route(request.routes().get(0).name());
@@ -124,7 +129,7 @@ public class DecisionModelChatModelRouter implements ChatModelRouter {
         } catch (RuntimeException e) {
             return fallback(e);
         }
-        return select(response.choice(QUESTION_NAME));
+        return select(response.choice(QUESTION_NAME), request.routes());
     }
 
     @Override
@@ -149,7 +154,7 @@ public class DecisionModelChatModelRouter implements ChatModelRouter {
         }
         CompletableFuture<ChatModelRoutingResult> result = source.handle((response, error) -> {
             if (error == null) {
-                return select(response.choice(QUESTION_NAME));
+                return select(response.choice(QUESTION_NAME), request.routes());
             }
             Throwable cause = unwrapCompletionException(error);
             if (cause instanceof CancellationException
@@ -177,10 +182,8 @@ public class DecisionModelChatModelRouter implements ChatModelRouter {
         if (lastUserMessage < 0 || DecisionModelInputUtils.text(messages.get(lastUserMessage)).isBlank()) {
             return null;
         }
-        Map<String, String> options = new LinkedHashMap<>();
-        request.routes().forEach(route -> options.put(route.name(), route.description()));
         DecisionRequest.Builder decisionRequest =
-                DecisionRequest.builder().question(QUESTION_NAME, ChoiceQuestion.of(question, options));
+                DecisionRequest.builder().question(QUESTION_NAME, toQuestion(request.routes()));
         if (maxMessages == 1) {
             decisionRequest.input(DecisionModelInputUtils.text(messages.get(lastUserMessage)));
         } else {
@@ -189,18 +192,69 @@ public class DecisionModelChatModelRouter implements ChatModelRouter {
         return decisionRequest.build();
     }
 
-    private ChatModelRoutingResult select(ChoiceAnswer answer) {
-        if (minProbability == null) {
-            return ChatModelRoutingResult.route(answer.value());
+    private record RouteOption(ChatModelRoute route, String description) {}
+
+    /**
+     * One option per description of each route: a route with one description (or none) is the option named like the
+     * route; a route with several descriptions has one option per description, named {@code <route>#<n>}.
+     */
+    private ChoiceQuestion toQuestion(List<ChatModelRoute> routes) {
+        ChoiceQuestion.Builder choice = ChoiceQuestion.builder().text(question);
+        routeOptions(routes).forEach((name, option) -> {
+            if (option.description() == null) {
+                choice.option(name);
+            } else {
+                choice.option(name, option.description());
+            }
+        });
+        return choice.build();
+    }
+
+    private static Map<String, RouteOption> routeOptions(List<ChatModelRoute> routes) {
+        Map<String, RouteOption> options = new LinkedHashMap<>();
+        for (ChatModelRoute route : routes) {
+            List<String> descriptions = route.descriptions();
+            if (descriptions.size() <= 1) {
+                addOption(options, route.name(), new RouteOption(route, descriptions.isEmpty() ? null : descriptions.get(0)));
+            } else {
+                for (int i = 0; i < descriptions.size(); i++) {
+                    addOption(options, route.name() + "#" + (i + 1), new RouteOption(route, descriptions.get(i)));
+                }
+            }
         }
-        if (answer.probabilities().isEmpty()) {
+        return options;
+    }
+
+    private static void addOption(Map<String, RouteOption> options, String name, RouteOption option) {
+        if (options.putIfAbsent(name, option) != null) {
+            throw new IllegalArgumentException("The route names and descriptions give the option '%s' twice. "
+                    .formatted(name) + "Rename the route '%s'".formatted(option.route().name()));
+        }
+    }
+
+    /**
+     * Selects the route with the highest probability, summed over its options.
+     */
+    private ChatModelRoutingResult select(ChoiceAnswer answer, List<ChatModelRoute> routes) {
+        Map<String, RouteOption> options = routeOptions(routes);
+        if (minProbability != null && answer.probabilities().isEmpty()) {
             throw new IllegalStateException("minProbability is set, but the decision model reported no probabilities, "
                     + "so the default route would always be used. Use a decision model that reports probabilities, "
                     + "or remove minProbability");
         }
-        return answer.probabilityOf(answer.value()) < minProbability
-                ? ChatModelRoutingResult.defaultRoute()
-                : ChatModelRoutingResult.route(answer.value());
+        if (answer.probabilities().isEmpty()) {
+            return ChatModelRoutingResult.route(options.get(answer.value()).route().name());
+        }
+        Map<String, Double> routeProbabilities = new LinkedHashMap<>();
+        options.forEach((name, option) -> routeProbabilities.merge(
+                option.route().name(), answer.probabilities().getOrDefault(name, 0.0), Double::sum));
+        Map.Entry<String, Double> best = routeProbabilities.entrySet().stream()
+                .max(Map.Entry.comparingByValue())
+                .orElseThrow();
+        if (minProbability != null && best.getValue() < minProbability) {
+            return ChatModelRoutingResult.defaultRoute();
+        }
+        return ChatModelRoutingResult.route(best.getKey());
     }
 
     private static int lastUserMessage(List<ChatMessage> messages) {

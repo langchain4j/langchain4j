@@ -43,7 +43,7 @@ import java.util.function.Function;
  */
 final class RouteSelector<M> {
 
-    record Route<M>(String name, M model, String description) {}
+    record Route<M>(String name, M model, List<String> descriptions) {}
 
     private final Map<String, M> models;
     private final List<ChatModelRoute> routes;
@@ -66,7 +66,7 @@ final class RouteSelector<M> {
                 throw new IllegalArgumentException("There is more than one route named '%s'".formatted(route.name()));
             }
             models.put(route.name(), ensureNotNull(route.model(), "model of route '%s'".formatted(route.name())));
-            chatModelRoutes.add(new ChatModelRoute(route.name(), route.description()));
+            chatModelRoutes.add(new ChatModelRoute(route.name(), route.descriptions()));
         }
         ensureNotBlank(defaultRoute, "defaultRoute");
         if (!models.containsKey(defaultRoute)) {
