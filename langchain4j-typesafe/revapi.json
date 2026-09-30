@@ -1,0 +1,15 @@
+[
+  {
+    "extension": "revapi.differences",
+    "configuration": {
+      "ignore": true,
+      "differences": [
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class org.slf4j.Logger",
+          "justification": "The builder accepts an alternate SLF4J Logger for request/response logging, like other provider integrations"
+        }
+      ]
+    }
+  }
+]

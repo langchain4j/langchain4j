@@ -95,11 +95,12 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
     }
 
     DefaultA2AClientBuilder(String a2aServerUrl, Class<T> agentServiceClass, String tenant) {
-        this.agentCard = agentCard(a2aServerUrl, tenant);
+        String effectiveTenant = (tenant != null && !tenant.isEmpty()) ? tenant : null;
+        this.agentCard = agentCard(a2aServerUrl, effectiveTenant);
         this.name = agentCard.name();
         this.agentId = this.name;
         this.agentServiceClass = agentServiceClass;
-        this.tenant = tenant != null ? tenant : extractTenantFromAgentCard(agentCard);
+        this.tenant = effectiveTenant != null ? effectiveTenant : extractTenantFromAgentCard(agentCard);
     }
 
     // For testing only: bypasses URL fetch and pre-sets the client.
@@ -642,13 +643,18 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
     }
 
     static String extractTenantFromAgentCard(AgentCard agentCard) {
-        if (agentCard == null || agentCard.supportedInterfaces() == null) {
+        try {
+            if (agentCard == null || agentCard.supportedInterfaces() == null) {
+                return null;
+            }
+            return agentCard.supportedInterfaces().stream()
+                    .map(AgentInterface::tenant)
+                    .filter(t -> t != null && !t.isEmpty())
+                    .findFirst()
+                    .orElse(null);
+        } catch (RuntimeException ex) {
+            LOG.debug("Couldn't extract tenant from agent card", ex);
             return null;
         }
-        return agentCard.supportedInterfaces().stream()
-                .map(AgentInterface::tenant)
-                .filter(t -> t != null && !t.isEmpty())
-                .findFirst()
-                .orElse(null);
     }
 }

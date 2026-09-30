@@ -3174,7 +3174,45 @@ In this sequence, the first agent sends a message with no `contextId`/`taskId` (
 
 ### Multi-tenant A2A agents
 
-In a multi-tenant A2A deployment, messages must be scoped to a specific tenant so the server can apply the correct routing, isolation, and policies. The `@A2ATenantId` annotation marks a method parameter whose value is set as the `tenant` field on the outgoing `MessageSendParams` — it is **not** included as a `TextPart` in the message content.
+In a multi-tenant A2A deployment, messages must be scoped to a specific tenant so the server can apply the correct routing, isolation, and policies. The `langchain4j-agentic-a2a` module supports three ways to configure the tenant, depending on whether it is fixed, dynamic, or derived automatically from the server URL.
+
+#### Auto-detection from the agent card URL
+
+When no tenant is configured, the client automatically extracts it from the agent card URL. A multi-tenant A2A server typically follows the convention `/.well-known/{tenant}/agent-card.json`. If the agent card URL matches this pattern, the extracted tenant is silently applied to every outgoing message — no configuration is needed.
+
+#### Static tenant via the `@A2AClientAgent` annotation
+
+When the tenant is known at build time and is the same for every call, set the `tenant` attribute directly on the `@A2AClientAgent` annotation:
+
+```java
+public interface MyA2AAgent {
+
+    @A2AClientAgent(a2aServerUrl = "http://localhost:8080", tenant = "acme", outputKey = "response")
+    String chat(@V("question") String question);
+}
+```
+
+The tenant is set on `MessageSendParams` for every message sent by this agent — no method parameter is needed. It is **not** included as a `TextPart` in the message content. Setting `tenant` in the annotation takes precedence over auto-detection from the agent card URL.
+
+When building programmatically, pass the tenant as the second argument to `a2aBuilder`:
+
+```java
+UntypedAgent agent = AgenticServices
+        .a2aBuilder("http://localhost:8080", "acme")
+        .inputKeys("question")
+        .outputKey("response")
+        .build();
+
+// Or with a typed interface:
+MyA2AAgent agent = AgenticServices
+        .a2aBuilder("http://localhost:8080", "acme", MyA2AAgent.class)
+        .outputKey("response")
+        .build();
+```
+
+#### Dynamic tenant via `@A2ATenantId`
+
+When the tenant varies per call, annotate a method parameter with `@A2ATenantId`. The parameter value is set as the `tenant` field on the outgoing `MessageSendParams` — it is **not** included as a `TextPart` in the message content.
 
 ```java
 public interface MyA2AAgent {
@@ -3202,6 +3240,14 @@ public interface MultiTenantChatAgent {
 ```
 
 Unlike `@A2AContextId` and `@A2ATaskId`, the tenant value is never written back to the `AgenticScope` — the caller is responsible for supplying it on every invocation.
+
+#### Summary: tenant resolution order
+
+| Approach | When to use |
+|---|---|
+| Auto-detection from agent card URL | Server URL follows `/.well-known/{tenant}/agent-card.json` and tenant is constant |
+| `tenant` on `@A2AClientAgent` (or `a2aBuilder(url, tenant, ...)`) | Tenant is fixed and known at build time |
+| `@A2ATenantId` method parameter | Tenant varies per call |
 
 ### Human-in-the-loop A2A agents
 
