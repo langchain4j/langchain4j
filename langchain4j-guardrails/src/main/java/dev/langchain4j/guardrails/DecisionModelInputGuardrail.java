@@ -49,7 +49,7 @@ public class DecisionModelInputGuardrail implements InputGuardrail {
     }
 
     protected DecisionModelInputGuardrail(Builder builder) {
-        this.checks = new DecisionModelChecks(builder.decisionModel, builder.checks, builder.threshold);
+        this.checks = new DecisionModelChecks(builder.decisionModel, builder.checks, builder.checkThresholds, builder.threshold);
     }
 
     @Override
@@ -83,6 +83,7 @@ public class DecisionModelInputGuardrail implements InputGuardrail {
 
         private DecisionModel decisionModel;
         private final Map<String, String> checks = new LinkedHashMap<>();
+        private final Map<String, Double> checkThresholds = new LinkedHashMap<>();
         private Double threshold;
 
         /**
@@ -103,6 +104,23 @@ public class DecisionModelInputGuardrail implements InputGuardrail {
          */
         public Builder check(String name, String question) {
             checks.put(name, question);
+            checkThresholds.remove(name);
+            return this;
+        }
+
+        /**
+         * Adds a check with its own threshold, which overrides the threshold of the guardrail (see
+         * {@link #threshold(Double)}) for this check: for example, a low threshold for a check that must rarely
+         * miss, and a high one for a check that should only reject clear cases. All checks are still answered in a
+         * single call.
+         *
+         * @param name      the name of the check, see {@link #check(String, String)}.
+         * @param question  a yes/no question where "yes" means the message must be rejected.
+         * @param threshold the probability of "yes", from 0 to 1, from which this check fails.
+         */
+        public Builder check(String name, String question, Double threshold) {
+            checks.put(name, question);
+            checkThresholds.put(name, threshold);
             return this;
         }
 
@@ -112,6 +130,7 @@ public class DecisionModelInputGuardrail implements InputGuardrail {
          */
         public Builder checks(Map<String, String> checks) {
             this.checks.clear();
+            this.checkThresholds.clear();
             if (checks != null) {
                 this.checks.putAll(checks);
             }
@@ -119,7 +138,8 @@ public class DecisionModelInputGuardrail implements InputGuardrail {
         }
 
         /**
-         * Sets the probability of "yes" from which a check fails.
+         * Sets the probability of "yes" from which a check fails, for the checks without their own threshold (see
+         * {@link #check(String, String, Double)}).
          * <p>
          * Default value is 0.5. A check fails when the probability of "yes" is greater than or equal to it. Unlike the
          * {@code minProbability} of components that select something, reaching it rejects the message.

@@ -18,7 +18,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * The yes/no checks of a decision model guardrail, all answered in a single call. A check fails when the probability
- * of "yes" reaches the threshold.
+ * of "yes" reaches its threshold: the threshold of the check, if set, otherwise the threshold of the guardrail.
  */
 final class DecisionModelChecks {
 
@@ -28,9 +28,13 @@ final class DecisionModelChecks {
 
     private final DecisionModel decisionModel;
     private final Map<String, YesNoQuestion> questions;
-    private final double threshold;
+    private final Map<String, Double> thresholds;
 
-    DecisionModelChecks(DecisionModel decisionModel, Map<String, String> questions, Double threshold) {
+    DecisionModelChecks(
+            DecisionModel decisionModel,
+            Map<String, String> questions,
+            Map<String, Double> checkThresholds,
+            Double threshold) {
         this.decisionModel = ensureNotNull(decisionModel, "decisionModel");
         Map<String, YesNoQuestion> yesNoQuestions = new LinkedHashMap<>();
         ensureNotEmpty(questions, "checks")
@@ -38,7 +42,14 @@ final class DecisionModelChecks {
                         ensureNotBlank(name, "check name"),
                         YesNoQuestion.of(ensureNotBlank(text, "question of check '%s'".formatted(name)))));
         this.questions = yesNoQuestions;
-        this.threshold = ensureBetween(getOrDefault(threshold, DEFAULT_THRESHOLD), 0, 1, "threshold");
+        double defaultThreshold = ensureBetween(getOrDefault(threshold, DEFAULT_THRESHOLD), 0, 1, "threshold");
+        Map<String, Double> thresholds = new LinkedHashMap<>();
+        yesNoQuestions.keySet().forEach(name -> thresholds.put(
+                name,
+                checkThresholds.containsKey(name)
+                        ? ensureBetween(checkThresholds.get(name), 0, 1, "threshold of check '%s'".formatted(name))
+                        : defaultThreshold));
+        this.thresholds = thresholds;
     }
 
     /**
@@ -56,7 +67,7 @@ final class DecisionModelChecks {
     private List<String> failedChecks(DecisionRequest.Builder request) {
         DecisionResponse response = decisionModel.decide(request.questions(questions).build());
         List<String> failedChecks = questions.keySet().stream()
-                .filter(name -> response.yesNo(name).isYes(threshold))
+                .filter(name -> response.yesNo(name).isYes(thresholds.get(name)))
                 .toList();
         if (log.isDebugEnabled()) {
             failedChecks.forEach(name -> log.debug(
