@@ -11,12 +11,16 @@ import dev.langchain4j.data.message.ChatMessageDeserializer;
 import dev.langchain4j.data.message.ChatMessageSerializer;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.ChatRequestOptions;
 import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
+import dev.langchain4j.model.chat.mock.ChatModelMock;
+import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
@@ -25,9 +29,11 @@ import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.response.ChatModelStreamingEvent;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.CompleteResponse;
+import dev.langchain4j.model.chat.response.PartialResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.decision.mock.DecisionModelMock;
 import dev.langchain4j.model.decision.response.ChoiceAnswer;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -39,44 +45,23 @@ import org.junit.jupiter.api.Test;
 
 class RoutingChatModelTest {
 
-    static class FakeChatModel implements ChatModel {
+    final ChatModelMock small =
+            ChatModelMock.thatAlwaysResponds("answer from small").withSupportedCapabilities(RESPONSE_FORMAT_JSON_SCHEMA);
+    final ChatModelMock large = ChatModelMock.thatAlwaysResponds("answer from large");
 
-        final String name;
-        final List<ChatRequest> requests = new CopyOnWriteArrayList<>();
-        final List<ChatModelListener> listeners = new ArrayList<>();
-        final Set<Capability> capabilities;
-        AiMessage reply;
+    static ChatModelRouter nonBlocking(ChatModelRouter router) {
+        return new ChatModelRouter() {
+            @Override
+            public ChatModelRoutingResult route(ChatModelRoutingRequest request) {
+                return router.route(request);
+            }
 
-        FakeChatModel(String name, Set<Capability> capabilities) {
-            this.name = name;
-            this.capabilities = capabilities;
-            this.reply = AiMessage.from("answer from " + name);
-        }
-
-        @Override
-        public ChatResponse doChat(ChatRequest chatRequest) {
-            requests.add(chatRequest);
-            return ChatResponse.builder().aiMessage(reply).build();
-        }
-
-        @Override
-        public CompletableFuture<ChatResponse> doChatAsync(ChatRequest chatRequest) {
-            return CompletableFuture.completedFuture(doChat(chatRequest));
-        }
-
-        @Override
-        public List<ChatModelListener> listeners() {
-            return listeners;
-        }
-
-        @Override
-        public Set<Capability> supportedCapabilities() {
-            return capabilities;
-        }
+            @Override
+            public CompletableFuture<ChatModelRoutingResult> routeAsync(ChatModelRoutingRequest request) {
+                return CompletableFuture.completedFuture(route(request));
+            }
+        };
     }
-
-    final FakeChatModel small = new FakeChatModel("small", Set.of(RESPONSE_FORMAT_JSON_SCHEMA));
-    final FakeChatModel large = new FakeChatModel("large", Set.of());
 
     static ChatModelRouter byLength() {
         return request -> {
@@ -104,8 +89,8 @@ class RoutingChatModelTest {
 
         assertThat(chatModel.chat("Hi!")).isEqualTo("answer from small");
         assertThat(chatModel.chat("Please analyze the attached quarterly report")).isEqualTo("answer from large");
-        assertThat(small.requests).hasSize(1);
-        assertThat(large.requests).hasSize(1);
+        assertThat(small.requests()).hasSize(1);
+        assertThat(large.requests()).hasSize(1);
     }
 
     @Test
@@ -184,7 +169,7 @@ class RoutingChatModelTest {
     void should_invoke_listeners_of_selected_model() {
 
         List<ChatRequest> observed = new ArrayList<>();
-        small.listeners.add(new ChatModelListener() {
+        small.withListeners(new ChatModelListener() {
             @Override
             public void onRequest(ChatModelRequestContext requestContext) {
                 observed.add(requestContext.chatRequest());
@@ -204,12 +189,17 @@ class RoutingChatModelTest {
                 .name("weather")
                 .arguments("{}")
                 .build();
-        small.reply = AiMessage.from(toolCall);
+        ChatModelMock small = ChatModelMock.thatAlwaysResponds(AiMessage.from(toolCall), AiMessage.from("It is sunny"));
         List<String> routed = new ArrayList<>();
-        ChatModel chatModel = routingModel(request -> {
-            routed.add("asked");
-            return ChatModelRoutingResult.route(routed.size() == 1 ? "simple" : "complex");
-        });
+        ChatModel chatModel = RoutingChatModel.builder()
+                .route("simple", small)
+                .route("complex", large)
+                .router(request -> {
+                    routed.add("asked");
+                    return ChatModelRoutingResult.route(routed.size() == 1 ? "simple" : "complex");
+                })
+                .defaultRoute("complex")
+                .build();
 
         UserMessage userMessage = UserMessage.from("Weather?");
         AiMessage toolCallMessage =
@@ -218,22 +208,21 @@ class RoutingChatModelTest {
         assertThat(toolCallMessage.attributes()).containsEntry(RoutingChatModel.ROUTE_ATTRIBUTE, "simple");
         toolCallMessage = (AiMessage) ChatMessageDeserializer.messageFromJson(
                 ChatMessageSerializer.messageToJson(toolCallMessage));
-        small.reply = AiMessage.from("It is sunny");
         ChatResponse response = chatModel.chat(ChatRequest.builder()
                 .messages(userMessage, toolCallMessage, ToolExecutionResultMessage.from(toolCall, "sunny"))
                 .build());
 
         assertThat(response.aiMessage().text()).isEqualTo("It is sunny");
         assertThat(routed).hasSize(1);
-        assertThat(small.requests).hasSize(2);
-        assertThat(large.requests).isEmpty();
+        assertThat(small.requests()).hasSize(2);
+        assertThat(large.requests()).isEmpty();
     }
 
     @Test
     void should_record_route_in_listener_attributes_and_response() {
 
         List<Object> routes = new ArrayList<>();
-        small.listeners.add(new ChatModelListener() {
+        small.withListeners(new ChatModelListener() {
             @Override
             public void onRequest(ChatModelRequestContext requestContext) {
                 routes.add(requestContext.attributes().get(RoutingChatModel.ROUTE_ATTRIBUTE));
@@ -291,7 +280,7 @@ class RoutingChatModelTest {
                 .build());
 
         assertThat(routed).hasSize(1);
-        assertThat(large.requests).hasSize(1);
+        assertThat(large.requests()).hasSize(1);
     }
 
     static ToolExecutionRequest toolCall() {
@@ -326,13 +315,13 @@ class RoutingChatModelTest {
                 .build());
 
         assertThat(routed).hasSize(1);
-        assertThat(large.requests).hasSize(1);
+        assertThat(large.requests()).hasSize(1);
     }
 
     @Test
     void should_record_route_in_async_response() {
 
-        ChatResponse response = routingModel(byLength())
+        ChatResponse response = routingModel(nonBlocking(byLength()))
                 .chatAsync(ChatRequest.builder().messages(UserMessage.from("Hi!")).build())
                 .join();
 
@@ -340,26 +329,18 @@ class RoutingChatModelTest {
     }
 
     @Test
-    void should_offload_routing_to_configured_executor() {
+    void should_fail_async_call_when_router_cannot_route_without_blocking() {
 
-        List<Runnable> tasks = new ArrayList<>();
-        ChatModel chatModel = RoutingChatModel.builder()
-                .route("simple", small)
-                .route("complex", large)
-                .router(request -> ChatModelRoutingResult.route("complex"))
-                .defaultRoute("simple")
-                .executor(task -> {
-                    tasks.add(task);
-                    task.run();
-                })
-                .build();
+        ChatModel chatModel = routingModel(request -> ChatModelRoutingResult.route("simple"));
 
-        ChatResponse response = chatModel
-                .chatAsync(ChatRequest.builder().messages(UserMessage.from("Hi!")).build())
-                .join();
-
-        assertThat(tasks).hasSize(1);
-        assertThat(response.aiMessage().text()).isEqualTo("answer from large");
+        assertThat(chatModel.chatAsync(ChatRequest.builder().messages(UserMessage.from("Hi!")).build()))
+                .failsWithin(Duration.ofSeconds(1))
+                .withThrowableThat()
+                .havingRootCause()
+                .isInstanceOf(AsyncNotSupportedException.class)
+                .withMessageContaining("routeAsync() is not implemented by")
+                .withMessageContaining("CompletableFuture.completedFuture(route(request))");
+        assertThat(small.requests()).isEmpty();
     }
 
     @Test
@@ -402,7 +383,7 @@ class RoutingChatModelTest {
     @Test
     void should_route_asynchronously() {
 
-        ChatModel chatModel = routingModel(byLength());
+        ChatModel chatModel = routingModel(nonBlocking(byLength()));
 
         ChatResponse response = chatModel
                 .chatAsync(ChatRequest.builder().messages(UserMessage.from("Hi!")).build())
@@ -468,7 +449,7 @@ class RoutingChatModelTest {
 
         List<ChatModelRoute> seen = new ArrayList<>();
         ChatModel chatModel = RoutingChatModel.builder()
-                .route("simple", "Short questions", new FakeChatModel("small", Set.of()))
+                .route("simple", "Short questions", ChatModelMock.thatAlwaysResponds("answer from small"))
                 .route("complex", "Everything else", large)
                 .router(request -> {
                     seen.addAll(request.routes());
@@ -492,21 +473,22 @@ class RoutingChatModelTest {
     }
 
     @Test
-    void should_route_on_default_executor_when_router_does_not_support_async() {
+    void should_fail_async_call_when_decision_model_does_not_support_async() {
 
         DecisionModelMock decisionModel = DecisionModelMock.thatAlwaysAnswers(Map.of(
                         "route", ChoiceAnswer.builder().value("simple").build()))
                 .withoutAsyncSupport();
         ChatModel chatModel = routingModel(new DecisionModelChatModelRouter(decisionModel));
 
-        ChatResponse response = chatModel
-                .chatAsync(ChatRequest.builder()
+        assertThat(chatModel.chatAsync(ChatRequest.builder()
                         .messages(UserMessage.from("Please analyze the attached quarterly report"))
-                        .build())
-                .join();
-
-        assertThat(response.aiMessage().text()).isEqualTo("answer from small");
-        assertThat(decisionModel.requests()).hasSize(1);
+                        .build()))
+                .failsWithin(Duration.ofSeconds(1))
+                .withThrowableThat()
+                .havingRootCause()
+                .isInstanceOf(AsyncNotSupportedException.class);
+        assertThat(small.requests()).isEmpty();
+        assertThat(large.requests()).isEmpty();
     }
 
     @Test
@@ -530,8 +512,8 @@ class RoutingChatModelTest {
                 .cancel(true);
 
         assertThat(route).isCancelled();
-        assertThat(small.requests).isEmpty();
-        assertThat(large.requests).isEmpty();
+        assertThat(small.requests()).isEmpty();
+        assertThat(large.requests()).isEmpty();
     }
 
     @Test
@@ -561,7 +543,7 @@ class RoutingChatModelTest {
     @Test
     void should_fail_async_call_when_routing_fails() {
 
-        CompletableFuture<ChatResponse> response = routingModel(request -> ChatModelRoutingResult.route("medium"))
+        CompletableFuture<ChatResponse> response = routingModel(nonBlocking(request -> ChatModelRoutingResult.route("medium")))
                 .chatAsync(ChatRequest.builder().messages(UserMessage.from("Hi!")).build());
 
         assertThat(response).failsWithin(java.time.Duration.ofSeconds(1))
@@ -606,50 +588,8 @@ class RoutingChatModelTest {
 
     // streaming
 
-    static class FakeStreamingChatModel implements StreamingChatModel {
-
-        final String name;
-        final List<ChatRequest> requests = new CopyOnWriteArrayList<>();
-
-        FakeStreamingChatModel(String name) {
-            this.name = name;
-        }
-
-        @Override
-        public void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
-            requests.add(chatRequest);
-            handler.onPartialResponse("answer from ");
-            handler.onPartialResponse(name);
-            handler.onCompleteResponse(ChatResponse.builder()
-                    .aiMessage(AiMessage.from("answer from " + name))
-                    .build());
-        }
-
-        @Override
-        public Flow.Publisher<ChatModelStreamingEvent> doChat(ChatRequest chatRequest) {
-            requests.add(chatRequest);
-            return subscriber -> subscriber.onSubscribe(new Flow.Subscription() {
-                boolean done;
-
-                @Override
-                public void request(long n) {
-                    if (!done) {
-                        done = true;
-                        subscriber.onNext(new CompleteResponse(ChatResponse.builder()
-                                .aiMessage(AiMessage.from("answer from " + name))
-                                .build()));
-                        subscriber.onComplete();
-                    }
-                }
-
-                @Override
-                public void cancel() {}
-            });
-        }
-    }
-
-    final FakeStreamingChatModel smallStreaming = new FakeStreamingChatModel("small");
-    final FakeStreamingChatModel largeStreaming = new FakeStreamingChatModel("large");
+    final StreamingChatModelMock smallStreaming = StreamingChatModelMock.thatAlwaysStreams(AiMessage.from("answer from small"));
+    final StreamingChatModelMock largeStreaming = StreamingChatModelMock.thatAlwaysStreams(AiMessage.from("answer from large"));
 
     RoutingStreamingChatModel routingStreamingModel(ChatModelRouter router) {
         return RoutingStreamingChatModel.builder()
@@ -657,53 +597,26 @@ class RoutingChatModelTest {
                 .route("complex", "Everything else", largeStreaming)
                 .router(router)
                 .defaultRoute("complex")
-                .executor(Runnable::run) // routers written as lambdas run on the executor, here on the calling thread
                 .build();
     }
 
     @Test
     void should_route_streaming_requests() {
 
-        StringBuilder partials = new StringBuilder();
-        List<ChatResponse> completed = new ArrayList<>();
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
 
-        routingStreamingModel(byLength()).chat("Hi!", new StreamingChatResponseHandler() {
-            @Override
-            public void onPartialResponse(String partialResponse) {
-                partials.append(partialResponse);
-            }
+        routingStreamingModel(byLength()).chat("Hi!", handler);
 
-            @Override
-            public void onCompleteResponse(ChatResponse completeResponse) {
-                completed.add(completeResponse);
-            }
-
-            @Override
-            public void onError(Throwable error) {
-                throw new AssertionError(error);
-            }
-        });
-
-        assertThat(partials).hasToString("answer from small");
-        assertThat(completed).hasSize(1);
-        assertThat(largeStreaming.requests).isEmpty();
+        ChatResponse response = handler.get();
+        assertThat(response.aiMessage().text()).isEqualTo("answer from small");
+        assertThat(response.aiMessage().attributes()).containsEntry(RoutingChatModel.ROUTE_ATTRIBUTE, "simple");
+        assertThat(largeStreaming.requests()).isEmpty();
     }
 
     @Test
     void should_record_route_and_keep_tool_calling_loop_when_streaming() {
 
-        List<ChatResponse> completed = new ArrayList<>();
-        StreamingChatResponseHandler handler = new StreamingChatResponseHandler() {
-            @Override
-            public void onCompleteResponse(ChatResponse completeResponse) {
-                completed.add(completeResponse);
-            }
-
-            @Override
-            public void onError(Throwable error) {
-                throw new AssertionError(error);
-            }
-        };
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
         RoutingStreamingChatModel model = routingStreamingModel(request -> ChatModelRoutingResult.route("complex"));
 
         model.chat(
@@ -715,12 +628,9 @@ class RoutingChatModelTest {
                         .build(),
                 handler);
 
-        assertThat(smallStreaming.requests).hasSize(1);
-        assertThat(largeStreaming.requests).isEmpty();
-        assertThat(completed)
-                .singleElement()
-                .satisfies(response -> assertThat(response.aiMessage().attributes())
-                        .containsEntry(RoutingChatModel.ROUTE_ATTRIBUTE, "simple"));
+        assertThat(handler.get().aiMessage().attributes()).containsEntry(RoutingChatModel.ROUTE_ATTRIBUTE, "simple");
+        assertThat(smallStreaming.requests()).hasSize(1);
+        assertThat(largeStreaming.requests()).isEmpty();
     }
 
     @Test
@@ -742,38 +652,53 @@ class RoutingChatModelTest {
     }
 
     @Test
-    void should_route_streaming_requests_with_async_router() {
+    void should_route_streaming_requests_with_handler_without_async_routing() {
 
-        CompletableFuture<ChatModelRoutingResult> route = new CompletableFuture<>();
-        ChatModelRouter asyncRouter = new ChatModelRouter() {
+        ChatModelRouter blockingRouter = new ChatModelRouter() {
             @Override
             public ChatModelRoutingResult route(ChatModelRoutingRequest request) {
-                throw new AssertionError("must not block");
+                return ChatModelRoutingResult.route("complex");
             }
 
             @Override
             public CompletableFuture<ChatModelRoutingResult> routeAsync(ChatModelRoutingRequest request) {
-                return route;
+                throw new AssertionError("streaming to a handler must route on the calling thread");
             }
         };
-        List<ChatResponse> completed = new ArrayList<>();
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
 
-        routingStreamingModel(asyncRouter).chat("Hi!", new StreamingChatResponseHandler() {
-            @Override
-            public void onCompleteResponse(ChatResponse completeResponse) {
-                completed.add(completeResponse);
-            }
+        routingStreamingModel(blockingRouter).chat("Hi!", handler);
 
-            @Override
-            public void onError(Throwable error) {
-                throw new AssertionError(error);
-            }
-        });
+        assertThat(handler.get().aiMessage().text()).isEqualTo("answer from large");
+    }
 
-        assertThat(completed).isEmpty();
-        route.complete(ChatModelRoutingResult.route("complex"));
-        assertThat(completed).singleElement().satisfies(response -> assertThat(response.aiMessage().text())
-                .isEqualTo("answer from large"));
+    @Test
+    void should_fail_reactive_stream_when_router_cannot_route_without_blocking() {
+
+        List<Throwable> errors = new ArrayList<>();
+
+        routingStreamingModel(request -> ChatModelRoutingResult.route("simple"))
+                .chat(ChatRequest.builder().messages(UserMessage.from("Hi!")).build())
+                .subscribe(new Flow.Subscriber<>() {
+                    @Override
+                    public void onSubscribe(Flow.Subscription subscription) {
+                        subscription.request(Long.MAX_VALUE);
+                    }
+
+                    @Override
+                    public void onNext(ChatModelStreamingEvent item) {}
+
+                    @Override
+                    public void onError(Throwable throwable) {
+                        errors.add(throwable);
+                    }
+
+                    @Override
+                    public void onComplete() {}
+                });
+
+        assertThat(errors).singleElement().isInstanceOf(AsyncNotSupportedException.class);
+        assertThat(smallStreaming.requests()).isEmpty();
     }
 
     @Test
@@ -817,25 +742,19 @@ class RoutingChatModelTest {
 
         assertThat(events).isEmpty();
         route.complete(ChatModelRoutingResult.route("simple"));
-        assertThat(events).singleElement().isInstanceOf(CompleteResponse.class);
+        assertThat(events).singleElement().isInstanceOf(PartialResponse.class);
     }
 
     @Test
     void should_report_error_of_selected_streaming_model_to_handler() {
 
-        StreamingChatModel failing = new StreamingChatModel() {
-            @Override
-            public void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
-                throw new IllegalArgumentException("unsupported parameter");
-            }
-        };
+        StreamingChatModel failing = new StreamingChatModelMock(new IllegalArgumentException("unsupported parameter"));
         List<Throwable> errors = new ArrayList<>();
 
         RoutingStreamingChatModel.builder()
                 .route("only", failing)
                 .router(request -> ChatModelRoutingResult.route("only"))
                 .defaultRoute("only")
-                .executor(Runnable::run)
                 .build()
                 .chat("Hi!", new StreamingChatResponseHandler() {
                     @Override
@@ -889,7 +808,7 @@ class RoutingChatModelTest {
         route.complete(ChatModelRoutingResult.route("simple"));
 
         assertThat(errors).singleElement().isInstanceOf(IllegalArgumentException.class);
-        assertThat(smallStreaming.requests).isEmpty();
+        assertThat(smallStreaming.requests()).isEmpty();
     }
 
     @Test
@@ -928,17 +847,17 @@ class RoutingChatModelTest {
                 });
 
         assertThat(route).isCancelled();
-        assertThat(smallStreaming.requests).isEmpty();
+        assertThat(smallStreaming.requests()).isEmpty();
     }
 
     @Test
     void should_route_reactive_streaming_requests_on_subscription() {
 
         List<String> routed = new ArrayList<>();
-        Flow.Publisher<ChatModelStreamingEvent> publisher = routingStreamingModel(request -> {
+        Flow.Publisher<ChatModelStreamingEvent> publisher = routingStreamingModel(nonBlocking(request -> {
                     routed.add("asked");
                     return ChatModelRoutingResult.route("complex");
-                })
+                }))
                 .chat(ChatRequest.builder()
                         .messages(UserMessage.from("Please analyze the attached quarterly report"))
                         .build());
@@ -967,9 +886,9 @@ class RoutingChatModelTest {
         });
 
         assertThat(routed).hasSize(1);
-        assertThat(events).singleElement().isInstanceOf(CompleteResponse.class);
-        assertThat(((CompleteResponse) events.get(0)).chatResponse().aiMessage().attributes())
+        assertThat(events).last().isInstanceOf(CompleteResponse.class);
+        assertThat(((CompleteResponse) events.get(events.size() - 1)).chatResponse().aiMessage().attributes())
                 .containsEntry(RoutingChatModel.ROUTE_ATTRIBUTE, "complex");
-        assertThat(largeStreaming.requests).hasSize(1);
+        assertThat(largeStreaming.requests()).hasSize(1);
     }
 }

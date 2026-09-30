@@ -55,9 +55,9 @@ import org.slf4j.LoggerFactory;
  * route can handle the request (for example, the only route supporting a JSON schema response format), that route is
  * selected without calling the decision model.
  * <p>
- * {@link #routeAsync(ChatModelRoutingRequest)} uses {@link DecisionModel#decideAsync(DecisionRequest)}. If the
- * decision model does not support asynchronous calls, the routing chat models call
- * {@link #route(ChatModelRoutingRequest)} on the default executor instead.
+ * {@link #routeAsync(ChatModelRoutingRequest)} uses {@link DecisionModel#decideAsync(DecisionRequest)}, so it fails
+ * with an {@link dev.langchain4j.exception.AsyncNotSupportedException} if the decision model does not support
+ * asynchronous calls.
  *
  * @since 1.21.0
  */

@@ -3,11 +3,9 @@ package dev.langchain4j.decision.it;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
-import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.chat.router.DecisionModelChatModelRouter;
 import dev.langchain4j.model.chat.router.RoutingChatModel;
 import dev.langchain4j.model.decision.DecisionModel;
@@ -59,8 +57,8 @@ class DecisionModelIntegrationsIT {
     @Test
     void should_route_chat_requests_by_description() {
 
-        ChatModel small = new FixedChatModel("small");
-        ChatModel large = new FixedChatModel("large");
+        ChatModel small = ChatModelMock.thatAlwaysResponds("small");
+        ChatModel large = ChatModelMock.thatAlwaysResponds("large");
         ChatModel chatModel = RoutingChatModel.builder()
                 .route("simple", "Greetings, small talk and short factual questions", small)
                 .route("complex", "Writing or debugging code, multi-step reasoning, detailed analysis", large)
@@ -78,28 +76,14 @@ class DecisionModelIntegrationsIT {
 
         ChatModel chatModel = RoutingChatModel.builder()
                 .route("simple", List.of("Greetings and small talk", "Store opening hours", "Order tracking"),
-                        new FixedChatModel("small"))
+                        ChatModelMock.thatAlwaysResponds("small"))
                 .route("complex", List.of("Software debugging", "Contract law", "Tax planning"),
-                        new FixedChatModel("large"))
+                        ChatModelMock.thatAlwaysResponds("large"))
                 .router(new DecisionModelChatModelRouter(decisionModel))
                 .defaultRoute("complex")
                 .build();
 
         assertThat(chatModel.chat("Where is my package? Order 5521")).isEqualTo("small");
         assertThat(chatModel.chat("My landlord wants to keep the whole deposit for a scratch")).isEqualTo("large");
-    }
-
-    static class FixedChatModel implements ChatModel {
-
-        private final String answer;
-
-        FixedChatModel(String answer) {
-            this.answer = answer;
-        }
-
-        @Override
-        public ChatResponse doChat(ChatRequest chatRequest) {
-            return ChatResponse.builder().aiMessage(AiMessage.from(answer)).build();
-        }
     }
 }

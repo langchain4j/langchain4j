@@ -194,11 +194,6 @@ own bounded `Executor` (see below) if that matters to you.
 This applies to `@Tool`-annotated methods. A hand-written `ToolExecutor` that does not override `executeAsync`
 fails loudly with an `AsyncNotSupportedException` instead, like any other component that has not opted in.
 
-Chat model routing is the other exception: when the router of a `RoutingChatModel` or `RoutingStreamingChatModel`
-does not implement `routeAsync(...)` (for example, a router written as a lambda), its `route(...)` is run on the
-offload executor, or on the executor configured with `executor(...)` on the builder.
-See [Model Routing](/tutorials/model-routing).
-
 Tools run **concurrently** by default in the asynchronous and reactive modes. To run them one at a time, pass a
 single-threaded executor:
 
@@ -336,6 +331,7 @@ interaction fails the call the same way. In practice that means:
 | Content retriever, query router, aggregator | `retrieveAsync`, `routeAsync`, `aggregateAsync` | opt into offloading instead with `offloadBlocking(true)` |
 | Embedding store | `searchAsync` | as above, via the retriever's `offloadBlocking(true)` |
 | Custom `ToolExecutor` | `executeAsync` | `@Tool`-annotated methods are offloaded for you |
+| Chat model router ([`RoutingChatModel`](/tutorials/model-routing)) | `routeAsync` | `DecisionModelChatModelRouter` does, if its decision model supports `decideAsync` |
 
 A guardrail that does no blocking work satisfies the contract in one line:
 

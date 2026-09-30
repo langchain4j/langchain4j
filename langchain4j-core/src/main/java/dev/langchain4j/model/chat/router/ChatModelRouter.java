@@ -36,15 +36,18 @@ public interface ChatModelRouter {
      * asynchronously, override it.
      * <p>
      * The default returns a future failed with an {@link dev.langchain4j.exception.AsyncNotSupportedException}: the
-     * routing chat models then call {@link #route(ChatModelRoutingRequest)} on an executor, so that a router that
-     * blocks (for example, one that looks up the user in a database) never blocks the calling thread, which may be an
-     * event loop.
+     * non-blocking calls of the routing chat models ({@code chatAsync(...)}, and streaming to a {@code Publisher})
+     * then fail. A router that decides without blocking, for example with simple rules, can implement this method by
+     * returning {@code CompletableFuture.completedFuture(route(request))}; a router that blocks, for example one that
+     * looks up the user in a database, can run {@link #route(ChatModelRoutingRequest)} on an executor of its choice.
      *
      * @param request the chat request to route and the routes that can handle it. Never {@code null}.
      * @return a future of the result, see {@link #route(ChatModelRoutingRequest)}.
      */
     default CompletableFuture<ChatModelRoutingResult> routeAsync(ChatModelRoutingRequest request) {
-        return AsyncNotSupported.failedFuture(getClass(), "routeAsync");
+        return AsyncNotSupported.failedFuture("routeAsync() is not implemented by " + getClass().getName()
+                + ". If route() does not block, implement routeAsync() by returning"
+                + " CompletableFuture.completedFuture(route(request))");
     }
 
     /**

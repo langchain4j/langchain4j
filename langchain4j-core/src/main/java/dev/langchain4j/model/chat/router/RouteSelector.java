@@ -1,7 +1,6 @@
 package dev.langchain4j.model.chat.router;
 
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
-import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
@@ -11,8 +10,6 @@ import static dev.langchain4j.model.chat.router.RoutingChatModel.ROUTE_ATTRIBUTE
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
-import dev.langchain4j.exception.AsyncNotSupportedException;
-import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.ChatRequestOptions;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -27,7 +24,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Executor;
 import java.util.function.Function;
 
 /**
@@ -50,14 +46,12 @@ final class RouteSelector<M> {
     private final ChatModelRouter router;
     private final String defaultRoute;
     private final Function<M, Set<Capability>> capabilities;
-    private final Executor executor;
 
     RouteSelector(
             List<Route<M>> routes,
             ChatModelRouter router,
             String defaultRoute,
-            Function<M, Set<Capability>> capabilities,
-            Executor executor) {
+            Function<M, Set<Capability>> capabilities) {
         Map<String, M> models = new LinkedHashMap<>();
         List<ChatModelRoute> chatModelRoutes = new ArrayList<>();
         for (Route<M> route : ensureNotEmpty(routes, "routes")) {
@@ -78,7 +72,6 @@ final class RouteSelector<M> {
         this.router = ensureNotNull(router, "router");
         this.defaultRoute = defaultRoute;
         this.capabilities = capabilities;
-        this.executor = executor;
         router.validate(this.routes);
     }
 
@@ -99,41 +92,13 @@ final class RouteSelector<M> {
             }
             List<ChatModelRoute> candidates = candidates(chatRequest);
             ChatModelRoutingRequest routingRequest = routingRequest(chatRequest, candidates, options);
-            CompletableFuture<ChatModelRoutingResult> routed = routeAsyncOrOffload(routingRequest);
+            CompletableFuture<ChatModelRoutingResult> routed = router.routeAsync(routingRequest);
             CompletableFuture<String> result = routed.thenApply(routingResult -> validate(routingResult, candidates));
             propagateCancellation(result, routed);
             return result;
         } catch (Exception e) {
             return CompletableFuture.failedFuture(e);
         }
-    }
-
-    private CompletableFuture<ChatModelRoutingResult> routeAsyncOrOffload(ChatModelRoutingRequest routingRequest) {
-        CompletableFuture<ChatModelRoutingResult> route;
-        try {
-            route = router.routeAsync(routingRequest);
-        } catch (AsyncNotSupportedException e) {
-            return offload(routingRequest);
-        }
-        CompletableFuture<ChatModelRoutingResult> result = route.handle((routingResult, error) -> {
-                    if (error == null) {
-                        return CompletableFuture.completedFuture(routingResult);
-                    }
-                    Throwable cause = unwrapCompletionException(error);
-                    if (cause instanceof AsyncNotSupportedException) {
-                        return offload(routingRequest);
-                    }
-                    return CompletableFuture.<ChatModelRoutingResult>failedFuture(cause);
-                })
-                .thenCompose(Function.identity());
-        propagateCancellation(result, route);
-        return result;
-    }
-
-    private CompletableFuture<ChatModelRoutingResult> offload(ChatModelRoutingRequest routingRequest) {
-        return CompletableFuture.supplyAsync(
-                () -> router.route(routingRequest),
-                executor != null ? executor : DefaultExecutorProvider.getDefaultExecutor());
     }
 
     M model(String routeName) {

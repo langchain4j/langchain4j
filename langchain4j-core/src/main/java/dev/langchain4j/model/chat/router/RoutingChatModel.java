@@ -14,7 +14,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Executor;
 
 /**
  * A {@link ChatModel} that sends each request to one of several chat models, as decided by a
@@ -54,9 +53,9 @@ import java.util.concurrent.Executor;
  * apply to each request.
  * <p>
  * The asynchronous method ({@link #chatAsync(ChatRequest)}) selects the route with
- * {@link ChatModelRouter#routeAsync(ChatModelRoutingRequest)}. Routers that do not implement it, such as routers
- * written as lambdas, run on an executor (see {@link Builder#executor(Executor)}), so the calling thread is never
- * blocked by the router.
+ * {@link ChatModelRouter#routeAsync(ChatModelRoutingRequest)}, so it never blocks. A router that does not implement it,
+ * such as a router written as a lambda, fails the call with an
+ * {@link dev.langchain4j.exception.AsyncNotSupportedException}.
  *
  * @see RoutingStreamingChatModel
  * @since 1.21.0
@@ -77,7 +76,7 @@ public class RoutingChatModel implements ChatModel {
 
     protected RoutingChatModel(Builder builder) {
         this.selector = new RouteSelector<>(
-                builder.routes, builder.router, builder.defaultRoute, ChatModel::supportedCapabilities, builder.executor);
+                builder.routes, builder.router, builder.defaultRoute, ChatModel::supportedCapabilities);
     }
 
     @Override
@@ -157,7 +156,6 @@ public class RoutingChatModel implements ChatModel {
         private final List<RouteSelector.Route<ChatModel>> routes = new ArrayList<>();
         private ChatModelRouter router;
         private String defaultRoute;
-        private Executor executor;
 
         /**
          * Adds a route without a description, for routers that do not decide based on descriptions.
@@ -213,19 +211,6 @@ public class RoutingChatModel implements ChatModel {
          */
         public Builder defaultRoute(String defaultRoute) {
             this.defaultRoute = defaultRoute;
-            return this;
-        }
-
-        /**
-         * Sets the executor that runs the router when it cannot route without blocking (its
-         * {@link ChatModelRouter#routeAsync(ChatModelRoutingRequest)} fails with an
-         * {@link dev.langchain4j.exception.AsyncNotSupportedException}).
-         * <p>
-         * By default, the default executor of LangChain4j is used
-         * ({@link dev.langchain4j.internal.DefaultExecutorProvider}).
-         */
-        public Builder executor(Executor executor) {
-            this.executor = executor;
             return this;
         }
 

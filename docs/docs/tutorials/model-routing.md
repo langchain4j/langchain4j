@@ -92,11 +92,35 @@ ChatModel chatModel = RoutingChatModel.builder()
 ```
 
 The router receives the `ChatRequest` and the routes that can handle it (`ChatModelRoute`: name and description).
-The asynchronous and streaming methods use `routeAsync(...)`. By default, it is not implemented, so `route(...)` is
-called on an executor: a router that blocks (for example, one that looks up the user in a database) never blocks the
-calling thread. A router that can route without blocking, for example by calling a remote service asynchronously, can
-implement `routeAsync(...)` to avoid the thread switch. A router can also check the routes when the routing chat model
-is created, by implementing `validate(...)`.
+A router can also check the routes when the routing chat model is created, by implementing `validate(...)`.
+
+### Asynchronous calls
+
+`chat(...)` and streaming with a `StreamingChatResponseHandler` call `route(...)` on the calling thread.
+The non-blocking methods, `chatAsync(...)` and streaming to a `Publisher` (`StreamingChatModel.chat(ChatRequest)`),
+call `routeAsync(...)` instead, so that routing never blocks. `routeAsync(...)` is not implemented by default,
+so a router written as a lambda makes these calls fail with an `AsyncNotSupportedException`.
+To use such a router in non-blocking calls, implement `routeAsync(...)`:
+
+```java
+ChatModelRouter router = new ChatModelRouter() {
+
+    @Override
+    public ChatModelRoutingResult route(ChatModelRoutingRequest request) {
+        return ChatModelRoutingResult.route(
+                request.chatRequest().messages().size() > 20 ? "complex" : "simple");
+    }
+
+    @Override
+    public CompletableFuture<ChatModelRoutingResult> routeAsync(ChatModelRoutingRequest request) {
+        return CompletableFuture.completedFuture(route(request)); // route(...) does not block
+    }
+};
+```
+
+A router that blocks, for example one that looks up the user in a database, can instead run `route(...)` on an
+executor of its choice with `CompletableFuture.supplyAsync(() -> route(request), executor)`, or better, use a
+non-blocking client. `DecisionModelChatModelRouter` implements `routeAsync(...)` with `DecisionModel.decideAsync(...)`.
 
 ## How requests are routed
 
@@ -114,13 +138,9 @@ is created, by implementing `validate(...)`.
   the router only sees those routes, and if the default route does not declare it, the first route that does is used.
   If no route declares the capability, all routes remain candidates, and the selected model accepts or rejects the
   request itself, as when it is called directly.
-- `chatAsync(...)` and streaming select the route with `ChatModelRouter.routeAsync(...)`.
-  `DecisionModelChatModelRouter` implements it with `DecisionModel.decideAsync(...)`; routers that don't implement it,
-  and decision models that do not support asynchronous calls, are called on the default executor instead
-  (or the one configured with `executor(...)`).
 - If the router returns an unknown route, the request fails with an `IllegalStateException`.
-- The selected model is called on the thread that completed the routing: the calling thread for synchronous routers,
-  the thread of the decision model's response, or the executor configured with `executor(...)`.
+- The selected model is called on the thread that completed the routing: the calling thread, or, in non-blocking
+  calls, the thread that completed `routeAsync(...)` (for example, the thread of the decision model's response).
 - When routing chat models are nested, the name stored in the `AiMessage` is the one of the outer routing chat model.
   In a tool-calling loop, the inner routing chat model then does not find its own route, so it asks its router again,
   which can select another model. If an inner route has the same name as an outer route, the inner routing chat model

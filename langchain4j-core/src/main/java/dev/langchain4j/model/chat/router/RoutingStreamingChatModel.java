@@ -23,7 +23,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Executor;
 import java.util.concurrent.Flow.Publisher;
 import java.util.concurrent.Flow.Subscriber;
 import java.util.concurrent.Flow.Subscription;
@@ -42,10 +41,13 @@ import org.slf4j.LoggerFactory;
  *         .build();
  * }</pre>
  * See {@link RoutingChatModel} for how requests are routed and where the selected route is recorded (with
- * {@link #chat(ChatRequest)}, which takes no options, only in the attributes of the response). The route is selected
- * with {@link ChatModelRouter#routeAsync(ChatModelRoutingRequest)}. Routers that do not implement it, such as routers
- * written as lambdas, run on an executor (see {@link Builder#executor(Executor)}), so the calling thread is never
- * blocked by the router.
+ * {@link #chat(ChatRequest)}, which takes no options, only in the attributes of the response).
+ * <p>
+ * With a {@link StreamingChatResponseHandler}, the route is selected on the calling thread with
+ * {@link ChatModelRouter#route(ChatModelRoutingRequest)}, before streaming starts. The non-blocking
+ * {@link #chat(ChatRequest)} returning a {@link Publisher} selects it with
+ * {@link ChatModelRouter#routeAsync(ChatModelRoutingRequest)} instead: a router that does not implement it, such as a
+ * router written as a lambda, fails the stream with an {@link dev.langchain4j.exception.AsyncNotSupportedException}.
  *
  * @since 1.21.0
  */
@@ -61,29 +63,26 @@ public class RoutingStreamingChatModel implements StreamingChatModel {
                 builder.routes,
                 builder.router,
                 builder.defaultRoute,
-                StreamingChatModel::supportedCapabilities,
-                builder.executor);
+                StreamingChatModel::supportedCapabilities);
     }
 
     @Override
     public void chat(ChatRequest request, ChatRequestOptions options, StreamingChatResponseHandler handler) {
         ensureNotNull(request, "request");
         ensureNotNull(handler, "handler");
-        selector.selectAsync(request, options).whenComplete((routeName, routingError) -> {
-            if (routingError != null) {
-                onError(handler, unwrapCompletionException(routingError));
-                return;
-            }
-            try {
-                selector.model(routeName)
-                        .chat(
-                                request,
-                                RouteSelector.withRoute(options, routeName),
-                                new RouteRecordingHandler(handler, routeName));
-            } catch (Exception e) {
-                onError(handler, e);
-            }
-        });
+        String routeName;
+        try {
+            routeName = selector.select(request, options);
+        } catch (Exception e) {
+            onError(handler, e);
+            return;
+        }
+        try {
+            selector.model(routeName)
+                    .chat(request, RouteSelector.withRoute(options, routeName), new RouteRecordingHandler(handler, routeName));
+        } catch (Exception e) {
+            onError(handler, e);
+        }
     }
 
     private static void onError(StreamingChatResponseHandler handler, Throwable error) {
@@ -354,7 +353,6 @@ public class RoutingStreamingChatModel implements StreamingChatModel {
         private final List<RouteSelector.Route<StreamingChatModel>> routes = new ArrayList<>();
         private ChatModelRouter router;
         private String defaultRoute;
-        private Executor executor;
 
         /**
          * Adds a route without a description, for routers that do not decide based on descriptions.
@@ -410,19 +408,6 @@ public class RoutingStreamingChatModel implements StreamingChatModel {
          */
         public Builder defaultRoute(String defaultRoute) {
             this.defaultRoute = defaultRoute;
-            return this;
-        }
-
-        /**
-         * Sets the executor that runs the router when it cannot route without blocking (its
-         * {@link ChatModelRouter#routeAsync(ChatModelRoutingRequest)} fails with an
-         * {@link dev.langchain4j.exception.AsyncNotSupportedException}).
-         * <p>
-         * By default, the default executor of LangChain4j is used
-         * ({@link dev.langchain4j.internal.DefaultExecutorProvider}).
-         */
-        public Builder executor(Executor executor) {
-            this.executor = executor;
             return this;
         }
 
