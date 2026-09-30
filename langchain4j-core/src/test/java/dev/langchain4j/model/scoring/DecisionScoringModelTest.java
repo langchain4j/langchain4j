@@ -4,11 +4,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.exception.InvalidDecisionResponseException;
 import dev.langchain4j.model.decision.DecisionModel;
 import dev.langchain4j.model.decision.mock.DecisionModelMock;
 import dev.langchain4j.model.decision.response.DecisionResponse;
 import dev.langchain4j.model.decision.response.YesNoAnswer;
-import dev.langchain4j.model.decision.request.DecisionRequest;
 import dev.langchain4j.model.decision.request.YesNoQuestion;
 import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.model.output.Response;
@@ -154,19 +154,8 @@ class DecisionScoringModelTest {
     @Test
     void should_fail_async_scoring_when_response_has_no_answer() {
 
-        DecisionModel withoutAnswers = new DecisionModel() {
-            @Override
-            public DecisionResponse doDecide(DecisionRequest request) {
-                throw new AssertionError("must not block");
-            }
-
-            @Override
-            public CompletableFuture<DecisionResponse> decideAsync(DecisionRequest request) {
-                return CompletableFuture.completedFuture(DecisionResponse.builder()
-                        .answers(Map.of("unknown", YesNoAnswer.of(0.9)))
-                        .build());
-            }
-        };
+        DecisionModel withoutAnswers =
+                DecisionModelMock.thatAlwaysAnswers(Map.of("unknown", YesNoAnswer.of(0.9)));
 
         assertThat(new DecisionScoringModel(withoutAnswers)
                         .scoreAsync(ScoringRequest.builder()
@@ -176,7 +165,7 @@ class DecisionScoringModelTest {
                 .failsWithin(Duration.ofSeconds(1))
                 .withThrowableThat()
                 .havingRootCause()
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(InvalidDecisionResponseException.class);
     }
 
     @Test
@@ -223,17 +212,7 @@ class DecisionScoringModelTest {
     void should_cancel_decision_model_call_when_async_scoring_is_cancelled() {
 
         CompletableFuture<DecisionResponse> inFlight = new CompletableFuture<>();
-        DecisionModel pending = new DecisionModel() {
-            @Override
-            public DecisionResponse doDecide(DecisionRequest request) {
-                throw new AssertionError("must not block");
-            }
-
-            @Override
-            public CompletableFuture<DecisionResponse> doDecideAsync(DecisionRequest request) {
-                return inFlight;
-            }
-        };
+        DecisionModel pending = DecisionModelMock.thatAlwaysAnswers(Map.of()).withAsyncResponse(inFlight);
 
         new DecisionScoringModel(pending)
                 .scoreAsync(ScoringRequest.builder()

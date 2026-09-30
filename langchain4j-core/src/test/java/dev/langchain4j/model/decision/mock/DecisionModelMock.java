@@ -32,6 +32,7 @@ public class DecisionModelMock implements DecisionModel {
     private final List<DecisionRequest> requests = synchronizedList(new ArrayList<>());
     private TokenUsage tokenUsage;
     private boolean asyncSupported = true;
+    private CompletableFuture<DecisionResponse> asyncResponse;
 
     public DecisionModelMock(Function<DecisionRequest, Map<String, ? extends DecisionAnswer>> answers) {
         this.answers = ensureNotNull(answers, "answers");
@@ -55,6 +56,15 @@ public class DecisionModelMock implements DecisionModel {
         return this;
     }
 
+    /**
+     * Makes {@link #decideAsync(DecisionRequest)} return the given future instead of answering, for example a future
+     * that is never completed, to test cancellation.
+     */
+    public DecisionModelMock withAsyncResponse(CompletableFuture<DecisionResponse> asyncResponse) {
+        this.asyncResponse = asyncResponse;
+        return this;
+    }
+
     @Override
     public DecisionResponse doDecide(DecisionRequest request) {
         requests.add(request);
@@ -67,6 +77,9 @@ public class DecisionModelMock implements DecisionModel {
             return AsyncNotSupported.failedFuture(getClass(), "doDecideAsync");
         }
         requests.add(request);
+        if (asyncResponse != null) {
+            return asyncResponse;
+        }
         try {
             return CompletableFuture.completedFuture(respond(request));
         } catch (RuntimeException e) {

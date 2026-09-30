@@ -81,6 +81,8 @@ public class StreamingChatModelMock implements StreamingChatModel {
 
                 private List<ChatModelStreamingEvent> events;
                 private int next;
+                private long demand;
+                private boolean emitting;
                 private boolean done;
 
                 @Override
@@ -93,6 +95,19 @@ public class StreamingChatModelMock implements StreamingChatModel {
                         subscriber.onError(new IllegalArgumentException("Demand must be positive, got " + n));
                         return;
                     }
+                    demand = demand + n < 0 ? Long.MAX_VALUE : demand + n;
+                    if (emitting) {
+                        return; // called from onNext: the loop below emits the additional demand
+                    }
+                    emitting = true;
+                    try {
+                        emit();
+                    } finally {
+                        emitting = false;
+                    }
+                }
+
+                private void emit() {
                     if (exception != null) {
                         done = true;
                         subscriber.onError(exception);
@@ -101,10 +116,11 @@ public class StreamingChatModelMock implements StreamingChatModel {
                     if (events == null) {
                         events = toEvents(ensureNotNull(aiMessages.poll(), "aiMessage"));
                     }
-                    for (long i = 0; i < n && next < events.size(); i++) {
+                    while (!done && demand > 0 && next < events.size()) {
+                        demand--;
                         subscriber.onNext(events.get(next++));
                     }
-                    if (next == events.size()) {
+                    if (!done && next == events.size()) {
                         done = true;
                         subscriber.onComplete();
                     }

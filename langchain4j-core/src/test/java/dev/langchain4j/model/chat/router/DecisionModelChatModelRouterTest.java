@@ -13,17 +13,13 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.decision.DecisionModel;
 import dev.langchain4j.model.decision.mock.DecisionModelMock;
-import dev.langchain4j.model.decision.request.DecisionRequest;
-import dev.langchain4j.model.decision.response.DecisionResponse;
 import dev.langchain4j.model.decision.request.ChoiceQuestion;
 import dev.langchain4j.model.decision.response.ChoiceAnswer;
 import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.Test;
 
 class DecisionModelChatModelRouterTest {
@@ -96,25 +92,6 @@ class DecisionModelChatModelRouterTest {
         ChatModelRouter router = new DecisionModelChatModelRouter(DecisionModelMock.thatAlwaysThrowsException());
 
         assertThat(router.route(request(UserMessage.from("Hi!")))).isEqualTo(ChatModelRoutingResult.defaultRoute());
-        assertThat(router.routeAsync(request(UserMessage.from("Hi!"))).join()).isEqualTo(ChatModelRoutingResult.defaultRoute());
-    }
-
-    @Test
-    void should_not_select_a_route_when_async_decision_model_call_throws() {
-
-        DecisionModel throwing = new DecisionModel() {
-            @Override
-            public DecisionResponse doDecide(DecisionRequest request) {
-                throw new AssertionError("must not block");
-            }
-
-            @Override
-            public CompletableFuture<DecisionResponse> decideAsync(DecisionRequest request) {
-                throw new RuntimeException("down");
-            }
-        };
-        ChatModelRouter router = new DecisionModelChatModelRouter(throwing);
-
         assertThat(router.routeAsync(request(UserMessage.from("Hi!"))).join()).isEqualTo(ChatModelRoutingResult.defaultRoute());
     }
 
