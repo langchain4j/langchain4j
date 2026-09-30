@@ -49,8 +49,10 @@ package dev.langchain4j.exception;
  * a marked exception deliberately hides it.
  * <p>
  * The handler used when no handler is configured on {@code AiServices}, as well as
- * {@code ToolExecutionErrorHandler.sendExceptionMessageToLlm()} and
- * {@code ToolExecutionErrorHandler.failInvocationUnlessVisibleToLlm()}, send {@link #messageForLlm()} to the LLM.
+ * {@code ToolExecutionErrorHandler.sendExceptionMessageToLlm()},
+ * {@code ToolExecutionErrorHandler.failInvocationUnlessVisibleToLlm()} and
+ * {@code ToolExecutionErrorHandler.sendGenericMessageToLlmUnlessVisibleToLlm(String)},
+ * send {@link #messageForLlm()} to the LLM.
  * {@code ToolExecutionErrorHandler.failInvocation()} fails the invocation regardless of this interface.
  * A handler you write yourself decides for itself whether to look at it.
  * <p>
@@ -96,8 +98,10 @@ public interface ToolErrorVisibleToLlm {
      * so that the technical details are still available in your logs.
      *
      * @param message the text to send to the LLM, written for the LLM. Must not be blank.
-     * @param cause   the original error. It is not sent to the LLM, and LangChain4j does not log it:
-     *                once the error is handled, the AI Service invocation continues normally.
+     * @param cause   the original error. It is not sent to the LLM. The handlers you configure do not log it,
+     *                since the AI Service invocation continues normally once the error is handled, but the
+     *                handler used by synchronous AI Services when none is configured logs every tool failure,
+     *                including this cause, at WARN level.
      *                Log it yourself, before throwing, if you need it in your own logs.
      * @return the exception, to be thrown by the tool
      * @throws IllegalArgumentException if {@code message} is blank

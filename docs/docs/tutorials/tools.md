@@ -1585,6 +1585,7 @@ so for those you do not have to write a handler yourself:
 | `ToolArgumentsErrorHandler.failInvocation()` | The error is rethrown: the AI Service invocation fails and nothing is sent to the LLM. |
 | `ToolExecutionErrorHandler.sendExceptionMessageToLlm()` | The message of the exception thrown by the tool is sent to the LLM (or the text from `messageForLlm()`, if the exception implements `ToolErrorVisibleToLlm`), so that it can react to it. The AI Service invocation continues. ⚠️ See the warning below. |
 | `ToolExecutionErrorHandler.failInvocationUnlessVisibleToLlm()` | Only exceptions implementing `ToolErrorVisibleToLlm` are shown to the LLM, using the text they provide. Every other exception fails the AI Service invocation. See [Deciding per exception what the LLM sees](#deciding-per-exception-what-the-llm-sees). |
+| `ToolExecutionErrorHandler.sendGenericMessageToLlmUnlessVisibleToLlm(String)` | Exceptions implementing `ToolErrorVisibleToLlm` are shown to the LLM, using the text they provide. For every other exception, the given generic message is sent to the LLM, and the exception is logged at WARN level. The AI Service invocation continues. |
 | `ToolExecutionErrorHandler.failInvocation()` | The exception is rethrown: the AI Service invocation fails and nothing is sent to the LLM. |
 
 ```java
@@ -1596,8 +1597,8 @@ Assistant assistant = AiServices.builder(Assistant.class)
         .build();
 ```
 
-For anything else - sending a fixed generic message, sanitizing the error before the LLM sees it,
-or deciding based on the type of the error - write the handler yourself, as described in the sections below.
+For anything else - sanitizing the error before the LLM sees it, or deciding based on the type of the error -
+write the handler yourself, as described in the sections below.
 
 :::warning Sending exception messages to the LLM can expose sensitive data
 The message of an exception is usually written for developers, not for the LLM: it can contain internal

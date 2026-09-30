@@ -1,5 +1,7 @@
 package dev.langchain4j.service.tool;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+
 import dev.langchain4j.exception.ToolErrorVisibleToLlm;
 import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.service.AiServices;
@@ -105,4 +107,33 @@ public interface ToolExecutionErrorHandler {
         };
     }
 
+    /**
+     * Returns a handler that sends {@link ToolErrorVisibleToLlm#messageForLlm()} to the LLM when the tool
+     * threw an exception implementing {@link ToolErrorVisibleToLlm}, and the given generic message for every
+     * other exception. The AI Service invocation continues in both cases.
+     * <p>
+     * Like {@link #failInvocationUnlessVisibleToLlm()}, this never sends the message of an exception the LLM
+     * was not meant to see. Unlike it, an unexpected failure does not fail the whole AI Service invocation:
+     * the LLM learns that the tool failed and can try something else or tell the user.
+     * The price is that such a failure no longer reaches your code as an exception, so this handler logs
+     * every exception that does not implement {@link ToolErrorVisibleToLlm} at WARN level, together with
+     * its stack trace.
+     *
+     * @param genericMessage the text to send to the LLM for an exception that does not implement
+     *                       {@link ToolErrorVisibleToLlm}, for example
+     *                       {@code "The tool failed because of an internal error."}. Must not be blank.
+     * @see ToolErrorVisibleToLlm
+     * @since 1.21.0
+     */
+    static ToolExecutionErrorHandler sendGenericMessageToLlmUnlessVisibleToLlm(String genericMessage) {
+        ensureNotBlank(genericMessage, "genericMessage");
+        return (error, context) -> {
+            ToolErrorHandlerResult result = ToolErrors.messageForLlm(error, context);
+            if (result == null) {
+                ToolErrors.logErrorHiddenFromLlm(error, context);
+                return ToolErrorHandlerResult.text(genericMessage);
+            }
+            return result;
+        };
+    }
 }

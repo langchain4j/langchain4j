@@ -108,6 +108,39 @@ class ToolErrorHandlerFactoriesTest {
                 .isSameAs(error);
     }
 
+    @Test
+    void send_generic_message_unless_visible_to_llm_should_send_the_message_written_for_the_llm() {
+
+        assertThat(ToolExecutionErrorHandler.sendGenericMessageToLlmUnlessVisibleToLlm("The tool failed.")
+                        .handle(new OrderNotFoundException(), CONTEXT))
+                .isEqualTo(ToolErrorHandlerResult.text("There is no order with this ID."));
+    }
+
+    @Test
+    void send_generic_message_unless_visible_to_llm_should_send_the_generic_message_for_any_other_exception() {
+
+        RuntimeException error = new IllegalStateException("jdbc:postgresql://db:5432/prod?password=hunter2");
+
+        assertThat(ToolExecutionErrorHandler.sendGenericMessageToLlmUnlessVisibleToLlm("The tool failed.")
+                        .handle(error, CONTEXT))
+                .isEqualTo(ToolErrorHandlerResult.text("The tool failed."));
+    }
+
+    @Test
+    void send_generic_message_unless_visible_to_llm_should_send_the_generic_message_when_the_message_for_the_llm_is_blank() {
+
+        assertThat(ToolExecutionErrorHandler.sendGenericMessageToLlmUnlessVisibleToLlm("The tool failed.")
+                        .handle(new BlankMessageException(), CONTEXT))
+                .isEqualTo(ToolErrorHandlerResult.text("The tool failed."));
+    }
+
+    @Test
+    void send_generic_message_unless_visible_to_llm_should_reject_a_blank_generic_message() {
+
+        assertThatThrownBy(() -> ToolExecutionErrorHandler.sendGenericMessageToLlmUnlessVisibleToLlm(" "))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
     static class Tools {
 
         @Tool("Returns the status of an order")
