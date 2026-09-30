@@ -7,10 +7,26 @@ class FinishReasonMapper {
     static FinishReason fromGFinishReasonToFinishReason(GeminiFinishReason geminiFinishReason) {
         return switch (geminiFinishReason) {
             case STOP -> FinishReason.STOP;
-            case BLOCKLIST, PROHIBITED_CONTENT, RECITATION, IMAGE_RECITATION, SPII, SAFETY, LANGUAGE ->
-                FinishReason.CONTENT_FILTER;
+            case BLOCKLIST,
+                    PROHIBITED_CONTENT,
+                    RECITATION,
+                    IMAGE_RECITATION,
+                    IMAGE_SAFETY,
+                    IMAGE_PROHIBITED_CONTENT,
+                    SPII,
+                    SAFETY,
+                    LANGUAGE -> FinishReason.CONTENT_FILTER;
             case MAX_TOKENS -> FinishReason.LENGTH;
-            case MALFORMED_FUNCTION_CALL, FINISH_REASON_UNSPECIFIED, OTHER -> FinishReason.OTHER;
+            case MALFORMED_FUNCTION_CALL,
+                    FINISH_REASON_UNSPECIFIED,
+                    OTHER,
+                    IMAGE_OTHER,
+                    NO_IMAGE,
+                    UNEXPECTED_TOOL_CALL,
+                    TOO_MANY_TOOL_CALLS,
+                    MISSING_THOUGHT_SIGNATURE,
+                    MALFORMED_RESPONSE,
+                    ESCALATION -> FinishReason.OTHER;
         };
     }
 }

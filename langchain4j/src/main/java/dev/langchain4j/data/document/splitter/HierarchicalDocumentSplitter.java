@@ -168,12 +168,25 @@ public abstract class HierarchicalDocumentSplitter implements DocumentSplitter {
 
             // Delegate the splitting of the part to the sub-splitter.
             segmentBuilder.append(part);
-            for (TextSegment segment : subSplitter.split(Document.from(segmentBuilder.toString()))) {
+            String textToSubSplit = segmentBuilder.toString();
+            List<TextSegment> subSegments = subSplitter.split(Document.from(textToSubSplit));
+
+            // Enforce that the sub-splitter produced something to work with.
+            if (subSegments.isEmpty()) {
+                throw new RuntimeException(String.format(
+                        "The subSplitter %s returned no segments for the text \"%s...\" (%s %s long), "
+                                + "so it cannot be split further.",
+                        subSplitter.getClass().getSimpleName(),
+                        firstChars(textToSubSplit, 30),
+                        estimateSize(textToSubSplit),
+                        tokenCountEstimator == null ? "characters" : "tokens"));
+            }
+
+            for (TextSegment segment : subSegments) {
                 segments.add(createSegment(segment.text(), document, index.getAndIncrement()));
             }
 
-            TextSegment lastSegment = segments.get(segments.size() - 1);
-            overlap = overlapFrom(lastSegment.text());
+            overlap = overlapFrom(subSegments.get(subSegments.size() - 1).text());
 
             segmentBuilder.reset();
             segmentBuilder.append(overlap);

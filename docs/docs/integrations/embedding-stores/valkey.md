@@ -56,15 +56,11 @@ Embeddings, text, and metadata are stored as structured JSON documents with HNSW
 
 ### Prerequisites
 
-Requires Valkey 9.1+ (currently available as `9.1.0-rc2`). The `valkey-bundle` image includes the JSON and Search modules needed for vector indexing.
+Requires Valkey 9.1+. The `valkey-bundle` image includes the JSON and Search modules needed for vector indexing.
 
 ```bash
-docker run -d --name valkey -p 6379:6379 valkey/valkey-bundle:9.1.0-rc2
+docker run -d --name valkey -p 6379:6379 valkey/valkey-bundle:latest
 ```
-
-:::note
-Once Valkey 9.1.0 GA is released, you can use `valkey/valkey-bundle:latest`.
-:::
 
 
 ## APIs

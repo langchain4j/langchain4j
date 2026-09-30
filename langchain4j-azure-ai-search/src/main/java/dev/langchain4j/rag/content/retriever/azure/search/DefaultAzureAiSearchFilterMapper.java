@@ -1,15 +1,14 @@
 package dev.langchain4j.rag.content.retriever.azure.search;
 
+import static java.lang.String.format;
+
 import dev.langchain4j.store.embedding.filter.*;
 import dev.langchain4j.store.embedding.filter.comparison.*;
 import dev.langchain4j.store.embedding.filter.logical.And;
 import dev.langchain4j.store.embedding.filter.logical.Not;
 import dev.langchain4j.store.embedding.filter.logical.Or;
-
 import java.util.Collection;
 import java.util.stream.Collectors;
-
-import static java.lang.String.format;
 
 /**
  * Maps {@link Filter} objects to Azure AI Search filter strings.
@@ -17,8 +16,7 @@ import static java.lang.String.format;
  */
 public class DefaultAzureAiSearchFilterMapper implements AzureAiSearchFilterMapper {
 
-    public DefaultAzureAiSearchFilterMapper() {
-    }
+    public DefaultAzureAiSearchFilterMapper() {}
 
     public String map(Filter filter) {
         if (filter == null) return "";
@@ -29,13 +27,15 @@ public class DefaultAzureAiSearchFilterMapper implements AzureAiSearchFilterMapp
             return mapComparisonFilter(filter);
         }
     }
-    
-    
+
     private String mapLogicalOperator(Filter operator) {
-        if (operator instanceof And) return  format(getLogicalFormat(operator), map(((And) operator).left()), map(((And) operator).right()));
-        if (operator instanceof Or) return format(getLogicalFormat(operator), map(((Or) operator).left()), map(((Or) operator).right()));
+        if (operator instanceof And)
+            return format(getLogicalFormat(operator), map(((And) operator).left()), map(((And) operator).right()));
+        if (operator instanceof Or)
+            return format(getLogicalFormat(operator), map(((Or) operator).left()), map(((Or) operator).right()));
         if (operator instanceof Not) return format(getLogicalFormat(operator), map(((Not) operator).expression()));
-        throw new UnsupportedOperationException("Unsupported filter type: " + operator.getClass().getName());
+        throw new UnsupportedOperationException(
+                "Unsupported filter type: " + operator.getClass().getName());
     }
 
     private boolean isLogicalOperator(Filter filter) {
@@ -51,28 +51,31 @@ public class DefaultAzureAiSearchFilterMapper implements AzureAiSearchFilterMapp
         if (filter instanceof IsLessThanOrEqualTo) return mapIsLessThanOrEqualTo((IsLessThanOrEqualTo) filter);
         if (filter instanceof IsIn) return mapIsIn((IsIn) filter);
         if (filter instanceof IsNotIn) return mapIsNotIn((IsNotIn) filter);
-        throw new UnsupportedOperationException("Unsupported filter type: " + filter.getClass().getName());
+        throw new UnsupportedOperationException(
+                "Unsupported filter type: " + filter.getClass().getName());
     }
 
     private String getLogicalFormat(Filter filter) {
         if (filter instanceof And) return "(%s and %s)";
         if (filter instanceof Or) return "(%s or %s)";
         if (filter instanceof Not) return "(not %s)";
-        throw new UnsupportedOperationException("Unsupported filter type: " + filter.getClass().getName());
+        throw new UnsupportedOperationException(
+                "Unsupported filter type: " + filter.getClass().getName());
     }
 
     private String getComparisonFormat(Filter filter) {
         if (filter instanceof IsEqualTo) return "k/value eq '%s'";
-// not use, it raplace by Not ( isEqualTo )
-//        if (filter instanceof IsNotEqualTo) return "k/value ne '%s'";
+        // not use, it raplace by Not ( isEqualTo )
+        //        if (filter instanceof IsNotEqualTo) return "k/value ne '%s'";
         if (filter instanceof IsGreaterThan) return "k/value gt '%s'";
         if (filter instanceof IsGreaterThanOrEqualTo) return "k/value ge '%s'";
         if (filter instanceof IsLessThan) return "k/value lt '%s'";
         if (filter instanceof IsLessThanOrEqualTo) return "k/value le '%s'";
         if (filter instanceof IsIn) return "search.in(k/value, ('%s'))";
-// not use, it raplace by Not ( IsIn )
-//        if (filter instanceof IsNotIn) return "not search.in(k/value, ('%s'))";
-        throw new UnsupportedOperationException("Unsupported filter type: " + filter.getClass().getName());
+        // not use, it raplace by Not ( IsIn )
+        //        if (filter instanceof IsNotIn) return "not search.in(k/value, ('%s'))";
+        throw new UnsupportedOperationException(
+                "Unsupported filter type: " + filter.getClass().getName());
     }
 
     private String mapIsNotIn(IsNotIn filter) {
@@ -80,7 +83,8 @@ public class DefaultAzureAiSearchFilterMapper implements AzureAiSearchFilterMapp
     }
 
     private String mapIsIn(IsIn filter) {
-        return formatComparisonFilter(filter.key(), mapSearchInValues(filter.comparisonValues()), getComparisonFormat(filter));
+        return formatComparisonFilter(
+                filter.key(), mapSearchInValues(filter.comparisonValues()), getComparisonFormat(filter));
     }
 
     private String mapIsLessThanOrEqualTo(IsLessThanOrEqualTo filter) {
@@ -112,6 +116,14 @@ public class DefaultAzureAiSearchFilterMapper implements AzureAiSearchFilterMapp
     }
 
     private String formatComparisonFilter(String key, String value, String format) {
-        return format("metadata/attributes/any(k: k/key eq '%s' and " + format + ")", key, value);
+        return format("metadata/attributes/any(k: k/key eq '%s' and " + format + ")", escape(key), escape(value));
+    }
+
+    /**
+     * Escapes single quotes in an OData string literal by doubling them,
+     * as required by the Azure AI Search OData syntax.
+     */
+    private static String escape(String value) {
+        return value.replace("'", "''");
     }
 }

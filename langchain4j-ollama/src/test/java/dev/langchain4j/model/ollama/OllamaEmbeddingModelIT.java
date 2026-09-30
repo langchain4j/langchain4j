@@ -33,7 +33,8 @@ class OllamaEmbeddingModelIT extends AbstractOllamaEmbeddingModelInfrastructure 
         assertThat(response.content().vector()).isNotEmpty();
         assertThat(response.content().dimension()).isEqualTo(model.dimension());
 
-        assertThat(response.tokenUsage()).isNull();
+        assertThat(response.tokenUsage()).isNotNull();
+        assertThat(response.tokenUsage().inputTokenCount()).isPositive();
         assertThat(response.finishReason()).isNull();
     }
 
@@ -51,7 +52,8 @@ class OllamaEmbeddingModelIT extends AbstractOllamaEmbeddingModelInfrastructure 
         assertThat(response.content().get(0).dimension()).isEqualTo(model.dimension());
         assertThat(response.content().get(1).dimension()).isEqualTo(model.dimension());
 
-        assertThat(response.tokenUsage()).isNull();
+        assertThat(response.tokenUsage()).isNotNull();
+        assertThat(response.tokenUsage().inputTokenCount()).isPositive();
         assertThat(response.finishReason()).isNull();
     }
 

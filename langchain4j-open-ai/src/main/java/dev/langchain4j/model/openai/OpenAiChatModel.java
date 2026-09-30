@@ -1,6 +1,8 @@
 package dev.langchain4j.model.openai;
 
+import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptionsAsync;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
@@ -41,6 +43,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
 import org.slf4j.Logger;
 
@@ -117,6 +120,8 @@ public class OpenAiChatModel implements ChatModel {
                 .store(getOrDefault(builder.store, openAiParameters.store()))
                 .metadata(getOrDefault(builder.metadata, openAiParameters.metadata()))
                 .serviceTier(getOrDefault(builder.serviceTier, openAiParameters.serviceTier()))
+                .promptCacheKey(getOrDefault(builder.promptCacheKey, openAiParameters.promptCacheKey()))
+                .promptCacheOptions(getOrDefault(builder.promptCacheOptions, openAiParameters.promptCacheOptions()))
                 .reasoningEffort(getOrDefault(builder.reasoningEffort, openAiParameters.reasoningEffort()))
                 .logprobs(getOrDefault(builder.logprobs, openAiParameters.logprobs()))
                 .topLogprobs(getOrDefault(builder.topLogprobs, openAiParameters.topLogprobs()))
@@ -165,6 +170,30 @@ public class OpenAiChatModel implements ChatModel {
 
         ParsedAndRawResponse<ChatCompletionResponse> parsedAndRawResponse = withRetryMappingExceptions(
                 () -> client.chatCompletion(openAiRequest).executeRaw(), maxRetries);
+
+        return toChatResponse(parsedAndRawResponse);
+    }
+
+    @Override
+    public CompletableFuture<ChatResponse> doChatAsync(ChatRequest chatRequest) {
+
+        OpenAiChatRequestParameters parameters = (OpenAiChatRequestParameters) chatRequest.parameters();
+        validate(parameters);
+
+        ChatCompletionRequest openAiRequest = toOpenAiChatRequest(
+                        chatRequest, parameters, sendThinking, thinkingFieldName, strictTools, strictJsonSchema)
+                .build();
+
+        CompletableFuture<ParsedAndRawResponse<ChatCompletionResponse>> rawFuture = withRetryMappingExceptionsAsync(
+                () -> client.chatCompletion(openAiRequest).executeRawAsync(), maxRetries);
+
+        CompletableFuture<ChatResponse> result = rawFuture.thenApply(this::toChatResponse);
+
+        propagateCancellation(result, rawFuture);
+        return result;
+    }
+
+    private ChatResponse toChatResponse(ParsedAndRawResponse<ChatCompletionResponse> parsedAndRawResponse) {
 
         ChatCompletionResponse openAiResponse = parsedAndRawResponse.parsedResponse();
 
@@ -236,6 +265,8 @@ public class OpenAiChatModel implements ChatModel {
         private Boolean store;
         private Map<String, String> metadata;
         private String serviceTier;
+        private String promptCacheKey;
+        private OpenAiPromptCacheOptions promptCacheOptions;
         private String reasoningEffort;
         private Boolean returnThinking;
         private Boolean sendThinking;
@@ -398,6 +429,22 @@ public class OpenAiChatModel implements ChatModel {
 
         public OpenAiChatModelBuilder metadata(Map<String, String> metadata) {
             this.metadata = metadata;
+            return this;
+        }
+
+        /**
+         * @since 1.21.0
+         */
+        public OpenAiChatModelBuilder promptCacheKey(String promptCacheKey) {
+            this.promptCacheKey = promptCacheKey;
+            return this;
+        }
+
+        /**
+         * @since 1.21.0
+         */
+        public OpenAiChatModelBuilder promptCacheOptions(OpenAiPromptCacheOptions promptCacheOptions) {
+            this.promptCacheOptions = promptCacheOptions;
             return this;
         }
 

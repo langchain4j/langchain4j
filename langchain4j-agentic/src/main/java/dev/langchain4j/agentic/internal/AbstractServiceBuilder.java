@@ -48,7 +48,11 @@ public abstract class AbstractServiceBuilder<T, S> {
 
     protected Function<ErrorContext, ErrorRecoveryResult> errorHandler;
 
+    protected boolean compensateOnError = false;
+
     protected Function<InternalAgent, Object> agentInstanceFactory;
+
+    protected Supplier<Object> defaultMemoryIdSupplier;
 
     protected Executor executor;
 
@@ -128,6 +132,11 @@ public abstract class AbstractServiceBuilder<T, S> {
         return (S) this;
     }
 
+    public S compensateOnError(boolean compensateOnError) {
+        this.compensateOnError = compensateOnError;
+        return (S) this;
+    }
+
     public S listener(AgentListener agentListener) {
         if (this.agentListener == null) {
             this.agentListener = agentListener;
@@ -141,6 +150,11 @@ public abstract class AbstractServiceBuilder<T, S> {
 
     public S agentInstanceFactory(Function<InternalAgent, Object> factory) {
         this.agentInstanceFactory = factory;
+        return (S) this;
+    }
+
+    public S defaultMemoryIdSupplier(Supplier<Object> supplier) {
+        this.defaultMemoryIdSupplier = supplier;
         return (S) this;
     }
 

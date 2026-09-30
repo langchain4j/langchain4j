@@ -135,6 +135,16 @@ public abstract class AbstractAgentInvoker implements AgentInvoker, InternalAgen
     }
 
     @Override
+    public boolean compensateOnError() {
+        return agent.compensateOnError();
+    }
+
+    @Override
+    public void enableCrossAgentCompensation() {
+        agent.enableCrossAgentCompensation();
+    }
+
+    @Override
     public void setParent(InternalAgent parent) {
         agent.setParent(parent);
     }

@@ -45,7 +45,7 @@ class GoogleGenAiChatModelIT extends AbstractChatModelIT {
 
     @Override
     protected String customModelName() {
-        return "gemini-2.5-pro";
+        return "gemini-3.8-flash";
     }
 
     @Override
@@ -139,5 +139,24 @@ class GoogleGenAiChatModelIT extends AbstractChatModelIT {
         // This confirms the second request succeeded without an INVALID_ARGUMENT error
         assertThat(response2.aiMessage().text()).isNotBlank();
         assertThat(response2.aiMessage().hasToolExecutionRequests()).isFalse();
+    }
+
+    @Test
+    void should_apply_generate_content_config_customizer() {
+        GoogleGenAiChatModel model = GoogleGenAiChatModel.builder()
+                .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
+                .modelName("gemini-2.5-flash")
+                .generateContentConfigCustomizer(
+                        config -> config.temperature(0.7f).seed(42))
+                .build();
+
+        String response = model.chat("Respond with exactly one word: Hello.");
+
+        assertThat(response).isNotBlank();
+    }
+
+    @Override
+    protected Class<? extends TokenUsage> tokenUsageType(ChatModel model) {
+        return GoogleGenAiTokenUsage.class;
     }
 }

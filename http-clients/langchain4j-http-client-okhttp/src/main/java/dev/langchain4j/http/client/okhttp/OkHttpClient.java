@@ -1,13 +1,23 @@
 package dev.langchain4j.http.client.okhttp;
 
+import static dev.langchain4j.http.client.sse.ServerSentEventListenerUtils.ignoringExceptions;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+
 import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.exception.TimeoutException;
 import dev.langchain4j.http.client.FormDataFile;
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
+import dev.langchain4j.http.client.sse.HttpResponseReceived;
+import dev.langchain4j.http.client.sse.HttpStreamingEvent;
+import dev.langchain4j.http.client.sse.ServerSentEvent;
+import dev.langchain4j.http.client.sse.ServerSentEventContext;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.http.client.sse.ServerSentEventParser;
+import mutiny.zero.BackpressureStrategy;
+import mutiny.zero.TubeConfiguration;
+import mutiny.zero.ZeroPublisher;
 import okhttp3.Call;
 import okhttp3.Callback;
 import okhttp3.MediaType;
@@ -22,14 +32,18 @@ import java.net.SocketTimeoutException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Flow;
 import java.util.concurrent.TimeUnit;
 
-import static dev.langchain4j.http.client.sse.ServerSentEventListenerUtils.ignoringExceptions;
-import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 
 public class OkHttpClient implements HttpClient {
 
+    static final int DEFAULT_STREAMING_BUFFER_SIZE = 16384;
+
     private final okhttp3.OkHttpClient client;
+    private final int streamingBufferSize;
 
     public OkHttpClient(OkHttpClientBuilder builder) {
         okhttp3.OkHttpClient.Builder okBuilder =
@@ -43,6 +57,8 @@ public class OkHttpClient implements HttpClient {
         }
 
         this.client = okBuilder.build();
+        this.streamingBufferSize = ensureGreaterThanZero(
+                getOrDefault(builder.streamingBufferSize(), DEFAULT_STREAMING_BUFFER_SIZE), "streamingBufferSize");
     }
 
     public static OkHttpClientBuilder builder() {
@@ -65,9 +81,106 @@ public class OkHttpClient implements HttpClient {
     }
 
     @Override
-    public void execute(HttpRequest request, ServerSentEventParser parser, ServerSentEventListener listener) {
+    public CompletableFuture<SuccessfulHttpResponse> executeAsync(HttpRequest request) {
         Request okRequest = toOkHttpRequest(request);
-        client.newCall(okRequest).enqueue(new Callback() {
+        CompletableFuture<SuccessfulHttpResponse> future = new CompletableFuture<>();
+        Call call = client.newCall(okRequest);
+        call.enqueue(new Callback() {
+            @Override
+            public void onResponse(Call call, Response response) {
+                try (response) {
+                    if (!response.isSuccessful()) {
+                        future.completeExceptionally(new HttpException(response.code(), readBody(response)));
+                    } else {
+                        future.complete(fromOkHttpResponse(response));
+                    }
+                } catch (Exception e) {
+                    future.completeExceptionally(e);
+                }
+            }
+
+            @Override
+            public void onFailure(Call call, IOException e) {
+                future.completeExceptionally(e instanceof SocketTimeoutException ? new TimeoutException(e) : e);
+            }
+        });
+
+        future.whenComplete((response, error) -> {
+            if (future.isCancelled()) {
+                call.cancel();
+            }
+        });
+        return future;
+    }
+
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Events are delivered incrementally as they arrive. Note that OkHttp exposes the response body only as a
+     * blocking source, so — unlike the JDK client, which consumes the body reactively and pins no thread — this
+     * publisher reads and parses it on an OkHttp dispatcher thread for the lifetime of the stream. On any terminal
+     * signal (a downstream cancel, an error, or a buffer overflow) the underlying call is cancelled, which closes
+     * the stream, aborts the connection, and frees that thread.
+     */
+    @Override
+    public Flow.Publisher<HttpStreamingEvent> stream(HttpRequest request, ServerSentEventParser parser) {
+        TubeConfiguration config = new TubeConfiguration()
+                .withBackpressureStrategy(BackpressureStrategy.BUFFER)
+                .withBufferSize(streamingBufferSize);
+        return ZeroPublisher.create(config, tube -> {
+            Call call = enqueueServerSentEvents(request, parser, new ServerSentEventListener() {
+                @Override
+                public void onOpen(SuccessfulHttpResponse response) {
+                    if (!tube.cancelled()) {
+                        tube.send(new HttpResponseReceived(response));
+                    }
+                }
+
+                @Override
+                public void onEvent(ServerSentEvent event) {
+                    if (!tube.cancelled()) {
+                        tube.send(event);
+                    }
+                }
+
+                @Override
+                public void onEvent(ServerSentEvent event, ServerSentEventContext context) {
+                    if (!tube.cancelled()) {
+                        tube.send(event);
+                    }
+                }
+
+                @Override
+                public void onError(Throwable throwable) {
+                    if (!tube.cancelled()) {
+                        tube.fail(throwable);
+                    }
+                }
+
+                @Override
+                public void onClose() {
+                    if (!tube.cancelled()) {
+                        tube.complete();
+                    }
+                }
+            });
+            // Cancel the underlying HTTP call on any terminal signal (downstream cancel, failure incl. buffer
+            // overflow, or completion). Using the Call - not the SSE parsing handle, which only exists after the
+            // first event - also aborts a cancel that arrives before the first event.
+            tube.whenTerminates(call::cancel);
+        });
+    }
+
+    @Override
+    public void execute(HttpRequest request, ServerSentEventParser parser, ServerSentEventListener listener) {
+        enqueueServerSentEvents(request, parser, listener);
+    }
+
+    private Call enqueueServerSentEvents(
+            HttpRequest request, ServerSentEventParser parser, ServerSentEventListener listener) {
+        Request okRequest = toOkHttpRequest(request);
+        Call call = client.newCall(okRequest);
+        call.enqueue(new Callback() {
             @Override
             public void onResponse(Call call, Response response) {
                 try (response) {
@@ -77,7 +190,7 @@ public class OkHttpClient implements HttpClient {
                         return;
                     }
 
-                    SuccessfulHttpResponse successResponse = fromOkHttpResponse(response);
+                    SuccessfulHttpResponse successResponse = fromOkHttpResponse(response, null);
                     ignoringExceptions(() -> listener.onOpen(successResponse));
 
                     try (InputStream inputStream = getInputStream(response)) {
@@ -100,6 +213,7 @@ public class OkHttpClient implements HttpClient {
                 }
             }
         });
+        return call;
     }
 
     private InputStream getInputStream(Response response) {
@@ -107,17 +221,25 @@ public class OkHttpClient implements HttpClient {
     }
 
     private SuccessfulHttpResponse fromOkHttpResponse(Response response) throws IOException {
-        Map<String, List<String>> headers = new HashMap<>();
-        for (String name : response.headers().names()) {
-            headers.put(name, response.headers().values(name));
-        }
-
         String contentType = response.header("content-type");
         byte[] body;
         if (contentType != null && contentType.contains("text/event-stream")) {
             body = null;
         } else {
             body = response.body().bytes();
+        }
+
+        return fromOkHttpResponse(response, body);
+    }
+
+    /**
+     * Converts an OkHttp response into a {@link SuccessfulHttpResponse} without touching the response body.
+     * The streaming path passes {@code null} here, so that the body is left for the SSE parser to read.
+     */
+    private SuccessfulHttpResponse fromOkHttpResponse(Response response, byte[] body) {
+        Map<String, List<String>> headers = new HashMap<>();
+        for (String name : response.headers().names()) {
+            headers.put(name, response.headers().values(name));
         }
 
         return SuccessfulHttpResponse.builder()
@@ -165,8 +287,7 @@ public class OkHttpClient implements HttpClient {
 
     private RequestBody buildRequestBody(HttpRequest request) {
         if (!request.formDataFields().isEmpty() || !request.formDataFiles().isEmpty()) {
-            MultipartBody.Builder multipartBuilder =
-                    new MultipartBody.Builder().setType(MultipartBody.FORM);
+            MultipartBody.Builder multipartBuilder = new MultipartBody.Builder().setType(MultipartBody.FORM);
 
             for (Map.Entry<String, String> entry : request.formDataFields().entrySet()) {
                 multipartBuilder.addFormDataPart(entry.getKey(), entry.getValue());
@@ -174,8 +295,7 @@ public class OkHttpClient implements HttpClient {
 
             for (Map.Entry<String, FormDataFile> entry : request.formDataFiles().entrySet()) {
                 FormDataFile file = entry.getValue();
-                RequestBody fileBody = RequestBody.create(
-                        file.content(), MediaType.parse(file.contentType()));
+                RequestBody fileBody = RequestBody.create(file.content(), MediaType.parse(file.contentType()));
                 multipartBuilder.addFormDataPart(entry.getKey(), file.fileName(), fileBody);
             }
 

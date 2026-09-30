@@ -6,7 +6,6 @@ import static dev.langchain4j.mcp.client.integration.McpServerHelper.skipTestsIf
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.mcp.McpToolProvider;
 import dev.langchain4j.mcp.client.DefaultMcpClient;
 import dev.langchain4j.mcp.client.McpClient;
@@ -39,7 +38,10 @@ public class McpToolSpecificationMappingIT {
                         getJBangCommand(), "--quiet", "--fresh", "run", getPathToScript("tools_mcp_server.java")))
                 .logEvents(true)
                 .build();
-        mcpClient = new DefaultMcpClient.Builder().transport(transport).build();
+        mcpClient = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion("2025-11-25")
+                .build();
         toolProvider = McpToolProvider.builder()
                 .mcpClients(mcpClient)
                 .toolSpecificationMapper((client, toolSpec) -> {

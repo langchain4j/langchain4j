@@ -5,6 +5,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import com.azure.storage.blob.BlobClient;
 import com.azure.storage.blob.BlobServiceClient;
 import com.azure.storage.blob.models.BlobProperties;
+import com.azure.storage.blob.models.ListBlobsOptions;
 import com.azure.storage.blob.specialized.BlobInputStream;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentLoader;
@@ -12,6 +13,7 @@ import dev.langchain4j.data.document.DocumentParser;
 import dev.langchain4j.data.document.source.azure.storage.blob.AzureBlobStorageSource;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,16 +46,48 @@ public class AzureBlobStorageDocumentLoader {
      * @return A list of documents.
      */
     public List<Document> loadDocuments(String containerName, DocumentParser parser) {
-        List<Document> documents = new ArrayList<>();
+        return loadDocuments(containerName, null, parser);
+    }
 
-        blobServiceClient.getBlobContainerClient(containerName).listBlobs().forEach(blob -> {
-            try {
-                documents.add(loadDocument(containerName, blob.getName(), parser));
-            } catch (Exception e) {
-                log.warn(
-                        "Failed to load blob '{}' from container '{}', skipping it.", blob.getName(), containerName, e);
-            }
-        });
+    /**
+     * Loads all documents from an Azure Blob Storage container.
+     * Skips any documents that fail to load.
+     *
+     * @param containerName The name of the container to load from.
+     * @param prefix Only blobs whose names start with this prefix are loaded; {@code null} loads all blobs.
+     * @param parser The parser to be used for parsing text from the blob.
+     * @return A list of documents.
+     */
+    public List<Document> loadDocuments(String containerName, String prefix, DocumentParser parser) {
+        List<Document> documents = new ArrayList<>();
+        AtomicInteger failed = new AtomicInteger();
+
+        ListBlobsOptions options = new ListBlobsOptions().setPrefix(prefix);
+
+        blobServiceClient
+                .getBlobContainerClient(containerName)
+                .listBlobs(options, null)
+                .forEach(blob -> {
+                    try {
+                        documents.add(loadDocument(containerName, blob.getName(), parser));
+                    } catch (Exception e) {
+                        failed.incrementAndGet();
+                        log.warn(
+                                "Failed to load blob '{}' from container '{}', skipping it.",
+                                blob.getName(),
+                                containerName,
+                                e);
+                    }
+                });
+
+        if (failed.get() > 0) {
+            log.warn(
+                    "Loaded {} of {} documents from container '{}'. Skipped {} that failed to load.",
+                    documents.size(),
+                    documents.size() + failed.get(),
+                    containerName,
+                    failed.get());
+        }
 
         return documents;
     }

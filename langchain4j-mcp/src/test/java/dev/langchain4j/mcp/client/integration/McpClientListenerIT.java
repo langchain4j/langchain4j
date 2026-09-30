@@ -12,6 +12,7 @@ import dev.langchain4j.mcp.client.DefaultMcpClient;
 import dev.langchain4j.mcp.client.McpCallContext;
 import dev.langchain4j.mcp.client.McpClient;
 import dev.langchain4j.mcp.client.McpClientListener;
+import dev.langchain4j.mcp.client.McpDiscoverResult;
 import dev.langchain4j.mcp.client.McpGetPromptResult;
 import dev.langchain4j.mcp.client.McpPrompt;
 import dev.langchain4j.mcp.client.McpReadResourceResult;
@@ -55,6 +56,7 @@ public class McpClientListenerIT {
                 .cacheToolList(false)
                 .cacheResourceList(false)
                 .cachePromptList(false)
+                .protocolVersion("2026-07-28")
                 .build();
     }
 
@@ -259,31 +261,47 @@ public class McpClientListenerIT {
         mcpClient.checkHealth();
 
         assertThat(testListener.pingContext).isNotNull();
-        assertThat(testListener.pingContext.message().method).isEqualTo(McpClientMethod.PING);
+        assertThat(testListener.pingContext.message().method).isEqualTo(McpClientMethod.SERVER_DISCOVER);
         assertThat(testListener.pingContext.message().getId()).isNotNull();
 
         assertThat(testListener.pingAfterContext).isSameAs(testListener.pingContext);
     }
 
     @Test
-    public void resourceSubscribeAndUnsubscribe() {
-        mcpClient.subscribeToResource("file:///test-resource");
+    public void serverDiscoverCalledDuringInit() {
+        // afterServerDiscover is fired during client build (initializeModern),
+        // which happened in @BeforeAll. Verify it was invoked.
+        assertThat(testListener.serverDiscoverContext).isNotNull();
+        assertThat(testListener.serverDiscoverContext.message().method).isEqualTo(McpClientMethod.SERVER_DISCOVER);
+        assertThat(testListener.serverDiscoverResult).isNotNull();
+        assertThat(testListener.serverDiscoverResult.capabilities()).isNotNull();
 
-        assertThat(testListener.resourceSubscribeContext).isNotNull();
-        assertThat(testListener.resourceSubscribeContext.message().method)
-                .isEqualTo(McpClientMethod.RESOURCES_SUBSCRIBE);
-        assertThat(testListener.resourceSubscribeContext.message().getId()).isNotNull();
-        assertThat(testListener.resourceSubscribeAfterContext).isSameAs(testListener.resourceSubscribeContext);
+        // afterInitialize should NOT be called for modern protocol
+        assertThat(testListener.initializeAfterContext).isNull();
+    }
+
+    @Test
+    public void resourceSubscribeAndUnsubscribe() {
+        long subscriptionId = mcpClient.subscribeToResources(List.of("file:///test-resource"));
+
+        assertThat(testListener.resourcesSubscribeContext).isNotNull();
+        assertThat(testListener.resourcesSubscribeContext.message()).isNotNull();
+        assertThat(testListener.resourcesSubscribeUris).containsExactly("file:///test-resource");
+        assertThat(testListener.resourcesSubscribeAfterContext).isNotNull();
+        assertThat(testListener.resourcesSubscribeAfterContext.message()).isNotNull();
+        assertThat(testListener.resourcesSubscribeAfterSubscriptionId).isEqualTo(subscriptionId);
+        assertThat(testListener.resourcesSubscribeAfterUris).containsExactly("file:///test-resource");
 
         testListener.clear();
 
-        mcpClient.unsubscribeFromResource("file:///test-resource");
+        mcpClient.unsubscribeFromResources(subscriptionId);
 
-        assertThat(testListener.resourceUnsubscribeContext).isNotNull();
-        assertThat(testListener.resourceUnsubscribeContext.message().method)
-                .isEqualTo(McpClientMethod.RESOURCES_UNSUBSCRIBE);
-        assertThat(testListener.resourceUnsubscribeContext.message().getId()).isNotNull();
-        assertThat(testListener.resourceUnsubscribeAfterContext).isSameAs(testListener.resourceUnsubscribeContext);
+        assertThat(testListener.resourcesUnsubscribeContext).isNotNull();
+        assertThat(testListener.resourcesUnsubscribeContext.message()).isNotNull();
+        assertThat(testListener.resourcesUnsubscribeSubscriptionId).isEqualTo(subscriptionId);
+        assertThat(testListener.resourcesUnsubscribeAfterContext).isNotNull();
+        assertThat(testListener.resourcesUnsubscribeAfterContext.message()).isNotNull();
+        assertThat(testListener.resourcesUnsubscribeAfterSubscriptionId).isEqualTo(subscriptionId);
     }
 
     static class TestListener implements McpClientListener {
@@ -325,11 +343,21 @@ public class McpClientListenerIT {
         volatile McpCallContext pingContext;
         volatile McpCallContext pingAfterContext;
 
-        volatile McpCallContext resourceSubscribeContext;
-        volatile McpCallContext resourceSubscribeAfterContext;
+        volatile McpCallContext initializeAfterContext;
 
-        volatile McpCallContext resourceUnsubscribeContext;
-        volatile McpCallContext resourceUnsubscribeAfterContext;
+        volatile McpCallContext serverDiscoverContext;
+        volatile McpDiscoverResult serverDiscoverResult;
+
+        volatile McpCallContext resourcesSubscribeContext;
+        volatile List<String> resourcesSubscribeUris;
+        volatile McpCallContext resourcesSubscribeAfterContext;
+        volatile long resourcesSubscribeAfterSubscriptionId;
+        volatile List<String> resourcesSubscribeAfterUris;
+
+        volatile McpCallContext resourcesUnsubscribeContext;
+        volatile long resourcesUnsubscribeSubscriptionId;
+        volatile McpCallContext resourcesUnsubscribeAfterContext;
+        volatile long resourcesUnsubscribeAfterSubscriptionId;
 
         @Override
         public void beforeExecuteTool(McpCallContext context) {
@@ -439,23 +467,39 @@ public class McpClientListenerIT {
         }
 
         @Override
-        public void beforeResourceSubscribe(McpCallContext context) {
-            resourceSubscribeContext = context;
+        public void afterInitialize(McpCallContext context) {
+            initializeAfterContext = context;
         }
 
         @Override
-        public void afterResourceSubscribe(McpCallContext context) {
-            resourceSubscribeAfterContext = context;
+        public void afterServerDiscover(McpCallContext context, McpDiscoverResult result) {
+            serverDiscoverContext = context;
+            serverDiscoverResult = result;
         }
 
         @Override
-        public void beforeResourceUnsubscribe(McpCallContext context) {
-            resourceUnsubscribeContext = context;
+        public void beforeResourcesSubscribe(McpCallContext context, List<String> uris) {
+            resourcesSubscribeContext = context;
+            resourcesSubscribeUris = uris;
         }
 
         @Override
-        public void afterResourceUnsubscribe(McpCallContext context) {
-            resourceUnsubscribeAfterContext = context;
+        public void afterResourcesSubscribe(McpCallContext context, long subscriptionId, List<String> uris) {
+            resourcesSubscribeAfterContext = context;
+            resourcesSubscribeAfterSubscriptionId = subscriptionId;
+            resourcesSubscribeAfterUris = uris;
+        }
+
+        @Override
+        public void beforeResourcesUnsubscribe(McpCallContext context, long subscriptionId) {
+            resourcesUnsubscribeContext = context;
+            resourcesUnsubscribeSubscriptionId = subscriptionId;
+        }
+
+        @Override
+        public void afterResourcesUnsubscribe(McpCallContext context, long subscriptionId) {
+            resourcesUnsubscribeAfterContext = context;
+            resourcesUnsubscribeAfterSubscriptionId = subscriptionId;
         }
 
         void clear() {
@@ -496,11 +540,16 @@ public class McpClientListenerIT {
             pingContext = null;
             pingAfterContext = null;
 
-            resourceSubscribeContext = null;
-            resourceSubscribeAfterContext = null;
+            resourcesSubscribeContext = null;
+            resourcesSubscribeUris = null;
+            resourcesSubscribeAfterContext = null;
+            resourcesSubscribeAfterSubscriptionId = 0;
+            resourcesSubscribeAfterUris = null;
 
-            resourceUnsubscribeContext = null;
-            resourceUnsubscribeAfterContext = null;
+            resourcesUnsubscribeContext = null;
+            resourcesUnsubscribeSubscriptionId = 0;
+            resourcesUnsubscribeAfterContext = null;
+            resourcesUnsubscribeAfterSubscriptionId = 0;
         }
     }
 }

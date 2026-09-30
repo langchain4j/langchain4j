@@ -1,10 +1,10 @@
 package dev.langchain4j.store.embedding.elasticsearch;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.randomUUID;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
+import static dev.langchain4j.internal.ValidationUtils.ensureConsistentSizes;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 
@@ -12,6 +12,7 @@ import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.BulkIndexByScrollFailure;
 import co.elastic.clients.elasticsearch._types.ElasticsearchException;
 import co.elastic.clients.elasticsearch._types.ErrorCause;
+import co.elastic.clients.elasticsearch._types.Refresh;
 import co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import co.elastic.clients.elasticsearch.core.BulkRequest;
 import co.elastic.clients.elasticsearch.core.BulkResponse;
@@ -26,7 +27,6 @@ import co.elastic.clients.transport.rest_client.RestClientTransport;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.rag.content.ContentMetadata;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
@@ -58,6 +58,7 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
     protected ElasticsearchConfiguration configuration;
     protected ElasticsearchClient client;
     protected String indexName;
+    protected Refresh refresh;
 
     /**
      * Initialize using a RestClient
@@ -70,6 +71,23 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
      */
     @Deprecated(forRemoval = true)
     protected void initialize(ElasticsearchConfiguration configuration, RestClient restClient, String indexName) {
+        initialize(configuration, restClient, indexName, null);
+    }
+
+    /**
+     * Initialize using a RestClient
+     *
+     * @param configuration         Elasticsearch configuration to use (Knn, Script, FullText or Hybrid)
+     * @param restClient            Elasticsearch Rest Client (mandatory)
+     * @param indexName             Elasticsearch index name (optional). Default value: "default".
+     *                              Index will be created automatically if not exists.
+     * @param refresh               Refresh policy to apply to writes (optional).
+     *                              Default value: {@link Refresh#False}.
+     * @deprecated Use now {@link #initialize(ElasticsearchConfiguration, ElasticsearchClient, String, Refresh)}
+     */
+    @Deprecated(forRemoval = true)
+    protected void initialize(
+            ElasticsearchConfiguration configuration, RestClient restClient, String indexName, Refresh refresh) {
         JsonpMapper mapper = new JacksonJsonpMapper();
         ElasticsearchTransport transport = new RestClientTransport(restClient, mapper);
 
@@ -78,6 +96,7 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
         this.client = new ElasticsearchClient(transport)
                 .withTransportOptions(t -> t.addHeader("user-agent", "langchain4j elastic-java/" + version));
         this.indexName = ensureNotNull(indexName, "indexName");
+        this.refresh = getOrDefault(refresh, Refresh.False);
     }
 
     /**
@@ -89,11 +108,27 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
      *                              Index will be created automatically if not exists.
      */
     protected void initialize(ElasticsearchConfiguration configuration, ElasticsearchClient client, String indexName) {
+        initialize(configuration, client, indexName, null);
+    }
+
+    /**
+     * Initialize using an ElasticsearchClient
+     *
+     * @param configuration         Elasticsearch configuration to use (Knn or Script)
+     * @param client                Elasticsearch Client (mandatory)
+     * @param indexName             Elasticsearch index name (optional). Default value: "default".
+     *                              Index will be created automatically if not exists.
+     * @param refresh               Refresh policy to apply to writes (optional).
+     *                              Default value: {@link Refresh#False}.
+     */
+    protected void initialize(
+            ElasticsearchConfiguration configuration, ElasticsearchClient client, String indexName, Refresh refresh) {
         this.configuration = configuration;
         String version = Version.VERSION == null ? "Unknown" : Version.VERSION.toString();
         this.client =
                 client.withTransportOptions(t -> t.addHeader("user-agent", "langchain4j elastic-java/" + version));
         this.indexName = ensureNotNull(indexName, "indexName");
+        this.refresh = getOrDefault(refresh, Refresh.False);
     }
 
     @Override
@@ -200,24 +235,75 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
         }
     }
 
-    public List<TextSegment> fullTextSearch(String textQuery) {
+    /**
+     * Searches the index with a full text (non-vector) query.
+     *
+     * @param textQuery the text to search for
+     * @return the matching documents, each carrying its Elasticsearch document ID and relevance score
+     * @deprecated Use {@link #fullTextSearchMatches(FullTextSearchRequest)} instead.
+     * It also applies the {@code maxResults}, {@code minScore} and {@code filter} of the request.
+     */
+    @Deprecated(forRemoval = true)
+    @SuppressWarnings("removal")
+    public List<EmbeddingMatch<TextSegment>> fullTextSearchMatches(String textQuery) {
         log.debug("full text search([...{}...])", textQuery.length());
         try {
             SearchResponse<Document> response = this.configuration.fullTextSearch(client, indexName, textQuery);
             log.trace("found [{}] results", response);
 
-            return toTextList(response);
+            return toMatches(response);
         } catch (ElasticsearchException | IOException e) {
             throw new ElasticsearchRequestFailedException(e);
         }
     }
 
+    /**
+     * Searches the index with a full text (non-vector) query.
+     *
+     * @param request the full text search request
+     * @return the matching documents, each carrying its Elasticsearch document ID and relevance score
+     */
+    public List<EmbeddingMatch<TextSegment>> fullTextSearchMatches(FullTextSearchRequest request) {
+        log.debug(
+                "full text search([...{}...], {}, {})",
+                request.textQuery().length(),
+                request.maxResults(),
+                request.minScore());
+        try {
+            SearchResponse<Document> response = this.configuration.fullTextSearch(client, indexName, request);
+            log.trace("found [{}] results", response);
+
+            return toMatches(response);
+        } catch (ElasticsearchException | IOException e) {
+            throw new ElasticsearchRequestFailedException(e);
+        }
+    }
+
+    /**
+     * @deprecated Use {@link #fullTextSearchMatches(FullTextSearchRequest)} instead. It returns the same text segments,
+     * but also the Elasticsearch document ID and the relevance score of each match.
+     */
+    @Deprecated(forRemoval = true)
+    public List<TextSegment> fullTextSearch(String textQuery) {
+        return fullTextSearchMatches(textQuery).stream()
+                .map(match -> match == null ? null : match.embedded())
+                .collect(toList());
+    }
+
     @Override
     public void removeAll(Collection<String> ids) {
-        ensureNotEmpty(ids, "ids");
+        if (isNullOrEmpty(ids)) {
+            return;
+        }
         removeByIds(ids);
     }
 
+    /**
+     * Elasticsearch deletes by running a search, so this removes only the documents that are already visible to
+     * search. A document added moments earlier may not be visible yet, and would survive this call. Configure the
+     * store with a {@code refresh} policy of {@link Refresh#WaitFor} if you need writes to be searchable by the
+     * time they are acknowledged.
+     */
     @Override
     public void removeAll(Filter filter) {
         ensureNotNull(filter, "filter");
@@ -250,14 +336,10 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
 
     @Override
     public void addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
-        if (isNullOrEmpty(ids) || isNullOrEmpty(embeddings)) {
-            log.info("[do not add empty embeddings to elasticsearch]");
+        ensureConsistentSizes(ids, embeddings, embedded);
+        if (isNullOrEmpty(embeddings)) {
             return;
         }
-        ensureTrue(ids.size() == embeddings.size(), "ids size is not equal to embeddings size");
-        ensureTrue(
-                embedded == null || embeddings.size() == embedded.size(),
-                "embeddings size is not equal to embedded size");
 
         try {
             bulkIndex(ids, embeddings, embedded);
@@ -270,7 +352,7 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
             throws IOException {
         int size = ids.size();
         log.debug("calling bulkIndex with [{}] elements", size);
-        BulkRequest.Builder bulkBuilder = new BulkRequest.Builder();
+        BulkRequest.Builder bulkBuilder = new BulkRequest.Builder().refresh(refresh);
         for (int i = 0; i < size; i++) {
             int finalI = i;
             Document document = Document.builder()
@@ -290,7 +372,7 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
     private void bulkIndexText(List<String> ids, List<TextSegment> embedded) throws IOException {
         int size = ids.size();
         log.debug("calling bulkIndex with [{}] elements", size);
-        BulkRequest.Builder bulkBuilder = new BulkRequest.Builder();
+        BulkRequest.Builder bulkBuilder = new BulkRequest.Builder().refresh(refresh);
         for (int i = 0; i < size; i++) {
             int finalI = i;
             Document document = Document.builder()
@@ -343,7 +425,7 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
     }
 
     private void bulkRemove(Collection<String> ids) throws IOException {
-        BulkRequest.Builder bulkBuilder = new BulkRequest.Builder();
+        BulkRequest.Builder bulkBuilder = new BulkRequest.Builder().refresh(refresh);
         for (String id : ids) {
             bulkBuilder.operations(op -> op.delete(dlt -> dlt.index(indexName).id(id)));
         }
@@ -362,19 +444,6 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
                                 document.getText() == null
                                         ? null
                                         : TextSegment.from(document.getText(), new Metadata(document.getMetadata()))))
-                        .orElse(null))
-                .collect(toList());
-    }
-
-    private List<TextSegment> toTextList(SearchResponse<Document> response) {
-        return response.hits().hits().stream()
-                .map(hit -> Optional.ofNullable(hit.source())
-                        .filter(document -> document.getText() != null)
-                        .map(document -> TextSegment.from(
-                                document.getText(),
-                                new Metadata(document.getMetadata())
-                                        .put(ContentMetadata.SCORE.name(), hit.score())
-                                        .put(ContentMetadata.EMBEDDING_ID.name(), hit.id())))
                         .orElse(null))
                 .collect(toList());
     }

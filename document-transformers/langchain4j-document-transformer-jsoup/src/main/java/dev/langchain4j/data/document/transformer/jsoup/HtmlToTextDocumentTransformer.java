@@ -1,8 +1,16 @@
 package dev.langchain4j.data.document.transformer.jsoup;
 
+import static dev.langchain4j.data.document.Document.URL;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static java.lang.String.format;
+import static java.util.stream.Collectors.joining;
+import static org.jsoup.internal.StringUtil.in;
+import static org.jsoup.select.NodeTraversor.traverse;
+
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentTransformer;
 import dev.langchain4j.data.document.Metadata;
+import java.util.Map;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Element;
 import org.jsoup.nodes.Node;
@@ -10,15 +18,6 @@ import org.jsoup.nodes.TextNode;
 import org.jsoup.select.NodeVisitor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.Map;
-
-import static dev.langchain4j.data.document.Document.URL;
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static java.lang.String.format;
-import static java.util.stream.Collectors.joining;
-import static org.jsoup.internal.StringUtil.in;
-import static org.jsoup.select.NodeTraversor.traverse;
 
 /**
  * Extracts plain text from a given HTML document.
@@ -56,11 +55,12 @@ public class HtmlToTextDocumentTransformer implements DocumentTransformer {
      * @param cssSelector          A CSS selector.
      *                             For example, "#page-content" will extract text from the HTML element with the id "page-content".
      * @param metadataCssSelectors A mapping from metadata keys to CSS selectors.
-     *                             For example, Mep.of("title", "#page-title") will extract all text from the HTML element
+     *                             For example, Map.of("title", "#title") will extract all text from the HTML element
      *                             with id "title" and store it in {@link Metadata} under the key "title".
      * @param includeLinks         Specifies whether links should be included in the extracted text.
      */
-    public HtmlToTextDocumentTransformer(String cssSelector, Map<String, String> metadataCssSelectors, boolean includeLinks) {
+    public HtmlToTextDocumentTransformer(
+            String cssSelector, Map<String, String> metadataCssSelectors, boolean includeLinks) {
         this.cssSelector = cssSelector;
         this.metadataCssSelectors = metadataCssSelectors;
         this.includeLinks = includeLinks;
@@ -88,7 +88,8 @@ public class HtmlToTextDocumentTransformer implements DocumentTransformer {
         return Document.from(text, metadata);
     }
 
-    private static String extractText(org.jsoup.nodes.Document jsoupDocument, String cssSelector, boolean includeLinks) {
+    private static String extractText(
+            org.jsoup.nodes.Document jsoupDocument, String cssSelector, boolean includeLinks) {
         return jsoupDocument.select(cssSelector).stream()
                 .map(element -> extractText(element, includeLinks))
                 .collect(joining("\n\n"));
@@ -113,21 +114,16 @@ public class HtmlToTextDocumentTransformer implements DocumentTransformer {
         @Override
         public void head(Node node, int depth) { // hit when the node is first seen
             String name = node.nodeName();
-            if (node instanceof TextNode)
-                textBuilder.append(((TextNode) node).text());
-            else if (name.equals("li"))
-                textBuilder.append("\n * ");
-            else if (name.equals("dt"))
-                textBuilder.append("  ");
-            else if (in(name, "p", "h1", "h2", "h3", "h4", "h5", "h6", "tr"))
-                textBuilder.append("\n");
+            if (node instanceof TextNode) textBuilder.append(((TextNode) node).text());
+            else if (name.equals("li")) textBuilder.append("\n * ");
+            else if (name.equals("dt")) textBuilder.append("  ");
+            else if (in(name, "p", "h1", "h2", "h3", "h4", "h5", "h6", "tr")) textBuilder.append("\n");
         }
 
         @Override
         public void tail(Node node, int depth) { // hit when all the node's children (if any) have been visited
             String name = node.nodeName();
-            if (in(name, "br", "dd", "dt", "p", "h1", "h2", "h3", "h4", "h5", "h6"))
-                textBuilder.append("\n");
+            if (in(name, "br", "dd", "dt", "p", "h1", "h2", "h3", "h4", "h5", "h6")) textBuilder.append("\n");
             else if (includeLinks && name.equals("a")) {
                 String link = node.absUrl("href");
                 if (link.isEmpty() && node.baseUri().isEmpty()) {

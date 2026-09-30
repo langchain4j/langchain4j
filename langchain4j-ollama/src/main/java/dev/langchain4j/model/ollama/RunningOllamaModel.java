@@ -4,14 +4,11 @@ import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.time.OffsetDateTime;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonInclude(NON_NULL)
-@JsonNaming(SnakeCaseStrategy.class)
 public class RunningOllamaModel {
 
     private String name;
@@ -20,7 +17,6 @@ public class RunningOllamaModel {
     private String digest;
     private OllamaModelDetails details;
 
-    @JsonDeserialize(using = OllamaDateDeserializer.class)
     private OffsetDateTime expiresAt;
 
     private Long sizeVram;
@@ -93,6 +89,11 @@ public class RunningOllamaModel {
 
     public void setExpiresAt(OffsetDateTime expiresAt) {
         this.expiresAt = expiresAt;
+    }
+
+    @JsonProperty("expires_at")
+    void setExpiresAt(Object expiresAt) {
+        this.expiresAt = OllamaTimestamps.parse(expiresAt);
     }
 
     public Long getSizeVram() {

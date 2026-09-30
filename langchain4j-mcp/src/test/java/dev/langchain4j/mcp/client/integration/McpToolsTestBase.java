@@ -6,11 +6,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.awaitility.Awaitility.await;
 import static org.hamcrest.Matchers.is;
 
-import java.time.Duration;
-import java.util.Map;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.mcp.McpToolExecutor;
@@ -27,6 +24,8 @@ import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.tool.ToolExecutionResult;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProviderResult;
+import java.time.Duration;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
@@ -109,12 +108,10 @@ public abstract class McpToolsTestBase extends AbstractAiServicesWithToolErrorHa
         ToolProviderResult toolProviderResult = obtainTools();
         ToolExecutor executor = toolProviderResult.toolExecutorByName("echoString");
         ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
-                .arguments("{\"input\": 1}") // wrong argument type
+                .arguments("{\"input\": {\"a\":\"b\"}}") // wrong argument type
                 .build();
         assertThatThrownBy(() -> executor.execute(toolExecutionRequest, null))
-                .isExactlyInstanceOf(ToolArgumentsException.class)
-                .hasMessageMatching(".+")
-                .hasFieldOrPropertyWithValue("errorCode", -32602);
+                .isInstanceOf(ToolExecutionException.class);
     }
 
     @Test
@@ -148,6 +145,10 @@ public abstract class McpToolsTestBase extends AbstractAiServicesWithToolErrorHa
                 ToolExecutionRequest.builder().arguments("{}").build();
         String toolExecutionResultString = executor.execute(toolExecutionRequest, null);
         assertThat(toolExecutionResultString).isEqualTo("There was a timeout executing the tool");
+        verifyCancellationReceived(toolProviderResult);
+    }
+
+    protected void verifyCancellationReceived(ToolProviderResult toolProviderResult) {
         ToolExecutionRequest checkCancellationRequest =
                 ToolExecutionRequest.builder().arguments("{}").build();
         // wait until the server can confirm that the cancellation notification was received
@@ -200,7 +201,8 @@ public abstract class McpToolsTestBase extends AbstractAiServicesWithToolErrorHa
     }
 
     @Override
-    protected void configureGetWeatherThrowingExceptionWithoutMessageTool(RuntimeException ignored, AiServices<?> aiServiceBuilder) {
+    protected void configureGetWeatherThrowingExceptionWithoutMessageTool(
+            RuntimeException ignored, AiServices<?> aiServiceBuilder) {
         configureGetWeatherThrowingExceptionTool(ignored, aiServiceBuilder);
     }
 

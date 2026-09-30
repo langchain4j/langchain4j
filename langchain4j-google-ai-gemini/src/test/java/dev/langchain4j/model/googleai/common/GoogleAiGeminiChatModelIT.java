@@ -84,6 +84,15 @@ class GoogleAiGeminiChatModelIT extends AbstractChatModelIT {
         return GoogleAiGeminiTokenUsage.class;
     }
 
+    @Override
+    protected void sleepIfNeeded() {
+        try {
+            afterEach();
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     @AfterEach
     void afterEach() throws InterruptedException {
         String ciDelaySeconds = System.getenv("CI_DELAY_SECONDS_GOOGLE_AI_GEMINI");

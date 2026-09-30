@@ -1,40 +1,44 @@
 package dev.langchain4j.web.search.searchapi;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import okhttp3.OkHttpClient;
-import okhttp3.ResponseBody;
-import retrofit2.Response;
-import retrofit2.Retrofit;
-import retrofit2.converter.jackson.JacksonConverterFactory;
+import static dev.langchain4j.http.client.HttpMethod.GET;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.web.search.searchapi.SearchApiJsonUtils.fromJson;
 
-import java.io.IOException;
+import dev.langchain4j.http.client.HttpClient;
+import dev.langchain4j.http.client.HttpClientBuilder;
+import dev.langchain4j.http.client.HttpClientBuilderLoader;
+import dev.langchain4j.http.client.HttpRequest;
+import dev.langchain4j.http.client.SuccessfulHttpResponse;
+import dev.langchain4j.http.client.log.LoggingHttpClient;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 
-import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-
 class SearchApiClient {
 
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper().enable(INDENT_OUTPUT);
+    private final HttpClient httpClient;
+    private final String baseUrl;
 
-    private final SearchApi api;
+    SearchApiClient(SearchApiClientBuilder builder) {
+        ensureNotNull(builder.timeout, "timeout");
+        this.baseUrl = ensureNotBlank(builder.baseUrl, "baseUrl");
 
-    SearchApiClient(Duration timeout, String baseUrl) {
-        ensureNotNull(timeout, "timeout");
-        OkHttpClient.Builder okHttpClientBuilder = new OkHttpClient.Builder()
-                .callTimeout(timeout)
-                .connectTimeout(timeout)
-                .readTimeout(timeout)
-                .writeTimeout(timeout);
-        Retrofit retrofit = new Retrofit.Builder()
-                .baseUrl(ensureNotBlank(baseUrl, "baseUrl"))
-                .client(okHttpClientBuilder.build())
-                .addConverterFactory(JacksonConverterFactory.create(OBJECT_MAPPER))
+        HttpClientBuilder httpClientBuilder =
+                getOrDefault(builder.httpClientBuilder, HttpClientBuilderLoader::loadHttpClientBuilder);
+
+        HttpClient httpClient = httpClientBuilder
+                .connectTimeout(builder.timeout)
+                .readTimeout(builder.timeout)
                 .build();
-        this.api = retrofit.create(SearchApi.class);
+
+        if (builder.logRequests != null && builder.logRequests
+                || builder.logResponses != null && builder.logResponses) {
+            this.httpClient = new LoggingHttpClient(httpClient, builder.logRequests, builder.logResponses);
+        } else {
+            this.httpClient = httpClient;
+        }
     }
 
     public static SearchApiClientBuilder builder() {
@@ -45,39 +49,29 @@ class SearchApiClient {
         Map<String, Object> finalParameters = new HashMap<>(request.getFinalOptionalParameters());
         finalParameters.put("engine", request.getEngine());
         finalParameters.put("q", request.getQuery());
-        String bearerToken = "Bearer " + request.getApiKey();
-        try {
-            Response<SearchApiWebSearchResponse> response = api.search(finalParameters, bearerToken).execute();
-            return getBody(response);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
 
-    private SearchApiWebSearchResponse getBody(Response<SearchApiWebSearchResponse> response) throws IOException {
-        if (response.isSuccessful()) {
-            return response.body();
-        } else {
-            throw toException(response);
-        }
-    }
+        HttpRequest.Builder httpRequestBuilder = HttpRequest.builder()
+                .method(GET)
+                .url(baseUrl, "api/v1/search")
+                .addHeader("Authorization", "Bearer " + request.getApiKey());
 
-    private static RuntimeException toException(Response<?> response) throws IOException {
-        try (ResponseBody responseBody = response.errorBody()) {
-            int code = response.code();
-            if (responseBody != null) {
-                String body = responseBody.string();
-                String errorMessage = String.format("status code: %s; body: %s", code, body);
-                return new RuntimeException(errorMessage);
-            } else {
-                return new RuntimeException(String.format("status code: %s;", code));
+        finalParameters.forEach((key, value) -> {
+            if (value != null) {
+                httpRequestBuilder.addQueryParam(key, String.valueOf(value));
             }
-        }
+        });
+
+        SuccessfulHttpResponse response = httpClient.execute(httpRequestBuilder.build());
+
+        return fromJson(response.body(), SearchApiWebSearchResponse.class);
     }
 
     public static class SearchApiClientBuilder {
         private Duration timeout;
         private String baseUrl;
+        private HttpClientBuilder httpClientBuilder;
+        private Boolean logRequests;
+        private Boolean logResponses;
 
         SearchApiClientBuilder() {
         }
@@ -92,8 +86,23 @@ class SearchApiClient {
             return this;
         }
 
+        public SearchApiClientBuilder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
+            this.httpClientBuilder = httpClientBuilder;
+            return this;
+        }
+
+        public SearchApiClientBuilder logRequests(Boolean logRequests) {
+            this.logRequests = logRequests;
+            return this;
+        }
+
+        public SearchApiClientBuilder logResponses(Boolean logResponses) {
+            this.logResponses = logResponses;
+            return this;
+        }
+
         public SearchApiClient build() {
-            return new SearchApiClient(this.timeout, this.baseUrl);
+            return new SearchApiClient(this);
         }
 
         public String toString() {

@@ -48,10 +48,11 @@ public final class TestedModels {
             .modelId("meta.llama3-2-90b-instruct-v1:0")
             .build();
 
-    public static final ChatModel COHERE_COMMAND_R_PLUS =
-            BedrockChatModel.builder().modelId("cohere.command-r-plus-v1:0").build();
-    public static final StreamingChatModel STREAMING_COHERE_COMMAND_R_PLUS = BedrockStreamingChatModel.builder()
-            .modelId("cohere.command-r-plus-v1:0")
+    public static final ChatModel CLAUDE_HAIKU_4_5 = BedrockChatModel.builder()
+            .modelId("us.anthropic.claude-haiku-4-5-20251001-v1:0")
+            .build();
+    public static final StreamingChatModel STREAMING_CLAUDE_HAIKU_4_5 = BedrockStreamingChatModel.builder()
+            .modelId("us.anthropic.claude-haiku-4-5-20251001-v1:0")
             .build();
 
     public static final ChatModel AI_JAMBA_1_5_MINI =

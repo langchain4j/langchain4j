@@ -1,6 +1,7 @@
 package dev.langchain4j.mcp.client;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.List;
@@ -9,6 +10,7 @@ import java.util.Objects;
 /**
  * The 'GetPromptResult' object from the MCP protocol schema.
  */
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class McpGetPromptResult {
 
     private final String description;

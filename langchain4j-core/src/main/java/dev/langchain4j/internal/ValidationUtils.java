@@ -6,6 +6,7 @@ import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 
 import dev.langchain4j.Internal;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -27,6 +28,40 @@ public class ValidationUtils {
     public static void ensureEq(Object lhs, Object rhs, String format, Object... args) {
         if (!Objects.equals(lhs, rhs)) {
             throw illegalArgument(format, args);
+        }
+    }
+
+    /**
+     * Ensures that the IDs, embeddings and embedded contents passed to
+     * {@link dev.langchain4j.store.embedding.EmbeddingStore#addAll(java.util.List, java.util.List, java.util.List)}
+     * describe the same number of entries.
+     *
+     * <p>The three lists are positional: the i-th ID, the i-th embedding and the i-th embedded content belong
+     * together. An embedding store cannot store entries whose lists disagree in size, so this method rejects such
+     * input before any of it reaches the store.
+     *
+     * <p>A {@code null} list of IDs or embeddings counts as an empty list, so that passing embeddings without IDs
+     * (or the other way around) is reported as a mismatch rather than silently ignored. A {@code null} list of
+     * embedded contents means that no contents were provided at all and is always accepted; an empty one is not,
+     * unless there are no embeddings either.
+     *
+     * @param ids        The IDs, or {@code null}.
+     * @param embeddings The embeddings, or {@code null}.
+     * @param embedded   The embedded contents, or {@code null} if they were not provided.
+     * @throws IllegalArgumentException if the sizes do not match.
+     */
+    public static void ensureConsistentSizes(List<?> ids, List<?> embeddings, List<?> embedded) {
+        int idsSize = ids == null ? 0 : ids.size();
+        int embeddingsSize = embeddings == null ? 0 : embeddings.size();
+        ensureEq(
+                idsSize, embeddingsSize, "ids size (%s) is not equal to embeddings size (%s)", idsSize, embeddingsSize);
+        if (embedded != null) {
+            ensureEq(
+                    embeddingsSize,
+                    embedded.size(),
+                    "embeddings size (%s) is not equal to embedded size (%s)",
+                    embeddingsSize,
+                    embedded.size());
         }
     }
 
@@ -275,7 +310,7 @@ public class ValidationUtils {
         }
         return i;
     }
-    
+
     /**
      * Ensures that the given integer is either null or greater than zero.
      *

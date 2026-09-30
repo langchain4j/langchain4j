@@ -16,8 +16,11 @@ import dev.langchain4j.model.embedding.listener.EmbeddingModelErrorContext;
 import dev.langchain4j.model.embedding.listener.EmbeddingModelListener;
 import dev.langchain4j.model.embedding.listener.EmbeddingModelRequestContext;
 import dev.langchain4j.model.embedding.listener.EmbeddingModelResponseContext;
+import dev.langchain4j.model.embedding.request.EmbeddingRequest;
+import dev.langchain4j.model.embedding.response.EmbeddingResponse;
 import dev.langchain4j.model.output.Response;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
 
@@ -201,6 +204,38 @@ class EmbeddingModelListenerTest {
     }
 
     @Test
+    void embedAsync_should_not_report_cancellation_to_listeners() {
+        // given: a model whose async call never completes, so we can cancel it while in flight
+        CompletableFuture<EmbeddingResponse> pending = new CompletableFuture<>();
+        EmbeddingModelListener listener = spy(new SuccessfulListener());
+        EmbeddingModel model = new EmbeddingModel() {
+            @Override
+            public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
+                throw new UnsupportedOperationException("blocking path not used in this test");
+            }
+
+            @Override
+            public List<EmbeddingModelListener> listeners() {
+                return List.of(listener);
+            }
+
+            @Override
+            public CompletableFuture<EmbeddingResponse> doEmbedAsync(EmbeddingRequest request) {
+                return pending;
+            }
+        };
+
+        // when
+        CompletableFuture<EmbeddingResponse> future =
+                model.embedAsync(EmbeddingRequest.builder().input("hi").build());
+        future.cancel(true);
+
+        // then: onRequest fired, but cancellation is a caller action - not reported to listeners as an error
+        verify(listener).onRequest(any());
+        verifyNoMoreInteractions(listener);
+    }
+
+    @Test
     void should_handle_empty_listeners_list() {
         // given
         EmbeddingModel model = new TestEmbeddingModel().addListeners(List.of());
@@ -272,5 +307,51 @@ class EmbeddingModelListenerTest {
 
         // then
         verify(listener2).onError(any());
+    }
+
+    @Test
+    void wrapper_delegates_capability_and_description_methods() {
+        EmbeddingModel delegate = new TestEmbeddingModel() {
+            @Override
+            public java.util.Set<dev.langchain4j.data.message.ContentType> supportedContentTypes() {
+                return java.util.Set.of(
+                        dev.langchain4j.data.message.ContentType.TEXT,
+                        dev.langchain4j.data.message.ContentType.IMAGE);
+            }
+
+            @Override
+            public java.util.Set<dev.langchain4j.model.embedding.request.EmbeddingParameter<?>> supportedParameters() {
+                return java.util.Set.of(
+                        dev.langchain4j.model.embedding.request.EmbeddingRequestParameters.DIMENSIONS);
+            }
+
+            @Override
+            public dev.langchain4j.model.ModelProvider provider() {
+                return dev.langchain4j.model.ModelProvider.COHERE;
+            }
+
+            @Override
+            public String modelName() {
+                return "multimodal-model";
+            }
+
+            @Override
+            public int dimension() {
+                return 42;
+            }
+        };
+
+        EmbeddingModel wrapper = delegate.addListener(new SuccessfulListener());
+
+        // the wrapper must report the delegate's capabilities, not the interface defaults
+        assertThat(wrapper.supportedContentTypes())
+                .containsExactlyInAnyOrder(
+                        dev.langchain4j.data.message.ContentType.TEXT,
+                        dev.langchain4j.data.message.ContentType.IMAGE);
+        assertThat(wrapper.supportedParameters())
+                .containsExactly(dev.langchain4j.model.embedding.request.EmbeddingRequestParameters.DIMENSIONS);
+        assertThat(wrapper.provider()).isEqualTo(dev.langchain4j.model.ModelProvider.COHERE);
+        assertThat(wrapper.modelName()).isEqualTo("multimodal-model");
+        assertThat(wrapper.dimension()).isEqualTo(42);
     }
 }

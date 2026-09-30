@@ -16,6 +16,7 @@ import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Locale;
 import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.expression.*;
 import net.sf.jsqlparser.expression.operators.arithmetic.Addition;
@@ -64,6 +65,9 @@ import net.sf.jsqlparser.statement.select.PlainSelect;
  *
  * - Parentheses: {@code (name = 'Klaus' OR name = 'Francine') AND age = 18}. Expressions within parentheses are evaluated first.
  * </pre>
+ * Values inside {@code IN}/{@code NOT IN} lists can be any of the expressions listed above,
+ * for example {@code age IN (-1, 2 + 3)} or {@code year IN (YEAR(CURDATE()), YEAR(CURDATE()) - 1)}.
+ * <br>
  * If you require additional operations,
  * please <a href="https://github.com/langchain4j/langchain4j/issues/new/choose">open an issue</a>.
  * <br>
@@ -106,7 +110,7 @@ public class SqlFilterParser implements FilterParser {
     @Override
     public Filter parse(String sql) {
 
-        if (!sql.toUpperCase().startsWith("SELECT")) {
+        if (!sql.toUpperCase(Locale.ROOT).startsWith("SELECT")) {
             sql = "SELECT * FROM fake_table WHERE " + sql;
         }
 
@@ -169,24 +173,16 @@ public class SqlFilterParser implements FilterParser {
     private Filter mapInExpression(InExpression inExpression) {
         String key = getKey(inExpression.getLeftExpression());
 
+        Expression rightExpression = inExpression.getRightExpression();
+        if (!(rightExpression instanceof ExpressionList<?> expressionList)) {
+            throw illegalArgument(
+                    "Unsupported expression: '%s'%s", rightExpression, createGithubIssueLink(rightExpression));
+        }
+
         Collection<Object> comparisonValues = new ArrayList<>();
-        inExpression.getRightExpression().accept(new ExpressionVisitorAdapter() {
-
-            @Override
-            public void visit(StringValue value) {
-                comparisonValues.add(value.getValue());
-            }
-
-            @Override
-            public void visit(LongValue value) {
-                comparisonValues.add(value.getValue());
-            }
-
-            @Override
-            public void visit(DoubleValue value) {
-                comparisonValues.add(value.getValue());
-            }
-        });
+        for (Expression expression : expressionList) {
+            comparisonValues.add(getValue(expression));
+        }
 
         if (inExpression.isNot()) {
             return new IsNotIn(key, comparisonValues);
@@ -199,7 +195,8 @@ public class SqlFilterParser implements FilterParser {
         String key = getKey(between.getLeftExpression());
         Comparable<?> from = getValue(between.getBetweenExpressionStart());
         Comparable<?> to = getValue(between.getBetweenExpressionEnd());
-        return new IsGreaterThanOrEqualTo(key, from).and(new IsLessThanOrEqualTo(key, to));
+        Filter range = new IsGreaterThanOrEqualTo(key, from).and(new IsLessThanOrEqualTo(key, to));
+        return between.isNot() ? new Not(range) : range;
     }
 
     private String getKey(BinaryExpression binaryExpression) {
@@ -211,7 +208,12 @@ public class SqlFilterParser implements FilterParser {
             return column.getColumnName();
         } else if (expression instanceof Function function) {
             String name = function.getName();
-            if (name.equalsIgnoreCase("YEAR") || name.equalsIgnoreCase("MONTH")) {
+            if (name.equalsIgnoreCase("YEAR")
+                    || name.equalsIgnoreCase("MONTH")
+                    || name.equalsIgnoreCase("WEEKOFYEAR")
+                    || name.equalsIgnoreCase("DAYOFYEAR")
+                    || name.equalsIgnoreCase("DAYOFMONTH")
+                    || name.equalsIgnoreCase("DAYOFWEEK")) {
                 ExpressionList<?> parameters = function.getParameters();
                 if (parameters != null && parameters.size() == 1) {
                     Expression parameter = parameters.get(0);
@@ -235,15 +237,15 @@ public class SqlFilterParser implements FilterParser {
             return ((LongValue) expression).getValue();
         } else if (expression instanceof DoubleValue) {
             return ((DoubleValue) expression).getValue();
-        } else if (expression instanceof SignedExpression) {
-            SignedExpression signedExpression = (SignedExpression) expression;
-            if (signedExpression.getSign() == '-') {
-                if (signedExpression.getExpression() instanceof LongValue) {
-                    String stringValue = signedExpression.getExpression().toString();
-                    return Long.parseLong("-" + stringValue);
-                } else if (signedExpression.getExpression() instanceof DoubleValue) {
-                    String stringValue = signedExpression.getExpression().toString();
-                    return Double.parseDouble("-" + stringValue);
+        } else if (expression instanceof SignedExpression signedExpression) {
+            char sign = signedExpression.getSign();
+            if (sign == '-' || sign == '+') {
+                Expression innerExpression = signedExpression.getExpression();
+                String stringValue = sign + innerExpression.toString();
+                if (innerExpression instanceof LongValue) {
+                    return Long.parseLong(stringValue);
+                } else if (innerExpression instanceof DoubleValue) {
+                    return Double.parseDouble(stringValue);
                 }
             }
         } else if (expression instanceof Function) {
@@ -301,7 +303,7 @@ public class SqlFilterParser implements FilterParser {
                 if (timeKeyExpression.getStringValue().equalsIgnoreCase("CURRENT_DATE")
                         || timeKeyExpression.getStringValue().equalsIgnoreCase("CURRENT_TIME")
                         || timeKeyExpression.getStringValue().equalsIgnoreCase("CURRENT_TIMESTAMP")) {
-                    String field = extractExpression.getName().toUpperCase();
+                    String field = extractExpression.getName().toUpperCase(Locale.ROOT);
                     switch (field) {
                         case "YEAR":
                             return currentYear();
@@ -319,7 +321,7 @@ public class SqlFilterParser implements FilterParser {
                             return currentHour();
                         case "MINUTE":
                             return currentMinute();
-                            // TODO add other
+                        // TODO add other
                     }
                 } else {
                     // TODO parse timestamp?

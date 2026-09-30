@@ -4,13 +4,17 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
 
+import dev.langchain4j.Internal;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
-
-import dev.langchain4j.Internal;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.interceptor.Context;
@@ -27,6 +31,11 @@ import software.amazon.awssdk.utils.IoUtils;
 class AwsLoggingInterceptor implements ExecutionInterceptor {
 
     private static final Logger DEFAULT_LOGGER = LoggerFactory.getLogger(AwsLoggingInterceptor.class);
+
+    /**
+     * Authentication headers whose values must never be written to logs. Compared case-insensitively.
+     */
+    private static final Set<String> SENSITIVE_HEADERS = Set.of("authorization", "x-amz-security-token");
 
     private final boolean logRequests;
     private final boolean logResponses;
@@ -51,7 +60,8 @@ class AwsLoggingInterceptor implements ExecutionInterceptor {
         if (logRequests) {
             if (request.method() == SdkHttpMethod.POST && request instanceof SdkHttpFullRequest sdkHttpFullRequest) {
                 try {
-                    ContentStreamProvider csp = sdkHttpFullRequest.contentStreamProvider().orElse(null);
+                    ContentStreamProvider csp =
+                            sdkHttpFullRequest.contentStreamProvider().orElse(null);
                     if (nonNull(csp)) body = IoUtils.toUtf8String(csp.newStream());
                 } catch (IOException e) {
                     logger.warn("Unable to obtain request body", e);
@@ -61,10 +71,9 @@ class AwsLoggingInterceptor implements ExecutionInterceptor {
                     "Request:\n- method: {}\n- url: {}\n- headers: {}\n- query parameters: {}\n- body: {}",
                     request.method(),
                     request.getUri(),
-                    request.headers(),
+                    maskHeaders(request.headers()),
                     request.rawQueryParameters(),
-                    body
-            );
+                    body);
         }
     }
 
@@ -80,7 +89,7 @@ class AwsLoggingInterceptor implements ExecutionInterceptor {
             logger.debug(
                     "Response Status: {} \nHeaders: {} \nResponse Body Type: {}",
                     response.statusCode(),
-                    response.headers(),
+                    maskHeaders(response.headers()),
                     context.response().getClass().getSimpleName());
         }
     }
@@ -99,5 +108,25 @@ class AwsLoggingInterceptor implements ExecutionInterceptor {
             }
         }
         return isNull(content) ? Optional.empty() : Optional.of(new ByteArrayInputStream(content));
+    }
+
+    /**
+     * Renders HTTP headers for logging, replacing the values of sensitive authentication headers
+     * (e.g. {@code Authorization}, {@code X-Amz-Security-Token}) with a placeholder so that
+     * credentials such as SigV4 signatures and temporary session tokens are not written to logs.
+     * Header-name matching is case-insensitive; all other headers are rendered unchanged.
+     */
+    static String maskHeaders(Map<String, List<String>> headers) {
+        if (headers == null || headers.isEmpty()) {
+            return "{}";
+        }
+        return headers.entrySet().stream()
+                .map(entry -> {
+                    if (SENSITIVE_HEADERS.contains(entry.getKey().toLowerCase(Locale.ROOT))) {
+                        return entry.getKey() + "=[REDACTED]";
+                    }
+                    return entry.getKey() + "=" + entry.getValue();
+                })
+                .collect(Collectors.joining(", ", "{", "}"));
     }
 }

@@ -19,11 +19,11 @@ For instance, let’s assume we have a `Person` class:
 record Person(String name, int age, double height, boolean married) {
 }
 ```
-We aim to extract a `Person` object from unstructured text like this:
+We aim to extract a `Person` object from unstructured text describing a fictional character:
 ```
-John is 42 years old and lives an independent life.
-He stands 1.75 meters tall and carries himself with confidence.
-Currently unmarried, he enjoys the freedom to focus on his personal goals and interests.
+Eldwin Brightblade is 412 years old and serves as court wizard in the kingdom of Aelyria.
+He stands 1.65 meters tall and is known for his flowing white beard.
+Currently unmarried, he devotes his time to studying ancient runes.
 ```
 
 Currently, depending on the LLM and the LLM provider, there are three ways how this can be achieved
@@ -68,9 +68,9 @@ ResponseFormat responseFormat = ResponseFormat.builder()
         .build();
 
 UserMessage userMessage = UserMessage.from("""
-        John is 42 years old and lives an independent life.
-        He stands 1.75 meters tall and carries himself with confidence.
-        Currently unmarried, he enjoys the freedom to focus on his personal goals and interests.
+        Eldwin Brightblade is 412 years old and serves as court wizard in the kingdom of Aelyria.
+        He stands 1.65 meters tall and is known for his flowing white beard.
+        Currently unmarried, he devotes his time to studying ancient runes.
         """);
 
 ChatRequest chatRequest = ChatRequest.builder()
@@ -130,10 +130,10 @@ ChatModel chatModel = BedrockChatModel.builder()
 ChatResponse chatResponse = chatModel.chat(chatRequest);
 
 String output = chatResponse.aiMessage().text();
-System.out.println(output); // {"name":"John","age":42,"height":1.75,"married":false}
+System.out.println(output); // {"name":"Eldwin Brightblade","age":412,"height":1.65,"married":false}
 
 Person person = new ObjectMapper().readValue(output, Person.class);
-System.out.println(person); // Person[name=John, age=42, height=1.75, married=false]
+System.out.println(person); // Person[name=Eldwin Brightblade, age=412, height=1.65, married=false]
 ```
 Notes:
 - [1] - In most cases, the root element must be of `JsonObjectSchema` type,
@@ -466,14 +466,14 @@ ChatModel chatModel = BedrockChatModel.builder()
 PersonExtractor personExtractor = AiServices.create(PersonExtractor.class, chatModel); // see [1] below
 
 String text = """
-        John is 42 years old and lives an independent life.
-        He stands 1.75 meters tall and carries himself with confidence.
-        Currently unmarried, he enjoys the freedom to focus on his personal goals and interests.
+        Eldwin Brightblade is 412 years old and serves as court wizard in the kingdom of Aelyria.
+        He stands 1.65 meters tall and is known for his flowing white beard.
+        Currently unmarried, he devotes his time to studying ancient runes.
         """;
 
 Person person = personExtractor.extractPersonFrom(text);
 
-System.out.println(person); // Person[name=John, age=42, height=1.75, married=false]
+System.out.println(person); // Person[name=Eldwin Brightblade, age=412, height=1.65, married=false]
 ```
 Notes:
 - [1] - In a Quarkus or a Spring Boot application, there is no need to explicitly create the `ChatModel` and the AI Service,
@@ -810,10 +810,10 @@ If LLM and LLM provider supports the methods described above, it is better to us
 | `long`, `Long`                                             | ✅           | ✅         |
 | `float`, `Float`                                           | ✅           | ✅         |
 | `double`, `Double`                                         | ✅           | ✅         |
-| `byte`, `Byte`                                             | ❌           | ✅         |
-| `short`, `Short`                                           | ❌           | ✅         |
-| `BigInteger`                                               | ❌           | ✅         |
-| `BigDecimal`                                               | ❌           | ✅         |
+| `byte`, `Byte`                                             | ✅           | ✅         |
+| `short`, `Short`                                           | ✅           | ✅         |
+| `BigInteger`                                               | ✅           | ✅         |
+| `BigDecimal`                                               | ✅           | ✅         |
 | `Date`                                                     | ❌           | ✅         |
 | `LocalDate`                                                | ❌           | ✅         |
 | `LocalTime`                                                | ❌           | ✅         |

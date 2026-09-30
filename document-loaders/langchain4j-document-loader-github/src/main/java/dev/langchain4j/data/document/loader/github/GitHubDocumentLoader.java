@@ -10,6 +10,7 @@ import dev.langchain4j.data.document.source.github.GitHubSource;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.kohsuke.github.GHContent;
 import org.kohsuke.github.GitHub;
 import org.kohsuke.github.GitHubBuilder;
@@ -161,13 +162,23 @@ public class GitHubDocumentLoader {
         ensureNotBlank(owner, "owner");
         ensureNotBlank(repo, "repo");
         List<Document> documents = new ArrayList<>();
+        AtomicInteger failed = new AtomicInteger();
         try {
             gitHub.getRepository(owner + "/" + repo)
                     .getDirectoryContent(path, branch)
                     .forEach(ghDirectoryContent ->
-                            GitHubDocumentLoader.scanDirectory(ghDirectoryContent, documents, parser));
+                            GitHubDocumentLoader.scanDirectory(ghDirectoryContent, documents, failed, parser));
         } catch (IOException ioException) {
             throw new RuntimeException(ioException);
+        }
+        if (failed.get() > 0) {
+            logger.warn(
+                    "Loaded {} of {} documents from '{}/{}'. Skipped {} that failed to load.",
+                    documents.size(),
+                    documents.size() + failed.get(),
+                    owner,
+                    repo,
+                    failed.get());
         }
         return documents;
     }
@@ -176,13 +187,14 @@ public class GitHubDocumentLoader {
         return loadDocuments(owner, repo, branch, "", parser);
     }
 
-    private static void scanDirectory(GHContent ghContent, List<Document> documents, DocumentParser parser) {
+    private static void scanDirectory(
+            GHContent ghContent, List<Document> documents, AtomicInteger failed, DocumentParser parser) {
         if (ghContent.isDirectory()) {
             try {
                 ghContent
                         .listDirectoryContent()
                         .forEach(ghDirectoryContent ->
-                                GitHubDocumentLoader.scanDirectory(ghDirectoryContent, documents, parser));
+                                GitHubDocumentLoader.scanDirectory(ghDirectoryContent, documents, failed, parser));
             } catch (IOException ioException) {
                 logger.error("Failed to read directory from GitHub: {}", ghContent.getHtmlUrl(), ioException);
             }
@@ -191,6 +203,7 @@ public class GitHubDocumentLoader {
             try {
                 document = withRetry(() -> fromGitHub(parser, ghContent), 2);
             } catch (RuntimeException runtimeException) {
+                failed.incrementAndGet();
                 logger.error("Failed to read document from GitHub: {}", ghContent.getHtmlUrl(), runtimeException);
             }
             if (document != null) {
@@ -210,7 +223,7 @@ public class GitHubDocumentLoader {
                         "Content must be a file, and not a directory: " + content.getHtmlUrl());
             }
         } catch (IOException ioException) {
-            throw new RuntimeException("Failed to load document from GitHub: {}", ioException);
+            throw new RuntimeException("Failed to load document from GitHub: " + content.getHtmlUrl(), ioException);
         }
     }
 

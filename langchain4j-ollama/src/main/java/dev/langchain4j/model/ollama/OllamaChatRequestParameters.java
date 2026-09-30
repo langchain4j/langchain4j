@@ -23,6 +23,7 @@ public class OllamaChatRequestParameters extends DefaultChatRequestParameters {
     private final Double minP;
     private final Integer keepAlive;
     private final Boolean think;
+    private final Boolean truncate;
     private final Integer numKeep;
     private final Double typicalP;
     private final Integer numBatch;
@@ -43,6 +44,7 @@ public class OllamaChatRequestParameters extends DefaultChatRequestParameters {
         this.minP = builder.minP;
         this.keepAlive = builder.keepAlive;
         this.think = builder.think;
+        this.truncate = builder.truncate;
         this.numKeep = builder.numKeep;
         this.typicalP = builder.typicalP;
         this.numBatch = builder.numBatch;
@@ -119,6 +121,10 @@ public class OllamaChatRequestParameters extends DefaultChatRequestParameters {
         return think;
     }
 
+    public Boolean truncate() {
+        return truncate;
+    }
+
     @Override
     public boolean equals(final Object o) {
         if (o == null || getClass() != o.getClass()) return false;
@@ -140,7 +146,8 @@ public class OllamaChatRequestParameters extends DefaultChatRequestParameters {
                 && Objects.equals(seed, that.seed)
                 && Objects.equals(minP, that.minP)
                 && Objects.equals(keepAlive, that.keepAlive)
-                && Objects.equals(think, that.think);
+                && Objects.equals(think, that.think)
+                && Objects.equals(truncate, that.truncate);
     }
 
     @Override
@@ -163,7 +170,8 @@ public class OllamaChatRequestParameters extends DefaultChatRequestParameters {
                 seed,
                 minP,
                 keepAlive,
-                think);
+                think,
+                truncate);
     }
 
     @Override
@@ -197,6 +205,7 @@ public class OllamaChatRequestParameters extends DefaultChatRequestParameters {
                 + ", minP=" + minP
                 + ", keepAlive=" + keepAlive
                 + ", think=" + think
+                + ", truncate=" + truncate
                 + '}';
     }
 
@@ -233,6 +242,7 @@ public class OllamaChatRequestParameters extends DefaultChatRequestParameters {
         private Double minP;
         private Integer keepAlive;
         private Boolean think;
+        private Boolean truncate;
         private Integer numKeep;
         private Double typicalP;
         private Integer numBatch;
@@ -261,6 +271,7 @@ public class OllamaChatRequestParameters extends DefaultChatRequestParameters {
                 minP(getOrDefault(ollamaChatRequestParameters.minP, minP));
                 keepAlive(getOrDefault(ollamaChatRequestParameters.keepAlive, keepAlive));
                 think(getOrDefault(ollamaChatRequestParameters.think, think));
+                truncate(getOrDefault(ollamaChatRequestParameters.truncate, truncate));
             }
             return this;
         }
@@ -401,6 +412,24 @@ public class OllamaChatRequestParameters extends DefaultChatRequestParameters {
          */
         public Builder think(Boolean think) {
             this.think = think;
+            return this;
+        }
+
+        /**
+         * Controls what Ollama does with a prompt that does not fit the context window.
+         * <pre>
+         * <code>true</code>: the server drops the part of the prompt that does not fit and answers from the rest
+         * <code>false</code>: the server rejects the request with HTTP 400, reporting the prompt size and the context size
+         * <code>null</code> (not set): the server default applies, which is <code>true</code>
+         * </pre>
+         * <p>Set this to {@code false} when a silently shortened prompt is worse than a failed
+         * request, as in a multi-turn agent loop where the conversation grows with every tool result.</p>
+         *
+         * @return builder
+         * @see OllamaChatModel.Builder#truncate(Boolean)
+         */
+        public Builder truncate(Boolean truncate) {
+            this.truncate = truncate;
             return this;
         }
 

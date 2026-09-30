@@ -3,6 +3,7 @@ package dev.langchain4j.model.huggingface;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
+import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.huggingface.client.HuggingFaceClient;
 import dev.langchain4j.model.huggingface.client.Options;
 import dev.langchain4j.model.huggingface.client.Parameters;
@@ -92,6 +93,11 @@ public class HuggingFaceLanguageModel implements LanguageModel {
             public Duration timeout() {
                 return builder.timeout;
             }
+
+            @Override
+            public HttpClientBuilder httpClientBuilder() {
+                return builder.httpClientBuilder;
+            }
         });
         this.temperature = builder.temperature;
         this.maxNewTokens = builder.maxNewTokens;
@@ -127,6 +133,7 @@ public class HuggingFaceLanguageModel implements LanguageModel {
 
     public static final class Builder {
 
+        private HttpClientBuilder httpClientBuilder;
         private String baseUrl;
         private String accessToken;
         private String modelId;
@@ -135,6 +142,17 @@ public class HuggingFaceLanguageModel implements LanguageModel {
         private Integer maxNewTokens;
         private Boolean returnFullText = false;
         private Boolean waitForModel = true;
+
+        /**
+         * Sets the HTTP client builder that will be used to create the HTTP client to communicate with HuggingFace.
+         *
+         * @param httpClientBuilder the HTTP client builder to use
+         * @return {@code this}
+         */
+        public Builder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
+            this.httpClientBuilder = httpClientBuilder;
+            return this;
+        }
 
         public Builder baseUrl(String baseUrl) {
             this.baseUrl = baseUrl;

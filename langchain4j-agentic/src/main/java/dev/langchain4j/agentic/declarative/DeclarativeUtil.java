@@ -37,6 +37,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executor;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
@@ -167,11 +168,12 @@ public class DeclarativeUtil {
             agentBuilder.listener(invokeSupplierWithResolvers(agentType, listenerMethod, AgentListener.class));
         });
 
-        getAnnotatedMethodOnClass(agentType, SystemMessageProviderSupplier.class).ifPresent(method -> {
-            checkReturnType(method, String.class);
-            checkArguments(method, Object.class);
-            agentBuilder.systemMessageProvider(memoryId -> invokeStatic(method, memoryId));
-        });
+        getAnnotatedMethodOnClass(agentType, SystemMessageProviderSupplier.class)
+                .ifPresent(method -> {
+                    checkReturnType(method, String.class);
+                    checkArguments(method, Object.class);
+                    agentBuilder.systemMessageProvider(memoryId -> invokeStatic(method, memoryId));
+                });
 
         getAnnotatedMethodOnClass(agentType, UserMessageProviderSupplier.class).ifPresent(method -> {
             checkReturnType(method, String.class);
@@ -227,8 +229,17 @@ public class DeclarativeUtil {
     }
 
     public static void buildAgentFeatures(Class<?> agentServiceClass, AgenticService<?, ?> builder) {
+        buildBeforeCall(agentServiceClass).ifPresent(builder::beforeCall);
         buildErrorHandler(agentServiceClass).ifPresent(builder::errorHandler);
         buildListener(agentServiceClass, builder);
+    }
+
+    private static Optional<Consumer<AgenticScope>> buildBeforeCall(Class<?> agentServiceClass) {
+        return selectMethod(agentServiceClass, method -> method.isAnnotationPresent(BeforeCall.class))
+                .map(m -> {
+                    checkReturnType(m, void.class);
+                    return agenticScopeFunction(m, Object.class)::apply;
+                });
     }
 
     public static Optional<Executor> parallelExecutor(Class<?> agentServiceClass) {
@@ -279,7 +290,7 @@ public class DeclarativeUtil {
                 agenticScopeFunction(predicateMethod, boolean.class).apply(agenticScope);
     }
 
-    private static <T> T invokeSupplierWithResolvers(Class<?> agentType, Method method, Class<T> targetClass) {
+    public static <T> T invokeSupplierWithResolvers(Class<?> agentType, Method method, Class<T> targetClass) {
         if (method.getParameterCount() == 0) {
             return invokeStatic(method);
         }

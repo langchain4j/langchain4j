@@ -19,6 +19,7 @@ import java.nio.file.PathMatcher;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -485,6 +486,8 @@ public class FileSystemDocumentLoader {
     private static List<Document> loadDocuments(
             Stream<Path> pathStream, PathMatcher pathMatcher, Path pathMatcherRoot, DocumentParser documentParser) {
         List<Document> documents = new ArrayList<>();
+        AtomicInteger blank = new AtomicInteger();
+        AtomicInteger failed = new AtomicInteger();
 
         pathStream
                 .filter(Files::isRegularFile)
@@ -499,12 +502,22 @@ public class FileSystemDocumentLoader {
                         Document document = loadDocument(file, documentParser);
                         documents.add(document);
                     } catch (BlankDocumentException ignored) {
-                        // blank/empty documents are ignored
+                        blank.incrementAndGet();
                     } catch (Exception e) {
-                        String message = e.getCause() != null ? e.getCause().getMessage() : e.getMessage();
-                        log.warn("Failed to load '{}': {}", file, message);
+                        failed.incrementAndGet();
+                        log.warn("Failed to load '{}'", file, e);
                     }
                 });
+
+        if (blank.get() > 0 || failed.get() > 0) {
+            log.warn(
+                    "Loaded {} of {} documents from '{}'. Skipped {} that failed to load and {} that were blank.",
+                    documents.size(),
+                    documents.size() + blank.get() + failed.get(),
+                    pathMatcherRoot,
+                    failed.get(),
+                    blank.get());
+        }
 
         return documents;
     }

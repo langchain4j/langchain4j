@@ -1,5 +1,7 @@
 package dev.langchain4j.agentic.workflow.impl;
 
+import static java.util.Arrays.copyOf;
+
 import dev.langchain4j.agentic.internal.AgentExecutor;
 import dev.langchain4j.agentic.internal.MapperAgentInvoker;
 import dev.langchain4j.agentic.planner.Action;
@@ -12,8 +14,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
-
-import static java.util.Arrays.copyOf;
 
 public class ParallelMapperPlanner implements Planner {
 
@@ -49,7 +49,7 @@ public class ParallelMapperPlanner implements Planner {
         List<?> items = collectItems(collectionObj);
 
         if (items.isEmpty()) {
-            return done();
+            return doneWithResults(planningContext, List.of());
         }
 
         this.itemCount = items.size();
@@ -89,13 +89,17 @@ public class ParallelMapperPlanner implements Planner {
                 results.add(planningContext.agenticScope().readState(resultKeyPrefix + "_" + i));
                 planningContext.agenticScope().writeState(resultKeyPrefix + "_" + i, null);
             }
-            Object result = isArrayResult ? copyOf(results.toArray(), results.size(), arrayclass) : results;
-            if (outputKey != null && !outputKey.isBlank()) {
-                planningContext.agenticScope().writeState(outputKey, result);
-            }
-            return done(result);
+            return doneWithResults(planningContext, results);
         }
         return done();
+    }
+
+    private Action doneWithResults(PlanningContext planningContext, List<Object> results) {
+        Object result = isArrayResult ? copyOf(results.toArray(), results.size(), arrayclass) : results;
+        if (outputKey != null && !outputKey.isBlank()) {
+            planningContext.agenticScope().writeState(outputKey, result);
+        }
+        return done(result);
     }
 
     @Override

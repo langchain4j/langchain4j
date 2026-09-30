@@ -120,7 +120,7 @@ public class WatsonxModelCatalog implements ModelCatalog {
     /**
      * Builder class for constructing {@link WatsonxModelCatalog} instances with configurable parameters.
      */
-    public static class Builder extends WatsonxBuilder<Builder> {
+    public static class Builder extends WatsonxConnectionBuilder<Builder> {
 
         private Builder() {}
 

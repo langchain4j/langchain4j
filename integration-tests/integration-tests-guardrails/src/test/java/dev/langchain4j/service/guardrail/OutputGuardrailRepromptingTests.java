@@ -36,19 +36,25 @@ class OutputGuardrailRepromptingTests extends BaseGuardrailTests {
                 .extracting(ChatMemory::messages)
                 .satisfies(messages -> assertThat(messages)
                         .isNotNull()
-                        .hasSize(2)
+                        .hasSize(3)
                         .satisfies(
                                 message -> assertThat(message)
                                         .isNotNull()
                                         .extracting(ChatMessage::type)
-                                        .isEqualTo(ChatMessageType.USER),
+                                        .isEqualTo(ChatMessageType.SYSTEM),
                                 atIndex(0))
                         .satisfies(
                                 message -> assertThat(message)
                                         .isNotNull()
                                         .extracting(ChatMessage::type)
+                                        .isEqualTo(ChatMessageType.USER),
+                                atIndex(1))
+                        .satisfies(
+                                message -> assertThat(message)
+                                        .isNotNull()
+                                        .extracting(ChatMessage::type)
                                         .isEqualTo(ChatMessageType.AI),
-                                atIndex(1)));
+                                atIndex(2)));
     }
 
     @Test
@@ -61,19 +67,25 @@ class OutputGuardrailRepromptingTests extends BaseGuardrailTests {
                 .extracting(ChatMemory::messages)
                 .satisfies(messages -> assertThat(messages)
                         .isNotNull()
-                        .hasSize(2)
+                        .hasSize(3)
                         .satisfies(
                                 message -> assertThat(message)
                                         .isNotNull()
                                         .extracting(ChatMessage::type)
-                                        .isEqualTo(ChatMessageType.USER),
+                                        .isEqualTo(ChatMessageType.SYSTEM),
                                 atIndex(0))
                         .satisfies(
                                 message -> assertThat(message)
                                         .isNotNull()
                                         .extracting(ChatMessage::type)
+                                        .isEqualTo(ChatMessageType.USER),
+                                atIndex(1))
+                        .satisfies(
+                                message -> assertThat(message)
+                                        .isNotNull()
+                                        .extracting(ChatMessage::type)
                                         .isEqualTo(ChatMessageType.AI),
-                                atIndex(1)));
+                                atIndex(2)));
     }
 
     @Test
@@ -86,19 +98,25 @@ class OutputGuardrailRepromptingTests extends BaseGuardrailTests {
                 .extracting(ChatMemory::messages)
                 .satisfies(messages -> assertThat(messages)
                         .isNotNull()
-                        .hasSize(2)
+                        .hasSize(3)
                         .satisfies(
                                 message -> assertThat(message)
                                         .isNotNull()
                                         .extracting(ChatMessage::type)
-                                        .isEqualTo(ChatMessageType.USER),
+                                        .isEqualTo(ChatMessageType.SYSTEM),
                                 atIndex(0))
                         .satisfies(
                                 message -> assertThat(message)
                                         .isNotNull()
                                         .extracting(ChatMessage::type)
+                                        .isEqualTo(ChatMessageType.USER),
+                                atIndex(1))
+                        .satisfies(
+                                message -> assertThat(message)
+                                        .isNotNull()
+                                        .extracting(ChatMessage::type)
                                         .isEqualTo(ChatMessageType.AI),
-                                atIndex(1)));
+                                atIndex(2)));
     }
 
     @SystemMessage("Say Hi!")
@@ -157,8 +175,9 @@ class OutputGuardrailRepromptingTests extends BaseGuardrailTests {
 
             if (v == 1) {
                 ChatMessage last = messages.get(messages.size() - 1);
-                assertThat(last).isInstanceOfSatisfying(AiMessage.class, am -> assertThat(am.text())
-                        .isEqualTo("Nope"));
+                assertThat(last)
+                        .isInstanceOfSatisfying(
+                                AiMessage.class, am -> assertThat(am.text()).isEqualTo("Nope"));
                 assertThat(request.responseFromLLM().aiMessage().text()).isEqualTo("Nope");
                 return reprompt("Retry", "Retry");
             }
@@ -168,8 +187,9 @@ class OutputGuardrailRepromptingTests extends BaseGuardrailTests {
                 ChatMessage last = messages.get(messages.size() - 1);
                 ChatMessage beforeLast = messages.get(messages.size() - 2);
 
-                assertThat(last).isInstanceOfSatisfying(AiMessage.class, am -> assertThat(am.text())
-                        .isEqualTo("Nope"));
+                assertThat(last)
+                        .isInstanceOfSatisfying(
+                                AiMessage.class, am -> assertThat(am.text()).isEqualTo("Nope"));
                 assertThat(request.responseFromLLM().aiMessage().text()).isEqualTo("Hello");
                 assertThat(beforeLast)
                         .isInstanceOfSatisfying(
@@ -207,8 +227,9 @@ class OutputGuardrailRepromptingTests extends BaseGuardrailTests {
 
             if (v == 1) {
                 ChatMessage last = messages.get(messages.size() - 1);
-                assertThat(last).isInstanceOfSatisfying(AiMessage.class, am -> assertThat(am.text())
-                        .isEqualTo("Nope"));
+                assertThat(last)
+                        .isInstanceOfSatisfying(
+                                AiMessage.class, am -> assertThat(am.text()).isEqualTo("Nope"));
                 return reprompt("Retry", "Retry Once");
             }
 
@@ -217,8 +238,9 @@ class OutputGuardrailRepromptingTests extends BaseGuardrailTests {
                 ChatMessage last = messages.get(messages.size() - 1);
                 ChatMessage beforeLast = messages.get(messages.size() - 2);
 
-                assertThat(last).isInstanceOfSatisfying(AiMessage.class, am -> assertThat(am.text())
-                        .isEqualTo("Nope"));
+                assertThat(last)
+                        .isInstanceOfSatisfying(
+                                AiMessage.class, am -> assertThat(am.text()).isEqualTo("Nope"));
                 assertThat(beforeLast)
                         .isInstanceOfSatisfying(
                                 dev.langchain4j.data.message.UserMessage.class,

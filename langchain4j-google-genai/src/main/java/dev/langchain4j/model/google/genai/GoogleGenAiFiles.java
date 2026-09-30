@@ -60,7 +60,8 @@ public final class GoogleGenAiFiles {
                                     : filePath.getFileName().toString())
                     .mimeType(detectMimeType(filePath))
                     .build();
-            return client.files.upload(filePath.toFile(), config);
+            return GoogleGenAiExceptionMapper.INSTANCE.withExceptionMapper(
+                    () -> client.files.upload(filePath.toFile(), config));
         } catch (IOException e) {
             throw new RuntimeException("Failed to upload file", e);
         }
@@ -83,7 +84,7 @@ public final class GoogleGenAiFiles {
 
         UploadFileConfig config =
                 UploadFileConfig.builder().displayName(name).mimeType(mimeType).build();
-        return client.files.upload(fileBytes, config);
+        return GoogleGenAiExceptionMapper.INSTANCE.withExceptionMapper(() -> client.files.upload(fileBytes, config));
     }
 
     /**
@@ -93,7 +94,8 @@ public final class GoogleGenAiFiles {
      */
     public File getMetadata(String name) {
         ensureNotBlank(name, "name");
-        return client.files.get(name, GetFileConfig.builder().build());
+        return GoogleGenAiExceptionMapper.INSTANCE.withExceptionMapper(
+                () -> client.files.get(name, GetFileConfig.builder().build()));
     }
 
     /**
@@ -103,9 +105,11 @@ public final class GoogleGenAiFiles {
      * maximum size of 2 GB. Files are stored for 48 hours.
      */
     public List<File> listFiles() {
-        List<File> allFiles = new ArrayList<>();
-        client.files.list(ListFilesConfig.builder().build()).forEach(allFiles::add);
-        return allFiles;
+        return GoogleGenAiExceptionMapper.INSTANCE.withExceptionMapper(() -> {
+            List<File> allFiles = new ArrayList<>();
+            client.files.list(ListFilesConfig.builder().build()).forEach(allFiles::add);
+            return allFiles;
+        });
     }
 
     /**
@@ -115,7 +119,10 @@ public final class GoogleGenAiFiles {
      */
     public void deleteFile(String name) {
         ensureNotBlank(name, "name");
-        client.files.delete(name, DeleteFileConfig.builder().build());
+        GoogleGenAiExceptionMapper.INSTANCE.withExceptionMapper(() -> {
+            client.files.delete(name, DeleteFileConfig.builder().build());
+            return null;
+        });
     }
 
     /**

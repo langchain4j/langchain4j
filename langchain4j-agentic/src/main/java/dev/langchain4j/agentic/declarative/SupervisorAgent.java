@@ -88,4 +88,12 @@ public @interface SupervisorAgent {
      * Strategy to decide which response the supervisor agent should return.
      */
     SupervisorResponseStrategy responseStrategy() default SupervisorResponseStrategy.LAST;
+
+    /**
+     * When true, if any agent in the hierarchy fails, all previously successful tool
+     * executions with {@code @CompensateFor} actions are compensated in reverse order.
+     *
+     * @return whether to enable cross-agent compensation on error.
+     */
+    boolean compensateOnError() default false;
 }

@@ -116,6 +116,7 @@ public class SupervisorAndWorkflowAgentsIT {
         SupervisorAgent styledWriter = AgenticServices.supervisorBuilder()
                 .chatModel(plannerModel())
                 .supervisorContext("Audience: kids; Compliance: avoid violence")
+                .beforeCall(scope -> scope.writeStateIfAbsent("dummyKey", "dummyValue"))
                 .responseStrategy(SupervisorResponseStrategy.LAST)
                 .subAgents(creativeWriter, styleReviewLoop)
                 .maxAgentsInvocations(5)
@@ -128,6 +129,7 @@ public class SupervisorAndWorkflowAgentsIT {
                 styledWriter.invokeWithAgenticScope("Write a story about dragons and wizards in the style of a comedy");
         DefaultAgenticScope scope = (DefaultAgenticScope) result.agenticScope();
         assertThat(scope.readState(SUPERVISOR_CONTEXT_KEY, "")).contains("Audience: kids; Compliance: avoid violence");
+        assertThat(scope.readState("dummyKey", "")).isEqualTo("dummyValue");
     }
 
     void supervisor_with_composite_agents(boolean typedSupervisor) {

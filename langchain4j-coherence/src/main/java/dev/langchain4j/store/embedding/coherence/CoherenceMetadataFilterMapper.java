@@ -4,7 +4,6 @@ import com.oracle.coherence.ai.DocumentChunk;
 import com.tangosol.util.Extractors;
 import com.tangosol.util.Filters;
 import com.tangosol.util.ValueExtractor;
-
 import dev.langchain4j.store.embedding.filter.Filter;
 import dev.langchain4j.store.embedding.filter.comparison.IsEqualTo;
 import dev.langchain4j.store.embedding.filter.comparison.IsGreaterThan;
@@ -17,7 +16,6 @@ import dev.langchain4j.store.embedding.filter.comparison.IsNotIn;
 import dev.langchain4j.store.embedding.filter.logical.And;
 import dev.langchain4j.store.embedding.filter.logical.Not;
 import dev.langchain4j.store.embedding.filter.logical.Or;
-
 import java.util.Collection;
 import java.util.HashSet;
 
@@ -26,8 +24,7 @@ import java.util.HashSet;
  * {@link com.tangosol.util.Filter Coherence filters} that
  * can be applied to {@link DocumentChunk} metadata.
  */
-class CoherenceMetadataFilterMapper
-    {
+class CoherenceMetadataFilterMapper {
     /**
      * Return the Coherence filter that is equivalent to the
      * specified LangChain4j filter.
@@ -62,12 +59,16 @@ class CoherenceMetadataFilterMapper
         } else if (filter instanceof Or or) {
             return mapOr(or);
         } else {
-            throw new UnsupportedOperationException("Unsupported filter type: " + filter.getClass().getName());
+            throw new UnsupportedOperationException(
+                    "Unsupported filter type: " + filter.getClass().getName());
         }
     }
 
     private static <V> ValueExtractor<DocumentChunk, V> extractor(String field) {
-        return Extractors.chained(ValueExtractor.of(DocumentChunk::metadata), Extractors.extract(field));
+        // Passing the metadata key as a parameter to "get" makes Coherence build a method extractor
+        // that calls Map.get(field). Passing it as the extractor name instead would make Coherence
+        // normalize it to a JavaBean canonical name, which silently rewrites keys such as "isbn".
+        return Extractors.chained(ValueExtractor.of(DocumentChunk::metadata), Extractors.extract("get", field));
     }
 
     private static com.tangosol.util.Filter<DocumentChunk> mapEqual(IsEqualTo isEqualTo) {
@@ -86,7 +87,8 @@ class CoherenceMetadataFilterMapper
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
-    private static com.tangosol.util.Filter<DocumentChunk> mapGreaterThanOrEqual(IsGreaterThanOrEqualTo isGreaterThanOrEqualTo) {
+    private static com.tangosol.util.Filter<DocumentChunk> mapGreaterThanOrEqual(
+            IsGreaterThanOrEqualTo isGreaterThanOrEqualTo) {
         ValueExtractor<DocumentChunk, ? extends Comparable> extractor = extractor(isGreaterThanOrEqualTo.key());
         Comparable value = isGreaterThanOrEqualTo.comparisonValue();
         return Filters.greaterEqual(extractor, value);
@@ -132,4 +134,3 @@ class CoherenceMetadataFilterMapper
         return Filters.any(map(or.left()), map(or.right()));
     }
 }
-

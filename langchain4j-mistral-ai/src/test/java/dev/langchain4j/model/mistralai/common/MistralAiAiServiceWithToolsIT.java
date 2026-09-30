@@ -16,6 +16,9 @@ class MistralAiAiServiceWithToolsIT extends AbstractAiServiceWithToolsIT {
     private static final String ALWAYS_USE_AVAILABLE_TOOLS_TO_CALCULATE_THE_ANSWER =
             " Always use available tools to calculate the answer.";
 
+    private static final String CALL_ONE_TOOL_AT_A_TIME =
+            " Call one tool at a time and wait for its result, never call multiple tools in parallel.";
+
     @Override
     protected List<ChatModel> models() {
         return singletonList(MistralAiChatModel.builder()
@@ -39,7 +42,8 @@ class MistralAiAiServiceWithToolsIT extends AbstractAiServiceWithToolsIT {
 
     @Override
     protected String adaptPrompt1(String prompt) {
-        return prompt + ALWAYS_USE_AVAILABLE_TOOLS_TO_CALCULATE_THE_ANSWER;
+        // without this, Mistral calls both tools in a single parallel batch, guessing the result of the first one
+        return prompt + ALWAYS_USE_AVAILABLE_TOOLS_TO_CALCULATE_THE_ANSWER + CALL_ONE_TOOL_AT_A_TIME;
     }
 
     @Override

@@ -127,15 +127,21 @@ class GoogleAiGeminiStreamingChatModelTest {
 
         @Test
         void cachedContentNameInContentRequest() {
-            GoogleAiGeminiStreamingChatModel chatModel = GoogleAiGeminiStreamingChatModel.builder()
-                    .apiKey("ApiKey")
-                    .modelName("ModelName")
-                    .cachedContentName("cachedContents/abc123")
-                    .build();
-            GeminiGenerateContentRequest result = chatModel.createGenerateContentRequest(DEFAULT_REQUEST);
+            GoogleAiGeminiStreamingChatModel.GoogleAiGeminiStreamingChatModelBuilder builder =
+                    GoogleAiGeminiStreamingChatModel.builder()
+                            .apiKey("ApiKey")
+                            .modelName("ModelName")
+                            .cachedContentName("cachedContents/abc123");
+            GoogleAiGeminiStreamingChatModel chatModel = new GoogleAiGeminiStreamingChatModel(builder, geminiService);
 
-            assertThat(result.cachedContent()).isEqualTo("cachedContents/abc123");
-            assertThatCharSequence(Json.toJson(result)).contains("\"cachedContent\" : \"cachedContents/abc123\"");
+            chatModel.chat(ChatRequest.builder().messages(new UserMessage("Hi")).build(), handler);
+
+            verify(geminiService)
+                    .generateContentStream(eq("ModelName"), requestCaptor.capture(), eq(false), eq(null), any());
+
+            assertThat(requestCaptor.getValue().cachedContent()).isEqualTo("cachedContents/abc123");
+            assertThatCharSequence(Json.toJson(requestCaptor.getValue()))
+                    .contains("\"cachedContent\" : \"cachedContents/abc123\"");
         }
 
         @Test
@@ -151,6 +157,30 @@ class GoogleAiGeminiStreamingChatModelTest {
         }
 
         @Test
+        void shouldUseRequestLevelCachedContentNameWhenProvided() {
+            GoogleAiGeminiStreamingChatModel.GoogleAiGeminiStreamingChatModelBuilder builder =
+                    GoogleAiGeminiStreamingChatModel.builder()
+                            .apiKey("ApiKey")
+                            .modelName("ModelName")
+                            .cachedContentName("cachedContents/global");
+            GoogleAiGeminiStreamingChatModel chatModel = new GoogleAiGeminiStreamingChatModel(builder, geminiService);
+
+            ChatRequest chatRequest = ChatRequest.builder()
+                    .messages(new UserMessage("Hi"))
+                    .parameters(GoogleAiGeminiChatRequestParameters.builder()
+                            .cachedContentName("cachedContents/per-request")
+                            .build())
+                    .build();
+
+            chatModel.chat(chatRequest, handler);
+
+            verify(geminiService)
+                    .generateContentStream(eq("ModelName"), requestCaptor.capture(), eq(false), eq(null), any());
+
+            assertThat(requestCaptor.getValue().cachedContent()).isEqualTo("cachedContents/per-request");
+        }
+
+        @Test
         void enableEnhancedCivicAnswersInContentRequest() {
             GoogleAiGeminiStreamingChatModel chatModel = GoogleAiGeminiStreamingChatModel.builder()
                     .apiKey("ApiKey")
@@ -163,6 +193,29 @@ class GoogleAiGeminiStreamingChatModelTest {
         }
 
         @Test
+        void responseLogprobsInContentRequest() {
+            GoogleAiGeminiStreamingChatModel chatModel = GoogleAiGeminiStreamingChatModel.builder()
+                    .apiKey("ApiKey")
+                    .modelName("ModelName")
+                    .responseLogprobs(false)
+                    .build();
+            GeminiGenerateContentRequest result = chatModel.createGenerateContentRequest(DEFAULT_REQUEST);
+
+            assertThat(result.generationConfig().responseLogprobs()).isFalse();
+        }
+
+        @Test
+        void defaultResponseLogprobsInContentRequest() {
+            GoogleAiGeminiStreamingChatModel chatModel = GoogleAiGeminiStreamingChatModel.builder()
+                    .apiKey("ApiKey")
+                    .modelName("ModelName")
+                    .build();
+            GeminiGenerateContentRequest result = chatModel.createGenerateContentRequest(DEFAULT_REQUEST);
+
+            assertThat(result.generationConfig().responseLogprobs()).isNull();
+        }
+
+        @Test
         void defaultEnableEnhancedCivicAnswersInContentRequest() {
             GoogleAiGeminiStreamingChatModel chatModel = GoogleAiGeminiStreamingChatModel.builder()
                     .apiKey("ApiKey")
@@ -170,7 +223,7 @@ class GoogleAiGeminiStreamingChatModelTest {
                     .build();
             GeminiGenerateContentRequest result = chatModel.createGenerateContentRequest(DEFAULT_REQUEST);
 
-            assertThat(result.generationConfig().enableEnhancedCivicAnswers()).isFalse();
+            assertThat(result.generationConfig().enableEnhancedCivicAnswers()).isNull();
         }
     }
 }

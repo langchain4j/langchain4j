@@ -129,7 +129,8 @@ public final class GoogleGenAiBatchImageModel implements BatchImageModel {
         CreateBatchJobConfig config =
                 CreateBatchJobConfig.builder().displayName(displayName).build();
 
-        BatchJob batchJob = withRetryMappingExceptions(() -> client.batches.create(modelName, src, config), maxRetries);
+        BatchJob batchJob = withRetryMappingExceptions(
+                () -> client.batches.create(modelName, src, config), maxRetries, GoogleGenAiExceptionMapper.INSTANCE);
         return processResponse(batchJob);
     }
 
@@ -148,7 +149,8 @@ public final class GoogleGenAiBatchImageModel implements BatchImageModel {
         CreateBatchJobConfig config =
                 CreateBatchJobConfig.builder().displayName(displayName).build();
 
-        BatchJob batchJob = withRetryMappingExceptions(() -> client.batches.create(modelName, src, config), maxRetries);
+        BatchJob batchJob = withRetryMappingExceptions(
+                () -> client.batches.create(modelName, src, config), maxRetries, GoogleGenAiExceptionMapper.INSTANCE);
         return processResponse(batchJob);
     }
 

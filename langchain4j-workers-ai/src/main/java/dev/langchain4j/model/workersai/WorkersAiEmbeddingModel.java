@@ -2,6 +2,7 @@ package dev.langchain4j.model.workersai;
 
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
@@ -10,7 +11,6 @@ import dev.langchain4j.model.workersai.client.WorkersAiEmbeddingResponse;
 import dev.langchain4j.model.workersai.spi.WorkersAiEmbeddingModelBuilderFactory;
 import org.slf4j.Logger;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
@@ -35,7 +35,7 @@ public class WorkersAiEmbeddingModel extends AbstractWorkersAIModel implements E
      * @param builder builder.
      */
     public WorkersAiEmbeddingModel(Builder builder) {
-        this(builder.accountId, builder.modelName, builder.apiToken);
+        super(builder.accountId, builder.modelName, builder.apiToken, builder.httpClientBuilder);
     }
 
     /**
@@ -78,6 +78,10 @@ public class WorkersAiEmbeddingModel extends AbstractWorkersAIModel implements E
          * ModelName, preferred as enum for extensibility.
          */
         public String modelName;
+        /**
+         * The HTTP client builder used to create the underlying HTTP client.
+         */
+        public HttpClientBuilder httpClientBuilder;
 
         /**
          * Simple constructor.
@@ -119,6 +123,17 @@ public class WorkersAiEmbeddingModel extends AbstractWorkersAIModel implements E
         }
 
         /**
+         * Sets the {@link HttpClientBuilder} used to create the underlying HTTP client.
+         *
+         * @param httpClientBuilder The HTTP client builder to set.
+         * @return The current instance of {@link Builder}.
+         */
+        public Builder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
+            this.httpClientBuilder = httpClientBuilder;
+            return this;
+        }
+
+        /**
          * Builds a new instance of Worker AI Chat Model.
          *
          * @return A new instance of {@link WorkersAiChatModel}.
@@ -133,32 +148,26 @@ public class WorkersAiEmbeddingModel extends AbstractWorkersAIModel implements E
      */
     @Override
     public Response<Embedding> embed(String text) {
-        try {
-            dev.langchain4j.model.workersai.client.WorkersAiEmbeddingRequest req = new dev.langchain4j.model.workersai.client.WorkersAiEmbeddingRequest();
-            req.getText().add(text);
+        dev.langchain4j.model.workersai.client.WorkersAiEmbeddingRequest req = new dev.langchain4j.model.workersai.client.WorkersAiEmbeddingRequest();
+        req.getText().add(text);
 
-            retrofit2.Response<dev.langchain4j.model.workersai.client.WorkersAiEmbeddingResponse> retrofitResponse = workerAiClient
-                    .embed(req, accountId, modelName)
-                    .execute();
+        dev.langchain4j.model.workersai.client.WorkersAiEmbeddingResponse response =
+                client.embed(req, accountId, modelName);
 
-            processErrors(retrofitResponse.body(), retrofitResponse.errorBody());
-            if (retrofitResponse.body() == null) {
-                throw new RuntimeException("Unexpected response: " + retrofitResponse);
-            }
-            dev.langchain4j.model.workersai.client.WorkersAiEmbeddingResponse.EmbeddingResult res = retrofitResponse.body().getResult();
-            // Single Vector expected
-            if (res.getShape().get(0) != 1) {
-                throw new RuntimeException("Unexpected shape: " + res.getShape());
-            }
-            List<Float> embeddings = res.getData().get(0);
-            float[] floatArray = new float[embeddings.size()];
-            for (int i = 0; i < embeddings.size(); i++) {
-                floatArray[i] = embeddings.get(i); // Unboxing Float to float
-            }
-            return new Response<>(new Embedding(floatArray), null, FinishReason.STOP);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+        if (response == null || response.getResult() == null) {
+            throw new RuntimeException("Unexpected response: " + response);
         }
+        dev.langchain4j.model.workersai.client.WorkersAiEmbeddingResponse.EmbeddingResult res = response.getResult();
+        // Single Vector expected
+        if (res.getShape().get(0) != 1) {
+            throw new RuntimeException("Unexpected shape: " + res.getShape());
+        }
+        List<Float> embeddings = res.getData().get(0);
+        float[] floatArray = new float[embeddings.size()];
+        for (int i = 0; i < embeddings.size(); i++) {
+            floatArray[i] = embeddings.get(i); // Unboxing Float to float
+        }
+        return new Response<>(new Embedding(floatArray), null, FinishReason.STOP);
     }
 
     /**
@@ -216,22 +225,17 @@ public class WorkersAiEmbeddingModel extends AbstractWorkersAIModel implements E
      * @param accountIdentifier account identifier.
      * @param modelName         model name.
      * @return list of embeddings.
-     * @throws IOException error occurred during invocation.
      */
-    private List<Embedding> processChunk(List<TextSegment> chunk, String accountIdentifier, String modelName)
-            throws IOException {
+    private List<Embedding> processChunk(List<TextSegment> chunk, String accountIdentifier, String modelName) {
         dev.langchain4j.model.workersai.client.WorkersAiEmbeddingRequest req = new dev.langchain4j.model.workersai.client.WorkersAiEmbeddingRequest();
         for (TextSegment textSegment : chunk) {
             req.getText().add(textSegment.text());
         }
-        retrofit2.Response<dev.langchain4j.model.workersai.client.WorkersAiEmbeddingResponse> retrofitResponse = workerAiClient
-                .embed(req, accountIdentifier, modelName)
-                .execute();
-        processErrors(retrofitResponse.body(), retrofitResponse.errorBody());
-        if (retrofitResponse.body() == null) {
-            throw new RuntimeException("Unexpected response: " + retrofitResponse);
+        WorkersAiEmbeddingResponse response = client.embed(req, accountIdentifier, modelName);
+        if (response == null || response.getResult() == null) {
+            throw new RuntimeException("Unexpected response: " + response);
         }
-        WorkersAiEmbeddingResponse.EmbeddingResult res = retrofitResponse.body().getResult();
+        WorkersAiEmbeddingResponse.EmbeddingResult res = response.getResult();
 
         List<List<Float>> embeddings = res.getData();
         List<Embedding> embeddingsList = new ArrayList<>();

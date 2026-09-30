@@ -32,7 +32,7 @@ class RunShellCommandToolExecutor implements ToolExecutor {
         Integer timeoutSeconds = resolveTimeout(arguments);
 
         try {
-            Result result = ShellCommandRunner.run(command, workingDir, timeoutSeconds, config.executorService);
+            Result result = ShellCommandRunner.run(command, workingDir, timeoutSeconds, config.executor);
 
             String stdOut = formatStdOut(result.stdOut());
             if (result.isSuccess()) {
@@ -119,7 +119,15 @@ class RunShellCommandToolExecutor implements ToolExecutor {
         if (timeoutSeconds instanceof Integer i) {
             return i;
         }
-        return Integer.valueOf(timeoutSeconds.toString());
+        try {
+            return Integer.valueOf(timeoutSeconds.toString());
+        } catch (NumberFormatException e) {
+            throwException(
+                    "Invalid value for tool argument '%s': '%s'"
+                            .formatted(config.timeoutSecondsParameterName, timeoutSeconds),
+                    e);
+            return null; // unreachable
+        }
     }
 
     private String formatStdOut(String stdOut) {

@@ -3,7 +3,7 @@ package dev.langchain4j.store.embedding.azure.cosmos.mongo.vcore;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.randomUUID;
-import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
+import static dev.langchain4j.internal.ValidationUtils.ensureConsistentSizes;
 import static dev.langchain4j.store.embedding.azure.cosmos.mongo.vcore.MappingUtils.toEmbeddingMatch;
 import static dev.langchain4j.store.embedding.azure.cosmos.mongo.vcore.MappingUtils.toMongoDbDocument;
 import static java.util.Collections.singletonList;
@@ -44,8 +44,6 @@ import org.bson.Document;
 import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.codecs.pojo.PojoCodecProvider;
 import org.bson.conversions.Bson;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Represents an Azure CosmosDB Mongo vCore as an embedding store.
@@ -55,7 +53,6 @@ import org.slf4j.LoggerFactory;
  */
 public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<TextSegment> {
 
-    private static final Logger log = LoggerFactory.getLogger(AzureCosmosDbMongoVCoreEmbeddingStore.class);
     private final MongoCollection<AzureCosmosDbMongoVCoreDocument> collection;
     private final String indexName;
     private final VectorIndexType kind;
@@ -318,14 +315,10 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
 
     @Override
     public void addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
-        if (isNullOrEmpty(ids) || isNullOrEmpty(embeddings)) {
-            log.info("do not add empty embeddings to Azure CosmosDB  Mongo vCore");
+        ensureConsistentSizes(ids, embeddings, embedded);
+        if (isNullOrEmpty(embeddings)) {
             return;
         }
-        ensureTrue(ids.size() == embeddings.size(), "ids size is not equal to embeddings size");
-        ensureTrue(
-                embedded == null || embeddings.size() == embedded.size(),
-                "embeddings size is not equal to embedded size");
 
         List<AzureCosmosDbMongoVCoreDocument> documents = new ArrayList<>(ids.size());
         for (int i = 0; i < ids.size(); i++) {
