@@ -32,8 +32,8 @@ import org.slf4j.LoggerFactory;
  * route whose description fits the last user message best.
  * <pre>{@code
  * ChatModel chatModel = RoutingChatModel.builder()
- *         .route("simple", smallModel, "Greetings, short factual questions, simple lookups")
- *         .route("complex", largeModel, "Multi-step reasoning, code, analysis")
+ *         .route("simple", "Greetings, short factual questions, simple lookups", smallModel)
+ *         .route("complex", "Multi-step reasoning, code, analysis", largeModel)
  *         .router(new DecisionModelChatModelRouter(decisionModel))
  *         .defaultRoute("complex")
  *         .build();

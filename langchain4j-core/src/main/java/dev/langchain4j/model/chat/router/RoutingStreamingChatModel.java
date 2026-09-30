@@ -35,8 +35,8 @@ import org.slf4j.LoggerFactory;
  * of several streaming chat models, as decided by a {@link ChatModelRouter}.
  * <pre>{@code
  * StreamingChatModel streamingChatModel = RoutingStreamingChatModel.builder()
- *         .route("simple", smallStreamingModel, "Greetings, short factual questions, simple lookups")
- *         .route("complex", largeStreamingModel, "Multi-step reasoning, code, analysis")
+ *         .route("simple", "Greetings, short factual questions, simple lookups", smallStreamingModel)
+ *         .route("complex", "Multi-step reasoning, code, analysis", largeStreamingModel)
  *         .router(new DecisionModelChatModelRouter(decisionModel))
  *         .defaultRoute("complex")
  *         .build();
@@ -363,18 +363,20 @@ public class RoutingStreamingChatModel implements StreamingChatModel {
          * @param model the streaming chat model that handles the requests sent to this route.
          */
         public Builder route(String name, StreamingChatModel model) {
-            return route(name, model, null);
+            return route(name, null, model);
         }
 
         /**
          * Adds a route. At least one route is required.
          *
-         * @param name        the unique name of the route.
+         * @param name        the unique name of the route. It is stored with the responses (see
+         *                    {@link RoutingChatModel#ROUTE_ATTRIBUTE}), so keep it stable.
+         * @param description what kind of requests this route is meant for, used by routers that decide based on the
+         *                    content of the request, such as {@link DecisionModelChatModelRouter}. Optional: without a
+         *                    description, the route is described by its name.
          * @param model       the streaming chat model that handles the requests sent to this route.
-         * @param description what kind of requests this route is meant for. Required by routers that decide based on
-         *                    the content of the request, such as {@link DecisionModelChatModelRouter}.
          */
-        public Builder route(String name, StreamingChatModel model, String description) {
+        public Builder route(String name, String description, StreamingChatModel model) {
             routes.add(new RouteSelector.Route<>(name, model, description));
             return this;
         }

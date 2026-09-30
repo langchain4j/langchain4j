@@ -22,8 +22,8 @@ import java.util.concurrent.Executor;
  * example to send simple requests to a small, cheap model and complex ones to a larger model:
  * <pre>{@code
  * ChatModel chatModel = RoutingChatModel.builder()
- *         .route("simple", smallModel, "Greetings, short factual questions, simple lookups")
- *         .route("complex", largeModel, "Multi-step reasoning, code, analysis")
+ *         .route("simple", "Greetings, short factual questions, simple lookups", smallModel)
+ *         .route("complex", "Multi-step reasoning, code, analysis", largeModel)
  *         .router(new DecisionModelChatModelRouter(decisionModel))
  *         .defaultRoute("complex")
  *         .build();
@@ -166,18 +166,20 @@ public class RoutingChatModel implements ChatModel {
          * @param model the chat model that handles the requests sent to this route.
          */
         public Builder route(String name, ChatModel model) {
-            return route(name, model, null);
+            return route(name, null, model);
         }
 
         /**
          * Adds a route. At least one route is required.
          *
-         * @param name        the unique name of the route.
+         * @param name        the unique name of the route. It is stored with the responses (see
+         *                    {@link RoutingChatModel#ROUTE_ATTRIBUTE}), so keep it stable.
+         * @param description what kind of requests this route is meant for, used by routers that decide based on the
+         *                    content of the request, such as {@link DecisionModelChatModelRouter}. Optional: without a
+         *                    description, the route is described by its name.
          * @param model       the chat model that handles the requests sent to this route.
-         * @param description what kind of requests this route is meant for. Required by routers that decide based on
-         *                    the content of the request, such as {@link DecisionModelChatModelRouter}.
          */
-        public Builder route(String name, ChatModel model, String description) {
+        public Builder route(String name, String description, ChatModel model) {
             routes.add(new RouteSelector.Route<>(name, model, description));
             return this;
         }

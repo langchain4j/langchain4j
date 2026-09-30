@@ -62,8 +62,8 @@ class DecisionModelIntegrationsIT {
         ChatModel small = new FixedChatModel("small");
         ChatModel large = new FixedChatModel("large");
         ChatModel chatModel = RoutingChatModel.builder()
-                .route("simple", small, "Greetings, small talk and short factual questions")
-                .route("complex", large, "Writing or debugging code, multi-step reasoning, detailed analysis")
+                .route("simple", "Greetings, small talk and short factual questions", small)
+                .route("complex", "Writing or debugging code, multi-step reasoning, detailed analysis", large)
                 .router(new DecisionModelChatModelRouter(decisionModel))
                 .defaultRoute("complex")
                 .build();

@@ -89,8 +89,8 @@ class RoutingChatModelTest {
 
     RoutingChatModel routingModel(ChatModelRouter router) {
         return RoutingChatModel.builder()
-                .route("simple", small, "Short questions")
-                .route("complex", large, "Everything else")
+                .route("simple", "Short questions", small)
+                .route("complex", "Everything else", large)
                 .router(router)
                 .defaultRoute("complex")
                 .build();
@@ -426,8 +426,8 @@ class RoutingChatModelTest {
 
         List<ChatModelRoute> seen = new ArrayList<>();
         ChatModel chatModel = RoutingChatModel.builder()
-                .route("simple", new FakeChatModel("small", Set.of()), "Short questions")
-                .route("complex", large, "Everything else")
+                .route("simple", "Short questions", new FakeChatModel("small", Set.of()))
+                .route("complex", "Everything else", large)
                 .router(request -> {
                     seen.addAll(request.routes());
                     return "complex";
@@ -611,8 +611,8 @@ class RoutingChatModelTest {
 
     RoutingStreamingChatModel routingStreamingModel(ChatModelRouter router) {
         return RoutingStreamingChatModel.builder()
-                .route("simple", smallStreaming, "Short questions")
-                .route("complex", largeStreaming, "Everything else")
+                .route("simple", "Short questions", smallStreaming)
+                .route("complex", "Everything else", largeStreaming)
                 .router(router)
                 .defaultRoute("complex")
                 .executor(Runnable::run) // routers written as lambdas run on the executor, here on the calling thread

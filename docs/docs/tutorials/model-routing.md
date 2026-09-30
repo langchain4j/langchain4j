@@ -18,8 +18,8 @@ RAG, etc.
 
 ```java
 ChatModel chatModel = RoutingChatModel.builder()
-        .route("simple", smallModel, "Greetings, small talk and short factual questions")
-        .route("complex", largeModel, "Writing or debugging code, multi-step reasoning, detailed analysis")
+        .route("simple", "Greetings, small talk and short factual questions", smallModel)
+        .route("complex", "Writing or debugging code, multi-step reasoning, detailed analysis", largeModel)
         .router(new DecisionModelChatModelRouter(decisionModel))
         .defaultRoute("complex")
         .build();
