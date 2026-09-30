@@ -452,14 +452,12 @@ public class DefaultToolExecutor implements ToolExecutor {
             try {
                 @SuppressWarnings({"unchecked", "rawtypes"})
                 Class<Enum> enumClass = (Class<Enum>) parameterClass;
+                String enumValue = Objects.requireNonNull(argument).toString().trim();
                 try {
-                    return Enum.valueOf(
-                            enumClass, Objects.requireNonNull(argument).toString());
+                    return Enum.valueOf(enumClass, enumValue);
                 } catch (IllegalArgumentException e) {
                     // try to convert to uppercase as a last resort
-                    return Enum.valueOf(
-                            enumClass,
-                            Objects.requireNonNull(argument).toString().toUpperCase(Locale.ROOT));
+                    return Enum.valueOf(enumClass, enumValue.toUpperCase(Locale.ROOT));
                 }
             } catch (Exception | Error e) {
                 throw new IllegalArgumentException(

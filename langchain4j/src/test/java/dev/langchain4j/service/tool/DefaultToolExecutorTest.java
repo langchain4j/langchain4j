@@ -171,8 +171,14 @@ class DefaultToolExecutorTest implements WithAssertions {
         assertThat(coerceArgument("A", "arg", ExampleEnum.class, null)).isEqualTo(ExampleEnum.A);
         assertThat(coerceArgument(ExampleEnum.A, "arg", ExampleEnum.class, null))
                 .isEqualTo(ExampleEnum.A);
+        assertThat(coerceArgument(" A", "arg", ExampleEnum.class, null)).isEqualTo(ExampleEnum.A);
+        assertThat(coerceArgument("A ", "arg", ExampleEnum.class, null)).isEqualTo(ExampleEnum.A);
+        assertThat(coerceArgument(" a ", "arg", ExampleEnum.class, null)).isEqualTo(ExampleEnum.A);
         assertThatExceptionOfType(IllegalArgumentException.class)
                 .isThrownBy(() -> coerceArgument("D", "arg", ExampleEnum.class, null))
+                .withMessageContaining("Argument \"arg\" is not a valid enum value for");
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> coerceArgument(" D ", "arg", ExampleEnum.class, null))
                 .withMessageContaining("Argument \"arg\" is not a valid enum value for");
 
         assertThat(coerceArgument(true, "arg", boolean.class, null)).isEqualTo(true);
