@@ -50,16 +50,29 @@ public class DecisionModelInputUtils {
 
     /**
      * The user and assistant messages with {@link #text(ChatMessage) text}, as {@code {"role": "user" | "assistant",
-     * "text": ...}} maps.
+     * "text": ...}} maps. System messages, tool results, assistant messages with only tool calls and custom messages
+     * are left out: they are about how the application works rather than what the user wants, and tool results can
+     * be large.
      */
     public static List<Map<String, String>> messages(List<ChatMessage> messages) {
         List<Map<String, String>> result = new ArrayList<>();
         for (ChatMessage message : messages) {
+            String role = role(message);
             String text = text(message);
-            if (!text.isBlank()) {
-                result.add(Map.of("role", message instanceof UserMessage ? "user" : "assistant", "text", text));
+            if (role != null && !text.isBlank()) {
+                result.add(Map.of("role", role, "text", text));
             }
         }
         return result;
+    }
+
+    private static String role(ChatMessage message) {
+        if (message instanceof UserMessage) {
+            return "user";
+        }
+        if (message instanceof AiMessage) {
+            return "assistant";
+        }
+        return null;
     }
 }

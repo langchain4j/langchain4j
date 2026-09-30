@@ -331,7 +331,8 @@ public class DecisionModelChatModelRouter implements ChatModelRouter {
 
         /**
          * Sets the maximum number of messages of the conversation (user messages and text responses of the AI, up to
-         * and including the last user message) that the decision model receives. Previous messages help with
+         * and including the last user message) that the decision model receives. System messages, tool calls and
+         * tool results are never sent, and do not count. Previous messages help with
          * follow-ups whose meaning depends on them; too many can make an older topic outweigh the last message.
          * <p>
          * Default value is {@value DecisionModelChatModelRouter#DEFAULT_MAX_MESSAGES}. With 1, only the text of the

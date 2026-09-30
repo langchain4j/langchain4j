@@ -298,8 +298,8 @@ public class DecisionModelQueryRouter implements QueryRouter {
         /**
          * Sets how many of the last messages of the conversation are taken into account, including the query itself:
          * the previous messages (user messages and text responses of the AI) are sent together with the query, so
-         * that follow-up questions are understood. Only applies when the query comes from a conversation with a chat
-         * memory.
+         * that follow-up questions are understood. System messages, tool calls and tool results are never sent, and
+         * do not count. Only applies when the query comes from a conversation with a chat memory.
          * <p>
          * Default value is {@value DecisionModelQueryRouter#DEFAULT_MAX_MESSAGES}: the query and the 2 previous
          * messages. More messages can make an older topic of the conversation outweigh the query. When the queries are

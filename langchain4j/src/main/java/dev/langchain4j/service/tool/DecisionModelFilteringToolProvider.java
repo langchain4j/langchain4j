@@ -309,7 +309,8 @@ public class DecisionModelFilteringToolProvider implements ToolProvider {
 
         /**
          * Sets how many of the last messages of the conversation (user and assistant messages with text, the last
-         * one being the user message) the decision model receives.
+         * one being the user message) the decision model receives. System messages, tool calls and tool results are
+         * never sent, and do not count.
          * <p>
          * Default value is {@value DecisionModelFilteringToolProvider#DEFAULT_MAX_MESSAGES}. More messages can make
          * an older topic of the conversation outweigh the user message.

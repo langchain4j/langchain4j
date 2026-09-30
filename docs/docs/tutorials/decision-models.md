@@ -394,6 +394,9 @@ Images and other content that is not text are not sent: each is represented by a
 The decision model does not see what an image contains, but a guardrail check can reject messages with attachments,
 for example "Does the message contain an attachment?".
 With `maxMessages(...)`, the previous messages are sent as `{"messages": [{"role": "user", "text": "..."}, ...]}`.
+Only user messages and text responses of the AI are sent and counted: system messages, tool calls and tool results
+are left out, because they describe how the application works rather than what the user wants, and tool results can
+be large.
 
 ### When the decision model fails
 
