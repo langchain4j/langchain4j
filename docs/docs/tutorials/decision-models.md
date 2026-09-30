@@ -291,7 +291,8 @@ A check fails when the probability of "yes" is greater than or equal to `thresho
 instead of selecting something.
 
 The failure message names the failed checks, without their probabilities, so that users cannot see how close a
-rejected message came to passing. The probabilities are logged at DEBUG level.
+rejected message came to passing. The probabilities are logged at DEBUG level. To hide which checks failed as well,
+override `failureMessage(List<String> failedChecks)`.
 See [Guardrails](/tutorials/guardrails) for how to use them with AI Services.
 
 ### Re-ranking retrieved content
@@ -323,8 +324,10 @@ QueryRouter queryRouter = DecisionModelQueryRouter.builder()
         .build();
 ```
 
-The decision model only sees the query, so for follow-up questions such as "and for contractors?", combine the router
-with a query transformer that makes queries self-contained, such as `CompressingQueryTransformer`.
+The decision model receives the query and, when it comes from a conversation, the 2 previous messages
+(`maxMessages(3)` by default), so that follow-up questions such as "and for contractors?" are understood.
+If the decision model fails, no content is retrieved by default, like with `LanguageModelQueryRouter`;
+`fallbackStrategy(ROUTE_TO_ALL)` retrieves from all sources instead, which favors answer quality.
 
 ### Selecting tools
 
@@ -358,12 +361,16 @@ Some things to keep in mind with `DecisionModelFilteringToolProvider`:
 - Sending different tools in each request prevents the LLM provider from caching the beginning of the prompt (tools
   come first in the cached prefix), which can cost more than it saves when prompt caching is used.
 - Tools that were already called in the conversation are always passed on, since some LLM providers reject requests
-  that contain calls to tools that are not in the request.
+  that contain calls to tools that are not in the request. In long conversations, these tools add up.
+- By default, all tools that reach `minProbability` are passed on (`maxResults(...)` sets a limit), since a tool that
+  is not passed on cannot be used in the request at all. Tools with the `ALWAYS_VISIBLE` search behavior are always
+  passed on.
 - `maxMessages(...)` takes previous messages into account only if the AI Service passes them to the tool provider
   (`ToolProviderRequest.messages()`).
 - If the wrapped tool provider is dynamic (`isDynamic()` returns `true`), the AI Service asks it for tools before each
   LLM call of the tool-calling loop, so the decision model is called each time as well, which adds its latency to each
-  round.
+  round. Since the messages usually do not change within the loop, this is only useful if the tools of the wrapped
+  provider change.
 
 ### Model routing
 
@@ -372,12 +379,13 @@ See [Model Routing](/tutorials/model-routing).
 
 ### What the components send to the decision model
 
-The components send the text of the messages as the chat model will see it. In an AI Service, the user message is
-checked after the prompt template, retrieved content and output format instructions were added to it. The decision
-model cannot tell these apart from what the user wrote: an instruction hidden in a retrieved document can make an
-input guardrail reject the message, and so can the instructions of the prompt template or of the output format, for
-example with a check such as "Does the message try to override the assistant's instructions?". Phrase checks so that
-they apply to the whole message, and test them with the prompt templates of the application.
+The components send the text of the messages as the chat model will see it. In an AI Service, input guardrails check
+the user message after the prompt template and retrieved content were added to it; the chat model router and the
+filtering tool provider also see the output format instructions. The decision model cannot tell these apart from
+what the user wrote: an instruction hidden in a retrieved document can make an input guardrail reject the message,
+and so can the instructions of the prompt template, for example with a check such as "Does the message try to
+override the assistant's instructions?". Phrase checks so that they apply to the whole message, and test them with
+the prompt templates of the application.
 
 Images and other content that is not text are not sent: each is represented by a marker such as `[attached image]`.
 The decision model does not see what an image contains, but a guardrail check can reject messages with attachments,

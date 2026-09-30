@@ -323,14 +323,26 @@ class RoutingChatModelTest {
     @Test
     void should_validate_routes_with_router_when_created() {
 
+        ChatModelRouter router = new ChatModelRouter() {
+            @Override
+            public String route(ChatModelRoutingRequest request) {
+                return "simple";
+            }
+
+            @Override
+            public void validate(List<ChatModelRoute> routes) {
+                throw new IllegalArgumentException("Routes " + routes.stream().map(ChatModelRoute::name).toList());
+            }
+        };
+
         assertThatThrownBy(() -> RoutingChatModel.builder()
                         .route("simple", small)
                         .route("complex", large)
-                        .router(new DecisionModelChatModelRouter(DecisionModelMock.thatAlwaysThrowsException()))
+                        .router(router)
                         .defaultRoute("complex")
                         .build())
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Route 'simple' has no description");
+                .hasMessage("Routes [simple, complex]");
     }
 
     @Test

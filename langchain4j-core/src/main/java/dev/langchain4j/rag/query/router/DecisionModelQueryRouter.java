@@ -4,12 +4,14 @@ import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellat
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureBetween;
+import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.util.Collections.emptyList;
 
 import dev.langchain4j.Experimental;
+import dev.langchain4j.internal.DecisionModelInputUtils;
 import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.model.decision.DecisionModel;
 import dev.langchain4j.model.input.PromptTemplate;
@@ -37,9 +39,9 @@ import org.slf4j.LoggerFactory;
  * description, could help answer the query (see {@link #DEFAULT_QUESTION_TEMPLATE}), all in a single call. The query is
  * routed to every retriever whose probability of "yes" reaches the minimum probability (0.5 by default). When no
  * retriever qualifies, no retrieval is performed, which is useful for queries that do not need retrieval at all
- * (e.g. "Hi!"). The decision model only sees the query itself, so for follow-up questions in a conversation, combine
- * it with a query transformer that makes queries self-contained, such as
- * {@link dev.langchain4j.rag.query.transformer.CompressingQueryTransformer}.
+ * (e.g. "Hi!"). The decision model receives the query ({@code {"query": ...}}) and, when the query comes from a
+ * conversation, the previous messages ({@code "messages"}, see {@link Builder#maxMessages(Integer)}), so that
+ * follow-up questions such as "and for contractors?" are understood.
  * <pre>{@code
  * QueryRouter queryRouter = DecisionModelQueryRouter.builder()
  *         .decisionModel(decisionModel)
@@ -65,6 +67,7 @@ public class DecisionModelQueryRouter implements QueryRouter {
     public static final PromptTemplate DEFAULT_QUESTION_TEMPLATE = PromptTemplate.from(
             "Could the following data source contain information that helps answer the query?\n{{description}}");
     private static final double DEFAULT_MIN_PROBABILITY = 0.5;
+    private static final int DEFAULT_MAX_MESSAGES = 3;
 
     /**
      * What the router does when the decision model fails.
@@ -92,6 +95,7 @@ public class DecisionModelQueryRouter implements QueryRouter {
     private final Map<String, YesNoQuestion> questions;
     private final double minProbability;
     private final FallbackStrategy fallbackStrategy;
+    private final int maxMessages;
 
     public DecisionModelQueryRouter(DecisionModel decisionModel, Map<ContentRetriever, String> retrieverToDescription) {
         this(builder().decisionModel(decisionModel).retrieverToDescription(retrieverToDescription));
@@ -101,13 +105,11 @@ public class DecisionModelQueryRouter implements QueryRouter {
         this.decisionModel = ensureNotNull(builder.decisionModel, "decisionModel");
         ensureNotEmpty(builder.retrieverToDescription, "retrieverToDescription");
         PromptTemplate questionTemplate = getOrDefault(builder.questionTemplate, DEFAULT_QUESTION_TEMPLATE);
-        if (!questionTemplate.template().contains("{{description}}")) {
-            throw new IllegalArgumentException("The question template must contain {{description}}, but was: "
-                    + questionTemplate.template());
-        }
+        validate(questionTemplate);
         this.minProbability = ensureBetween(
                 getOrDefault(builder.minProbability, DEFAULT_MIN_PROBABILITY), 0, 1, "minProbability");
         this.fallbackStrategy = getOrDefault(builder.fallbackStrategy, FallbackStrategy.DO_NOT_ROUTE);
+        this.maxMessages = ensureGreaterThanZero(getOrDefault(builder.maxMessages, DEFAULT_MAX_MESSAGES), "maxMessages");
 
         Map<String, ContentRetriever> retrievers = new LinkedHashMap<>();
         Map<String, YesNoQuestion> questions = new LinkedHashMap<>();
@@ -162,11 +164,44 @@ public class DecisionModelQueryRouter implements QueryRouter {
         return result;
     }
 
+    private static void validate(PromptTemplate template) {
+        if (!template.template().contains("{{description}}")) {
+            throw new IllegalArgumentException(
+                    "The question template must contain {{description}}, but was: " + template.template());
+        }
+        try {
+            template.apply(Map.of("description", "description"));
+        } catch (RuntimeException e) {
+            throw new IllegalArgumentException(
+                    "The question template can only use the {{description}} variable, but was: "
+                            + template.template(),
+                    e);
+        }
+    }
+
     private DecisionRequest toRequest(Query query) {
-        return DecisionRequest.builder()
-                .input(query.text())
-                .questions(questions)
-                .build();
+        Map<String, Object> input = new LinkedHashMap<>();
+        input.put("query", query.text());
+        List<Map<String, String>> previousMessages = previousMessages(query);
+        if (!previousMessages.isEmpty()) {
+            input.put("messages", previousMessages);
+        }
+        return DecisionRequest.builder().input(input).questions(questions).build();
+    }
+
+    /**
+     * The last {@code maxMessages - 1} messages of the conversation before the query, if the query comes from one.
+     */
+    private List<Map<String, String>> previousMessages(Query query) {
+        if (maxMessages == 1 || query.metadata() == null || query.metadata().chatMemory() == null) {
+            return List.of();
+        }
+        List<Map<String, String>> messages = DecisionModelInputUtils.messages(query.metadata().chatMemory());
+        if (!messages.isEmpty()
+                && messages.get(messages.size() - 1).equals(Map.of("role", "user", "text", query.text()))) {
+            messages = messages.subList(0, messages.size() - 1);
+        }
+        return messages.subList(Math.max(0, messages.size() - (maxMessages - 1)), messages.size());
     }
 
     private Collection<ContentRetriever> select(DecisionResponse response) {
@@ -176,6 +211,13 @@ public class DecisionModelQueryRouter implements QueryRouter {
                 selected.add(retriever);
             }
         });
+        if (log.isDebugEnabled()) {
+            retrievers.keySet().forEach(name -> log.debug(
+                    "Retriever {} (question '{}'): probability {}",
+                    name,
+                    questions.get(name).text(),
+                    response.yesNo(name).probability()));
+        }
         return selected;
     }
 
@@ -204,6 +246,7 @@ public class DecisionModelQueryRouter implements QueryRouter {
         private PromptTemplate questionTemplate;
         private Double minProbability;
         private FallbackStrategy fallbackStrategy;
+        private Integer maxMessages;
 
         /**
          * Sets the decision model that decides which retrievers to use. Required.
@@ -249,6 +292,20 @@ public class DecisionModelQueryRouter implements QueryRouter {
          */
         public Builder fallbackStrategy(FallbackStrategy fallbackStrategy) {
             this.fallbackStrategy = fallbackStrategy;
+            return this;
+        }
+
+        /**
+         * Sets how many of the last messages of the conversation are taken into account, including the query itself:
+         * the previous messages (user messages and text responses of the AI) are sent together with the query, so
+         * that follow-up questions are understood. Only applies when the query comes from a conversation with a chat
+         * memory.
+         * <p>
+         * Default value is {@value DecisionModelQueryRouter#DEFAULT_MAX_MESSAGES}: the query and the 2 previous
+         * messages. More messages can make an older topic of the conversation outweigh the query.
+         */
+        public Builder maxMessages(Integer maxMessages) {
+            this.maxMessages = maxMessages;
             return this;
         }
 

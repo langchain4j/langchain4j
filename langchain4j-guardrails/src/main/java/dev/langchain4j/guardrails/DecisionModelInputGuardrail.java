@@ -24,8 +24,8 @@ import java.util.Map;
  *         .threshold(0.8)
  *         .build();
  * }</pre>
- * The user message is checked as it will be sent to the chat model: in an AI Service, after the prompt template,
- * retrieved content and output format instructions were added to it. The decision model cannot tell these apart from
+ * The user message is checked as it will be sent to the chat model: in an AI Service, after the prompt template and
+ * retrieved content were added to it. The decision model cannot tell these apart from
  * what the user wrote, so phrase the checks to apply to the whole message. Content other than text is represented by
  * a marker, such as {@code [attached image]}: the decision model does not see what an image contains, but a check can
  * reject messages with attachments. If the decision model fails, the exception is propagated, so the request fails.
@@ -62,7 +62,17 @@ public class DecisionModelInputGuardrail implements InputGuardrail {
         if (failedChecks.isEmpty()) {
             return success();
         }
-        return fatal("The user message was rejected by the following checks: " + String.join(", ", failedChecks));
+        return fatal(failureMessage(failedChecks));
+    }
+
+    /**
+     * The message of the failure when checks fail. Override it, for example, to hide which checks failed from users
+     * who can see the message.
+     *
+     * @param failedChecks the names of the failed checks.
+     */
+    protected String failureMessage(List<String> failedChecks) {
+        return "The user message was rejected by the following checks: " + String.join(", ", failedChecks);
     }
 
     public static Builder builder() {

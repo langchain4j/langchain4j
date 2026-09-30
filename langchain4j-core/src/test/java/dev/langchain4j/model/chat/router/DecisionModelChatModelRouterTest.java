@@ -62,7 +62,13 @@ class DecisionModelChatModelRouterTest {
                 UserMessage.from("Write a parser for this grammar")));
 
         assertThat(route).isEqualTo("complex");
-        assertThat(decisionModel.request().input()).isEqualTo("Write a parser for this grammar");
+        assertThat(decisionModel.request().input())
+                .isEqualTo(Map.of(
+                        "messages",
+                        List.of(
+                                Map.of("role", "user", "text", "Hi!"),
+                                Map.of("role", "assistant", "text", "Hello!"),
+                                Map.of("role", "user", "text", "Write a parser for this grammar"))));
         assertThat(decisionModel.request().questions())
                 .containsEntry(
                         "route",
@@ -175,14 +181,18 @@ class DecisionModelChatModelRouterTest {
     }
 
     @Test
-    void should_require_route_descriptions() {
+    void should_describe_routes_without_description_by_their_name() {
 
         ChatModelRouter router = new DecisionModelChatModelRouter(choosing("simple", 0.9));
 
-        assertThatThrownBy(() -> router.validate(List.of(new ChatModelRoute("simple", null), ROUTES.get(1))))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Route 'simple' has no description");
-        router.validate(ROUTES);
+        router.route(ChatModelRoutingRequest.builder()
+                .chatRequest(ChatRequest.builder().messages(UserMessage.from("Hi!")).build())
+                .routes(List.of(new ChatModelRoute("simple", null), ROUTES.get(1)))
+                .build());
+
+        assertThat(((ChoiceQuestion) decisionModel.request().questions().get("route")).options())
+                .containsExactly(
+                        Map.entry("simple", "simple"), Map.entry("complex", "Multi-step reasoning and code"));
     }
 
     @Test
@@ -202,7 +212,7 @@ class DecisionModelChatModelRouterTest {
     }
 
     @Test
-    void should_not_select_a_route_when_min_probability_is_set_but_no_probabilities_are_reported() {
+    void should_fail_when_min_probability_is_set_but_no_probabilities_are_reported() {
 
         ChatModelRouter router = DecisionModelChatModelRouter.builder()
                 .decisionModel(DecisionModelMock.thatAlwaysAnswers(Map.of(
@@ -210,7 +220,14 @@ class DecisionModelChatModelRouterTest {
                 .minProbability(0.5)
                 .build();
 
-        assertThat(router.route(request(UserMessage.from("Hi!")))).isNull();
+        assertThatThrownBy(() -> router.route(request(UserMessage.from("Hi!"))))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("reported no probabilities");
+        assertThat(router.routeAsync(request(UserMessage.from("Hi!"))))
+                .failsWithin(Duration.ofSeconds(1))
+                .withThrowableThat()
+                .havingRootCause()
+                .isInstanceOf(IllegalStateException.class);
     }
 
     @Test
@@ -241,7 +258,10 @@ class DecisionModelChatModelRouterTest {
     @Test
     void should_mark_attachments_of_multimodal_user_message() {
 
-        ChatModelRouter router = new DecisionModelChatModelRouter(choosing("simple", 0.9));
+        ChatModelRouter router = DecisionModelChatModelRouter.builder()
+                .decisionModel(choosing("simple", 0.9))
+                .maxMessages(1)
+                .build();
 
         router.route(request(UserMessage.from(
                 TextContent.from("What is in this picture?"), ImageContent.from("https://example.com/cat.png"))));

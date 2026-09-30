@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.agent.tool.SearchBehavior;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
@@ -12,6 +13,7 @@ import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.decision.mock.DecisionModelMock;
 import dev.langchain4j.service.AiServices;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -71,8 +73,48 @@ class DecisionModelFilteringToolProviderTest {
         assertThat(result.aiServiceTools())
                 .extracting(AiServiceTool::name)
                 .containsExactly("get_weather", "get_forecast");
-        assertThat(decisionModel.request().input()).isEqualTo("Will it rain?");
+        assertThat(decisionModel.request().input())
+                .isEqualTo(Map.of("messages", List.of(Map.of("role", "user", "text", "Will it rain?"))));
         assertThat(toolProvider.isDynamic()).isFalse();
+    }
+
+    @Test
+    void should_pass_on_all_relevant_tools_by_default() {
+
+        List<ToolSpecification> manyTools = new ArrayList<>();
+        for (int i = 0; i < 30; i++) {
+            manyTools.add(tool("get_weather_" + i, "Returns the current weather"));
+        }
+        ToolProvider toolProvider = DecisionModelFilteringToolProvider.builder()
+                .toolProvider(request -> new ToolProviderResult(manyTools.stream()
+                        .map(DecisionModelFilteringToolProviderTest::aiServiceTool)
+                        .toList()))
+                .decisionModel(decisionModel)
+                .build();
+
+        ToolProviderResult result = toolProvider.provideTools(providerRequest(UserMessage.from("Will it rain?")));
+
+        assertThat(result.aiServiceTools()).hasSize(30);
+    }
+
+    @Test
+    void should_always_pass_on_tools_that_are_always_visible() {
+
+        ToolSpecification alwaysVisible = ToolSpecification.builder()
+                .name("send_email")
+                .description("Sends an email")
+                .metadata(Map.of(ToolSpecification.METADATA_SEARCH_BEHAVIOR, SearchBehavior.ALWAYS_VISIBLE))
+                .build();
+        ToolProvider toolProvider = DecisionModelFilteringToolProvider.builder()
+                .toolProvider(request -> new ToolProviderResult(List.of(
+                        aiServiceTool(alwaysVisible), aiServiceTool(tool("get_weather", "Returns the weather")))))
+                .decisionModel(decisionModel)
+                .build();
+
+        ToolProviderResult result = toolProvider.provideTools(providerRequest(UserMessage.from("Will it rain?")));
+
+        assertThat(result.aiServiceTools()).extracting(AiServiceTool::name).containsExactly("send_email", "get_weather");
+        assertThat(decisionModel.request().questions()).hasSize(1);
     }
 
     @Test
@@ -288,7 +330,8 @@ class DecisionModelFilteringToolProviderTest {
                 .allSatisfy(request -> assertThat(request.toolSpecifications())
                         .extracting(ToolSpecification::name)
                         .containsExactlyInAnyOrder("get_weather", "get_forecast"));
-        assertThat(decisionModel.request().input()).isEqualTo("Will it rain?");
+        assertThat(decisionModel.request().input())
+                .isEqualTo(Map.of("messages", List.of(Map.of("role", "user", "text", "Will it rain?"))));
     }
 
     @Test

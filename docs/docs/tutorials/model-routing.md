@@ -42,26 +42,22 @@ calls a model is unsure or fails.
 ### Decision model router
 
 `DecisionModelChatModelRouter` uses a [decision model](/tutorials/decision-models) to choose the route whose
-description fits the last user message best. Content other than text, such as an image, is represented by a marker
-(for example `[attached image]`), so that a route whose description mentions images can be chosen for it. Decision
-models are typically much faster and cheaper than chat models, so routing adds little latency and cost compared to the
-chat model call. Every route needs a description.
+description fits the request best. It sends the last 3 messages of the conversation (`maxMessages`), so that short
+follow-ups such as "yes, go ahead" are understood. Content other than text, such as an image, is represented by a
+marker (for example `[attached image]`), so that a route whose description mentions images can be chosen for it.
+Decision models are typically much faster and cheaper than chat models, so routing adds little latency and cost
+compared to the chat model call. Describe each route well; a route without a description is described by its name.
 
 It returns `null` (so the default route is used) when the request has no user message, and when the probability of
-the chosen route is below `minProbability` (or no probabilities are reported), which is useful to send the requests
-the decision model is not sure about to the larger model. When the decision model fails, the default route is used
-and a warning is logged; set `fallbackStrategy(FAIL)` to fail the request instead.
-The routes' descriptions are checked when the routing chat model is created.
-
-By default, only the last user message is taken into account. A short follow-up such as "yes, go ahead" only makes
-sense together with the previous messages: set `maxMessages` to also send the previous messages of the conversation
-to the decision model.
+the chosen route is below `minProbability`, which is useful to send the requests the decision model is not sure
+about to the larger model. `minProbability` requires a decision model that reports probabilities; otherwise the call
+fails. When the decision model fails, the default route is used and a warning is logged; set
+`fallbackStrategy(FAIL)` to fail the request instead.
 
 ```java
 ChatModelRouter router = DecisionModelChatModelRouter.builder()
         .decisionModel(decisionModel)
         .minProbability(0.7)
-        .maxMessages(3)
         .build();
 ```
 
@@ -109,6 +105,9 @@ is created, by implementing `validate(...)`.
 - The selected model is called on the thread that completed the routing: the calling thread for synchronous routers,
   the thread of the decision model's response, or the executor configured with `executor(...)`.
 - When routing chat models are nested, the name stored in the `AiMessage` is the one of the outer routing chat model.
+  In a tool-calling loop, the inner routing chat model then does not find its own route, so it asks its router again,
+  which can select another model. If an inner route has the same name as an outer route, the inner routing chat model
+  uses its route of that name. Give the routes of nested routing chat models distinct names.
 
 ## Things to keep in mind
 

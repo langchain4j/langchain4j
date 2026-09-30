@@ -18,6 +18,8 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Selects the tools relevant to a request with a {@link DecisionModel}: one yes/no question per tool, answered in
@@ -25,6 +27,8 @@ import java.util.Map;
  */
 @Internal
 public final class DecisionModelToolSelector {
+
+    private static final Logger log = LoggerFactory.getLogger(DecisionModelToolSelector.class);
 
     public static final PromptTemplate DEFAULT_QUESTION_TEMPLATE = PromptTemplate.from(
             "Would this tool help to handle the request?\nTool: {{name}}\nDescription: {{description}}");
@@ -82,6 +86,7 @@ public final class DecisionModelToolSelector {
             DecisionResponse response = decisionModel.decide(decisionRequest.build());
             for (int i = 0; i < batch.size(); i++) {
                 double probability = response.yesNo("tool" + i).probability();
+                log.debug("Tool '{}': probability {}", batch.get(i).name(), probability);
                 if (probability >= minProbability) {
                     scoredTools.add(new ScoredTool(batch.get(i).name(), probability));
                 }

@@ -1,5 +1,7 @@
 package dev.langchain4j.service.tool;
 
+import static dev.langchain4j.agent.tool.SearchBehavior.ALWAYS_VISIBLE;
+import static dev.langchain4j.agent.tool.ToolSpecification.METADATA_SEARCH_BEHAVIOR;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
@@ -32,24 +34,25 @@ import org.slf4j.LoggerFactory;
  *         .toolProvider(DecisionModelFilteringToolProvider.builder()
  *                 .toolProvider(mcpToolProvider)
  *                 .decisionModel(decisionModel)
- *                 .maxResults(5)
  *                 .build())
  *         .build();
  * }</pre>
  * Unlike a {@link dev.langchain4j.service.tool.search.ToolSearchStrategy}, the tools are selected before the first
- * LLM call, so no tool search round trip is needed. By default, the selection is based on the user message only; with
- * {@link Builder#maxMessages(Integer)}, previous messages of the conversation are also taken into account, which helps
- * with follow-up messages such as "do the same for Berlin".
+ * LLM call, so no tool search round trip is needed. By default, every tool whose probability of being useful reaches
+ * the minimum probability is passed on, and the selection is based on the last 3 messages of the conversation (see
+ * {@link Builder#maxMessages(Integer)}), which helps with follow-up messages such as "do the same for Berlin".
  * <p>
- * Only the tools of the wrapped tool provider are filtered: tools configured directly on the AI Service are always
- * passed on. Tools that were already called in the conversation are also always passed on, since some LLM providers
+ * Only the tools of the wrapped tool provider are filtered: tools configured directly on the AI Service, tools with
+ * the {@link dev.langchain4j.agent.tool.SearchBehavior#ALWAYS_VISIBLE} search behavior and the tools configured with
+ * {@link Builder#alwaysInclude(String...)} are always passed on. Tools that were already called in the conversation are also always passed on, since some LLM providers
  * reject requests whose messages contain calls to tools that are not in the request. This is similar to a
  * {@link dev.langchain4j.service.tool.search.ToolSearchStrategy}, whose previously found tools stay available. The
  * previous messages, used both for this and for {@link Builder#maxMessages(Integer)}, are only known if the caller
  * passes them in {@link ToolProviderRequest#messages()}, as LangChain4j AI Services do.
  * <p>
  * If the wrapped tool provider is {@link ToolProvider#isDynamic() dynamic}, the tools are selected again, with a call
- * to the decision model, before each LLM call of the tool-calling loop.
+ * to the decision model, before each LLM call of the tool-calling loop. Since the messages sent to the decision model
+ * usually do not change within a tool-calling loop, this only helps if the tools of the wrapped provider change.
  * <p>
  * If the user message has no text, all tools are passed on. If the decision model fails, the
  * {@link FallbackStrategy} applies: by default, all tools are passed on and a warning is logged.
@@ -69,7 +72,7 @@ public class DecisionModelFilteringToolProvider implements ToolProvider {
 
     private static final Logger log = LoggerFactory.getLogger(DecisionModelFilteringToolProvider.class);
 
-    private static final int DEFAULT_MAX_MESSAGES = 1;
+    private static final int DEFAULT_MAX_MESSAGES = 3;
 
     /**
      * What the tool provider does when the decision model fails.
@@ -108,7 +111,7 @@ public class DecisionModelFilteringToolProvider implements ToolProvider {
         this.selector = new DecisionModelToolSelector(
                 builder.decisionModel,
                 builder.questionTemplate,
-                builder.maxResults,
+                getOrDefault(builder.maxResults, Integer.MAX_VALUE),
                 builder.minProbability,
                 builder.maxToolsPerDecisionRequest);
         this.alwaysIncludedTools = Set.copyOf(builder.alwaysIncludedTools);
@@ -129,6 +132,10 @@ public class DecisionModelFilteringToolProvider implements ToolProvider {
 
         Set<String> selected = new HashSet<>(alwaysIncludedTools);
         selected.addAll(calledTools(request.messages()));
+        result.aiServiceTools().stream()
+                .map(AiServiceTool::toolSpecification)
+                .filter(tool -> tool.metadata().get(METADATA_SEARCH_BEHAVIOR) == ALWAYS_VISIBLE)
+                .forEach(tool -> selected.add(tool.name()));
         List<ToolSpecification> candidates = result.aiServiceTools().stream()
                 .map(AiServiceTool::toolSpecification)
                 .filter(tool -> !selected.contains(tool.name()))
@@ -249,9 +256,11 @@ public class DecisionModelFilteringToolProvider implements ToolProvider {
         }
 
         /**
-         * Sets the maximum number of selected tools, in addition to the always included ones.
+         * Sets the maximum number of selected tools, in addition to the always included ones. The tools with the
+         * highest probabilities are kept.
          * <p>
-         * Default value is 5.
+         * By default, there is no limit: every tool whose probability reaches the minimum probability is passed on,
+         * since a tool that is not passed on cannot be used at all in this request.
          */
         public Builder maxResults(Integer maxResults) {
             this.maxResults = maxResults;
@@ -302,7 +311,8 @@ public class DecisionModelFilteringToolProvider implements ToolProvider {
          * Sets how many of the last messages of the conversation (user and assistant messages with text, the last
          * one being the user message) the decision model receives.
          * <p>
-         * Default value is {@value DecisionModelFilteringToolProvider#DEFAULT_MAX_MESSAGES}: only the user message.
+         * Default value is {@value DecisionModelFilteringToolProvider#DEFAULT_MAX_MESSAGES}. More messages can make
+         * an older topic of the conversation outweigh the user message.
          * Previous messages are only available if the AI Service passes them in {@link ToolProviderRequest#messages()}.
          */
         public Builder maxMessages(Integer maxMessages) {

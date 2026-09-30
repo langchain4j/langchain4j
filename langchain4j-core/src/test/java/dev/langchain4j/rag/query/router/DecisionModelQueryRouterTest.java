@@ -6,6 +6,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.model.decision.DecisionModel;
 import dev.langchain4j.model.decision.mock.DecisionModelMock;
@@ -13,9 +15,11 @@ import dev.langchain4j.model.decision.request.YesNoQuestion;
 import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.model.decision.response.YesNoAnswer;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
+import dev.langchain4j.rag.query.Metadata;
 import dev.langchain4j.rag.query.Query;
 import java.time.Duration;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
@@ -47,13 +51,56 @@ class DecisionModelQueryRouterTest {
         QueryRouter router = new DecisionModelQueryRouter(answering(0.9, 0.2), retrievers);
 
         assertThat(router.route(Query.from("How many vacation days do I have?"))).containsExactly(hr);
-        assertThat(decisionModel.request().input()).isEqualTo("How many vacation days do I have?");
+        assertThat(decisionModel.request().input()).isEqualTo(Map.of("query", "How many vacation days do I have?"));
         assertThat(decisionModel.request().questions())
                 .containsEntry(
                         "source1",
                         YesNoQuestion.of(
                                 "Could the following data source contain information that helps answer the query?\n"
                                         + "HR policies"));
+    }
+
+    @Test
+    void should_send_previous_messages_of_the_conversation_with_the_query() {
+
+        QueryRouter router = new DecisionModelQueryRouter(answering(0.9, 0.2), retrievers);
+        Metadata metadata = new Metadata(
+                UserMessage.from("And for contractors?"),
+                "memory-id",
+                List.of(
+                        UserMessage.from("Hi!"),
+                        AiMessage.from("Hello! How can I help?"),
+                        UserMessage.from("How many vacation days do employees get?"),
+                        AiMessage.from("Employees get 28 days per year."),
+                        UserMessage.from("And for contractors?")));
+
+        router.route(Query.from("And for contractors?", metadata));
+
+        assertThat(decisionModel.request().input())
+                .isEqualTo(Map.of(
+                        "query", "And for contractors?",
+                        "messages",
+                        List.of(
+                                Map.of("role", "user", "text", "How many vacation days do employees get?"),
+                                Map.of("role", "assistant", "text", "Employees get 28 days per year."))));
+    }
+
+    @Test
+    void should_send_only_the_query_with_max_messages_of_1() {
+
+        QueryRouter router = DecisionModelQueryRouter.builder()
+                .decisionModel(answering(0.9, 0.2))
+                .retrieverToDescription(retrievers)
+                .maxMessages(1)
+                .build();
+        Metadata metadata = new Metadata(
+                UserMessage.from("And for contractors?"),
+                "memory-id",
+                List.of(UserMessage.from("How many vacation days do employees get?"), AiMessage.from("28 days.")));
+
+        router.route(Query.from("And for contractors?", metadata));
+
+        assertThat(decisionModel.request().input()).isEqualTo(Map.of("query", "And for contractors?"));
     }
 
     @Test
@@ -163,6 +210,18 @@ class DecisionModelQueryRouterTest {
                         .build())
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("{{description}}");
+    }
+
+    @Test
+    void should_reject_question_template_with_other_variables() {
+
+        assertThatThrownBy(() -> DecisionModelQueryRouter.builder()
+                        .decisionModel(answering(0.9, 0.2))
+                        .retrieverToDescription(retrievers)
+                        .questionTemplate(PromptTemplate.from("Does {{description}} help with {{query}}?"))
+                        .build())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("can only use the {{description}} variable");
     }
 
     @Test

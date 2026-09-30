@@ -75,8 +75,18 @@ public class DecisionModelOutputGuardrail implements OutputGuardrail {
         if (failedChecks.isEmpty()) {
             return success();
         }
-        String message = "The response was rejected by the following checks: " + String.join(", ", failedChecks);
+        String message = failureMessage(failedChecks);
         return reprompt == null ? fatal(message) : reprompt(message, reprompt);
+    }
+
+    /**
+     * The message of the failure when checks fail. Override it, for example, to hide which checks failed from users
+     * who can see the message.
+     *
+     * @param failedChecks the names of the failed checks.
+     */
+    protected String failureMessage(List<String> failedChecks) {
+        return "The response was rejected by the following checks: " + String.join(", ", failedChecks);
     }
 
     private static String userMessage(GuardrailRequestParams params) {

@@ -75,7 +75,7 @@ class DecisionModelScoringModelTest {
     }
 
     @Test
-    void should_score_all_segments_in_a_single_request_by_default() {
+    void should_score_up_to_20_segments_per_request_by_default() {
 
         List<TextSegment> segments = new ArrayList<>();
         for (int i = 0; i < 50; i++) {
@@ -85,7 +85,9 @@ class DecisionModelScoringModelTest {
         Response<List<Double>> response = new DecisionModelScoringModel(decisionModel).scoreAll(segments, "query");
 
         assertThat(response.content()).hasSize(50).containsOnly(0.9);
-        assertThat(decisionModel.requests()).hasSize(1);
+        assertThat(decisionModel.requests())
+                .extracting(request -> request.questions().size())
+                .containsExactly(20, 20, 10);
     }
 
     @Test
