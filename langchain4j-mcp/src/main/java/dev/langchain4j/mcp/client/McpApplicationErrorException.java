@@ -1,5 +1,6 @@
 package dev.langchain4j.mcp.client;
 
+import dev.langchain4j.exception.LlmVisibleToolExecutionException;
 import dev.langchain4j.exception.ToolErrorVisibleToLlm;
 import dev.langchain4j.exception.ToolExecutionException;
 
@@ -18,16 +19,9 @@ import dev.langchain4j.exception.ToolExecutionException;
  *
  * @since 1.21.0
  */
-public class McpApplicationErrorException extends ToolExecutionException implements ToolErrorVisibleToLlm {
+public class McpApplicationErrorException extends LlmVisibleToolExecutionException {
 
     public McpApplicationErrorException(String message) {
-        // (Throwable) null on purpose: ToolExecutionException(String) synthesises a RuntimeException cause,
-        // which would show up as the cause of an error that has none
-        super(message, (Throwable) null);
-    }
-
-    @Override
-    public String messageForLlm() {
-        return getMessage();
+        super(message);
     }
 }

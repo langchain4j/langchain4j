@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.exception.LlmVisibleToolExecutionException;
 import dev.langchain4j.exception.ToolErrorVisibleToLlm;
 import dev.langchain4j.invocation.InvocationContext;
 import java.io.IOException;
@@ -175,6 +176,25 @@ class ToolErrorHandlerFactoriesTest {
         assertThat(result.resultText())
                 .as("the exception is wrapped in a ToolExecutionException and unwrapped again before the handler sees it")
                 .isEqualTo("There is no order with this ID.");
+    }
+
+    @Test
+    void llm_visible_tool_execution_exception_with_a_cause_should_reach_the_llm() {
+
+        // what the tools LangChain4j provides (skills, tool search) throw when the LLM passed invalid arguments
+        ToolExecutor executor = (request, context) -> {
+            throw new LlmVisibleToolExecutionException(
+                    "Failed to parse tool arguments: '{'", new IllegalStateException("Unexpected end-of-input"));
+        };
+
+        ToolExecutionResult result = ToolService.executeWithErrorHandling(
+                ToolExecutionRequest.builder().name("activate_skill").arguments("{").build(),
+                executor,
+                InvocationContext.builder().build(),
+                ToolArgumentsErrorHandler.failInvocation(),
+                ToolExecutionErrorHandler.failInvocationUnlessVisibleToLlm());
+
+        assertThat(result.resultText()).isEqualTo("Failed to parse tool arguments: '{'");
     }
 
     @Test

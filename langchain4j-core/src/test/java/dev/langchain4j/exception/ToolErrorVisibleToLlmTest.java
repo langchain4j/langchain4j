@@ -41,4 +41,26 @@ class ToolErrorVisibleToLlmTest {
         assertThatThrownBy(() -> ToolErrorVisibleToLlm.from(message, new RuntimeException()))
                 .isInstanceOf(IllegalArgumentException.class);
     }
+
+    @Test
+    void llm_visible_tool_execution_exception_should_carry_its_message_to_the_llm() {
+
+        LlmVisibleToolExecutionException exception =
+                new LlmVisibleToolExecutionException("Missing required tool argument 'query'");
+
+        assertThat(exception).isInstanceOf(ToolExecutionException.class).isInstanceOf(ToolErrorVisibleToLlm.class);
+        assertThat(exception.messageForLlm()).isEqualTo("Missing required tool argument 'query'");
+        assertThat(exception.getCause())
+                .as("no synthetic cause, unlike ToolExecutionException(String)")
+                .isNull();
+    }
+
+    @ParameterizedTest
+    @NullAndEmptySource
+    @ValueSource(strings = {" "})
+    void llm_visible_tool_execution_exception_should_reject_a_blank_message(String message) {
+
+        assertThatThrownBy(() -> new LlmVisibleToolExecutionException(message))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
 }

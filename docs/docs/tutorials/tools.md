@@ -1882,6 +1882,11 @@ Now `OrderNotFoundException` reaches the LLM as "There is no order with ID ...",
 `NullPointerException` or a failing database connection fails the AI Service invocation,
 so you find out about it instead of the LLM quietly apologizing to your user.
 
+The tools that LangChain4j provides, such as [skills](/tutorials/skills), tool search and
+[MCP](/tutorials/mcp) tools, report the errors the LLM can do something about (for example, a missing
+argument or an unknown skill name) with `LlmVisibleToolExecutionException`, which implements
+`ToolErrorVisibleToLlm`, so the LLM keeps seeing them with this handler too.
+
 For exceptions you cannot change - typically those thrown by a library - write the handler yourself and
 decide there what the LLM is told:
 
