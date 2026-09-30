@@ -44,7 +44,9 @@ import org.slf4j.LoggerFactory;
  * {@link #chat(ChatRequest)}, which takes no options, only in the attributes of the response).
  * <p>
  * With a {@link StreamingChatResponseHandler}, the route is selected on the calling thread with
- * {@link ChatModelRouter#route(ChatModelRoutingRequest)}, before streaming starts. The non-blocking
+ * {@link ChatModelRouter#route(ChatModelRoutingRequest)}, before streaming starts. This blocks the calling thread
+ * until the route is selected (with {@link DecisionModelChatModelRouter}, until the decision model answers), so do
+ * not call it from an event loop thread. The non-blocking
  * {@link #chat(ChatRequest)} returning a {@link Publisher} selects it with
  * {@link ChatModelRouter#routeAsync(ChatModelRoutingRequest)} instead: a router that does not implement it, such as a
  * router written as a lambda, fails the stream with an {@link dev.langchain4j.exception.AsyncNotSupportedException}.
@@ -383,6 +385,8 @@ public class RoutingStreamingChatModel implements StreamingChatModel {
          * {@code route("complex", List.of("Writing or debugging code", "Legal contract analysis"), largeModel)}.
          * Routers that decide based on the descriptions, such as {@link DecisionModelChatModelRouter}, consider each
          * description separately, which can make them more confident than one description that mixes all topics.
+         * When the decision model is unsure, a route with more descriptions gets more of the probability, so keep the
+         * number of descriptions of the routes balanced.
          *
          * @param name         the unique name of the route, see {@link #route(String, String, StreamingChatModel)}.
          * @param descriptions the kinds of requests this route is meant for, for example one per topic.

@@ -119,6 +119,8 @@ Local and self-hosted servers usually need no API key. Ollama's decision models 
 prompt of at most 2,048 tokens, 2 to 26 options or levels per question, and at most 64 questions per request.
 Without a GPU, a request can take several seconds, so consider a longer `timeout(...)`. With more than 64 tools,
 set `maxToolsPerDecisionRequest(64)` on the [tool selection](/tutorials/decision-models#selecting-tools) components.
+For [re-ranking](/tutorials/decision-models#re-ranking-retrieved-content), lower `maxSegmentsPerRequest(...)` so that
+the segments of one request fit in the prompt.
 
 `TypeSafeDecisionModel` is tested with the TypeSafe API, OpenRouter and Ollama (`nimble` and `tev1`).
 

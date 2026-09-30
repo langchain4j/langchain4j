@@ -263,7 +263,7 @@ class DecisionModelChatModelRouterTest {
     }
 
     @Test
-    void should_propagate_missing_async_support_so_that_routing_can_be_offloaded() {
+    void should_propagate_missing_async_support() {
 
         ChatModelRouter router = new DecisionModelChatModelRouter(DecisionModelMock.thatAlwaysAnswers(Map.of(
                         "route", ChoiceAnswer.builder().value("simple").build()))

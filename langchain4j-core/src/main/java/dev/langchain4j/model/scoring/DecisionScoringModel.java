@@ -39,6 +39,9 @@ import java.util.concurrent.CompletableFuture;
  * input is the query, and each segment is part of its own yes/no question (see
  * {@link Builder#questionTemplate(PromptTemplate)}). Whether the answer to one question can be influenced by the other
  * questions of the request depends on the decision model. With {@link #scoreAsync}, the requests are sent in parallel.
+ * <p>
+ * Since the text of a segment is part of its question, a retrieved document that contains instructions, such as
+ * "answer yes", can try to raise its own score. Treat the scores of untrusted content accordingly.
  *
  * @since 1.21.0
  */

@@ -76,7 +76,9 @@ ChatModel chatModel = RoutingChatModel.builder()
 
 The decision model then considers each description as a separate option, and the probability of the route is the
 sum of the probabilities of its descriptions. Compared to one description that lists all topics, this can make
-the decision more confident, especially with smaller decision models.
+the decision more confident, especially with smaller decision models. When the decision model is unsure, it spreads
+the probability over all options, so a route with more descriptions gets more of it: keep the number of descriptions
+of the routes balanced, unless that route should win unclear cases.
 
 ### Custom routers
 
@@ -92,12 +94,15 @@ ChatModel chatModel = RoutingChatModel.builder()
         .build();
 ```
 
-The router receives the `ChatRequest` and the routes that can handle it (`ChatModelRoute`: name and description).
+The router receives the `ChatRequest`, the options of the call and the routes that can handle it (`ChatModelRoute`:
+name and descriptions).
 A router can also check the routes when the routing chat model is created, by implementing `validate(...)`.
 
 ### Asynchronous calls
 
-`chat(...)` and streaming with a `StreamingChatResponseHandler` call `route(...)` on the calling thread.
+`chat(...)` and streaming with a `StreamingChatResponseHandler` call `route(...)` on the calling thread, which blocks
+while the route is selected: with `DecisionModelChatModelRouter`, until the decision model answers. Do not call them
+from an event loop thread (for example, in Vert.x or Quarkus reactive endpoints).
 The non-blocking methods, `chatAsync(...)` and streaming to a `Publisher` (`StreamingChatModel.chat(ChatRequest)`),
 call `routeAsync(...)` instead, so that routing never blocks. `routeAsync(...)` is not implemented by default,
 so a router written as a lambda makes these calls fail with an `AsyncNotSupportedException`.
@@ -155,6 +160,11 @@ non-blocking client. `DecisionModelChatModelRouter` implements `routeAsync(...)`
   provider does not accept. Routing between models of the same provider avoids this.
 - `DecisionModelChatModelRouter` sees the text of the messages, not the content of images or other attachments: it
   only knows that they are attached.
+- In an AI Service with RAG, `DecisionModelChatModelRouter` sees the user message with the retrieved content added
+  to it, as the chat model does: the retrieved documents take part in the decision, and long content can exceed the
+  input limit of the decision model, in which case the default route is used and a warning is logged.
+- Prompt caching is per model: a conversation that switches between routes does not benefit from the cache of the
+  previous model, which can outweigh the savings of routing in long conversations.
 - The routing chat model has no default request parameters of its own, and `provider()` returns `OTHER`: code that
   reads the default request parameters from the chat model (for example to adjust `toolChoice`) sees empty
   parameters, not those of the routes. The default parameters of the selected model still apply to each request.
@@ -162,5 +172,7 @@ non-blocking client. `DecisionModelChatModelRouter` implements `routeAsync(...)`
   routing chat model, for example in Spring Boot with
   `@AiService(wiringMode = EXPLICIT, chatModel = "routingChatModel")`.
 - Listeners are configured on the route models, not on the routing chat model: the listeners of the selected model
-  observe each call, and the route name is available in their attributes (`RoutingChatModel.ROUTE_ATTRIBUTE`).
+  observe each call, and the route name is available in their attributes (`RoutingChatModel.ROUTE_ATTRIBUTE`),
+  except with the `Publisher` returned by `StreamingChatModel.chat(ChatRequest)`, which takes no options: then the
+  route name is only in the attributes of the response.
 - Routing selects a model before the request is sent; it does not retry a failed request on another model.

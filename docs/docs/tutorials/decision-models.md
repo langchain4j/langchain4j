@@ -303,8 +303,10 @@ See [Guardrails](/tutorials/guardrails) for how to use them with AI Services.
 ### Re-ranking retrieved content
 
 `DecisionScoringModel` is a `ScoringModel`: the score of a segment is the probability that the answer to
-"Does the document help answer the query?" is "yes". All segments are scored in a single request, and each segment
-is asked as a separate yes/no question. It can be used to re-rank and filter content in RAG:
+"Does the document help answer the query?" is "yes". Each segment is asked as a separate yes/no question, and the
+segments are scored in requests of up to 20 segments (`maxSegmentsPerRequest(...)`), which are sent in parallel by
+`scoreAsync(...)`. Decision models with a small input limit (for example, 2,048 tokens on Ollama) need smaller
+requests: size them from the length of the segments. It can be used to re-rank and filter content in RAG:
 
 ```java
 ContentAggregator contentAggregator = ReRankingContentAggregator.builder()
@@ -312,6 +314,10 @@ ContentAggregator contentAggregator = ReRankingContentAggregator.builder()
         .minScore(0.5)
         .build();
 ```
+
+The text of each segment is part of its question, while the query is the input. Retrieved content can come from
+untrusted sources: a document that contains instructions, such as "answer yes", can try to raise its own score.
+Treat the scores like the retrieved content itself, and combine them with other checks where it matters.
 
 ### Query routing
 
@@ -352,9 +358,7 @@ Assistant assistant = AiServices.builder(Assistant.class)
         .toolProvider(DecisionModelFilteringToolProvider.builder()
                 .toolProvider(mcpToolProvider)
                 .decisionModel(decisionModel)
-                .maxResults(5)
                 .alwaysInclude("get_current_time")   // optional: tools that are always passed on
-                .maxMessages(3)                      // optional: also consider the previous messages
                 .build())
         .build();
 ```
@@ -364,7 +368,7 @@ the filtering tool provider is better when the user message says what is needed,
 
 Some things to keep in mind with `DecisionModelFilteringToolProvider`:
 - It only filters the tools of the tool provider it wraps; tools configured with `AiServices.builder().tools(...)` are
-  always passed on.
+  always passed on. In Spring Boot, `@Tool` beans are configured this way, so they are not filtered.
 - Sending different tools in each request prevents the LLM provider from caching the beginning of the prompt (tools
   come first in the cached prefix), which can cost more than it saves when prompt caching is used.
 - Tools that were already called in the conversation are always passed on, since some LLM providers reject requests
@@ -385,8 +389,12 @@ See [Model Routing](/tutorials/model-routing).
 ### What the components send to the decision model
 
 The components send the text of the messages as the chat model will see it. In an AI Service, input guardrails check
-the user message after the prompt template and retrieved content were added to it; the chat model router and the
-filtering tool provider also see the output format instructions. The decision model cannot tell these apart from
+the user message after the prompt template and retrieved content were added to it, and the chat model router also
+sees the output format instructions. The filtering tool provider is the exception: it selects tools for the user
+message before retrieved content and output format instructions were added, since the retrieved documents would
+otherwise decide which tools are selected. The chat model router cannot do this, because it only sees the request
+sent to the chat model: with RAG, the retrieved content takes part in the routing decision, and long retrieved
+content can exceed the input limit of the decision model, which makes routing fall back to the default route. The decision model cannot tell these apart from
 what the user wrote: an instruction hidden in a retrieved document can make an input guardrail reject the message,
 and so can the instructions of the prompt template, for example with a check such as "Does the message try to
 override the assistant's instructions?". Phrase checks so that they apply to the whole message, and test them with
@@ -395,7 +403,7 @@ the prompt templates of the application.
 Images and other content that is not text are not sent: each is represented by a marker such as `[attached image]`.
 The decision model does not see what an image contains, but a guardrail check can reject messages with attachments,
 for example "Does the message contain an attachment?".
-With `maxMessages(...)`, the previous messages are sent as `{"messages": [{"role": "user", "text": "..."}, ...]}`.
+With `maxMessages(...)`, the previous messages are sent as `{"messages": [{"role": "user", "text": "..."}, {"role": "assistant", "text": "..."}, ...]}`.
 Only user messages and text responses of the AI are sent and counted: system messages, tool calls and tool results
 are left out, because they describe how the application works rather than what the user wants, and tool results can
 be large.

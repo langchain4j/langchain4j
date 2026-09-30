@@ -186,6 +186,8 @@ public class RoutingChatModel implements ChatModel {
          * {@code route("complex", List.of("Writing or debugging code", "Legal contract analysis"), largeModel)}.
          * Routers that decide based on the descriptions, such as {@link DecisionModelChatModelRouter}, consider each
          * description separately, which can make them more confident than one description that mixes all topics.
+         * When the decision model is unsure, a route with more descriptions gets more of the probability, so keep the
+         * number of descriptions of the routes balanced.
          *
          * @param name         the unique name of the route, see {@link #route(String, String, ChatModel)}.
          * @param descriptions the kinds of requests this route is meant for, for example one per topic.

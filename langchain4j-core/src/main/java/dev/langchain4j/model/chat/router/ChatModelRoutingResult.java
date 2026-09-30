@@ -49,6 +49,10 @@ public final class ChatModelRoutingResult {
         return routeName;
     }
 
+    /**
+     * Whether the default route of the routing chat model is selected, in which case {@link #routeName()} is
+     * {@code null}.
+     */
     public boolean isDefaultRoute() {
         return routeName == null;
     }
