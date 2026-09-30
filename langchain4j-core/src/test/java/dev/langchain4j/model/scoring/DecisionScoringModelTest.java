@@ -23,7 +23,7 @@ import java.time.Duration;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
-class DecisionModelScoringModelTest {
+class DecisionScoringModelTest {
 
     // answers "yes" with a probability derived from the document text: "relevant" -> 0.9, otherwise 0.1
     final DecisionModelMock decisionModel = DecisionModelMock.thatAnswersYesNoQuestions(question -> question.text()
@@ -35,7 +35,7 @@ class DecisionModelScoringModelTest {
     @Test
     void should_score_segments_with_the_probability_of_yes() {
 
-        ScoringModel scoringModel = new DecisionModelScoringModel(decisionModel);
+        ScoringModel scoringModel = new DecisionScoringModel(decisionModel);
 
         Response<List<Double>> response = scoringModel.scoreAll(
                 List.of(TextSegment.from("a relevant document"), TextSegment.from("something else")), "the query");
@@ -54,7 +54,7 @@ class DecisionModelScoringModelTest {
     @Test
     void should_score_in_batches_with_custom_question_template() {
 
-        ScoringModel scoringModel = DecisionModelScoringModel.builder()
+        ScoringModel scoringModel = DecisionScoringModel.builder()
                 .decisionModel(decisionModel)
                 .maxSegmentsPerRequest(2)
                 .questionTemplate(PromptTemplate.from("Is this document useful? {{document}}"))
@@ -82,7 +82,7 @@ class DecisionModelScoringModelTest {
             segments.add(TextSegment.from("relevant " + i));
         }
 
-        Response<List<Double>> response = new DecisionModelScoringModel(decisionModel).scoreAll(segments, "query");
+        Response<List<Double>> response = new DecisionScoringModel(decisionModel).scoreAll(segments, "query");
 
         assertThat(response.content()).hasSize(50).containsOnly(0.9);
         assertThat(decisionModel.requests())
@@ -94,7 +94,7 @@ class DecisionModelScoringModelTest {
     void should_sum_token_usage_of_batches() {
 
         decisionModel.withTokenUsage(new TokenUsage(10, 1));
-        ScoringModel scoringModel = DecisionModelScoringModel.builder()
+        ScoringModel scoringModel = DecisionScoringModel.builder()
                 .decisionModel(decisionModel)
                 .maxSegmentsPerRequest(2)
                 .build();
@@ -109,7 +109,7 @@ class DecisionModelScoringModelTest {
     @Test
     void should_return_no_scores_for_no_segments() {
 
-        Response<List<Double>> response = new DecisionModelScoringModel(decisionModel).scoreAll(List.of(), "query");
+        Response<List<Double>> response = new DecisionScoringModel(decisionModel).scoreAll(List.of(), "query");
 
         assertThat(response.content()).isEmpty();
         assertThat(decisionModel.requests()).isEmpty();
@@ -119,7 +119,7 @@ class DecisionModelScoringModelTest {
     void should_score_asynchronously() {
 
         decisionModel.withTokenUsage(new TokenUsage(10, 1));
-        ScoringModel scoringModel = DecisionModelScoringModel.builder()
+        ScoringModel scoringModel = DecisionScoringModel.builder()
                 .decisionModel(decisionModel)
                 .maxSegmentsPerRequest(2)
                 .build();
@@ -138,7 +138,7 @@ class DecisionModelScoringModelTest {
     @Test
     void should_pass_model_name_of_async_request_to_decision_model() {
 
-        new DecisionModelScoringModel(decisionModel)
+        new DecisionScoringModel(decisionModel)
                 .scoreAsync(ScoringRequest.builder()
                         .documents(List.of("relevant"))
                         .query("query")
@@ -168,7 +168,7 @@ class DecisionModelScoringModelTest {
             }
         };
 
-        assertThat(new DecisionModelScoringModel(withoutAnswers)
+        assertThat(new DecisionScoringModel(withoutAnswers)
                         .scoreAsync(ScoringRequest.builder()
                                 .documents(List.of("text"))
                                 .query("query")
@@ -182,7 +182,7 @@ class DecisionModelScoringModelTest {
     @Test
     void should_require_document_in_question_template() {
 
-        assertThatThrownBy(() -> DecisionModelScoringModel.builder()
+        assertThatThrownBy(() -> DecisionScoringModel.builder()
                         .decisionModel(decisionModel)
                         .questionTemplate(PromptTemplate.from("Is it relevant?"))
                         .build())
@@ -193,7 +193,7 @@ class DecisionModelScoringModelTest {
     @Test
     void should_reject_question_template_with_unknown_variables() {
 
-        assertThatThrownBy(() -> DecisionModelScoringModel.builder()
+        assertThatThrownBy(() -> DecisionScoringModel.builder()
                         .decisionModel(decisionModel)
                         .questionTemplate(PromptTemplate.from("Does {{document}} answer {{question}}?"))
                         .build())
@@ -205,7 +205,7 @@ class DecisionModelScoringModelTest {
     void should_propagate_decision_model_errors() {
 
         ScoringModel scoringModel =
-                new DecisionModelScoringModel(DecisionModelMock.thatAlwaysThrowsExceptionWithMessage("down"));
+                new DecisionScoringModel(DecisionModelMock.thatAlwaysThrowsExceptionWithMessage("down"));
 
         assertThatThrownBy(() -> scoringModel.scoreAll(List.of(TextSegment.from("text")), "query"))
                 .hasMessage("down");
@@ -235,7 +235,7 @@ class DecisionModelScoringModelTest {
             }
         };
 
-        new DecisionModelScoringModel(pending)
+        new DecisionScoringModel(pending)
                 .scoreAsync(ScoringRequest.builder()
                         .documents(List.of("text"))
                         .query("query")
@@ -248,10 +248,10 @@ class DecisionModelScoringModelTest {
     @Test
     void should_validate_configuration() {
 
-        assertThatThrownBy(() -> new DecisionModelScoringModel((DecisionModel) null))
+        assertThatThrownBy(() -> new DecisionScoringModel((DecisionModel) null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("decisionModel");
-        assertThatThrownBy(() -> DecisionModelScoringModel.builder()
+        assertThatThrownBy(() -> DecisionScoringModel.builder()
                         .decisionModel(decisionModel)
                         .maxSegmentsPerRequest(0)
                         .build())

@@ -1015,7 +1015,7 @@ Please see [`DefaultContentAggregator` Javadoc](https://javadoc.io/doc/dev.langc
 
 #### Re-Ranking Content Aggregator
 The `ReRankingContentAggregator` uses a `ScoringModel`, like Cohere, to perform re-ranking.
-A [decision model](/tutorials/decision-models#re-ranking-retrieved-content) can also be used, with `DecisionModelScoringModel`.
+A [decision model](/tutorials/decision-models#re-ranking-retrieved-content) can also be used, with `DecisionScoringModel`.
 The complete list of supported scoring (re-ranking) models can be found
 [here](https://docs.langchain4j.dev/category/scoring-reranking-models).
 Please see [`ReRankingContentAggregator` Javadoc](https://javadoc.io/doc/dev.langchain4j/langchain4j-core/latest/dev/langchain4j/rag/content/aggregator/ReRankingContentAggregator.html) for more details.

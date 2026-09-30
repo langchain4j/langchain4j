@@ -30,7 +30,7 @@ import java.util.concurrent.CompletableFuture;
  * {@link dev.langchain4j.rag.content.aggregator.ReRankingContentAggregator}:
  * <pre>{@code
  * ContentAggregator contentAggregator = ReRankingContentAggregator.builder()
- *         .scoringModel(new DecisionModelScoringModel(decisionModel))
+ *         .scoringModel(new DecisionScoringModel(decisionModel))
  *         .minScore(0.5)
  *         .build();
  * }</pre>
@@ -42,7 +42,7 @@ import java.util.concurrent.CompletableFuture;
  * @since 1.21.0
  */
 @Experimental
-public class DecisionModelScoringModel implements ScoringModel {
+public class DecisionScoringModel implements ScoringModel {
 
     /**
      * The default template of the question asked for each segment:
@@ -56,11 +56,11 @@ public class DecisionModelScoringModel implements ScoringModel {
     private final PromptTemplate questionTemplate;
     private final int maxSegmentsPerRequest;
 
-    public DecisionModelScoringModel(DecisionModel decisionModel) {
+    public DecisionScoringModel(DecisionModel decisionModel) {
         this(builder().decisionModel(decisionModel));
     }
 
-    protected DecisionModelScoringModel(Builder builder) {
+    protected DecisionScoringModel(Builder builder) {
         this.decisionModel = ensureNotNull(builder.decisionModel, "decisionModel");
         this.questionTemplate = getOrDefault(builder.questionTemplate, DEFAULT_QUESTION_TEMPLATE);
         validate(questionTemplate);
@@ -192,7 +192,7 @@ public class DecisionModelScoringModel implements ScoringModel {
          * Sets the template of the yes/no question asked for each segment, which must contain the
          * {@code {{document}}} variable (the text of the segment). The score is the probability of "yes".
          * <p>
-         * Default value is {@link DecisionModelScoringModel#DEFAULT_QUESTION_TEMPLATE}.
+         * Default value is {@link DecisionScoringModel#DEFAULT_QUESTION_TEMPLATE}.
          */
         public Builder questionTemplate(PromptTemplate questionTemplate) {
             this.questionTemplate = questionTemplate;
@@ -203,15 +203,15 @@ public class DecisionModelScoringModel implements ScoringModel {
          * Sets the maximum number of segments sent in a single request to the decision model, so that the segments of
          * a request do not exceed the input size accepted by the decision model.
          * <p>
-         * Default value is {@value DecisionModelScoringModel#DEFAULT_MAX_SEGMENTS_PER_REQUEST}.
+         * Default value is {@value DecisionScoringModel#DEFAULT_MAX_SEGMENTS_PER_REQUEST}.
          */
         public Builder maxSegmentsPerRequest(Integer maxSegmentsPerRequest) {
             this.maxSegmentsPerRequest = maxSegmentsPerRequest;
             return this;
         }
 
-        public DecisionModelScoringModel build() {
-            return new DecisionModelScoringModel(this);
+        public DecisionScoringModel build() {
+            return new DecisionScoringModel(this);
         }
     }
 }

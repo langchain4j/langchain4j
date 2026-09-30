@@ -245,7 +245,7 @@ needed. They work with any `DecisionModel` implementation.
 | Component | Module |
 |---|---|
 | `DecisionModelInputGuardrail`, `DecisionModelOutputGuardrail` | `langchain4j-guardrails` |
-| `DecisionModelScoringModel`, `DecisionModelQueryRouter`, `RoutingChatModel` + `DecisionModelChatModelRouter` | `langchain4j-core` |
+| `DecisionScoringModel`, `DecisionModelQueryRouter`, `RoutingChatModel` + `DecisionModelChatModelRouter` | `langchain4j-core` |
 | `DecisionModelToolSearchStrategy`, `DecisionModelFilteringToolProvider` | `langchain4j` |
 
 Each of these components makes an additional call to the decision model. Its token usage is not included in the token
@@ -259,7 +259,7 @@ chat model router, `question(...)`. The default templates are available as `DEFA
 For example:
 
 ```java
-ScoringModel scoringModel = DecisionModelScoringModel.builder()
+ScoringModel scoringModel = DecisionScoringModel.builder()
         .decisionModel(decisionModel)
         .questionTemplate(PromptTemplate.from("Does this passage contain the answer to the question?\n{{document}}"))
         .build();
@@ -300,13 +300,13 @@ See [Guardrails](/tutorials/guardrails) for how to use them with AI Services.
 
 ### Re-ranking retrieved content
 
-`DecisionModelScoringModel` is a `ScoringModel`: the score of a segment is the probability that the answer to
+`DecisionScoringModel` is a `ScoringModel`: the score of a segment is the probability that the answer to
 "Does the document help answer the query?" is "yes". All segments are scored in a single request, and each segment
 is asked as a separate yes/no question. It can be used to re-rank and filter content in RAG:
 
 ```java
 ContentAggregator contentAggregator = ReRankingContentAggregator.builder()
-        .scoringModel(new DecisionModelScoringModel(decisionModel))
+        .scoringModel(new DecisionScoringModel(decisionModel))
         .minScore(0.5)
         .build();
 ```
@@ -370,8 +370,6 @@ Some things to keep in mind with `DecisionModelFilteringToolProvider`:
 - By default, all tools that reach `minProbability` are passed on (`maxResults(...)` sets a limit), since a tool that
   is not passed on cannot be used in the request at all. Tools with the `ALWAYS_VISIBLE` search behavior are always
   passed on.
-- `maxMessages(...)` takes previous messages into account only if the AI Service passes them to the tool provider
-  (`ToolProviderRequest.messages()`).
 - If the wrapped tool provider is dynamic (`isDynamic()` returns `true`), the AI Service asks it for tools before each
   LLM call of the tool-calling loop, so the decision model is called each time as well, which adds its latency to each
   round. Since the messages usually do not change within the loop, this is only useful if the tools of the wrapped
@@ -409,7 +407,7 @@ requests fall back to what they would do without a decision model:
 | `DecisionModelQueryRouter` | no retrieval, a warning is logged | `fallbackStrategy` |
 | `DecisionModelFilteringToolProvider` | all tools are passed on, a warning is logged | `fallbackStrategy` |
 | `DecisionModelToolSearchStrategy` | the tool search fails, and the LLM receives the error like for any tool | no |
-| `DecisionModelScoringModel` | the scoring fails | no |
+| `DecisionScoringModel` | the scoring fails | no |
 
 Since these components call the decision model before the chat model, a slow decision model delays every request.
 Configure a short timeout and few retries on the decision model, so that the fallbacks apply quickly.

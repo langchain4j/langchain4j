@@ -11,7 +11,7 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.router.DecisionModelChatModelRouter;
 import dev.langchain4j.model.chat.router.RoutingChatModel;
 import dev.langchain4j.model.decision.DecisionModel;
-import dev.langchain4j.model.scoring.DecisionModelScoringModel;
+import dev.langchain4j.model.scoring.DecisionScoringModel;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.rag.query.router.DecisionModelQueryRouter;
@@ -29,7 +29,7 @@ class DecisionModelIntegrationsIT {
     @Test
     void should_rank_relevant_documents_first() {
 
-        List<Double> scores = new DecisionModelScoringModel(decisionModel)
+        List<Double> scores = new DecisionScoringModel(decisionModel)
                 .scoreAll(
                         List.of(
                                 TextSegment.from("Our office is open Monday to Friday from 9 to 5."),
