@@ -204,7 +204,9 @@ class InfinispanMetadataFilterMapper {
         if (!(value instanceof Number)) {
             return "'" + escape(String.valueOf(value)) + "'";
         }
-        if (asFloat && (value instanceof Integer || value instanceof Long)) {
+        if (asFloat) {
+            // widen every numeric literal to double so it matches what
+            // LangChainMetadataMarshaller.writeTo() stores in value_float
             return String.valueOf(((Number) value).doubleValue());
         }
         return value.toString();
