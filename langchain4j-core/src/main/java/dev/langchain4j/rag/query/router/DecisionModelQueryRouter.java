@@ -302,7 +302,9 @@ public class DecisionModelQueryRouter implements QueryRouter {
          * memory.
          * <p>
          * Default value is {@value DecisionModelQueryRouter#DEFAULT_MAX_MESSAGES}: the query and the 2 previous
-         * messages. More messages can make an older topic of the conversation outweigh the query.
+         * messages. More messages can make an older topic of the conversation outweigh the query. When the queries are
+         * already made self-contained, for example by a
+         * {@link dev.langchain4j.rag.query.transformer.CompressingQueryTransformer}, set it to 1.
          */
         public Builder maxMessages(Integer maxMessages) {
             this.maxMessages = maxMessages;

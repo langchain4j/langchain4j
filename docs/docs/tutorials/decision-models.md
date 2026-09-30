@@ -329,6 +329,8 @@ QueryRouter queryRouter = DecisionModelQueryRouter.builder()
 
 The decision model receives the query and, when it comes from a conversation, the 2 previous messages
 (`maxMessages(3)` by default), so that follow-up questions such as "and for contractors?" are understood.
+If the query is already made self-contained by a query transformer such as `CompressingQueryTransformer`, the
+previous messages are redundant and can even make an older topic outweigh the query: set `maxMessages(1)`.
 If the decision model fails, no content is retrieved by default, like with `LanguageModelQueryRouter`;
 `fallbackStrategy(ROUTE_TO_ALL)` retrieves from all sources instead, which favors answer quality.
 
