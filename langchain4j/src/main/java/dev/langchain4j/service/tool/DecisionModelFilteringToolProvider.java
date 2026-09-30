@@ -12,6 +12,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.internal.DecisionModelInputUtils;
+import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.model.decision.DecisionModel;
 import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.service.tool.search.decision.DecisionModelToolSelector;
@@ -53,6 +54,11 @@ import org.slf4j.LoggerFactory;
  * If the wrapped tool provider is {@link ToolProvider#isDynamic() dynamic}, the tools are selected again, with a call
  * to the decision model, before each LLM call of the tool-calling loop. Since the messages sent to the decision model
  * usually do not change within a tool-calling loop, this only helps if the tools of the wrapped provider change.
+ * <p>
+ * The tools are selected for the user message as the user sent it: in AI Services, before retrieved content (RAG) and
+ * output format instructions were added to it (see {@link InvocationContext#originalUserMessage()}). Otherwise, the
+ * retrieved documents rather than the question would decide which tools are selected. The previous messages are sent
+ * as they are stored in the chat memory, which by default includes the retrieved content.
  * <p>
  * If the user message has no text, all tools are passed on. If the decision model fails, the
  * {@link FallbackStrategy} applies: by default, all tools are passed on and a warning is logged.
@@ -188,7 +194,7 @@ public class DecisionModelFilteringToolProvider implements ToolProvider {
      * {@code null} if the user message has no text.
      */
     private Object input(ToolProviderRequest request) {
-        UserMessage userMessage = request.userMessage();
+        UserMessage userMessage = originalUserMessage(request);
         if (userMessage == null || !DecisionModelInputUtils.hasText(userMessage)) {
             return null;
         }
@@ -198,12 +204,40 @@ public class DecisionModelFilteringToolProvider implements ToolProvider {
         }
         List<Map<String, String>> conversation = new ArrayList<>(DecisionModelInputUtils.messages(request.messages()));
         Map<String, String> current = Map.of("role", "user", "text", text);
-        if (conversation.isEmpty() || !conversation.get(conversation.size() - 1).equals(current)) {
+        if (!conversation.isEmpty() && isCurrentUserMessage(conversation.get(conversation.size() - 1), request, text)) {
+            conversation.set(conversation.size() - 1, current);
+        } else {
             conversation.add(current);
         }
         return Map.of(
                 "messages",
                 conversation.subList(Math.max(0, conversation.size() - maxMessages), conversation.size()));
+    }
+
+    /**
+     * The user message before retrieved content was added to it (see {@link InvocationContext#originalUserMessage()}),
+     * if known, otherwise the user message sent to the LLM.
+     */
+    private static UserMessage originalUserMessage(ToolProviderRequest request) {
+        InvocationContext invocationContext = request.invocationContext();
+        if (invocationContext != null
+                && invocationContext.originalUserMessage() != null
+                && DecisionModelInputUtils.hasText(invocationContext.originalUserMessage())) {
+            return invocationContext.originalUserMessage();
+        }
+        return request.userMessage();
+    }
+
+    /**
+     * Whether the message is the current user message, as sent to the LLM or before retrieved content was added.
+     */
+    private static boolean isCurrentUserMessage(Map<String, String> message, ToolProviderRequest request, String text) {
+        if (!"user".equals(message.get("role"))) {
+            return false;
+        }
+        return message.get("text").equals(text)
+                || (request.userMessage() != null
+                        && message.get("text").equals(DecisionModelInputUtils.text(request.userMessage())));
     }
 
     @Override

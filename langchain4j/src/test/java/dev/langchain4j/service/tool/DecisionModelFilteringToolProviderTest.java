@@ -12,6 +12,7 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.decision.mock.DecisionModelMock;
+import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.service.AiServices;
 import java.util.ArrayList;
 import java.util.List;
@@ -231,6 +232,38 @@ class DecisionModelFilteringToolProviderTest {
     }
 
     @Test
+    void should_send_user_message_before_retrieved_content_was_added() {
+
+        ToolProvider toolProvider = DecisionModelFilteringToolProvider.builder()
+                .toolProvider(allTools)
+                .decisionModel(decisionModel)
+                .maxMessages(3)
+                .build();
+        UserMessage original = UserMessage.from("Do the same for Berlin");
+        UserMessage augmented = UserMessage.from("Do the same for Berlin\n\nAnswer using: Berlin has 3.7M inhabitants");
+
+        toolProvider.provideTools(ToolProviderRequest.builder()
+                .invocationContext(InvocationContext.builder()
+                        .userMessage(augmented)
+                        .originalUserMessage(original)
+                        .build())
+                .userMessage(augmented)
+                .messages(List.of(
+                        UserMessage.from("Will it rain in Paris?"),
+                        AiMessage.from("No rain in Paris today."),
+                        augmented))
+                .build());
+
+        assertThat(decisionModel.request().input())
+                .isEqualTo(Map.of(
+                        "messages",
+                        List.of(
+                                Map.of("role", "user", "text", "Will it rain in Paris?"),
+                                Map.of("role", "assistant", "text", "No rain in Paris today."),
+                                Map.of("role", "user", "text", "Do the same for Berlin"))));
+    }
+
+    @Test
     void should_append_user_message_when_conversation_does_not_end_with_it() {
 
         ToolProvider toolProvider = DecisionModelFilteringToolProvider.builder()
@@ -332,6 +365,26 @@ class DecisionModelFilteringToolProviderTest {
                         .containsExactlyInAnyOrder("get_weather", "get_forecast"));
         assertThat(decisionModel.request().input())
                 .isEqualTo(Map.of("messages", List.of(Map.of("role", "user", "text", "Will it rain?"))));
+    }
+
+    @Test
+    void should_select_tools_for_user_message_without_retrieved_content_in_ai_service() {
+
+        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds("It will not rain.");
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(chatModel)
+                .contentRetriever(query -> List.of(Content.from("The invoice INV-1 is due tomorrow")))
+                .toolProvider(DecisionModelFilteringToolProvider.builder()
+                        .toolProvider(allTools)
+                        .decisionModel(decisionModel)
+                        .maxMessages(1)
+                        .build())
+                .build();
+
+        assistant.chat("Will it rain?");
+
+        assertThat(chatModel.request().messages().get(0).toString()).contains("INV-1");
+        assertThat(decisionModel.request().input()).isEqualTo("Will it rain?");
     }
 
     @Test
