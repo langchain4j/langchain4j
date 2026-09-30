@@ -453,7 +453,7 @@ public class DefaultToolExecutor implements ToolExecutor {
             try {
                 @SuppressWarnings({"unchecked", "rawtypes"})
                 Class<Enum> enumClass = (Class<Enum>) parameterClass;
-                String enumValue = Objects.requireNonNull(argument).toString().trim();
+                String enumValue = Objects.requireNonNull(argument).toString().strip();
                 try {
                     return Enum.valueOf(enumClass, enumValue);
                 } catch (IllegalArgumentException e) {
