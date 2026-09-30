@@ -36,7 +36,8 @@ import org.slf4j.LoggerFactory;
  * correlated with its counterpart, so a null-id call is never considered unanswered and therefore never
  * triggers repair of its message, and neither a null id call nor result is ever allowed to match the other.
  * A null-id result is kept while inside a window, same as one with an id that matches an open call, since
- * there is no way to tell whether it answers one of that window's still-unanswered calls. Outside a window
+ * there is no way to tell whether it answers one of that window's still-unanswered calls, unless repair strips
+ * every call from that window's {@code AiMessage}, in which case it is dropped along with them. Outside a window
  * it is dropped as orphaned regardless of its id, since position alone already proves no call is open for
  * it to answer.
  * <p>
@@ -100,15 +101,19 @@ final class ToolAwareMessageSanitizer {
                         sanitized = new ArrayList<>(size);
                         sanitized.addAll(messages.subList(0, windowStart));
                     }
-                    if (aiMessageNeedsRepair) {
-                        AiMessage repaired = repair(aiMessage, answeredCallIds);
-                        if (repaired != null) {
-                            sanitized.add(repaired);
-                        }
-                    } else {
-                        sanitized.add(aiMessage);
+                    AiMessage kept = aiMessageNeedsRepair ? repair(aiMessage, answeredCallIds) : aiMessage;
+                    if (kept != null) {
+                        sanitized.add(kept);
                     }
-                    sanitized.addAll(keptResults);
+                    if (kept != null && kept.hasToolExecutionRequests()) {
+                        sanitized.addAll(keptResults);
+                    } else {
+                        // Every call was stripped, so any null-id results kept inside the window would be
+                        // left without a window to answer.
+                        for (ToolExecutionResultMessage result : keptResults) {
+                            log.warn("Dropping orphaned ToolExecutionResultMessage with id '{}'", result.id());
+                        }
+                    }
                 } else if (sanitized != null) {
                     sanitized.add(aiMessage);
                     sanitized.addAll(keptResults);

@@ -256,6 +256,35 @@ class ToolAwareMessageSanitizerTest implements WithAssertions {
     }
 
     @Test
+    void should_drop_a_null_id_result_when_every_call_of_its_window_is_stripped() {
+        // once all calls are stripped, the null-id result no longer has a window to answer
+        AiMessage aiMessage = AiMessage.from(toolExecutionRequest("1"));
+        ToolExecutionResultMessage nullIdResult = ToolExecutionResultMessage.from(null, "calculator", "9");
+        UserMessage nextTurn = userMessage("thanks");
+
+        List<ChatMessage> once = ToolAwareMessageSanitizer.sanitize(asList(aiMessage, nullIdResult, nextTurn));
+
+        assertThat(once).containsExactly(nextTurn);
+        assertThat(ToolAwareMessageSanitizer.sanitize(once)).isSameAs(once);
+    }
+
+    @Test
+    void should_drop_a_null_id_result_when_every_call_is_stripped_from_an_AiMessage_with_text() {
+        AiMessage aiMessage = AiMessage.from("Let me calculate", List.of(toolExecutionRequest("1")));
+        ToolExecutionResultMessage nullIdResult = ToolExecutionResultMessage.from(null, "calculator", "9");
+        UserMessage nextTurn = userMessage("thanks");
+
+        List<ChatMessage> once = ToolAwareMessageSanitizer.sanitize(asList(aiMessage, nullIdResult, nextTurn));
+
+        assertThat(once).hasSize(2);
+        AiMessage repaired = (AiMessage) once.get(0);
+        assertThat(repaired.text()).isEqualTo("Let me calculate");
+        assertThat(repaired.hasToolExecutionRequests()).isFalse();
+        assertThat(once.get(1)).isEqualTo(nextTurn);
+        assertThat(ToolAwareMessageSanitizer.sanitize(once)).isSameAs(once);
+    }
+
+    @Test
     void should_not_let_a_null_id_request_block_sanitization_of_its_sibling_calls() {
         // request "null" cannot be verified either way and must not prevent request "1" from being
         // recognised as answered, nor from being stripped when it is unanswered
