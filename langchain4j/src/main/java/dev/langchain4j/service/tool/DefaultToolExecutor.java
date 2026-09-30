@@ -8,8 +8,8 @@ import static dev.langchain4j.internal.Utils.getAnnotatedMethod;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static dev.langchain4j.service.tool.ToolExecutionRequestUtil.argumentsAsMap;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
@@ -166,7 +166,8 @@ public class DefaultToolExecutor implements ToolExecutor {
      * the calling thread, like the default implementation.
      */
     @Override
-    public CompletableFuture<ToolExecutionResult> executeAsync(ToolExecutionRequest request, InvocationContext context) {
+    public CompletableFuture<ToolExecutionResult> executeAsync(
+            ToolExecutionRequest request, InvocationContext context) {
         Object[] arguments = prepareArguments(request, context);
 
         Object result;
