@@ -2,6 +2,7 @@ package dev.langchain4j.model.scoring;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
+import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
@@ -103,7 +104,13 @@ public class DecisionScoringModel implements ScoringModel {
             }
             responses.add(response);
         }
-        CompletableFuture<ScoringResponse> result = CompletableFuture.allOf(responses.toArray(CompletableFuture[]::new))
+        CompletableFuture<ScoringResponse> result = new CompletableFuture<>();
+        responses.forEach(response -> response.whenComplete((ignored, error) -> {
+            if (error != null) {
+                result.completeExceptionally(unwrapCompletionException(error));
+            }
+        }));
+        CompletableFuture.allOf(responses.toArray(CompletableFuture[]::new))
                 .thenApply(ignored -> {
                     List<Double> scores = new ArrayList<>(documents.size());
                     TokenUsage tokenUsage = null;
@@ -113,9 +120,16 @@ public class DecisionScoringModel implements ScoringModel {
                         tokenUsage = TokenUsage.sum(tokenUsage, response.tokenUsage());
                     }
                     return ScoringResponse.builder().scores(scores).tokenUsage(tokenUsage).build();
+                })
+                .whenComplete((response, error) -> {
+                    if (error == null) {
+                        result.complete(response);
+                    } else {
+                        result.completeExceptionally(unwrapCompletionException(error));
+                    }
                 });
         result.whenComplete((response, error) -> {
-            if (result.isCancelled()) {
+            if (error != null) {
                 responses.forEach(future -> future.cancel(true));
             }
         });

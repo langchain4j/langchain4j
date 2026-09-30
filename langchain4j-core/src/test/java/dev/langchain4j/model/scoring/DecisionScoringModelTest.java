@@ -212,7 +212,7 @@ class DecisionScoringModelTest {
     void should_cancel_decision_model_call_when_async_scoring_is_cancelled() {
 
         CompletableFuture<DecisionResponse> inFlight = new CompletableFuture<>();
-        DecisionModel pending = DecisionModelMock.thatAlwaysAnswers(Map.of()).withAsyncResponse(inFlight);
+        DecisionModel pending = DecisionModelMock.thatAlwaysAnswers(Map.of()).withAsyncResponse(request -> inFlight);
 
         new DecisionScoringModel(pending)
                 .scoreAsync(ScoringRequest.builder()
@@ -222,6 +222,33 @@ class DecisionScoringModelTest {
                 .cancel(true);
 
         assertThat(inFlight).isCancelled();
+    }
+
+    @Test
+    void should_fail_async_scoring_and_cancel_other_batches_when_a_batch_fails() {
+
+        CompletableFuture<DecisionResponse> pending = new CompletableFuture<>();
+        DecisionModel decisionModel = DecisionModelMock.thatAlwaysAnswers(Map.of())
+                .withAsyncResponse(request -> request.questions().values().stream()
+                                .anyMatch(question -> question.text().contains("first"))
+                        ? CompletableFuture.failedFuture(new RuntimeException("down"))
+                        : pending);
+
+        CompletableFuture<ScoringResponse> response = DecisionScoringModel.builder()
+                .decisionModel(decisionModel)
+                .maxSegmentsPerRequest(1)
+                .build()
+                .scoreAsync(ScoringRequest.builder()
+                        .documents(List.of("first", "second"))
+                        .query("query")
+                        .build());
+
+        assertThat(response)
+                .failsWithin(Duration.ofSeconds(1))
+                .withThrowableThat()
+                .havingRootCause()
+                .withMessage("down");
+        assertThat(pending).isCancelled();
     }
 
     @Test
