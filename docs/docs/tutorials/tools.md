@@ -1646,6 +1646,45 @@ Quarkus also uses a default tool execution error handler of its own, which sends
 to the LLM and does not look at `ToolErrorVisibleToLlm`. To have that interface honored, configure
 `failInvocationUnlessVisibleToLlm()` or `sendExceptionMessageToLlm()` explicitly, as shown above.
 
+##### Configuring the handlers in Spring Boot
+
+With the Spring Boot starter, an AI Service is declared with `@AiService`, and the handlers are declared as beans:
+
+```java
+@Configuration
+class ToolErrorHandlingConfig {
+
+    @Bean
+    ToolExecutionErrorHandler toolExecutionErrorHandler() {
+        return ToolExecutionErrorHandler.failInvocationUnlessVisibleToLlm();
+    }
+
+    @Bean
+    ToolArgumentsErrorHandler toolArgumentsErrorHandler() {
+        return ToolArgumentsErrorHandler.sendExceptionMessageToLlm();
+    }
+}
+```
+
+In the default (automatic) wiring mode, these beans are used by every `@AiService`.
+In the explicit wiring mode, each AI Service names the beans it uses:
+
+```java
+@AiService(
+        wiringMode = EXPLICIT,
+        chatModel = "openAiChatModel",
+        tools = "bookingTools",
+        toolExecutionErrorHandler = "toolExecutionErrorHandler",
+        toolArgumentsErrorHandler = "toolArgumentsErrorHandler")
+interface Assistant {
+
+    String chat(String userMessage);
+}
+```
+
+See [Spring Boot Integration](/tutorials/spring-boot-integration#explicit-component-wiring) for more details
+on the wiring modes.
+
 
 #### Handling Tool Name Errors
 

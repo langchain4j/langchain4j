@@ -146,6 +146,7 @@ The following components will be automatically wired into the AI Service if avai
 - `ContentRetriever`
 - `RetrievalAugmentor`
 - `ToolProvider`
+- `ToolExecutionErrorHandler` and `ToolArgumentsErrorHandler` (see [Error Handling](/tutorials/tools#error-handling))
 - All methods of any `@Component` or `@Service` class that are annotated with `@Tool`
 An example:
 ```java
