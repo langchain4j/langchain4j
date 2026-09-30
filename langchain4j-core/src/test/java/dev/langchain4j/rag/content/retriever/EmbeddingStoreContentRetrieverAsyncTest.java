@@ -22,6 +22,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class EmbeddingStoreContentRetrieverAsyncTest {
 
@@ -118,8 +120,7 @@ class EmbeddingStoreContentRetrieverAsyncTest {
         AtomicInteger nativeSearchAsyncCalls = new AtomicInteger();
         FakeEmbeddingStore store = new FakeEmbeddingStore() {
             @Override
-            public CompletableFuture<EmbeddingSearchResult<TextSegment>> searchAsync(
-                    EmbeddingSearchRequest request) {
+            public CompletableFuture<EmbeddingSearchResult<TextSegment>> searchAsync(EmbeddingSearchRequest request) {
                 nativeSearchAsyncCalls.incrementAndGet();
                 return java.util.concurrent.CompletableFuture.completedFuture(search(request));
             }
@@ -143,8 +144,7 @@ class EmbeddingStoreContentRetrieverAsyncTest {
                 new java.util.concurrent.CompletableFuture<>();
         FakeEmbeddingStore store = new FakeEmbeddingStore() {
             @Override
-            public CompletableFuture<EmbeddingSearchResult<TextSegment>> searchAsync(
-                    EmbeddingSearchRequest request) {
+            public CompletableFuture<EmbeddingSearchResult<TextSegment>> searchAsync(EmbeddingSearchRequest request) {
                 return pendingSearch;
             }
         };
@@ -165,11 +165,80 @@ class EmbeddingStoreContentRetrieverAsyncTest {
         assertThat(pendingSearch).isCancelled();
     }
 
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void retrieveAsync_cancellation_aborts_the_in_flight_embedding(boolean mayInterruptIfRunning) {
+        CompletableFuture<EmbeddingResponse> pendingEmbedding = new CompletableFuture<>();
+        EmbeddingModel model = new NativeAsyncEmbeddingModel() {
+            @Override
+            public CompletableFuture<EmbeddingResponse> doEmbedAsync(EmbeddingRequest request) {
+                return pendingEmbedding;
+            }
+        };
+        AtomicInteger searchCalls = new AtomicInteger();
+        FakeEmbeddingStore store = new FakeEmbeddingStore() {
+            @Override
+            public CompletableFuture<EmbeddingSearchResult<TextSegment>> searchAsync(EmbeddingSearchRequest request) {
+                searchCalls.incrementAndGet();
+                return CompletableFuture.completedFuture(search(request));
+            }
+        };
+        EmbeddingStoreContentRetriever retriever = EmbeddingStoreContentRetriever.builder()
+                .embeddingModel(model)
+                .embeddingStore(store)
+                .build();
+
+        CompletableFuture<List<Content>> result = retriever.retrieveAsync(Query.from("hello"));
+
+        assertThat(result).isNotDone();
+        assertThat(pendingEmbedding).isNotDone();
+        assertThat(searchCalls).hasValue(0);
+
+        assertThat(result.cancel(mayInterruptIfRunning)).isTrue();
+
+        assertThat(result).isCancelled();
+        assertThat(pendingEmbedding).isCancelled();
+        assertThat(searchCalls).hasValue(0);
+    }
+
+    @Test
+    void retrieveAsync_embedding_failure_propagates_without_starting_search() {
+        CompletableFuture<EmbeddingResponse> pendingEmbedding = new CompletableFuture<>();
+        EmbeddingModel model = new NativeAsyncEmbeddingModel() {
+            @Override
+            public CompletableFuture<EmbeddingResponse> doEmbedAsync(EmbeddingRequest request) {
+                return pendingEmbedding;
+            }
+        };
+        AtomicInteger searchCalls = new AtomicInteger();
+        FakeEmbeddingStore store = new FakeEmbeddingStore() {
+            @Override
+            public CompletableFuture<EmbeddingSearchResult<TextSegment>> searchAsync(EmbeddingSearchRequest request) {
+                searchCalls.incrementAndGet();
+                return CompletableFuture.completedFuture(search(request));
+            }
+        };
+        EmbeddingStoreContentRetriever retriever = EmbeddingStoreContentRetriever.builder()
+                .embeddingModel(model)
+                .embeddingStore(store)
+                .build();
+        RuntimeException failure = new RuntimeException("embedding failed");
+
+        CompletableFuture<List<Content>> result = retriever.retrieveAsync(Query.from("hello"));
+        pendingEmbedding.completeExceptionally(failure);
+
+        assertThatThrownBy(result::get).isInstanceOf(ExecutionException.class).hasCause(failure);
+        assertThat(pendingEmbedding).isNotCancelled();
+        assertThat(result).isNotCancelled();
+        assertThat(searchCalls).hasValue(0);
+    }
+
     static class FakeEmbeddingModel implements EmbeddingModel {
         @Override
         public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
-            return Response.from(
-                    textSegments.stream().map(s -> Embedding.from(new float[] {1f, 0f, 0f})).toList());
+            return Response.from(textSegments.stream()
+                    .map(s -> Embedding.from(new float[] {1f, 0f, 0f}))
+                    .toList());
         }
     }
 
