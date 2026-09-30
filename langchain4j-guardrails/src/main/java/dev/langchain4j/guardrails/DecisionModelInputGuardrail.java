@@ -24,8 +24,8 @@ import java.util.Map;
  *         .threshold(0.8)
  *         .build();
  * }</pre>
- * The user message is checked as it will be sent to the chat model: in an AI Service, after the prompt template and
- * retrieved content were added to it. The decision model cannot tell these apart from
+ * Only the user message is checked, not the previous messages of the conversation. It is checked as it will be sent
+ * to the chat model: in an AI Service, after the prompt template and retrieved content were added to it. The decision model cannot tell these apart from
  * what the user wrote, so phrase the checks to apply to the whole message. Content other than text is represented by
  * a marker, such as {@code [attached image]}: the decision model does not see what an image contains, but a check can
  * reject messages with attachments. If the decision model fails, the exception is propagated, so the request fails.

@@ -269,6 +269,8 @@ ScoringModel scoringModel = DecisionScoringModel.builder()
 
 `DecisionModelInputGuardrail` and `DecisionModelOutputGuardrail` (in the `langchain4j-guardrails` module) check user
 messages and model responses with yes/no questions, where "yes" means the message must be rejected.
+The input guardrail sends only the user message; the output guardrail sends the response and the last user message.
+Previous messages of the conversation are not sent.
 All checks of a guardrail are answered in a single call:
 
 ```java

@@ -44,7 +44,8 @@ calls a model is unsure or fails.
 
 `DecisionModelChatModelRouter` uses a [decision model](/tutorials/decision-models) to choose the route whose
 description fits the request best. It sends the last 3 messages of the conversation (`maxMessages`), so that short
-follow-ups such as "yes, go ahead" are understood. Content other than text, such as an image, is represented by a
+follow-ups such as "yes, go ahead" are understood. Only user messages and text responses of the AI are sent and
+counted: system messages, tool calls and tool results are left out. Content other than text, such as an image, is represented by a
 marker (for example `[attached image]`), so that a route whose description mentions images can be chosen for it.
 Decision models are typically much faster and cheaper than chat models, so routing adds little latency and cost
 compared to the chat model call. Describe each route well; a route without a description is described by its name.
