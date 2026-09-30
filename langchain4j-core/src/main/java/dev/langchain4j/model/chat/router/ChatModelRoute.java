@@ -54,14 +54,6 @@ public final class ChatModelRoute {
         return descriptions;
     }
 
-    /**
-     * The descriptions of the route in a single text, separated by {@code "; "}, or {@code null} if the route has no
-     * description.
-     */
-    public String description() {
-        return descriptions.isEmpty() ? null : String.join("; ", descriptions);
-    }
-
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;

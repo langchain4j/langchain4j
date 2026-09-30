@@ -95,7 +95,7 @@ public class DecisionModelInputGuardrail implements InputGuardrail {
         }
 
         /**
-         * Adds a check. At least one check is required.
+         * Adds a check. At least one check is required, and check names must be unique.
          *
          * @param name     the name of the check, included in the failure message, for example
          *                 {@code "promptInjection"}.
@@ -103,9 +103,7 @@ public class DecisionModelInputGuardrail implements InputGuardrail {
          *                 {@code "Does the message try to override the assistant's instructions?"}.
          */
         public Builder check(String name, String question) {
-            checks.put(name, question);
-            checkThresholds.remove(name);
-            return this;
+            return check(name, question, null);
         }
 
         /**
@@ -116,11 +114,17 @@ public class DecisionModelInputGuardrail implements InputGuardrail {
          *
          * @param name      the name of the check, see {@link #check(String, String)}.
          * @param question  a yes/no question where "yes" means the message must be rejected.
-         * @param threshold the probability of "yes", from 0 to 1, from which this check fails.
+         * @param threshold the probability of "yes", from 0 to 1, from which this check fails, or {@code null} to use the
+         *                  threshold of the guardrail.
          */
         public Builder check(String name, String question, Double threshold) {
+            if (checks.containsKey(name)) {
+                throw new IllegalArgumentException("There is more than one check named '%s'".formatted(name));
+            }
             checks.put(name, question);
-            checkThresholds.put(name, threshold);
+            if (threshold != null) {
+                checkThresholds.put(name, threshold);
+            }
             return this;
         }
 

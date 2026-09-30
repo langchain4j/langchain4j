@@ -18,13 +18,13 @@ import java.util.Objects;
  * @since 1.21.0
  */
 @Experimental
-public class ChatModelRoutingRequest {
+public final class ChatModelRoutingRequest {
 
     private final ChatRequest chatRequest;
     private final List<ChatModelRoute> routes;
     private final ChatRequestOptions options;
 
-    protected ChatModelRoutingRequest(Builder builder) {
+    private ChatModelRoutingRequest(Builder builder) {
         this.chatRequest = ensureNotNull(builder.chatRequest, "chatRequest");
         this.routes = copy(ensureNotEmpty(builder.routes, "routes"));
         this.options = getOrDefault(builder.options, ChatRequestOptions.EMPTY);
@@ -76,7 +76,7 @@ public class ChatModelRoutingRequest {
         return new Builder();
     }
 
-    public static class Builder {
+    public static final class Builder {
 
         private ChatRequest chatRequest;
         private List<ChatModelRoute> routes;

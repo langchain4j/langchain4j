@@ -144,7 +144,7 @@ class RoutingChatModelTest {
                 .containsExactly(
                         new ChatModelRoute("simple", "Short questions"),
                         new ChatModelRoute("complex", List.of("Code", "Law")));
-        assertThat(seen.get(1).description()).isEqualTo("Code; Law");
+        assertThat(seen.get(1).descriptions()).containsExactly("Code", "Law");
     }
 
     @Test

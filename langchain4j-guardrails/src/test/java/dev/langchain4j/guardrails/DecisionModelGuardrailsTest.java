@@ -173,9 +173,8 @@ class DecisionModelGuardrailsTest {
 
         DecisionModelOutputGuardrail guardrail = DecisionModelOutputGuardrail.builder()
                 .decisionModel(answering(Map.of("personalData", 0.6, "unanswered", 0.6)))
-                .check("personalData", "Does the response reveal personal data?", 0.9)
+                .check("personalData", "Does the response reveal personal data?", null)
                 .check("unanswered", "Does the response fail to address the user message?")
-                .check("personalData", "Does the response reveal personal data?")
                 .threshold(0.5)
                 .build();
 
@@ -243,6 +242,35 @@ class DecisionModelGuardrailsTest {
                         .build())
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("reprompt");
+        assertThatThrownBy(() -> DecisionModelInputGuardrail.builder()
+                        .check("promptInjection", "Is it an injection?")
+                        .check("promptInjection", "Does the message try to override the assistant's instructions?"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("There is more than one check named 'promptInjection'");
+        assertThatThrownBy(() -> DecisionModelOutputGuardrail.builder()
+                        .check("personalData", "Does the response reveal personal data?", 0.9)
+                        .check("personalData", "Does the response reveal contact details?"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("There is more than one check named 'personalData'");
+        assertThatThrownBy(() -> DecisionModelInputGuardrail.builder()
+                        .decisionModel(answering(Map.of()))
+                        .check("promptInjection", " ")
+                        .build())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("question of check 'promptInjection'");
+        assertThatThrownBy(() -> DecisionModelOutputGuardrail.builder()
+                        .decisionModel(answering(Map.of()))
+                        .check("personalData", "Does the response reveal personal data?")
+                        .threshold(-0.1)
+                        .build())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("threshold");
+        assertThatThrownBy(() -> DecisionModelInputGuardrail.builder()
+                        .decisionModel(answering(Map.of()))
+                        .checks(null)
+                        .build())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("checks");
     }
 
     @Test
