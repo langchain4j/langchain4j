@@ -99,8 +99,8 @@ final class RouteSelector<M> {
             }
             List<ChatModelRoute> candidates = candidates(chatRequest);
             ChatModelRoutingRequest routingRequest = routingRequest(chatRequest, candidates, options);
-            CompletableFuture<String> routed = routeAsyncOrOffload(routingRequest);
-            CompletableFuture<String> result = routed.thenApply(routeName -> validate(routeName, candidates));
+            CompletableFuture<ChatModelRoutingResult> routed = routeAsyncOrOffload(routingRequest);
+            CompletableFuture<String> result = routed.thenApply(routingResult -> validate(routingResult, candidates));
             propagateCancellation(result, routed);
             return result;
         } catch (Exception e) {
@@ -108,29 +108,29 @@ final class RouteSelector<M> {
         }
     }
 
-    private CompletableFuture<String> routeAsyncOrOffload(ChatModelRoutingRequest routingRequest) {
-        CompletableFuture<String> route;
+    private CompletableFuture<ChatModelRoutingResult> routeAsyncOrOffload(ChatModelRoutingRequest routingRequest) {
+        CompletableFuture<ChatModelRoutingResult> route;
         try {
             route = router.routeAsync(routingRequest);
         } catch (AsyncNotSupportedException e) {
             return offload(routingRequest);
         }
-        CompletableFuture<String> result = route.handle((routeName, error) -> {
+        CompletableFuture<ChatModelRoutingResult> result = route.handle((routingResult, error) -> {
                     if (error == null) {
-                        return CompletableFuture.completedFuture(routeName);
+                        return CompletableFuture.completedFuture(routingResult);
                     }
                     Throwable cause = unwrapCompletionException(error);
                     if (cause instanceof AsyncNotSupportedException) {
                         return offload(routingRequest);
                     }
-                    return CompletableFuture.<String>failedFuture(cause);
+                    return CompletableFuture.<ChatModelRoutingResult>failedFuture(cause);
                 })
                 .thenCompose(Function.identity());
         propagateCancellation(result, route);
         return result;
     }
 
-    private CompletableFuture<String> offload(ChatModelRoutingRequest routingRequest) {
+    private CompletableFuture<ChatModelRoutingResult> offload(ChatModelRoutingRequest routingRequest) {
         return CompletableFuture.supplyAsync(
                 () -> router.route(routingRequest),
                 executor != null ? executor : DefaultExecutorProvider.getDefaultExecutor());
@@ -213,8 +213,13 @@ final class RouteSelector<M> {
         return Set.of();
     }
 
-    private String validate(String routeName, List<ChatModelRoute> candidates) {
-        if (routeName == null) {
+    private String validate(ChatModelRoutingResult routingResult, List<ChatModelRoute> candidates) {
+        if (routingResult == null) {
+            throw new IllegalStateException("The router returned null. Use ChatModelRoutingResult.defaultRoute() to "
+                    + "use the default route");
+        }
+        String routeName = routingResult.routeName();
+        if (routingResult.isDefaultRoute()) {
             return isCandidate(defaultRoute, candidates)
                     ? defaultRoute
                     : candidates.get(0).name();

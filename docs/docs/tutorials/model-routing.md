@@ -35,7 +35,8 @@ For streaming, use `RoutingStreamingChatModel` with `StreamingChatModel`s; it wo
 
 ## Routers
 
-A `ChatModelRouter` returns the name of the route for a request, or `null` to use the default route.
+A `ChatModelRouter` returns a `ChatModelRoutingResult`: `ChatModelRoutingResult.route(name)` for one of the routes,
+or `ChatModelRoutingResult.defaultRoute()` for the default route.
 The default route is required, so that there is always a model to send the request to, for example when a router that
 calls a model is unsure or fails.
 
@@ -48,7 +49,7 @@ marker (for example `[attached image]`), so that a route whose description menti
 Decision models are typically much faster and cheaper than chat models, so routing adds little latency and cost
 compared to the chat model call. Describe each route well; a route without a description is described by its name.
 
-It returns `null` (so the default route is used) when the request has no user message, and when the probability of
+It selects the default route when the request has no user message, and when the probability of
 the chosen route is below `minProbability`, which is useful to send the requests the decision model is not sure
 about to the larger model. `minProbability` requires a decision model that reports probabilities; otherwise the call
 fails. When the decision model fails, the default route is used and a warning is logged; set
@@ -69,7 +70,8 @@ A router can also be a simple rule:
 ChatModel chatModel = RoutingChatModel.builder()
         .route("simple", smallModel)
         .route("complex", largeModel)
-        .router(request -> request.chatRequest().messages().size() > 20 ? "complex" : "simple")
+        .router(request -> ChatModelRoutingResult.route(
+                request.chatRequest().messages().size() > 20 ? "complex" : "simple"))
         .defaultRoute("simple")
         .build();
 ```

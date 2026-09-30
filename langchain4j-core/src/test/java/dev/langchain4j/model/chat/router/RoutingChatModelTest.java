@@ -81,9 +81,10 @@ class RoutingChatModelTest {
     static ChatModelRouter byLength() {
         return request -> {
             ChatMessage last = request.chatRequest().messages().get(request.chatRequest().messages().size() - 1);
-            return last instanceof UserMessage userMessage && userMessage.singleText().length() > 20
-                    ? "complex"
-                    : "simple";
+            return ChatModelRoutingResult.route(
+                    last instanceof UserMessage userMessage && userMessage.singleText().length() > 20
+                            ? "complex"
+                            : "simple");
         };
     }
 
@@ -113,7 +114,7 @@ class RoutingChatModelTest {
         List<ChatModelRoute> seen = new ArrayList<>();
         ChatModel chatModel = routingModel(request -> {
             seen.addAll(request.routes());
-            return "simple";
+            return ChatModelRoutingResult.route("simple");
         });
 
         chatModel.chat("Hi!");
@@ -127,13 +128,31 @@ class RoutingChatModelTest {
     @Test
     void should_use_default_route_when_router_does_not_select_one() {
 
-        assertThat(routingModel(request -> null).chat("Hi!")).isEqualTo("answer from large");
+        assertThat(routingModel(request -> ChatModelRoutingResult.defaultRoute()).chat("Hi!")).isEqualTo("answer from large");
+    }
+
+    @Test
+    void should_fail_when_router_returns_null() {
+
+        assertThatThrownBy(() -> routingModel(request -> null).chat("Hi!"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("ChatModelRoutingResult.defaultRoute()");
+    }
+
+    @Test
+    void routing_result_should_reject_blank_route_name() {
+
+        assertThatThrownBy(() -> ChatModelRoutingResult.route(" "))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("routeName");
+        assertThat(ChatModelRoutingResult.defaultRoute().isDefaultRoute()).isTrue();
+        assertThat(ChatModelRoutingResult.route("simple")).isEqualTo(ChatModelRoutingResult.route("simple"));
     }
 
     @Test
     void should_fail_when_router_selects_unknown_route() {
 
-        assertThatThrownBy(() -> routingModel(request -> "medium").chat("Hi!"))
+        assertThatThrownBy(() -> routingModel(request -> ChatModelRoutingResult.route("medium")).chat("Hi!"))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("unknown route 'medium'");
     }
@@ -166,7 +185,7 @@ class RoutingChatModelTest {
         List<String> routed = new ArrayList<>();
         ChatModel chatModel = routingModel(request -> {
             routed.add("asked");
-            return routed.size() == 1 ? "simple" : "complex";
+            return ChatModelRoutingResult.route(routed.size() == 1 ? "simple" : "complex");
         });
 
         UserMessage userMessage = UserMessage.from("Weather?");
@@ -216,7 +235,7 @@ class RoutingChatModelTest {
         List<ChatRequestOptions> options = new ArrayList<>();
         ChatModel chatModel = routingModel(request -> {
             options.add(request.options());
-            return "simple";
+            return ChatModelRoutingResult.route("simple");
         });
 
         chatModel.chat(
@@ -238,7 +257,7 @@ class RoutingChatModelTest {
         List<String> routed = new ArrayList<>();
         ChatModel chatModel = routingModel(request -> {
             routed.add("asked");
-            return "complex";
+            return ChatModelRoutingResult.route("complex");
         });
 
         chatModel.chat(ChatRequest.builder()
@@ -273,7 +292,7 @@ class RoutingChatModelTest {
         List<String> routed = new ArrayList<>();
         ChatModel chatModel = routingModel(request -> {
             routed.add("asked");
-            return "complex";
+            return ChatModelRoutingResult.route("complex");
         });
 
         chatModel.chat(ChatRequest.builder()
@@ -304,7 +323,7 @@ class RoutingChatModelTest {
         ChatModel chatModel = RoutingChatModel.builder()
                 .route("simple", small)
                 .route("complex", large)
-                .router(request -> "complex")
+                .router(request -> ChatModelRoutingResult.route("complex"))
                 .defaultRoute("simple")
                 .executor(task -> {
                     tasks.add(task);
@@ -325,8 +344,8 @@ class RoutingChatModelTest {
 
         ChatModelRouter router = new ChatModelRouter() {
             @Override
-            public String route(ChatModelRoutingRequest request) {
-                return "simple";
+            public ChatModelRoutingResult route(ChatModelRoutingRequest request) {
+                return ChatModelRoutingResult.route("simple");
             }
 
             @Override
@@ -375,7 +394,7 @@ class RoutingChatModelTest {
         assertThat(routingModel(byLength()).supportedCapabilities()).containsExactly(RESPONSE_FORMAT_JSON_SCHEMA);
         assertThat(RoutingChatModel.builder()
                         .route("complex", large)
-                        .router(request -> "complex")
+                        .router(request -> ChatModelRoutingResult.route("complex"))
                         .defaultRoute("complex")
                         .build()
                         .supportedCapabilities())
@@ -403,7 +422,7 @@ class RoutingChatModelTest {
         List<ChatModelRoute> seen = new ArrayList<>();
         ChatModel chatModel = routingModel(request -> {
             seen.addAll(request.routes());
-            return request.routes().get(0).name();
+            return ChatModelRoutingResult.route(request.routes().get(0).name());
         });
 
         ChatResponse response = chatModel.chat(jsonSchemaRequest("Please analyze the attached quarterly report"));
@@ -415,7 +434,7 @@ class RoutingChatModelTest {
     @Test
     void should_fail_when_selected_route_does_not_support_the_needed_capability() {
 
-        assertThatThrownBy(() -> routingModel(request -> "complex").chat(jsonSchemaRequest("Hi!")))
+        assertThatThrownBy(() -> routingModel(request -> ChatModelRoutingResult.route("complex")).chat(jsonSchemaRequest("Hi!")))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("Route 'complex' does not support");
 
@@ -430,7 +449,7 @@ class RoutingChatModelTest {
                 .route("complex", "Everything else", large)
                 .router(request -> {
                     seen.addAll(request.routes());
-                    return "complex";
+                    return ChatModelRoutingResult.route("complex");
                 })
                 .defaultRoute("simple")
                 .build();
@@ -444,7 +463,7 @@ class RoutingChatModelTest {
     @Test
     void should_use_first_capable_route_when_default_route_does_not_support_needed_capability() {
 
-        ChatResponse response = routingModel(request -> null).chat(jsonSchemaRequest("Hi!"));
+        ChatResponse response = routingModel(request -> ChatModelRoutingResult.defaultRoute()).chat(jsonSchemaRequest("Hi!"));
 
         assertThat(response.aiMessage().text()).isEqualTo("answer from small");
     }
@@ -470,15 +489,15 @@ class RoutingChatModelTest {
     @Test
     void should_cancel_routing_when_async_call_is_cancelled() {
 
-        CompletableFuture<String> route = new CompletableFuture<>();
+        CompletableFuture<ChatModelRoutingResult> route = new CompletableFuture<>();
         ChatModelRouter asyncRouter = new ChatModelRouter() {
             @Override
-            public String route(ChatModelRoutingRequest request) {
+            public ChatModelRoutingResult route(ChatModelRoutingRequest request) {
                 throw new AssertionError("must not block");
             }
 
             @Override
-            public CompletableFuture<String> routeAsync(ChatModelRoutingRequest request) {
+            public CompletableFuture<ChatModelRoutingResult> routeAsync(ChatModelRoutingRequest request) {
                 return route;
             }
         };
@@ -495,15 +514,15 @@ class RoutingChatModelTest {
     @Test
     void should_route_asynchronously_with_async_router() {
 
-        CompletableFuture<String> route = new CompletableFuture<>();
+        CompletableFuture<ChatModelRoutingResult> route = new CompletableFuture<>();
         ChatModelRouter asyncRouter = new ChatModelRouter() {
             @Override
-            public String route(ChatModelRoutingRequest request) {
+            public ChatModelRoutingResult route(ChatModelRoutingRequest request) {
                 throw new AssertionError("must not block");
             }
 
             @Override
-            public CompletableFuture<String> routeAsync(ChatModelRoutingRequest request) {
+            public CompletableFuture<ChatModelRoutingResult> routeAsync(ChatModelRoutingRequest request) {
                 return route;
             }
         };
@@ -512,14 +531,14 @@ class RoutingChatModelTest {
                 .chatAsync(ChatRequest.builder().messages(UserMessage.from("Hi!")).build());
 
         assertThat(response).isNotDone();
-        route.complete("complex");
+        route.complete(ChatModelRoutingResult.route("complex"));
         assertThat(response.join().aiMessage().text()).isEqualTo("answer from large");
     }
 
     @Test
     void should_fail_async_call_when_routing_fails() {
 
-        CompletableFuture<ChatResponse> response = routingModel(request -> "medium")
+        CompletableFuture<ChatResponse> response = routingModel(request -> ChatModelRoutingResult.route("medium"))
                 .chatAsync(ChatRequest.builder().messages(UserMessage.from("Hi!")).build());
 
         assertThat(response).failsWithin(java.time.Duration.ofSeconds(1))
@@ -533,21 +552,21 @@ class RoutingChatModelTest {
         assertThatThrownBy(() -> RoutingChatModel.builder()
                         .route("simple", small)
                         .route("simple", large)
-                        .router(request -> "simple")
+                        .router(request -> ChatModelRoutingResult.route("simple"))
                         .defaultRoute("simple")
                         .build())
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("more than one route named 'simple'");
         assertThatThrownBy(() -> RoutingChatModel.builder()
                         .route("simple", small)
-                        .router(request -> "simple")
+                        .router(request -> ChatModelRoutingResult.route("simple"))
                         .defaultRoute("complex")
                         .build())
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("default route 'complex'");
         assertThatThrownBy(() -> RoutingChatModel.builder()
                         .route("simple", small)
-                        .router(request -> "simple")
+                        .router(request -> ChatModelRoutingResult.route("simple"))
                         .build())
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("defaultRoute");
@@ -557,7 +576,7 @@ class RoutingChatModelTest {
                         .build())
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("router");
-        assertThatThrownBy(() -> RoutingChatModel.builder().router(request -> "x").build())
+        assertThatThrownBy(() -> RoutingChatModel.builder().router(request -> ChatModelRoutingResult.route("x")).build())
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("routes");
     }
@@ -662,7 +681,7 @@ class RoutingChatModelTest {
                 throw new AssertionError(error);
             }
         };
-        RoutingStreamingChatModel model = routingStreamingModel(request -> "complex");
+        RoutingStreamingChatModel model = routingStreamingModel(request -> ChatModelRoutingResult.route("complex"));
 
         model.chat(
                 ChatRequest.builder()
@@ -686,7 +705,7 @@ class RoutingChatModelTest {
 
         List<Throwable> errors = new ArrayList<>();
 
-        routingStreamingModel(request -> "medium").chat("Hi!", new StreamingChatResponseHandler() {
+        routingStreamingModel(request -> ChatModelRoutingResult.route("medium")).chat("Hi!", new StreamingChatResponseHandler() {
             @Override
             public void onCompleteResponse(ChatResponse completeResponse) {}
 
@@ -702,15 +721,15 @@ class RoutingChatModelTest {
     @Test
     void should_route_streaming_requests_with_async_router() {
 
-        CompletableFuture<String> route = new CompletableFuture<>();
+        CompletableFuture<ChatModelRoutingResult> route = new CompletableFuture<>();
         ChatModelRouter asyncRouter = new ChatModelRouter() {
             @Override
-            public String route(ChatModelRoutingRequest request) {
+            public ChatModelRoutingResult route(ChatModelRoutingRequest request) {
                 throw new AssertionError("must not block");
             }
 
             @Override
-            public CompletableFuture<String> routeAsync(ChatModelRoutingRequest request) {
+            public CompletableFuture<ChatModelRoutingResult> routeAsync(ChatModelRoutingRequest request) {
                 return route;
             }
         };
@@ -729,7 +748,7 @@ class RoutingChatModelTest {
         });
 
         assertThat(completed).isEmpty();
-        route.complete("complex");
+        route.complete(ChatModelRoutingResult.route("complex"));
         assertThat(completed).singleElement().satisfies(response -> assertThat(response.aiMessage().text())
                 .isEqualTo("answer from large"));
     }
@@ -737,15 +756,15 @@ class RoutingChatModelTest {
     @Test
     void should_pass_demand_to_selected_model_after_async_routing() {
 
-        CompletableFuture<String> route = new CompletableFuture<>();
+        CompletableFuture<ChatModelRoutingResult> route = new CompletableFuture<>();
         ChatModelRouter asyncRouter = new ChatModelRouter() {
             @Override
-            public String route(ChatModelRoutingRequest request) {
+            public ChatModelRoutingResult route(ChatModelRoutingRequest request) {
                 throw new AssertionError("must not block");
             }
 
             @Override
-            public CompletableFuture<String> routeAsync(ChatModelRoutingRequest request) {
+            public CompletableFuture<ChatModelRoutingResult> routeAsync(ChatModelRoutingRequest request) {
                 return route;
             }
         };
@@ -774,7 +793,7 @@ class RoutingChatModelTest {
                 });
 
         assertThat(events).isEmpty();
-        route.complete("simple");
+        route.complete(ChatModelRoutingResult.route("simple"));
         assertThat(events).singleElement().isInstanceOf(CompleteResponse.class);
     }
 
@@ -791,7 +810,7 @@ class RoutingChatModelTest {
 
         RoutingStreamingChatModel.builder()
                 .route("only", failing)
-                .router(request -> "only")
+                .router(request -> ChatModelRoutingResult.route("only"))
                 .defaultRoute("only")
                 .executor(Runnable::run)
                 .build()
@@ -811,15 +830,15 @@ class RoutingChatModelTest {
     @Test
     void should_signal_error_on_non_positive_demand_before_routing() {
 
-        CompletableFuture<String> route = new CompletableFuture<>();
+        CompletableFuture<ChatModelRoutingResult> route = new CompletableFuture<>();
         ChatModelRouter asyncRouter = new ChatModelRouter() {
             @Override
-            public String route(ChatModelRoutingRequest request) {
+            public ChatModelRoutingResult route(ChatModelRoutingRequest request) {
                 throw new AssertionError("must not block");
             }
 
             @Override
-            public CompletableFuture<String> routeAsync(ChatModelRoutingRequest request) {
+            public CompletableFuture<ChatModelRoutingResult> routeAsync(ChatModelRoutingRequest request) {
                 return route;
             }
         };
@@ -844,7 +863,7 @@ class RoutingChatModelTest {
                     @Override
                     public void onComplete() {}
                 });
-        route.complete("simple");
+        route.complete(ChatModelRoutingResult.route("simple"));
 
         assertThat(errors).singleElement().isInstanceOf(IllegalArgumentException.class);
         assertThat(smallStreaming.requests).isEmpty();
@@ -853,15 +872,15 @@ class RoutingChatModelTest {
     @Test
     void should_cancel_routing_and_not_call_model_when_cancelled_before_routing() {
 
-        CompletableFuture<String> route = new CompletableFuture<>();
+        CompletableFuture<ChatModelRoutingResult> route = new CompletableFuture<>();
         ChatModelRouter asyncRouter = new ChatModelRouter() {
             @Override
-            public String route(ChatModelRoutingRequest request) {
+            public ChatModelRoutingResult route(ChatModelRoutingRequest request) {
                 throw new AssertionError("must not block");
             }
 
             @Override
-            public CompletableFuture<String> routeAsync(ChatModelRoutingRequest request) {
+            public CompletableFuture<ChatModelRoutingResult> routeAsync(ChatModelRoutingRequest request) {
                 return route;
             }
         };
@@ -895,7 +914,7 @@ class RoutingChatModelTest {
         List<String> routed = new ArrayList<>();
         Flow.Publisher<ChatModelStreamingEvent> publisher = routingStreamingModel(request -> {
                     routed.add("asked");
-                    return "complex";
+                    return ChatModelRoutingResult.route("complex");
                 })
                 .chat(ChatRequest.builder()
                         .messages(UserMessage.from("Please analyze the attached quarterly report"))

@@ -55,13 +55,13 @@ class DecisionModelChatModelRouterTest {
 
         ChatModelRouter router = new DecisionModelChatModelRouter(choosing("complex", 0.9));
 
-        String route = router.route(request(
+        ChatModelRoutingResult route = router.route(request(
                 SystemMessage.from("You are a helpful assistant"),
                 UserMessage.from("Hi!"),
                 AiMessage.from("Hello!"),
                 UserMessage.from("Write a parser for this grammar")));
 
-        assertThat(route).isEqualTo("complex");
+        assertThat(route).isEqualTo(ChatModelRoutingResult.route("complex"));
         assertThat(decisionModel.request().input())
                 .isEqualTo(Map.of(
                         "messages",
@@ -87,7 +87,7 @@ class DecisionModelChatModelRouterTest {
                 .minProbability(0.7)
                 .build();
 
-        assertThat(router.route(request(UserMessage.from("Hi!")))).isNull();
+        assertThat(router.route(request(UserMessage.from("Hi!")))).isEqualTo(ChatModelRoutingResult.defaultRoute());
     }
 
     @Test
@@ -95,8 +95,8 @@ class DecisionModelChatModelRouterTest {
 
         ChatModelRouter router = new DecisionModelChatModelRouter(DecisionModelMock.thatAlwaysThrowsException());
 
-        assertThat(router.route(request(UserMessage.from("Hi!")))).isNull();
-        assertThat(router.routeAsync(request(UserMessage.from("Hi!"))).join()).isNull();
+        assertThat(router.route(request(UserMessage.from("Hi!")))).isEqualTo(ChatModelRoutingResult.defaultRoute());
+        assertThat(router.routeAsync(request(UserMessage.from("Hi!"))).join()).isEqualTo(ChatModelRoutingResult.defaultRoute());
     }
 
     @Test
@@ -115,7 +115,7 @@ class DecisionModelChatModelRouterTest {
         };
         ChatModelRouter router = new DecisionModelChatModelRouter(throwing);
 
-        assertThat(router.routeAsync(request(UserMessage.from("Hi!"))).join()).isNull();
+        assertThat(router.routeAsync(request(UserMessage.from("Hi!"))).join()).isEqualTo(ChatModelRoutingResult.defaultRoute());
     }
 
     @Test
@@ -154,7 +154,7 @@ class DecisionModelChatModelRouterTest {
         ChatModelRouter router = new DecisionModelChatModelRouter(choosing("simple", 0.9));
 
         assertThat(router.route(request(SystemMessage.from("You are a helpful assistant"))))
-                .isNull();
+                .isEqualTo(ChatModelRoutingResult.defaultRoute());
         assertThat(decisionModel.requests()).isEmpty();
     }
 
@@ -163,7 +163,7 @@ class DecisionModelChatModelRouterTest {
 
         ChatModelRouter router = new DecisionModelChatModelRouter(choosing("simple", 0.9));
 
-        assertThat(router.routeAsync(request(UserMessage.from("Hi!"))).join()).isEqualTo("simple");
+        assertThat(router.routeAsync(request(UserMessage.from("Hi!"))).join()).isEqualTo(ChatModelRoutingResult.route("simple"));
     }
 
     @Test
@@ -175,8 +175,8 @@ class DecisionModelChatModelRouterTest {
                 .routes(List.of(ROUTES.get(1)))
                 .build();
 
-        assertThat(router.route(request)).isEqualTo("complex");
-        assertThat(router.routeAsync(request).join()).isEqualTo("complex");
+        assertThat(router.route(request)).isEqualTo(ChatModelRoutingResult.route("complex"));
+        assertThat(router.routeAsync(request).join()).isEqualTo(ChatModelRoutingResult.route("complex"));
         assertThat(decisionModel.requests()).isEmpty();
     }
 
@@ -238,7 +238,7 @@ class DecisionModelChatModelRouterTest {
                 .minProbability(0.7)
                 .build();
 
-        assertThat(router.route(request(UserMessage.from("Hi!")))).isEqualTo("simple");
+        assertThat(router.route(request(UserMessage.from("Hi!")))).isEqualTo(ChatModelRoutingResult.route("simple"));
     }
 
     @Test

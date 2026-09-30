@@ -46,7 +46,8 @@ import org.slf4j.LoggerFactory;
  * the prompt template and retrieved content were added to it. Content other than text is represented by a marker,
  * such as {@code [attached image]}, so that a route whose description mentions images can be chosen for it.
  * <p>
- * The router returns {@code null} (so the default route of the routing chat model is used) when the request contains
+ * The router selects the default route of the routing chat model ({@link ChatModelRoutingResult#defaultRoute()}) when
+ * the request contains
  * no user message, and when the probability of the chosen route is below {@link Builder#minProbability(Double)}.
  * A minimum probability requires a decision model that reports probabilities: otherwise the call fails with an
  * {@link IllegalStateException}, whatever the {@link FallbackStrategy}. When the decision model fails, the
@@ -109,13 +110,13 @@ public class DecisionModelChatModelRouter implements ChatModelRouter {
     }
 
     @Override
-    public String route(ChatModelRoutingRequest request) {
+    public ChatModelRoutingResult route(ChatModelRoutingRequest request) {
         if (request.routes().size() == 1) {
-            return request.routes().get(0).name();
+            return ChatModelRoutingResult.route(request.routes().get(0).name());
         }
         DecisionRequest decisionRequest = toDecisionRequest(request);
         if (decisionRequest == null) {
-            return null;
+            return ChatModelRoutingResult.defaultRoute();
         }
         DecisionResponse response;
         try {
@@ -127,9 +128,9 @@ public class DecisionModelChatModelRouter implements ChatModelRouter {
     }
 
     @Override
-    public CompletableFuture<String> routeAsync(ChatModelRoutingRequest request) {
+    public CompletableFuture<ChatModelRoutingResult> routeAsync(ChatModelRoutingRequest request) {
         if (request.routes().size() == 1) {
-            return CompletableFuture.completedFuture(request.routes().get(0).name());
+            return CompletableFuture.completedFuture(ChatModelRoutingResult.route(request.routes().get(0).name()));
         }
         DecisionRequest decisionRequest;
         try {
@@ -138,7 +139,7 @@ public class DecisionModelChatModelRouter implements ChatModelRouter {
             return CompletableFuture.failedFuture(e);
         }
         if (decisionRequest == null) {
-            return CompletableFuture.completedFuture(null);
+            return CompletableFuture.completedFuture(ChatModelRoutingResult.defaultRoute());
         }
         CompletableFuture<DecisionResponse> source;
         try {
@@ -146,7 +147,7 @@ public class DecisionModelChatModelRouter implements ChatModelRouter {
         } catch (RuntimeException e) {
             source = CompletableFuture.failedFuture(e);
         }
-        CompletableFuture<String> result = source.handle((response, error) -> {
+        CompletableFuture<ChatModelRoutingResult> result = source.handle((response, error) -> {
             if (error == null) {
                 return select(response.choice(QUESTION_NAME));
             }
@@ -162,12 +163,12 @@ public class DecisionModelChatModelRouter implements ChatModelRouter {
         return result;
     }
 
-    private String fallback(RuntimeException error) {
+    private ChatModelRoutingResult fallback(RuntimeException error) {
         if (fallbackStrategy == FallbackStrategy.FAIL) {
             throw error;
         }
         log.warn("Failed to select a route, the default route will be used", error);
-        return null;
+        return ChatModelRoutingResult.defaultRoute();
     }
 
     private DecisionRequest toDecisionRequest(ChatModelRoutingRequest request) {
@@ -188,16 +189,18 @@ public class DecisionModelChatModelRouter implements ChatModelRouter {
         return decisionRequest.build();
     }
 
-    private String select(ChoiceAnswer answer) {
+    private ChatModelRoutingResult select(ChoiceAnswer answer) {
         if (minProbability == null) {
-            return answer.value();
+            return ChatModelRoutingResult.route(answer.value());
         }
         if (answer.probabilities().isEmpty()) {
             throw new IllegalStateException("minProbability is set, but the decision model reported no probabilities, "
                     + "so the default route would always be used. Use a decision model that reports probabilities, "
                     + "or remove minProbability");
         }
-        return answer.probabilityOf(answer.value()) < minProbability ? null : answer.value();
+        return answer.probabilityOf(answer.value()) < minProbability
+                ? ChatModelRoutingResult.defaultRoute()
+                : ChatModelRoutingResult.route(answer.value());
     }
 
     private static int lastUserMessage(List<ChatMessage> messages) {

@@ -390,7 +390,8 @@ public class RoutingStreamingChatModel implements StreamingChatModel {
         }
 
         /**
-         * Sets the route used when the router does not select one (returns {@code null}), for example when a router
+         * Sets the route used when the router selects the default route
+         * ({@link ChatModelRoutingResult#defaultRoute()}), for example when a router
          * that calls a model is unsure or fails. Required.
          */
         public Builder defaultRoute(String defaultRoute) {
