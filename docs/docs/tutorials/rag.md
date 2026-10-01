@@ -105,7 +105,7 @@ adjusting and customizing more and more aspects.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-easy-rag</artifactId>
-    <version>1.20.0-beta30</version>
+    <version>1.20.2-beta30</version>
 </dependency>
 ```
 
@@ -998,6 +998,10 @@ It routes each `Query` to all configured `ContentRetriever`s.
 #### Language Model Query Router
 `LanguageModelQueryRouter` uses the LLM to decide where to route the given `Query`.
 
+#### Decision Model Query Router
+`DecisionModelQueryRouter` uses a [decision model](/tutorials/decision-models) to decide which `ContentRetriever`s
+can help answer the given `Query`. When none can, no retrieval is performed.
+
 ### Content Aggregator
 The `ContentAggregator` is responsible for aggregating multiple ranked lists of `Content` from:
 - multiple `Query`s
@@ -1011,6 +1015,7 @@ Please see [`DefaultContentAggregator` Javadoc](https://javadoc.io/doc/dev.langc
 
 #### Re-Ranking Content Aggregator
 The `ReRankingContentAggregator` uses a `ScoringModel`, like Cohere, to perform re-ranking.
+A [decision model](/tutorials/decision-models#re-ranking-retrieved-content) can also be used, with `DecisionScoringModel`.
 The complete list of supported scoring (re-ranking) models can be found
 [here](https://docs.langchain4j.dev/category/scoring-reranking-models).
 Please see [`ReRankingContentAggregator` Javadoc](https://javadoc.io/doc/dev.langchain4j/langchain4j-core/latest/dev/langchain4j/rag/content/aggregator/ReRankingContentAggregator.html) for more details.

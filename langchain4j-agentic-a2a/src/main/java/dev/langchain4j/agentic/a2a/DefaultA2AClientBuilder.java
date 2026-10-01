@@ -51,6 +51,7 @@ import org.a2aproject.sdk.client.transport.jsonrpc.JSONRPCTransportConfigBuilder
 import org.a2aproject.sdk.spec.A2AClientError;
 import org.a2aproject.sdk.spec.A2AClientException;
 import org.a2aproject.sdk.spec.AgentCard;
+import org.a2aproject.sdk.spec.AgentInterface;
 import org.a2aproject.sdk.spec.Artifact;
 import org.a2aproject.sdk.spec.Message;
 import org.a2aproject.sdk.spec.MessageSendParams;
@@ -67,7 +68,7 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
     private static final String RESPONSE_STATE_PREFIX = "a2a.response.";
 
     private record A2AInvocationResult(
-            Object parsedResult, String contextIdKey, String contextId, String taskIdKey, String taskId) {}
+            Object parsedResult, String contextIdKey, String contextId, String taskIdKey, String openTaskId) {}
 
     private final ServiceOutputParser serviceOutputParser = new ServiceOutputParser();
 
@@ -81,6 +82,7 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
     private final String name;
     private String agentId;
     private InternalAgent parent;
+    private String tenant;
 
     private String[] inputKeys;
     private String outputKey;
@@ -94,10 +96,12 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
     }
 
     DefaultA2AClientBuilder(String a2aServerUrl, Class<T> agentServiceClass, String tenant) {
-        this.agentCard = agentCard(a2aServerUrl, tenant);
+        String effectiveTenant = (tenant != null && !tenant.isEmpty()) ? tenant : null;
+        this.agentCard = agentCard(a2aServerUrl, effectiveTenant);
         this.name = agentCard.name();
         this.agentId = this.name;
         this.agentServiceClass = agentServiceClass;
+        this.tenant = effectiveTenant != null ? effectiveTenant : extractTenantFromAgentCard(agentCard);
     }
 
     // For testing only: bypasses URL fetch and pre-sets the client.
@@ -164,6 +168,7 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
             return switch (method.getName()) {
                 case "agentCard" -> agentCard;
                 case "inputKeys" -> inputKeys;
+                case "tenant" -> tenant;
                 default ->
                     throw new UnsupportedOperationException(
                             "Unknown method on A2AClientInstance class : " + method.getName());
@@ -185,8 +190,11 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
         if (result.contextIdKey != null && result.contextId != null) {
             scope.writeState(result.contextIdKey, result.contextId);
         }
-        if (result.taskIdKey != null && result.taskId != null) {
-            scope.writeState(result.taskIdKey, result.taskId);
+        if (result.taskIdKey != null) {
+            // The task id is propagated only while the remote task is still open: a task that already
+            // reached a terminal state cannot accept further messages, so its id must not survive in
+            // the scope for the next invocation
+            scope.writeState(result.taskIdKey, result.openTaskId);
         }
 
         return method.getReturnType() == ResultWithAgenticScope.class
@@ -213,8 +221,8 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
         String contextId = null;
         String taskId = null;
         // Per-call tenant extracted from the @A2ATenantId-annotated parameter at invocation time.
-        // Distinct from the instance field 'tenant', which is used only during agent-card discovery.
-        String callTenant = null;
+        // Falls back to the instance-level tenant (from agent card URL or @A2AClientAgent.tenant()).
+        String callTenant = this.tenant;
         String contextIdKey = null;
         String taskIdKey = null;
 
@@ -237,7 +245,10 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
                         taskIdKey = ParameterNameResolver.name(parameters[i]);
                     }
                 } else if (parameters[i].getAnnotation(A2ATenantId.class) != null) {
-                    callTenant = args[i] != null && !args[i].toString().isEmpty() ? args[i].toString() : null;
+                    // @A2ATenantId parameter overrides the instance-level tenant only if non-empty
+                    if (args[i] != null && !args[i].toString().isEmpty()) {
+                        callTenant = args[i].toString();
+                    }
                 } else {
                     parts.add(new TextPart(args[i].toString()));
                 }
@@ -279,11 +290,15 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
 
         LOG.debug("Response: {}", response.text);
         Object parsedResult = serviceOutputParser.parseText(returnType, response.text);
-        return new A2AInvocationResult(parsedResult, contextIdKey, response.contextId, taskIdKey, response.taskId);
+        return new A2AInvocationResult(parsedResult, contextIdKey, response.contextId, taskIdKey, response.openTaskId);
     }
 
+    /**
+     * @param openTaskId the id of the remote task if it was still running when this response was
+     *     produced, {@code null} if the task reached a terminal state or no task was created.
+     */
     private record A2AResponse(
-            String text, String contextId, String taskId, A2ATaskInterruptedException interruption) {}
+            String text, String contextId, String openTaskId, A2ATaskInterruptedException interruption) {}
 
     static void suspend(AgenticScope scope, String agentId, A2ATaskInterruptedException interruption) {
         String responseId = agentId + ":" + interruption.taskId();
@@ -317,9 +332,9 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
     private A2AResponse sendMessage(Message message, String callTenant) throws A2AClientException {
         final CompletableFuture<String> messageResponse = new CompletableFuture<>();
         AtomicReference<String> responseContextId = new AtomicReference<>();
-        AtomicReference<String> responseTaskId = new AtomicReference<>();
+        AtomicReference<String> openTaskId = new AtomicReference<>();
         List<BiConsumer<ClientEvent, AgentCard>> consumers =
-                getEventConsumers(responseContextId, responseTaskId, messageResponse);
+                getEventConsumers(responseContextId, openTaskId, messageResponse);
         Consumer<Throwable> streamingErrorHandler = error -> handleStreamEnd(error, messageResponse);
         if (callTenant != null) {
             a2aClient.sendMessage(
@@ -336,14 +351,14 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
 
         try {
             String responseText = messageResponse.get();
-            return new A2AResponse(responseText, responseContextId.get(), responseTaskId.get(), null);
+            return new A2AResponse(responseText, responseContextId.get(), openTaskId.get(), null);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             LOG.error("Failed to get response: {}", e.getMessage(), e);
             throw new RuntimeException("Failed to get response: " + e.getMessage(), e);
         } catch (ExecutionException e) {
             if (e.getCause() instanceof A2ATaskInterruptedException interruption) {
-                return new A2AResponse(null, interruption.contextId(), interruption.taskId(), interruption);
+                return new A2AResponse(null, interruption.contextId(), null, interruption);
             }
             LOG.error("Failed to get response: {}", e.getMessage(), e);
             if (e.getCause() instanceof RuntimeException runtimeException) {
@@ -355,7 +370,7 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
 
     private List<BiConsumer<ClientEvent, AgentCard>> getEventConsumers(
             AtomicReference<String> responseContextId,
-            AtomicReference<String> responseTaskId,
+            AtomicReference<String> openTaskId,
             CompletableFuture<String> messageResponse) {
 
         AtomicBoolean stopped = new AtomicBoolean(false);
@@ -366,16 +381,15 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
             }
 
             if (event instanceof TaskEvent taskEvent) {
-                captureTaskIds(taskEvent.getTask(), responseContextId, responseTaskId);
+                responseContextId.set(taskEvent.getTask().contextId());
                 handleTaskEvent(taskEvent, messageResponse);
             } else if (event instanceof MessageEvent messageEvent) {
                 Message msg = messageEvent.getMessage();
                 responseContextId.set(msg.contextId());
-                responseTaskId.set(msg.taskId());
                 handleMessageEvent(msg, messageResponse);
             } else if (event instanceof TaskUpdateEvent updateEvent) {
-                captureTaskIds(updateEvent.getTask(), responseContextId, responseTaskId);
-                handleUpdateEvent(updateEvent, messageResponse, stopped);
+                responseContextId.set(updateEvent.getTask().contextId());
+                handleUpdateEvent(updateEvent, openTaskId, messageResponse, stopped);
             } else {
                 messageResponse.completeExceptionally(
                         new IllegalArgumentException("The event expected should be of type " + event.getClass()));
@@ -383,11 +397,6 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
         };
 
         return List.of(defaultEventConsumer);
-    }
-
-    private static void captureTaskIds(Task task, AtomicReference<String> contextId, AtomicReference<String> taskId) {
-        contextId.set(task.contextId());
-        taskId.set(task.id());
     }
 
     static void handleStreamEnd(Throwable error, CompletableFuture<String> messageResponse) {
@@ -423,7 +432,10 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
     }
 
     private void handleUpdateEvent(
-            TaskUpdateEvent taskUpdateEvent, CompletableFuture<String> messageResponse, AtomicBoolean stopped) {
+            TaskUpdateEvent taskUpdateEvent,
+            AtomicReference<String> openTaskId,
+            CompletableFuture<String> messageResponse,
+            AtomicBoolean stopped) {
         // Task lifecycle stream: If the agent returns a Task, the stream MUST begin with the Task
         // object, followed by zero or more TaskStatusUpdateEvent or TaskArtifactUpdateEvent objects.
         // The stream MUST close when the task reaches a terminal state
@@ -431,11 +443,18 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
         if (streamingClientListener != null) {
             A2AStreamingClientListenerResult listenerResult = streamingClientListener.onUpdateEvent(taskUpdateEvent);
             if (listenerResult.stop()) {
+                Task task = taskUpdateEvent.getTask();
                 if (listenerResult.withCurrentArtifacts()) {
-                    completeArtifact(taskUpdateEvent.getTask().artifacts(), messageResponse);
+                    completeArtifact(task.artifacts(), messageResponse);
                 } else {
                     String response = listenerResult.response();
                     messageResponse.complete(response == null ? "" : response);
+                }
+                if (!task.status().state().isFinal()) {
+                    // Stopping the client-side stream does not cancel the remote task: this is the only
+                    // path on which an invocation returns normally while the task is still open, so its
+                    // id is kept so that the caller can still poll, cancel or continue it.
+                    openTaskId.set(task.id());
                 }
                 stopped.set(true);
                 return;
@@ -614,5 +633,29 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
     @Override
     public AgenticSystemTopology topology() {
         return AgenticSystemTopology.AI_AGENT;
+    }
+
+    @Override
+    public DefaultA2AClientBuilder<T> tenant(String tenant) {
+        if (tenant != null && !tenant.isEmpty()) {
+            this.tenant = tenant;
+        }
+        return this;
+    }
+
+    static String extractTenantFromAgentCard(AgentCard agentCard) {
+        try {
+            if (agentCard == null || agentCard.supportedInterfaces() == null) {
+                return null;
+            }
+            return agentCard.supportedInterfaces().stream()
+                    .map(AgentInterface::tenant)
+                    .filter(t -> t != null && !t.isEmpty())
+                    .findFirst()
+                    .orElse(null);
+        } catch (RuntimeException ex) {
+            LOG.debug("Couldn't extract tenant from agent card", ex);
+            return null;
+        }
     }
 }

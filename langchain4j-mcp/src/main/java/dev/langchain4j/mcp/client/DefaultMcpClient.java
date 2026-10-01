@@ -590,7 +590,7 @@ public class DefaultMcpClient implements McpClient {
     private String handleMultiRoundTrip(
             String initialResult,
             long timeoutMillis,
-            InvocationContext invocationContext,
+            McpCallContext originalContext,
             BiFunction<Long, Object, McpClientRequest> retryRequestFactory,
             String operationName)
             throws ExecutionException, InterruptedException, TimeoutException {
@@ -613,7 +613,8 @@ public class DefaultMcpClient implements McpClient {
             }
             long retryOperationId = idGenerator.getAndIncrement();
             McpClientRequest retryOperation = retryRequestFactory.apply(retryOperationId, requestState);
-            McpCallContext retryContext = new McpCallContext(invocationContext, retryOperation);
+            McpCallContext retryContext = new McpCallContext(
+                    originalContext.invocationContext(), retryOperation, originalContext.mcpParamHeaders());
             applyMeta(retryOperation, retryContext);
             CompletableFuture<String> resultFuture = executeViaTransport(retryContext);
             try {
@@ -733,7 +734,7 @@ public class DefaultMcpClient implements McpClient {
             result = handleMultiRoundTrip(
                     result,
                     timeoutMillis,
-                    invocationContext,
+                    context,
                     (retryId, requestState) -> {
                         McpCallToolRequest retryOp =
                                 new McpCallToolRequest(retryId, executionRequest.name(), finalArguments, progressToken);
@@ -778,7 +779,9 @@ public class DefaultMcpClient implements McpClient {
         McpCallToolRequest operation =
                 new McpCallToolRequest(operationId, executionRequest.name(), arguments, progressToken);
         long timeoutMillis = toolExecutionTimeout.toMillis() == 0 ? Integer.MAX_VALUE : toolExecutionTimeout.toMillis();
-        McpCallContext context = new McpCallContext(invocationContext, operation);
+        Map<String, String> paramHeaders =
+                modernProtocol ? buildMcpParamHeaders(executionRequest.name(), arguments) : null;
+        McpCallContext context = new McpCallContext(invocationContext, operation, paramHeaders);
 
         CompletableFuture<String> resultFuture;
         try {
@@ -893,7 +896,7 @@ public class DefaultMcpClient implements McpClient {
             result = handleMultiRoundTrip(
                     result,
                     timeoutMillis,
-                    invocationContext,
+                    context,
                     (retryId, requestState) -> {
                         McpReadResourceRequest retryOp = new McpReadResourceRequest(retryId, uri);
                         ((McpReadResourceParams) retryOp.getParams()).setRequestState(requestState);
@@ -949,7 +952,7 @@ public class DefaultMcpClient implements McpClient {
             result = handleMultiRoundTrip(
                     result,
                     timeoutMillis,
-                    null,
+                    context,
                     (retryId, requestState) -> {
                         McpGetPromptRequest retryOp = new McpGetPromptRequest(retryId, name, finalArguments);
                         ((McpGetPromptParams) retryOp.getParams()).setRequestState(requestState);
@@ -1657,16 +1660,15 @@ public class DefaultMcpClient implements McpClient {
         if (spec == null || spec.metadata() == null) {
             return null;
         }
-        Map<String, String> headerMappings =
-                (Map<String, String>) spec.metadata().get(McpToolMetadataKeys.MCP_PARAM_HEADERS);
+        Map<List<String>, String> headerMappings =
+                (Map<List<String>, String>) spec.metadata().get(McpToolMetadataKeys.MCP_PARAM_HEADERS);
         if (headerMappings == null || headerMappings.isEmpty()) {
             return null;
         }
         Map<String, String> result = new LinkedHashMap<>();
-        for (Map.Entry<String, String> entry : headerMappings.entrySet()) {
-            String propertyPath = entry.getKey();
+        for (Map.Entry<List<String>, String> entry : headerMappings.entrySet()) {
+            Object value = resolvePropertyPath(arguments, entry.getKey());
             String headerName = entry.getValue();
-            Object value = resolvePropertyPath(arguments, propertyPath);
             String stringValue;
             if (value instanceof String text) {
                 stringValue = text;
@@ -1683,10 +1685,9 @@ public class DefaultMcpClient implements McpClient {
         return result.isEmpty() ? null : result;
     }
 
-    private static @Nullable Object resolvePropertyPath(Map<String, Object> root, String path) {
-        String[] segments = path.split("\\.");
+    private static @Nullable Object resolvePropertyPath(Map<String, Object> root, List<String> path) {
         Object current = root;
-        for (String segment : segments) {
+        for (String segment : path) {
             if (!(current instanceof Map<?, ?> map)) {
                 return null;
             }

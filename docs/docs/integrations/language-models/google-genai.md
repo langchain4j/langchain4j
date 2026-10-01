@@ -42,7 +42,7 @@ https://github.com/googleapis/java-genai
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-google-genai</artifactId>
-    <version>1.20.0-beta30</version>
+    <version>1.20.2-beta30</version>
 </dependency>
 ```
 
