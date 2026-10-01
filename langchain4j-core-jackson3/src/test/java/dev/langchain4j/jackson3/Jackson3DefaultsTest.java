@@ -159,6 +159,19 @@ class Jackson3DefaultsTest {
     }
 
     @Test
+    void an_empty_string_is_read_as_null_for_an_enum_only() {
+        for (Json.JsonCodec codec : BOTH) {
+            assertThat(codec.fromJson("{\"color\":\"\"}", WithColor.class).color)
+                    .as(name(codec))
+                    .isNull();
+            assertThatThrownBy(() -> codec.fromJson("\"\"", Named.class))
+                    .as(name(codec))
+                    .isInstanceOf(RuntimeException.class);
+        }
+        assertThat(PROVIDER.fromJson("{\"color\":\"\"}", WithColor.class).color).isNull();
+    }
+
+    @Test
     void differs_from_jacksons_own_jackson_2_preset_only_where_deliberate() {
         // A Jackson upgrade that adds a setting to configureForJackson2() fails this test, so that
         // the new setting is either restored in Jackson3Defaults or added here on purpose.
@@ -196,12 +209,6 @@ class Jackson3DefaultsTest {
         assertThat(JACKSON_3.fromJson("{\"month\":1}", WithMonth.class).month).isEqualTo(Month.JANUARY);
         assertThat(JACKSON_3.fromJson("{\"month\":\"JANUARY\"}", WithMonth.class).month)
                 .isEqualTo(Month.JANUARY);
-    }
-
-    @Test
-    void an_empty_string_is_read_as_null_for_an_enum_only() {
-        assertThat(JACKSON_3.fromJson("{\"color\":\"\"}", WithColor.class).color).isNull();
-        assertThatThrownBy(() -> JACKSON_3.fromJson("\"\"", Named.class)).isInstanceOf(JsonReadException.class);
     }
 
     @Test

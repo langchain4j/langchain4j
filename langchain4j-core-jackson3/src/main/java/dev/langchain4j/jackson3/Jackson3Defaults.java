@@ -37,10 +37,10 @@ public final class Jackson3Defaults {
                 .enable(MapperFeature.USE_GETTERS_AS_SETTERS)
                 .enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
                 .enable(SerializationFeature.FAIL_ON_EMPTY_BEANS)
-                // Deliberately more lenient than Jackson 2, which fails on "" for an enum: providers
-                // send it - an OpenAI-compatible server returning "type": "" for a tool call is what
-                // found this - and an LLM may answer "" for an optional enum. Scoped to enums on
-                // purpose, so that "" for a POJO, a Map or a List still fails as it does under Jackson 2.
+                // "" is read as null for an enum, as the Jackson 2 codecs do: providers send it - an
+                // OpenAI-compatible server returning "type": "" for a tool call is what found this - and
+                // an LLM may answer "" for an optional enum. Scoped to enums on purpose, so that "" for
+                // a POJO, a Map or a List still fails as it does under Jackson 2.
                 .withCoercionConfig(
                         LogicalType.Enum,
                         config -> config.setCoercion(CoercionInputShape.EmptyString, CoercionAction.AsNull));

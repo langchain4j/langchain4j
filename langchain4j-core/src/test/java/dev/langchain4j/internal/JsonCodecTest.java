@@ -134,6 +134,47 @@ class JsonCodecTest {
         assertThat(pojo.age()).isEqualTo(0);
     }
 
+    enum Color {
+        RED,
+        GREEN
+    }
+
+    record Paint(Color color, Person owner, List<String> tags, Map<String, String> labels) {}
+
+    @ParameterizedTest
+    @MethodSource("codecs")
+    void empty_string_is_read_as_null_for_an_enum(Json.JsonCodec codec) {
+
+        // when
+        Paint paint = codec.fromJson("{\"color\": \"\"}", Paint.class);
+
+        // then
+        assertThat(paint.color()).isNull();
+    }
+
+    @ParameterizedTest
+    @MethodSource("codecs")
+    void enum_is_still_read_by_name(Json.JsonCodec codec) {
+
+        // when
+        Paint paint = codec.fromJson("{\"color\": \"GREEN\"}", Paint.class);
+
+        // then
+        assertThat(paint.color()).isEqualTo(Color.GREEN);
+    }
+
+    @ParameterizedTest
+    @MethodSource("codecs")
+    void empty_string_still_fails_for_an_object_a_list_and_a_map(Json.JsonCodec codec) {
+
+        assertThatThrownBy(() -> codec.fromJson("{\"owner\": \"\"}", Paint.class))
+                .hasMessageContaining("Cannot coerce empty String");
+        assertThatThrownBy(() -> codec.fromJson("{\"tags\": \"\"}", Paint.class))
+                .hasMessageContaining("Cannot coerce empty String");
+        assertThatThrownBy(() -> codec.fromJson("{\"labels\": \"\"}", Paint.class))
+                .hasMessageContaining("Cannot coerce empty String");
+    }
+
     @ParameterizedTest
     @MethodSource("codecs")
     void record_wrong_type(Json.JsonCodec codec) {
