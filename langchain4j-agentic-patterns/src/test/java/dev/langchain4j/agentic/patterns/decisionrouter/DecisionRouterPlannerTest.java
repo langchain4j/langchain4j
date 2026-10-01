@@ -152,8 +152,8 @@ class DecisionRouterPlannerTest {
 
         DecisionRequest request = model.request();
         assertThat(request.input()).isEqualTo(Map.of("request", REQUEST));
-        assertThat(request.questions()).containsOnlyKeys("agent");
-        ChoiceQuestion question = (ChoiceQuestion) request.questions().get("agent");
+        assertThat(request.questions()).containsOnlyKeys(QUESTION_NAME);
+        ChoiceQuestion question = (ChoiceQuestion) request.questions().get(QUESTION_NAME);
         assertThat(question.text()).isEqualTo("Which agent is best suited to handle this request?");
         // an option added without a description is described by its name
         assertThat(question.options())
