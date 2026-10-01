@@ -50,3 +50,5 @@ CLAUDE.md
 # Anchored to the repo root so it ignores a top-level ./jdk/ directory only, not source packages
 # named "jdk" (e.g. dev.langchain4j.http.client.jdk).
 /jdk/
+/.tasks/
+/.explyt/

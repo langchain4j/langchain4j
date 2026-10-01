@@ -178,9 +178,12 @@ ProviderJson.codec(ProviderJsonSpec.builder()
 If a single field needs a different name, `@JsonProperty("...")` works under both, because it comes
 from `jackson-annotations`, the artifact the two versions share.
 
-**A builder-based DTO needs `@JsonCreator`.** `@JsonDeserialize(builder = ...)` is also a `databind`
-annotation, so under Jackson 3 the DTO is instead built through the `@JsonCreator` on the
-constructor that takes the builder. Both have to be present.
+**A builder-based DTO needs `@JsonCreator` and field visibility on its builder.**
+`@JsonDeserialize(builder = ...)` is also a `databind` annotation, so under Jackson 3 the DTO is
+instead built through the `@JsonCreator` on the constructor that takes the builder. Jackson 3 fills
+that builder by writing its private fields, so the builder also needs
+`@JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)`. Without it, the response parses
+without an error but the fields stay `null`. All three have to be present.
 
 **Whether a builder method runs depends on the annotations on it.** This is the part to
 internalise, because it is silent and the rule is not the one you would guess. Jackson 2 fills a
@@ -227,7 +230,8 @@ that needs the full artifact, is covered by `langchain4j-jackson3`'s own tests a
 `langchain4j-open-ai` also carries `OpenAiBuilderCreatorParityTest`, which compares every
 builder-based DTO built through its builder against the same DTO parsed from `{}`. That is the
 difference the missing `build()` call above produces, so the test catches it for the whole of the
-OpenAI wire model at once rather than one field at a time.
+OpenAI wire model at once rather than one field at a time. The same test also fails when a
+builder-based DTO is missing the `@JsonCreator` or its builder is missing `@JsonAutoDetect`.
 
 ## If you plug in your own JSON
 

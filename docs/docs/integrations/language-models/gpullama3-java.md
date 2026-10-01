@@ -2,6 +2,12 @@
 sidebar_position: 22
 ---
 # GPULlama3.java
+
+:::note
+`langchain4j-gpu-llama3` is deprecated. GPULlama3.java has been succeeded by [jitLLM](/integrations/language-models/jitllm):
+use `langchain4j-jitllm` instead.
+:::
+
 [GPULlama3.java](https://github.com/beehive-lab/GPULlama3.java)
 
 GPULlama3.java builds on [TornadoVM](https://github.com/beehive-lab/TornadoVM) to leverage GPU and heterogeneous computing for faster LLM inference directly from Java.

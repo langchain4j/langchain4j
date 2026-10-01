@@ -1,0 +1,25 @@
+[
+  {
+    "extension": "revapi.differences",
+    "configuration": {
+      "ignore": true,
+      "differences": [
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.model.chat.request.ChatRequest",
+          "justification": "ChatRequest is intentionally exposed by the LangChain4j ChatModel implementation contract"
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.model.chat.response.ChatResponse",
+          "justification": "ChatResponse is intentionally exposed by the LangChain4j ChatModel implementation contract"
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.model.chat.response.StreamingChatResponseHandler",
+          "justification": "StreamingChatResponseHandler is intentionally exposed by the LangChain4j StreamingChatModel implementation contract"
+        }
+      ]
+    }
+  }
+]
