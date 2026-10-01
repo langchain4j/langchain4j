@@ -249,15 +249,6 @@
             </activation>
             <modules>
                 <module>langchain4j-jlama</module>
-            </modules>
-        </profile>
-
-        <profile>
-            <id>jdk22</id>
-            <activation>
-                <jdk>[22,)</jdk>
-            </activation>
-            <modules>
                 <module>langchain4j-jitllm</module>
             </modules>
         </profile>

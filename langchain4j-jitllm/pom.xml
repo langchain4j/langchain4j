@@ -10,10 +10,11 @@
 
     <artifactId>langchain4j-jitllm</artifactId>
     <name>LangChain4j :: Integration :: jitLLM</name>
-    <description>jitLLM: LLM inference engine for Java, running on GPUs through TornadoVM or on the CPU. Requires Java 22+</description>
+    <description>jitLLM: LLM inference engine for Java, running on GPUs through TornadoVM or on the CPU. Requires Java 21+</description>
 
     <properties>
-        <maven.compiler.release>22</maven.compiler.release>
+        <maven.compiler.release>21</maven.compiler.release>
+        <!-- the published artifact depends on the JDK 22+ build of jitllm; JDK 21 users switch to the jdk21 build -->
         <jitllm.version>1.0.2-jdk22plus</jitllm.version>
         <tornadovm.home>${env.TORNADOVM_HOME}</tornadovm.home>
         <!-- Which ITs the run-tests profile executes; overridable with -Dit.selection=... -->
@@ -89,6 +90,19 @@
     </build>
 
     <profiles>
+
+        <!-- javac 21 cannot read the JDK 22+ build of jitllm, so a JDK 21 build compiles and tests against the jdk21 one -->
+        <profile>
+            <id>jdk21</id>
+            <activation>
+                <jdk>21</jdk>
+            </activation>
+            <properties>
+                <jitllm.version>1.0.2-jdk21</jitllm.version>
+                <!-- the jdk21 build of jitllm uses java.lang.foreign, a preview API on JDK 21 -->
+                <argLine>--enable-preview</argLine>
+            </properties>
+        </profile>
 
         <!-- Runs the ITs in a TornadoVM JVM: requires TORNADOVM_HOME, a GPU and MODEL pointing to a GGUF file -->
         <profile>

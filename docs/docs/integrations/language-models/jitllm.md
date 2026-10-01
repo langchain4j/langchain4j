@@ -25,18 +25,44 @@ implementation 'dev.langchain4j:langchain4j-jitllm:1.21.0-beta31'
 
 ## Requirements
 
-* JDK 22 or newer.
+* JDK 21 or newer. On JDK 21, see [Running on JDK 21](#running-on-jdk-21).
 * A model in GGUF format (FP16, Q8_0 or Q4_0). Supported families include Llama 3, Mistral, Qwen 2.5, Qwen 3,
   Phi-3, IBM Granite 3.3 / 4.0, Gemma 4 and DeepSeek-R1-Distill.
   Tested models are collected on [Hugging Face](https://huggingface.co/beehive-lab/collections).
 * The JVM option `--add-modules jdk.incubator.vector`.
-* To run on a GPU: a [TornadoVM SDK](https://www.tornadovm.org/downloads) for JDK 22+ (`jdk22plus`) and for your GPU's backend,
-  for example installed with SDKMAN! (`sdk install tornadovm`).
+* To run on a GPU: a [TornadoVM SDK](https://www.tornadovm.org/downloads) for your JDK line (`jdk21` or `jdk22plus`)
+  and for your GPU's backend, for example installed with SDKMAN! (`sdk install tornadovm`).
   The JVM must be started through TornadoVM's `tornado` launcher with `-Duse.tornadovm=true`.
 * To run on the CPU in a plain JVM (without the TornadoVM launcher): `io.github.beehive-lab:tornado-api:7.0.1-jdk22plus`
-  as a `runtime` dependency. Leave it out when running through TornadoVM, which already provides it.
+  (`7.0.1-jdk21` on JDK 21) as a `runtime` dependency. Leave it out when running through TornadoVM, which already provides it.
 
 Only the JVM mode is supported; GraalVM native images are not.
+
+### Running on JDK 21
+
+jitLLM is published in two builds: `jdk22plus`, which `langchain4j-jitllm` depends on, and `jdk21`.
+On JDK 21, replace the first with the second and start the JVM with `--enable-preview`,
+because the `jdk21` build uses the Foreign Function & Memory API, which is a preview feature in JDK 21:
+
+```xml
+<dependency>
+    <groupId>dev.langchain4j</groupId>
+    <artifactId>langchain4j-jitllm</artifactId>
+    <version>1.21.0-beta31</version>
+    <exclusions>
+        <exclusion>
+            <groupId>io.github.beehive-lab</groupId>
+            <artifactId>jitllm</artifactId>
+        </exclusion>
+    </exclusions>
+</dependency>
+
+<dependency>
+    <groupId>io.github.beehive-lab</groupId>
+    <artifactId>jitllm</artifactId>
+    <version>1.0.2-jdk21</version>
+</dependency>
+```
 
 ## Chat
 
