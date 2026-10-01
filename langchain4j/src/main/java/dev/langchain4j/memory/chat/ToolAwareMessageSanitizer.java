@@ -5,9 +5,9 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import java.util.ArrayList;
-import java.util.HashSet;
+import java.util.HashMap;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -63,14 +63,16 @@ final class ToolAwareMessageSanitizer {
             if (message instanceof AiMessage aiMessage && aiMessage.hasToolExecutionRequests()) {
                 int windowStart = i;
 
-                Set<String> unansweredCallIds = new HashSet<>();
+                // Counted rather than a set: a single AiMessage may legitimately make several calls that
+                // share an id, each answered by its own result.
+                Map<String, Integer> unansweredCallIds = new HashMap<>();
                 for (ToolExecutionRequest request : aiMessage.toolExecutionRequests()) {
                     if (request.id() != null) {
-                        unansweredCallIds.add(request.id());
+                        unansweredCallIds.merge(request.id(), 1, Integer::sum);
                     }
                 }
 
-                Set<String> answeredCallIds = new HashSet<>();
+                Map<String, Integer> answeredCallIds = new HashMap<>();
                 List<ToolExecutionResultMessage> keptResults = new ArrayList<>();
                 boolean orphanResultDropped = false;
 
@@ -79,8 +81,8 @@ final class ToolAwareMessageSanitizer {
                     String resultId = result.id();
                     if (resultId == null) {
                         keptResults.add(result);
-                    } else if (unansweredCallIds.remove(resultId)) {
-                        answeredCallIds.add(resultId);
+                    } else if (takeOne(unansweredCallIds, resultId)) {
+                        answeredCallIds.merge(resultId, 1, Integer::sum);
                         keptResults.add(result);
                     } else {
                         log.warn("Dropping orphaned ToolExecutionResultMessage with id '{}'", resultId);
@@ -148,16 +150,18 @@ final class ToolAwareMessageSanitizer {
 
     /**
      * Returns a copy of {@code aiMessage} retaining only the tool calls whose id is either {@code null}
-     * (untrackable, always kept) or present in {@code answeredCallIds}. Returns {@code null} when nothing
+     * (untrackable, always kept) or answered according to {@code answeredCallIds}. When several calls share an
+     * id, only as many of them are kept as there are results answering that id. Returns {@code null} when nothing
      * would be left to keep and the message has no text, since an assistant turn with neither text nor tool
      * calls is not valid history.
      */
-    private static AiMessage repair(AiMessage aiMessage, Set<String> answeredCallIds) {
+    private static AiMessage repair(AiMessage aiMessage, Map<String, Integer> answeredCallIds) {
+        Map<String, Integer> remainingAnswers = new HashMap<>(answeredCallIds);
         List<ToolExecutionRequest> kept = new ArrayList<>();
         int droppedCount = 0;
         for (ToolExecutionRequest request : aiMessage.toolExecutionRequests()) {
             String id = request.id();
-            if (id == null || answeredCallIds.contains(id)) {
+            if (id == null || takeOne(remainingAnswers, id)) {
                 kept.add(request);
             } else {
                 droppedCount++;
@@ -175,6 +179,23 @@ final class ToolAwareMessageSanitizer {
 
         log.warn("Dropping {} unanswered tool call(s) from AiMessage", droppedCount);
         return aiMessage.toBuilder().toolExecutionRequests(kept).build();
+    }
+
+    /**
+     * Decrements the count for {@code id} in {@code counts}, removing the entry when it reaches zero.
+     * Returns {@code false}, leaving {@code counts} unchanged, if {@code id} has no remaining count.
+     */
+    private static boolean takeOne(Map<String, Integer> counts, String id) {
+        Integer count = counts.get(id);
+        if (count == null) {
+            return false;
+        }
+        if (count > 1) {
+            counts.put(id, count - 1);
+        } else {
+            counts.remove(id);
+        }
+        return true;
     }
 
     private static boolean hasText(AiMessage aiMessage) {

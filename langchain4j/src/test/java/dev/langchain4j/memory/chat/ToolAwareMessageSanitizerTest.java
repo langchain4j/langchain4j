@@ -159,6 +159,51 @@ class ToolAwareMessageSanitizerTest implements WithAssertions {
     }
 
     @Test
+    void should_keep_every_result_when_several_calls_share_an_id() {
+        ToolExecutionRequest request1 = toolExecutionRequest("same", "weather");
+        ToolExecutionRequest request2 = toolExecutionRequest("same", "weather");
+        AiMessage aiMessage = AiMessage.from(request1, request2);
+        ToolExecutionResultMessage result1 = ToolExecutionResultMessage.from(request1, "sunny");
+        ToolExecutionResultMessage result2 = ToolExecutionResultMessage.from(request2, "rainy");
+        UserMessage nextTurn = userMessage("thanks");
+
+        List<ChatMessage> messages = asList(aiMessage, result1, result2, nextTurn);
+
+        assertThat(ToolAwareMessageSanitizer.sanitize(messages)).isSameAs(messages);
+    }
+
+    @Test
+    void should_strip_only_the_unanswered_duplicate_when_several_calls_share_an_id() {
+        ToolExecutionRequest request1 = toolExecutionRequest("same", "weather");
+        ToolExecutionRequest request2 = toolExecutionRequest("same", "weather");
+        AiMessage aiMessage = AiMessage.from(request1, request2);
+        ToolExecutionResultMessage result1 = ToolExecutionResultMessage.from(request1, "sunny");
+        UserMessage nextTurn = userMessage("thanks");
+
+        List<ChatMessage> sanitized = ToolAwareMessageSanitizer.sanitize(asList(aiMessage, result1, nextTurn));
+
+        assertThat(sanitized).hasSize(3);
+        AiMessage repaired = (AiMessage) sanitized.get(0);
+        assertThat(repaired.toolExecutionRequests()).containsExactly(request1);
+        assertThat(sanitized.get(1)).isEqualTo(result1);
+        assertThat(sanitized.get(2)).isEqualTo(nextTurn);
+    }
+
+    @Test
+    void should_drop_a_surplus_result_for_an_id_that_was_called_once() {
+        ToolExecutionRequest request = toolExecutionRequest("1");
+        AiMessage aiMessage = AiMessage.from(request);
+        ToolExecutionResultMessage result = ToolExecutionResultMessage.from(request, "4");
+        ToolExecutionResultMessage surplus = ToolExecutionResultMessage.from(request, "4");
+        UserMessage nextTurn = userMessage("thanks");
+
+        List<ChatMessage> sanitized =
+                ToolAwareMessageSanitizer.sanitize(asList(aiMessage, result, surplus, nextTurn));
+
+        assertThat(sanitized).containsExactly(aiMessage, result, nextTurn);
+    }
+
+    @Test
     void should_keep_answered_calls_and_their_results_and_drop_only_unanswered_calls() {
         ToolExecutionRequest request1 = toolExecutionRequest("1");
         ToolExecutionRequest request2 = toolExecutionRequest("2");
