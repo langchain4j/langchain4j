@@ -9,6 +9,7 @@ import static com.fasterxml.jackson.annotation.PropertyAccessor.FIELD;
 import static java.util.Collections.emptyList;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
@@ -36,10 +37,14 @@ public class JacksonChatMessageJsonCodec implements ChatMessageJsonCodec {
                 .visibility(FIELD, ANY)
                 .addMixIn(ChatMessage.class, ChatMessageMixin.class)
                 .addMixIn(SystemMessage.class, SystemMessageMixin.class)
+                .addMixIn(SystemMessage.Builder.class, ChatMessageBuilderMixin.class)
                 .addMixIn(UserMessage.class, UserMessageMixin.class)
+                .addMixIn(UserMessage.Builder.class, ChatMessageBuilderMixin.class)
                 .addMixIn(AiMessage.class, AiMessageMixin.class)
+                .addMixIn(AiMessage.Builder.class, ChatMessageBuilderMixin.class)
                 .addMixIn(ToolExecutionRequest.class, ToolExecutionRequestMixin.class)
                 .addMixIn(ToolExecutionResultMessage.class, ToolExecutionResultMessageMixin.class)
+                .addMixIn(ToolExecutionResultMessage.Builder.class, ChatMessageBuilderMixin.class)
                 .addMixIn(CustomMessage.class, CustomMessageMixin.class)
                 .addMixIn(Content.class, ContentMixin.class)
                 .addMixIn(TextContent.class, TextContentMixin.class)
@@ -107,11 +112,15 @@ public class JacksonChatMessageJsonCodec implements ChatMessageJsonCodec {
         @JsonSubTypes.Type(value = ToolExecutionResultMessage.class, name = "TOOL_EXECUTION_RESULT"),
         @JsonSubTypes.Type(value = CustomMessage.class, name = "CUSTOM"),
     })
+    @JsonIgnoreProperties(value = "type", allowGetters = true)
     private abstract static class ChatMessageMixin {
 
         @JsonProperty
         public abstract ChatMessageType type();
     }
+
+    @JsonIgnoreProperties("type")
+    private abstract static class ChatMessageBuilderMixin {}
 
     @JsonInclude(NON_EMPTY)
     @JsonDeserialize(builder = SystemMessage.Builder.class)
@@ -153,6 +162,7 @@ public class JacksonChatMessageJsonCodec implements ChatMessageJsonCodec {
         @JsonSubTypes.Type(value = VideoContent.class, name = "VIDEO"),
         @JsonSubTypes.Type(value = PdfFileContent.class, name = "PDF"),
     })
+    @JsonIgnoreProperties(value = "type", allowGetters = true)
     private abstract static class ContentMixin {
 
         @JsonProperty

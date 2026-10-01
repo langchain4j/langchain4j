@@ -236,7 +236,20 @@ public abstract sealed class AbstractGuardrailExecutor<
         });
     }
 
+    /**
+     * Composes an accumulated result with the result of the guardrail that just ran.
+     * <p>
+     *     When both results are successful, a rewrite carried by the newer result wins, otherwise any rewrite
+     *     carried by the older result is preserved. Failures take precedence over successes and are merged when
+     *     both results failed.
+     * </p>
+     */
     protected R composeResult(R oldResult, R newResult) {
+        if (oldResult.isSuccess() && newResult.isSuccess()) {
+            // Both succeeded, so a rewrite from the newer result wins, otherwise keep any earlier rewrite
+            return (!newResult.hasRewrittenResult() && oldResult.hasRewrittenResult()) ? oldResult : newResult;
+        }
+
         if (oldResult.isSuccess()) {
             return newResult;
         }

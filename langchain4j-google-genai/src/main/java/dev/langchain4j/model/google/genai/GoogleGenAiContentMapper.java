@@ -1,9 +1,11 @@
 package dev.langchain4j.model.google.genai;
 
+import static dev.langchain4j.data.message.AiMessage.GENERATED_IMAGES_KEY;
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 
+import com.google.genai.types.Blob;
 import com.google.genai.types.Candidate;
 import com.google.genai.types.Content;
 import com.google.genai.types.FunctionCall;
@@ -37,6 +39,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -286,6 +289,7 @@ class GoogleGenAiContentMapper {
         StringBuilder thinkingBuilder = new StringBuilder();
         List<ToolExecutionRequest> toolRequests = new ArrayList<>();
         Map<String, Object> attributes = new HashMap<>();
+        List<Image> generatedImages = new ArrayList<>();
 
         if (content != null) {
             List<Part> parts = content.parts().orElse(List.of());
@@ -323,6 +327,8 @@ class GoogleGenAiContentMapper {
                             .arguments(jsonArgs)
                             .build());
                 }
+
+                toGeneratedImage(part).ifPresent(generatedImages::add);
             }
 
             if (!parts.isEmpty()) {
@@ -334,6 +340,10 @@ class GoogleGenAiContentMapper {
                             Base64.getEncoder()
                                     .encodeToString(lastPart.thoughtSignature().get()));
                 }
+            }
+
+            if (!generatedImages.isEmpty()) {
+                attributes.put(GENERATED_IMAGES_KEY, generatedImages);
             }
         }
 
@@ -373,6 +383,27 @@ class GoogleGenAiContentMapper {
                 .build();
 
         return ChatResponse.builder().aiMessage(aiMessage).metadata(metadata).build();
+    }
+
+    /**
+     * Reads an image the model generated into the given part. Only image blobs are picked up, which is
+     * what {@code PartsAndContentsMapper} does in {@code langchain4j-google-ai-gemini}; any other inline
+     * data is left alone.
+     */
+    private static Optional<Image> toGeneratedImage(Part part) {
+        if (part.inlineData().isEmpty()) {
+            return Optional.empty();
+        }
+        Blob blob = part.inlineData().get();
+        if (blob.mimeType().isEmpty()
+                || !blob.mimeType().get().startsWith("image/")
+                || blob.data().isEmpty()) {
+            return Optional.empty();
+        }
+        return Optional.of(Image.builder()
+                .base64Data(Base64.getEncoder().encodeToString(blob.data().get()))
+                .mimeType(blob.mimeType().get())
+                .build());
     }
 
     private static void appendTranscription(StringBuilder textBuilder, Transcription transcription) {

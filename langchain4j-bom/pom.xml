@@ -202,6 +202,12 @@
 
             <dependency>
                 <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-typesafe</artifactId>
+                <version>${langchain4j.beta.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-vertex-ai</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>
@@ -251,6 +257,12 @@
             <dependency>
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-gpu-llama3</artifactId>
+                <version>${langchain4j.beta.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-jitllm</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>
 

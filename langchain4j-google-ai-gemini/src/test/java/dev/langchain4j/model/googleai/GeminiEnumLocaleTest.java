@@ -79,12 +79,12 @@ class GeminiEnumLocaleTest {
         var code = new GeminiExecutableCode(GeminiLanguage.LANGUAGE_UNSPECIFIED, "print(1)");
         var result = new GeminiCodeExecutionResult(GeminiOutcome.OUTCOME_FAILED, "failed");
 
-        // Jackson 2 uses enum names; the optional Jackson 3 codec uses toString().
-        assertThat(codec.fromJson(codec.toJson(schema), Map.class).get("type")).isIn("INTEGER", "integer");
+        // Gemini expects enum names on the wire, whichever codec is used.
+        assertThat(codec.fromJson(codec.toJson(schema), Map.class).get("type")).isEqualTo("INTEGER");
         assertThat(codec.fromJson(codec.toJson(code), Map.class).get("programmingLanguage"))
-                .isIn("LANGUAGE_UNSPECIFIED", "language_unspecified");
+                .isEqualTo("LANGUAGE_UNSPECIFIED");
         assertThat(codec.fromJson(codec.toJson(result), Map.class).get("outcome"))
-                .isIn("OUTCOME_FAILED", "outcome_failed");
+                .isEqualTo("OUTCOME_FAILED");
         assertThat(codec.fromJson(codec.toJson(GeminiType.INTEGER), GeminiType.class))
                 .isEqualTo(GeminiType.INTEGER);
         assertThat(codec.fromJson(codec.toJson(code), GeminiExecutableCode.class))
