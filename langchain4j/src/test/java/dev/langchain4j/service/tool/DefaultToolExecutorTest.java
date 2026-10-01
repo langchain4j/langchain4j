@@ -18,7 +18,6 @@ import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.invocation.InvocationContext;
 import java.lang.reflect.Method;
-import java.util.concurrent.CompletableFuture;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.HashMap;
@@ -28,6 +27,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -171,8 +171,16 @@ class DefaultToolExecutorTest implements WithAssertions {
         assertThat(coerceArgument("A", "arg", ExampleEnum.class, null)).isEqualTo(ExampleEnum.A);
         assertThat(coerceArgument(ExampleEnum.A, "arg", ExampleEnum.class, null))
                 .isEqualTo(ExampleEnum.A);
+        assertThat(coerceArgument(" A", "arg", ExampleEnum.class, null)).isEqualTo(ExampleEnum.A);
+        assertThat(coerceArgument("A ", "arg", ExampleEnum.class, null)).isEqualTo(ExampleEnum.A);
+        assertThat(coerceArgument(" a ", "arg", ExampleEnum.class, null)).isEqualTo(ExampleEnum.A);
+        assertThat(coerceArgument("\u2002A\u2002", "arg", ExampleEnum.class, null))
+                .isEqualTo(ExampleEnum.A);
         assertThatExceptionOfType(IllegalArgumentException.class)
                 .isThrownBy(() -> coerceArgument("D", "arg", ExampleEnum.class, null))
+                .withMessageContaining("Argument \"arg\" is not a valid enum value for");
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> coerceArgument(" D ", "arg", ExampleEnum.class, null))
                 .withMessageContaining("Argument \"arg\" is not a valid enum value for");
 
         assertThat(coerceArgument(true, "arg", boolean.class, null)).isEqualTo(true);
@@ -990,9 +998,9 @@ class DefaultToolExecutorTest implements WithAssertions {
                 .name(methodName)
                 .arguments("{}")
                 .build();
-        return executor.executeAsync(request, InvocationContext.builder()
-                        .chatMemoryId("DEFAULT")
-                        .build())
+        return executor.executeAsync(
+                        request,
+                        InvocationContext.builder().chatMemoryId("DEFAULT").build())
                 .get();
     }
 

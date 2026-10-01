@@ -13,13 +13,16 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.internal.RetryUtils;
+import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Queue;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.function.Function;
@@ -40,6 +43,8 @@ public class ChatModelMock implements ChatModel {
     private static final RetryUtils.RetryPolicy DEFAULT_NO_RETRY_POLICY =
             retryPolicyBuilder().maxRetries(0).build();
     private RetryUtils.RetryPolicy retryPolicy = DEFAULT_NO_RETRY_POLICY;
+    private Set<Capability> supportedCapabilities = Set.of();
+    private List<ChatModelListener> listeners = List.of();
 
     public ChatModelMock(String staticResponse) {
         this.staticResponse = ensureNotBlank(staticResponse, "staticResponse");
@@ -62,6 +67,26 @@ public class ChatModelMock implements ChatModel {
     public ChatModelMock withRetryPolicy(RetryUtils.RetryPolicy retryPolicy) {
         this.retryPolicy = retryPolicy;
         return this;
+    }
+
+    public ChatModelMock withSupportedCapabilities(Capability... supportedCapabilities) {
+        this.supportedCapabilities = Set.of(supportedCapabilities);
+        return this;
+    }
+
+    public ChatModelMock withListeners(ChatModelListener... listeners) {
+        this.listeners = List.of(listeners);
+        return this;
+    }
+
+    @Override
+    public Set<Capability> supportedCapabilities() {
+        return supportedCapabilities;
+    }
+
+    @Override
+    public List<ChatModelListener> listeners() {
+        return listeners;
     }
 
     @Override
