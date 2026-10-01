@@ -42,7 +42,8 @@ directly. Adding it alongside `langchain4j-jackson3` is unnecessary but harmless
 ## What stays the same
 
 Switching a JSON library is a good way to change behaviour by accident, so the module works hard not
-to. Jackson 3 changed several defaults, and every one of them is set back to what Jackson 2 did:
+to. Jackson 3 changed several defaults, and every one that changes what LangChain4j reads or writes
+is set back to what Jackson 2 did:
 
 | Setting | Jackson 3 default | What this module does |
 |---|---|---|
@@ -53,12 +54,33 @@ to. Jackson 3 changed several defaults, and every one of them is set back to wha
 | `FAIL_ON_NULL_FOR_PRIMITIVES` | enabled | disabled |
 | `READ_ENUMS_USING_TO_STRING` | enabled | disabled: an enum is read by `name()` |
 | `WRITE_ENUMS_USING_TO_STRING` | enabled | disabled: an enum is written by `name()` |
-| `""` coerced to an enum | rejected | read as `null`, as Jackson 2 does |
+| `DETECT_PARAMETER_NAMES` | enabled | disabled: constructors are chosen as in Jackson 2 (see below) |
+| `FAIL_ON_UNKNOWN_PROPERTIES` | disabled | enabled; provider responses still ignore unknown fields |
 
 The first one matters most: without it, a final collection field is left empty instead of being
 populated, and nothing tells you.
 
-**Failures get a LangChain4j type.** This is the one place where the opt-in does change something.
+`DETECT_PARAMETER_NAMES` matters when your code is compiled with `-parameters`, as Spring Boot and
+Quarkus projects usually are. With it enabled, Jackson 3 would treat a constructor such as `UserId(String value)`
+as taking a `{"value": ...}` object instead of a plain `"..."` value, and would prefer a constructor
+with arguments over a no-argument one. To have a constructor with arguments used, annotate it with
+`@JsonCreator`; that works with both versions.
+
+A few differences remain on purpose, because restoring them would cost more than it gives:
+
+- **`java.util.Date` and `Calendar` are written as ISO-8601 strings** (`"1970-01-01T00:00:00.000Z"`)
+  instead of epoch milliseconds. Both forms are read back by both versions. Restoring milliseconds
+  would also turn `java.time` values into numbers and arrays.
+- **An object with no properties is written as `{}`.** Jackson 2 fails with "No serializer found".
+- **`""` is read as `null` for an enum.** Jackson 2 fails instead, but some providers send it - an
+  OpenAI-compatible server returning `"type": ""` for a tool call is what found this. `""` for an
+  object, a map or a list still fails, as it does with Jackson 2.
+- **A `private` one-argument constructor is not used to read a plain value.** Jackson 2 uses it;
+  with Jackson 3, make it non-private or annotate it with `@JsonCreator`.
+- **A field such as `xValue` with a getter `getXValue()` is written as `"xValue"`.** Jackson 2 derives
+  `"xvalue"` from the getter, and writes it instead of or in addition to `"xValue"`.
+
+**Failures get a LangChain4j type.** This is the other place where the opt-in changes something.
 By default, a JSON failure surfaces as a `RuntimeException` wrapping Jackson 2's own exception -
 which means code that reacts to it has to know Jackson 2. With this module, reading or writing JSON
 that fails throws `JsonReadException` or `JsonWriteException` instead, both `LangChain4jException`,
