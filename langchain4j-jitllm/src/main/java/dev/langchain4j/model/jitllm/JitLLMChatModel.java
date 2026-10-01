@@ -1,200 +1,239 @@
 package dev.langchain4j.model.jitllm;
 
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static java.util.Objects.requireNonNull;
-
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.internal.ChatRequestValidationUtils;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import java.nio.file.Path;
 import java.util.List;
-import org.beehive.jitllm.api.ChatContent;
 import org.beehive.jitllm.api.GenerationResult;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
- * JitLLM implementation of the langchain4j ChatModel interface.
+ * A {@link ChatModel} that runs a GGUF model inside the JVM with <a href="https://github.com/beehive-lab/jitllm">jitLLM</a>,
+ * on a GPU through <a href="https://github.com/beehive-lab/TornadoVM">TornadoVM</a> or on the CPU.
  * <p>
- * This model provides synchronous chat capabilities using the jitLLM library,
- * supporting both CPU and GPU execution modes. The model automatically separates thinking content from actual responses.
- *
- * <p>Example usage:
+ * The model is loaded when it is built and keeps its memory (including GPU memory) until {@link #close()} is called.
+ * One instance can be shared between threads, but it generates one response at a time:
+ * concurrent requests wait for each other.
+ * <p>
+ * Example:
  * <pre>{@code
- * JitLLMChatModel model = JitLLMChatModel.builder()
- *     .modelPath(Paths.get("path/to/model.gguf"))
- *     .temperature(0.7)
- *     .maxTokens(2048)
- *     .onGPU(true)
- *     .build();
- *
- * ChatResponse response = model.chat(chatRequest);
+ * try (JitLLMChatModel model = JitLLMChatModel.builder()
+ *         .modelPath(Path.of("Qwen3-0.6B-Q8_0.gguf"))
+ *         .build()) {
+ *     String answer = model.chat("What is the capital of Germany?");
+ * }
  * }</pre>
  */
-public class JitLLMChatModel extends JitLLMBaseModel implements ChatModel {
+public final class JitLLMChatModel extends JitLLMBaseModel implements ChatModel {
 
-    private static final Logger log = LoggerFactory.getLogger(JitLLMChatModel.class);
-
-    // @formatter:off
-    private JitLLMChatModel(Builder builder) {
-        init(
-                requireNonNull(builder.modelPath, "modelPath is required and must be specified"),
-                getOrDefault(builder.temperature, 0.1),
-                getOrDefault(builder.topP, 1.0),
-                getOrDefault(builder.seed, 12345),
-                getOrDefault(builder.maxTokens, 512),
-                getOrDefault(builder.onGPU, Boolean.TRUE));
+    private JitLLMChatModel(JitLLMChatModelBuilder builder) {
+        super(
+                builder.modelPath,
+                builder.contextLength,
+                builder.onGPU,
+                builder.think,
+                JitLLMConversions.defaultRequestParameters(
+                        builder.defaultRequestParameters,
+                        builder.temperature,
+                        builder.topP,
+                        builder.maxTokens,
+                        builder.stopSequences),
+                builder.seed,
+                builder.returnThinking,
+                builder.listeners);
     }
-    // @formatter:on
 
     /**
-     * A builder for this model.
+     * Creates a new builder.
      *
      * @return a new builder
      */
-    public static Builder builder() {
-        return new Builder();
+    public static JitLLMChatModelBuilder builder() {
+        return new JitLLMChatModelBuilder();
     }
 
     @Override
     public ChatResponse doChat(ChatRequest chatRequest) {
-        ChatRequestValidationUtils.validateMessages(chatRequest.messages());
-        ChatRequestParameters parameters = chatRequest.parameters();
-        ChatRequestValidationUtils.validateParameters(parameters);
-        ChatRequestValidationUtils.validate(parameters.toolChoice());
-        ChatRequestValidationUtils.validate(parameters.responseFormat());
-
-        try {
-            GenerationResult result = modelResponse(chatRequest, null);
-            String rawResponse = result.text();
-            log.debug("Raw JitLLM response: {}", rawResponse);
-
-            // Tool calls come from the engine. It reports them only when a valid call was
-            // extracted and generation ended through the format's tool-call termination path, so
-            // tool-shaped text that did not parse arrives here as ordinary text -- which is what it
-            // is.
-            List<ChatContent.ToolCall> toolCalls = result.toolCalls();
-            log.debug("Extracted {} tool call(s)", toolCalls.size());
-            if (!toolCalls.isEmpty()) {
-                List<ToolExecutionRequest> toolExecutionRequests = JitLLMConversions.toToolExecutionRequests(toolCalls);
-                return ChatResponse.builder()
-                        .aiMessage(AiMessage.builder()
-                                .toolExecutionRequests(toolExecutionRequests)
-                                .build())
-                        .finishReason(JitLLMConversions.toLangChain4jFinishReason(result.finishReason()))
-                        .build();
-            }
-
-            // Parse thinking and actual response using the JitLLMResponseParser
-            JitLLMResponseParser.ParsedResponse parsed = JitLLMResponseParser.parseResponse(rawResponse);
-
-            return ChatResponse.builder()
-                    .aiMessage(AiMessage.builder()
-                            .text(parsed.getActualResponse())
-                            .thinking(parsed.getThinkingContent())
-                            .build())
-                    .finishReason(JitLLMConversions.toLangChain4jFinishReason(result.finishReason()))
-                    .build();
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to generate response from JitLLM", e);
-        }
+        JitLLMOutputParser parser =
+                new JitLLMOutputParser(chatRequest.parameters().stopSequences(), answer -> {}, thinking -> {});
+        GenerationResult result = generate(chatRequest, parser, null);
+        return toChatResponse(result, parser);
     }
 
-    /** Collects the model path and sampling parameters before the engine is loaded. */
-    public static class Builder {
+    /**
+     * Builder for {@link JitLLMChatModel}.
+     */
+    public static final class JitLLMChatModelBuilder {
 
-        /** The GGUF file to load. */
-        protected Path modelPath;
-        /** Sampling temperature. */
-        protected Double temperature;
-        /** Nucleus sampling parameter. */
-        protected Double topP;
-        /** Sampling seed. */
-        protected Integer seed;
-        /** Context length, and the default generation budget. */
-        protected Integer maxTokens;
-        /** Whether to run on an accelerator; the backend follows the installed TornadoVM SDK. */
-        protected Boolean onGPU;
+        private Path modelPath;
+        private Integer contextLength;
+        private Boolean onGPU;
+        private Double temperature;
+        private Double topP;
+        private Integer maxTokens;
+        private List<String> stopSequences;
+        private Integer seed;
+        private Boolean think;
+        private Boolean returnThinking;
+        private ChatRequestParameters defaultRequestParameters;
+        private List<ChatModelListener> listeners;
 
-        /** Public so subclasses in other packages can extend it. */
-        public Builder() {
-            // This is public so it can be extended
-        }
+        private JitLLMChatModelBuilder() {}
 
         /**
-         * The GGUF file to load.
+         * Sets the path to the model file in GGUF format. Required.
          *
-         * @param modelPath the value to use
+         * @param modelPath the path to the GGUF file
          * @return this builder
          */
-        public Builder modelPath(Path modelPath) {
+        public JitLLMChatModelBuilder modelPath(Path modelPath) {
             this.modelPath = modelPath;
             return this;
         }
 
         /**
-         * Whether to run on an accelerator; the backend follows the installed TornadoVM SDK.
+         * Sets the context window: the maximum number of tokens of the whole conversation
+         * (system message, history, tool definitions and the generated response).
+         * Memory for the whole window is reserved when the model is loaded. Default: 4096.
          *
-         * @param onGPU the value to use
+         * @param contextLength the context window in tokens
          * @return this builder
          */
-        public Builder onGPU(Boolean onGPU) {
+        public JitLLMChatModelBuilder contextLength(Integer contextLength) {
+            this.contextLength = contextLength;
+            return this;
+        }
+
+        /**
+         * Sets whether the model runs on a GPU ({@code true}) or on the CPU ({@code false}).
+         * <p>
+         * Running on a GPU requires the JVM to be started through TornadoVM with {@code -Duse.tornadovm=true},
+         * otherwise building the model fails with an {@link IllegalStateException}.
+         * The GPU backend (CUDA, OpenCL or Metal) is the one provided by the installed TornadoVM SDK.
+         * <p>
+         * Default: {@code true} if the JVM was started with {@code -Duse.tornadovm=true}, {@code false} otherwise.
+         *
+         * @param onGPU whether to run on a GPU
+         * @return this builder
+         */
+        public JitLLMChatModelBuilder onGPU(Boolean onGPU) {
             this.onGPU = onGPU;
             return this;
         }
 
         /**
-         * Sampling temperature.
+         * Sets the sampling temperature. Default: 0.1.
          *
-         * @param temperature the value to use
+         * @param temperature the temperature
          * @return this builder
          */
-        public Builder temperature(Double temperature) {
+        public JitLLMChatModelBuilder temperature(Double temperature) {
             this.temperature = temperature;
             return this;
         }
 
         /**
-         * Nucleus sampling parameter.
+         * Sets the nucleus sampling probability. Default: 0.95.
          *
-         * @param topP the value to use
+         * @param topP the nucleus sampling probability
          * @return this builder
          */
-        public Builder topP(Double topP) {
+        public JitLLMChatModelBuilder topP(Double topP) {
             this.topP = topP;
             return this;
         }
 
         /**
-         * Context length, and the default generation budget.
+         * Sets the maximum number of tokens to generate per response, including the thinking. Default: 512.
          *
-         * @param maxTokens the value to use
+         * @param maxTokens the maximum number of tokens to generate
          * @return this builder
          */
-        public Builder maxTokens(Integer maxTokens) {
+        public JitLLMChatModelBuilder maxTokens(Integer maxTokens) {
             this.maxTokens = maxTokens;
             return this;
         }
 
         /**
-         * Sampling seed.
+         * Sets the sequences that end the response when they appear in the answer.
+         * The response is cut before the sequence. The thinking of reasoning models is not checked.
          *
-         * @param seed the value to use
+         * @param stopSequences the stop sequences
          * @return this builder
          */
-        public Builder seed(Integer seed) {
+        public JitLLMChatModelBuilder stopSequences(List<String> stopSequences) {
+            this.stopSequences = stopSequences;
+            return this;
+        }
+
+        /**
+         * Sets the seed of the random sampling, to make responses reproducible.
+         * Default: a different seed for every request.
+         *
+         * @param seed the seed
+         * @return this builder
+         */
+        public JitLLMChatModelBuilder seed(Integer seed) {
             this.seed = seed;
             return this;
         }
 
         /**
-         * Builds the model, loading the engine.
+         * Sets whether reasoning models think before answering: {@code true} enables thinking,
+         * {@code false} disables it, and when not set, the model's own default applies (Qwen 3, for example, thinks).
+         * Models that cannot think ignore this setting. Thinking improves answers to complex questions,
+         * but the thinking tokens count against {@link #maxTokens(Integer)} and take time to generate.
          *
-         * @return the configured model
+         * @param think whether the model thinks before answering
+         * @return this builder
+         */
+        public JitLLMChatModelBuilder think(Boolean think) {
+            this.think = think;
+            return this;
+        }
+
+        /**
+         * Sets whether the thinking of reasoning models (the text between {@code <think>} and {@code </think>})
+         * is returned in {@link dev.langchain4j.data.message.AiMessage#thinking()}.
+         * The thinking is never part of {@link dev.langchain4j.data.message.AiMessage#text()}. Default: {@code false}.
+         *
+         * @param returnThinking whether to return the thinking
+         * @return this builder
+         */
+        public JitLLMChatModelBuilder returnThinking(Boolean returnThinking) {
+            this.returnThinking = returnThinking;
+            return this;
+        }
+
+        /**
+         * Sets the parameters used for every request, unless the request sets them itself.
+         * Values set directly on this builder (for example {@link #temperature(Double)}) take precedence.
+         *
+         * @param defaultRequestParameters the default request parameters
+         * @return this builder
+         */
+        public JitLLMChatModelBuilder defaultRequestParameters(ChatRequestParameters defaultRequestParameters) {
+            this.defaultRequestParameters = defaultRequestParameters;
+            return this;
+        }
+
+        /**
+         * Sets the listeners notified about every request, response and error.
+         *
+         * @param listeners the listeners
+         * @return this builder
+         */
+        public JitLLMChatModelBuilder listeners(List<ChatModelListener> listeners) {
+            this.listeners = listeners;
+            return this;
+        }
+
+        /**
+         * Builds the model. This loads the model file, which can take a while for large models.
+         *
+         * @return the model
          */
         public JitLLMChatModel build() {
             return new JitLLMChatModel(this);

@@ -1,5 +1,7 @@
 package dev.langchain4j.model.jitllm;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
+
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
@@ -7,47 +9,117 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.internal.ChatRequestValidationUtils;
 import dev.langchain4j.internal.Json;
 import dev.langchain4j.internal.JsonSchemaElementUtils;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
+import dev.langchain4j.model.output.FinishReason;
+import dev.langchain4j.model.output.TokenUsage;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.function.Consumer;
+import org.beehive.jitllm.api.CancellationToken;
 import org.beehive.jitllm.api.ChatContent;
 import org.beehive.jitllm.api.ChatRole;
+import org.beehive.jitllm.api.GenerationEvent;
+import org.beehive.jitllm.api.GenerationRequest;
+import org.beehive.jitllm.api.GenerationResult;
 import org.beehive.jitllm.api.ToolSpec;
 
-/**
- * Pure conversions between LangChain4j's vocabulary and the engine's public API.
- *
- * <p>Extracted from {@link JitLLMBaseModel} so the mapping can be tested <b>without a model</b>.
- * What a 1B model chooses to emit is its own business; whether a tool call is transported and mapped
- * correctly is this adapter's, and the two should not be provable only together. Every method here
- * is a function of its arguments — no engine, no device, no I/O.
- *
- * <p>Package-private on purpose. This is a test seam, not API: nothing here is published and there is
- * no mocking surface.
- */
 final class JitLLMConversions {
+
+    private static final String NOT_SUPPORTED = "%s is not supported yet by this model provider";
+    private static final String NO_PARAMETERS_SCHEMA = "{\"type\":\"object\",\"properties\":{}}";
 
     private JitLLMConversions() {}
 
-    /**
-     * The conversation, in the engine's vocabulary.
-     *
-     * <p>A straight translation. What used to live here — where tool JSON goes, which stop-token set
-     * applies, how a family opens a turn — is the engine's, and this adapter no longer has an opinion
-     * about any of it.
-     */
+    static ChatRequestParameters defaultRequestParameters(
+            ChatRequestParameters parameters,
+            Double temperature,
+            Double topP,
+            Integer maxTokens,
+            List<String> stopSequences) {
+        ChatRequestParameters commonParameters = getOrDefault(parameters, DefaultChatRequestParameters.EMPTY);
+        validate(commonParameters);
+        return DefaultChatRequestParameters.builder()
+                .overrideWith(commonParameters)
+                .temperature(getOrDefault(temperature, commonParameters.temperature()))
+                .topP(getOrDefault(topP, commonParameters.topP()))
+                .maxOutputTokens(getOrDefault(maxTokens, commonParameters.maxOutputTokens()))
+                .stopSequences(getOrDefault(stopSequences, commonParameters.stopSequences()))
+                .build();
+    }
+
+    static void validate(ChatRequest chatRequest) {
+        ChatRequestValidationUtils.validateMessages(chatRequest.messages());
+        validate(chatRequest.parameters());
+    }
+
+    static void validate(ChatRequestParameters parameters) {
+        if (parameters.modelName() != null) {
+            throw new UnsupportedFeatureException(String.format(NOT_SUPPORTED, "'modelName' parameter"));
+        }
+        if (parameters.topK() != null) {
+            throw new UnsupportedFeatureException(String.format(NOT_SUPPORTED, "'topK' parameter"));
+        }
+        if (parameters.frequencyPenalty() != null) {
+            throw new UnsupportedFeatureException(String.format(NOT_SUPPORTED, "'frequencyPenalty' parameter"));
+        }
+        if (parameters.presencePenalty() != null) {
+            throw new UnsupportedFeatureException(String.format(NOT_SUPPORTED, "'presencePenalty' parameter"));
+        }
+        ChatRequestValidationUtils.validate(parameters.toolChoice());
+        ChatRequestValidationUtils.validate(parameters.responseFormat());
+    }
+
+    static GenerationRequest toGenerationRequest(
+            ChatRequest chatRequest,
+            Integer seed,
+            Consumer<GenerationEvent> eventConsumer,
+            CancellationToken cancellationToken) {
+        ChatRequestParameters parameters = chatRequest.parameters();
+        GenerationRequest.Builder builder =
+                GenerationRequest.builder().messages(toEngineMessages(chatRequest.messages()));
+        if (parameters.temperature() != null) {
+            builder.temperature(parameters.temperature().floatValue());
+        }
+        if (parameters.topP() != null) {
+            builder.topP(parameters.topP().floatValue());
+        }
+        if (parameters.maxOutputTokens() != null) {
+            builder.maxNewTokens(parameters.maxOutputTokens());
+        }
+        if (!parameters.stopSequences().isEmpty()) {
+            builder.stopSequences(parameters.stopSequences());
+        }
+        if (!chatRequest.toolSpecifications().isEmpty()) {
+            builder.tools(toEngineTools(chatRequest.toolSpecifications()));
+        }
+        if (seed != null) {
+            builder.seed(seed);
+        }
+        if (eventConsumer != null) {
+            builder.onEvent(eventConsumer);
+        }
+        if (cancellationToken != null) {
+            builder.cancellation(cancellationToken);
+        }
+        return builder.build();
+    }
+
     static List<org.beehive.jitllm.api.ChatMessage> toEngineMessages(List<ChatMessage> messages) {
         List<org.beehive.jitllm.api.ChatMessage> converted = new ArrayList<>(messages.size());
         for (ChatMessage message : messages) {
-            if (message instanceof UserMessage user) {
-                converted.add(org.beehive.jitllm.api.ChatMessage.of(ChatRole.USER, user.singleText()));
-            } else if (message instanceof SystemMessage system) {
-                converted.add(org.beehive.jitllm.api.ChatMessage.of(ChatRole.SYSTEM, system.text()));
-            } else if (message instanceof AiMessage ai) {
-                converted.add(toAssistantMessage(ai));
+            if (message instanceof UserMessage userMessage) {
+                converted.add(org.beehive.jitllm.api.ChatMessage.of(ChatRole.USER, userMessage.singleText()));
+            } else if (message instanceof SystemMessage systemMessage) {
+                converted.add(org.beehive.jitllm.api.ChatMessage.of(ChatRole.SYSTEM, systemMessage.text()));
+            } else if (message instanceof AiMessage aiMessage) {
+                converted.add(toAssistantMessage(aiMessage));
             } else if (message instanceof ToolExecutionResultMessage toolResult) {
                 converted.add(new org.beehive.jitllm.api.ChatMessage(
                         ChatRole.TOOL,
@@ -55,100 +127,80 @@ final class JitLLMConversions {
                                 blankToGenerated(toolResult.id()),
                                 toolResult.toolName(),
                                 unwrapToolResult(toolResult.text())))));
+            } else {
+                throw new UnsupportedFeatureException(
+                        String.format(NOT_SUPPORTED, message.type() + " message type"));
             }
         }
         return converted;
     }
 
-    static org.beehive.jitllm.api.ChatMessage toAssistantMessage(AiMessage ai) {
+    static org.beehive.jitllm.api.ChatMessage toAssistantMessage(AiMessage aiMessage) {
         List<ChatContent> content = new ArrayList<>();
-        if (ai.text() != null && !ai.text().isEmpty()) {
-            content.add(new ChatContent.Text(ai.text()));
+        if (aiMessage.text() != null && !aiMessage.text().isEmpty()) {
+            content.add(new ChatContent.Text(aiMessage.text()));
         }
-        if (ai.hasToolExecutionRequests()) {
-            for (ToolExecutionRequest tool : ai.toolExecutionRequests()) {
+        if (aiMessage.hasToolExecutionRequests()) {
+            for (ToolExecutionRequest toolExecutionRequest : aiMessage.toolExecutionRequests()) {
+                String arguments = toolExecutionRequest.arguments();
                 content.add(new ChatContent.ToolCall(
-                        blankToGenerated(tool.id()),
-                        tool.name(),
-                        tool.arguments() == null || tool.arguments().isBlank() ? "{}" : tool.arguments()));
+                        blankToGenerated(toolExecutionRequest.id()),
+                        toolExecutionRequest.name(),
+                        arguments == null || arguments.isBlank() ? "{}" : arguments));
             }
         }
         if (content.isEmpty()) {
-            // An assistant turn with neither text nor calls still has to say something to the
-            // template; an empty string is what it used to encode to.
-            content.add(new ChatContent.Text(""));
+            content.add(new ChatContent.Text("")); // the engine does not accept an assistant turn without content
         }
         return new org.beehive.jitllm.api.ChatMessage(ChatRole.ASSISTANT, content);
     }
 
-    /**
-     * The tool specifications, in the engine's vocabulary.
-     *
-     * <p>The parameter schema is serialized with {@code JsonSchemaElementUtils.toMap} through
-     * {@code Json.toJson}, the form the GPULlama3 integration used. What a model does with a tool
-     * definition is sensitive to its exact text, and this is the text that has been producing correct
-     * calls.
-     */
-    static List<ToolSpec> toEngineTools(List<ToolSpecification> tools) {
-        List<ToolSpec> specs = new ArrayList<>(tools.size());
-        for (ToolSpecification tool : tools) {
-            Map<String, Object> parameters = tool.parameters() == null
-                    ? Map.of("type", "object", "properties", Map.of())
-                    : JsonSchemaElementUtils.toMap(tool.parameters());
-            specs.add(new ToolSpec(
-                    tool.name(), tool.description() == null ? "" : tool.description(), Json.toJson(parameters)));
+    static List<ToolSpec> toEngineTools(List<ToolSpecification> toolSpecifications) {
+        List<ToolSpec> toolSpecs = new ArrayList<>(toolSpecifications.size());
+        for (ToolSpecification toolSpecification : toolSpecifications) {
+            String parameters = toolSpecification.parameters() == null
+                    ? NO_PARAMETERS_SCHEMA
+                    : Json.toJson(JsonSchemaElementUtils.toMap(toolSpecification.parameters()));
+            toolSpecs.add(new ToolSpec(
+                    toolSpecification.name(), getOrDefault(toolSpecification.description(), ""), parameters));
         }
-        return specs;
+        return toolSpecs;
     }
 
-    /**
-     * The engine's stop reason, in LangChain4j's vocabulary.
-     *
-     * <p>{@code TOOL_CALL} is the engine's narrow reason: it is reported only when a valid call was
-     * extracted <b>and</b> generation ended through the format's tool-call termination path. It maps
-     * to {@code TOOL_EXECUTION}, which is what a LangChain4j caller acts on.
-     *
-     * <p>Every other reason maps to {@code STOP} or {@code LENGTH}. Note what is deliberately not
-     * here: extracted calls do <b>not</b> override the reason. A response that ran out of budget
-     * mid-call ends with {@code LENGTH}, because that is what happened, and telling a caller to
-     * execute a call the model had not finished writing is worse than telling them it was truncated.
-     */
-    static dev.langchain4j.model.output.FinishReason toLangChain4jFinishReason(
-            org.beehive.jitllm.api.FinishReason engineReason) {
-        return switch (engineReason) {
-            case TOOL_CALL -> dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
-            case MAX_TOKENS, CONTEXT_FULL -> dev.langchain4j.model.output.FinishReason.LENGTH;
-            case STOP_TOKEN, STOP_SEQUENCE -> dev.langchain4j.model.output.FinishReason.STOP;
-            // Cancelled through a CancellationToken; LangChain4j has no reason of its own for it.
-            case CANCELLED -> dev.langchain4j.model.output.FinishReason.OTHER;
+    static List<ToolExecutionRequest> toToolExecutionRequests(List<ChatContent.ToolCall> toolCalls) {
+        List<ToolExecutionRequest> toolExecutionRequests = new ArrayList<>(toolCalls.size());
+        for (ChatContent.ToolCall toolCall : toolCalls) {
+            toolExecutionRequests.add(ToolExecutionRequest.builder()
+                    .id(toolCall.id())
+                    .name(toolCall.name())
+                    .arguments(normalizeJson(toolCall.argumentsJson()))
+                    .build());
+        }
+        return toolExecutionRequests;
+    }
+
+    static FinishReason toFinishReason(org.beehive.jitllm.api.FinishReason finishReason) {
+        return switch (finishReason) {
+            case TOOL_CALL -> FinishReason.TOOL_EXECUTION;
+            case MAX_TOKENS, CONTEXT_FULL -> FinishReason.LENGTH;
+            case STOP_TOKEN, STOP_SEQUENCE -> FinishReason.STOP;
+            case CANCELLED -> FinishReason.OTHER;
         };
     }
 
-    /** The engine's tool calls, as LangChain4j execution requests — order preserved. */
-    static List<ToolExecutionRequest> toToolExecutionRequests(List<ChatContent.ToolCall> calls) {
-        List<ToolExecutionRequest> requests = new ArrayList<>(calls.size());
-        for (ChatContent.ToolCall call : calls) {
-            requests.add(ToolExecutionRequest.builder()
-                    .id(call.id())
-                    .name(call.name())
-                    .arguments(normalizeJson(call.argumentsJson()))
-                    .build());
-        }
-        return requests;
+    static TokenUsage toTokenUsage(GenerationResult result) {
+        return new TokenUsage(result.promptTokens(), result.generatedTokens());
     }
 
-    /**
-     * A tool result's text, unwrapped when the framework handed us a JSON string literal.
-     */
     static String unwrapToolResult(String text) {
         if (text == null) {
             return "";
         }
-        if (text.startsWith("\"")) {
+        if (text.length() > 1 && text.startsWith("\"") && text.endsWith("\"")) {
             try {
                 return Json.fromJson(text, String.class);
-            } catch (RuntimeException ignored) {
-                // The result is not a JSON string literal; pass it through unchanged.
+            } catch (RuntimeException notAJsonString) {
+                return text;
             }
         }
         return text;
@@ -157,20 +209,16 @@ final class JitLLMConversions {
     static String normalizeJson(String json) {
         try {
             return Json.toJson(Json.fromJson(json, Object.class));
-        } catch (RuntimeException ignored) {
+        } catch (RuntimeException notJson) {
             return json;
         }
     }
 
-    /**
-     * The engine requires a non-blank id so a result can be matched back to a call; LangChain4j
-     * allows none. A generated one is better than a null the caller has to handle.
-     */
-    static String blankToGenerated(String id) {
-        return id == null || id.isBlank() ? generateCallId() : id;
+    private static String blankToGenerated(String id) {
+        return id == null || id.isBlank() ? generateCallId() : id; // the engine matches tool results to calls by id
     }
 
-    static String generateCallId() {
+    private static String generateCallId() {
         return "call_" + Long.toUnsignedString(ThreadLocalRandom.current().nextLong(), 36);
     }
 }

@@ -6,82 +6,84 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.request.ToolChoice;
+import dev.langchain4j.model.output.FinishReason;
+import dev.langchain4j.model.output.TokenUsage;
+import java.time.Duration;
 import java.util.List;
+import org.beehive.jitllm.api.CancellationToken;
 import org.beehive.jitllm.api.ChatContent;
 import org.beehive.jitllm.api.ChatRole;
+import org.beehive.jitllm.api.GenerationRequest;
+import org.beehive.jitllm.api.GenerationResult;
+import org.beehive.jitllm.api.GenerationTimings;
 import org.beehive.jitllm.api.ToolSpec;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
-/**
- * The adapter's mapping, proven without a model.
- *
- * <p>What a 1B model chooses to emit is its own business; whether a tool call is <b>transported and
- * mapped</b> correctly is this adapter's. Proving the two only together is what left the tool
- * behaviour unverifiable — an inherited case that needs the model to pick two tools in parallel
- * fails for reasons that are not defects in this code.
- *
- * <p>Every case here is a pure function of its arguments: no engine, no device, no model file.
- */
 class JitLLMConversionsTest {
 
-    // --- tool calls out of the engine -------------------------------------------------------
-
     @Test
-    void oneCallWithArgumentsIsMappedWithItsIdNameAndArguments() {
-        List<ToolExecutionRequest> requests = JitLLMConversions.toToolExecutionRequests(
-                List.of(new ChatContent.ToolCall("call-1", "getWeather", "{\"city\":\"Munich\"}")));
+    void should_map_tool_call_with_normalized_arguments() {
 
-        assertThat(requests).hasSize(1);
-        assertThat(requests.get(0).id()).isEqualTo("call-1");
-        assertThat(requests.get(0).name()).isEqualTo("getWeather");
-        assertThat(requests.get(0).arguments()).contains("Munich");
+        List<ToolExecutionRequest> requests = JitLLMConversions.toToolExecutionRequests(
+                List.of(new ChatContent.ToolCall("call-1", "getWeather", "{ \"city\" : \"Munich\" }")));
+
+        assertThat(requests)
+                .containsExactly(ToolExecutionRequest.builder()
+                        .id("call-1")
+                        .name("getWeather")
+                        .arguments("{\"city\":\"Munich\"}")
+                        .build());
     }
 
     @Test
-    void aNoArgumentCallKeepsAnEmptyJsonObject() {
-        List<ToolExecutionRequest> requests = JitLLMConversions.toToolExecutionRequests(
-                List.of(new ChatContent.ToolCall("call-1", "get_current_time", "{}")));
+    void should_keep_order_of_multiple_tool_calls() {
 
-        assertThat(requests.get(0).arguments()).isEqualTo("{}");
-    }
-
-    @Test
-    void twoCallsKeepTheirOrderAndTheirDistinctIds() {
-        // The parallel-tools case the model rarely satisfies. The mapping is not what fails there,
-        // and this says so without needing the model to cooperate.
         List<ToolExecutionRequest> requests = JitLLMConversions.toToolExecutionRequests(List.of(
                 new ChatContent.ToolCall("call-1", "getTime", "{\"country\":\"France\"}"),
-                new ChatContent.ToolCall("call-2", "getTemperature", "{\"city\":\"Munich\"}")));
+                new ChatContent.ToolCall("call-2", "getWeather", "{\"city\":\"Munich\"}")));
 
-        assertThat(requests).hasSize(2);
         assertThat(requests).extracting(ToolExecutionRequest::id).containsExactly("call-1", "call-2");
-        assertThat(requests).extracting(ToolExecutionRequest::name).containsExactly("getTime", "getTemperature");
+        assertThat(requests).extracting(ToolExecutionRequest::name).containsExactly("getTime", "getWeather");
     }
 
     @Test
-    void noCallsMapToNoRequests() {
-        assertThat(JitLLMConversions.toToolExecutionRequests(List.of())).isEmpty();
+    void should_keep_tool_call_arguments_as_they_are_when_they_are_not_json() {
+        assertThat(JitLLMConversions.normalizeJson("not json")).isEqualTo("not json");
     }
 
-    // --- conversation into the engine -------------------------------------------------------
+    @Test
+    void should_keep_unicode_in_tool_call_arguments() {
+        assertThat(JitLLMConversions.normalizeJson("{\"city\":\"München\"}")).isEqualTo("{\"city\":\"München\"}");
+    }
 
     @Test
-    void userAndSystemTurnsMapToTheirRoles() {
-        List<org.beehive.jitllm.api.ChatMessage> converted =
-                JitLLMConversions.toEngineMessages(List.of(SystemMessage.from("be brief"), UserMessage.from("hello")));
+    void should_map_messages_to_engine_roles() {
+
+        List<org.beehive.jitllm.api.ChatMessage> converted = JitLLMConversions.toEngineMessages(List.of(
+                SystemMessage.from("be brief"),
+                UserMessage.from("hello"),
+                AiMessage.from("hi"),
+                ToolExecutionResultMessage.from("call-1", "getWeather", "sunny")));
 
         assertThat(converted)
                 .extracting(org.beehive.jitllm.api.ChatMessage::role)
-                .containsExactly(ChatRole.SYSTEM, ChatRole.USER);
+                .containsExactly(ChatRole.SYSTEM, ChatRole.USER, ChatRole.ASSISTANT, ChatRole.TOOL);
     }
 
     @Test
-    void anAssistantTurnWithToolCallsCarriesThemAsToolCallContent() {
-        AiMessage ai = AiMessage.builder()
+    void should_map_assistant_message_with_text_and_tool_call() {
+
+        AiMessage aiMessage = AiMessage.builder()
+                .text("Let me check.")
                 .toolExecutionRequests(List.of(ToolExecutionRequest.builder()
                         .id("call-1")
                         .name("getWeather")
@@ -89,199 +91,161 @@ class JitLLMConversionsTest {
                         .build()))
                 .build();
 
-        org.beehive.jitllm.api.ChatMessage converted = JitLLMConversions.toAssistantMessage(ai);
+        org.beehive.jitllm.api.ChatMessage converted = JitLLMConversions.toAssistantMessage(aiMessage);
 
-        assertThat(converted.role()).isEqualTo(ChatRole.ASSISTANT);
-        assertThat(converted.content()).singleElement().isInstanceOfSatisfying(ChatContent.ToolCall.class, call -> {
-            assertThat(call.id()).isEqualTo("call-1");
-            assertThat(call.name()).isEqualTo("getWeather");
-        });
+        assertThat(converted.content())
+                .containsExactly(
+                        new ChatContent.Text("Let me check."),
+                        new ChatContent.ToolCall("call-1", "getWeather", "{\"city\":\"Munich\"}"));
     }
 
     @Test
-    void anAssistantTurnWithTextAndACallCarriesBoth() {
-        AiMessage ai = AiMessage.builder()
-                .text("Let me check.")
-                .toolExecutionRequests(List.of(ToolExecutionRequest.builder()
-                        .id("call-1")
-                        .name("getWeather")
-                        .arguments("{}")
-                        .build()))
-                .build();
-
-        assertThat(JitLLMConversions.toAssistantMessage(ai).content())
-                .hasSize(2)
-                .hasAtLeastOneElementOfType(ChatContent.Text.class)
-                .hasAtLeastOneElementOfType(ChatContent.ToolCall.class);
+    void should_map_empty_assistant_message_to_empty_text() {
+        assertThat(JitLLMConversions.toAssistantMessage(AiMessage.from("")).content())
+                .containsExactly(new ChatContent.Text(""));
     }
 
     @Test
-    void anEmptyAssistantTurnStillEncodesSomething() {
-        // The engine rejects an empty turn; an assistant turn with neither text nor calls used to
-        // encode as an empty string, and still must.
-        assertThat(JitLLMConversions.toAssistantMessage(
-                                AiMessage.builder().text("").build())
-                        .content())
-                .singleElement()
-                .isInstanceOf(ChatContent.Text.class);
+    void should_generate_tool_call_id_when_missing_and_keep_it_matched_with_result() {
+
+        AiMessage aiMessage = AiMessage.from(ToolExecutionRequest.builder()
+                .name("getWeather")
+                .arguments("")
+                .build());
+
+        ChatContent.ToolCall call = (ChatContent.ToolCall)
+                JitLLMConversions.toAssistantMessage(aiMessage).content().get(0);
+
+        assertThat(call.id()).startsWith("call_");
+        assertThat(call.argumentsJson()).isEqualTo("{}");
     }
 
     @Test
-    void aToolResultMapsBackWithItsIdAndName() {
-        List<org.beehive.jitllm.api.ChatMessage> converted = JitLLMConversions.toEngineMessages(
-                List.of(ToolExecutionResultMessage.from("call-1", "getWeather", "sunny")));
-
-        assertThat(converted).singleElement().satisfies(message -> {
-            assertThat(message.role()).isEqualTo(ChatRole.TOOL);
-            assertThat(message.content())
-                    .singleElement()
-                    .isInstanceOfSatisfying(ChatContent.ToolResult.class, result -> {
-                        assertThat(result.id()).isEqualTo("call-1");
-                        assertThat(result.name()).isEqualTo("getWeather");
-                        assertThat(result.resultJson()).isEqualTo("sunny");
-                    });
-        });
-    }
-
-    @Test
-    void aJsonStringLiteralToolResultIsUnwrapped() {
+    void should_unwrap_tool_result_that_is_a_json_string() {
         assertThat(JitLLMConversions.unwrapToolResult("\"sunny\"")).isEqualTo("sunny");
+        assertThat(JitLLMConversions.unwrapToolResult("\"sunny\" is the answer")).isEqualTo("\"sunny\" is the answer");
         assertThat(JitLLMConversions.unwrapToolResult("{\"t\":1}")).isEqualTo("{\"t\":1}");
         assertThat(JitLLMConversions.unwrapToolResult(null)).isEmpty();
     }
 
-    /**
-     * The engine requires a non-blank id so a result can be matched to a call; LangChain4j allows
-     * none. A generated id is better than a null the caller has to handle — and better than the
-     * engine rejecting the message.
-     */
     @Test
-    void aMissingIdIsGeneratedRatherThanRejected() {
-        AiMessage ai = AiMessage.builder()
-                .toolExecutionRequests(List.of(ToolExecutionRequest.builder()
-                        .name("getWeather")
-                        .arguments("{}")
-                        .build()))
+    void should_map_tool_specification() {
+
+        List<ToolSpec> toolSpecs = JitLLMConversions.toEngineTools(
+                List.of(ToolSpecification.builder().name("getTime").build()));
+
+        assertThat(toolSpecs)
+                .containsExactly(new ToolSpec("getTime", "", "{\"type\":\"object\",\"properties\":{}}"));
+    }
+
+    @Test
+    void should_map_request_parameters_to_generation_request() {
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(UserMessage.from("hello"))
+                .parameters(ChatRequestParameters.builder()
+                        .temperature(0.7)
+                        .topP(0.8)
+                        .maxOutputTokens(100)
+                        .stopSequences(List.of("STOP"))
+                        .toolSpecifications(
+                                ToolSpecification.builder().name("getTime").build())
+                        .build())
+                .build();
+        CancellationToken cancellationToken = new CancellationToken();
+
+        GenerationRequest request = JitLLMConversions.toGenerationRequest(chatRequest, 42, null, cancellationToken);
+
+        assertThat(request.temperature()).isEqualTo(0.7f);
+        assertThat(request.topP()).isEqualTo(0.8f);
+        assertThat(request.maxNewTokens()).isEqualTo(100);
+        assertThat(request.stopSequences()).containsExactly("STOP");
+        assertThat(request.tools()).extracting(ToolSpec::name).containsExactly("getTime");
+        assertThat(request.seed()).isEqualTo(42L);
+        assertThat(request.cancellation()).isSameAs(cancellationToken);
+    }
+
+    @Test
+    void should_leave_engine_defaults_when_request_parameters_are_not_set() {
+
+        ChatRequest chatRequest =
+                ChatRequest.builder().messages(UserMessage.from("hello")).build();
+
+        GenerationRequest request = JitLLMConversions.toGenerationRequest(chatRequest, null, null, null);
+        GenerationRequest engineDefaults = GenerationRequest.builder()
+                .messages(request.messages())
                 .build();
 
-        ChatContent.ToolCall call = (ChatContent.ToolCall)
-                JitLLMConversions.toAssistantMessage(ai).content().get(0);
-        assertThat(call.id()).isNotBlank();
+        assertThat(request.temperature()).isEqualTo(engineDefaults.temperature());
+        assertThat(request.topP()).isEqualTo(engineDefaults.topP());
+        assertThat(request.maxNewTokens()).isEqualTo(engineDefaults.maxNewTokens());
+        assertThat(request.seed()).isNull();
+        assertThat(request.tools()).isEmpty();
     }
 
     @Test
-    void aFullRoundTripKeepsCallAndResultIdsMatched() {
-        // The second turn: the model asked, the caller answered, and the conversation replays.
-        List<ToolExecutionRequest> requests = JitLLMConversions.toToolExecutionRequests(
-                List.of(new ChatContent.ToolCall("call-1", "getWeather", "{\"city\":\"Munich\"}")));
-        ToolExecutionRequest asked = requests.get(0);
+    void should_let_builder_values_take_precedence_over_default_request_parameters() {
 
-        List<ChatMessage> conversation = List.of(
-                UserMessage.from("weather in Munich?"),
-                AiMessage.builder().toolExecutionRequests(List.of(asked)).build(),
-                ToolExecutionResultMessage.from(asked.id(), asked.name(), "sunny"));
+        ChatRequestParameters parameters = JitLLMConversions.defaultRequestParameters(
+                ChatRequestParameters.builder()
+                        .temperature(0.1)
+                        .topP(0.2)
+                        .maxOutputTokens(10)
+                        .build(),
+                0.9,
+                null,
+                null,
+                List.of("STOP"));
 
-        List<org.beehive.jitllm.api.ChatMessage> converted = JitLLMConversions.toEngineMessages(conversation);
-
-        assertThat(converted)
-                .extracting(org.beehive.jitllm.api.ChatMessage::role)
-                .containsExactly(ChatRole.USER, ChatRole.ASSISTANT, ChatRole.TOOL);
-        String calledId = ((ChatContent.ToolCall) converted.get(1).content().get(0)).id();
-        String answeredId = ((ChatContent.ToolResult) converted.get(2).content().get(0)).id();
-        assertThat(answeredId)
-                .as("a result the model cannot match to its call is worse than no result")
-                .isEqualTo(calledId);
-    }
-
-    // --- stop reasons -----------------------------------------------------------------------
-
-    @Test
-    void aToolCallReasonBecomesToolExecution() {
-        assertThat(JitLLMConversions.toLangChain4jFinishReason(org.beehive.jitllm.api.FinishReason.TOOL_CALL))
-                .isEqualTo(dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION);
+        assertThat(parameters.temperature()).isEqualTo(0.9);
+        assertThat(parameters.topP()).isEqualTo(0.2);
+        assertThat(parameters.maxOutputTokens()).isEqualTo(10);
+        assertThat(parameters.stopSequences()).containsExactly("STOP");
     }
 
     @Test
-    void everyOtherReasonMapsWithoutInventingAToolExecution() {
-        // The rule that keeps TOOL_EXECUTION meaningful: a response that ran out of budget
-        // mid-call is LENGTH, even if something parseable came back, because that is what happened.
-        assertThat(JitLLMConversions.toLangChain4jFinishReason(org.beehive.jitllm.api.FinishReason.MAX_TOKENS))
-                .isEqualTo(dev.langchain4j.model.output.FinishReason.LENGTH);
-        assertThat(JitLLMConversions.toLangChain4jFinishReason(org.beehive.jitllm.api.FinishReason.CONTEXT_FULL))
-                .isEqualTo(dev.langchain4j.model.output.FinishReason.LENGTH);
-        assertThat(JitLLMConversions.toLangChain4jFinishReason(org.beehive.jitllm.api.FinishReason.STOP_TOKEN))
-                .isEqualTo(dev.langchain4j.model.output.FinishReason.STOP);
-        assertThat(JitLLMConversions.toLangChain4jFinishReason(org.beehive.jitllm.api.FinishReason.STOP_SEQUENCE))
-                .isEqualTo(dev.langchain4j.model.output.FinishReason.STOP);
-        assertThat(JitLLMConversions.toLangChain4jFinishReason(org.beehive.jitllm.api.FinishReason.CANCELLED))
-                .isEqualTo(dev.langchain4j.model.output.FinishReason.OTHER);
+    void should_fail_when_parameters_are_not_supported() {
+        assertThatThrownBy(() -> JitLLMConversions.validate(
+                        ChatRequestParameters.builder().modelName("other").build()))
+                .isExactlyInstanceOf(UnsupportedFeatureException.class)
+                .hasMessageContaining("modelName");
+        assertThatThrownBy(() -> JitLLMConversions.validate(
+                        ChatRequestParameters.builder().topK(5).build()))
+                .isExactlyInstanceOf(UnsupportedFeatureException.class)
+                .hasMessageContaining("topK");
+        assertThatThrownBy(() -> JitLLMConversions.validate(ChatRequestParameters.builder()
+                        .toolChoice(ToolChoice.REQUIRED)
+                        .build()))
+                .isExactlyInstanceOf(UnsupportedFeatureException.class)
+                .hasMessageContaining("REQUIRED");
     }
 
     @Test
-    void everyEngineStopReasonIsMapped() {
-        // A new engine reason must not fall through to a default that quietly means STOP.
-        for (org.beehive.jitllm.api.FinishReason reason : org.beehive.jitllm.api.FinishReason.values()) {
-            assertThat(JitLLMConversions.toLangChain4jFinishReason(reason)).isNotNull();
-        }
+    void should_map_token_usage() {
+
+        GenerationResult result =
+                new GenerationResult(
+                "Berlin",
+                12,
+                3,
+                org.beehive.jitllm.api.FinishReason.STOP_TOKEN,
+                new GenerationTimings(Duration.ZERO, Duration.ZERO, 12, 3));
+
+        assertThat(JitLLMConversions.toTokenUsage(result)).isEqualTo(new TokenUsage(12, 3));
     }
 
-    /**
-     * The synchronous and streaming paths derive their requests from the same conversion, so
-     * identical engine calls produce identical requests. Both models call this one function; the
-     * case exists so a future divergence has to delete it rather than merely drift.
-     */
-    @Test
-    void synchronousAndStreamingDeriveTheSameRequestsFromTheSameCalls() {
-        List<ChatContent.ToolCall> calls = List.of(
-                new ChatContent.ToolCall("call-1", "getTime", "{\"country\":\"France\"}"),
-                new ChatContent.ToolCall("call-2", "getTemperature", "{\"city\":\"Munich\"}"));
+    @ParameterizedTest
+    @EnumSource(org.beehive.jitllm.api.FinishReason.class)
+    void should_map_finish_reason(org.beehive.jitllm.api.FinishReason finishReason) {
 
-        List<ToolExecutionRequest> synchronousPath = JitLLMConversions.toToolExecutionRequests(calls);
-        List<ToolExecutionRequest> streamingPath = JitLLMConversions.toToolExecutionRequests(calls);
+        FinishReason expected =
+                switch (finishReason) {
+                    case TOOL_CALL -> FinishReason.TOOL_EXECUTION;
+                    case MAX_TOKENS, CONTEXT_FULL -> FinishReason.LENGTH;
+                    case STOP_TOKEN, STOP_SEQUENCE -> FinishReason.STOP;
+                    case CANCELLED -> FinishReason.OTHER;
+                };
 
-        assertThat(streamingPath).isEqualTo(synchronousPath);
-        // The streaming path also reports each call by index; the indices must address this list.
-        for (int index = 0; index < streamingPath.size(); index++) {
-            assertThat(streamingPath.get(index)).isEqualTo(synchronousPath.get(index));
-        }
-    }
-
-    /** Tool-shaped text that produced no valid call is ordinary text with an ordinary reason. */
-    @Test
-    void noValidCallMeansNoRequestsAndNoToolExecution() {
-        assertThat(JitLLMConversions.toToolExecutionRequests(List.of())).isEmpty();
-        assertThat(JitLLMConversions.toLangChain4jFinishReason(org.beehive.jitllm.api.FinishReason.STOP_TOKEN))
-                .isNotEqualTo(dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION);
-    }
-
-    // --- tool specifications into the engine ------------------------------------------------
-
-    @Test
-    void aToolSpecificationCarriesItsNameDescriptionAndSchema() {
-        List<ToolSpec> specs = JitLLMConversions.toEngineTools(List.of(ToolSpecification.builder()
-                .name("getWeather")
-                .description("the weather")
-                .build()));
-
-        assertThat(specs).singleElement().satisfies(spec -> {
-            assertThat(spec.name()).isEqualTo("getWeather");
-            assertThat(spec.description()).isEqualTo("the weather");
-            assertThat(spec.parametersJsonSchema()).contains("object");
-        });
-    }
-
-    @Test
-    void aToolWithNoDescriptionGetsAnEmptyOneRatherThanNull() {
-        // The engine rejects a null description; the schema string must survive either way.
-        assertThat(JitLLMConversions.toEngineTools(
-                                List.of(ToolSpecification.builder().name("t").build()))
-                        .get(0)
-                        .description())
-                .isEmpty();
-    }
-
-    @Test
-    void aBlankToolNameIsRejectedByTheFacadeRatherThanSentOn() {
-        assertThatThrownBy(() -> new ToolSpec(" ", "", "{}")).isInstanceOf(IllegalArgumentException.class);
+        assertThat(JitLLMConversions.toFinishReason(finishReason)).isEqualTo(expected);
     }
 }

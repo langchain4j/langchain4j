@@ -4,9 +4,10 @@ sidebar_position: 23
 
 # jitLLM
 
-[jitLLM](https://github.com/beehive-lab/jitllm) runs LLM inference on the JVM and uses
-[TornadoVM](https://github.com/beehive-lab/TornadoVM) to JIT-compile its kernels for GPUs through
-CUDA, OpenCL or Metal. It is the successor of [GPULlama3.java](/integrations/language-models/gpullama3-java) (`langchain4j-gpu-llama3`).
+[jitLLM](https://github.com/beehive-lab/jitllm) runs LLMs in GGUF format inside the JVM.
+It runs them on a GPU through [TornadoVM](https://github.com/beehive-lab/TornadoVM),
+which JIT-compiles the model's kernels for CUDA, OpenCL or Metal, or on the CPU.
+No separate inference server is needed.
 
 ## Project setup
 
@@ -22,82 +23,120 @@ CUDA, OpenCL or Metal. It is the successor of [GPULlama3.java](/integrations/lan
 implementation 'dev.langchain4j:langchain4j-jitllm:1.21.0-beta31'
 ```
 
-jitLLM publishes one artifact per JDK line, matching TornadoVM's: `jitllm:<version>-jdk21` and
-`jitllm:<version>-jdk22plus` (JDK 22 and newer). This module's `jdk21` and `jdk22plus` profiles
-select the one that matches the JDK building it.
-
 ## Requirements
 
-* JDK 21, or JDK 22 or newer
-* A TornadoVM SDK for the same JDK line (`jdk21` or `jdk22plus`) and for your GPU's backend,
-  from [tornadovm.org](https://www.tornadovm.org/downloads) or SDKMAN! (`sdk install tornadovm`)
-* A model in GGUF format (FP16, Q8_0 or Q4_0): Llama 3, Mistral, Qwen 2.5, Qwen 3, Phi-3,
-  IBM Granite 3.3 / 4.0, Gemma 4 and DeepSeek-R1-Distill are supported. Tested models are collected
-  on [Hugging Face](https://huggingface.co/beehive-lab/collections).
+* JDK 22 or newer.
+* A model in GGUF format (FP16, Q8_0 or Q4_0). Supported families include Llama 3, Mistral, Qwen 2.5, Qwen 3,
+  Phi-3, IBM Granite 3.3 / 4.0, Gemma 4 and DeepSeek-R1-Distill.
+  Tested models are collected on [Hugging Face](https://huggingface.co/beehive-lab/collections).
+* The JVM option `--add-modules jdk.incubator.vector`.
+* To run on a GPU: a [TornadoVM SDK](https://www.tornadovm.org/downloads) for JDK 22+ (`jdk22plus`) and for your GPU's backend,
+  for example installed with SDKMAN! (`sdk install tornadovm`).
+  The JVM must be started through TornadoVM's `tornado` launcher with `-Duse.tornadovm=true`.
+* To run on the CPU in a plain JVM (without the TornadoVM launcher): `io.github.beehive-lab:tornado-api:7.0.1-jdk22plus`
+  as a `runtime` dependency. Leave it out when running through TornadoVM, which already provides it.
 
-On the GPU, start the JVM through TornadoVM's `tornado` launcher and pass `-Duse.tornadovm=true`
-and `--add-modules jdk.incubator.vector`. The backend is whichever one the SDK provides.
-
-jitLLM's jar leaves TornadoVM to the SDK. Its CPU path still uses TornadoVM's array types, so to
-run on the CPU without the SDK (`onGPU(false)` in a plain JVM), add `tornado-api` from the same
-TornadoVM release with `runtime` scope, for example
-`io.github.beehive-lab:tornado-api:7.0.1-jdk22plus` (`7.0.1-jdk21` on JDK 21). Leave it out when
-running through TornadoVM: the SDK already provides it.
+Only the JVM mode is supported; GraalVM native images are not.
 
 ## Chat
 
 ```java
-JitLLMChatModel model = JitLLMChatModel.builder()
-        .modelPath(Path.of(System.getenv("MODEL")))
-        .temperature(0.7)
-        .maxTokens(2048)
-        .onGPU(true)            // false runs on the CPU
-        .build();
+try (JitLLMChatModel model = JitLLMChatModel.builder()
+        .modelPath(Path.of("Qwen3-0.6B-Q8_0.gguf"))
+        .build()) {
 
-ChatResponse response = model.chat(ChatRequest.builder()
-        .messages(SystemMessage.from("You are a helpful assistant."), UserMessage.from("Who are you?"))
-        .build());
-System.out.println(response.aiMessage().text());
-model.printLastMetrics();       // logs prompt/generation token rates at INFO
+    String answer = model.chat("What is the capital of Germany?");
+}
 ```
+
+The model is loaded when it is built and keeps its memory, including GPU memory, until `close()` is called.
+Build it once and reuse it.
 
 ## Streaming
 
 ```java
-JitLLMStreamingChatModel model = JitLLMStreamingChatModel.builder()
-        .modelPath(Path.of(System.getenv("MODEL")))
-        .onGPU(true)
-        .build();
+try (JitLLMStreamingChatModel model = JitLLMStreamingChatModel.builder()
+        .modelPath(Path.of("Qwen3-0.6B-Q8_0.gguf"))
+        .build()) {
 
-model.chat(request, new StreamingChatResponseHandler() {
-    @Override
-    public void onPartialResponse(String partialResponse) {
-        System.out.print(partialResponse);
-    }
+    model.chat("Tell me a story", new StreamingChatResponseHandler() {
 
-    @Override
-    public void onCompleteResponse(ChatResponse completeResponse) {
-        System.out.println();
-    }
+        @Override
+        public void onPartialResponse(String partialResponse) {
+            System.out.print(partialResponse);
+        }
 
-    @Override
-    public void onError(Throwable error) {
-        error.printStackTrace();
-    }
-});
+        @Override
+        public void onCompleteResponse(ChatResponse completeResponse) {
+            System.out.println();
+        }
+
+        @Override
+        public void onError(Throwable error) {
+            error.printStackTrace();
+        }
+    });
+}
 ```
 
-Run it with the TornadoVM launcher:
+`chat(...)` returns once the response is complete: the model runs in the calling thread, and the handler is called
+on that thread. To avoid blocking, call it from another thread, for example a virtual thread.
+Streaming can be stopped through the `StreamingHandle` available in
+`onPartialResponse(PartialResponse, PartialResponseContext)`.
+
+## Running on a GPU
 
 ```bash
-tornado --jvm="-Duse.tornadovm=true --add-modules jdk.incubator.vector -Dtornado.device.memory=20GB" \
-  -cp "target/my-app.jar:$(cat cp.txt)" com.example.Main
+tornado --jvm="-Duse.tornadovm=true --add-modules jdk.incubator.vector -Dtornado.device.memory=8GB" \
+  -cp "target/my-app.jar:target/dependency/*" com.example.Main
 ```
+
+`target/dependency` can be filled with `mvn dependency:copy-dependencies`.
+When the JVM is started this way, the model runs on the GPU, using the backend that the TornadoVM SDK provides.
+`onGPU(false)` forces the CPU, and `onGPU(true)` fails at build time if the JVM was not started through TornadoVM.
+
+## Configuration
+
+| Builder method             | Default                                              | Description                                                                                                         |
+|----------------------------|------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------|
+| `modelPath`                | required                                             | Path to the GGUF file.                                                                                              |
+| `contextLength`            | 4096                                                 | Maximum number of tokens of the whole conversation, including the response. Memory for it is reserved at load time. |
+| `onGPU`                    | `true` when started with `-Duse.tornadovm=true`      | Run on a GPU or on the CPU.                                                                                         |
+| `temperature`              | 0.1                                                  | Sampling temperature.                                                                                               |
+| `topP`                     | 0.95                                                 | Nucleus sampling probability.                                                                                       |
+| `maxTokens`                | 512                                                  | Maximum number of tokens generated per response, including the thinking.                                           |
+| `stopSequences`            |                                                      | Sequences that end the response. They apply to the answer, not to the thinking.                                     |
+| `seed`                     | random per request                                   | Seed of the sampling, for reproducible responses.                                                                   |
+| `think`                    | model default                                        | Whether reasoning models think before answering. `false` makes them answer directly.                                |
+| `returnThinking`           | `false`                                              | Return the thinking of reasoning models in `AiMessage.thinking()` and stream it to `onPartialThinking`.             |
+| `defaultRequestParameters` |                                                      | Default `ChatRequestParameters`; the values above take precedence.                                                  |
+| `listeners`                |                                                      | [Listeners](/tutorials/observability) notified about requests, responses and errors.                                |
+
+`temperature`, `topP`, `maxOutputTokens` and `stopSequences` can also be set per request in `ChatRequestParameters`.
+
+One model instance can be used by several threads, but it generates one response at a time:
+concurrent requests wait for each other.
 
 ## Capabilities
 
-* Thinking content is separated from the answer (`AiMessage.thinking()`).
-* Tool calling, synchronous and streaming, including several calls in one turn. Forced or named
-  tool choice, and tools combined with a JSON response format, are not supported.
-* A response cut off by `maxTokens` is returned in full with `FinishReason.LENGTH`.
-* Not supported: JSON response formats, stop sequences, images, per-request model names.
+* Streaming, with cancellation.
+* Tools, synchronous and streaming, including several tool calls in one response.
+  With tools, the streamed response is delivered at once when it is complete.
+* Thinking of reasoning models (text between `<think>` and `</think>`): it can be switched on or off with `think`,
+  and is returned when `returnThinking(true)` is set.
+* Token usage and finish reason in `ChatResponse`.
+* Not supported: JSON response formats, `ToolChoice.REQUIRED`, images, and the `modelName`, `topK`,
+  `frequencyPenalty` and `presencePenalty` parameters.
+
+## Migrating from GPULlama3.java
+
+jitLLM is the successor of [GPULlama3.java](/integrations/language-models/gpullama3-java), and `langchain4j-jitllm`
+replaces the deprecated `langchain4j-gpu-llama3` module:
+
+* Replace `GPULlama3ChatModel` with `JitLLMChatModel` and `GPULlama3StreamingChatModel` with `JitLLMStreamingChatModel`.
+* `maxTokens` now only limits the generated tokens. The context window is set with `contextLength`.
+* Free the memory with `close()` instead of `freeTornadoVMGPUResources()`. There is no automatic cleanup when the
+  model is garbage-collected.
+* The thinking is only returned with `returnThinking(true)`, and without the `<think>` tags.
+* `printLastMetrics()` is replaced by `ChatResponse.tokenUsage()`.
+* When `onGPU` is not set, the model runs on the GPU only if the JVM was started with `-Duse.tornadovm=true`.

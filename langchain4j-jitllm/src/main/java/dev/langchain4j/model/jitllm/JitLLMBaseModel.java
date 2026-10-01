@@ -1,202 +1,189 @@
 package dev.langchain4j.model.jitllm;
 
-import dev.langchain4j.agent.tool.ToolSpecification;
+import static dev.langchain4j.internal.Utils.copy;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.exception.LangChain4jException;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
-import java.util.function.Consumer;
-import org.beehive.jitllm.api.GenerationEvent;
-import org.beehive.jitllm.api.GenerationRequest;
+import java.util.concurrent.locks.ReentrantLock;
+import org.beehive.jitllm.api.CancellationToken;
+import org.beehive.jitllm.api.FinishReason;
 import org.beehive.jitllm.api.GenerationResult;
 import org.beehive.jitllm.api.GenerationSession;
 import org.beehive.jitllm.api.LocalModel;
 import org.beehive.jitllm.api.LocalModels;
 import org.beehive.jitllm.api.ModelOptions;
 import org.beehive.jitllm.api.TextGenerationModel;
+import org.beehive.jitllm.api.ThinkingMode;
+import org.beehive.jitllm.runtime.backend.BackendId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * Abstract base class for JitLLM chat models.
- *
- * <p>Uses only jitLLM's public API ({@code org.beehive.jitllm.api}): {@code LocalModels.load}
- * loads the model and owns its accelerator resources, a {@code GenerationSession} generates, and
- * chat templating and tool encoding are the engine's. LangChain4j sends the whole conversation on
- * every request; the session reuses the encoded prefix when one request extends the last, so that
- * costs nothing beyond the first turn.
- */
 abstract class JitLLMBaseModel implements AutoCloseable {
+
+    private static final int DEFAULT_CONTEXT_LENGTH = 4096;
+
     private static final Logger log = LoggerFactory.getLogger(JitLLMBaseModel.class);
+    private static final String USE_TORNADOVM = "use.tornadovm";
 
-    private LocalModel model;
+    private final ReentrantLock lock = new ReentrantLock();
+    private final int contextLength;
+    private final ChatRequestParameters defaultRequestParameters;
+    private final Integer seed;
+    private final boolean returnThinking;
+    private final List<ChatModelListener> listeners;
+    private final LocalModel model;
 
-    /**
-     * One session for the model's life, created on first use.
-     *
-     * <p><b>Not one per request.</b> On the accelerator path a session builds its own execution
-     * plan, and a plan holds its own device copy of the weights, so a session per request exhausts
-     * device memory within a few calls — measured, as a {@code TornadoOutOfMemoryException} on the
-     * third case of the inherited suite. The conversation is sent whole every time regardless, and
-     * the session reuses the encoded prefix when one request extends the last.
-     */
     private GenerationSession session;
+    private boolean closed;
 
-    private Integer maxTokens;
-    private Double temperature;
-    private Double topP;
-    private Integer seed;
-    private boolean closed = false;
-    private volatile GenerationResult lastResult;
-
-    /**
-     * Loads the engine model this instance generates through.
-     *
-     * @param modelPath the GGUF file
-     * @param temperature sampling temperature
-     * @param topP nucleus sampling parameter
-     * @param seed sampling seed
-     * @param maxTokens the context length, and the default generation budget
-     * @param onGPU whether to run on an accelerator; the backend is whichever one the TornadoVM
-     *              SDK the JVM was started with provides, which requires {@code -Duse.tornadovm=true}
-     */
-    void init(Path modelPath, Double temperature, Double topP, Integer seed, Integer maxTokens, Boolean onGPU) {
-        this.maxTokens = maxTokens;
-        this.temperature = temperature;
-        this.topP = topP;
+    JitLLMBaseModel(
+            Path modelPath,
+            Integer contextLength,
+            Boolean onGPU,
+            Boolean think,
+            ChatRequestParameters defaultRequestParameters,
+            Integer seed,
+            Boolean returnThinking,
+            List<ChatModelListener> listeners) {
+        ensureNotNull(modelPath, "modelPath");
+        this.contextLength =
+                ensureGreaterThanZero(getOrDefault(contextLength, DEFAULT_CONTEXT_LENGTH), "contextLength");
+        this.defaultRequestParameters = defaultRequestParameters;
         this.seed = seed;
+        this.returnThinking = getOrDefault(returnThinking, false);
+        this.listeners = copy(listeners);
+        this.model = load(
+                modelPath,
+                this.contextLength,
+                getOrDefault(onGPU, () -> Boolean.getBoolean(USE_TORNADOVM)),
+                toThinkingMode(think));
+    }
 
-        // CPU is an explicit backend. For the accelerator path no backend is named: naming one
-        // (say CUDA) makes the engine reject any SDK built for another (OpenCL, Metal), whereas
-        // leaving it unset runs on whichever backend the SDK provides, as -Duse.tornadovm selects.
-        ModelOptions.Builder options = ModelOptions.builder().contextLength(maxTokens);
+    private static ThinkingMode toThinkingMode(Boolean think) {
+        if (think == null) {
+            return ThinkingMode.DEFAULT;
+        }
+        return think ? ThinkingMode.ENABLED : ThinkingMode.DISABLED;
+    }
+
+    private static LocalModel load(Path modelPath, int contextLength, boolean onGPU, ThinkingMode thinkingMode) {
+        ModelOptions.Builder options =
+                ModelOptions.builder().contextLength(contextLength).thinkingMode(thinkingMode);
         if (onGPU) {
-            if (!Boolean.getBoolean("use.tornadovm")) {
-                throw new IllegalStateException("onGPU(true) needs the JVM started through TornadoVM with"
-                        + " -Duse.tornadovm=true; use onGPU(false) to run on the CPU");
+            if (!Boolean.getBoolean(USE_TORNADOVM)) {
+                throw new IllegalStateException("onGPU(true) requires the JVM to be started through TornadoVM with -D"
+                        + USE_TORNADOVM + "=true. Use onGPU(false) to run on the CPU.");
             }
+            // no backend is set, so the one provided by the TornadoVM SDK (CUDA, OpenCL or Metal) is used
         } else {
-            options.backend(org.beehive.jitllm.runtime.backend.BackendId.CPU);
+            options.backend(BackendId.CPU);
         }
         try {
-            this.model = LocalModels.load(modelPath, options.build());
+            return LocalModels.load(modelPath, options.build());
         } catch (IOException e) {
-            throw new RuntimeException("Failed to load model from " + modelPath, e);
+            throw new LangChain4jException("Failed to load the model from " + modelPath, e);
         }
     }
 
-    /**
-     * The loaded engine model.
-     *
-     * @return the model, or {@code null} before {@link #init} has run
-     */
-    LocalModel getModel() {
-        return model;
-    }
+    GenerationResult generate(
+            ChatRequest chatRequest, JitLLMOutputParser parser, CancellationToken cancellationToken) {
+        JitLLMConversions.validate(chatRequest);
+        var generationRequest = JitLLMConversions.toGenerationRequest(
+                chatRequest, seed, event -> parser.accept(event.text()), cancellationToken);
 
-    /**
-     * Generates a chat response.
-     *
-     * @param request the request, whose messages are the whole conversation
-     * @return the engine's result for this request
-     * @param onEvent receives one ordered event per emitted completion token — its id and the text
-     *                it completed — or {@code null} for a non-streaming call
-     */
-    GenerationResult modelResponse(ChatRequest request, Consumer<GenerationEvent> onEvent) {
-        List<ToolSpecification> tools = request.toolSpecifications();
-
-        GenerationRequest.Builder builder = GenerationRequest.builder()
-                .messages(JitLLMConversions.toEngineMessages(request.messages()))
-                .maxNewTokens(maxTokens)
-                .temperature(temperature.floatValue())
-                .topP(topP.floatValue());
-        if (seed != null) {
-            builder.seed(seed);
-        }
-        if (!tools.isEmpty()) {
-            builder.tools(JitLLMConversions.toEngineTools(tools));
-        }
-        if (onEvent != null) {
-            builder.onEvent(onEvent);
-        }
-
-        GenerationSession session = session();
-        // LangChain4j's ChatModel is stateless: the caller owns the conversation and sends the
-        // whole of it on every request. The session retains its own history too, so without this
-        // each request would append the whole conversation again to the previous one and the
-        // context would grow without bound across calls.
-        session.reset();
-        GenerationResult result = session.generate(builder.build());
-        lastResult = result;
-        // A truncated response is still returned in full, with FinishReason.LENGTH (#5959).
-        switch (result.finishReason()) {
-            case MAX_TOKENS ->
+        lock.lock();
+        try {
+            if (closed) {
+                throw new IllegalStateException("The model is closed");
+            }
+            if (session == null) {
+                session = ((TextGenerationModel) model).newSession();
+            }
+            session.reset(); // every ChatRequest carries the whole conversation
+            GenerationResult result = session.generate(generationRequest);
+            if (result.finishReason() == FinishReason.CONTEXT_FULL) {
                 log.warn(
-                        "Generation stopped after reaching maxTokens ({}), so the response is truncated. "
-                                + "Increase maxTokens(...) on the model builder to get a complete response.",
-                        maxTokens);
-            case CONTEXT_FULL ->
-                log.warn("Generation stopped because the context window is full, so the response is truncated. "
-                        + "Increase maxTokens(...) on the model builder, which also sets the context length.");
-            default -> {}
+                        "Generation stopped because the context window of {} tokens is full. "
+                                + "Increase contextLength to fit longer conversations.",
+                        contextLength);
+            }
+            parser.finish();
+            return result;
+        } finally {
+            lock.unlock();
         }
-        return result;
     }
 
-    /**
-     * Logs the prompt and generation token counts and rates of the last request, at INFO.
-     */
-    public void printLastMetrics() {
-        GenerationResult result = lastResult;
-        if (result == null) {
-            log.info("jitLLM: no request has completed yet");
+    ChatResponse toChatResponse(GenerationResult result, JitLLMOutputParser parser) {
+        List<ToolExecutionRequest> toolExecutionRequests = JitLLMConversions.toToolExecutionRequests(result.toolCalls());
+        AiMessage.Builder aiMessage = AiMessage.builder();
+        if (toolExecutionRequests.isEmpty()) {
+            aiMessage.text(parser.answer());
         } else {
-            log.info("jitLLM: {}", result.timings());
+            aiMessage.toolExecutionRequests(toolExecutionRequests);
         }
-    }
-
-    private synchronized GenerationSession session() {
-        if (session == null) {
-            session = ((TextGenerationModel) model).newSession();
+        if (returnThinking) {
+            aiMessage.thinking(parser.thinking());
         }
-        return session;
+        return ChatResponse.builder()
+                .aiMessage(aiMessage.build())
+                .tokenUsage(JitLLMConversions.toTokenUsage(result))
+                .finishReason(JitLLMConversions.toFinishReason(result.finishReason()))
+                .build();
+    }
+
+    boolean returnThinking() {
+        return returnThinking;
     }
 
     /**
-     * A fresh identifier for a tool call the model requested.
+     * Returns the default request parameters of this model.
      *
-     * @return the identifier
+     * @return the default request parameters
      */
-    protected static String generateCallId() {
-        return JitLLMConversions.generateCallId();
+    public ChatRequestParameters defaultRequestParameters() {
+        return defaultRequestParameters;
     }
 
     /**
-     * Normalizes tool-call argument JSON so equivalent spellings compare equal.
+     * Returns the listeners of this model.
      *
-     * @param json the arguments as the model emitted them
-     * @return the normalized form
+     * @return the listeners
      */
-    protected static String normalizeJson(String json) {
-        return JitLLMConversions.normalizeJson(json);
+    public List<ChatModelListener> listeners() {
+        return listeners;
     }
 
     /**
-     * Releases the engine resources this model holds. The session closes before the model, which
-     * the engine requires.
+     * Releases the memory held by the model, including the device memory when running on a GPU.
+     * Waits for a running generation to finish first.
+     * After the model is closed, every request fails with an {@link IllegalStateException}.
      */
     @Override
     public void close() {
-        if (closed) {
-            return;
-        }
-        closed = true;
-        if (session != null) {
-            session.close();
-            session = null;
-        }
-        if (model != null) {
+        lock.lock();
+        try {
+            if (closed) {
+                return;
+            }
+            closed = true;
+            if (session != null) {
+                session.close(); // the engine requires the session to be closed before the model
+            }
             model.close();
+        } finally {
+            lock.unlock();
         }
     }
 }
