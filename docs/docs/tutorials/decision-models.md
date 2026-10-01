@@ -21,6 +21,7 @@ and it returns one typed **answer** per question, together with probabilities.
 
 Typical uses are:
 - **Classification and routing**: which team should handle this ticket? Which agent or retriever should handle this query?
+  (see the [decision router agentic pattern](/tutorials/agents#decision-router-agentic-pattern))
 - **Gating**: is this message spam? Does this answer contain personal data? Does this query need retrieval at all?
 - **Grading**: how urgent is this incident? How frustrated is the customer? How well does this answer address the question?
 

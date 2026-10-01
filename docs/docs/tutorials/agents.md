@@ -2523,6 +2523,135 @@ TradingSystem tradingSystem = AgenticServices.plannerBuilder(TradingSystem.class
 
 When invoked with market data and portfolio state, the planner's deliberation cycle works as follows: the "analyze market" and "maintain liquidity" desires are initially achievable. Once the `MarketAnalysisAgent` and `MarketRecommendationAgent` complete, the recommendation determines the next step. If the recommendation is `SELL` or `STRONG_SELL`, the "hedge risks" desire (priority 2) becomes achievable and preempts any lower-priority work, causing the planner to invoke the `HedgingAgent`. After hedging completes, the planner re-deliberates: the "rebalance portfolio" desire runs `HedgingStrategyDefaulter` (which preserves the existing hedging strategy) followed by `RebalancingAgent`, which receives the hedging strategy as input. If the recommendation is not `SELL` or `STRONG_SELL`, hedging is skipped entirely, and the `HedgingStrategyDefaulter` writes `"None"` so that `RebalancingAgent` can still proceed. This reactive, condition-driven switching is the essence of BDI — the system adapts its behavior based on changing beliefs rather than following a rigid plan.
 
+### Decision router agentic pattern
+
+:::note
+The decision router is based on the experimental [`DecisionModel` API](/tutorials/decision-models) and may change in future releases.
+:::
+
+The conditional workflow discussed before routes a request to the right expert in two steps: an LLM-based `CategoryRouter` agent writes a category in the `AgenticScope`, then a conditional agent evaluates one predicate per expert against that category. This works, but every routing decision costs a full LLM call whose textual answer has to be parsed, it requires an enum and a predicate to be kept in sync with the experts, and it says nothing about how sure the LLM was about its choice.
+
+A [decision model](/tutorials/decision-models) is a better fit for this kind of task: instead of generating text, it answers typed questions about an input, returning the probability of each possible answer. The decision router pattern uses one to choose among its subagents directly: each subagent is an option of a single choice question, described by its name and description, and the decision model returns the most probable one together with the probability of every subagent. Optionally, an activation threshold allows to invoke in parallel all the subagents whose probability reaches it, which is useful when a request spans more than one domain.
+
+The `DecisionRouterPlanner` implementing this pattern is created with a `DecisionModel` and, optionally, an activation threshold between 0 and 1. When it is initialized, the planner turns each of its subagents into an option of a single `ChoiceQuestion`, "Which agent is best suited to handle this request?", using the name of the subagent as the option name and its description as the description of when that option applies. This means that the descriptions of the subagents are what the decision model reads to route a request, so they should clearly state which requests each subagent is meant to handle. The input of the question is made of the arguments of the router agent itself, read from the `AgenticScope`, so the router has to be defined through a typed agent interface, and its subagents must have distinct names.
+
+When the router is invoked, its `firstAction` method asks the decision model this question in a single call, and then selects the subagents to invoke from the answer:
+
+```java
+ChoiceAnswer answer = decide(planningContext.agenticScope());
+
+if (activationThreshold == null) {
+    return call(routes.get(answer.value()));
+}
+
+List<AgentInstance> activated = routes.values().stream()
+        .filter(agent -> answer.probabilityOf(agent.name()) >= activationThreshold)
+        .toList();
+return activated.isEmpty() ? done(outputs) : call(activated);
+```
+
+Without an activation threshold, only the most probable subagent is invoked, and the `nextAction` method returns its output as the result of the router. With an activation threshold, all the subagents whose probability is at least the threshold are invoked in parallel, and the `nextAction` method collects their outputs, so that the result of the router is a map from the name of each invoked subagent to its output, which is empty when no subagent reaches the threshold.
+
+To give a practical example, let's reimplement the expert router of the conditional workflow section. The experts are the same, except that their descriptions now say which requests they handle:
+
+```java
+public interface MedicalExpert {
+
+    @UserMessage("""
+        You are a medical expert.
+        Analyze the following user request under a medical point of view and provide the best possible answer.
+        The user request is {{request}}.
+        """)
+    @Agent(description = "A medical expert, answering questions about health, injuries and treatments",
+            outputKey = "medicalResponse")
+    String medical(@V("request") String request);
+}
+```
+
+with similar `LegalExpert` (`"A legal expert, answering questions about laws, rights, contracts and lawsuits"`) and `TechnicalExpert` (`"A technical expert, answering questions about computers, software and devices"`) agents. There is no need for the `CategoryRouter` agent and the `RequestCategory` enum anymore: the `ExpertRouterAgent` interface is directly implemented by a `DecisionRouterPlanner`, configured with a decision model like [TypeSafe](/integrations/decision-models/typesafe):
+
+```java
+DecisionModel decisionModel = TypeSafeDecisionModel.builder()
+        .apiKey(System.getenv("TYPESAFE_API_KEY"))
+        .modelName("jev-1.13.0")
+        .build();
+
+ExpertRouterAgent expertRouterAgent = AgenticServices.plannerBuilder(ExpertRouterAgent.class)
+        .subAgents(medicalExpert, legalExpert, technicalExpert)
+        .outputKey("response")
+        .planner(() -> new DecisionRouterPlanner(decisionModel))
+        .build();
+
+String response = expertRouterAgent.ask("I broke my leg, what should I do?");
+```
+
+Here the decision model receives the input `{"request": "I broke my leg, what should I do?"}` and the question "Which agent is best suited to handle this request?" with the options `medical`, `legal` and `technical`, and chooses `medical`, so that only the `MedicalExpert` is invoked and its answer is returned.
+
+Some requests, however, belong to more than one domain. To invoke all the experts whose probability reaches a given threshold, pass the threshold to the planner and let the router return a map, from the name of each invoked expert to its answer:
+
+```java
+public interface MultiExpertRouterAgent {
+
+    @Agent
+    Map<String, String> ask(@V("request") String request);
+}
+
+MultiExpertRouterAgent multiExpertRouterAgent = AgenticServices.plannerBuilder(MultiExpertRouterAgent.class)
+        .subAgents(medicalExpert, legalExpert, technicalExpert)
+        .outputKey("responses")
+        .planner(() -> new DecisionRouterPlanner(decisionModel, 0.15))
+        .build();
+
+Map<String, String> responses = multiExpertRouterAgent.ask(
+        "I broke my leg in a car accident caused by another driver: " +
+        "how should I take care of my leg, and can I sue the driver for damages?");
+```
+
+For this request both the `MedicalExpert` and the `LegalExpert` are expected to reach the threshold, so they are invoked in parallel and the returned map contains their two answers, under the `medical` and `legal` keys. When no expert reaches the threshold, none of them is invoked and the returned map is empty.
+
+Note that the probabilities of the options of a choice question compete with each other and sum to 1, so a threshold `t` can activate at most `1/t` subagents: for instance, a threshold higher than 0.5 never activates more than one subagent. Also, the decision model must report the probabilities of the options to be used with a threshold, and probabilities are not calibrated in the same way by different models, so the threshold should be tuned on your own requests, and tuned again when you change the decision model or its version.
+
+As with any other agentic pattern, the decision router can be a step of a more complex agentic system. For instance, the answers of the activated experts can be merged into a single one by a `ResponseSynthesizer` agent, invoked after the router in a sequence:
+
+```java
+public interface ResponseSynthesizer {
+
+    @UserMessage("""
+        Merge the answers that different experts gave to the same user request into a single answer.
+        The user request is: {{request}}
+        The answers of the experts, keyed by expert, are: {{responses}}
+        """)
+    @Agent(description = "Merges the answers of several experts into one", outputKey = "answer")
+    String synthesize(@V("request") String request, @V("responses") Map<String, String> responses);
+}
+
+ExpertPipeline pipeline = AgenticServices.sequenceBuilder(ExpertPipeline.class)
+        .subAgents(multiExpertRouterAgent, responseSynthesizer)
+        .outputKey("answer")
+        .build();
+```
+
+The same router can also be defined with the declarative API, by providing the planner through a static method annotated with `@PlannerSupplier`:
+
+```java
+public interface DeclarativeExpertRouter {
+
+    @PlannerAgent(
+            outputKey = "response",
+            subAgents = {MedicalExpert.class, LegalExpert.class, TechnicalExpert.class})
+    String ask(@V("request") String request);
+
+    @PlannerSupplier
+    static Planner planner() {
+        return new DecisionRouterPlanner(decisionModel());
+    }
+}
+```
+
+where `decisionModel()` is a static method returning the decision model, and the experts provide their chat model through a `@ChatModelSupplier`, as discussed in the [declarative API](#declarative-api) section.
+
+Finally, keep in mind that the arguments of the router agent are sent to the decision model as they are, so they can be strings, numbers, booleans, or maps and lists of them: an argument of any other type is rejected by the decision model with an error explaining which types are supported.
+
 ## Non-AI agents
 
 All the agents discussed so far are AI agents, meaning that they are based on LLMs and can be invoked to perform tasks that require natural language understanding and generation. However, the `langchain4j-agentic` module also supports non-AI agents, which can be used to perform tasks that do not require natural language processing, like invoking a REST API or executing a command. These non-AI agents are indeed more similar to tools, but in this context it is convenient to model them as agents, so that they can be used in the same way as AI agents, and mixed with them to compose more powerful and complete agentic systems.
