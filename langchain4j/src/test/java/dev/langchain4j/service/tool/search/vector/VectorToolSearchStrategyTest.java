@@ -6,7 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.exception.ToolArgumentsException;
-import dev.langchain4j.exception.ToolExecutionException;
+import dev.langchain4j.exception.LlmVisibleToolExecutionException;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.service.tool.search.ToolSearchRequest;
 import dev.langchain4j.service.tool.search.ToolSearchResult;
@@ -28,14 +28,14 @@ class VectorToolSearchStrategyTest {
     @Test
     void should_throw_tool_execution_exception_when_query_is_null() {
         assertThatThrownBy(() -> search(strategy, "{\"query\": null}"))
-                .isExactlyInstanceOf(ToolExecutionException.class)
+                .isExactlyInstanceOf(LlmVisibleToolExecutionException.class)
                 .hasMessage("Missing required tool argument 'query'");
     }
 
     @Test
     void should_throw_tool_execution_exception_when_query_is_missing() {
         assertThatThrownBy(() -> search(strategy, "{}"))
-                .isExactlyInstanceOf(ToolExecutionException.class)
+                .isExactlyInstanceOf(LlmVisibleToolExecutionException.class)
                 .hasMessage("Missing required tool argument 'query'");
     }
 
