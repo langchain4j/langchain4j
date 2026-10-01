@@ -2,7 +2,6 @@ package dev.langchain4j.agentic.patterns.decisionrouter;
 
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
-import static dev.langchain4j.internal.ValidationUtils.ensureBetween;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.Experimental;
@@ -85,7 +84,8 @@ public class DecisionRouterPlanner implements Planner {
 
     private static double validThreshold(double threshold) {
         if (threshold <= 0.0 || threshold >= 1.0) {
-            throw illegalArgument("Activation threshold must be greater than 0.0 and lesser than 1.0, but is: %s", threshold);
+            throw illegalArgument(
+                    "Activation threshold must be greater than 0.0 and lesser than 1.0, but is: %s", threshold);
         }
         return threshold;
     }
@@ -141,12 +141,19 @@ public class DecisionRouterPlanner implements Planner {
         Map<String, Object> input = new LinkedHashMap<>();
         inputKeys.forEach(key -> input.put(key, agenticScope.readState(key)));
 
-        return decisionModel
+        ChoiceAnswer answer = decisionModel
                 .decide(DecisionRequest.builder()
                         .input(input)
                         .question(QUESTION_NAME, question)
                         .build())
                 .choice(QUESTION_NAME);
+        if (activationThreshold != null && answer.probabilities().isEmpty()) {
+            throw new IllegalStateException("DecisionRouterPlanner was created with activationThreshold="
+                    + activationThreshold + ", but the decision model did not report the probabilities of the agents: "
+                    + "use a decision model that reports them, or remove the activation threshold to invoke only "
+                    + "the most probable agent");
+        }
+        return answer;
     }
 
     @Override

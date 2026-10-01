@@ -259,7 +259,9 @@ class DecisionRouterPlannerTest {
 
         assertThatThrownBy(() -> multiRouter(model, 0.3).ask(REQUEST))
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("did not report probabilities");
+                .hasMessageContaining("activationThreshold=0.3")
+                .hasMessageContaining("did not report the probabilities")
+                .hasMessageContaining("use a decision model that reports them, or remove the activation threshold");
         assertThat(medicalExpert.calls).hasValue(0);
     }
 
