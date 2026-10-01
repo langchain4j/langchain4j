@@ -5,6 +5,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureBetween;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.Experimental;
+import dev.langchain4j.agentic.internal.DelayedResponse;
 import dev.langchain4j.agentic.planner.Action;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
@@ -19,8 +20,10 @@ import dev.langchain4j.model.decision.request.ChoiceQuestion;
 import dev.langchain4j.model.decision.request.DecisionRequest;
 import dev.langchain4j.model.decision.response.ChoiceAnswer;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,13 +47,23 @@ public class DecisionRouterPlanner implements Planner {
     static final String QUESTION_NAME = "decision-agent";
     static final String QUESTION_TEXT = "Which agent is best suited to handle this request?";
 
+    private static final String DECISION_ROUTER_KEY_PREFIX = "decision-router-";
+    private static final String ACTIVATED_STATE_KEY = DECISION_ROUTER_KEY_PREFIX + "activated";
+    private static final String OUTPUTS_STATE_KEY = DECISION_ROUTER_KEY_PREFIX + "outputs";
+    private static final String DEFERRED_STATE_KEY = DECISION_ROUTER_KEY_PREFIX + "deferred";
+
     private final DecisionModel decisionModel;
     private final Double activationThreshold;
 
     private List<String> inputKeys;
     private ChoiceQuestion question;
     private final Map<String, AgentInstance> routes = new LinkedHashMap<>();
+
+    // persisted to resume after a suspension or a crash: the names of the activated agents, the outputs of those
+    // already invoked, and the names of those whose output was still pending, like an agent waiting for a human
+    private List<String> activated;
     private final Map<String, Object> outputs = new LinkedHashMap<>();
+    private final Set<String> deferred = new LinkedHashSet<>();
 
     /**
      * Creates a router invoking only the subagent that the decision model considers the most probable.
@@ -98,21 +111,22 @@ public class DecisionRouterPlanner implements Planner {
 
     @Override
     public Action firstAction(PlanningContext planningContext) {
-        ChoiceAnswer answer = decide(planningContext.agenticScope());
-
-        if (activationThreshold == null) {
-            LOG.info("Routing to agent '{}'", answer.value());
-            return call(routes.get(answer.value()));
+        // when resuming, the agents activated before the suspension or crash are restored instead of decided again
+        if (activated == null) {
+            ChoiceAnswer answer = decide(planningContext.agenticScope());
+            activated = activationThreshold == null
+                    ? List.of(answer.value())
+                    : routes.keySet().stream()
+                            .filter(name -> answer.probabilityOf(name) >= activationThreshold)
+                            .toList();
+            LOG.info("Activating agents {} with probabilities {}", activated, answer.probabilities());
         }
 
-        List<AgentInstance> activated = routes.values().stream()
-                .filter(agent -> answer.probabilityOf(agent.name()) >= activationThreshold)
+        List<AgentInstance> pending = activated.stream()
+                .filter(name -> !outputs.containsKey(name))
+                .map(routes::get)
                 .toList();
-        LOG.info(
-                "Activating agents {} with probabilities {}",
-                activated.stream().map(AgentInstance::name).toList(),
-                answer.probabilities());
-        return activated.isEmpty() ? done(outputs) : call(activated);
+        return pending.isEmpty() ? done(result(planningContext.agenticScope())) : call(pending);
     }
 
     private ChoiceAnswer decide(AgenticScope agenticScope) {
@@ -130,12 +144,66 @@ public class DecisionRouterPlanner implements Planner {
     @Override
     public Action nextAction(PlanningContext planningContext) {
         AgentInvocation invocation = planningContext.previousAgentInvocation();
-        if (activationThreshold == null) {
-            return done(invocation.output());
+        String agentName = invocation.agentName();
+        outputs.put(agentName, invocation.output());
+        if (scopeOutput(agentName, planningContext.agenticScope()) instanceof DelayedResponse<?> delayedResponse
+                && !delayedResponse.isDone()) {
+            deferred.add(agentName);
         }
         // the loop resumes only when all the activated agents completed, so the last done action carries all outputs
-        outputs.put(invocation.agentName(), invocation.output());
-        return done(outputs);
+        return done(result(planningContext.agenticScope()));
+    }
+
+    private Object result(AgenticScope agenticScope) {
+        if (activationThreshold == null) {
+            return outputOf(activated.get(0), agenticScope);
+        }
+        Map<String, Object> result = new LinkedHashMap<>();
+        activated.stream()
+                .filter(outputs::containsKey)
+                .forEach(agentName -> result.put(agentName, outputOf(agentName, agenticScope)));
+        return result;
+    }
+
+    private Object outputOf(String agentName, AgenticScope agenticScope) {
+        if (!deferred.contains(agentName)) {
+            return outputs.get(agentName);
+        }
+        // a pending output is completed later in the scope, without blocking here if it is still pending
+        Object scopeOutput = scopeOutput(agentName, agenticScope);
+        return scopeOutput instanceof DelayedResponse<?> delayedResponse ? delayedResponse.result() : scopeOutput;
+    }
+
+    private Object scopeOutput(String agentName, AgenticScope agenticScope) {
+        String outputKey = routes.get(agentName).outputKey();
+        return outputKey == null ? null : agenticScope.state().get(outputKey);
+    }
+
+    @Override
+    public Map<String, Object> executionState() {
+        if (activated == null) {
+            return Map.of();
+        }
+        return Map.of(
+                ACTIVATED_STATE_KEY,
+                activated,
+                OUTPUTS_STATE_KEY,
+                new LinkedHashMap<>(outputs),
+                DEFERRED_STATE_KEY,
+                List.copyOf(deferred));
+    }
+
+    @Override
+    public void restoreExecutionState(Map<String, Object> state) {
+        if (state.get(ACTIVATED_STATE_KEY) instanceof List<?> activatedNames) {
+            this.activated = activatedNames.stream().map(Object::toString).toList();
+        }
+        if (state.get(OUTPUTS_STATE_KEY) instanceof Map<?, ?> savedOutputs) {
+            savedOutputs.forEach((name, output) -> outputs.put(name.toString(), output));
+        }
+        if (state.get(DEFERRED_STATE_KEY) instanceof List<?> deferredNames) {
+            deferredNames.forEach(name -> deferred.add(name.toString()));
+        }
     }
 
     @Override

@@ -2535,22 +2535,20 @@ A [decision model](/tutorials/decision-models) is a better fit for this kind of 
 
 The `DecisionRouterPlanner` implementing this pattern is created with a `DecisionModel` and, optionally, an activation threshold between 0 and 1. When it is initialized, the planner turns each of its subagents into an option of a single `ChoiceQuestion`, "Which agent is best suited to handle this request?", using the name of the subagent as the option name and its description as the description of when that option applies. This means that the descriptions of the subagents are what the decision model reads to route a request, so they should clearly state which requests each subagent is meant to handle. The input of the question is made of the arguments of the router agent itself, read from the `AgenticScope`, so the router has to be defined through a typed agent interface, and its subagents must have distinct names.
 
-When the router is invoked, its `firstAction` method asks the decision model this question in a single call, and then selects the subagents to invoke from the answer:
+When the router is invoked, its `firstAction` method asks the decision model this question in a single call, and then selects the subagents to activate from the answer:
 
 ```java
 ChoiceAnswer answer = decide(planningContext.agenticScope());
-
-if (activationThreshold == null) {
-    return call(routes.get(answer.value()));
-}
-
-List<AgentInstance> activated = routes.values().stream()
-        .filter(agent -> answer.probabilityOf(agent.name()) >= activationThreshold)
-        .toList();
-return activated.isEmpty() ? done(outputs) : call(activated);
+activated = activationThreshold == null
+        ? List.of(answer.value())
+        : routes.keySet().stream()
+                .filter(name -> answer.probabilityOf(name) >= activationThreshold)
+                .toList();
 ```
 
 Without an activation threshold, only the most probable subagent is invoked, and the `nextAction` method returns its output as the result of the router. With an activation threshold, all the subagents whose probability is at least the threshold are invoked in parallel, and the `nextAction` method collects their outputs, so that the result of the router is a map from the name of each invoked subagent to its output, which is empty when no subagent reaches the threshold.
+
+The planner also saves the names of the activated subagents, and the outputs of those that already completed, as its execution state. This way, when the agentic system is resumed after a [suspension](#agenticscope-and-agentic-systems-recoverability), for instance because one of the activated subagents is waiting for a human, or after a crash, the router doesn't ask the decision model again: it only invokes the activated subagents that didn't run yet, and its result still contains the outputs collected before the interruption.
 
 To give a practical example, let's reimplement the expert router of the conditional workflow section. The experts are the same, except that their descriptions now say which requests they handle:
 
