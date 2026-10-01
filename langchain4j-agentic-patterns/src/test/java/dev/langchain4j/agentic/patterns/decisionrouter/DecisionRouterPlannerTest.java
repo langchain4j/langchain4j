@@ -269,10 +269,13 @@ class DecisionRouterPlannerTest {
 
         assertThatThrownBy(() -> new DecisionRouterPlanner(model, 1.5))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("activationThreshold");
+                .hasMessageContaining("Activation threshold");
         assertThatThrownBy(() -> new DecisionRouterPlanner(model, -0.1))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("activationThreshold");
+                .hasMessageContaining("Activation threshold");
+        assertThatThrownBy(() -> new DecisionRouterPlanner(model, 0.0))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Activation threshold");
     }
 
     // ── Both modes ──

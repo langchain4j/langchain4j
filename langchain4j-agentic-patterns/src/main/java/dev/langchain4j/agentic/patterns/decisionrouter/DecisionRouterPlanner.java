@@ -1,5 +1,6 @@
 package dev.langchain4j.agentic.patterns.decisionrouter;
 
+import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureBetween;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
@@ -79,7 +80,14 @@ public class DecisionRouterPlanner implements Planner {
      */
     public DecisionRouterPlanner(DecisionModel decisionModel, double activationThreshold) {
         this.decisionModel = ensureNotNull(decisionModel, "decisionModel");
-        this.activationThreshold = ensureBetween(activationThreshold, 0.0, 1.0, "activationThreshold");
+        this.activationThreshold = validThreshold(activationThreshold);
+    }
+
+    private static double validThreshold(double threshold) {
+        if (threshold <= 0.0 || threshold >= 1.0) {
+            throw illegalArgument("Activation threshold must be greater than 0.0 and lesser than 1.0, but is: %s", threshold);
+        }
+        return threshold;
     }
 
     @Override
