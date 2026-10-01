@@ -89,6 +89,25 @@ langchain4j.open-ai.image-model.timeout=...
 langchain4j.open-ai.image-model.user=...
 ```
 
+## Token usage
+
+GPT image models report how many tokens a request used. `OpenAiImageModel` returns this as an
+`OpenAiImageTokenUsage`, which also splits the input and output tokens into image tokens and text
+tokens (OpenAI prices them differently):
+
+```java
+Response<Image> response = model.generate("A watercolor painting of a lighthouse");
+
+OpenAiImageTokenUsage tokenUsage = (OpenAiImageTokenUsage) response.tokenUsage();
+tokenUsage.inputTokenCount();                    // all input tokens
+tokenUsage.inputTokensDetails().textTokens();    // input tokens from the prompt
+tokenUsage.inputTokensDetails().imageTokens();   // input tokens from input images (edits)
+tokenUsage.outputTokenCount();                   // all output tokens
+```
+
+The details are `null` when OpenAI does not report them. DALL·E models do not report usage at all,
+so for them `response.tokenUsage()` is `null`.
+
 ## Examples
 
 - [OpenAiImageModelExamples](https://github.com/langchain4j/langchain4j-examples/blob/main/open-ai-examples/src/main/java/OpenAiImageModelExamples.java)
