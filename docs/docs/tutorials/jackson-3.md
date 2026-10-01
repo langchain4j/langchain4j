@@ -51,6 +51,8 @@ to. Jackson 3 changed several defaults, and every one of them is set back to wha
 | `SORT_PROPERTIES_ALPHABETICALLY` | enabled | disabled |
 | `FAIL_ON_TRAILING_TOKENS` | enabled | disabled |
 | `FAIL_ON_NULL_FOR_PRIMITIVES` | enabled | disabled |
+| `READ_ENUMS_USING_TO_STRING` | enabled | disabled: an enum is read by `name()` |
+| `WRITE_ENUMS_USING_TO_STRING` | enabled | disabled: an enum is written by `name()` |
 | `""` coerced to an enum | rejected | read as `null`, as Jackson 2 does |
 
 The first one matters most: without it, a final collection field is left empty instead of being

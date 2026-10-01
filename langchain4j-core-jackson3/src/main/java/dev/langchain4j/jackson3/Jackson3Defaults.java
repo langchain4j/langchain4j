@@ -5,6 +5,7 @@ import tools.jackson.databind.DeserializationFeature;
 import tools.jackson.databind.MapperFeature;
 import tools.jackson.databind.cfg.CoercionAction;
 import tools.jackson.databind.cfg.CoercionInputShape;
+import tools.jackson.databind.cfg.EnumFeature;
 import tools.jackson.databind.json.JsonMapper;
 import tools.jackson.databind.type.LogicalType;
 /**
@@ -23,6 +24,8 @@ public final class Jackson3Defaults {
                 .disable(MapperFeature.SORT_PROPERTIES_ALPHABETICALLY)
                 .disable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS)
                 .disable(DeserializationFeature.FAIL_ON_NULL_FOR_PRIMITIVES)
+                .disable(EnumFeature.READ_ENUMS_USING_TO_STRING)
+                .disable(EnumFeature.WRITE_ENUMS_USING_TO_STRING)
                 // Jackson 3 disables these; without the first, final collection fields are
                 // silently left empty on deserialization
                 .enable(MapperFeature.ALLOW_FINAL_FIELDS_AS_MUTATORS)
