@@ -39,4 +39,23 @@ class OpenAiImageUsageJsonTest {
                                 .build())
                         .build());
     }
+
+    @Test
+    void should_deserialize_partial_image_token_details_and_ignore_unknown_fields() {
+        String json = """
+                {
+                  "usage": {
+                    "input_tokens_details": {"image_tokens": 7, "cached_tokens": 1}
+                  }
+                }
+                """;
+
+        GenerateImagesResponse response = Json.fromJson(json, GenerateImagesResponse.class);
+
+        assertThat(response.usage())
+                .isEqualTo(ImageUsage.builder()
+                        .inputTokensDetails(
+                                ImageUsage.TokensDetails.builder().imageTokens(7).build())
+                        .build());
+    }
 }
