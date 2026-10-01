@@ -3,6 +3,7 @@ package dev.langchain4j.jackson3;
 import dev.langchain4j.Internal;
 import tools.jackson.databind.DeserializationFeature;
 import tools.jackson.databind.MapperFeature;
+import tools.jackson.databind.SerializationFeature;
 import tools.jackson.databind.cfg.CoercionAction;
 import tools.jackson.databind.cfg.CoercionInputShape;
 import tools.jackson.databind.cfg.EnumFeature;
@@ -35,10 +36,11 @@ public final class Jackson3Defaults {
                 .enable(MapperFeature.ALLOW_FINAL_FIELDS_AS_MUTATORS)
                 .enable(MapperFeature.USE_GETTERS_AS_SETTERS)
                 .enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
-                // Deliberately more lenient than Jackson 2, which fails on "" for an enum:
-                // providers do send it - an OpenAI-compatible server returning "type": "" for a
-                // tool call is what found this. Scoped to enums on purpose, so that "" for a POJO,
-                // a Map or a List still fails as it does under Jackson 2.
+                .enable(SerializationFeature.FAIL_ON_EMPTY_BEANS)
+                // Deliberately more lenient than Jackson 2, which fails on "" for an enum: providers
+                // send it - an OpenAI-compatible server returning "type": "" for a tool call is what
+                // found this - and an LLM may answer "" for an optional enum. Scoped to enums on
+                // purpose, so that "" for a POJO, a Map or a List still fails as it does under Jackson 2.
                 .withCoercionConfig(
                         LogicalType.Enum,
                         config -> config.setCoercion(CoercionInputShape.EmptyString, CoercionAction.AsNull));

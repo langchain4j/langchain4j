@@ -5,10 +5,12 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import dev.langchain4j.exception.JsonReadException;
+import dev.langchain4j.exception.JsonWriteException;
 import dev.langchain4j.internal.Json;
 import dev.langchain4j.internal.ProviderJson;
 import dev.langchain4j.internal.ProviderJsonSpec;
 import java.util.Date;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.MapperFeature;
 import tools.jackson.databind.json.JsonMapper;
@@ -52,6 +54,19 @@ class Jackson3DefaultsTest {
                 .isEqualTo("x");
     }
 
+    @Test
+    void an_object_without_properties_fails_instead_of_being_written_as_an_empty_object() {
+        assertThatThrownBy(() -> Json.toJson(new Empty())).isInstanceOf(JsonWriteException.class);
+    }
+
+    @Test
+    void a_provider_request_value_with_nothing_to_write_fails_instead_of_being_sent_as_an_empty_object() {
+        Json.JsonCodec codec = ProviderJson.codec(ProviderJsonSpec.builder().build());
+        Map<String, Object> customParameters = Map.of("options", new PrivateFieldsOnly());
+
+        assertThatThrownBy(() -> codec.toJson(customParameters)).isInstanceOf(JsonWriteException.class);
+    }
+
     // ---------- deliberately different from Jackson 2 ----------
 
     @Test
@@ -61,11 +76,6 @@ class Jackson3DefaultsTest {
 
         assertThat(Json.toJson(withDate)).isEqualTo("{\"date\":\"1970-01-01T00:00:00.000Z\"}");
         assertThat(Json.fromJson("{\"date\":0}", WithDate.class).date).isEqualTo(new Date(0));
-    }
-
-    @Test
-    void an_object_without_properties_is_written_as_an_empty_object() {
-        assertThat(Json.toJson(new Empty())).isEqualTo("{}");
     }
 
     @Test
@@ -119,6 +129,10 @@ class Jackson3DefaultsTest {
     }
 
     static class Empty {}
+
+    static class PrivateFieldsOnly {
+        private String mode = "fast";
+    }
 
     enum Color {
         RED

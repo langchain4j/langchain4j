@@ -56,6 +56,7 @@ is set back to what Jackson 2 did:
 | `WRITE_ENUMS_USING_TO_STRING` | enabled | disabled: an enum is written by `name()` |
 | `DETECT_PARAMETER_NAMES` | enabled | disabled: constructors are chosen as in Jackson 2 (see below) |
 | `FAIL_ON_UNKNOWN_PROPERTIES` | disabled | enabled; provider responses still ignore unknown fields |
+| `FAIL_ON_EMPTY_BEANS` | disabled | enabled: an object with nothing to write - for example one whose fields are private and have no getters - fails instead of being sent as `{}` |
 
 The first one matters most: without it, a final collection field is left empty instead of being
 populated, and nothing tells you.
@@ -71,10 +72,10 @@ A few differences remain on purpose, because restoring them would cost more than
 - **`java.util.Date` and `Calendar` are written as ISO-8601 strings** (`"1970-01-01T00:00:00.000Z"`)
   instead of epoch milliseconds. Both forms are read back by both versions. Restoring milliseconds
   would also turn `java.time` values into numbers and arrays.
-- **An object with no properties is written as `{}`.** Jackson 2 fails with "No serializer found".
-- **`""` is read as `null` for an enum.** Jackson 2 fails instead, but some providers send it - an
-  OpenAI-compatible server returning `"type": ""` for a tool call is what found this. `""` for an
-  object, a map or a list still fails, as it does with Jackson 2.
+- **`""` is read as `null` for an enum**, the same as a missing value. Jackson 2 fails instead, but
+  providers send it - an OpenAI-compatible server returning `"type": ""` for a tool call is what
+  found this - and an LLM may answer `""` for an optional enum. `""` for an object, a map or a list
+  still fails, as it does with Jackson 2.
 - **A `private` one-argument constructor is not used to read a plain value.** Jackson 2 uses it;
   with Jackson 3, make it non-private or annotate it with `@JsonCreator`.
 - **A field such as `xValue` with a getter `getXValue()` is written as `"xValue"`.** Jackson 2 derives
