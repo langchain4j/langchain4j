@@ -2529,13 +2529,15 @@ When invoked with market data and portfolio state, the planner's deliberation cy
 The decision router is based on the experimental [`DecisionModel` API](/tutorials/decision-models) and may change in future releases.
 :::
 
+The decision router is provided by the `langchain4j-agentic-patterns` module, and also requires a decision model integration, such as `langchain4j-typesafe`.
+
 The conditional workflow discussed before routes a request to the right expert in two steps: an LLM-based `CategoryRouter` agent writes a category in the `AgenticScope`, then a conditional agent evaluates one predicate per expert against that category. This works, but every routing decision costs a full LLM call whose textual answer has to be parsed, it requires an enum and a predicate to be kept in sync with the experts, and it says nothing about how sure the LLM was about its choice.
 
 A [decision model](/tutorials/decision-models) is a better fit for this kind of task: instead of generating text, it answers typed questions about an input, returning the probability of each possible answer. The decision router pattern uses one to choose among its subagents directly: each subagent is an option of a single choice question, described by its name and description, and the decision model returns the most probable one together with the probability of every subagent. Optionally, an activation threshold allows to invoke in parallel all the subagents whose probability reaches it, which is useful when a request spans more than one domain.
 
-The `DecisionRouterPlanner` implementing this pattern is created with a `DecisionModel` and, optionally, an activation threshold between 0 and 1. When it is initialized, the planner turns each of its subagents into an option of a single `ChoiceQuestion`, "Which agent is best suited to handle this request?", using the name of the subagent as the option name and its description as the description of when that option applies. This means that the descriptions of the subagents are what the decision model reads to route a request, so they should clearly state which requests each subagent is meant to handle. The input of the question is made of the arguments of the router agent itself, read from the `AgenticScope`, so the router has to be defined through a typed agent interface, and its subagents must have distinct names.
+The `DecisionRouterPlanner` implementing this pattern is created with a `DecisionModel` and, optionally, an activation threshold strictly between 0 and 1. When it is initialized, the planner turns each of its subagents into an option of a single `ChoiceQuestion`, "Which agent is best suited to handle this request?", using the name of the subagent as the option name and its description as the description of when that option applies. This means that the descriptions of the subagents are what the decision model reads to route a request, so they should clearly state which requests each subagent is meant to handle. The input of the question is made of the arguments of the router agent itself, read from the `AgenticScope`, so the router has to be defined through a typed agent interface, and its subagents must have distinct names.
 
-When the router is invoked, its `firstAction` method asks the decision model this question in a single call, and then selects the subagents to activate from the answer:
+When the router is invoked, the planner asks the decision model this question in a single call, and then selects the subagents to activate from the answer. Internally, its `firstAction` method does roughly the following:
 
 ```java
 ChoiceAnswer answer = decide(planningContext.agenticScope());
@@ -2623,6 +2625,16 @@ public interface ResponseSynthesizer {
     String synthesize(@V("request") String request, @V("responses") Map<String, String> responses);
 }
 
+public interface ExpertPipeline {
+
+    @Agent
+    String process(@V("request") String request);
+}
+
+ResponseSynthesizer responseSynthesizer = AgenticServices.agentBuilder(ResponseSynthesizer.class)
+        .chatModel(BASE_MODEL)
+        .build();
+
 ExpertPipeline pipeline = AgenticServices.sequenceBuilder(ExpertPipeline.class)
         .subAgents(multiExpertRouterAgent, responseSynthesizer)
         .outputKey("answer")
@@ -2641,14 +2653,17 @@ public interface DeclarativeExpertRouter {
 
     @PlannerSupplier
     static Planner planner() {
-        return new DecisionRouterPlanner(decisionModel());
+        return new DecisionRouterPlanner(TypeSafeDecisionModel.builder()
+                .apiKey(System.getenv("TYPESAFE_API_KEY"))
+                .modelName("jev-1.13.0")
+                .build());
     }
 }
 ```
 
-where `decisionModel()` is a static method returning the decision model, and the experts provide their chat model through a `@ChatModelSupplier`, as discussed in the [declarative API](#declarative-api) section.
+where the experts provide their chat model through a `@ChatModelSupplier`, as discussed in the [declarative API](#declarative-api) section.
 
-Finally, keep in mind that the arguments of the router agent are sent to the decision model as they are, so they can be strings, numbers, booleans, or maps and lists of them: an argument of any other type is rejected by the decision model with an error explaining which types are supported.
+Finally, keep in mind that the arguments of the router agent are sent to the decision model as they are, so they can be strings, numbers, booleans, or maps and lists of them: an argument of any other type is rejected by the decision model with an error explaining which types are supported. Also note that the routing decision follows the user's input, so it is not an authorization boundary: a subagent that must only be used under some conditions, for instance by authorized users, has to enforce its own access checks.
 
 ## Non-AI agents
 

@@ -71,6 +71,13 @@ public class DecisionRouterPlanner implements Planner {
 
     /**
      * Creates a router invoking only the subagent that the decision model considers the most probable.
+     * <p>
+     * When the router is invoked, before asking the decision model, it fails with an
+     * {@link IllegalArgumentException} if the router agent is not a typed agent interface with at least one argument
+     * to send to the decision model, or if two subagents have the same name.
+     *
+     * @param decisionModel the decision model choosing the subagent to invoke
+     * @throws IllegalArgumentException if {@code decisionModel} is {@code null}
      */
     public DecisionRouterPlanner(DecisionModel decisionModel) {
         this.decisionModel = ensureNotNull(decisionModel, "decisionModel");
@@ -79,11 +86,18 @@ public class DecisionRouterPlanner implements Planner {
 
     /**
      * Creates a router invoking in parallel all the subagents whose probability is at least the given threshold.
-     * The decision model must report the probabilities of the options.
      * <p>
      * The result of the router is then a map from the name of each invoked subagent to its output, so the method of
-     * the router agent must return a {@code Map} (or a {@code ResultWithAgenticScope} of a {@code Map}): this is
-     * checked when the router is invoked, before asking the decision model.
+     * the router agent must return a {@code Map} (or a {@code ResultWithAgenticScope} of a {@code Map}). When the
+     * router is invoked, before asking the decision model, it fails with an {@link IllegalArgumentException} if it
+     * does not, if the router agent is not a typed agent interface with at least one argument to send to the
+     * decision model, or if two subagents have the same name. The decision model must also report the probabilities
+     * of the options: when it does not, the invocation fails with an {@link IllegalStateException}.
+     *
+     * @param decisionModel the decision model choosing the subagents to invoke
+     * @param activationThreshold the minimum probability for a subagent to be invoked, strictly between 0 and 1
+     * @throws IllegalArgumentException if {@code decisionModel} is {@code null}, or if {@code activationThreshold}
+     *         is not strictly between 0 and 1
      */
     public DecisionRouterPlanner(DecisionModel decisionModel, double activationThreshold) {
         this.decisionModel = ensureNotNull(decisionModel, "decisionModel");
