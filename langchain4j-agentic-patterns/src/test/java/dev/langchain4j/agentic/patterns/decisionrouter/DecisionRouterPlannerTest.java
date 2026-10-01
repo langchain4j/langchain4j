@@ -78,6 +78,12 @@ class DecisionRouterPlannerTest {
         Map<String, Object> ask(@V("request") String request);
     }
 
+    public interface MultiExpertRouterWithScope {
+
+        @Agent
+        ResultWithAgenticScope<Map<String, Object>> ask(@V("request") String request);
+    }
+
     // ── Agents and workflows composing the router into a sequence ──
 
     public static class Summarizer {
@@ -301,6 +307,31 @@ class DecisionRouterPlannerTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("distinct names")
                 .hasMessageContaining("'medical'");
+    }
+
+    @Test
+    void shouldRejectARouterNotReturningAMapWithAThreshold() {
+        DecisionModelMock model = modelAnswering(choice("medical", Map.of("medical", 0.6, "legal", 0.4)));
+
+        assertThatThrownBy(() -> router(ExpertRouter.class, new DecisionRouterPlanner(model, 0.3))
+                        .ask(REQUEST))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("activationThreshold=0.3")
+                .hasMessageContaining("returns java.lang.String")
+                .hasMessageContaining("declare a Map return type, or remove the activation threshold");
+        assertThat(model.requests()).isEmpty();
+        assertThat(medicalExpert.calls).hasValue(0);
+    }
+
+    @Test
+    void shouldAcceptAResultWithAgenticScopeOfAMapWithAThreshold() {
+        DecisionModelMock model = modelAnswering(choice("medical", Map.of("medical", 0.6, "legal", 0.4)));
+
+        ResultWithAgenticScope<Map<String, Object>> result = router(
+                        MultiExpertRouterWithScope.class, new DecisionRouterPlanner(model, 0.3))
+                .ask(REQUEST);
+
+        assertThat(result.result()).containsOnly(entry("medical", "medical answer"), entry("legal", "legal answer"));
     }
 
     @Test

@@ -15,10 +15,13 @@ import dev.langchain4j.agentic.planner.Planner;
 import dev.langchain4j.agentic.planner.PlanningContext;
 import dev.langchain4j.agentic.scope.AgentInvocation;
 import dev.langchain4j.agentic.scope.AgenticScope;
+import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.model.decision.DecisionModel;
 import dev.langchain4j.model.decision.request.ChoiceQuestion;
 import dev.langchain4j.model.decision.request.DecisionRequest;
 import dev.langchain4j.model.decision.response.ChoiceAnswer;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -35,7 +38,8 @@ import org.slf4j.LoggerFactory;
  * <p>
  * Without an activation threshold, the planner invokes only the most probable subagent and returns its output.
  * With an activation threshold, it invokes in parallel all the subagents whose probability is at least the threshold
- * and returns a map from the name of each invoked subagent to its output. Since the probabilities of the options
+ * and returns a map from the name of each invoked subagent to its output, so the method of the router agent must
+ * return a {@code Map}, which is checked when the router is invoked. Since the probabilities of the options
  * of a choice question sum to 1, a threshold {@code t} activates at most {@code 1/t} subagents, and when no subagent
  * reaches the threshold none is invoked and the result is an empty map.
  */
@@ -76,6 +80,10 @@ public class DecisionRouterPlanner implements Planner {
     /**
      * Creates a router invoking in parallel all the subagents whose probability is at least the given threshold.
      * The decision model must report the probabilities of the options.
+     * <p>
+     * The result of the router is then a map from the name of each invoked subagent to its output, so the method of
+     * the router agent must return a {@code Map} (or a {@code ResultWithAgenticScope} of a {@code Map}): this is
+     * checked when the router is invoked, before asking the decision model.
      */
     public DecisionRouterPlanner(DecisionModel decisionModel, double activationThreshold) {
         this.decisionModel = ensureNotNull(decisionModel, "decisionModel");
@@ -101,6 +109,9 @@ public class DecisionRouterPlanner implements Planner {
             throw new IllegalArgumentException("DecisionRouterPlanner requires a typed agent interface whose method "
                     + "arguments are the input of the routing decision");
         }
+        if (activationThreshold != null) {
+            ensureMapResult(initPlanningContext.plannerAgent().outputType());
+        }
 
         ChoiceQuestion.Builder questionBuilder = ChoiceQuestion.builder().text(QUESTION_TEXT);
         for (AgentInstance agent : initPlanningContext.subagents()) {
@@ -115,6 +126,24 @@ public class DecisionRouterPlanner implements Planner {
             }
         }
         this.question = questionBuilder.build();
+    }
+
+    private void ensureMapResult(Type outputType) {
+        // the declared type of the result, without the ResultWithAgenticScope wrapper
+        Type resultType = outputType instanceof ParameterizedType parameterized
+                        && parameterized.getRawType() == ResultWithAgenticScope.class
+                ? parameterized.getActualTypeArguments()[0]
+                : outputType;
+        Type rawType = resultType instanceof ParameterizedType parameterized ? parameterized.getRawType() : resultType;
+        // the result is built as a LinkedHashMap, so accept any type it can be assigned to (Map, Object, HashMap...)
+        if (rawType instanceof Class<?> resultClass
+                && resultClass != void.class
+                && !resultClass.isAssignableFrom(LinkedHashMap.class)) {
+            throw new IllegalArgumentException("DecisionRouterPlanner was created with activationThreshold="
+                    + activationThreshold + ", so its result is a map from agent name to output, but the router agent "
+                    + "returns " + resultType.getTypeName() + ": declare a Map return type, or remove the activation "
+                    + "threshold to return the output of the most probable agent");
+        }
     }
 
     @Override
