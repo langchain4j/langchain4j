@@ -917,7 +917,7 @@ so it will reveal the nested sequence of agents invocations necessary to generat
 
 ```
 AgentInvocation{agent=Sequential, startTime=2026-03-18T17:27:28.099439515, finishTime=2026-03-18T17:27:38.683498783, duration=10584 ms, tokens=0, inputs={topic=dragons and wiz..., style=comedy}, output=In a realm wher...}
-|=> AgentInvocation{agent=generateStory, startTime=2026-03-18T17:27:28.1.20.1287, finishTime=2026-03-18T17:27:31.033561726, duration=2932 ms, tokens=127, inputs={topic=dragons and wiz...}, output=In a realm wher...}
+|=> AgentInvocation{agent=generateStory, startTime=2026-03-18T17:27:28.1.20.2287, finishTime=2026-03-18T17:27:31.033561726, duration=2932 ms, tokens=127, inputs={topic=dragons and wiz...}, output=In a realm wher...}
 |=> AgentInvocation{agent=reviewLoop, startTime=2026-03-18T17:27:31.035952285, finishTime=2026-03-18T17:27:38.683438433, duration=7647 ms, tokens=0, inputs={score=0.8, topic=dragons and wiz..., style=comedy, story=In a realm wher...}, output=null}
     |=> AgentInvocation{agent=scoreStyle, iteration=0, startTime=2026-03-18T17:27:31.036155107, finishTime=2026-03-18T17:27:31.671478699, duration=635 ms, tokens=152, inputs={style=comedy, story=In a realm wher...}, output=0.2}
     |=> AgentInvocation{agent=editStory, iteration=0, startTime=2026-03-18T17:27:31.671711250, finishTime=2026-03-18T17:27:38.182881941, duration=6511 ms, tokens=491, inputs={style=comedy, story=In a realm wher...}, output=In a realm wher...}
@@ -1418,7 +1418,7 @@ AgentInvocation{agentName='withdraw', arguments={user=Mario, amount=115.0}}
 
 AgentInvocation{agentName='credit', arguments={user=Georgios, amount=115.0}}
 
-AgentInvocation{agentName='done', arguments={response=The transfer of 100 EUR from Mario's account to Georgios' account has been completed. Mario's balance is 885.0 USD, and Georgios' balance is 1.20.1 USD. The conversion rate was 1.15 EUR to USD.}}
+AgentInvocation{agentName='done', arguments={response=The transfer of 100 EUR from Mario's account to Georgios' account has been completed. Mario's balance is 885.0 USD, and Georgios' balance is 1.20.2 USD. The conversion rate was 1.15 EUR to USD.}}
 ```
 
 The last invocation is a special one that signals the supervisor believes the task has been completed, and returns as a response a summary of all the operations performed.
@@ -3096,7 +3096,7 @@ The remote A2A agent must return a [Task](https://a2a-protocol.org/latest/specif
 
 ### Multi-turn conversations with A2A servers
 
-The A2A protocol supports multi-turn conversations through `contextId` and `taskId` fields on the message envelope. A `contextId` groups related tasks into a conversation, while a `taskId` references a specific task within that conversation. When omitted, the A2A server generates new values; when provided, the server continues the existing conversation.
+The A2A protocol supports multi-turn conversations through `contextId` and `taskId` fields on the message envelope. A `contextId` groups related tasks into a conversation, while a `taskId` references a specific task within that conversation. When omitted, the A2A server generates new values; when a `taskId` is provided, the server continues that existing task instead of creating a new one.
 
 To pass these fields on the outgoing message envelope, annotate method parameters with `@A2AContextId` and `@A2ATaskId`. These parameters are **not** sent as message content — they are set on the message envelope instead.
 
@@ -3112,9 +3112,13 @@ public interface ChatAgent {
 
 When `null` is passed for `contextId` or `taskId`, the field is omitted from the envelope and the server creates new values.
 
-When the `@A2AContextId` or `@A2ATaskId` parameters also have recognizable names, possibly configured through the `@V` annotation, the server-assigned values from the response are automatically written back to the `AgenticScope` under that name. This enables multi-turn flows where the first call captures the IDs and subsequent calls reuse them.
+When the `@A2AContextId` parameter also has a recognizable name, possibly configured through the `@V` annotation, the server-assigned value from the response is automatically written back to the `AgenticScope` under that name. This enables multi-turn flows, where the first call captures the context and subsequent calls continue the same conversation: the server keeps the context and creates a new task in it for every invocation.
 
-If the method returns `ResultWithAgenticScope`, the IDs are accessible directly:
+The `taskId` follows a different rule: it is written back to the `AgenticScope` only when the remote task is still open at the moment the invocation returns, and the scope entry is cleared otherwise. An invocation normally returns once its task has reached a terminal state, and the A2A server rejects any further message sent to such a task, so in the common case nothing is propagated and the next invocation starts a fresh task. The one exception is a [streaming client listener](#streaming-a2a-client-listener) that stops consuming the stream early: the remote task keeps running, and its identifier is kept in the scope so that it can still be polled, canceled or continued.
+
+Outside of that case the `taskId` is taken from the invocation arguments: pass `null` (or omit the parameter) to let the server create a new task, or pass the identifier of an existing task to continue it.
+
+If the method returns `ResultWithAgenticScope`, the context is accessible directly:
 
 ```java
 public interface ChatAgent {
@@ -3129,13 +3133,13 @@ public interface ChatAgent {
 // First turn — server generates contextId and taskId
 ResultWithAgenticScope<String> first = chatAgent.chat("hello", null, null);
 String contextId = (String) first.agenticScope().readState("contextId");
-String taskId = (String) first.agenticScope().readState("taskId");
 
-// Second turn — reuse the server-generated IDs to continue the conversation
-ResultWithAgenticScope<String> second = chatAgent.chat("follow-up", contextId, taskId);
+// Second turn — reuse the server-generated context to continue the conversation,
+// while letting the server create a new task for this invocation
+ResultWithAgenticScope<String> second = chatAgent.chat("follow-up", contextId, null);
 ```
 
-In this way, when an A2A agent is used in an agentic system, the `contextId` and `taskId` are automatically propagated through the shared `AgenticScope`. This means a sequence of two A2A calls to the same server will naturally form a multi-turn conversation:
+In this way, when an A2A agent is used in an agentic system, the `contextId` is automatically propagated through the shared `AgenticScope`. This means a sequence of two A2A calls to the same server will naturally form a multi-turn conversation:
 
 ```java
 public interface EchoSubAgent {
@@ -3166,11 +3170,49 @@ MultiTurnWorkflow workflow = AgenticServices.sequenceBuilder(MultiTurnWorkflow.c
 ResultWithAgenticScope<String> result = workflow.converse("hello");
 ```
 
-In this sequence, the first agent sends a message with no `contextId`/`taskId` (they are `null` in the scope). The server creates a new task and context. The response IDs are written to the scope. When the second agent runs, it reads the now-populated `contextId` and `taskId` from the scope and sends them on the message envelope, continuing the same conversation.
+In this sequence, the first agent sends a message with no `contextId`/`taskId` (they are `null` in the scope). The server creates a new context and a new task, and then the `contextId` is written to the scope. When the second agent runs, it reads the now-populated `contextId` from the scope and sends it on the message envelope, so the conversation continues. As the task completed by the first agent cannot accept further messages, the `taskId` is left unset in the scope, and the server creates a new task in the same context.
 
 ### Multi-tenant A2A agents
 
-In a multi-tenant A2A deployment, messages must be scoped to a specific tenant so the server can apply the correct routing, isolation, and policies. The `@A2ATenantId` annotation marks a method parameter whose value is set as the `tenant` field on the outgoing `MessageSendParams` — it is **not** included as a `TextPart` in the message content.
+In a multi-tenant A2A deployment, messages must be scoped to a specific tenant so the server can apply the correct routing, isolation, and policies. The `langchain4j-agentic-a2a` module supports three ways to configure the tenant, depending on whether it is fixed, dynamic, or derived automatically from the server URL.
+
+#### Auto-detection from the agent card URL
+
+When no tenant is configured, the client automatically extracts it from the agent card URL. A multi-tenant A2A server typically follows the convention `/.well-known/{tenant}/agent-card.json`. If the agent card URL matches this pattern, the extracted tenant is silently applied to every outgoing message — no configuration is needed.
+
+#### Static tenant via the `@A2AClientAgent` annotation
+
+When the tenant is known at build time and is the same for every call, set the `tenant` attribute directly on the `@A2AClientAgent` annotation:
+
+```java
+public interface MyA2AAgent {
+
+    @A2AClientAgent(a2aServerUrl = "http://localhost:8080", tenant = "acme", outputKey = "response")
+    String chat(@V("question") String question);
+}
+```
+
+The tenant is set on `MessageSendParams` for every message sent by this agent — no method parameter is needed. It is **not** included as a `TextPart` in the message content. Setting `tenant` in the annotation takes precedence over auto-detection from the agent card URL.
+
+When building programmatically, pass the tenant as the second argument to `a2aBuilder`:
+
+```java
+UntypedAgent agent = AgenticServices
+        .a2aBuilder("http://localhost:8080", "acme")
+        .inputKeys("question")
+        .outputKey("response")
+        .build();
+
+// Or with a typed interface:
+MyA2AAgent agent = AgenticServices
+        .a2aBuilder("http://localhost:8080", "acme", MyA2AAgent.class)
+        .outputKey("response")
+        .build();
+```
+
+#### Dynamic tenant via `@A2ATenantId`
+
+When the tenant varies per call, annotate a method parameter with `@A2ATenantId`. The parameter value is set as the `tenant` field on the outgoing `MessageSendParams` — it is **not** included as a `TextPart` in the message content.
 
 ```java
 public interface MyA2AAgent {
@@ -3197,7 +3239,15 @@ public interface MultiTenantChatAgent {
 }
 ```
 
-Unlike `@A2AContextId` and `@A2ATaskId`, the tenant value is never written back to the `AgenticScope` by the server — the caller is responsible for supplying it on every invocation.
+Unlike `@A2AContextId` and `@A2ATaskId`, the tenant value is never written back to the `AgenticScope` — the caller is responsible for supplying it on every invocation.
+
+#### Summary: tenant resolution order
+
+| Approach | When to use |
+|---|---|
+| Auto-detection from agent card URL | Server URL follows `/.well-known/{tenant}/agent-card.json` and tenant is constant |
+| `tenant` on `@A2AClientAgent` (or `a2aBuilder(url, tenant, ...)`) | Tenant is fixed and known at build time |
+| `@A2ATenantId` method parameter | Tenant varies per call |
 
 ### Human-in-the-loop A2A agents
 
@@ -3290,7 +3340,7 @@ UntypedAgent creativeWriter = AgenticServices.a2aBuilder(A2A_SERVER_URL)
 
 The listener is invoked for each event received from the remote A2A agent. Return `continueStreaming()` to keep consuming events, `stopWithResponse(response)` to stop consuming the stream and return the specified response to the caller, or `stopWithCurrentArtifacts()` to stop consuming the stream and return the artifacts received so far, using the default A2A client artifact-to-text extraction logic.
 
-Stopping the client-side stream does not cancel the remote A2A task. The remote task may continue executing asynchronously.
+Stopping the client-side stream does not cancel the remote A2A task. The remote task may continue executing asynchronously. Because that task is still open when the invocation returns, its identifier is written back to the `AgenticScope` under the name of the `@A2ATaskId` parameter, if the agent declares one, so that the caller can poll, cancel or continue it. This is the only case in which a `taskId` is propagated through the scope, as explained in the [Multi-turn conversations with A2A servers](#multi-turn-conversations-with-a2a-servers) section.
 
 ### Configuring the A2A server URL dynamically
 

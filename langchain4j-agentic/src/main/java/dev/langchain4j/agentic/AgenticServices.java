@@ -267,7 +267,17 @@ public class AgenticServices {
      * @return a new A2AClientBuilder instance
      */
     public static A2AClientBuilder<UntypedAgent> a2aBuilder(String a2aServerUrl) {
-        return a2aBuilder(a2aServerUrl, UntypedAgent.class);
+        return a2aBuilder(a2aServerUrl, (String) null);
+    }
+    /**
+     * Creates a builder for an A2A client that can be used to interact with agents over the A2A protocol.This is useful for building agentic systems that communicate with remote agents.
+     *
+     * @param a2aServerUrl the URL of the A2A server
+     * @param tenant the A2A agent tenant
+     * @return a new A2AClientBuilder instance
+     */
+    public static A2AClientBuilder<UntypedAgent> a2aBuilder(String a2aServerUrl, String tenant) {
+        return a2aBuilder(a2aServerUrl, tenant, UntypedAgent.class);
     }
 
     /**
@@ -279,7 +289,20 @@ public class AgenticServices {
      * @return a new A2AClientBuilder instance
      */
     public static <T> A2AClientBuilder<T> a2aBuilder(String a2aServerUrl, Class<T> agentServiceClass) {
-        return A2AService.get().a2aBuilder(a2aServerUrl, agentServiceClass);
+        return A2AService.get().a2aBuilder(a2aServerUrl,null, agentServiceClass);
+    }
+
+    /**
+     * Creates a builder for an A2A client that can be used to interact with agents over the A2A protocol.
+     * This is useful for building agentic systems that communicate with remote agents.
+     *
+     * @param a2aServerUrl the URL of the A2A server
+     * @param tenant the A2A agent tenant
+     * @param agentServiceClass the class of the agent service
+     * @return a new A2AClientBuilder instance
+     */
+    public static <T> A2AClientBuilder<T> a2aBuilder(String a2aServerUrl, String tenant, Class<T> agentServiceClass) {
+        return A2AService.get().a2aBuilder(a2aServerUrl, tenant, agentServiceClass);
     }
 
     public interface DeclarativeAgentCreationContext<T> {
@@ -752,11 +775,7 @@ public class AgenticServices {
     private static <T> T createA2AClient(Class<T> agentServiceClass, Method a2aMethod) {
         var a2aClient = a2aMethod.getAnnotation(A2AClientAgent.class);
         String a2aServerUrl = resolveA2AServerUrl(agentServiceClass, a2aClient);
-        var a2aClientBuilder = a2aBuilder(a2aServerUrl, agentServiceClass);
-
-        if (!isNullOrBlank(a2aClient.tenant())) {
-            a2aClientBuilder.tenant(a2aClient.tenant());
-        }
+        var a2aClientBuilder = a2aBuilder(a2aServerUrl, a2aClient.tenant(), agentServiceClass);
 
         a2aClientBuilder
                 .inputKeys(Stream.of(a2aMethod.getParameters())
