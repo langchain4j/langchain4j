@@ -1,5 +1,7 @@
 package dev.langchain4j.model.openai.internal.chat;
 
+import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
+
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -8,11 +10,8 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
-
 import java.util.Locale;
 import java.util.Objects;
-
-import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 
 @JsonDeserialize(builder = ToolCall.Builder.class)
 @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -20,17 +19,20 @@ public class ToolCall {
 
     @JsonProperty
     private final String id;
+
     @JsonProperty
     private final Integer index;
+
     @JsonProperty
     private final ToolType type;
+
     @JsonProperty
     private final FunctionCall function;
 
     @JsonCreator
     public ToolCall(Builder builder) {
         this.id = builder.id;
-        this.index = builder.index;
+        this.index = Builder.normalizeIndex(builder.index);
         this.type = builder.type;
         this.function = builder.function;
     }
@@ -55,8 +57,7 @@ public class ToolCall {
     @JacocoIgnoreCoverageGenerated
     public boolean equals(Object another) {
         if (this == another) return true;
-        return another instanceof ToolCall
-                && equalTo((ToolCall) another);
+        return another instanceof ToolCall && equalTo((ToolCall) another);
     }
 
     @JacocoIgnoreCoverageGenerated
@@ -81,12 +82,7 @@ public class ToolCall {
     @Override
     @JacocoIgnoreCoverageGenerated
     public String toString() {
-        return "ToolCall{"
-                + "id=" + id
-                + ", index=" + index
-                + ", type=" + type
-                + ", function=" + function
-                + "}";
+        return "ToolCall{" + "id=" + id + ", index=" + index + ", type=" + type + ", function=" + function + "}";
     }
 
     public static Builder builder() {
@@ -103,13 +99,21 @@ public class ToolCall {
         private ToolType type;
         private FunctionCall function;
 
+        private static Integer normalizeIndex(Integer index) {
+            if (index != null && index < 0) {
+                // Some OpenAI-compatible proxies emit -1; null activates fallback indexing.
+                return null;
+            }
+            return index;
+        }
+
         public Builder id(String id) {
             this.id = id;
             return this;
         }
 
         public Builder index(Integer index) {
-            this.index = index;
+            this.index = normalizeIndex(index);
             return this;
         }
 

@@ -210,20 +210,7 @@ public class AnthropicRequestMapper {
             inputSchema.put("$defs", toMap(parameters.definitions()));
         }
 
-        String description;
-        if (isNotNullOrBlank(toolSpecification.description())) {
-            description = toolSpecification.description();
-        } else {
-            // Provide intelligent default descriptions based on tool name
-            description = switch (toolSpecification.name().toLowerCase()) {
-                case "get_current_time", "current_time", "time" -> "Gets the current time";
-                case "get_weather", "weather" -> "Gets weather information";
-                case "calculator", "calculate" -> "Performs mathematical calculations";
-                default -> "Tool: " + toolSpecification.name();
-            };
-        }
-
-        return new AnthropicTool(toolSpecification.name(), description, inputSchema);
+        return new AnthropicTool(toolSpecification.name(), toolSpecification.description(), inputSchema);
     }
 
     private static AnthropicTool toTool(ToolSpecification toolSpec) {

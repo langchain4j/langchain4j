@@ -4,6 +4,7 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.exception.JsonException;
 import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.mcp.client.McpCallContext;
@@ -193,7 +194,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
 
     @Override
     public void sendMessage(McpCallContext context) {
-        execute(context, false);
+        execute(context, false, false);
     }
 
     @Override
@@ -251,7 +252,18 @@ public class StreamableHttpMcpTransport implements McpTransport {
     }
 
     private CompletableFuture<String> execute(McpCallContext context, boolean isRetry) {
-        Long id = context.message().getId();
+        return execute(context, isRetry, true);
+    }
+
+    /**
+     * @param expectResponse whether this message expects a response from the server. A notification
+     *     or a response to a server-initiated request does not, and must not be registered as a
+     *     pending operation: its id comes from the server's id space, so registering it would both
+     *     leave a future that is never completed and displace a client-initiated request that is
+     *     still in flight and happens to carry the same id.
+     */
+    private CompletableFuture<String> execute(McpCallContext context, boolean isRetry, boolean expectResponse) {
+        Long id = expectResponse ? context.message().getId() : null;
         if (!(context.message() instanceof McpInitializeRequest)) {
             CompletableFuture<String> reinitializeInProgress = this.initializeInProgress.get();
             if (reinitializeInProgress != null) {
@@ -279,7 +291,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
                             if (!isRetry) {
                                 sendInitializeRequest(StreamableHttpMcpTransport.this.initializeRequest)
                                         .thenAccept(ignored -> {
-                                            execute(context, true)
+                                            execute(context, true, expectResponse)
                                                     .thenAccept(future::complete)
                                                     .exceptionally(t -> {
                                                         future.completeExceptionally(t);
@@ -292,13 +304,14 @@ public class StreamableHttpMcpTransport implements McpTransport {
                                         });
                             } else {
                                 // Reinitialization did not help; fail instead of leaving the caller hanging
-                                future.completeExceptionally(new RuntimeException(
+                                future.completeExceptionally(new HttpException(
+                                        responseInfo.statusCode(),
                                         "Session expired again after reinitialization: server returned status code "
                                                 + responseInfo.statusCode()));
                             }
                         } else {
-                            future.completeExceptionally(
-                                    new RuntimeException("Unexpected status code: " + responseInfo.statusCode()));
+                            future.completeExceptionally(new HttpException(
+                                    responseInfo.statusCode(), "Unexpected status code: " + responseInfo.statusCode()));
                         }
                         return HttpResponse.BodySubscribers.discarding();
                     } else {

@@ -13,6 +13,8 @@ import static dev.langchain4j.model.ModelProvider.AMAZON_BEDROCK;
 import static java.util.Objects.isNull;
 
 import dev.langchain4j.Experimental;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.internal.MappingTrackingStreamingChatResponseHandler;
 import dev.langchain4j.internal.ToolCallBuilder;
 import dev.langchain4j.reactive.streaming.ReactiveStreamingDefaults;
@@ -30,6 +32,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.Flow.Publisher;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import mutiny.zero.BackpressureStrategy;
 import mutiny.zero.TubeConfiguration;
@@ -113,7 +116,7 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
     private void streamTo(ConverseStreamRequest converseStreamRequest, StreamingChatResponseHandler targetHandler) {
         ConverseResponseFromStreamBuilder responseBuilder = new ConverseResponseFromStreamBuilder(returnThinking);
         ToolCallBuilder toolCallBuilder = new ToolCallBuilder(-1);
-        AtomicReference<ContentBlockDelta.Type> currentContentType = new AtomicReference<>();
+        AtomicBoolean insideToolUseBlock = new AtomicBoolean();
         AtomicReference<StreamingHandle> streamingHandle = new AtomicReference<>();
 
         ConverseStreamResponseHandler converseStreamResponseHandler = ConverseStreamResponseHandler.builder()
@@ -145,6 +148,7 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
                                 log.debug("onContentBlockStart: {}", event);
                             }
                             if (event.start().type() == ContentBlockStart.Type.TOOL_USE) {
+                                insideToolUseBlock.set(true);
                                 toolCallBuilder.updateIndex(toolCallBuilder.index() + 1);
                                 toolCallBuilder.updateId(event.start().toolUse().toolUseId());
                                 toolCallBuilder.updateName(
@@ -156,16 +160,15 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
                                 log.debug("onContentBlockDelta: {}", event);
                             }
                             ContentBlockDelta delta = event.delta();
-                            currentContentType.set(delta.type());
-                            if (currentContentType.get() == ContentBlockDelta.Type.TEXT) {
+                            if (delta.type() == ContentBlockDelta.Type.TEXT) {
                                 onPartialResponse(handler, delta.text(), streamingHandle.get());
-                            } else if (currentContentType.get() == ContentBlockDelta.Type.REASONING_CONTENT) {
+                            } else if (delta.type() == ContentBlockDelta.Type.REASONING_CONTENT) {
                                 ReasoningContentBlockDelta reasoningContent = delta.reasoningContent();
                                 String thinking = reasoningContent.text();
                                 if (returnThinking && isNotNullOrEmpty(thinking)) {
                                     onPartialThinking(handler, thinking, streamingHandle.get());
                                 }
-                            } else if (currentContentType.get() == ContentBlockDelta.Type.TOOL_USE) {
+                            } else if (delta.type() == ContentBlockDelta.Type.TOOL_USE) {
                                 String input = delta.toolUse().input();
                                 if (isNotNullOrEmpty(input)) {
                                     toolCallBuilder.appendArguments(input);
@@ -176,7 +179,7 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
                             if (logResponses) {
                                 log.debug("onContentBlockStop: {}", event);
                             }
-                            if (currentContentType.get() == ContentBlockDelta.Type.TOOL_USE) {
+                            if (insideToolUseBlock.getAndSet(false)) {
                                 onCompleteToolCall(handler, toolCallBuilder.buildAndReset());
                             }
                             responseBuilder.append(event);
@@ -190,8 +193,10 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
                                 log.debug("onMetadata: {}", event);
                             }
                             responseBuilder.append(event);
-                            ChatResponse response =
-                                    responseFrom(responseBuilder.build(), converseStreamRequest.modelId());
+                            ChatResponse response = responseFrom(
+                                    responseBuilder.build(),
+                                    converseStreamRequest.modelId(),
+                                    toolCallBuilder.allRequests());
                             onCompleteResponse(handler, response);
                         }
 
@@ -260,9 +265,10 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
                 .build();
     }
 
-    private ChatResponse responseFrom(ConverseResponse converseResponse, String modelId) {
+    private ChatResponse responseFrom(
+            ConverseResponse converseResponse, String modelId, List<ToolExecutionRequest> streamedToolRequests) {
         return ChatResponse.builder()
-                .aiMessage(aiMessageFrom(converseResponse))
+                .aiMessage(aiMessageFrom(converseResponse, streamedToolRequests))
                 .metadata(BedrockChatResponseMetadata.builder()
                         .id(UUID.randomUUID().toString())
                         .finishReason(finishReasonFrom(converseResponse.stopReason()))
@@ -271,6 +277,17 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
                         .guardrailAssessmentSummary(guardrailAssessmentSummaryFrom(converseResponse.trace()))
                         .build())
                 .build();
+    }
+
+    private AiMessage aiMessageFrom(ConverseResponse converseResponse, List<ToolExecutionRequest> streamedToolRequests) {
+        AiMessage aiMessage = aiMessageFrom(converseResponse);
+        if (streamedToolRequests.isEmpty()) {
+            return aiMessage;
+        }
+        // the streamed requests carry the arguments JSON exactly as the model produced it, while the aggregated
+        // ConverseResponse carries it re-serialized (different key order and spacing), which would make the same
+        // tool call look different depending on where it is observed
+        return aiMessage.toBuilder().toolExecutionRequests(streamedToolRequests).build();
     }
 
     @Override

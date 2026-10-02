@@ -30,7 +30,10 @@ https://github.com/googleapis/java-genai
 - [File API](#file-api)
 - [Cached Content Support](#cached-content-support)
 - [Thinking Models (Gemini 3.0+)](#thinking-models-gemini-30)
+- [Token Usage](#token-usage)
 - [Multimodality (Audio, Video, PDF)](#multimodality-audio-video-pdf)
+- [Audio Transcription](#audio-transcription)
+- [Image Generation Output](#image-generation-output)
 - [Token Count Estimator](#token-count-estimator)
 - [Model Catalog](#model-catalog)
 
@@ -40,7 +43,7 @@ https://github.com/googleapis/java-genai
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-google-genai</artifactId>
-    <version>1.20.0-beta30</version>
+    <version>1.20.2-beta30</version>
 </dependency>
 ```
 
@@ -475,6 +478,23 @@ preserved, regardless of this setting.
 > `returnThinking` is disabled by default. Thought summaries returned by the model are then discarded and
 > never appear in `AiMessage.text()`.
 
+## Token Usage
+
+Responses carry a `GoogleGenAiTokenUsage`, which adds the token counts Gemini reports for thinking, cached
+content and tool results to the standard input, output and total counts:
+
+```java
+GoogleGenAiTokenUsage tokenUsage = (GoogleGenAiTokenUsage) response.metadata().tokenUsage();
+
+Integer thoughtsTokenCount = tokenUsage.thoughtsTokenCount();
+Integer cachedContentTokenCount = tokenUsage.cachedContentTokenCount();
+Integer toolUsePromptTokenCount = tokenUsage.toolUsePromptTokenCount();
+```
+
+Each is `null` when the model does not report it. `cachedContentTokenCount` is a subset of
+`inputTokenCount()`, whereas `toolUsePromptTokenCount` and `thoughtsTokenCount` are counted on top of it:
+Gemini defines the total as `inputTokenCount + outputTokenCount + toolUsePromptTokenCount + thoughtsTokenCount`.
+
 ## GoogleGenAiEmbeddingModel
 
 The `GoogleGenAiEmbeddingModel` allows you to generate embeddings for text segments using models like `gemini-embedding-2`.
@@ -648,6 +668,89 @@ ChatResponse response = gemini.chat(ChatRequest.builder()
     ))
     .build());
 ```
+
+## Audio Transcription
+
+Models built for speech recognition, such as `gemini-3.5-transcribe`, turn audio into text.
+Send the audio as an `AudioContent`; no text instruction is needed. The transcript is returned as the text of the `AiMessage`.
+
+Use `audioTranscriptionConfig` to control how the audio is transcribed:
+
+```java
+ChatModel transcriber = GoogleGenAiChatModel.builder()
+    .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
+    .modelName("gemini-3.5-transcribe")
+    .audioTranscriptionConfig(AudioTranscriptionConfig.builder()
+        .mode(AudioTranscriptionConfigMode.Known.VERBATIM)
+        .languageCodes("en-US")
+        .customVocabulary("LangChain4j", "Gemini")
+        .wordTimestamp(true)
+        .diarization(true)
+        .build())
+    .build();
+
+ChatResponse response = transcriber.chat(ChatRequest.builder()
+    .messages(UserMessage.from(AudioContent.from("https://example.com/meeting.mp3")))
+    .build());
+
+String transcript = response.aiMessage().text();
+```
+
+- `mode`: `VERBATIM` (the default) keeps every word, including filler words, repetitions and false starts.
+  `SMART` removes them and lightly formats the text. Word timestamps and diarization cannot be used with `SMART`.
+- `languageCodes`: BCP-47 codes of the languages spoken in the audio. When omitted, the language is detected automatically.
+- `customVocabulary`: words and phrases the model should recognize, such as product or people names.
+- `wordTimestamp`: returns the start and end offset of every word.
+- `diarization`: labels which speaker said what.
+
+Word timestamps and speaker labels are not part of the `AiMessage` text. Read them from the raw response:
+
+```java
+GoogleGenAiChatResponseMetadata metadata = (GoogleGenAiChatResponseMetadata) response.metadata();
+
+for (Part part : metadata.rawResponse().parts()) {
+    part.audioTranscription().ifPresent(transcription -> {
+        String speaker = transcription.speakerLabel().orElse("");
+        for (WordInfo word : transcription.words().orElse(List.of())) {
+            System.out.printf("[%s] %s - %s %s%n",
+                speaker, word.startOffset().orElse(""), word.endOffset().orElse(""), word.word().orElse(""));
+        }
+    });
+}
+```
+
+`GoogleGenAiStreamingChatModel` accepts the same `audioTranscriptionConfig`, but its raw response only holds the last streamed chunk,
+so use `GoogleGenAiChatModel` when you need word timestamps or speaker labels.
+
+## Image Generation Output
+
+Some Gemini models, such as `gemini-2.5-flash-image`, return generated pictures alongside the text of a chat
+response. They arrive as `inlineData` parts, and `GoogleGenAiChatModel` maps them into the `AiMessage` attributes
+under `GENERATED_IMAGES_KEY`, which is what `AiMessage.images()` reads:
+
+```java
+ChatModel model = GoogleGenAiChatModel.builder()
+    .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
+    .modelName("gemini-2.5-flash-image")
+    .build();
+
+ChatResponse response = model.chat(UserMessage.from("A watercolor sketch of a lighthouse at dusk"));
+
+for (Image image : response.aiMessage().images()) {
+    System.out.println("Generated image: " + image.mimeType());
+
+    // Save it, display it, or hand it to another model
+    Files.write(Paths.get("generated_image.png"), Base64.getDecoder().decode(image.base64Data()));
+}
+```
+
+Only `image/*` blobs become generated images; inline data of any other type is ignored.
+
+Streaming responses work the same way. `GoogleGenAiStreamingChatModel` receives the answer one chunk at a time, and
+every chunk contributes its images to the final message, so a picture that arrives on its own chunk is not lost.
+
+`langchain4j-google-ai-gemini` stores generated images under the same key, so the same reading code works with
+either module.
 
 ## Token Count Estimator
 

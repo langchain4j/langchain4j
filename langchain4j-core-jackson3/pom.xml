@@ -43,4 +43,22 @@
 
     </dependencies>
 
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <!-- Spring Boot and Quarkus applications are compiled with -parameters, which changes how constructors are chosen -->
+                        <id>java-test-compile</id>
+                        <configuration>
+                            <parameters>true</parameters>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
 </project>

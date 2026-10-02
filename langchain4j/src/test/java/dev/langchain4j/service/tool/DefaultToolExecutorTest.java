@@ -5,9 +5,12 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.singletonMap;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolMemoryId;
+import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.agent.tool.ToolSpecifications;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.ImageContent;
@@ -15,7 +18,6 @@ import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.invocation.InvocationContext;
 import java.lang.reflect.Method;
-import java.util.concurrent.CompletableFuture;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.HashMap;
@@ -25,6 +27,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -168,8 +171,16 @@ class DefaultToolExecutorTest implements WithAssertions {
         assertThat(coerceArgument("A", "arg", ExampleEnum.class, null)).isEqualTo(ExampleEnum.A);
         assertThat(coerceArgument(ExampleEnum.A, "arg", ExampleEnum.class, null))
                 .isEqualTo(ExampleEnum.A);
+        assertThat(coerceArgument(" A", "arg", ExampleEnum.class, null)).isEqualTo(ExampleEnum.A);
+        assertThat(coerceArgument("A ", "arg", ExampleEnum.class, null)).isEqualTo(ExampleEnum.A);
+        assertThat(coerceArgument(" a ", "arg", ExampleEnum.class, null)).isEqualTo(ExampleEnum.A);
+        assertThat(coerceArgument("\u2002A\u2002", "arg", ExampleEnum.class, null))
+                .isEqualTo(ExampleEnum.A);
         assertThatExceptionOfType(IllegalArgumentException.class)
                 .isThrownBy(() -> coerceArgument("D", "arg", ExampleEnum.class, null))
+                .withMessageContaining("Argument \"arg\" is not a valid enum value for");
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> coerceArgument(" D ", "arg", ExampleEnum.class, null))
                 .withMessageContaining("Argument \"arg\" is not a valid enum value for");
 
         assertThat(coerceArgument(true, "arg", boolean.class, null)).isEqualTo(true);
@@ -406,6 +417,162 @@ class DefaultToolExecutorTest implements WithAssertions {
         String result = toolExecutor.execute(request, "DEFAULT");
 
         assertThat(result).isEqualTo("3");
+    }
+
+    @Test
+    void should_execute_tool_by_custom_tool_name() {
+        ToolExecutionRequest request = ToolExecutionRequest.builder()
+                .id("1")
+                .name("add_one")
+                .arguments("{ \"arg0\": 2 }")
+                .build();
+
+        DefaultToolExecutor toolExecutor = new DefaultToolExecutor(new CustomNamedTool(), request);
+
+        String result = toolExecutor.execute(request, "DEFAULT");
+
+        assertThat(result).isEqualTo("3");
+    }
+
+    @Test
+    void should_execute_tool_by_java_method_name_when_custom_tool_name_is_set() {
+        ToolExecutionRequest request = ToolExecutionRequest.builder()
+                .id("1")
+                .name("addOne")
+                .arguments("{ \"arg0\": 2 }")
+                .build();
+
+        DefaultToolExecutor toolExecutor = new DefaultToolExecutor(new CustomNamedTool(), request);
+
+        String result = toolExecutor.execute(request, "DEFAULT");
+
+        assertThat(result).isEqualTo("3");
+    }
+
+    @Test
+    void should_execute_tool_by_java_method_name_when_custom_tool_name_is_blank() {
+        ToolExecutionRequest request = ToolExecutionRequest.builder()
+                .id("1")
+                .name("addOne")
+                .arguments("{ \"arg0\": 2 }")
+                .build();
+
+        DefaultToolExecutor toolExecutor = new DefaultToolExecutor(new BlankNamedTool(), request);
+
+        String result = toolExecutor.execute(request, "DEFAULT");
+
+        assertThat(result).isEqualTo("3");
+    }
+
+    @Test
+    void should_not_execute_tool_with_unknown_custom_tool_name() {
+        ToolExecutionRequest request = ToolExecutionRequest.builder()
+                .id("1")
+                .name("subtract_one")
+                .arguments("{ \"arg0\": 2 }")
+                .build();
+
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> new DefaultToolExecutor(new CustomNamedTool(), request))
+                .withMessageContaining("Method 'subtract_one' is not found in object");
+    }
+
+    @Test
+    void should_execute_inherited_tool_by_custom_tool_name() {
+        ToolExecutionRequest request = ToolExecutionRequest.builder()
+                .id("1")
+                .name("add_one")
+                .arguments("{ \"value\": 2 }")
+                .build();
+
+        DefaultToolExecutor toolExecutor = new DefaultToolExecutor(new InheritedCustomNamedTool(), request);
+
+        String result = toolExecutor.execute(request, "DEFAULT");
+
+        assertThat(result).isEqualTo("3");
+    }
+
+    @Test
+    void should_execute_inherited_tool_by_java_method_name() {
+        ToolExecutionRequest request = ToolExecutionRequest.builder()
+                .id("1")
+                .name("addOne")
+                .arguments("{ \"value\": 2 }")
+                .build();
+
+        DefaultToolExecutor toolExecutor = new DefaultToolExecutor(new InheritedTool(), request);
+
+        String result = toolExecutor.execute(request, "DEFAULT");
+
+        assertThat(result).isEqualTo("3");
+    }
+
+    @Test
+    void should_execute_tool_using_exactly_what_its_tool_specification_publishes() {
+        List<Object> toolObjects = asList(
+                new CustomNamedTool(), new BlankNamedTool(), new InheritedCustomNamedTool(), new InheritedTool());
+
+        for (Object toolObject : toolObjects) {
+            for (ToolSpecification specification : ToolSpecifications.toolSpecificationsFrom(toolObject)) {
+                String parameterName = specification.parameters().properties().keySet().stream()
+                        .findFirst()
+                        .orElseThrow();
+
+                ToolExecutionRequest request = ToolExecutionRequest.builder()
+                        .id("1")
+                        .name(specification.name())
+                        .arguments("{ \"" + parameterName + "\": 2 }")
+                        .build();
+
+                DefaultToolExecutor toolExecutor = new DefaultToolExecutor(toolObject, request);
+
+                assertThat(toolExecutor.execute(request, "DEFAULT")).isEqualTo("3");
+            }
+        }
+    }
+
+    private static class CustomNamedTool {
+
+        @Tool(name = "add_one")
+        public int addOne(int value) {
+            return value + 1;
+        }
+    }
+
+    private static class BlankNamedTool {
+
+        @Tool(name = "")
+        public int addOne(int value) {
+            return value + 1;
+        }
+    }
+
+    interface CustomNamedToolInterface {
+
+        @Tool(name = "add_one")
+        int addOne(@P(name = "value", description = "the value to increment") int value);
+    }
+
+    private static class InheritedCustomNamedTool implements CustomNamedToolInterface {
+
+        @Override
+        public int addOne(int value) {
+            return value + 1;
+        }
+    }
+
+    interface ToolInterface {
+
+        @Tool
+        int addOne(@P(name = "value", description = "the value to increment") int value);
+    }
+
+    private static class InheritedTool implements ToolInterface {
+
+        @Override
+        public int addOne(int value) {
+            return value + 1;
+        }
     }
 
     @Test
@@ -831,9 +998,9 @@ class DefaultToolExecutorTest implements WithAssertions {
                 .name(methodName)
                 .arguments("{}")
                 .build();
-        return executor.executeAsync(request, InvocationContext.builder()
-                        .chatMemoryId("DEFAULT")
-                        .build())
+        return executor.executeAsync(
+                        request,
+                        InvocationContext.builder().chatMemoryId("DEFAULT").build())
                 .get();
     }
 

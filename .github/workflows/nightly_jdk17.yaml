@@ -58,9 +58,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Set up JDK 17
-        uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
         with:
-          java-version: 17
+          java-version: 17.0.20+101
           distribution: 'temurin'
           cache: 'maven'
 
@@ -147,10 +147,12 @@ jobs:
           NOMIC_API_KEY: ${{ secrets.NOMIC_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENAI_BASE_URL: ${{ secrets.OPENAI_BASE_URL }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           OVHAI_AI_API_KEY: ${{ secrets.OVHAI_AI_API_KEY }}
           PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
           RAPID_API_KEY: ${{ secrets.RAPID_API_KEY }}
           TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
+          TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
           VOYAGE_API_KEY: ${{ secrets.VOYAGE_API_KEY }}
           WEAVIATE_API_KEY: ${{ secrets.WEAVIATE_API_KEY }}
           WEAVIATE_HOST: ${{ secrets.WEAVIATE_HOST }}

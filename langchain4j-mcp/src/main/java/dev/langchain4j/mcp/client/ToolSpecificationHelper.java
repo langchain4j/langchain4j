@@ -18,6 +18,7 @@ import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -45,12 +46,12 @@ class ToolSpecificationHelper {
             }
             Map<String, Object> inputSchema = object(tool.get("inputSchema"));
             builder.parameters((JsonObjectSchema) jsonNodeToJsonSchemaElement(inputSchema));
-            Map<String, String> paramHeaders = extractAndValidateMcpParamHeaders(inputSchema, toolName);
+            McpParamHeaders paramHeaders = extractAndValidateMcpParamHeaders(inputSchema, toolName);
             if (paramHeaders == null) {
                 continue;
             }
-            if (!paramHeaders.isEmpty()) {
-                builder.addMetadata(MCP_PARAM_HEADERS, paramHeaders);
+            if (!paramHeaders.headers().isEmpty()) {
+                builder.addMetadata(MCP_PARAM_HEADERS, paramHeaders.headers());
             }
             if (tool.containsKey("annotations")) {
                 processMcpToolAnnotations(object(tool.get("annotations")), builder);
@@ -77,6 +78,16 @@ class ToolSpecificationHelper {
      * to a JsonSchemaElement object that describes the tool's arguments.
      */
     static JsonSchemaElement jsonNodeToJsonSchemaElement(Map<String, Object> node) {
+        return jsonNodeToJsonSchemaElement(node, Map.of(), new HashSet<>());
+    }
+
+    /**
+     * @param definitions   the '$defs'/'definitions' collected from this node and all of its ancestors,
+     *                       keyed by name, used to resolve a '$ref' that appears inside an 'allOf'
+     * @param resolvingRefs the definition keys currently being resolved, used to break reference cycles
+     */
+    private static JsonSchemaElement jsonNodeToJsonSchemaElement(
+            Map<String, Object> node, Map<String, Object> definitions, Set<String> resolvingRefs) {
         // MCP SEP-2106 allows composition keywords such as anyOf alongside type "object", and the tool
         // inputSchema root is always type "object". JsonObjectSchema cannot represent a schema-level anyOf,
         // so an object-typed node is parsed as an object (its anyOf constraint is not carried over) rather
@@ -84,7 +95,7 @@ class ToolSpecificationHelper {
         if (node.containsKey("anyOf") && !isObjectType(node)) {
             JsonAnyOfSchema.Builder anyOf = JsonAnyOfSchema.builder();
             JsonSchemaElement[] types = array(node.get("anyOf")).stream()
-                    .map(item -> jsonNodeToJsonSchemaElement(object(item)))
+                    .map(item -> jsonNodeToJsonSchemaElement(object(item), definitions, resolvingRefs))
                     .toArray(JsonSchemaElement[]::new);
             anyOf.anyOf(types);
             if (node.containsKey("description")) {
@@ -105,14 +116,52 @@ class ToolSpecificationHelper {
             if (node.containsKey("description")) {
                 builder.description(string(node.get("description")));
             }
+            // Definitions ('$defs' in draft 2019-09+, 'definitions' in draft-07) declared on this node are
+            // added to those inherited from ancestor schemas and threaded further down, so a '$ref' (e.g.
+            // one appearing inside 'allOf') resolves even when its definition lives on an outer schema.
+            Object defsNode = node.containsKey("$defs") ? node.get("$defs") : node.get("definitions");
+            Map<String, Object> availableDefinitions = definitions;
+            if (!object(defsNode).isEmpty()) {
+                availableDefinitions = new LinkedHashMap<>(definitions);
+                availableDefinitions.putAll(object(defsNode));
+            }
+            // MCP servers commonly compose object schemas with 'allOf' (e.g. one object schema per
+            // capability). JsonObjectSchema cannot represent 'allOf' itself, so object-typed sub-schemas
+            // (including those reached through a '$ref') are merged into this one: union of properties,
+            // union of required and collected definitions, with the node's own members taking precedence
+            // on conflicts. An 'allOf' entry that does not resolve to an object (a scalar sub-schema, or a
+            // '$ref' that cannot be resolved or points at a non-object) is skipped with a warning.
+            Map<String, JsonSchemaElement> mergedProperties = new LinkedHashMap<>();
+            Set<String> mergedRequired = new LinkedHashSet<>();
+            Map<String, JsonSchemaElement> mergedDefinitions = new LinkedHashMap<>();
+            if (node.containsKey("allOf")) {
+                for (Object allOfEntry : array(node.get("allOf"))) {
+                    mergeAllOfSubSchema(
+                            object(allOfEntry),
+                            availableDefinitions,
+                            resolvingRefs,
+                            mergedProperties,
+                            mergedRequired,
+                            mergedDefinitions);
+                }
+            }
             if (node.containsKey("properties")) {
                 for (Map.Entry<String, Object> property :
                         object(node.get("properties")).entrySet()) {
-                    builder.addProperty(property.getKey(), jsonNodeToJsonSchemaElement(object(property.getValue())));
+                    mergedProperties.put(
+                            property.getKey(),
+                            jsonNodeToJsonSchemaElement(
+                                    object(property.getValue()), availableDefinitions, resolvingRefs));
                 }
             }
+            if (!mergedProperties.isEmpty()) {
+                builder.addProperties(mergedProperties);
+            }
             if (node.containsKey("required")) {
-                builder.required(toStringArray(node.get("required")));
+                mergedRequired.addAll(List.of(toStringArray(node.get("required"))));
+            }
+            if (!mergedRequired.isEmpty()) {
+                builder.required(List.copyOf(mergedRequired));
             }
             if (node.containsKey("additionalProperties")) {
                 Object additionalProperties = node.get("additionalProperties");
@@ -127,14 +176,17 @@ class ToolSpecificationHelper {
                     builder.additionalProperties(bool(additionalProperties));
                 }
             }
-            // Handle $defs (draft 2019-09+) and definitions (draft-07)
-            Object defsNode = node.containsKey("$defs") ? node.get("$defs") : node.get("definitions");
+            // Convert the definitions collected above (draft 2019-09+ '$defs', draft-07 'definitions')
+            // into the schema's own 'definitions' map.
             if (defsNode != null) {
-                Map<String, JsonSchemaElement> definitions = new LinkedHashMap<>();
                 for (Map.Entry<String, Object> entry : object(defsNode).entrySet()) {
-                    definitions.put(entry.getKey(), jsonNodeToJsonSchemaElement(object(entry.getValue())));
+                    mergedDefinitions.put(
+                            entry.getKey(),
+                            jsonNodeToJsonSchemaElement(object(entry.getValue()), availableDefinitions, resolvingRefs));
                 }
-                builder.definitions(definitions);
+            }
+            if (!mergedDefinitions.isEmpty()) {
+                builder.definitions(mergedDefinitions);
             }
             return builder.build();
         } else if (typeNode instanceof String) {
@@ -184,7 +236,7 @@ class ToolSpecificationHelper {
                     // which means "any value"
                     Object items = node.get("items");
                     if (!(items instanceof List) || !((List<?>) items).isEmpty()) {
-                        builder.items(jsonNodeToJsonSchemaElement(object(items)));
+                        builder.items(jsonNodeToJsonSchemaElement(object(items), definitions, resolvingRefs));
                     }
                 }
                 return builder.build();
@@ -227,6 +279,75 @@ class ToolSpecificationHelper {
             }
             return anyOf.build();
         }
+    }
+
+    /**
+     * Merges a single 'allOf' sub-schema into the accumulators of the containing object schema.
+     * A '$ref' entry is resolved against {@code definitions} (guarding against reference cycles);
+     * any entry that does not resolve to a {@link JsonObjectSchema} cannot be merged and is skipped
+     * with a warning, since JsonObjectSchema can only absorb object-typed sub-schemas.
+     */
+    private static void mergeAllOfSubSchema(
+            Map<String, Object> entry,
+            Map<String, Object> definitions,
+            Set<String> resolvingRefs,
+            Map<String, JsonSchemaElement> mergedProperties,
+            Set<String> mergedRequired,
+            Map<String, JsonSchemaElement> mergedDefinitions) {
+        if (entry.containsKey("$ref")) {
+            String ref = string(entry.get("$ref"));
+            String refKey = extractReferenceKey(ref);
+            if (refKey == null || !definitions.containsKey(refKey)) {
+                log.warn(
+                        "Ignoring 'allOf' entry with unresolvable $ref '{}' while converting a tool input schema:"
+                                + " no matching definition was found",
+                        ref);
+                return;
+            }
+            if (!resolvingRefs.add(refKey)) {
+                // This $ref is already being resolved higher up the stack (a cyclic definition); its
+                // members are merged at that outer level, so the repeat is skipped to avoid looping.
+                return;
+            }
+            try {
+                JsonSchemaElement resolved =
+                        jsonNodeToJsonSchemaElement(object(definitions.get(refKey)), definitions, resolvingRefs);
+                if (!mergeObjectSchema(resolved, mergedProperties, mergedRequired, mergedDefinitions)) {
+                    log.warn(
+                            "Ignoring 'allOf' $ref '{}' while converting a tool input schema: it resolves to a"
+                                    + " non-object schema, which cannot be merged into the containing object",
+                            ref);
+                }
+            } finally {
+                resolvingRefs.remove(refKey);
+            }
+        } else {
+            JsonSchemaElement element = jsonNodeToJsonSchemaElement(entry, definitions, resolvingRefs);
+            if (!mergeObjectSchema(element, mergedProperties, mergedRequired, mergedDefinitions)) {
+                log.warn(
+                        "Ignoring non-object 'allOf' entry (declared type: {}) while converting a tool input schema:"
+                                + " only object sub-schemas can be merged into the containing object",
+                        entry.get("type"));
+            }
+        }
+    }
+
+    /**
+     * Merges an object sub-schema (its properties, required and definitions) into the given accumulators.
+     * Returns {@code false} without touching them when the element is not a {@link JsonObjectSchema}.
+     */
+    private static boolean mergeObjectSchema(
+            JsonSchemaElement element,
+            Map<String, JsonSchemaElement> mergedProperties,
+            Set<String> mergedRequired,
+            Map<String, JsonSchemaElement> mergedDefinitions) {
+        if (element instanceof JsonObjectSchema subSchema) {
+            mergedProperties.putAll(subSchema.properties());
+            mergedRequired.addAll(subSchema.required());
+            mergedDefinitions.putAll(subSchema.definitions());
+            return true;
+        }
+        return false;
     }
 
     private static boolean isObjectType(Map<String, Object> node) {
@@ -307,18 +428,20 @@ class ToolSpecificationHelper {
         meta.forEach(builder::addMetadata);
     }
 
-    static Map<String, String> extractAndValidateMcpParamHeaders(Map<String, Object> schema, String toolName) {
-        Map<String, String> result = new LinkedHashMap<>();
+    private record McpParamHeaders(Map<List<String>, String> headers) {}
+
+    private static McpParamHeaders extractAndValidateMcpParamHeaders(Map<String, Object> schema, String toolName) {
+        Map<List<String>, String> headers = new LinkedHashMap<>();
         Set<String> seenHeaderNamesLower = new HashSet<>();
         List<String> errors = new ArrayList<>();
-        extractAndValidateMcpParamHeaders(schema, "", result, seenHeaderNamesLower, errors);
+        extractAndValidateMcpParamHeaders(schema, List.of(), headers, seenHeaderNamesLower, errors);
         if (!errors.isEmpty()) {
             for (String error : errors) {
                 log.warn("Excluding tool '{}' from tools/list: {}", toolName, error);
             }
             return null;
         }
-        return result;
+        return new McpParamHeaders(headers);
     }
 
     private static final List<String> FORBIDDEN_SCHEMA_KEYWORDS = List.of(
@@ -326,8 +449,8 @@ class ToolSpecificationHelper {
 
     private static void extractAndValidateMcpParamHeaders(
             Map<String, Object> schema,
-            String pathPrefix,
-            Map<String, String> result,
+            List<String> pathPrefix,
+            Map<List<String>, String> headers,
             Set<String> seenHeaderNamesLower,
             List<String> errors) {
         checkForbiddenSubtrees(schema, errors);
@@ -335,19 +458,21 @@ class ToolSpecificationHelper {
         for (Map.Entry<String, Object> entry : properties.entrySet()) {
             // a non-object property schema yields an empty map, which simply declares no header
             Map<String, Object> propSchema = object(entry.getValue());
-            String propertyPath = pathPrefix.isEmpty() ? entry.getKey() : pathPrefix + "." + entry.getKey();
+            List<String> propertyPath = new ArrayList<>(pathPrefix);
+            propertyPath.add(entry.getKey());
+            String pathDescription = String.join(".", propertyPath);
             Object headerAnnotation = propSchema.get("x-mcp-header");
             if (headerAnnotation != null) {
                 if (!(headerAnnotation instanceof String)) {
-                    errors.add("x-mcp-header value must be a string, but property '" + propertyPath + "' declares "
+                    errors.add("x-mcp-header value must be a string, but property '" + pathDescription + "' declares "
                             + jsonTypeName(headerAnnotation));
                 } else {
                     validateMcpParamHeader(
-                            (String) headerAnnotation, propSchema, propertyPath, result, seenHeaderNamesLower, errors);
+                            (String) headerAnnotation, propSchema, propertyPath, headers, seenHeaderNamesLower, errors);
                 }
             }
             if (propSchema.containsKey("properties")) {
-                extractAndValidateMcpParamHeaders(propSchema, propertyPath, result, seenHeaderNamesLower, errors);
+                extractAndValidateMcpParamHeaders(propSchema, propertyPath, headers, seenHeaderNamesLower, errors);
             } else {
                 checkForbiddenSubtrees(propSchema, errors);
             }
@@ -357,28 +482,29 @@ class ToolSpecificationHelper {
     private static void validateMcpParamHeader(
             String headerName,
             Map<String, Object> propSchema,
-            String propertyPath,
-            Map<String, String> result,
+            List<String> propertyPath,
+            Map<List<String>, String> headers,
             Set<String> seenHeaderNamesLower,
             List<String> errors) {
+        String pathDescription = String.join(".", propertyPath);
         if (headerName.isEmpty()) {
-            errors.add("x-mcp-header value must not be empty (property '" + propertyPath + "')");
+            errors.add("x-mcp-header value must not be empty (property '" + pathDescription + "')");
         } else if (!isValidToken(headerName)) {
-            errors.add("x-mcp-header value '" + headerName + "' is not a valid HTTP token (property '" + propertyPath
+            errors.add("x-mcp-header value '" + headerName + "' is not a valid HTTP token (property '" + pathDescription
                     + "')");
         }
         if (!seenHeaderNamesLower.add(headerName.toLowerCase(Locale.ROOT))) {
-            errors.add("duplicate x-mcp-header value '" + headerName + "' (case-insensitive, property '" + propertyPath
-                    + "')");
+            errors.add("duplicate x-mcp-header value '" + headerName + "' (case-insensitive, property '"
+                    + pathDescription + "')");
         }
         for (String type : declaredTypes(propSchema)) {
             if (!ALLOWED_HEADER_PARAM_TYPES.contains(type)) {
-                errors.add("x-mcp-header on property '" + propertyPath + "' with forbidden type '" + type
+                errors.add("x-mcp-header on property '" + pathDescription + "' with forbidden type '" + type
                         + "' (only string, integer, boolean are allowed)");
             }
         }
         if (errors.isEmpty()) {
-            result.put(propertyPath, headerName);
+            headers.put(List.copyOf(propertyPath), headerName);
         }
     }
 

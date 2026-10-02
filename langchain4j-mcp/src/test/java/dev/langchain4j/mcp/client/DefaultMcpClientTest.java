@@ -24,6 +24,7 @@ import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import dev.langchain4j.mcp.client.transport.McpTransport;
+import dev.langchain4j.mcp.protocol.McpCallToolRequest;
 import dev.langchain4j.mcp.protocol.McpCancellationNotification;
 import dev.langchain4j.mcp.protocol.McpCancellationParams;
 import dev.langchain4j.mcp.protocol.McpClientMessage;
@@ -35,9 +36,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -111,6 +114,65 @@ public class DefaultMcpClientTest {
 
         // then: a second transport start occurred
         verify(transport, times(2)).start(any(McpOperationHandler.class));
+    }
+
+    @Test
+    public void should_reinitialize_when_health_check_fails() throws Exception {
+        final McpTransport transport = getMinimalMcpTransportMock();
+        doThrow(new RuntimeException("server unreachable")).when(transport).checkHealth();
+
+        final CountDownLatch restarted = new CountDownLatch(1);
+        doAnswer(invocation -> {
+                    restarted.countDown();
+                    return null;
+                })
+                .when(transport)
+                .start(any(McpOperationHandler.class));
+
+        try (DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .autoHealthCheckInterval(java.time.Duration.ofMillis(10))
+                .build()) {
+            assertThat(restarted.await(5, TimeUnit.SECONDS)).isTrue();
+        }
+    }
+
+    @Test
+    public void should_not_reinitialize_when_health_check_fails_after_close() throws Exception {
+        final McpTransport transport = getMinimalMcpTransportMock();
+        final CountDownLatch healthCheckRunning = new CountDownLatch(1);
+        final CountDownLatch neverCompletes = new CountDownLatch(1);
+        doAnswer(invocation -> {
+                    healthCheckRunning.countDown();
+                    try {
+                        neverCompletes.await();
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        throw new RuntimeException("health check interrupted", e);
+                    }
+                    return null;
+                })
+                .when(transport)
+                .checkHealth();
+
+        final DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .autoHealthCheckInterval(java.time.Duration.ofMillis(10))
+                .build();
+        assertThat(healthCheckRunning.await(5, TimeUnit.SECONDS)).isTrue();
+
+        final CountDownLatch restarted = new CountDownLatch(1);
+        doAnswer(invocation -> {
+                    restarted.countDown();
+                    return null;
+                })
+                .when(transport)
+                .start(any(McpOperationHandler.class));
+
+        client.close();
+
+        assertThat(restarted.await(2, TimeUnit.SECONDS)).isFalse();
+        verify(transport, times(1)).start(any(McpOperationHandler.class));
     }
 
     @Test
@@ -441,6 +503,178 @@ public class DefaultMcpClientTest {
     }
 
     @Test
+    public void should_report_a_tool_execution_timeout_as_an_error() {
+        final McpTransport transport = getMinimalMcpTransportMock();
+        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
+                .thenAnswer(invocation -> new CompletableFuture<>());
+
+        DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion("2025-11-25")
+                .toolExecutionTimeout(java.time.Duration.ofMillis(1))
+                .build();
+
+        ToolExecutionResult result = client.executeTool(
+                ToolExecutionRequest.builder().name("test").arguments("{}").build());
+
+        assertThat(result.isError()).isTrue();
+        assertThat(result.resultText()).isEqualTo("There was a timeout executing the tool");
+    }
+
+    @Test
+    public void should_report_a_tool_execution_timeout_as_an_error_on_the_reactive_path() throws Exception {
+        final McpTransport transport = getMinimalMcpTransportMock();
+        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
+                .thenAnswer(invocation -> new CompletableFuture<>());
+
+        DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion("2025-11-25")
+                .toolExecutionTimeout(java.time.Duration.ofMillis(1))
+                .build();
+
+        ToolExecutionResult result = client.executeToolAsync(
+                        ToolExecutionRequest.builder()
+                                .name("test")
+                                .arguments("{}")
+                                .build(),
+                        null)
+                .get();
+
+        assertThat(result.isError()).isTrue();
+        assertThat(result.resultText()).isEqualTo("There was a timeout executing the tool");
+    }
+
+    @Test
+    public void async_tool_execution_sends_mcp_param_headers() throws Exception {
+        McpTransport transport = getModernStdioTransportMock();
+        AtomicReference<McpCallContext> toolCallContext = new AtomicReference<>();
+        when(transport.sendRequest(any(McpCallContext.class))).thenAnswer(invocation -> {
+            McpCallContext context = invocation.getArgument(0);
+            if (context.message() instanceof McpCallToolRequest) {
+                toolCallContext.set(context);
+                return CompletableFuture.completedFuture(
+                        buildToolCompleteResponse("done").toString());
+            }
+            if (context.message() instanceof McpListToolsRequest) {
+                return CompletableFuture.completedFuture(toolsListWithParamHeader());
+            }
+            return CompletableFuture.completedFuture(getDiscoverResult().toString());
+        });
+
+        DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion("2026-07-28")
+                .subscribeToToolListChanges(false)
+                .subscribeToPromptListChanges(false)
+                .subscribeToResourceListChanges(false)
+                .build();
+
+        // the tool list has to be known before the header mapping can be looked up in it
+        client.listTools();
+
+        ToolExecutionResult result = client.executeToolAsync(
+                        ToolExecutionRequest.builder()
+                                .name("regionEcho")
+                                .arguments("{\"region\": \"us-west1\", \"value\": \"hello\"}")
+                                .build(),
+                        null)
+                .get();
+
+        assertThat(result.resultText()).isEqualTo("done");
+        assertThat(toolCallContext.get().mcpParamHeaders()).isEqualTo(Map.of("Region", "us-west1"));
+    }
+
+    @Test
+    public void multi_round_trip_retry_sends_mcp_param_headers() throws Exception {
+        McpTransport transport = getModernStdioTransportMock();
+        List<McpCallContext> toolCallContexts = new ArrayList<>();
+        when(transport.sendRequest(any(McpCallContext.class))).thenAnswer(invocation -> {
+            McpCallContext context = invocation.getArgument(0);
+            if (context.message() instanceof McpCallToolRequest) {
+                toolCallContexts.add(context);
+                return CompletableFuture.completedFuture(
+                        toolCallContexts.size() == 1
+                                ? buildInputRequiredResponse(true, false).toString()
+                                : buildToolCompleteResponse("done").toString());
+            }
+            if (context.message() instanceof McpListToolsRequest) {
+                return CompletableFuture.completedFuture(toolsListWithParamHeader());
+            }
+            return CompletableFuture.completedFuture(getDiscoverResult().toString());
+        });
+
+        DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion("2026-07-28")
+                .subscribeToToolListChanges(false)
+                .subscribeToPromptListChanges(false)
+                .subscribeToResourceListChanges(false)
+                .build();
+
+        client.listTools();
+
+        ToolExecutionResult result = client.executeTool(ToolExecutionRequest.builder()
+                .name("regionEcho")
+                .arguments("{\"region\": \"us-west1\", \"value\": \"hello\"}")
+                .build());
+
+        assertThat(result.resultText()).isEqualTo("done");
+        // both the first attempt and the retry have to carry the header mapping
+        assertThat(toolCallContexts).hasSize(2);
+        assertThat(toolCallContexts.get(0).mcpParamHeaders()).isEqualTo(Map.of("Region", "us-west1"));
+        assertThat(toolCallContexts.get(1).mcpParamHeaders()).isEqualTo(Map.of("Region", "us-west1"));
+    }
+
+    @Test
+    public void should_pass_the_error_flag_to_a_custom_tool_result_converter_on_timeout() {
+        final McpTransport transport = getMinimalMcpTransportMock();
+        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
+                .thenAnswer(invocation -> new CompletableFuture<>());
+
+        McpToolResultConverter converter = (content, isError) -> ToolExecutionResult.builder()
+                .resultText(String.valueOf(content.get(0).get("text")))
+                .isError(isError)
+                .build();
+
+        DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion("2025-11-25")
+                .toolExecutionTimeout(java.time.Duration.ofMillis(1))
+                .toolResultConverter(converter)
+                .build();
+
+        ToolExecutionResult result = client.executeTool(
+                ToolExecutionRequest.builder().name("test").arguments("{}").build());
+
+        assertThat(result.isError()).isTrue();
+        assertThat(result.resultText()).isEqualTo("There was a timeout executing the tool");
+    }
+
+    @Test
+    public void should_not_report_a_successful_tool_execution_as_an_error() {
+        final McpTransport transport = getMinimalMcpTransportMock();
+        ObjectNode toolResult = JsonNodeFactory.instance.objectNode();
+        toolResult
+                .putObject("result")
+                .putArray("content")
+                .addObject()
+                .put("type", "text")
+                .put("text", "ok");
+        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
+                .thenReturn(CompletableFuture.completedFuture(toolResult));
+
+        DefaultMcpClient client =
+                new DefaultMcpClient.Builder().transport(transport).build();
+
+        ToolExecutionResult result = client.executeTool(
+                ToolExecutionRequest.builder().name("test").arguments("{}").build());
+
+        assertThat(result.isError()).isFalse();
+        assertThat(result.resultText()).isEqualTo("ok");
+    }
+
+    @Test
     public void should_use_custom_tool_result_extractor_for_listener_application_level_error_path() throws Exception {
         final McpTransport transport = getMinimalMcpTransportMock();
         ObjectNode toolResult = JsonNodeFactory.instance.objectNode();
@@ -590,6 +824,62 @@ public class DefaultMcpClientTest {
                 (McpListToolsRequest) callCaptor.getAllValues().get(1).message();
         assertThat(secondRequest.getParams()).isInstanceOf(McpListToolsParams.class);
         assertThat(((McpListToolsParams) secondRequest.getParams()).getCursor()).isEqualTo("cursor-page2");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void should_use_literal_dotted_property_for_mcp_param_header() throws Exception {
+        McpTransport transport = getModernHttpTransportMock();
+        ObjectNode toolList = getToolResultJson(new ToolDefinition(
+                "dottedTool",
+                "Dotted property",
+                new ToolArg("config.region", "string", "Region"),
+                new ToolArg("region", "string", "Region")));
+        ObjectNode properties = (ObjectNode)
+                toolList.get("result").get("tools").get(0).get("inputSchema").get("properties");
+        ((ObjectNode) properties.get("config.region")).put("x-mcp-header", "Literal-Region");
+        ((ObjectNode) properties.get("region")).put("x-mcp-header", "Top-Region");
+        properties
+                .putObject("config")
+                .put("type", "object")
+                .putObject("properties")
+                .putObject("region")
+                .put("type", "string")
+                .put("x-mcp-header", "Nested-Region");
+        ObjectNode toolResult = JsonNodeFactory.instance.objectNode();
+        toolResult
+                .putObject("result")
+                .putArray("content")
+                .addObject()
+                .put("type", "text")
+                .put("text", "ok");
+        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
+                .thenReturn(CompletableFuture.completedFuture(getDiscoverResult()))
+                .thenReturn(CompletableFuture.completedFuture(toolList))
+                .thenReturn(CompletableFuture.completedFuture(toolResult));
+
+        DefaultMcpClient client = createMcpClient(transport);
+        List<ToolSpecification> tools = client.listTools();
+        Map<List<String>, String> headerMappings =
+                (Map<List<String>, String>) tools.get(0).metadata().get(McpToolMetadataKeys.MCP_PARAM_HEADERS);
+        assertThat(headerMappings)
+                .containsExactlyInAnyOrderEntriesOf(Map.of(
+                        List.of("config.region"),
+                        "Literal-Region",
+                        List.of("config", "region"),
+                        "Nested-Region",
+                        List.of("region"),
+                        "Top-Region"));
+        client.executeTool(ToolExecutionRequest.builder()
+                .name("dottedTool")
+                .arguments("{\"config.region\":\"literal\",\"config\":{\"region\":\"nested\"},\"region\":\"top\"}")
+                .build());
+
+        ArgumentCaptor<McpCallContext> captor = ArgumentCaptor.forClass(McpCallContext.class);
+        verify(transport, times(3)).executeOperationWithResponse(captor.capture());
+        assertThat(captor.getAllValues().get(2).mcpParamHeaders())
+                .containsExactlyInAnyOrderEntriesOf(
+                        Map.of("Literal-Region", "literal", "Nested-Region", "nested", "Top-Region", "top"));
     }
 
     @Test
@@ -961,6 +1251,115 @@ public class DefaultMcpClientTest {
         verify(transport, never()).executeOperationWithResponse(any(McpCallContext.class));
     }
 
+    @Test
+    public void legacy_health_check_restores_interrupt_status() throws Exception {
+        McpTransport transport = getMinimalMcpTransportMock();
+        CountDownLatch pingSent = new CountDownLatch(1);
+        when(transport.sendRequest(any(McpCallContext.class))).thenAnswer(invocation -> {
+            pingSent.countDown();
+            return new CompletableFuture<>();
+        });
+        DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion("2025-11-25")
+                .pingTimeout(java.time.Duration.ofSeconds(30))
+                .build();
+
+        assertInterruptStatusRestored(client::checkHealth, pingSent);
+    }
+
+    @Test
+    public void modern_health_check_restores_interrupt_status() throws Exception {
+        McpTransport transport = getModernStdioTransportMock();
+        CountDownLatch pingSent = new CountDownLatch(1);
+        when(transport.sendRequest(any(McpCallContext.class)))
+                .thenReturn(
+                        CompletableFuture.completedFuture(getDiscoverResult().toString()))
+                .thenAnswer(invocation -> {
+                    pingSent.countDown();
+                    return new CompletableFuture<>();
+                });
+        DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion("2026-07-28")
+                .pingTimeout(java.time.Duration.ofSeconds(30))
+                .subscribeToToolListChanges(false)
+                .subscribeToPromptListChanges(false)
+                .subscribeToResourceListChanges(false)
+                .build();
+
+        assertInterruptStatusRestored(client::checkHealth, pingSent);
+    }
+
+    @Test
+    public void paginated_list_restores_interrupt_status() throws Exception {
+        McpTransport transport = getMinimalMcpTransportMock();
+        CountDownLatch listSent = new CountDownLatch(1);
+        when(transport.sendRequest(any(McpCallContext.class))).thenAnswer(invocation -> {
+            listSent.countDown();
+            return new CompletableFuture<>();
+        });
+        DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion("2025-11-25")
+                .toolExecutionTimeout(java.time.Duration.ofSeconds(30))
+                .build();
+
+        assertInterruptStatusRestored(() -> client.listTools(), listSent);
+    }
+
+    private static void assertInterruptStatusRestored(Runnable operation, CountDownLatch requestSent) throws Exception {
+        CompletableFuture<Boolean> interruptStatus = new CompletableFuture<>();
+        Thread thread = new Thread(() -> {
+            try {
+                operation.run();
+                interruptStatus.completeExceptionally(new AssertionError("operation unexpectedly completed"));
+            } catch (RuntimeException expected) {
+                interruptStatus.complete(Thread.currentThread().isInterrupted());
+            }
+        });
+
+        thread.start();
+        try {
+            assertThat(requestSent.await(5, TimeUnit.SECONDS)).isTrue();
+            thread.interrupt();
+            assertThat(interruptStatus.get(5, TimeUnit.SECONDS)).isTrue();
+        } finally {
+            thread.interrupt();
+            thread.join(TimeUnit.SECONDS.toMillis(5));
+        }
+    }
+
+    @Test
+    public void tools_list_without_result_is_rejected() throws Exception {
+        McpTransport transport = getMinimalMcpTransportMock();
+        when(transport.sendRequest(any(McpCallContext.class)))
+                .thenReturn(CompletableFuture.completedFuture("{\"jsonrpc\":\"2.0\",\"id\":1}"));
+        DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion("2025-11-25")
+                .build();
+
+        assertThatThrownBy(client::listTools)
+                .isInstanceOf(IllegalResponseException.class)
+                .hasMessage("Result does not contain 'result' element");
+    }
+
+    @Test
+    public void tools_list_without_tools_element_is_rejected() throws Exception {
+        McpTransport transport = getMinimalMcpTransportMock();
+        when(transport.sendRequest(any(McpCallContext.class)))
+                .thenReturn(CompletableFuture.completedFuture("{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{}}"));
+        DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion("2025-11-25")
+                .build();
+
+        assertThatThrownBy(client::listTools)
+                .isInstanceOf(IllegalResponseException.class)
+                .hasMessage("Result does not contain 'tools' element");
+    }
+
     private static McpTransport getMinimalMcpTransportMock() {
         McpTransport transport = mock(McpTransport.class);
         // exercise the default bridge: a legacy transport that implements only the
@@ -1050,6 +1449,28 @@ public class DefaultMcpClientTest {
         final ObjectNode rootNode = JsonNodeFactory.instance.objectNode();
         rootNode.putObject("result").set("tools", toolsArray);
         return rootNode;
+    }
+
+    /**
+     * A tools/list response with a single tool whose 'region' parameter carries an
+     * 'x-mcp-header' annotation, so that the client has a header mapping to apply.
+     */
+    private static String toolsListWithParamHeader() {
+        ObjectNode tool = JsonNodeFactory.instance.objectNode();
+        tool.put("name", "regionEcho");
+        tool.put("description", "Echoes the region back");
+        ObjectNode inputSchema = tool.putObject("inputSchema");
+        inputSchema.put("type", "object");
+        ObjectNode properties = inputSchema.putObject("properties");
+        properties.putObject("region").put("type", "string").put("x-mcp-header", "Region");
+        properties.putObject("value").put("type", "string");
+        inputSchema.putArray("required").add("region").add("value");
+
+        ArrayNode toolsArray = JsonNodeFactory.instance.arrayNode();
+        toolsArray.add(tool);
+        ObjectNode rootNode = JsonNodeFactory.instance.objectNode();
+        rootNode.putObject("result").set("tools", toolsArray);
+        return rootNode.toString();
     }
 
     @Test

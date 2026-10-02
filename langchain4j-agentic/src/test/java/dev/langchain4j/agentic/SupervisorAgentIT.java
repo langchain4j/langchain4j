@@ -463,12 +463,36 @@ public class SupervisorAgentIT {
         agentic_banker_with_exchange_test(false, false, "Trasferisci 100 EUR dal conto di Mario a quello di Georgios");
     }
 
+    @Test
+    void agentic_banker_with_programmatic_non_agentic_exchange_test() {
+        ExchangeOperator exchangeOperator = new ExchangeOperator();
+        AgenticServices.AgenticScopeFunction<Double> exchangeAgent = AgenticServices.nonAiAgentBuilder(
+                        scope -> exchangeOperator.exchange(
+                                scope.readState("originalCurrency", ""),
+                                scope.readState("amount", 0.0),
+                                scope.readState("targetCurrency", "")))
+                .name("exchange")
+                .description(
+                        "A money exchanger that converts a given amount of money from the original to the target currency")
+                .inputKeys(String.class, "originalCurrency", Double.class, "amount", String.class, "targetCurrency")
+                .outputKey("exchange")
+                .build();
+
+        agentic_banker_with_exchange_test(
+                false, false, "Transfer 100 EUR from Mario's account to Georgios' one", exchangeAgent);
+    }
+
     private void agentic_banker_with_exchange_test(boolean fullyAI, boolean conflictingNames) {
         agentic_banker_with_exchange_test(
                 fullyAI, conflictingNames, "Transfer 100 EUR from Mario's account to Georgios' one");
     }
 
     private void agentic_banker_with_exchange_test(boolean fullyAI, boolean conflictingNames, String userRequest) {
+        agentic_banker_with_exchange_test(fullyAI, conflictingNames, userRequest, new ExchangeOperator());
+    }
+
+    private void agentic_banker_with_exchange_test(
+            boolean fullyAI, boolean conflictingNames, String userRequest, Object nonAiExchangeAgent) {
         BankTool bankTool = new BankTool();
         bankTool.createAccount("Mario", 1000.0);
         bankTool.createAccount("Georgios", 1000.0);
@@ -501,7 +525,7 @@ public class SupervisorAgentIT {
                     .build();
         } else {
             // Using a non-AI agent
-            exchangeAgent = new ExchangeOperator();
+            exchangeAgent = nonAiExchangeAgent;
         }
 
         Map<String, String> toolCalls = new HashMap<>();
@@ -1167,8 +1191,18 @@ public class SupervisorAgentIT {
 
     public interface InvoiceRegistrationAgent {
 
+        // Asking a model with no tools to "register" something gets a description of how one would
+        // register an invoice, never a confirmation that one was registered. The supervisor reads
+        // that as the request still being open and calls this agent again until it hits
+        // maxAgentsInvocations, which surfaces as a wrong invocation count. Giving it a role it can
+        // play and asking for the confirmation explicitly is what the banker agents above do with
+        // "and return the new balance".
+        @SystemMessage("""
+                You are an invoice registry: you record every invoice you are given.
+                """)
         @UserMessage("""
-                Register the invoice described as '{{invoice}}'.
+                Record the invoice described as '{{invoice}}', then confirm in a single sentence
+                that it has been registered, repeating its author and its amount.
                 """)
         @Agent("An agent that registers invoices")
         String register(@V("invoice") Invoice invoice);

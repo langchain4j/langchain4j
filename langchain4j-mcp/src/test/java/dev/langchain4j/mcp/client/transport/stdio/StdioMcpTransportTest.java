@@ -124,7 +124,9 @@ class StdioMcpTransportTest {
     }
 
     private static StdioMcpTransport transportWithBlockedExit(Path releaseExit, ExecutorService executorService) {
-        String script = "trap 'while [ ! -f \"$1\" ]; do sleep 0.01; done; exit 0' TERM; "
+        // sh runs the trap only after the current 'sleep 1' returns, which can be after JUnit has deleted the
+        // @TempDir; checking that the directory still exists prevents the trap from waiting forever
+        String script = "trap 'while [ ! -f \"$1\" ] && [ -d \"${1%/*}\" ]; do sleep 0.01; done; exit 0' TERM; "
                 + "printf '{\"ready\":true}\\n'; while :; do sleep 1; done";
         return new StdioMcpTransport.Builder()
                 .command(List.of("sh", "-c", script, "sh", releaseExit.toString()))

@@ -147,7 +147,27 @@ public final class EmbeddingTable {
                 ? "BINARY_FLOAT"
                 : type == OracleType.BINARY_DOUBLE ? "BINARY_DOUBLE" : type.getName();
 
-        return "JSON_VALUE(" + metadataColumn + ", '$." + key + "' RETURNING " + typeName + " NULL ON ERROR)";
+        return "JSON_VALUE(" + metadataColumn + ", '$.\"" + escapeKey(key) + "\"' RETURNING " + typeName
+                + " NULL ON ERROR)";
+    }
+
+    /**
+     * Escapes a metadata key so that it can be embedded, as a quoted member name, into the JSON path passed to
+     * JSON_VALUE: {@code JSON_VALUE(metadata, '$."<key>"' ...)}. Quoting the member name means JSON path
+     * metacharacters (such as {@code .}, {@code [}, {@code ]} and {@code *}) are treated as literal characters of the
+     * key rather than being interpreted by the JSON path engine. Two layers of escaping are applied:
+     * <ul>
+     *     <li>backslash and double quote are escaped so a crafted key cannot terminate the quoted member name;</li>
+     *     <li>the single quote is doubled so the key cannot break out of the enclosing SQL string literal.</li>
+     * </ul>
+     *
+     * @param key Name of a metadata key. Not null.
+     * @return The escaped key. Not null.
+     */
+    private static String escapeKey(String key) {
+        return key.replace("\\", "\\\\") // JSON path: escape backslash first
+                .replace("\"", "\\\"") // JSON path: escape the double quote that delimits the member name
+                .replace("'", "''"); // SQL: double the single quote that delimits the string literal
     }
 
     /**
