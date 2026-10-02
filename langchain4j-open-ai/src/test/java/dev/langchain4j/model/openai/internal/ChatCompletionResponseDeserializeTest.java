@@ -189,6 +189,39 @@ class ChatCompletionResponseDeserializeTest {
     }
 
     @Test
+    void should_deserialize_delta_with_refusal() {
+
+        // given
+        String json = """
+                {
+                    "id": "chatcmpl-123",
+                    "object": "chat.completion.chunk",
+                    "created": 1742268380,
+                    "model": "gpt-4o",
+                    "choices": [
+                        {
+                            "index": 0,
+                            "delta": {
+                                "role": "assistant",
+                                "content": null,
+                                "refusal": "I'm sorry, I cannot assist with that request."
+                            },
+                            "finish_reason": "stop"
+                        }
+                    ]
+                }
+                """;
+
+        // when
+        ChatCompletionResponse response = Json.fromJson(json, ChatCompletionResponse.class);
+
+        // then
+        Delta delta = response.choices().get(0).delta();
+        assertThat(delta.content()).isNull();
+        assertThat(delta.refusal()).isEqualTo("I'm sorry, I cannot assist with that request.");
+    }
+
+    @Test
     void should_deserialize_message_without_reasoning_fields() {
 
         // given
