@@ -17,7 +17,6 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 @EnabledIfEnvironmentVariable(named = "WATSONX_API_KEY", matches = ".+")
 @EnabledIfEnvironmentVariable(named = "WATSONX_PROJECT_ID", matches = ".+")
 @EnabledIfEnvironmentVariable(named = "WATSONX_URL", matches = ".+")
-@EnabledIfEnvironmentVariable(named = "WATSONX_GRANITE_3_3_DEPLOYMENT_ID", matches = ".+")
 public class WatsonxChatModelThinkingIT {
 
     static final String API_KEY = System.getenv("WATSONX_API_KEY");
@@ -26,6 +25,7 @@ public class WatsonxChatModelThinkingIT {
     static final String DEPLOYMENT_ID = System.getenv("WATSONX_GRANITE_3_3_DEPLOYMENT_ID");
 
     @Test
+    @EnabledIfEnvironmentVariable(named = "WATSONX_GRANITE_3_3_DEPLOYMENT_ID", matches = ".+")
     public void should_return_and_send_thinking() {
 
         ChatModel chatModel = WatsonxDeploymentChatModel.builder()
@@ -47,6 +47,7 @@ public class WatsonxChatModelThinkingIT {
     }
 
     @Test
+    @EnabledIfEnvironmentVariable(named = "WATSONX_GRANITE_3_3_DEPLOYMENT_ID", matches = ".+")
     void should_return_and_NOT_send_thinking() {
 
         ChatModel chatModel = WatsonxDeploymentChatModel.builder()
@@ -62,7 +63,23 @@ public class WatsonxChatModelThinkingIT {
     }
 
     @Test
-    public void should_return_thinking_using_gpt_oss() {
+    public void should_return_thinking_using_gpt_oss_low_effort() {
+        var chatModel = WatsonxChatModel.builder()
+                .baseUrl(URL)
+                .apiKey(API_KEY)
+                .projectId(PROJECT_ID)
+                .modelName("openai/gpt-oss-120b")
+                .timeout(Duration.ofSeconds(30))
+                .thinking(ThinkingEffort.LOW)
+                .build();
+
+        var aiMessage = chatModel.chat(UserMessage.from("Hello!")).aiMessage();
+        assertThat(aiMessage.text()).isNotBlank();
+        assertThat(aiMessage.thinking()).isNotBlank();
+    }
+
+    @Test
+    public void should_return_thinking_using_gpt_oss_medium_effort() {
         var chatModel = WatsonxChatModel.builder()
                 .baseUrl(URL)
                 .apiKey(API_KEY)

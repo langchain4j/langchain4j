@@ -300,7 +300,12 @@ public class WatsonxChatRequestParameters extends DefaultChatRequestParameters {
         }
 
         public Builder thinking(ThinkingEffort thinkingEffort) {
-            if (nonNull(thinkingEffort)) return thinking(Thinking.of(thinkingEffort));
+            if (nonNull(thinkingEffort)) {
+                return thinking(Thinking.builder()
+                        .includeReasoning(true)
+                        .thinkingEffort(thinkingEffort)
+                        .build());
+            }
 
             this.thinking = null;
             return this;
