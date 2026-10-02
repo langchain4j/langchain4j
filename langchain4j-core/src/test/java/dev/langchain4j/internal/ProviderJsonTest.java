@@ -117,14 +117,15 @@ class ProviderJsonTest {
 
     @Test
     void gives_a_different_codec_to_a_different_spec() {
-        assertThat(ProviderJson.codec(ProviderJsonSpec.builder().prettyPrint(true).build()))
-                .isNotSameAs(ProviderJson.codec(ProviderJsonSpec.builder().prettyPrint(false).build()));
+        assertThat(ProviderJson.codec(
+                        ProviderJsonSpec.builder().prettyPrint(true).build()))
+                .isNotSameAs(ProviderJson.codec(
+                        ProviderJsonSpec.builder().prettyPrint(false).build()));
         assertThat(ProviderJson.codec(ProviderJsonSpec.builder()
                         .propertyNaming(ProviderJsonSpec.PropertyNaming.SNAKE_CASE)
                         .build()))
                 .isNotSameAs(ProviderJson.codec(ProviderJsonSpec.builder().build()));
     }
-
 
     @Test
     void a_codec_is_reused_for_the_same_spec() {
