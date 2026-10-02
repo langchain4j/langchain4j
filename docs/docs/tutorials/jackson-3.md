@@ -90,11 +90,6 @@ A few differences remain on purpose, because restoring them would cost more than
 - **`java.time.Month` is written as a number starting at 1** (`1` for January). With
   `jackson-datatype-jsr310`, Jackson 2 writes `"JANUARY"` and reads a number as a position starting
   at 0, so `1` is `FEBRUARY`. Both versions read the name.
-- **`""` is read as `null` for an enum**, the same as a missing value. This applies to required
-  enums too: like a missing field, `""` gives `null` rather than an error. Jackson 2 fails instead,
-  but providers send it - an OpenAI-compatible server returning `"type": ""` for a tool call is what
-  found this - and an LLM may answer `""` for an optional enum. `""` for an object, a map or a list
-  still fails, as it does with Jackson 2.
 - **A `private` one-argument constructor is not used to read a plain value.** Jackson 2 uses it;
   with Jackson 3, annotate it with `@JsonCreator(mode = JsonCreator.Mode.DELEGATING)`.
 - **For structured output and tool arguments, a class with both a no-argument constructor and a
