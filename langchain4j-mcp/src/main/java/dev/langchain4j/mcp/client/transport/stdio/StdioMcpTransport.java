@@ -15,6 +15,7 @@ import dev.langchain4j.mcp.protocol.McpInitializationNotification;
 import dev.langchain4j.mcp.protocol.McpInitializeRequest;
 import dev.langchain4j.mcp.transport.stdio.JsonRpcIoHandler;
 import java.io.IOException;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -27,6 +28,7 @@ public class StdioMcpTransport implements McpTransport {
 
     private final List<String> command;
     private final Map<String, String> environment;
+    private final Path workingDirectory;
     // These are (re)assigned by start(), which may be invoked again from the health-check thread
     // during reconnection, so they are volatile to ensure visibility across threads.
     private volatile Process process;
@@ -41,6 +43,7 @@ public class StdioMcpTransport implements McpTransport {
     public StdioMcpTransport(Builder builder) {
         this.command = builder.command;
         this.environment = builder.environment;
+        this.workingDirectory = builder.workingDirectory;
         this.logEvents = builder.logEvents;
         this.logger = builder.logger;
         this.executor = getOrDefault(builder.executorService, DefaultExecutorProvider::getDefaultExecutor);
@@ -56,6 +59,9 @@ public class StdioMcpTransport implements McpTransport {
         log.debug("Starting process: {}", command);
         ProcessBuilder processBuilder = new ProcessBuilder(command);
         processBuilder.environment().putAll(environment);
+        if (workingDirectory != null) {
+            processBuilder.directory(workingDirectory.toFile());
+        }
         Process startedProcess;
         try {
             startedProcess = processBuilder.start();
@@ -213,6 +219,7 @@ public class StdioMcpTransport implements McpTransport {
 
         private List<String> command;
         private Map<String, String> environment;
+        private Path workingDirectory;
         private boolean logEvents;
         private Logger logger;
         private ExecutorService executorService;
@@ -224,6 +231,19 @@ public class StdioMcpTransport implements McpTransport {
 
         public Builder environment(Map<String, String> environment) {
             this.environment = environment;
+            return this;
+        }
+
+        /**
+         * Sets the working directory of the MCP server subprocess, including when it is restarted.
+         * If not set or {@code null}, the subprocess inherits the current process's working directory.
+         * This does not change the working directory of the current process.
+         *
+         * @param workingDirectory the subprocess working directory, or {@code null} to use the default
+         * @return {@code this}
+         */
+        public Builder workingDirectory(Path workingDirectory) {
+            this.workingDirectory = workingDirectory;
             return this;
         }
 
