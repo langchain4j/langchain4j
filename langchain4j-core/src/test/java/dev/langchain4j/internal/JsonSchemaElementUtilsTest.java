@@ -519,6 +519,92 @@ class JsonSchemaElementUtilsTest {
     }
 
     @Test
+    void shouldConvertJsonStringSchemaWithConstraintsToMap() {
+        JsonStringSchema schema = JsonStringSchema.builder()
+                .minLength(1)
+                .maxLength(100)
+                .pattern("^[A-Z]+$")
+                .format("date-time")
+                .build();
+
+        Map<String, Object> map = JsonSchemaElementUtils.toMap(schema);
+
+        assertThat(map)
+                .containsEntry("type", "string")
+                .containsEntry("minLength", 1)
+                .containsEntry("maxLength", 100)
+                .containsEntry("pattern", "^[A-Z]+$")
+                .containsEntry("format", "date-time")
+                .doesNotContainKey("description");
+    }
+
+    @Test
+    void shouldConvertJsonIntegerSchemaWithConstraintsToMap() {
+        JsonIntegerSchema schema = JsonIntegerSchema.builder()
+                .minimum(0L)
+                .maximum(150L)
+                .exclusiveMinimum(-1L)
+                .exclusiveMaximum(151L)
+                .build();
+
+        Map<String, Object> map = JsonSchemaElementUtils.toMap(schema);
+
+        assertThat(map)
+                .containsEntry("type", "integer")
+                .containsEntry("minimum", 0L)
+                .containsEntry("maximum", 150L)
+                .containsEntry("exclusiveMinimum", -1L)
+                .containsEntry("exclusiveMaximum", 151L);
+    }
+
+    @Test
+    void shouldConvertJsonNumberSchemaWithConstraintsToMap() {
+        JsonNumberSchema schema = JsonNumberSchema.builder()
+                .minimum(0.5)
+                .maximum(99.9)
+                .exclusiveMinimum(0.0)
+                .exclusiveMaximum(100.0)
+                .build();
+
+        Map<String, Object> map = JsonSchemaElementUtils.toMap(schema);
+
+        assertThat(map)
+                .containsEntry("type", "number")
+                .containsEntry("minimum", 0.5)
+                .containsEntry("maximum", 99.9)
+                .containsEntry("exclusiveMinimum", 0.0)
+                .containsEntry("exclusiveMaximum", 100.0);
+    }
+
+    @Test
+    void shouldConvertJsonArraySchemaWithConstraintsToMap() {
+        JsonArraySchema schema = JsonArraySchema.builder()
+                .items(JsonStringSchema.builder().build())
+                .minItems(1)
+                .maxItems(10)
+                .uniqueItems(true)
+                .build();
+
+        Map<String, Object> map = JsonSchemaElementUtils.toMap(schema);
+
+        assertThat(map)
+                .containsEntry("type", "array")
+                .containsEntry("minItems", 1)
+                .containsEntry("maxItems", 10)
+                .containsEntry("uniqueItems", true);
+    }
+
+    @Test
+    void shouldNotEmitConstraintKeysWhenNotSet() {
+        assertThat(JsonSchemaElementUtils.toMap(new JsonStringSchema())).containsOnlyKeys("type");
+        assertThat(JsonSchemaElementUtils.toMap(new JsonIntegerSchema())).containsOnlyKeys("type");
+        assertThat(JsonSchemaElementUtils.toMap(new JsonNumberSchema())).containsOnlyKeys("type");
+        assertThat(JsonSchemaElementUtils.toMap(
+                        JsonArraySchema.builder().items(new JsonStringSchema()).build()))
+                .containsOnlyKeys("type", "items");
+    }
+
+    @Test
     void shouldConvertJsonObjectSchemaToMap() {
         class Sample {
             String name;

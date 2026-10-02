@@ -460,6 +460,15 @@ public class JsonSchemaElementUtils {
             } else {
                 map.put("items", Collections.emptyMap());
             }
+            if (jsonArraySchema.minItems() != null) {
+                map.put("minItems", jsonArraySchema.minItems());
+            }
+            if (jsonArraySchema.maxItems() != null) {
+                map.put("maxItems", jsonArraySchema.maxItems());
+            }
+            if (jsonArraySchema.uniqueItems() != null) {
+                map.put("uniqueItems", jsonArraySchema.uniqueItems());
+            }
             return map;
         } else if (jsonSchemaElement instanceof JsonEnumSchema jsonEnumSchema) {
             Map<String, Object> map = new LinkedHashMap<>();
@@ -479,6 +488,18 @@ public class JsonSchemaElementUtils {
             if (jsonStringSchema.description() != null) {
                 map.put("description", jsonStringSchema.description());
             }
+            if (jsonStringSchema.minLength() != null) {
+                map.put("minLength", jsonStringSchema.minLength());
+            }
+            if (jsonStringSchema.maxLength() != null) {
+                map.put("maxLength", jsonStringSchema.maxLength());
+            }
+            if (jsonStringSchema.pattern() != null) {
+                map.put("pattern", jsonStringSchema.pattern());
+            }
+            if (jsonStringSchema.format() != null) {
+                map.put("format", jsonStringSchema.format());
+            }
             return map;
         } else if (jsonSchemaElement instanceof JsonIntegerSchema jsonIntegerSchema) {
             Map<String, Object> map = new LinkedHashMap<>();
@@ -486,12 +507,36 @@ public class JsonSchemaElementUtils {
             if (jsonIntegerSchema.description() != null) {
                 map.put("description", jsonIntegerSchema.description());
             }
+            if (jsonIntegerSchema.minimum() != null) {
+                map.put("minimum", jsonIntegerSchema.minimum());
+            }
+            if (jsonIntegerSchema.maximum() != null) {
+                map.put("maximum", jsonIntegerSchema.maximum());
+            }
+            if (jsonIntegerSchema.exclusiveMinimum() != null) {
+                map.put("exclusiveMinimum", jsonIntegerSchema.exclusiveMinimum());
+            }
+            if (jsonIntegerSchema.exclusiveMaximum() != null) {
+                map.put("exclusiveMaximum", jsonIntegerSchema.exclusiveMaximum());
+            }
             return map;
         } else if (jsonSchemaElement instanceof JsonNumberSchema jsonNumberSchema) {
             Map<String, Object> map = new LinkedHashMap<>();
             map.put("type", type("number", strict, required));
             if (jsonNumberSchema.description() != null) {
                 map.put("description", jsonNumberSchema.description());
+            }
+            if (jsonNumberSchema.minimum() != null) {
+                map.put("minimum", jsonNumberSchema.minimum());
+            }
+            if (jsonNumberSchema.maximum() != null) {
+                map.put("maximum", jsonNumberSchema.maximum());
+            }
+            if (jsonNumberSchema.exclusiveMinimum() != null) {
+                map.put("exclusiveMinimum", jsonNumberSchema.exclusiveMinimum());
+            }
+            if (jsonNumberSchema.exclusiveMaximum() != null) {
+                map.put("exclusiveMaximum", jsonNumberSchema.exclusiveMaximum());
             }
             return map;
         } else if (jsonSchemaElement instanceof JsonBooleanSchema jsonBooleanSchema) {

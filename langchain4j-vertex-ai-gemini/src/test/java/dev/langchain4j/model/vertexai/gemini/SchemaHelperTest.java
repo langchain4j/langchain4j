@@ -6,7 +6,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.google.cloud.vertexai.api.Schema;
 import com.google.cloud.vertexai.api.Type;
 import dev.langchain4j.model.chat.request.json.JsonAnyOfSchema;
+import dev.langchain4j.model.chat.request.json.JsonArraySchema;
+import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
 import dev.langchain4j.model.chat.request.json.JsonNullSchema;
+import dev.langchain4j.model.chat.request.json.JsonNumberSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
@@ -39,6 +42,39 @@ class SchemaHelperTest {
         assertThat(schema.getPropertiesMap().get("friends").getType()).isEqualTo(Type.ARRAY);
         assertThat(schema.getPropertiesMap().get("friends").getItems().getType())
                 .isEqualTo(Type.STRING);
+    }
+
+    @Test
+    void should_convert_schema_constraints() {
+
+        // when
+        Schema stringSchema = SchemaHelper.from(JsonStringSchema.builder()
+                .minLength(1)
+                .maxLength(100)
+                .pattern("^[A-Z]+$")
+                .format("date-time")
+                .build());
+        Schema integerSchema = SchemaHelper.from(
+                JsonIntegerSchema.builder().minimum(0L).maximum(150L).build());
+        Schema numberSchema = SchemaHelper.from(
+                JsonNumberSchema.builder().minimum(0.5).maximum(99.9).build());
+        Schema arraySchema = SchemaHelper.from(JsonArraySchema.builder()
+                .items(new JsonStringSchema())
+                .minItems(1)
+                .maxItems(10)
+                .build());
+
+        // then
+        assertThat(stringSchema.getMinLength()).isEqualTo(1);
+        assertThat(stringSchema.getMaxLength()).isEqualTo(100);
+        assertThat(stringSchema.getPattern()).isEqualTo("^[A-Z]+$");
+        assertThat(stringSchema.getFormat()).isEqualTo("date-time");
+        assertThat(integerSchema.getMinimum()).isEqualTo(0.0);
+        assertThat(integerSchema.getMaximum()).isEqualTo(150.0);
+        assertThat(numberSchema.getMinimum()).isEqualTo(0.5);
+        assertThat(numberSchema.getMaximum()).isEqualTo(99.9);
+        assertThat(arraySchema.getMinItems()).isEqualTo(1);
+        assertThat(arraySchema.getMaxItems()).isEqualTo(10);
     }
 
     @Test
