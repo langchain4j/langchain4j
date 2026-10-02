@@ -139,7 +139,10 @@ public class JinaEmbeddingModel extends DimensionAwareEmbeddingModel {
 
         TokenUsage tokenUsage = response.usage == null
                 ? null
-                : new TokenUsage(response.usage.promptTokens, 0, response.usage.totalTokens);
+                : new TokenUsage(
+                        getOrDefault(response.usage.promptTokens, response.usage.totalTokens),
+                        0,
+                        response.usage.totalTokens);
 
         return EmbeddingResponse.builder()
                 .embeddings(embeddings)

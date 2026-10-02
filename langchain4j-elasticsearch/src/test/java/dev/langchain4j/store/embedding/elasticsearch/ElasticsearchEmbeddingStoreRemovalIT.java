@@ -1,9 +1,12 @@
 package dev.langchain4j.store.embedding.elasticsearch;
 
+import static dev.langchain4j.data.document.Metadata.metadata;
 import static dev.langchain4j.internal.Utils.randomUUID;
 import static dev.langchain4j.store.embedding.TestUtils.awaitUntilAsserted;
+import static dev.langchain4j.store.embedding.filter.MetadataFilterBuilder.metadataKey;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import co.elastic.clients.elasticsearch._types.Refresh;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
@@ -11,6 +14,7 @@ import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2Quantize
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreWithRemovalIT;
 import java.io.IOException;
+import java.util.List;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -66,6 +70,73 @@ class ElasticsearchEmbeddingStoreRemovalIT extends EmbeddingStoreWithRemovalIT {
     @Override
     protected EmbeddingModel embeddingModel() {
         return embeddingModel;
+    }
+
+    @Test
+    void should_remove_recently_added_embeddings_by_filter() throws IOException {
+        useImmediateRefresh();
+        Embedding embedding = embeddingModel.embed("printer setup").content();
+        embeddingStore.add(embedding, TextSegment.from("old instructions", metadata("version", "old")));
+        String retainedId =
+                embeddingStore.add(embedding, TextSegment.from("current instructions", metadata("version", "current")));
+
+        embeddingStore.removeAll(metadataKey("version").isEqualTo("old"));
+
+        elasticsearchClientHelper.refreshIndex(indexName);
+        assertThat(getAllEmbeddings()).extracting(match -> match.embeddingId()).containsExactly(retainedId);
+    }
+
+    @Test
+    void should_remove_visible_and_recently_added_embeddings_by_filter() throws IOException {
+        useImmediateRefresh();
+        Embedding embedding = embeddingModel.embed("printer setup").content();
+        embeddingStore.add(embedding, TextSegment.from("visible old instructions", metadata("version", "old")));
+        elasticsearchClientHelper.refreshIndex(indexName);
+        embeddingStore.add(embedding, TextSegment.from("recent old instructions", metadata("version", "old")));
+        String retainedId =
+                embeddingStore.add(embedding, TextSegment.from("current instructions", metadata("version", "current")));
+
+        embeddingStore.removeAll(metadataKey("version").isEqualTo("old"));
+
+        elasticsearchClientHelper.refreshIndex(indexName);
+        assertThat(getAllEmbeddings()).extracting(match -> match.embeddingId()).containsExactly(retainedId);
+    }
+
+    @Test
+    void should_remove_recently_updated_embeddings_by_filter() throws IOException {
+        useImmediateRefresh();
+        Embedding embedding = embeddingModel.embed("printer setup").content();
+        String updatedId = embeddingStore.add(
+                embedding, TextSegment.from("previous instructions", metadata("version", "current")));
+        String retainedId =
+                embeddingStore.add(embedding, TextSegment.from("current instructions", metadata("version", "current")));
+        elasticsearchClientHelper.refreshIndex(indexName);
+        embeddingStore.addAll(
+                List.of(updatedId),
+                List.of(embedding),
+                List.of(TextSegment.from("obsolete instructions", metadata("version", "old"))));
+
+        embeddingStore.removeAll(metadataKey("version").isEqualTo("old"));
+
+        elasticsearchClientHelper.refreshIndex(indexName);
+        assertThat(getAllEmbeddings()).extracting(match -> match.embeddingId()).containsExactly(retainedId);
+    }
+
+    /**
+     * Turns off automatic refreshing so that only the store's own refresh policy can make a write searchable, then
+     * points the store at that index with {@link Refresh#True}. Without the policy the writes below would still be
+     * invisible to the delete-by-query behind {@code removeAll(Filter)} and would survive it.
+     */
+    private void useImmediateRefresh() throws IOException {
+        elasticsearchClientHelper
+                .client
+                .indices()
+                .create(c -> c.index(indexName).settings(s -> s.refreshInterval(t -> t.time("-1"))));
+        embeddingStore = ElasticsearchEmbeddingStore.builder()
+                .client(elasticsearchClientHelper.client)
+                .indexName(indexName)
+                .refresh(Refresh.True)
+                .build();
     }
 
     @Test

@@ -44,6 +44,28 @@ class AnthropicRequestMapperTest {
     }
 
     @Test
+    void should_pass_tool_description_through_unchanged() {
+        ToolSpecification toolSpecification = ToolSpecification.builder()
+                .name("time")
+                .description("Returns the number of seconds the build has been running")
+                .build();
+
+        AnthropicTool tool = AnthropicRequestMapper.toAnthropicTool(toolSpecification);
+
+        assertThat(tool.description).isEqualTo("Returns the number of seconds the build has been running");
+    }
+
+    @Test
+    void should_not_invent_a_description_when_tool_has_none() {
+        ToolSpecification toolSpecification =
+                ToolSpecification.builder().name("time").build();
+
+        AnthropicTool tool = AnthropicRequestMapper.toAnthropicTool(toolSpecification);
+
+        assertThat(tool.description).isNull();
+    }
+
+    @Test
     void should_not_include_defs_when_parameters_have_no_definitions() {
         JsonObjectSchema parameters =
                 JsonObjectSchema.builder().addStringProperty("name").build();

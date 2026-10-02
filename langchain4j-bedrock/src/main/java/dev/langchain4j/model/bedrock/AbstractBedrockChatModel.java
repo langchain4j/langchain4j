@@ -183,6 +183,7 @@ abstract class AbstractBedrockChatModel {
                 .promptCaching(bedrockParameters.cachePointPlacement(), bedrockParameters.cacheTtl())
                 .guardrailConfiguration(bedrockParameters.bedrockGuardrailConfiguration())
                 .serviceTier(bedrockParameters.serviceTier())
+                .requestMetadata(bedrockParameters.requestMetadata())
                 .build();
     }
 
@@ -805,6 +806,10 @@ abstract class AbstractBedrockChatModel {
         }
 
         return ServiceTier.builder().type(serviceTierType).build();
+    }
+
+    protected Map<String, String> requestMetadataFrom(BedrockChatRequestParameters parameters) {
+        return isNullOrEmpty(parameters.requestMetadata()) ? null : parameters.requestMetadata();
     }
 
     protected Document additionalRequestModelFieldsFrom(ChatRequestParameters chatRequestParameters) {

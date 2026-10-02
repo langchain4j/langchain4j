@@ -18,6 +18,9 @@ public class StructuredPromptProcessor {
     private static final StructuredPromptFactory FACTORY = factory();
 
     private static StructuredPromptFactory factory() {
+        // Substituted by quarkus-langchain4j for native image (@TargetClass/@Substitute in its
+        // Substitutions), so this name and signature are depended on from outside despite being
+        // private. Renaming it breaks that build with no compile error here.
         for (StructuredPromptFactory factory : loadFactories(StructuredPromptFactory.class)) {
             return factory;
         }

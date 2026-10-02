@@ -1,6 +1,10 @@
 package dev.langchain4j.model.watsonx;
 
+import com.ibm.watsonx.ai.chat.TextChatResponse.DetectionEntry;
+import com.ibm.watsonx.ai.chat.TextChatResponse.ModerationResult;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 public class WatsonxChatResponseMetadata extends ChatResponseMetadata {
@@ -10,6 +14,8 @@ public class WatsonxChatResponseMetadata extends ChatResponseMetadata {
     private final String serviceTier;
     private final String systemFingerprint;
     private final Boolean cached;
+    private final Map<String, List<ModerationResult>> moderations;
+    private final Map<String, List<DetectionEntry>> detections;
 
     private WatsonxChatResponseMetadata(Builder builder) {
         super(builder);
@@ -18,26 +24,36 @@ public class WatsonxChatResponseMetadata extends ChatResponseMetadata {
         serviceTier = builder.serviceTier;
         systemFingerprint = builder.systemFingerprint;
         cached = builder.cached;
+        moderations = builder.moderations;
+        detections = builder.detections;
     }
 
-    public Long getCreated() {
+    public Long created() {
         return created;
     }
 
-    public String getModelVersion() {
+    public String modelVersion() {
         return modelVersion;
     }
 
-    public String getServiceTier() {
+    public String serviceTier() {
         return serviceTier;
     }
 
-    public String getSystemFingerprint() {
+    public String systemFingerprint() {
         return systemFingerprint;
     }
 
-    public Boolean getCached() {
+    public Boolean cached() {
         return cached;
+    }
+
+    public Map<String, List<ModerationResult>> moderations() {
+        return moderations;
+    }
+
+    public Map<String, List<DetectionEntry>> detections() {
+        return detections;
     }
 
     @Override
@@ -47,7 +63,9 @@ public class WatsonxChatResponseMetadata extends ChatResponseMetadata {
                 .modelVersion(modelVersion)
                 .serviceTier(serviceTier)
                 .systemFingerprint(systemFingerprint)
-                .cached(cached);
+                .cached(cached)
+                .moderations(moderations)
+                .detections(detections);
     }
 
     @Override
@@ -60,12 +78,22 @@ public class WatsonxChatResponseMetadata extends ChatResponseMetadata {
                 && Objects.equals(modelVersion, that.modelVersion)
                 && Objects.equals(serviceTier, that.serviceTier)
                 && Objects.equals(systemFingerprint, that.systemFingerprint)
-                && Objects.equals(cached, that.cached);
+                && Objects.equals(cached, that.cached)
+                && Objects.equals(moderations, that.moderations)
+                && Objects.equals(detections, that.detections);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(super.hashCode(), created, modelVersion, serviceTier, systemFingerprint, cached);
+        return Objects.hash(
+                super.hashCode(),
+                created,
+                modelVersion,
+                serviceTier,
+                systemFingerprint,
+                cached,
+                moderations,
+                detections);
     }
 
     @Override
@@ -79,7 +107,9 @@ public class WatsonxChatResponseMetadata extends ChatResponseMetadata {
                 + modelVersion + '\'' + ", serviceTier='"
                 + serviceTier + '\'' + ", systemFingerprint='"
                 + systemFingerprint + '\'' + ", cached="
-                + cached + '}';
+                + cached + ", moderations="
+                + moderations + ", detections="
+                + detections + '}';
     }
 
     public static Builder builder() {
@@ -92,6 +122,8 @@ public class WatsonxChatResponseMetadata extends ChatResponseMetadata {
         private String serviceTier;
         private String systemFingerprint;
         private Boolean cached;
+        private Map<String, List<ModerationResult>> moderations;
+        private Map<String, List<DetectionEntry>> detections;
 
         public Builder created(Long created) {
             this.created = created;
@@ -115,6 +147,16 @@ public class WatsonxChatResponseMetadata extends ChatResponseMetadata {
 
         public Builder cached(Boolean cached) {
             this.cached = cached;
+            return this;
+        }
+
+        public Builder moderations(Map<String, List<ModerationResult>> moderations) {
+            this.moderations = moderations;
+            return this;
+        }
+
+        public Builder detections(Map<String, List<DetectionEntry>> detections) {
+            this.detections = detections;
             return this;
         }
 

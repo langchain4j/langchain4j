@@ -71,7 +71,7 @@ class LocalWeaviateEmbeddingStoreIT extends EmbeddingStoreIT {
     }
 
     @Override
-    protected void ensureStoreIsEmpty() {
-        // TODO fix
+    protected void clearStore() {
+        embeddingStore.removeAll();
     }
 }

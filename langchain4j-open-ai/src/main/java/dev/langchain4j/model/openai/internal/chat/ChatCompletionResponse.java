@@ -1,11 +1,11 @@
 package dev.langchain4j.model.openai.internal.chat;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
 import dev.langchain4j.model.openai.internal.shared.Usage;
@@ -17,7 +17,6 @@ import static java.util.Collections.unmodifiableList;
 
 @JsonDeserialize(builder = ChatCompletionResponse.Builder.class)
 @JsonInclude(JsonInclude.Include.NON_NULL)
-@JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public final class ChatCompletionResponse {
 
     @JsonProperty
@@ -35,11 +34,12 @@ public final class ChatCompletionResponse {
     @JsonProperty
     private final String serviceTier;
 
+    @JsonCreator
     public ChatCompletionResponse(Builder builder) {
         this.id = builder.id;
         this.created = builder.created;
         this.model = builder.model;
-        this.choices = builder.choices;
+        this.choices = builder.choices == null ? null : unmodifiableList(builder.choices);
         this.usage = builder.usage;
         this.systemFingerprint = builder.systemFingerprint;
         this.serviceTier = builder.serviceTier;
@@ -133,7 +133,7 @@ public final class ChatCompletionResponse {
 
     @JsonPOJOBuilder(withPrefix = "")
     @JsonIgnoreProperties(ignoreUnknown = true)
-    @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
+    @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
     public static final class Builder {
 
         private String id;
@@ -161,7 +161,7 @@ public final class ChatCompletionResponse {
 
         public Builder choices(List<ChatCompletionChoice> choices) {
             if (choices != null) {
-                this.choices = unmodifiableList(choices);
+                this.choices = choices;
             }
             return this;
         }

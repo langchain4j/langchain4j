@@ -14,7 +14,12 @@ class GoogleGenAiChatModelThinkingIT {
     private static final String GOOGLE_AI_GEMINI_API_KEY = System.getenv("GOOGLE_AI_GEMINI_API_KEY");
     private static final String MODEL_NAME = "gemini-2.5-flash";
 
+    // gemini-2.5-flash does not return a thought signature on parts that carry no function call
+    private static final String THOUGHT_SIGNATURE_MODEL_NAME = "gemini-3.1-pro-preview";
+
     private static final UserMessage QUESTION = UserMessage.from("What are the best tourist spots in San Francisco?");
+
+    private static final UserMessage MULTIPLICATION = UserMessage.from("What is 17 times 24? Think it through.");
 
     private static GoogleGenAiChatModel.Builder modelBuilder() {
         return GoogleGenAiChatModel.builder()
@@ -22,6 +27,14 @@ class GoogleGenAiChatModelThinkingIT {
                 .modelName(MODEL_NAME)
                 .thinkingBudget(1024)
                 .includeThoughts(true);
+    }
+
+    private static GoogleGenAiChatModel.Builder thoughtSignatureModelBuilder() {
+        return GoogleGenAiChatModel.builder()
+                .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+                .modelName(THOUGHT_SIGNATURE_MODEL_NAME)
+                .includeThoughts(true)
+                .returnThinking(true);
     }
 
     @Test
@@ -67,5 +80,30 @@ class GoogleGenAiChatModelThinkingIT {
         assertThat(sent.aiMessage().text()).isNotBlank();
         assertThat(sent.tokenUsage().inputTokenCount())
                 .isGreaterThan(notSent.tokenUsage().inputTokenCount());
+    }
+
+    @Test
+    void should_return_thought_signature() {
+        ChatResponse chatResponse = thoughtSignatureModelBuilder().build().chat(MULTIPLICATION);
+
+        AiMessage aiMessage = chatResponse.aiMessage();
+        assertThat(aiMessage.text()).contains("408");
+        assertThat(aiMessage.attribute("thought_signature", String.class)).isNotBlank();
+    }
+
+    @Test
+    void should_send_thought_signature_in_a_follow_up_request() {
+        GoogleGenAiChatModel model =
+                thoughtSignatureModelBuilder().sendThinking(true).build();
+
+        AiMessage aiMessage = model.chat(MULTIPLICATION).aiMessage();
+        assertThat(aiMessage.attribute("thought_signature", String.class)).isNotBlank();
+
+        ChatResponse followUp = model.chat(MULTIPLICATION, aiMessage, UserMessage.from("Now multiply that by 2."));
+
+        // this asserts that Gemini accepts a signature sent back on a text part, which is the part
+        // of the contract no unit test can cover; that it is attached at all is covered by
+        // GoogleGenAiContentMapperTest, and this test still passes if the mapper stops attaching it
+        assertThat(followUp.aiMessage().text()).contains("816");
     }
 }

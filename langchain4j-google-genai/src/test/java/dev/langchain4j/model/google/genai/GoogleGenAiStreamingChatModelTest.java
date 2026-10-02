@@ -9,6 +9,8 @@ import static org.mockito.Mockito.when;
 import com.google.genai.Client;
 import com.google.genai.Models;
 import com.google.genai.ResponseStream;
+import com.google.genai.types.AudioTranscriptionConfig;
+import com.google.genai.types.Blob;
 import com.google.genai.types.Candidate;
 import com.google.genai.types.Content;
 import com.google.genai.types.FunctionCall;
@@ -28,9 +30,11 @@ import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.FinishReason;
 import java.lang.reflect.Field;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -195,6 +199,9 @@ class GoogleGenAiStreamingChatModelTest {
         assertThat(builder.allowedFunctionNames(List.of("fn1"))).isSameAs(builder);
         assertThat(builder.listeners(List.of())).isSameAs(builder);
         assertThat(builder.executor(mock(ExecutorService.class))).isSameAs(builder);
+        assertThat(builder.audioTranscriptionConfig(
+                        AudioTranscriptionConfig.builder().build()))
+                .isSameAs(builder);
     }
 
     @Test
@@ -274,6 +281,73 @@ class GoogleGenAiStreamingChatModelTest {
         String encodedSig = Base64.getEncoder().encodeToString("signature-data".getBytes());
         assertThat(aiMessage.attribute("thought_signature_call_123", String.class))
                 .isEqualTo(encodedSig);
+    }
+
+    @Test
+    void should_keep_the_images_of_every_streaming_chunk() throws Exception {
+        Client client = mock(Client.class);
+        Models models = mock(Models.class);
+        Field modelsField = Client.class.getDeclaredField("models");
+        modelsField.setAccessible(true);
+        modelsField.set(client, models);
+
+        @SuppressWarnings("unchecked")
+        ResponseStream<GenerateContentResponse> stream = mock(ResponseStream.class);
+
+        when(models.generateContentStream(any(String.class), any(List.class), any()))
+                .thenReturn(stream);
+
+        GenerateContentResponse firstChunk = responseWithImage("first-image");
+        GenerateContentResponse secondChunk = responseWithImage("second-image");
+
+        when(stream.iterator()).thenReturn(List.of(firstChunk, secondChunk).iterator());
+
+        GoogleGenAiStreamingChatModel model = GoogleGenAiStreamingChatModel.builder()
+                .client(client)
+                .modelName("gemini-2.5-flash-image")
+                .build();
+
+        CompletableFuture<ChatResponse> future = new CompletableFuture<>();
+
+        model.chat(List.of(UserMessage.from("Draw me two pictures")), new StreamingChatResponseHandler() {
+            @Override
+            public void onPartialResponse(String partialResponse) {}
+
+            @Override
+            public void onCompleteResponse(ChatResponse completeResponse) {
+                future.complete(completeResponse);
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                future.completeExceptionally(error);
+            }
+        });
+
+        ChatResponse response = future.get(5, TimeUnit.SECONDS);
+
+        assertThat(response.aiMessage().images()).hasSize(2);
+        assertThat(response.aiMessage().images().get(0).base64Data())
+                .isEqualTo(Base64.getEncoder().encodeToString("first-image".getBytes(StandardCharsets.UTF_8)));
+        assertThat(response.aiMessage().images().get(1).base64Data())
+                .isEqualTo(Base64.getEncoder().encodeToString("second-image".getBytes(StandardCharsets.UTF_8)));
+    }
+
+    private static GenerateContentResponse responseWithImage(String data) {
+        Part part = Part.builder()
+                .inlineData(Blob.builder()
+                        .data(data.getBytes(StandardCharsets.UTF_8))
+                        .mimeType("image/png")
+                        .build())
+                .build();
+        return GenerateContentResponse.builder()
+                .candidates(List.of(Candidate.builder()
+                        .content(Content.builder()
+                                .role("model")
+                                .parts(List.of(part))
+                                .build())
+                        .build()))
+                .build();
     }
 
     @Test
@@ -399,6 +473,85 @@ class GoogleGenAiStreamingChatModelTest {
                 .contains("projects/123/locations/us-central1/cachedContents/per-request");
     }
 
+    @Test
+    void should_send_audio_transcription_config() throws Exception {
+        Client client = mock(Client.class);
+        Models models = mock(Models.class);
+        Field modelsField = Client.class.getDeclaredField("models");
+        modelsField.setAccessible(true);
+        modelsField.set(client, models);
+
+        @SuppressWarnings("unchecked")
+        ResponseStream<GenerateContentResponse> stream = mock(ResponseStream.class);
+        when(models.generateContentStream(any(String.class), any(List.class), any(GenerateContentConfig.class)))
+                .thenReturn(stream);
+        when(stream.iterator()).thenReturn(List.<GenerateContentResponse>of().iterator());
+
+        AudioTranscriptionConfig audioTranscriptionConfig = AudioTranscriptionConfig.builder()
+                .mode("SMART")
+                .languageCodes(List.of("en-US"))
+                .build();
+
+        GoogleGenAiStreamingChatModel model = GoogleGenAiStreamingChatModel.builder()
+                .client(client)
+                .modelName("gemini-3.5-transcribe")
+                .audioTranscriptionConfig(audioTranscriptionConfig)
+                .build();
+
+        ChatRequest request =
+                ChatRequest.builder().messages(UserMessage.from("Hello")).build();
+
+        CompletableFuture<ChatResponse> future = new CompletableFuture<>();
+        model.chat(request, new StreamingChatResponseHandler() {
+            @Override
+            public void onPartialResponse(String partialResponse) {}
+
+            @Override
+            public void onCompleteResponse(ChatResponse completeResponse) {
+                future.complete(completeResponse);
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                future.completeExceptionally(error);
+            }
+        });
+        future.get(30, TimeUnit.SECONDS);
+
+        ArgumentCaptor<GenerateContentConfig> configCaptor = ArgumentCaptor.forClass(GenerateContentConfig.class);
+        verify(models).generateContentStream(any(String.class), any(List.class), configCaptor.capture());
+
+        assertThat(configCaptor.getValue().audioTranscriptionConfig()).contains(audioTranscriptionConfig);
+    }
+
+    private static Client clientStreamingNothing() throws Exception {
+        Client client = mock(Client.class);
+        Models models = mock(Models.class);
+        Field modelsField = Client.class.getDeclaredField("models");
+        modelsField.setAccessible(true);
+        modelsField.set(client, models);
+
+        @SuppressWarnings("unchecked")
+        ResponseStream<GenerateContentResponse> stream = mock(ResponseStream.class);
+        when(models.generateContentStream(any(String.class), any(List.class), any()))
+                .thenReturn(stream);
+        when(stream.iterator())
+                .thenReturn(Collections.<GenerateContentResponse>emptyList().iterator());
+        return client;
+    }
+
+    @Test
+    void should_report_google_gen_ai_token_usage_when_the_stream_is_empty() throws Exception {
+        GoogleGenAiStreamingChatModel model = GoogleGenAiStreamingChatModel.builder()
+                .client(clientStreamingNothing())
+                .modelName("gemini-3.5-flash")
+                .build();
+
+        ChatResponse response = stream(model, new ArrayList<>(), new ArrayList<>());
+
+        assertThat(response.metadata().tokenUsage()).isInstanceOf(GoogleGenAiTokenUsage.class);
+    }
+
     private static Client clientStreamingThoughtAndAnswer() throws Exception {
         Client client = mock(Client.class);
         Models models = mock(Models.class);
@@ -422,6 +575,53 @@ class GoogleGenAiStreamingChatModelTest {
                 .build();
         when(stream.iterator()).thenReturn(List.of(chunk).iterator());
         return client;
+    }
+
+    @Test
+    void should_keep_the_text_part_thought_signature_when_streaming() throws Exception {
+        Client client = mock(Client.class);
+        Models models = mock(Models.class);
+        Field modelsField = Client.class.getDeclaredField("models");
+        modelsField.setAccessible(true);
+        modelsField.set(client, models);
+
+        @SuppressWarnings("unchecked")
+        ResponseStream<GenerateContentResponse> stream = mock(ResponseStream.class);
+        when(models.generateContentStream(any(String.class), any(List.class), any()))
+                .thenReturn(stream);
+
+        byte[] signature = "text-signature".getBytes();
+        GenerateContentResponse first = GenerateContentResponse.builder()
+                .candidates(List.of(Candidate.builder()
+                        .content(Content.builder()
+                                .role("model")
+                                .parts(Part.builder().text("4").build())
+                                .build())
+                        .build()))
+                .build();
+        GenerateContentResponse last = GenerateContentResponse.builder()
+                .candidates(List.of(Candidate.builder()
+                        .content(Content.builder()
+                                .role("model")
+                                .parts(Part.builder()
+                                        .text("08")
+                                        .thoughtSignature(signature)
+                                        .build())
+                                .build())
+                        .build()))
+                .build();
+        when(stream.iterator()).thenReturn(List.of(first, last).iterator());
+
+        GoogleGenAiStreamingChatModel model = GoogleGenAiStreamingChatModel.builder()
+                .client(client)
+                .modelName("gemini-3.1-pro-preview")
+                .build();
+
+        ChatResponse response = stream(model, new ArrayList<>(), new ArrayList<>());
+
+        assertThat(response.aiMessage().text()).isEqualTo("408");
+        assertThat(response.aiMessage().attribute("thought_signature", String.class))
+                .isEqualTo(Base64.getEncoder().encodeToString(signature));
     }
 
     private static ChatResponse stream(
