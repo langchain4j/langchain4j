@@ -19,11 +19,14 @@ import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.model.decision.DecisionModel;
 import dev.langchain4j.model.decision.request.ChoiceQuestion;
 import dev.langchain4j.model.decision.request.DecisionRequest;
-import dev.langchain4j.model.decision.response.ChoiceAnswer;
+import dev.langchain4j.model.decision.request.Question;
+import dev.langchain4j.model.decision.request.YesNoQuestion;
+import dev.langchain4j.model.decision.response.DecisionResponse;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -31,17 +34,19 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * A router planner that lets a {@link DecisionModel} choose which subagents handle a request.
+ * A router planner that lets a {@link DecisionModel} choose which subagents handle a request. The input of the
+ * decision is made of the arguments of the router agent itself, read from the {@link AgenticScope}.
  * <p>
- * Each subagent is an option of a single choice question, described by its name and description, and the input of
- * the question is made of the arguments of the router agent itself, read from the {@link AgenticScope}.
+ * Without an activation threshold, each subagent is an option of a single choice question, described by its name and
+ * description, and the planner invokes only the most probable subagent and returns its output.
  * <p>
- * Without an activation threshold, the planner invokes only the most probable subagent and returns its output.
- * With an activation threshold, it invokes in parallel all the subagents whose probability is at least the threshold
- * and returns a map from the name of each invoked subagent to its output, so the method of the router agent must
- * return a {@code Map}, which is checked when the router is invoked. Since the probabilities of the options
- * of a choice question sum to 1, a threshold {@code t} activates at most {@code 1/t} subagents, and when no subagent
- * reaches the threshold none is invoked and the result is an empty map.
+ * With an activation threshold, the planner asks instead one yes/no question per subagent, all in the same request
+ * ("Should the agent '...' handle this request?"), invokes in parallel all the subagents whose probability of "yes"
+ * is at least the threshold, and returns a map from the name of each invoked subagent to its output, so the method of
+ * the router agent must return a {@code Map}, which is checked when the router is invoked. These probabilities are
+ * independent of each other: several subagents can reach a high threshold, adding a subagent does not change the
+ * probabilities of the others, and when no subagent reaches the threshold none is invoked and the result is an empty
+ * map.
  */
 @Experimental
 public class DecisionRouterPlanner implements Planner {
@@ -60,14 +65,17 @@ public class DecisionRouterPlanner implements Planner {
     private final Double activationThreshold;
 
     private List<String> inputKeys;
-    private ChoiceQuestion question;
     private final Map<String, AgentInstance> routes = new LinkedHashMap<>();
+
+    // a single choice question among the subagents without an activation threshold, one yes/no question per subagent
+    // (named after it) with an activation threshold
+    private final Map<String, Question> questions = new LinkedHashMap<>();
 
     // persisted to resume after a suspension or a crash: the names of the activated agents, the outputs of those
     // already invoked, and the names of those whose output was still pending, like an agent waiting for a human
     private List<String> activated;
-    private final Map<String, Object> outputs = new LinkedHashMap<>();
-    private final Set<String> deferred = new LinkedHashSet<>();
+    private final Map<String, Object> outputs = new HashMap<>();
+    private final Set<String> deferred = new HashSet<>();
 
     /**
      * Creates a router invoking only the subagent that the decision model considers the most probable.
@@ -85,17 +93,18 @@ public class DecisionRouterPlanner implements Planner {
     }
 
     /**
-     * Creates a router invoking in parallel all the subagents whose probability is at least the given threshold.
+     * Creates a router asking the decision model, for each subagent, whether it should handle the request, and
+     * invoking in parallel all the subagents whose probability of "yes" is at least the given threshold.
      * <p>
      * The result of the router is then a map from the name of each invoked subagent to its output, so the method of
      * the router agent must return a {@code Map} (or a {@code ResultWithAgenticScope} of a {@code Map}). When the
      * router is invoked, before asking the decision model, it fails with an {@link IllegalArgumentException} if it
      * does not, if the router agent is not a typed agent interface with at least one argument to send to the
-     * decision model, or if two subagents have the same name. The decision model must also report the probabilities
-     * of the options: when it does not, the invocation fails with an {@link IllegalStateException}.
+     * decision model, or if two subagents have the same name.
      *
      * @param decisionModel the decision model choosing the subagents to invoke
-     * @param activationThreshold the minimum probability for a subagent to be invoked, strictly between 0 and 1
+     * @param activationThreshold the minimum probability of "yes" for a subagent to be invoked, strictly between 0
+     *        and 1
      * @throws IllegalArgumentException if {@code decisionModel} is {@code null}, or if {@code activationThreshold}
      *         is not strictly between 0 and 1
      */
@@ -127,19 +136,31 @@ public class DecisionRouterPlanner implements Planner {
             ensureMapResult(initPlanningContext.plannerAgent().outputType());
         }
 
-        ChoiceQuestion.Builder questionBuilder = ChoiceQuestion.builder().text(QUESTION_TEXT);
         for (AgentInstance agent : initPlanningContext.subagents()) {
             if (routes.put(agent.name(), agent) != null) {
                 throw new IllegalArgumentException("DecisionRouterPlanner requires subagents with distinct names, "
                         + "but more than one is named '" + agent.name() + "'");
             }
-            if (isNullOrBlank(agent.description())) {
-                questionBuilder.option(agent.name());
-            } else {
-                questionBuilder.option(agent.name(), agent.description());
-            }
         }
-        this.question = questionBuilder.build();
+
+        if (activationThreshold == null) {
+            ChoiceQuestion.Builder choice = ChoiceQuestion.builder().text(QUESTION_TEXT);
+            for (AgentInstance agent : routes.values()) {
+                if (isNullOrBlank(agent.description())) {
+                    choice.option(agent.name());
+                } else {
+                    choice.option(agent.name(), agent.description());
+                }
+            }
+            questions.put(QUESTION_NAME, choice.build());
+        } else {
+            routes.values().forEach(agent -> questions.put(agent.name(), relevanceQuestion(agent)));
+        }
+    }
+
+    private static YesNoQuestion relevanceQuestion(AgentInstance agent) {
+        String description = isNullOrBlank(agent.description()) ? "" : " (" + agent.description() + ")";
+        return YesNoQuestion.of("Should the agent '" + agent.name() + "'" + description + " handle this request?");
     }
 
     private void ensureMapResult(Type outputType) {
@@ -164,13 +185,13 @@ public class DecisionRouterPlanner implements Planner {
     public Action firstAction(PlanningContext planningContext) {
         // when resuming, the agents activated before the suspension or crash are restored instead of decided again
         if (activated == null) {
-            ChoiceAnswer answer = decide(planningContext.agenticScope());
+            DecisionResponse response = decide(planningContext.agenticScope());
             activated = activationThreshold == null
-                    ? List.of(answer.value())
+                    ? List.of(response.choice(QUESTION_NAME).value())
                     : routes.keySet().stream()
-                            .filter(name -> answer.probabilityOf(name) >= activationThreshold)
+                            .filter(name -> response.yesNo(name).probability() >= activationThreshold)
                             .toList();
-            LOG.info("Activating agents {} with probabilities {}", activated, answer.probabilities());
+            LOG.info("Activating agents {} from the answers {}", activated, response.answers());
         }
 
         List<AgentInstance> pending = activated.stream()
@@ -180,23 +201,12 @@ public class DecisionRouterPlanner implements Planner {
         return pending.isEmpty() ? done(result(planningContext.agenticScope())) : call(pending);
     }
 
-    private ChoiceAnswer decide(AgenticScope agenticScope) {
+    private DecisionResponse decide(AgenticScope agenticScope) {
         Map<String, Object> input = new LinkedHashMap<>();
         inputKeys.forEach(key -> input.put(key, agenticScope.readState(key)));
 
-        ChoiceAnswer answer = decisionModel
-                .decide(DecisionRequest.builder()
-                        .input(input)
-                        .question(QUESTION_NAME, question)
-                        .build())
-                .choice(QUESTION_NAME);
-        if (activationThreshold != null && answer.probabilities().isEmpty()) {
-            throw new IllegalStateException("DecisionRouterPlanner was created with activationThreshold="
-                    + activationThreshold + ", but the decision model did not report the probabilities of the agents: "
-                    + "use a decision model that reports them, or remove the activation threshold to invoke only "
-                    + "the most probable agent");
-        }
-        return answer;
+        return decisionModel.decide(
+                DecisionRequest.builder().input(input).questions(questions).build());
     }
 
     @Override
@@ -246,7 +256,7 @@ public class DecisionRouterPlanner implements Planner {
                 ACTIVATED_STATE_KEY,
                 activated,
                 OUTPUTS_STATE_KEY,
-                new LinkedHashMap<>(outputs),
+                new HashMap<>(outputs),
                 DEFERRED_STATE_KEY,
                 List.copyOf(deferred));
     }

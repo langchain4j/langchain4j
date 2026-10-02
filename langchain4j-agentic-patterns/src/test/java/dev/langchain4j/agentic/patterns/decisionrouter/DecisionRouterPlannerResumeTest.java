@@ -25,6 +25,7 @@ import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import dev.langchain4j.agentic.workflow.HumanInTheLoop;
 import dev.langchain4j.model.decision.mock.DecisionModelMock;
 import dev.langchain4j.model.decision.response.ChoiceAnswer;
+import dev.langchain4j.model.decision.response.YesNoAnswer;
 import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.V;
 import java.util.Map;
@@ -137,16 +138,12 @@ class DecisionRouterPlannerResumeTest {
     @Test
     void shouldKeepTheOutputsOfTheAgentsThatCompletedBeforeTheSuspension() {
         AgenticScopePersister.setStore(new JsonInMemoryStore());
-        DecisionModelMock model = DecisionModelMock.thatAlwaysAnswers(Map.of(
-                QUESTION_NAME,
-                ChoiceAnswer.builder()
-                        .value("medical")
-                        .probabilities(Map.of("medical", 0.55, "askUser", 0.45))
-                        .build()));
+        DecisionModelMock model = DecisionModelMock.thatAlwaysAnswers(
+                Map.of("medical", YesNoAnswer.of(0.8), "askUser", YesNoAnswer.of(0.7)));
         ResumableMultiRouter router = AgenticServices.plannerBuilder(ResumableMultiRouter.class)
                 .subAgents(medicalExpert, legalReviewer)
                 .outputKey("responses")
-                .planner(() -> new DecisionRouterPlanner(model, 0.3))
+                .planner(() -> new DecisionRouterPlanner(model, 0.5))
                 .build();
 
         suspensionOf(() -> router.ask("s2", REQUEST));
@@ -161,15 +158,11 @@ class DecisionRouterPlannerResumeTest {
 
     @Test
     void shouldReturnTheRestoredOutputsWhenAllTheActivatedAgentsHadCompleted() {
-        DecisionModelMock model = DecisionModelMock.thatAlwaysAnswers(Map.of(
-                QUESTION_NAME,
-                ChoiceAnswer.builder()
-                        .value("medical")
-                        .probabilities(Map.of("medical", 0.55, "askUser", 0.45))
-                        .build()));
+        DecisionModelMock model = DecisionModelMock.thatAlwaysAnswers(
+                Map.of("medical", YesNoAnswer.of(0.8), "askUser", YesNoAnswer.of(0.7)));
         ResumableMultiRouter router = AgenticServices.plannerBuilder(ResumableMultiRouter.class)
                 .subAgents(medicalExpert, legalReviewer)
-                .planner(() -> new DecisionRouterPlanner(model, 0.3))
+                .planner(() -> new DecisionRouterPlanner(model, 0.5))
                 .build();
         DefaultAgenticScope scope = new AgenticScopeRegistry("router").create("s3");
         scope.writeState("request", REQUEST);
@@ -177,14 +170,14 @@ class DecisionRouterPlannerResumeTest {
                 new InitPlanningContext(scope, (AgentInstance) router, ((AgentInstance) router).subagents());
 
         // the first run activates both agents, and both complete before the interruption
-        DecisionRouterPlanner planner = new DecisionRouterPlanner(model, 0.3);
+        DecisionRouterPlanner planner = new DecisionRouterPlanner(model, 0.5);
         planner.init(initPlanningContext);
         planner.firstAction(new PlanningContext(scope, null));
         planner.nextAction(new PlanningContext(scope, invocation("medical", "medical answer")));
         planner.nextAction(new PlanningContext(scope, invocation("askUser", "legal answer")));
         Map<String, Object> executionState = planner.executionState();
 
-        DecisionRouterPlanner resumed = new DecisionRouterPlanner(model, 0.3);
+        DecisionRouterPlanner resumed = new DecisionRouterPlanner(model, 0.5);
         resumed.init(initPlanningContext);
         resumed.restoreExecutionState(executionState);
         Action action = resumed.firstAction(new PlanningContext(scope, null));

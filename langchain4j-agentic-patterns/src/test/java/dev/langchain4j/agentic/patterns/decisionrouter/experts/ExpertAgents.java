@@ -20,6 +20,7 @@ public class ExpertAgents {
             "My laptop no longer connects to the wifi after the last operating system update, how can I fix it?";
     public static final String MEDICAL_AND_LEGAL_REQUEST = "I broke my leg in a car accident caused by another driver: "
             + "how should I take care of my leg, and can I sue the driver for damages?";
+    public static final String UNRELATED_REQUEST = "What is a good recipe for a chocolate cake?";
 
     public static List<String> invokedExperts(AgenticScope agenticScope) {
         return Stream.of("medical", "legal", "technical")

@@ -69,7 +69,7 @@ public class DeclarativeExpertAgents {
 
         @PlannerSupplier
         static Planner planner() {
-            return new DecisionRouterPlanner(decisionModel(), 0.15);
+            return new DecisionRouterPlanner(decisionModel(), 0.5);
         }
     }
 }

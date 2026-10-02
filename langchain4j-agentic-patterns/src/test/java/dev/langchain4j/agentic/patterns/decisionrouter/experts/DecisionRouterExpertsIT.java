@@ -5,6 +5,7 @@ import static dev.langchain4j.agentic.patterns.decisionrouter.experts.ExpertAgen
 import static dev.langchain4j.agentic.patterns.decisionrouter.experts.ExpertAgents.MEDICAL_AND_LEGAL_REQUEST;
 import static dev.langchain4j.agentic.patterns.decisionrouter.experts.ExpertAgents.MEDICAL_REQUEST;
 import static dev.langchain4j.agentic.patterns.decisionrouter.experts.ExpertAgents.TECHNICAL_REQUEST;
+import static dev.langchain4j.agentic.patterns.decisionrouter.experts.ExpertAgents.UNRELATED_REQUEST;
 import static dev.langchain4j.agentic.patterns.decisionrouter.experts.ExpertAgents.decisionModel;
 import static dev.langchain4j.agentic.patterns.decisionrouter.experts.ExpertAgents.invokedExperts;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -74,7 +75,7 @@ public class DecisionRouterExpertsIT {
     }
 
     @Test
-    void activates_only_the_expert_reaching_a_high_threshold() {
+    void activates_only_the_relevant_expert() {
         ResultWithAgenticScope<Map<String, String>> result = multiRouter(0.5).ask(MEDICAL_REQUEST);
 
         assertThat(result.result()).containsOnlyKeys("medical");
@@ -83,12 +84,20 @@ public class DecisionRouterExpertsIT {
     }
 
     @Test
-    void activates_all_the_experts_reaching_a_low_threshold() {
-        ResultWithAgenticScope<Map<String, String>> result = multiRouter(0.15).ask(MEDICAL_AND_LEGAL_REQUEST);
+    void activates_all_the_relevant_experts() {
+        ResultWithAgenticScope<Map<String, String>> result = multiRouter(0.5).ask(MEDICAL_AND_LEGAL_REQUEST);
 
         assertThat(result.result()).containsOnlyKeys("medical", "legal");
         assertThat(result.result().values())
                 .allSatisfy(response -> assertThat(response).isNotBlank());
         assertThat(invokedExperts(result.agenticScope())).containsExactly("medical", "legal");
+    }
+
+    @Test
+    void activates_no_expert_for_an_unrelated_request() {
+        ResultWithAgenticScope<Map<String, String>> result = multiRouter(0.5).ask(UNRELATED_REQUEST);
+
+        assertThat(result.result()).isEmpty();
+        assertThat(invokedExperts(result.agenticScope())).isEmpty();
     }
 }

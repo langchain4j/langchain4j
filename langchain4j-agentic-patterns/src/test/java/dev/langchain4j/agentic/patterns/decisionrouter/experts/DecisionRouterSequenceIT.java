@@ -62,7 +62,7 @@ public class DecisionRouterSequenceIT {
     void sequence_of_router_with_threshold_and_synthesizer() {
         MultiExpertRouter router = AgenticServices.plannerBuilder(MultiExpertRouter.class)
                 .subAgents(medicalExpert, legalExpert, technicalExpert)
-                .planner(() -> new DecisionRouterPlanner(decisionModel(), 0.15))
+                .planner(() -> new DecisionRouterPlanner(decisionModel(), 0.5))
                 .build();
         ResponseSynthesizer synthesizer = AgenticServices.agentBuilder(ResponseSynthesizer.class)
                 .chatModel(baseModel())
