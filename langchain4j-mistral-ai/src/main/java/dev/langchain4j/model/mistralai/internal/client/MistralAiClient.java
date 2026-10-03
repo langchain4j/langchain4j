@@ -99,6 +99,17 @@ public abstract class MistralAiClient {
         throw batchNotSupported();
     }
 
+    /**
+     * Extracts the content of a document ({@code POST /v1/ocr}).
+     *
+     * <p>Implemented as a non-abstract method that throws by default so that adding OCR support does not
+     * break existing {@link MistralAiClient} implementations.</p>
+     */
+    public MistralAiOcrResponse ocr(MistralAiOcrRequest request) {
+        throw new UnsupportedFeatureException("OCR is not supported by this client implementation: "
+                + getClass().getName());
+    }
+
     private UnsupportedFeatureException batchNotSupported() {
         return new UnsupportedFeatureException("Batch operations are not supported by this client implementation: "
                 + getClass().getName());
@@ -124,6 +135,7 @@ public abstract class MistralAiClient {
         public Logger logger;
         public HttpClientBuilder httpClientBuilder;
         public Supplier<Map<String, String>> customHeadersSupplier;
+        public Supplier<Map<String, String>> customQueryParamsSupplier;
 
         public abstract T build();
 
@@ -183,6 +195,22 @@ public abstract class MistralAiClient {
 
         public B customHeaders(Supplier<Map<String, String>> customHeadersSupplier) {
             this.customHeadersSupplier = customHeadersSupplier;
+            return (B) this;
+        }
+
+        /**
+         * Query parameters added to every request.
+         *
+         * <p>Needed by gateways that route by query parameter rather than by path, most notably the
+         * {@code api-version} parameter of Azure hosted deployments.</p>
+         */
+        public B customQueryParams(Map<String, String> customQueryParams) {
+            this.customQueryParamsSupplier = () -> customQueryParams;
+            return (B) this;
+        }
+
+        public B customQueryParams(Supplier<Map<String, String>> customQueryParamsSupplier) {
+            this.customQueryParamsSupplier = customQueryParamsSupplier;
             return (B) this;
         }
     }
