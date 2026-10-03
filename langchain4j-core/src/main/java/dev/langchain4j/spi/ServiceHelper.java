@@ -1,11 +1,10 @@
 package dev.langchain4j.spi;
 
 import dev.langchain4j.Internal;
-
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.List;
 import java.util.Comparator;
+import java.util.List;
 import java.util.ServiceLoader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,8 +20,7 @@ public class ServiceHelper {
     /**
      * Utility class, no public constructor.
      */
-    private ServiceHelper() {
-    }
+    private ServiceHelper() {}
 
     /**
      * Load the first available service of a given type.
@@ -32,8 +30,9 @@ public class ServiceHelper {
      * @return the first service, null if none
      */
     public static <T> T loadFactory(Class<T> clazz) {
-        Collection<T> factories = loadFactories(clazz, null);
-        return factories.isEmpty() ? null : factories.iterator().next();
+        List<T> factories = loadCandidates(clazz, null);
+        warnIfAmbiguous(clazz, factories);
+        return factories.isEmpty() ? null : factories.get(0);
     }
 
     /**
@@ -65,6 +64,46 @@ public class ServiceHelper {
      * @return the list of services, empty if none
      */
     public static <T> Collection<T> loadFactories(Class<T> clazz, /* @Nullable */ ClassLoader classLoader) {
+        List<T> factories = loadCandidates(clazz, classLoader);
+        if (factories.size() > 1) {
+            log.warn(
+                    "Found {} implementations of {} on the classpath: {}. "
+                            + "Factories are ordered by priority; equal priorities retain ServiceLoader order.",
+                    factories.size(),
+                    clazz.getName(),
+                    factories.stream()
+                            .map(factory -> factory.getClass().getName())
+                            .toList());
+        }
+        return factories;
+    }
+
+    /**
+     * Load all services without warning when multiple implementations are available.
+     * Use this when each implementation can serve a different purpose.
+     *
+     * @param clazz the type of service
+     * @param <T> the type of service
+     * @return all services in priority order, empty if none
+     */
+    public static <T> Collection<T> loadAllFactories(Class<T> clazz) {
+        return loadAllFactories(clazz, null);
+    }
+
+    /**
+     * Load all services without treating multiple implementations as a selection conflict.
+     * The classloader lookup and fallback are the same as {@link #loadFactories(Class, ClassLoader)}.
+     *
+     * @param clazz the type of service
+     * @param classLoader the classloader to use, may be null
+     * @param <T> the type of service
+     * @return all services in priority order, empty if none
+     */
+    public static <T> Collection<T> loadAllFactories(Class<T> clazz, /* @Nullable */ ClassLoader classLoader) {
+        return loadCandidates(clazz, classLoader);
+    }
+
+    private static <T> List<T> loadCandidates(Class<T> clazz, ClassLoader classLoader) {
         List<T> result;
         if (classLoader != null) {
             result = loadAll(ServiceLoader.load(clazz, classLoader));
@@ -79,18 +118,9 @@ public class ServiceHelper {
             // class. In OSGi it would be the bundle exposing vert.x and so have access to all its classes.
             result = loadAll(ServiceLoader.load(clazz, ServiceHelper.class.getClassLoader()));
         }
-        result = sortByPriority(result);
-        warnIfAmbiguous(clazz, result);
-        return result;
+        return sortByPriority(result);
     }
 
-    /**
-     * Every caller of this takes the first service and ignores the rest, so a second implementation
-     * on the classpath is decided by whatever order the {@link ServiceLoader} happened to enumerate
-     * - which can differ between a development run, a shaded jar and a container image. That is
-     * worth saying out loud rather than leaving someone to discover that their JSON, or their
-     * prompt templating, is not the implementation they thought.
-     */
     /**
      * Highest priority first, stable so that equal priorities keep the {@link ServiceLoader} order
      * they came in with.
@@ -111,8 +141,7 @@ public class ServiceHelper {
         if (found.size() > 1) {
             log.warn(
                     "Found {} implementations of {} on the classpath; using {} and ignoring {}. "
-                            + "Which one is used is decided by classpath order and is not stable - "
-                            + "remove the ones you do not want.",
+                            + "Selection follows factory priority; equal priorities retain ServiceLoader order.",
                     found.size(),
                     clazz.getName(),
                     found.get(0).getClass().getName(),
