@@ -204,6 +204,7 @@ class BedrockChatRequestParametersTest {
                 .guardrailConfiguration(BedrockGuardrailConfiguration.builder()
                         .guardrailIdentifier("12345")
                         .guardrailVersion("DRAFT")
+                        .guardContentPlacement(BedrockGuardContentPlacement.LAST_USER_MESSAGE)
                         .build())
                 .build();
 
@@ -211,6 +212,7 @@ class BedrockChatRequestParametersTest {
                 .guardrailConfiguration(BedrockGuardrailConfiguration.builder()
                         .guardrailIdentifier("67890")
                         .guardrailVersion("LIVE")
+                        .guardContentPlacement(BedrockGuardContentPlacement.ALL_USER_MESSAGES)
                         .build())
                 .build();
 
@@ -220,6 +222,24 @@ class BedrockChatRequestParametersTest {
         // Then
         assertThat(merged.bedrockGuardrailConfiguration().guardrailIdentifier()).isEqualTo("67890");
         assertThat(merged.bedrockGuardrailConfiguration().guardrailVersion()).isEqualTo("LIVE");
+        assertThat(merged.bedrockGuardrailConfiguration().guardContentPlacement())
+                .isEqualTo(BedrockGuardContentPlacement.ALL_USER_MESSAGES);
+    }
+
+    @Test
+    void should_build_guardrail_configuration_with_guard_content_placement() {
+        // Given & When
+        BedrockChatRequestParameters params = BedrockChatRequestParameters.builder()
+                .guardrailConfiguration(BedrockGuardrailConfiguration.builder()
+                        .guardrailIdentifier("12345")
+                        .guardrailVersion("DRAFT")
+                        .guardContentPlacement(BedrockGuardContentPlacement.LAST_USER_MESSAGE)
+                        .build())
+                .build();
+
+        // Then
+        assertThat(params.bedrockGuardrailConfiguration().guardContentPlacement())
+                .isEqualTo(BedrockGuardContentPlacement.LAST_USER_MESSAGE);
     }
 
     @Test
@@ -402,14 +422,16 @@ class BedrockChatRequestParametersTest {
     void should_not_be_equal_when_guardrail_configuration_differs() {
         BedrockChatRequestParameters first = BedrockChatRequestParameters.builder()
                 .guardrailConfiguration(BedrockGuardrailConfiguration.builder()
-                        .guardrailIdentifier("first")
+                        .guardrailIdentifier("guardrail")
                         .guardrailVersion("1")
+                        .guardContentPlacement(BedrockGuardContentPlacement.LAST_USER_MESSAGE)
                         .build())
                 .build();
         BedrockChatRequestParameters second = BedrockChatRequestParameters.builder()
                 .guardrailConfiguration(BedrockGuardrailConfiguration.builder()
-                        .guardrailIdentifier("second")
+                        .guardrailIdentifier("guardrail")
                         .guardrailVersion("1")
+                        .guardContentPlacement(BedrockGuardContentPlacement.ALL_USER_MESSAGES)
                         .build())
                 .build();
 

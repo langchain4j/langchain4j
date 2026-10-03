@@ -19,10 +19,6 @@ In order to use Amazon Bedrock models, you need to configure AWS credentials.
 One of the options is to set the `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` environment variables. More information can be found [here](https://docs.aws.amazon.com/bedrock/latest/userguide/security-iam.html). Alternatively, set the `AWS_BEARER_TOKEN_BEDROCK` environment variable locally for API Key authentication. For additional API key details, refer to [docs](https://docs.aws.amazon.com/bedrock/latest/userguide/api-keys.html).
 
 ## BedrockChatModel
-:::note
-Guardrails is not supported by the current implementation.
-:::
-
 Supported models and their features can be found [here](https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference-supported-models-features.html).
 
 Models ids can be found [here](https://docs.aws.amazon.com/bedrock/latest/userguide/models-supported.html).
@@ -62,11 +58,6 @@ ChatModel model = BedrockChatModel.builder()
 - [BedrockChatModelExample](https://github.com/langchain4j/langchain4j-examples/blob/main/bedrock-examples/src/main/java/converse/BedrockChatModelExample.java)
 
 ## BedrockStreamingChatModel
-
-:::note
-Guardrails is not supported by the current implementation.
-:::
-
 Supported models and their features can be found [here](https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference-supported-models-features.html).
 
 Models ids can be found [here](https://docs.aws.amazon.com/bedrock/latest/userguide/models-supported.html).
@@ -104,6 +95,23 @@ StreamingChatModel model = BedrockStreamingChatModel.builder()
 
 - [BedrockStreamingChatModelExample](https://github.com/langchain4j/langchain4j-examples/blob/main/bedrock-examples/src/main/java/converse/BedrockStreamingChatModelExample.java)
 
+## Guardrails
+
+`BedrockChatModel` and `BedrockStreamingChatModel` support [Amazon Bedrock Guardrails](https://docs.aws.amazon.com/bedrock/latest/userguide/guardrails.html). Configure a guardrail through `BedrockChatRequestParameters`:
+
+```java
+BedrockChatRequestParameters parameters = BedrockChatRequestParameters.builder()
+        .guardrailConfiguration(BedrockGuardrailConfiguration.builder()
+                .guardrailIdentifier("guardrail-id")
+                .guardrailVersion("1")
+                .guardContentPlacement(BedrockGuardContentPlacement.LAST_USER_MESSAGE)
+                .build())
+        .build();
+```
+
+Set these parameters as the model's `defaultRequestParameters`. Without `guardContentPlacement`, the guardrail applies to the entire request. Use `LAST_USER_MESSAGE` to guard only the last user message or `ALL_USER_MESSAGES` to guard all user messages.
+
+Selective guarding supports text and PNG/JPEG images. If a selected message contains content that cannot be represented as Bedrock `guardContent`, the model falls back to applying the guardrail to the entire request and logs a warning.
 
 ## Additional Model Request Fields
 
