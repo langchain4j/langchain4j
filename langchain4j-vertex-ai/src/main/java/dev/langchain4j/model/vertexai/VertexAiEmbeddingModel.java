@@ -351,66 +351,153 @@ public class VertexAiEmbeddingModel extends DimensionAwareEmbeddingModel {
         private Boolean autoTruncate;
         private GoogleCredentials credentials;
 
+        /**
+         * Sets an explicit Vertex AI API endpoint, overriding the default location-based endpoint
+         * (e.g. {@code "us-central1-aiplatform.googleapis.com:443"}).
+         * If not set, the endpoint is derived from the {@code location} field.
+         *
+         * @param endpoint the API endpoint
+         * @return {@code this}
+         */
         public Builder endpoint(String endpoint) {
             this.endpoint = endpoint;
             return this;
         }
 
+        /**
+         * Sets the Google Cloud project ID.
+         *
+         * @param project the project ID
+         * @return {@code this}
+         */
         public Builder project(String project) {
             this.project = project;
             return this;
         }
 
+        /**
+         * Sets the Google Cloud region, e.g. {@code "us-central1"}.
+         *
+         * @param location the cloud region
+         * @return {@code this}
+         */
         public Builder location(String location) {
             this.location = location;
             return this;
         }
 
+        /**
+         * Sets the model publisher. Use {@code "google"} for Vertex AI first-party models.
+         *
+         * @param publisher the publisher name
+         * @return {@code this}
+         */
         public Builder publisher(String publisher) {
             this.publisher = publisher;
             return this;
         }
 
+        /**
+         * Sets the embedding model name, e.g. {@code "textembedding-gecko"}.
+         *
+         * @param modelName the model name
+         * @return {@code this}
+         */
         public Builder modelName(String modelName) {
             this.modelName = modelName;
             return this;
         }
 
+        /**
+         * Sets the maximum number of retries on transient errors. Defaults to {@code 2}.
+         *
+         * @param maxRetries the maximum number of retries
+         * @return {@code this}
+         */
         public Builder maxRetries(Integer maxRetries) {
             this.maxRetries = maxRetries;
             return this;
         }
 
+        /**
+         * Sets the maximum number of text segments sent in a single embedding API call.
+         * Defaults to {@code 250} (the API maximum).
+         *
+         * @param maxBatchSize the maximum number of segments per batch
+         * @return {@code this}
+         */
         public Builder maxSegmentsPerBatch(Integer maxBatchSize) {
             this.maxSegmentsPerBatch = maxBatchSize;
             return this;
         }
 
+        /**
+         * Sets the maximum number of tokens sent in a single embedding API call.
+         * Defaults to {@code 20000}. Reduce this value if you encounter token-limit errors.
+         *
+         * @param maxTokensPerBatch the maximum number of tokens per batch
+         * @return {@code this}
+         */
         public Builder maxTokensPerBatch(Integer maxTokensPerBatch) {
             this.maxTokensPerBatch = maxTokensPerBatch;
             return this;
         }
 
+        /**
+         * Sets the embedding task type, which optimises the embedding for a specific use case
+         * such as retrieval, classification, or clustering.
+         *
+         * @param taskType the embedding task type
+         * @return {@code this}
+         */
         public Builder taskType(TaskType taskType) {
             this.taskType = taskType;
             return this;
         }
 
+        /**
+         * Sets the segment metadata key whose value is used as a document title when the task type is
+         * {@code RETRIEVAL_DOCUMENT}. Defaults to {@code "title"}.
+         *
+         * @param titleMetadataKey the metadata key for the document title
+         * @return {@code this}
+         */
         public Builder titleMetadataKey(String titleMetadataKey) {
             this.titleMetadataKey = titleMetadataKey;
             return this;
         }
 
+        /**
+         * When {@code true}, automatically truncates input text that exceeds the model's token limit.
+         * Defaults to {@code false}.
+         *
+         * @param autoTruncate {@code true} to enable automatic truncation
+         * @return {@code this}
+         */
         public Builder autoTruncate(Boolean autoTruncate) {
             this.autoTruncate = autoTruncate;
             return this;
         }
 
+        /**
+         * Sets the number of output embedding dimensions.
+         * When set, the model compresses the embedding to this size.
+         *
+         * @param outputDimensionality the desired embedding dimension
+         * @return {@code this}
+         */
         public Builder outputDimensionality(Integer outputDimensionality) {
             this.outputDimensionality = outputDimensionality;
             return this;
         }
 
+        /**
+         * Sets the Google credentials used to authenticate API requests.
+         * If not provided, Application Default Credentials are used.
+         *
+         * @param credentials the Google credentials
+         * @return {@code this}
+         */
         public Builder credentials(GoogleCredentials credentials) {
             this.credentials = credentials;
             return this;

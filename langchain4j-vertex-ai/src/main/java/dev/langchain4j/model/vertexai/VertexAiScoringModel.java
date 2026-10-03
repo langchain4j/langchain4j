@@ -1,17 +1,16 @@
 package dev.langchain4j.model.vertexai;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static java.util.Comparator.comparing;
+
 import com.google.cloud.discoveryengine.v1beta.*;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.scoring.ScoringModel;
-
 import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
-
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static java.util.Comparator.comparing;
 
 /**
  * Implementation of a <code>ScoringModel</code> for the Google Cloud Vertex AI
@@ -34,7 +33,8 @@ public class VertexAiScoringModel implements ScoringModel {
      * @param model      The model to use
      * @param titleMetadataKey The name of the key to use as a title.
      */
-    public VertexAiScoringModel(String projectId, String projectNumber, String location, String model, String titleMetadataKey) {
+    public VertexAiScoringModel(
+            String projectId, String projectNumber, String location, String model, String titleMetadataKey) {
         this.projectId = ensureNotBlank(projectId, "projectId");
         this.projectNumber = ensureNotBlank(projectNumber, "projectNumber");
         this.location = ensureNotBlank(location, "location");
@@ -53,8 +53,8 @@ public class VertexAiScoringModel implements ScoringModel {
     public Response<List<Double>> scoreAll(List<TextSegment> segments, String query) {
         AtomicInteger counter = new AtomicInteger();
 
-        try (RankServiceClient rankServiceClient = RankServiceClient.create(
-            RankServiceSettings.newBuilder().build())) {
+        try (RankServiceClient rankServiceClient =
+                RankServiceClient.create(RankServiceSettings.newBuilder().build())) {
 
             RankRequest.Builder rankingRequestBuilder = RankRequest.newBuilder();
 
@@ -63,36 +63,38 @@ public class VertexAiScoringModel implements ScoringModel {
             }
 
             rankingRequestBuilder
-                .setRankingConfig(RankingConfigName.newBuilder()
-                    .setProject(projectId)
-                    .setLocation(location)
-                    .setRankingConfig(
-                        String.format("projects/%s/locations/%s/rankingConfigs/default_ranking_config.", projectNumber, location))
-                    .build().getRankingConfig())
-                .setQuery(query)
-                .setIgnoreRecordDetailsInResponse(true)
-                .addAllRecords(segments.stream()
-                    .map(segment -> {
-                        RankingRecord.Builder rankingBuilder = RankingRecord.newBuilder()
-                            .setContent(segment.text());
-                        // Ranker API takes into account titles in its score calculations
-                        if (segment.metadata().getString(titleMetadataKey) != null) {
-                            rankingBuilder.setTitle(segment.metadata().getString(titleMetadataKey));
-                        }
-                        // custom ID used to reorder the (sorted) results back into original segment order
-                        rankingBuilder.setId(String.valueOf(counter.getAndIncrement()));
-                        return rankingBuilder.build();
-                    })
-                    .collect(Collectors.toList()));
+                    .setRankingConfig(RankingConfigName.newBuilder()
+                            .setProject(projectId)
+                            .setLocation(location)
+                            .setRankingConfig(String.format(
+                                    "projects/%s/locations/%s/rankingConfigs/default_ranking_config.",
+                                    projectNumber, location))
+                            .build()
+                            .getRankingConfig())
+                    .setQuery(query)
+                    .setIgnoreRecordDetailsInResponse(true)
+                    .addAllRecords(segments.stream()
+                            .map(segment -> {
+                                RankingRecord.Builder rankingBuilder =
+                                        RankingRecord.newBuilder().setContent(segment.text());
+                                // Ranker API takes into account titles in its score calculations
+                                if (segment.metadata().getString(titleMetadataKey) != null) {
+                                    rankingBuilder.setTitle(segment.metadata().getString(titleMetadataKey));
+                                }
+                                // custom ID used to reorder the (sorted) results back into original segment order
+                                rankingBuilder.setId(String.valueOf(counter.getAndIncrement()));
+                                return rankingBuilder.build();
+                            })
+                            .collect(Collectors.toList()));
 
             RankResponse rankResponse = rankServiceClient.rank(rankingRequestBuilder.build());
 
             return Response.from(rankResponse.getRecordsList().stream()
-                // the API returns results sorted by relevance score, so reorder them back to original order
-                .sorted(comparing(rr -> Double.valueOf(rr.getId())))
-                .map(RankingRecord::getScore)
-                .map(Double::valueOf)
-                .collect(Collectors.toList()));
+                    // the API returns results sorted by relevance score, so reorder them back to original order
+                    .sorted(comparing(rr -> Double.valueOf(rr.getId())))
+                    .map(RankingRecord::getScore)
+                    .map(Double::valueOf)
+                    .collect(Collectors.toList()));
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -109,26 +111,57 @@ public class VertexAiScoringModel implements ScoringModel {
         private String location;
         private String titleMetadataKey;
 
+        /**
+         * Sets the ranking model to use, e.g. {@code "semantic-ranker-512@latest"}.
+         *
+         * @param model the ranking model name
+         * @return {@code this}
+         */
         public Builder model(String model) {
             this.model = ensureNotBlank(model, "model");
             return this;
         }
 
+        /**
+         * Sets the Google Cloud project ID.
+         *
+         * @param projectId the project ID
+         * @return {@code this}
+         */
         public Builder projectId(String projectId) {
             this.projectId = projectId;
             return this;
         }
 
+        /**
+         * Sets the Google Cloud project number (numeric identifier, distinct from the project ID).
+         *
+         * @param projectNumber the project number
+         * @return {@code this}
+         */
         public Builder projectNumber(String projectNumber) {
             this.projectNumber = projectNumber;
             return this;
         }
 
+        /**
+         * Sets the Google Cloud region, e.g. {@code "global"} or {@code "us-central1"}.
+         *
+         * @param location the cloud region
+         * @return {@code this}
+         */
         public Builder location(String location) {
             this.location = location;
             return this;
         }
 
+        /**
+         * Sets the segment metadata key whose value is used as the document title in ranking.
+         * Defaults to {@code "title"}.
+         *
+         * @param titleMetadataKey the metadata key for the document title
+         * @return {@code this}
+         */
         public Builder titleMetadataKey(String titleMetadataKey) {
             this.titleMetadataKey = ensureNotBlank(titleMetadataKey, "titleMetadataKey");
             return this;

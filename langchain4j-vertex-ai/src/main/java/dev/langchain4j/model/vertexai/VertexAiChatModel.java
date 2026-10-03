@@ -63,8 +63,8 @@ public class VertexAiChatModel implements ChatModel {
 
     public VertexAiChatModel(Builder builder) {
         try {
-            PredictionServiceSettings.Builder settingsBuilder = PredictionServiceSettings.newBuilder()
-                    .setEndpoint(ensureNotBlank(builder.endpoint, "endpoint"));
+            PredictionServiceSettings.Builder settingsBuilder =
+                    PredictionServiceSettings.newBuilder().setEndpoint(ensureNotBlank(builder.endpoint, "endpoint"));
             if (builder.credentials != null) {
                 GoogleCredentials scopedCredentials =
                         builder.credentials.createScoped("https://www.googleapis.com/auth/cloud-platform");
@@ -79,8 +79,8 @@ public class VertexAiChatModel implements ChatModel {
                 ensureNotBlank(builder.location, "location"),
                 ensureNotBlank(builder.publisher, "publisher"),
                 ensureNotBlank(builder.modelName, "modelName"));
-        this.vertexAiParameters = new VertexAiParameters(
-                builder.temperature, builder.maxOutputTokens, builder.topK, builder.topP);
+        this.vertexAiParameters =
+                new VertexAiParameters(builder.temperature, builder.maxOutputTokens, builder.topK, builder.topP);
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
     }
 
@@ -109,8 +109,7 @@ public class VertexAiChatModel implements ChatModel {
                 .maxOutputTokens(maxOutputTokens)
                 .topK(topK)
                 .topP(topP)
-                .maxRetries(maxRetries)
-        );
+                .maxRetries(maxRetries));
     }
 
     @Override
@@ -240,56 +239,124 @@ public class VertexAiChatModel implements ChatModel {
 
         private GoogleCredentials credentials;
 
+        /**
+         * Sets the Vertex AI API endpoint, e.g. {@code "us-central1-aiplatform.googleapis.com:443"}.
+         *
+         * @param endpoint the API endpoint
+         * @return {@code this}
+         */
         public Builder endpoint(String endpoint) {
             this.endpoint = endpoint;
             return this;
         }
 
+        /**
+         * Sets the Google Cloud project ID.
+         *
+         * @param project the project ID
+         * @return {@code this}
+         */
         public Builder project(String project) {
             this.project = project;
             return this;
         }
 
+        /**
+         * Sets the Google Cloud region, e.g. {@code "us-central1"}.
+         *
+         * @param location the cloud region
+         * @return {@code this}
+         */
         public Builder location(String location) {
             this.location = location;
             return this;
         }
 
+        /**
+         * Sets the model publisher. Use {@code "google"} for Vertex AI first-party models.
+         *
+         * @param publisher the publisher name
+         * @return {@code this}
+         */
         public Builder publisher(String publisher) {
             this.publisher = publisher;
             return this;
         }
 
+        /**
+         * Sets the model name, e.g. {@code "chat-bison"}.
+         *
+         * @param modelName the model name
+         * @return {@code this}
+         */
         public Builder modelName(String modelName) {
             this.modelName = modelName;
             return this;
         }
 
+        /**
+         * Sets the sampling temperature that controls output randomness.
+         * Higher values produce more varied output; lower values are more deterministic.
+         *
+         * @param temperature the sampling temperature
+         * @return {@code this}
+         */
         public Builder temperature(Double temperature) {
             this.temperature = temperature;
             return this;
         }
 
+        /**
+         * Sets the maximum number of tokens to generate in the response. Defaults to {@code 200}.
+         *
+         * @param maxOutputTokens the maximum number of output tokens
+         * @return {@code this}
+         */
         public Builder maxOutputTokens(Integer maxOutputTokens) {
             this.maxOutputTokens = maxOutputTokens;
             return this;
         }
 
+        /**
+         * Sets the top-K sampling parameter, limiting the vocabulary to the top K tokens at each step.
+         *
+         * @param topK the top-K value
+         * @return {@code this}
+         */
         public Builder topK(Integer topK) {
             this.topK = topK;
             return this;
         }
 
+        /**
+         * Sets the nucleus sampling probability threshold in the range {@code (0.0, 1.0]}.
+         *
+         * @param topP the nucleus sampling threshold
+         * @return {@code this}
+         */
         public Builder topP(Double topP) {
             this.topP = topP;
             return this;
         }
 
+        /**
+         * Sets the maximum number of retries on transient errors. Defaults to {@code 2}.
+         *
+         * @param maxRetries the maximum number of retries
+         * @return {@code this}
+         */
         public Builder maxRetries(Integer maxRetries) {
             this.maxRetries = maxRetries;
             return this;
         }
 
+        /**
+         * Sets the Google credentials used to authenticate API requests.
+         * If not provided, Application Default Credentials are used.
+         *
+         * @param credentials the Google credentials
+         * @return {@code this}
+         */
         public Builder credentials(GoogleCredentials credentials) {
             this.credentials = credentials;
             return this;
