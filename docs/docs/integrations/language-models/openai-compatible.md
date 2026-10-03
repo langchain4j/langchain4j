@@ -45,12 +45,13 @@ StreamingChatModel model = OpenAiStreamingChatModel.builder()
         .accumulateToolCallId(false) // Set to false for DeepSeek, Qwen, etc.
         .build();
     ```
-Below we provide specific examples for popular OpenAI-compatible APIs, including OrcaRouter, Tuning Engines, Groq, Docker Model Runner, GPT4All, Ollama, and LM Studio.
+Below we provide specific examples for popular OpenAI-compatible APIs, including OrcaRouter, Tuning Engines, Inferrail, Groq, Docker Model Runner, GPT4All, Ollama, and LM Studio.
 
 ### Contents:
 - [Prerequisites for Using OpenAI-Compatible Language Models](#prerequisites-for-using-openai-compatible-language-models)
 - [OrcaRouter](#orcarouter)
 - [Tuning Engines](#tuning-engines)
+- [Inferrail](#inferrail)
 - [Groq](#groq)
 - [Docker Model Runner](#docker-model-runner)
 - [GPT4All](#gpt4all)
@@ -118,6 +119,35 @@ ChatModel model = OpenAiChatModel.builder()
         .modelName("gpt-4o-mini")
         .build();
 ```
+
+## Inferrail
+
+**Deployment:** Self-hosted (open source, no key needed for the gateway itself)
+
+**Description:** [Inferrail](https://github.com/domondi1/inferrail) is an OpenAI-compatible gateway that gives one run or job a hard dollar budget. Each request carries the run's id and budget as headers; the gateway reserves the request's worst-case cost before forwarding it to the provider and refuses it with HTTP 402 when the run's budget can't cover it, so concurrent calls in the same run can't overspend together.
+
+**Setup:**
+Start the gateway (it uses your provider key, e.g. `OPENAI_API_KEY`):
+```bash
+pip install inferrail
+inferrail serve --quickstart --app-mode   # http://127.0.0.1:8000/v1
+```
+
+Then build one model per run with the run's headers:
+```java
+ChatModel modelForRun(String runId, String budgetUsd) {
+    return OpenAiChatModel.builder()
+            .baseUrl("http://127.0.0.1:8000/v1")
+            .apiKey("unused") // the gateway holds the provider key
+            .modelName("gpt-4o-mini")
+            .maxTokens(1000) // the reservation is based on it
+            .customHeaders(Map.of(
+                    "X-Inferrail-Attribute-Work-Id", runId,
+                    "X-Inferrail-Budget-Usd", budgetUsd))
+            .build();
+}
+```
+`inferrail work <run id>` shows what a run cost. The model needs a price in Inferrail (`inferrail models` lists which models have one).
 
 ## Groq
 
