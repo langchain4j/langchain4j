@@ -6,8 +6,8 @@ import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import dev.langchain4j.code.CodeExecutionEngine;
 import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.http.client.HttpClient;
-import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.HttpClientBuilderLoader;
+import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -99,13 +99,14 @@ class Judge0JavaScriptEngine implements CodeExecutionEngine {
      * @param body The request body
      * @return The built request
      */
-    private HttpRequest buildRequest(String body) {
+    HttpRequest buildRequest(String body) {
         return HttpRequest.builder()
                 .method(POST)
                 .url(API_URL)
                 .addHeader("x-rapidapi-host", RAPID_API_HOST)
                 .addHeader("x-rapidapi-key", apiKey)
                 .addHeader("Content-Type", "application/json")
+                .addHeader("User-Agent", "LangChain4j")
                 .body(body)
                 .build();
     }
