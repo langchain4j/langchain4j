@@ -23,9 +23,9 @@ public class OnnxEmbeddingModel extends AbstractInProcessEmbeddingModel {
     private final OnnxBertBiEncoder onnxBertBiEncoder;
 
     /**
-     * @param pathToModel     The path to the modelPath file (e.g., "/path/to/model.onnx")
+     * @param pathToModel     The path to the model file (e.g., "/path/to/model.onnx")
      * @param pathToTokenizer The path to the tokenizer file (e.g., "/path/to/tokenizer.json")
-     * @param poolingMode     The pooling model to use. Can be found in the ".../1_Pooling/config.json" file on HuggingFace.
+     * @param poolingMode     The pooling mode to use. Can be found in the ".../1_Pooling/config.json" file on HuggingFace.
      *                        Here is an <a href="https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/blob/main/1_Pooling/config.json">example</a>.
      *                        {@code "pooling_mode_mean_tokens": true} means that {@link PoolingMode#MEAN} should be used.
      */
@@ -35,9 +35,9 @@ public class OnnxEmbeddingModel extends AbstractInProcessEmbeddingModel {
     }
 
     /**
-     * @param pathToModel     The path to the modelPath file (e.g., "/path/to/model.onnx")
+     * @param pathToModel     The path to the model file (e.g., "/path/to/model.onnx")
      * @param pathToTokenizer The path to the tokenizer file (e.g., "/path/to/tokenizer.json")
-     * @param poolingMode     The pooling model to use. Can be found in the ".../1_Pooling/config.json" file on HuggingFace.
+     * @param poolingMode     The pooling mode to use. Can be found in the ".../1_Pooling/config.json" file on HuggingFace.
      *                        Here is an <a href="https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/blob/main/1_Pooling/config.json">example</a>.
      *                        {@code "pooling_mode_mean_tokens": true} means that {@link PoolingMode#MEAN} should be used.
      * @param executor        The executor to use to parallelize the embedding process.
@@ -50,7 +50,7 @@ public class OnnxEmbeddingModel extends AbstractInProcessEmbeddingModel {
     /**
      * @param pathToModel     The path to the model file (e.g., "/home/me/model.onnx")
      * @param pathToTokenizer The path to the tokenizer file (e.g., "/path/to/tokenizer.json")
-     * @param poolingMode     The pooling model to use. Can be found in the ".../1_Pooling/config.json" file on HuggingFace.
+     * @param poolingMode     The pooling mode to use. Can be found in the ".../1_Pooling/config.json" file on HuggingFace.
      *                        Here is an <a href="https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/blob/main/1_Pooling/config.json">example</a>.
      *                        {@code "pooling_mode_mean_tokens": true} means that {@link PoolingMode#MEAN} should be used.
      */
@@ -61,7 +61,7 @@ public class OnnxEmbeddingModel extends AbstractInProcessEmbeddingModel {
     /**
      * @param pathToModel     The path to the model file (e.g., "/home/me/model.onnx")
      * @param pathToTokenizer The path to the tokenizer file (e.g., "/path/to/tokenizer.json")
-     * @param poolingMode     The pooling model to use. Can be found in the ".../1_Pooling/config.json" file on HuggingFace.
+     * @param poolingMode     The pooling mode to use. Can be found in the ".../1_Pooling/config.json" file on HuggingFace.
      *                        Here is an <a href="https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/blob/main/1_Pooling/config.json">example</a>.
      *                        {@code "pooling_mode_mean_tokens": true} means that {@link PoolingMode#MEAN} should be used.
      * @param executor        The executor to use to parallelize the embedding process.
