@@ -12,6 +12,8 @@ import static java.util.stream.Collectors.joining;
 import dev.langchain4j.Experimental;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.AbstractMap.SimpleImmutableEntry;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -23,6 +25,7 @@ public class HttpRequest {
     private final String url;
     private final Map<String, List<String>> headers;
     private final Map<String, String> formDataFields;
+    private final List<Map.Entry<String, String>> formDataFieldEntries;
     private final Map<String, FormDataFile> formDataFiles;
     private final String body;
 
@@ -32,13 +35,14 @@ public class HttpRequest {
         this.url = buildUrl(builder);
         this.headers = HttpHeaders.copyCaseInsensitive(builder.headers);
         this.formDataFields = copy(builder.formDataFields);
+        this.formDataFieldEntries = copy(builder.formDataFieldEntries);
         this.formDataFiles = copy(builder.formDataFiles);
         this.body = builder.body;
     }
 
     private static void validate(Builder builder) {
         boolean hasBody = builder.body != null;
-        boolean hasFormDataFields = builder.formDataFields != null && !builder.formDataFields.isEmpty();
+        boolean hasFormDataFields = builder.formDataFieldEntries != null && !builder.formDataFieldEntries.isEmpty();
         boolean hasFormDataFiles = builder.formDataFiles != null && !builder.formDataFiles.isEmpty();
         if (hasBody && hasFormDataFields) {
             throw illegalArgument("Cannot specify both body and formDataFields");
@@ -90,6 +94,18 @@ public class HttpRequest {
     }
 
     /**
+     * Returns the form-data fields in the order they were added, preserving repeated field names added via
+     * {@link Builder#addRepeatedFormDataField(String, String)}, while {@link #formDataFields()} keeps only the last
+     * value of a given field name.
+     *
+     * @since 1.21.0
+     */
+    @Experimental
+    public List<Map.Entry<String, String>> formDataFieldEntries() {
+        return formDataFieldEntries;
+    }
+
+    /**
      * @since 1.10.0
      */
     @Experimental
@@ -112,6 +128,7 @@ public class HttpRequest {
         private Map<String, List<String>> headers;
         private Map<String, String> queryParams;
         private Map<String, String> formDataFields;
+        private List<Map.Entry<String, String>> formDataFieldEntries;
         private Map<String, FormDataFile> formDataFiles;
         private String body;
 
@@ -200,6 +217,8 @@ public class HttpRequest {
         }
 
         /**
+         * Sets the value of the given form-data field, replacing the value set by a previous call with the same name.
+         *
          * @since 1.10.0
          */
         @Experimental
@@ -211,6 +230,38 @@ public class HttpRequest {
                 this.formDataFields = new LinkedHashMap<>();
             }
             this.formDataFields.put(name, value);
+
+            if (this.formDataFieldEntries == null) {
+                this.formDataFieldEntries = new ArrayList<>();
+            }
+            this.formDataFieldEntries.removeIf(entry -> entry.getKey().equals(name));
+            this.formDataFieldEntries.add(new SimpleImmutableEntry<>(name, value));
+
+            return this;
+        }
+
+        /**
+         * Adds an additional value for the given form-data field, keeping the values set by previous calls with the
+         * same name. Use this method for fields that have to be repeated in the request, for example
+         * {@code timestamp_granularities[]}.
+         *
+         * @since 1.21.0
+         */
+        @Experimental
+        public Builder addRepeatedFormDataField(String name, String value) {
+            ensureNotBlank(name, "name");
+            ensureNotNull(value, "value");
+
+            if (this.formDataFields == null) {
+                this.formDataFields = new LinkedHashMap<>();
+            }
+            this.formDataFields.put(name, value);
+
+            if (this.formDataFieldEntries == null) {
+                this.formDataFieldEntries = new ArrayList<>();
+            }
+            this.formDataFieldEntries.add(new SimpleImmutableEntry<>(name, value));
+
             return this;
         }
 
@@ -221,8 +272,12 @@ public class HttpRequest {
         public Builder formDataFields(Map<String, String> formDataFields) {
             if (formDataFields == null) {
                 this.formDataFields = null;
+                this.formDataFieldEntries = null;
             } else {
                 this.formDataFields = new LinkedHashMap<>(formDataFields);
+                this.formDataFieldEntries = new ArrayList<>();
+                formDataFields.forEach(
+                        (name, value) -> this.formDataFieldEntries.add(new SimpleImmutableEntry<>(name, value)));
             }
             return this;
         }
