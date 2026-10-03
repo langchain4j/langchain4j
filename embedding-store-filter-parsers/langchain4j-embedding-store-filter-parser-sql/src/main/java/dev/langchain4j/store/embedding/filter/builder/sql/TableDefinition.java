@@ -74,21 +74,47 @@ public class TableDefinition {
         private String description;
         private Collection<ColumnDefinition> columns;
 
+        /**
+         * Sets the table name used in the generated {@code CREATE TABLE} statement.
+         *
+         * @param name the table name
+         * @return {@code this}
+         */
         public Builder name(String name) {
             this.name = name;
             return this;
         }
 
+        /**
+         * Sets an optional description of the table, appended as a {@code COMMENT} in the
+         * generated {@code CREATE TABLE} statement.
+         *
+         * @param description the table description
+         * @return {@code this}
+         */
         public Builder description(String description) {
             this.description = description;
             return this;
         }
 
+        /**
+         * Sets all column definitions at once, replacing any previously added columns.
+         *
+         * @param columns the column definitions
+         * @return {@code this}
+         */
         public Builder columns(Collection<ColumnDefinition> columns) {
             this.columns = columns;
             return this;
         }
 
+        /**
+         * Adds a column with a name and SQL type to the table definition.
+         *
+         * @param name the column name (corresponds to a metadata key)
+         * @param type the SQL column type (e.g. {@code "VARCHAR"}, {@code "INTEGER"})
+         * @return {@code this}
+         */
         public Builder addColumn(String name, String type) {
             if (columns == null) {
                 columns = new ArrayList<>();
@@ -97,6 +123,15 @@ public class TableDefinition {
             return this;
         }
 
+        /**
+         * Adds a column with a name, SQL type, and description comment to the table definition.
+         * The description is rendered as an inline SQL comment (e.g. {@code -- one of [a, b, c]}).
+         *
+         * @param name        the column name (corresponds to a metadata key)
+         * @param type        the SQL column type (e.g. {@code "VARCHAR"}, {@code "INTEGER"})
+         * @param description a hint describing allowed values, rendered as an inline SQL comment
+         * @return {@code this}
+         */
         public Builder addColumn(String name, String type, String description) {
             if (columns == null) {
                 columns = new ArrayList<>();
@@ -105,6 +140,11 @@ public class TableDefinition {
             return this;
         }
 
+        /**
+         * Builds the {@link TableDefinition}.
+         *
+         * @return the configured {@link TableDefinition}
+         */
         public TableDefinition build() {
             return new TableDefinition(name, description, columns);
         }
