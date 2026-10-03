@@ -45,7 +45,7 @@ public class TencentCosDocumentLoader {
     }
 
     /**
-     * Loads all documents from an COS bucket.
+     * Loads all documents from a COS bucket.
      * Skips any documents that fail to load.
      *
      * @param bucket COS bucket to load from.
@@ -57,7 +57,7 @@ public class TencentCosDocumentLoader {
     }
 
     /**
-     * Loads all documents from an COS bucket.
+     * Loads all documents from a COS bucket.
      * Skips any documents that fail to load.
      *
      * @param bucket COS bucket to load from.
