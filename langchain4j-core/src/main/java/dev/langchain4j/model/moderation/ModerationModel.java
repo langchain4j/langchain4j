@@ -6,11 +6,7 @@ import static dev.langchain4j.model.moderation.ModerationModelListenerUtils.onEr
 import static dev.langchain4j.model.moderation.ModerationModelListenerUtils.onRequest;
 import static dev.langchain4j.model.moderation.ModerationModelListenerUtils.onResponse;
 
-import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.SystemMessage;
-import dev.langchain4j.data.message.ToolExecutionResultMessage;
-import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.input.Prompt;
@@ -68,10 +64,7 @@ public interface ModerationModel {
      * @return the moderation {@code Response}.
      */
     default Response<Moderation> moderate(String text) {
-        ModerationRequest request =
-                ModerationRequest.builder().texts(List.of(text)).build();
-        ModerationResponse response = moderate(request);
-        return Response.from(response.moderation(), null, null, response.metadata());
+        return moderate(List.of(text));
     }
 
     /**
@@ -85,23 +78,12 @@ public interface ModerationModel {
     }
 
     /**
-     * Moderates the given chat message.
+     * Moderates the given list of texts.
      *
-     * @param message the chat message to moderate.
+     * @param texts the list of texts to moderate.
      * @return the moderation {@code Response}.
      */
-    default Response<Moderation> moderate(ChatMessage message) {
-        return moderate(List.of(message));
-    }
-
-    /**
-     * Moderates the given list of chat messages.
-     *
-     * @param messages the list of chat messages to moderate.
-     * @return the moderation {@code Response}.
-     */
-    default Response<Moderation> moderate(List<ChatMessage> messages) {
-        List<String> texts = messages.stream().map(ModerationModel::toText).toList();
+    default Response<Moderation> moderate(List<String> texts) {
         ModerationRequest request = ModerationRequest.builder().texts(texts).build();
         ModerationResponse response = moderate(request);
         return Response.from(response.moderation(), null, null, response.metadata());
@@ -118,25 +100,15 @@ public interface ModerationModel {
     }
 
     /**
-     * Converts a ChatMessage to its text representation.
-     * This is a helper method for implementations.
+     * Moderates the given chat message.
      *
-     * @param chatMessage the chat message
-     * @return the text content of the message
-     * @throws IllegalArgumentException if the message type is unsupported
+     * @param message the chat message to moderate.
+     * @return the moderation {@code Response}.
+     * @deprecated since 2.0.0, use {@link #moderate(String)} with {@link ChatMessage#text()} instead.
      */
-    static String toText(ChatMessage chatMessage) {
-        if (chatMessage instanceof SystemMessage systemMessage) {
-            return systemMessage.text();
-        } else if (chatMessage instanceof UserMessage userMessage) {
-            return userMessage.singleText();
-        } else if (chatMessage instanceof AiMessage aiMessage) {
-            return aiMessage.text();
-        } else if (chatMessage instanceof ToolExecutionResultMessage toolExecutionResultMessage) {
-            return toolExecutionResultMessage.text();
-        } else {
-            throw new IllegalArgumentException("Unsupported message type: " + chatMessage.type());
-        }
+    @Deprecated(since = "2.0.0")
+    default Response<Moderation> moderate(ChatMessage message) {
+        return moderate(message.text());
     }
 
     /**

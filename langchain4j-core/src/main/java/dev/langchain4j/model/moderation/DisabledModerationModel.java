@@ -30,7 +30,7 @@ public class DisabledModerationModel implements ModerationModel {
     }
 
     @Override
-    public Response<Moderation> moderate(List<ChatMessage> messages) {
+    public Response<Moderation> moderate(List<String> texts) {
         throw new ModelDisabledException("ModerationModel is disabled");
     }
 

@@ -20,6 +20,14 @@ class CustomMessageTest implements WithAssertions {
     }
 
     @Test
+    void text_throws_unsupported() {
+        CustomMessage message = new CustomMessage(Map.of("content", "text"));
+        assertThatThrownBy(message::text)
+                .isInstanceOf(UnsupportedOperationException.class)
+                .hasMessageContaining("Not implemented for message type: " + ChatMessageType.CUSTOM);
+    }
+
+    @Test
     void equals_hash_code() {
         Map<String, Object> attributes = Map.of(
                 "content", "The sky is blue.",
