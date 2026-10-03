@@ -45,12 +45,13 @@ StreamingChatModel model = OpenAiStreamingChatModel.builder()
         .accumulateToolCallId(false) // Set to false for DeepSeek, Qwen, etc.
         .build();
     ```
-Below we provide specific examples for popular OpenAI-compatible APIs, including OrcaRouter, Tuning Engines, Groq, Docker Model Runner, GPT4All, Ollama, and LM Studio.
+Below we provide specific examples for popular OpenAI-compatible APIs, including OrcaRouter, Tuning Engines, Heabsy, Groq, Docker Model Runner, GPT4All, Ollama, and LM Studio.
 
 ### Contents:
 - [Prerequisites for Using OpenAI-Compatible Language Models](#prerequisites-for-using-openai-compatible-language-models)
 - [OrcaRouter](#orcarouter)
 - [Tuning Engines](#tuning-engines)
+- [Heabsy](#heabsy)
 - [Groq](#groq)
 - [Docker Model Runner](#docker-model-runner)
 - [GPT4All](#gpt4all)
@@ -118,6 +119,25 @@ ChatModel model = OpenAiChatModel.builder()
         .modelName("gpt-4o-mini")
         .build();
 ```
+
+## Heabsy
+
+**Deployment:** SaaS (key required)
+
+**Description:** [Heabsy](https://heabsy.com) is a European inference API for open models with per-token pricing. Its endpoint is OpenAI-compatible, so any OpenAI-compatible configuration works by changing the base URL.
+
+**Setup:**
+API keys are issued on request — get one via [heabsy.com/contacts](https://heabsy.com/contacts).
+
+Configure LangChain4j's `OpenAiChatModel` or `OpenAiStreamingChatModel`:
+```java
+ChatModel model = OpenAiChatModel.builder()
+        .baseUrl("https://api.heabsy.com/v1")
+        .apiKey(System.getenv("HEABSY_API_KEY"))
+        .modelName("qwen38") // Or any other model from the catalog
+        .build();
+```
+You can find available model names on the [Heabsy models page](https://heabsy.com/models).
 
 ## Groq
 
