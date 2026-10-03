@@ -20,11 +20,17 @@ class MistralAiStreamingChatModelParametersTest {
                 .modelName("mistral-small-latest")
                 .safePrompt(true)
                 .randomSeed(42)
+                .promptCacheKey("cache-key")
+                .reasoningEffort("low")
+                .serviceTier("standard_only")
                 .build();
 
         assertThat(model.defaultRequestParameters()).isInstanceOf(MistralAiChatRequestParameters.class);
         assertThat(model.defaultRequestParameters().safePrompt()).isTrue();
         assertThat(model.defaultRequestParameters().randomSeed()).isEqualTo(42);
+        assertThat(model.defaultRequestParameters().promptCacheKey()).isEqualTo("cache-key");
+        assertThat(model.defaultRequestParameters().reasoningEffort()).isEqualTo("low");
+        assertThat(model.defaultRequestParameters().serviceTier()).isEqualTo("standard_only");
     }
 
     @Test
@@ -35,6 +41,9 @@ class MistralAiStreamingChatModelParametersTest {
                 .apiKey("dummy")
                 .modelName("mistral-small-latest")
                 .safePrompt(false)
+                .promptCacheKey("cache-key")
+                .reasoningEffort("low")
+                .serviceTier("standard_only")
                 .build();
 
         ChatRequest request = ChatRequest.builder()
@@ -42,6 +51,9 @@ class MistralAiStreamingChatModelParametersTest {
                 .parameters(MistralAiChatRequestParameters.builder()
                         .safePrompt(true)
                         .randomSeed(123)
+                        .promptCacheKey("cache-key-override")
+                        .reasoningEffort("high")
+                        .serviceTier("standard_only")
                         .build())
                 .build();
 
@@ -61,6 +73,9 @@ class MistralAiStreamingChatModelParametersTest {
 
         assertThat(mockHttpClient.request().body().replaceAll("\\s", ""))
                 .contains("\"safe_prompt\":true")
-                .contains("\"random_seed\":123");
+                .contains("\"random_seed\":123")
+                .contains("\"prompt_cache_key\":\"cache-key-override\"")
+                .contains("\"reasoning_effort\":\"high\"")
+                .contains("\"service_tier\":\"standard_only\"");
     }
 }
