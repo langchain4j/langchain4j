@@ -41,16 +41,12 @@ public class Metadata {
 
         SUPPORTED_VALUE_TYPES.add(UUID.class);
 
-        SUPPORTED_VALUE_TYPES.add(int.class);
         SUPPORTED_VALUE_TYPES.add(Integer.class);
 
-        SUPPORTED_VALUE_TYPES.add(long.class);
         SUPPORTED_VALUE_TYPES.add(Long.class);
 
-        SUPPORTED_VALUE_TYPES.add(float.class);
         SUPPORTED_VALUE_TYPES.add(Float.class);
 
-        SUPPORTED_VALUE_TYPES.add(double.class);
         SUPPORTED_VALUE_TYPES.add(Double.class);
     }
 
