@@ -44,7 +44,7 @@ final class StreamingToSynchronousChatExecutor extends AbstractChatExecutor {
         var responseHandler = new StreamingToSyncResponseHandler(this.errorHandler);
         this.streamingChatModel.chat(chatRequest, responseHandler);
 
-        return Optional.ofNullable(responseHandler.getResponse()).orElseGet(ChatResponse.builder()::build);
+        return responseHandler.getResponse();
     }
 
     @Override
@@ -57,6 +57,7 @@ final class StreamingToSynchronousChatExecutor extends AbstractChatExecutor {
         private final Consumer<Throwable> errorHandler;
         private final CountDownLatch latch = new CountDownLatch(1);
         private AtomicReference<ChatResponse> response = new AtomicReference<>();
+        private AtomicReference<Throwable> error = new AtomicReference<>();
 
         StreamingToSyncResponseHandler(Consumer<Throwable> errorHandler) {
             this.errorHandler = errorHandler;
@@ -79,11 +80,24 @@ final class StreamingToSynchronousChatExecutor extends AbstractChatExecutor {
 
         ChatResponse getResponse() {
             waitForCompletion();
+
+            // The stream may terminate with onError instead of onCompleteResponse (e.g. a transport-level
+            // failure). Propagate the error so this synchronous facade fails like a synchronous model call
+            // instead of blocking forever (or silently returning an empty response).
+            Throwable error = this.error.get();
+            if (error != null) {
+                throw error instanceof RuntimeException runtimeException
+                        ? runtimeException
+                        : new RuntimeException(error);
+            }
+
             return this.response.get();
         }
 
         @Override
         public void onError(Throwable error) {
+            this.error.set(error);
+
             if (errorHandler != null) {
                 try {
                     errorHandler.accept(error);
@@ -94,6 +108,10 @@ final class StreamingToSynchronousChatExecutor extends AbstractChatExecutor {
             } else {
                 LOG.warn("Ignored error", error);
             }
+
+            // Release the latch last, so that the waiting thread resumes only after the error has been fully
+            // delivered to the error handler (if any).
+            this.latch.countDown();
         }
     }
 }
