@@ -287,6 +287,66 @@ class PartsAndContentsMapperTest {
     }
 
     @Test
+    void fromMessageToGContent_recoversEmptyFunctionResponseNameByToolCallId() {
+        // Gemini rejects functionResponse with empty name (e.g. when only id was stored on the result).
+        ToolExecutionRequest toolRequest = ToolExecutionRequest.builder()
+                .id("call-1")
+                .name("get_current_time")
+                .arguments("{\"timezone\":\"Asia/Shanghai\"}")
+                .build();
+        AiMessage aiMessage = AiMessage.from(toolRequest);
+        ToolExecutionResultMessage toolResult =
+                ToolExecutionResultMessage.from("call-1", "", "{\"timezone\":\"Asia/Shanghai\"}");
+
+        List<GeminiContent> result =
+                PartsAndContentsMapper.fromMessageToGContent(List.of(aiMessage, toolResult), null, false);
+
+        assertThat(result).hasSize(2);
+        assertThat(result.get(0).parts().get(0).functionCall().name()).isEqualTo("get_current_time");
+        assertThat(result.get(1).parts().get(0).functionResponse().name()).isEqualTo("get_current_time");
+        assertThat(result.get(1).parts().get(0).functionResponse().id()).isEqualTo("call-1");
+    }
+
+    @Test
+    void fromMessageToGContent_recoversEmptyFunctionResponseNameByOrderWhenIdsMissing() {
+        // Gemini often omits function call ids; recover name by position among tool results.
+        ToolExecutionRequest first = ToolExecutionRequest.builder()
+                .name("get_current_time")
+                .arguments("{\"timezone\":\"Asia/Shanghai\"}")
+                .build();
+        ToolExecutionRequest second = ToolExecutionRequest.builder()
+                .name("convert_time")
+                .arguments("{\"time\":\"12:00\"}")
+                .build();
+        AiMessage aiMessage = AiMessage.from(first, second);
+        ToolExecutionResultMessage firstResult = ToolExecutionResultMessage.from(null, "", "now");
+        ToolExecutionResultMessage secondResult = ToolExecutionResultMessage.from(null, "", "later");
+
+        List<GeminiContent> result = PartsAndContentsMapper.fromMessageToGContent(
+                List.of(aiMessage, firstResult, secondResult), null, false);
+
+        assertThat(result).hasSize(3);
+        assertThat(result.get(1).parts().get(0).functionResponse().name()).isEqualTo("get_current_time");
+        assertThat(result.get(2).parts().get(0).functionResponse().name()).isEqualTo("convert_time");
+    }
+
+    @Test
+    void fromMessageToGContent_keepsExplicitFunctionResponseNameWhenPresent() {
+        ToolExecutionRequest toolRequest = ToolExecutionRequest.builder()
+                .id("call-1")
+                .name("get_current_time")
+                .arguments("{}")
+                .build();
+        AiMessage aiMessage = AiMessage.from(toolRequest);
+        ToolExecutionResultMessage toolResult = ToolExecutionResultMessage.from("call-1", "explicit_name", "ok");
+
+        List<GeminiContent> result =
+                PartsAndContentsMapper.fromMessageToGContent(List.of(aiMessage, toolResult), null, false);
+
+        assertThat(result.get(1).parts().get(0).functionResponse().name()).isEqualTo("explicit_name");
+    }
+
+    @Test
     void fromMessageToGContent_systemMessageWithText() {
         SystemMessage msg = new SystemMessage("system text");
         List<GeminiContent> result = PartsAndContentsMapper.fromMessageToGContent(List.of(msg), null, false);
