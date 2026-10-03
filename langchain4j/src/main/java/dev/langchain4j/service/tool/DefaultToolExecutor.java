@@ -9,7 +9,7 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.service.tool.ToolExecutionRequestUtil.argumentsAsMap;
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+import static dev.langchain4j.spi.ServiceHelper.loadAllFactories;
 
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
@@ -47,7 +47,7 @@ import java.util.concurrent.CompletionStage;
 public class DefaultToolExecutor implements ToolExecutor {
 
     private static final Collection<CompletableFutureAdapter> COMPLETABLE_FUTURE_ADAPTERS =
-            loadFactories(CompletableFutureAdapter.class);
+            loadAllFactories(CompletableFutureAdapter.class);
 
     private final Object object;
     private final Method originalMethod;
