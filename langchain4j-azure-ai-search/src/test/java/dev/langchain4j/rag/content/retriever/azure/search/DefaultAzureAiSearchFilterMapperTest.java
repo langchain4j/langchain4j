@@ -53,7 +53,7 @@ class DefaultAzureAiSearchFilterMapperTest {
         IsIn isInFilter = new IsIn("key1", Arrays.asList("value1", "value2"));
         String result = mapper.map(isInFilter);
         assertThat(result)
-                .isEqualTo("metadata/attributes/any(k: k/key eq 'key1' and search.in(k/value, ('value1, value2')))");
+                .isEqualTo("metadata/attributes/any(k: k/key eq 'key1' and search.in(k/value, ('value1,value2')))");
     }
 
     @Test
@@ -62,7 +62,7 @@ class DefaultAzureAiSearchFilterMapperTest {
         String result = mapper.map(isNotInFilter);
         assertThat(result)
                 .isEqualTo(
-                        "(not metadata/attributes/any(k: k/key eq 'key1' and search.in(k/value, ('value1, value2'))))");
+                        "(not metadata/attributes/any(k: k/key eq 'key1' and search.in(k/value, ('value1,value2'))))");
     }
 
     @Test
@@ -85,7 +85,7 @@ class DefaultAzureAiSearchFilterMapperTest {
         String result = mapper.map(isInFilter);
         assertThat(result)
                 .isEqualTo(
-                        "metadata/attributes/any(k: k/key eq 'key1' and search.in(k/value, ('D''Angelo, O''Brien')))");
+                        "metadata/attributes/any(k: k/key eq 'key1' and search.in(k/value, ('D''Angelo,O''Brien')))");
     }
 
     @Test
@@ -96,7 +96,7 @@ class DefaultAzureAiSearchFilterMapperTest {
         String result = mapper.map(filter);
         assertThat(result)
                 .isEqualTo(
-                        "(metadata/attributes/any(k: k/key eq 'key1' and k/value eq 'value1') and ((not metadata/attributes/any(k: k/key eq 'key2' and search.in(k/value, ('value2, value3')))) or metadata/attributes/any(k: k/key eq 'key3' and k/value gt '100')))");
+                        "(metadata/attributes/any(k: k/key eq 'key1' and k/value eq 'value1') and ((not metadata/attributes/any(k: k/key eq 'key2' and search.in(k/value, ('value2,value3')))) or metadata/attributes/any(k: k/key eq 'key3' and k/value gt '100')))");
     }
 
     @Test

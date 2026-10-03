@@ -3,9 +3,13 @@ package dev.langchain4j.store.embedding.weaviate;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 
+import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.store.embedding.EmbeddingMatch;
+import dev.langchain4j.store.embedding.RelevanceScore;
 import dev.langchain4j.store.embedding.filter.Filter;
 import dev.langchain4j.store.embedding.filter.comparison.IsEqualTo;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
@@ -83,6 +87,31 @@ class WeaviateEmbeddingStoreTest {
         boolean matched = WeaviateEmbeddingStore.matchesFilter(properties, METADATA_FIELD, TEXT_FIELD, filter);
 
         assertThat(matched).isFalse();
+    }
+
+    @Test
+    void should_convert_certainty_to_relevance_score_in_embedding_match() {
+        // given - a Weaviate search result item with certainty (a raw cosine similarity)
+        WeaviateEmbeddingStore store = WeaviateEmbeddingStore.builder()
+                .scheme("http")
+                .host("localhost")
+                .build();
+
+        Map<String, Object> additional = new HashMap<>();
+        additional.put("certainty", 0.6);
+        additional.put("id", "id1");
+        additional.put("vector", List.of(1.0, 2.0, 3.0));
+        Map<String, Object> item = new HashMap<>();
+        item.put("_additional", additional);
+        item.put(TEXT_FIELD, "hello");
+
+        // when
+        EmbeddingMatch<TextSegment> match = store.toEmbeddingMatch(item);
+
+        // then - certainty is mapped into a relevance score in [0..1]
+        assertThat(match.score()).isEqualTo(RelevanceScore.fromCosineSimilarity(0.6));
+        assertThat(match.embeddingId()).isEqualTo("id1");
+        assertThat(match.embedded().text()).isEqualTo("hello");
     }
 
     @Test
