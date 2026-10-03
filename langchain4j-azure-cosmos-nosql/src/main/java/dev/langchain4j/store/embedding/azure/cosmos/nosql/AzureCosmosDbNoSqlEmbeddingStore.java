@@ -5,6 +5,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
 
 import com.azure.core.credential.AzureKeyCredential;
 import com.azure.core.credential.TokenCredential;
+import com.azure.cosmos.CosmosAsyncClient;
 import com.azure.cosmos.models.CosmosFullTextPolicy;
 import com.azure.cosmos.models.CosmosVectorEmbeddingPolicy;
 import com.azure.cosmos.models.IndexingPolicy;
@@ -76,11 +77,36 @@ public class AzureCosmosDbNoSqlEmbeddingStore extends AbstractAzureCosmosDBNoSql
                 filterMapper);
     }
 
+    public AzureCosmosDbNoSqlEmbeddingStore(
+            CosmosAsyncClient cosmosAsyncClient,
+            String databaseName,
+            String containerName,
+            String partitionKeyPath,
+            IndexingPolicy indexingPolicy,
+            CosmosVectorEmbeddingPolicy cosmosVectorEmbeddingPolicy,
+            CosmosFullTextPolicy cosmosFullTextPolicy,
+            Integer vectorStoreThroughput,
+            AzureCosmosDBSearchQueryType azureCosmosDBSearchQueryType,
+            AzureCosmosDBNoSqlFilterMapper filterMapper) {
+        this.initialize(
+                cosmosAsyncClient,
+                databaseName,
+                containerName,
+                partitionKeyPath,
+                indexingPolicy,
+                cosmosVectorEmbeddingPolicy,
+                cosmosFullTextPolicy,
+                vectorStoreThroughput,
+                azureCosmosDBSearchQueryType,
+                filterMapper);
+    }
+
     public static Builder builder() {
         return new Builder();
     }
 
     public static class Builder {
+        private CosmosAsyncClient cosmosAsyncClient;
         private String endpoint;
         private TokenCredential tokenCredential;
         private AzureKeyCredential keyCredential;
@@ -95,6 +121,19 @@ public class AzureCosmosDbNoSqlEmbeddingStore extends AbstractAzureCosmosDBNoSql
         private AzureCosmosDBNoSqlFilterMapper filterMapper;
 
         /**
+         * Sets the {@link CosmosAsyncClient}.
+         * The provided client remains caller-owned and is not closed by this store.
+         * When configured, this client takes precedence over endpoint and credentials.
+         *
+         * @param cosmosAsyncClient the Azure Cosmos DB async client.
+         * @return builder
+         */
+        public Builder cosmosAsyncClient(CosmosAsyncClient cosmosAsyncClient) {
+            this.cosmosAsyncClient = cosmosAsyncClient;
+            return this;
+        }
+
+        /**
          * Sets the Cosmos DB endpoint.
          *
          * @param endpoint the Cosmos DB endpoint
@@ -106,9 +145,9 @@ public class AzureCosmosDbNoSqlEmbeddingStore extends AbstractAzureCosmosDBNoSql
         }
 
         /**
-         * Sets the Azure AI Search API key.
+         * Sets the Azure Cosmos DB API key.
          *
-         * @param apiKey The Azure AI Search API key.
+         * @param apiKey the Azure Cosmos DB API key.
          * @return builder
          */
         public Builder apiKey(String apiKey) {
@@ -117,9 +156,9 @@ public class AzureCosmosDbNoSqlEmbeddingStore extends AbstractAzureCosmosDBNoSql
         }
 
         /**
-         * Used to authenticate to Azure OpenAI with Azure Active Directory credentials.
+         * Used to authenticate to Azure Cosmos DB with Azure Active Directory credentials.
          *
-         * @param tokenCredential the credentials to authenticate with Azure Active Directory
+         * @param tokenCredential the credentials to authenticate with Azure Active Directory.
          * @return builder
          */
         public Builder tokenCredential(TokenCredential tokenCredential) {
@@ -190,6 +229,20 @@ public class AzureCosmosDbNoSqlEmbeddingStore extends AbstractAzureCosmosDBNoSql
          * @return a new AzureCosmosDbNoSqlEmbeddingStore instance
          */
         public AzureCosmosDbNoSqlEmbeddingStore build() {
+            if (cosmosAsyncClient != null) {
+                return new AzureCosmosDbNoSqlEmbeddingStore(
+                        this.cosmosAsyncClient,
+                        this.databaseName,
+                        this.containerName,
+                        this.partitionKeyPath,
+                        this.indexingPolicy,
+                        this.cosmosVectorEmbeddingPolicy,
+                        this.cosmosFullTextPolicy,
+                        this.vectorStoreThroughput,
+                        this.searchQueryType,
+                        this.filterMapper);
+            }
+
             ensureNotNull(endpoint, "endpoint");
             ensureTrue(
                     keyCredential != null || tokenCredential != null, "either apiKey or tokenCredential must be set");
