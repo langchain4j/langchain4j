@@ -9,6 +9,7 @@ import dev.langchain4j.service.tool.ToolExecutionResult;
 import dev.langchain4j.service.tool.ToolExecutor;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -51,10 +52,7 @@ public class McpToolExecutor implements ToolExecutor {
     public ToolExecutionResult executeWithContext(
             ToolExecutionRequest executionRequest, InvocationContext invocationContext) {
         ToolExecutionResult result = mcpClient.executeTool(sanitizeToolName(executionRequest), invocationContext);
-        if (returnToolResultAttributes || result.attributes().isEmpty()) {
-            return result;
-        }
-        return result.toBuilder().attributes(Map.of()).build();
+        return applyToolResultAttributesPolicy(result);
     }
 
     /**
@@ -63,11 +61,35 @@ public class McpToolExecutor implements ToolExecutor {
      * Non-blocking: delegates to
      * {@link McpClient#executeToolAsync(ToolExecutionRequest, InvocationContext)}, so no thread is held
      * while the tool executes on the MCP server.
+     * <p>
+     * The result follows the same {@code returnToolResultAttributes} behavior as the synchronous
+     * {@link #executeWithContext(ToolExecutionRequest, InvocationContext)}. Cancelling the returned
+     * future also cancels the underlying MCP client future.
      */
     @Override
     public CompletableFuture<ToolExecutionResult> executeAsync(
             ToolExecutionRequest executionRequest, InvocationContext invocationContext) {
-        return mcpClient.executeToolAsync(sanitizeToolName(executionRequest), invocationContext);
+        CompletableFuture<ToolExecutionResult> resultFuture =
+                mcpClient.executeToolAsync(sanitizeToolName(executionRequest), invocationContext);
+        if (returnToolResultAttributes) {
+            return resultFuture;
+        }
+        CompletableFuture<ToolExecutionResult> filteredFuture =
+                resultFuture.thenApply(this::applyToolResultAttributesPolicy);
+        // when the returned future is cancelled, also cancel the underlying MCP client future
+        filteredFuture.whenComplete((result, throwable) -> {
+            if (throwable instanceof CancellationException) {
+                resultFuture.cancel(true);
+            }
+        });
+        return filteredFuture;
+    }
+
+    private ToolExecutionResult applyToolResultAttributesPolicy(ToolExecutionResult result) {
+        if (returnToolResultAttributes || result.attributes().isEmpty()) {
+            return result;
+        }
+        return result.toBuilder().attributes(Map.of()).build();
     }
 
     private ToolExecutionRequest sanitizeToolName(ToolExecutionRequest executionRequest) {
