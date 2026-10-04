@@ -35,6 +35,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 import org.bson.BsonArray;
@@ -52,10 +53,16 @@ import org.slf4j.LoggerFactory;
  * <p>
  * More <a href="https://learn.microsoft.com/en-us/azure/cosmos-db/mongodb/vcore/vector-search">info</a>
  * to set up MongoDb as vectorDatabase.
+ * <p>
+ * When configured with a connection string, this store owns its MongoClient and must be closed
+ * when no longer needed. A supplied MongoClient remains caller-owned and is never closed by this store.
  */
-public class AzureDocumentDbEmbeddingStore implements EmbeddingStore<TextSegment> {
+public class AzureDocumentDbEmbeddingStore implements EmbeddingStore<TextSegment>, AutoCloseable {
 
     private static final Logger log = LoggerFactory.getLogger(AzureDocumentDbEmbeddingStore.class);
+    private final MongoClient mongoClient;
+    private final boolean ownsMongoClient;
+    private final AtomicBoolean closed = new AtomicBoolean();
     private final MongoCollection<AzureDocumentDbDocument> collection;
     private final String indexName;
     private final VectorIndexType kind;
@@ -66,8 +73,8 @@ public class AzureDocumentDbEmbeddingStore implements EmbeddingStore<TextSegment
     private final Integer efSearch;
 
     /**
-     * @param mongoClient             - mongoClient for the Azure DocumentDB
-     * @param connectionString        - connection string required to connect to Azure DocumentDB
+     * @param mongoClient             - caller-owned MongoClient for Azure DocumentDB; never closed by this store
+     * @param connectionString        - connection string used to create an owned client when mongoClient is not provided
      * @param databaseName            - databaseName for the mongoDb vCore
      * @param collectionName          - collection name for the mongoDB vCore
      * @param indexName               - index name for the mongoDB vCore collection
@@ -136,30 +143,53 @@ public class AzureDocumentDbEmbeddingStore implements EmbeddingStore<TextSegment
                 .build());
         CodecRegistry codecRegistry = fromRegistries(MongoClientSettings.getDefaultCodecRegistry(), pojoCodecRegistry);
 
-        if (mongoClient == null) {
-            mongoClient = MongoClients.create(MongoClientSettings.builder()
-                    .applyConnectionString(new ConnectionString(connectionString))
-                    .applicationName(applicationName)
-                    .build());
-        }
+        this.ownsMongoClient = mongoClient == null;
+        this.mongoClient = ownsMongoClient
+                ? MongoClients.create(MongoClientSettings.builder()
+                        .applyConnectionString(new ConnectionString(connectionString))
+                        .applicationName(applicationName)
+                        .build())
+                : mongoClient;
 
-        MongoDatabase database = mongoClient.getDatabase(databaseName);
-        // create collection if not exist
-        if (!isCollectionExist(database, collectionName)) {
-            createCollection(
-                    database, collectionName, getOrDefault(createCollectionOptions, new CreateCollectionOptions()));
-        }
-        this.collection = database.getCollection(collectionName, AzureDocumentDbDocument.class)
-                .withCodecRegistry(codecRegistry);
+        try {
+            MongoDatabase database = this.mongoClient.getDatabase(databaseName);
+            // create collection if not exist
+            if (!isCollectionExist(database, collectionName)) {
+                createCollection(
+                        database, collectionName, getOrDefault(createCollectionOptions, new CreateCollectionOptions()));
+            }
+            this.collection = database.getCollection(collectionName, AzureDocumentDbDocument.class)
+                    .withCodecRegistry(codecRegistry);
 
-        // create index if not exist
-        if (Boolean.TRUE.equals(createIndex) && !isIndexExist(this.indexName)) {
-            createIndex(this.indexName, collectionName, database);
+            // create index if not exist
+            if (Boolean.TRUE.equals(createIndex) && !isIndexExist(this.indexName)) {
+                createIndex(this.indexName, collectionName, database);
+            }
+        } catch (RuntimeException | Error e) {
+            if (ownsMongoClient) {
+                try {
+                    this.mongoClient.close();
+                } catch (RuntimeException | Error closeException) {
+                    e.addSuppressed(closeException);
+                }
+            }
+            throw e;
         }
     }
 
     public static Builder builder() {
         return new Builder();
+    }
+
+    /**
+     * Closes the internally created MongoClient, releasing its connection pools and threads.
+     * Repeated calls have no effect. A caller-supplied MongoClient is never closed.
+     */
+    @Override
+    public void close() {
+        if (ownsMongoClient && closed.compareAndSet(false, true)) {
+            mongoClient.close();
+        }
     }
 
     @Override
@@ -455,8 +485,9 @@ public class AzureDocumentDbEmbeddingStore implements EmbeddingStore<TextSegment
         private Integer efSearch;
 
         /**
-         * Build Mongo Client, Please close the client to release resources after usage.
-         * This is a mandatory parameter if not providing the connectionString.
+         * Sets a caller-owned MongoClient. The caller is responsible for closing it;
+         * closing the store does not close this client.
+         * Takes precedence over connectionString when both are provided.
          */
         public Builder mongoClient(MongoClient mongoClient) {
             this.mongoClient = mongoClient;
@@ -465,6 +496,7 @@ public class AzureDocumentDbEmbeddingStore implements EmbeddingStore<TextSegment
 
         /**
          * Sets the Azure DocumentDB connectionString. This is a mandatory parameter if not providing the Mongo Client.
+         * The store owns the client created from this connection string. Close the store to release its resources.
          *
          * @param connectionString The Azure DocumentDB connectionString.
          * @return builder

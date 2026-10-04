@@ -18,12 +18,13 @@ import org.bson.BsonDocument;
 import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.codecs.pojo.PojoCodecProvider;
 import org.bson.conversions.Bson;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 @EnabledIfEnvironmentVariable(named = "AZURE_COSMOS_ENDPOINT", matches = ".+")
 public class AzureDocumentDbEmbeddingStoreIT extends EmbeddingStoreIT {
 
-    private static MongoClient client;
+    private final MongoClient client;
     private final EmbeddingModel embeddingModel;
     private final EmbeddingStore<TextSegment> embeddingStore;
 
@@ -49,6 +50,11 @@ public class AzureDocumentDbEmbeddingStoreIT extends EmbeddingStoreIT {
                 .efConstruction(64)
                 .efSearch(40)
                 .build();
+    }
+
+    @AfterEach
+    void closeClient() {
+        client.close();
     }
 
     @Override

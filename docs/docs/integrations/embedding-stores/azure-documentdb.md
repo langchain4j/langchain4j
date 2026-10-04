@@ -11,60 +11,70 @@ Azure DocumentDB is the new name for the service formerly known as
 [Azure CosmosDB Mongo vCore](./azure-cosmos-mongo-vcore.md) module; existing
 users of that module should plan a migration.
 
-:::note Spring Boot starter
-The Spring Boot starter (`langchain4j-azure-documentdb-spring-boot-starter`)
-is delivered from the companion
-[`langchain4j-spring`](https://github.com/langchain4j/langchain4j-spring/pull/163)
-repository. The configuration property prefix
-(`langchain4j.azure.documentdb.*`) and bean class name documented below match
-that starter.
-:::
-
 ## Maven Dependency
 
 You can use Azure DocumentDB with LangChain4j in plain Java or Spring Boot applications.
-
-### Plain Java
 
 ```xml
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-azure-documentdb</artifactId>
-    <version>1.15.0-beta25</version>
+    <version>${latest version here}</version>
 </dependency>
 ```
 
-### Spring Boot
+Replace `${latest version here}` with the first released version containing this
+module or a newer version. This artifact is not available in earlier releases.
 
-```xml
-<dependency>
-    <groupId>dev.langchain4j</groupId>
-    <artifactId>langchain4j-azure-documentdb-spring-boot-starter</artifactId>
-    <version>1.10.0-beta18</version>
-</dependency>
-```
+## Client lifecycle
 
-Then configure the embedding store in your `application.properties` or `application.yml`:
-
-```properties
-langchain4j.azure.documentdb.connection-string=${AZURE_DOCUMENTDB_CONNECTION_STRING}
-langchain4j.azure.documentdb.database-name=my-database
-langchain4j.azure.documentdb.collection-name=my-collection
-langchain4j.azure.documentdb.index-name=my-index
-langchain4j.azure.documentdb.create-index=true
-langchain4j.azure.documentdb.dimensions=1536
-langchain4j.azure.documentdb.kind=vector-hnsw
-langchain4j.azure.documentdb.m=16
-langchain4j.azure.documentdb.ef-construction=64
-langchain4j.azure.documentdb.ef-search=40
-```
-
-The `AzureDocumentDbEmbeddingStore` bean will be created automatically and can be injected:
+`AzureDocumentDbEmbeddingStore` implements `AutoCloseable`. When configured with
+`connectionString(...)`, it creates and owns a `MongoClient`. Close the store when
+it is no longer needed, for example with try-with-resources:
 
 ```java
-@Autowired
-AzureDocumentDbEmbeddingStore embeddingStore;
+try (AzureDocumentDbEmbeddingStore embeddingStore = AzureDocumentDbEmbeddingStore.builder()
+        .connectionString(System.getenv("AZURE_DOCUMENTDB_CONNECTION_STRING"))
+        .databaseName("my-database")
+        .collectionName("my-collection")
+        .createIndex(true)
+        .kind("vector-hnsw")
+        .dimensions(1536)
+        .build()) {
+    // Add and search embeddings using embeddingStore.
+}
 ```
+
+If you instead supply a client with `mongoClient(...)`, that client remains
+caller-owned. Closing the store does not close it; close the client yourself
+after all stores sharing it are no longer needed. A supplied client takes
+precedence over a connection string.
+
+If initialization fails after the store creates a client, that client is closed
+automatically. Repeated calls to `close()` have no effect.
+
+## Spring Boot
+
+There is no dedicated Azure DocumentDB Spring Boot starter or automatic
+configuration. Use the plain Java dependency above and register the store
+explicitly in a Spring configuration class:
+
+```java
+@Bean(destroyMethod = "close")
+AzureDocumentDbEmbeddingStore embeddingStore() {
+    return AzureDocumentDbEmbeddingStore.builder()
+            .connectionString(System.getenv("AZURE_DOCUMENTDB_CONNECTION_STRING"))
+            .databaseName("my-database")
+            .collectionName("my-collection")
+            .createIndex(true)
+            .kind("vector-hnsw")
+            .dimensions(1536)
+            .build();
+}
+```
+
+Spring closes this store and its internally created client when the application
+context shuts down.
 
 ## APIs
 
@@ -72,16 +82,19 @@ AzureDocumentDbEmbeddingStore embeddingStore;
 
 ## Migrating from Azure CosmosDB Mongo vCore
 
-If you previously used the `langchain4j-azure-cosmos-mongo-vcore` module or its
-Spring Boot starter, migration consists of:
+If you previously used the `langchain4j-azure-cosmos-mongo-vcore` module,
+migration consists of:
 
 1. Replacing the artifact ID
-   `langchain4j-azure-cosmos-mongo-vcore[-spring-boot-starter]` with
-   `langchain4j-azure-documentdb[-spring-boot-starter]`.
-2. Replacing the `langchain4j.azure.cosmos-mongo-vcore.*` configuration
-   property prefix with `langchain4j.azure.documentdb.*`.
-3. Replacing references to `AzureCosmosDbMongoVCoreEmbeddingStore` with
-   `AzureDocumentDbEmbeddingStore`.
+   `langchain4j-azure-cosmos-mongo-vcore` with `langchain4j-azure-documentdb`.
+2. Replacing references to `AzureCosmosDbMongoVCoreEmbeddingStore` with
+   `AzureDocumentDbEmbeddingStore` and updating imports to the
+   `dev.langchain4j.store.embedding.azure.documentdb` package.
+3. Managing the client lifecycle as described above.
 
-The underlying connection string, database, and collection values remain
-unchanged — only the LangChain4j-side naming differs.
+If you used the legacy Spring Boot starter, replace it with the plain Java
+dependency and register the bean shown above. There is no replacement starter,
+and the old starter's configuration properties are not applied automatically.
+
+The underlying connection string, database, collection, and stored data remain
+unchanged.
