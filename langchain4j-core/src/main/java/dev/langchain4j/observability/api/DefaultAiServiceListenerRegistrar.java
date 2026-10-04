@@ -22,7 +22,6 @@ import dev.langchain4j.observability.api.event.AiServiceCompletedEvent;
 import dev.langchain4j.observability.api.event.AiServiceErrorEvent;
 import dev.langchain4j.observability.api.event.AiServiceEvent;
 import dev.langchain4j.observability.api.event.AiServiceInteractionEvent;
-import dev.langchain4j.observability.api.event.AiServiceStartedEvent;
 import dev.langchain4j.observability.api.listener.AiServiceListener;
 
 /**
@@ -33,6 +32,9 @@ public class DefaultAiServiceListenerRegistrar implements AiServiceListenerRegis
     private final Map<Class<? extends AiServiceEvent>, EventListeners<? extends AiServiceEvent>> listeners =
             new ConcurrentHashMap<>();
 
+    // Holds the events for each invocationId
+    private final Map<UUID, InvocationState> invocationStates = new ConcurrentHashMap<>();
+    
     // Defaults to false to preserve backwards compatibility
     private final AtomicBoolean shouldThrowExceptionOnEventError = new AtomicBoolean(false);
 
@@ -60,24 +62,6 @@ public class DefaultAiServiceListenerRegistrar implements AiServiceListenerRegis
                 .ifPresent(eventListeners -> eventListeners.remove(listener));
     }
 
-    // Holds ordered events for a single invocationId (thread-safe)
-    private static final class InvocationState{
-        private final List<AiServiceEvent> events = new ArrayList<>();
-
-        synchronized void add(AiServiceEvent event){
-            events.add(event);
-        }
-
-        synchronized List<AiServiceEvent> snapshot(){
-            return List.copyOf(events);
-        }
-
-    }
-
-    // Holds the events for each invocationId
-    private final Map<UUID, InvocationState> invocationStates = new ConcurrentHashMap<>();
-    
-
     /**
      * Fires the given event to all registered {@link AiServiceListener}s.
      *
@@ -88,6 +72,10 @@ public class DefaultAiServiceListenerRegistrar implements AiServiceListenerRegis
     @Override
     public <T extends AiServiceEvent> void fireEvent(T event) {
         ensureNotNull(event, "event");
+
+        if (event instanceof AiServiceInteractionEvent) {
+            throw new IllegalArgumentException("AiServiceInteractionEvent is a composite event and can only be fired internally");
+        }
         Optional.ofNullable(this.listeners.get(event.eventClass()))
                 .map(l -> (EventListeners<T>) l)
                 .ifPresent(l -> l.fireEvent(event));
@@ -97,42 +85,27 @@ public class DefaultAiServiceListenerRegistrar implements AiServiceListenerRegis
         // when the invocation completes or errors. If invocationId is null, aggregation
         // is skipped to preserve backward compatibility with existing events. 
         UUID invocationId = event.invocationContext().invocationId();
-        if (invocationId == null) {
-            return; 
-        }
-
-        if (event instanceof AiServiceStartedEvent){
-            InvocationState state = invocationStates.computeIfAbsent(invocationId, id -> new InvocationState());
+        if (invocationId != null) {
+            InvocationState state = this.invocationStates.computeIfAbsent(invocationId, id -> new InvocationState());
             state.add(event);
-            return;
-        }
+            if(event instanceof AiServiceCompletedEvent || event instanceof AiServiceErrorEvent){
+                // Interaction is over; stop tracking it and fire the composite event
+                List<AiServiceEvent> events = state.events();
+                this.invocationStates.remove(invocationId);
 
-        InvocationState state = invocationStates.get(invocationId);
-        if (state == null) {
-               return;
-            }
-        state.add(event);
-
-        if(event instanceof AiServiceCompletedEvent || event instanceof AiServiceErrorEvent){
-            List<AiServiceEvent> events = state.snapshot();
-            invocationStates.remove(invocationId);
-
-            AiServiceInteractionEvent interactionEvent =
+                AiServiceInteractionEvent interactionEvent =
                 AiServiceInteractionEvent.builder()
                     .invocationContext(event.invocationContext())
                     .events(events)
                     .build();
 
-            Optional.ofNullable(this.listeners.get(interactionEvent.eventClass()))
-                .map(l -> (EventListeners<AiServiceInteractionEvent>) l)
-                .ifPresent(l -> l.fireEvent(interactionEvent));
+                Optional.ofNullable(this.listeners.get(interactionEvent.eventClass()))
+                    .map(l -> (EventListeners<AiServiceInteractionEvent>) l)
+                    .ifPresent(l -> l.fireEvent(interactionEvent));
+            }            
         }
-
-        
     }
 
-
-   
     @Override
     public void shouldThrowExceptionOnEventError(boolean shouldThrowExceptionOnEventError) {
         this.shouldThrowExceptionOnEventError.compareAndSet(!shouldThrowExceptionOnEventError, shouldThrowExceptionOnEventError);
@@ -148,6 +121,32 @@ public class DefaultAiServiceListenerRegistrar implements AiServiceListenerRegis
         return list;
     }
 
+    // Holds ordered events for single invocationId
+    private static final class InvocationState {
+        private final List<AiServiceEvent> events = new ArrayList<>();
+        private final ReadWriteLock lock = new ReentrantReadWriteLock();
+
+        private void add(AiServiceEvent event){
+            var writeLock = this.lock.writeLock();
+            writeLock.lock();
+
+            try{
+                this.events.add(event);
+            } finally {
+                writeLock.unlock();
+            }
+        }
+        private  List<AiServiceEvent> events(){
+            var readLock = this.lock.readLock();
+            readLock.lock();
+
+            try{
+                return this.events;
+            } finally {
+                readLock.unlock();
+            }
+        }
+    }
     private class EventListeners<T extends AiServiceEvent> {
         private final Set<@NonNull AiServiceListener<T>> listeners = new LinkedHashSet<>();
         private final ReadWriteLock lock = new ReentrantReadWriteLock(true);
