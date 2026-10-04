@@ -3,7 +3,9 @@ package dev.langchain4j.http.client;
 import static java.nio.charset.StandardCharsets.ISO_8859_1;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -84,5 +86,51 @@ class SuccessfulHttpResponseTest {
 
         assertThat(response.body()).isNull();
         assertThat(response.bodyBytes()).isNull();
+    }
+
+    @Test
+    void should_look_up_headers_case_insensitively() {
+        SuccessfulHttpResponse response = SuccessfulHttpResponse.builder()
+                .statusCode(200)
+                .headers(Map.of("content-type", List.of("application/json")))
+                .build();
+
+        assertThat(response.headers().get("Content-Type")).containsExactly("application/json");
+        assertThat(response.headers().get("CONTENT-TYPE")).containsExactly("application/json");
+        assertThat(response.headers().containsKey("Content-Type")).isTrue();
+    }
+
+    @Test
+    void should_not_be_affected_by_mutations_of_the_source_headers() {
+        Map<String, List<String>> headers = new LinkedHashMap<>();
+        headers.put("Content-Type", List.of("application/json"));
+
+        SuccessfulHttpResponse response = SuccessfulHttpResponse.builder()
+                .statusCode(200)
+                .headers(headers)
+                .build();
+
+        headers.put("X-Added-Later", List.of("value"));
+
+        assertThat(response.headers()).containsOnlyKeys("Content-Type");
+    }
+
+    @Test
+    void should_return_unmodifiable_headers() {
+        SuccessfulHttpResponse response = SuccessfulHttpResponse.builder()
+                .statusCode(200)
+                .headers(Map.of("Content-Type", List.of("application/json")))
+                .build();
+
+        assertThatExceptionOfType(UnsupportedOperationException.class)
+                .isThrownBy(() -> response.headers().put("X-Added-Later", List.of("value")));
+    }
+
+    @Test
+    void should_return_empty_headers_when_not_set() {
+        SuccessfulHttpResponse response =
+                SuccessfulHttpResponse.builder().statusCode(200).build();
+
+        assertThat(response.headers()).isEmpty();
     }
 }

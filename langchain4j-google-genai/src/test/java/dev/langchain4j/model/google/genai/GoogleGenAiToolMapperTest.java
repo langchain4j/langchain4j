@@ -7,10 +7,12 @@ import com.google.genai.types.FunctionDeclaration;
 import com.google.genai.types.Schema;
 import com.google.genai.types.Tool;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.model.chat.request.json.JsonAnyOfSchema;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonBooleanSchema;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
 import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
+import dev.langchain4j.model.chat.request.json.JsonNullSchema;
 import dev.langchain4j.model.chat.request.json.JsonNumberSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
@@ -401,6 +403,87 @@ class GoogleGenAiToolMapperTest {
                         .description()
                         .get())
                 .isEqualTo("");
+    }
+
+    @Test
+    void should_convert_any_of_schema() {
+        ToolSpecification spec = ToolSpecification.builder()
+                .name("test")
+                .description("test")
+                .parameters(JsonObjectSchema.builder()
+                        .addProperty(
+                                "shape",
+                                JsonAnyOfSchema.builder()
+                                        .description("a shape")
+                                        .anyOf(
+                                                JsonObjectSchema.builder()
+                                                        .addNumberProperty("radius", "circle radius")
+                                                        .build(),
+                                                JsonStringSchema.builder().build())
+                                        .build())
+                        .build())
+                .build();
+
+        FunctionDeclaration fd = GoogleGenAiToolMapper.convertToGoogleFunction(spec);
+        Schema shapeSchema = fd.parameters().get().properties().get().get("shape");
+
+        assertThat(shapeSchema.description().get()).isEqualTo("a shape");
+        assertThat(shapeSchema.anyOf().get()).hasSize(2);
+        assertThat(shapeSchema.anyOf().get().get(0).type().get()).hasToString("OBJECT");
+        assertThat(shapeSchema.anyOf().get().get(0).properties().get()).containsKey("radius");
+        assertThat(shapeSchema.anyOf().get().get(1).type().get()).hasToString("STRING");
+    }
+
+    @Test
+    void should_convert_any_of_schema_with_null_description() {
+        ToolSpecification spec = ToolSpecification.builder()
+                .name("test")
+                .description("test")
+                .parameters(JsonObjectSchema.builder()
+                        .addProperty(
+                                "shape",
+                                JsonAnyOfSchema.builder()
+                                        .anyOf(
+                                                JsonStringSchema.builder().build(),
+                                                JsonIntegerSchema.builder().build())
+                                        .build())
+                        .build())
+                .build();
+
+        FunctionDeclaration fd = GoogleGenAiToolMapper.convertToGoogleFunction(spec);
+        Schema shapeSchema = fd.parameters().get().properties().get().get("shape");
+
+        assertThat(shapeSchema.description().get()).isEqualTo("");
+        assertThat(shapeSchema.anyOf().get()).hasSize(2);
+    }
+
+    @Test
+    void should_convert_any_of_schema_containing_null_schema() {
+        ToolSpecification spec = ToolSpecification.builder()
+                .name("test")
+                .description("test")
+                .parameters(JsonObjectSchema.builder()
+                        .addProperty(
+                                "nickname",
+                                JsonAnyOfSchema.builder()
+                                        .anyOf(JsonStringSchema.builder().build(), new JsonNullSchema())
+                                        .build())
+                        .build())
+                .build();
+
+        FunctionDeclaration fd = GoogleGenAiToolMapper.convertToGoogleFunction(spec);
+        Schema nicknameSchema = fd.parameters().get().properties().get().get("nickname");
+
+        assertThat(nicknameSchema.anyOf().get()).hasSize(2);
+        assertThat(nicknameSchema.anyOf().get().get(0).type().get()).hasToString("STRING");
+        assertThat(nicknameSchema.anyOf().get().get(1).type().get()).hasToString("NULL");
+    }
+
+    @Test
+    void should_convert_null_schema() {
+        Schema schema = GoogleGenAiToolMapper.convertToGoogleSchema(new JsonNullSchema());
+
+        assertThat(schema.type().get()).hasToString("NULL");
     }
 
     @Test

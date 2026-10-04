@@ -1,20 +1,19 @@
 package dev.langchain4j.model.openai.internal.chat;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 
 @JsonDeserialize(builder = Content.Builder.class)
 @JsonInclude(JsonInclude.Include.NON_NULL)
-@JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public final class Content {
 
     @JsonProperty
@@ -36,6 +35,10 @@ public final class Content {
     @JsonProperty
     private final PdfFile file;
 
+    @JsonProperty
+    private final PromptCacheBreakpoint promptCacheBreakpoint;
+
+    @JsonCreator
     public Content(Builder builder) {
         this.type = builder.type;
         this.text = builder.text;
@@ -44,6 +47,7 @@ public final class Content {
         this.videoUrl = builder.videoUrl;
         this.inputAudio = builder.inputAudio;
         this.file = builder.file;
+        this.promptCacheBreakpoint = builder.promptCacheBreakpoint;
     }
 
     public ContentType type() {
@@ -74,6 +78,10 @@ public final class Content {
         return file;
     }
 
+    public PromptCacheBreakpoint promptCacheBreakpoint() {
+        return promptCacheBreakpoint;
+    }
+
     @Override
     @JacocoIgnoreCoverageGenerated
     public boolean equals(Object another) {
@@ -89,7 +97,8 @@ public final class Content {
                 && Objects.equals(inputImageUrl, another.inputImageUrl)
                 && Objects.equals(videoUrl, another.videoUrl)
                 && Objects.equals(inputAudio, another.inputAudio)
-                && Objects.equals(file, another.file);
+                && Objects.equals(file, another.file)
+                && Objects.equals(promptCacheBreakpoint, another.promptCacheBreakpoint);
     }
 
     @Override
@@ -103,6 +112,7 @@ public final class Content {
         h += (h << 5) + Objects.hashCode(videoUrl);
         h += (h << 5) + Objects.hashCode(inputAudio);
         h += (h << 5) + Objects.hashCode(file);
+        h += (h << 5) + Objects.hashCode(promptCacheBreakpoint);
         return h;
     }
 
@@ -116,11 +126,28 @@ public final class Content {
                 + inputImageUrl + ", videoUrl="
                 + videoUrl + ", inputAudio="
                 + inputAudio + ", file="
-                + file + "}";
+                + file + ", promptCacheBreakpoint="
+                + promptCacheBreakpoint + "}";
     }
 
     public static Builder builder() {
         return new Builder();
+    }
+
+    public Builder toBuilder() {
+        Builder builder = builder()
+                .type(type)
+                .text(text)
+                .videoUrl(videoUrl)
+                .inputAudio(inputAudio)
+                .file(file)
+                .promptCacheBreakpoint(promptCacheBreakpoint);
+        if (imageUrl != null) {
+            builder.imageUrl(imageUrl);
+        } else if (inputImageUrl != null) {
+            builder.inputImageUrl(inputImageUrl);
+        }
+        return builder;
     }
 
     @JsonProperty("image_url")
@@ -130,7 +157,7 @@ public final class Content {
 
     @JsonPOJOBuilder(withPrefix = "")
     @JsonIgnoreProperties(ignoreUnknown = true)
-    @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
+    @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
     public static final class Builder {
 
         private ContentType type;
@@ -140,6 +167,7 @@ public final class Content {
         private VideoUrl videoUrl;
         private InputAudio inputAudio;
         private PdfFile file;
+        private PromptCacheBreakpoint promptCacheBreakpoint;
 
         public Builder type(ContentType type) {
             this.type = type;
@@ -158,19 +186,27 @@ public final class Content {
         }
 
         @JsonProperty("image_url")
-        Builder imageUrl(JsonNode imageUrl) {
-            if (imageUrl == null || imageUrl.isNull()) {
+        Builder imageUrl(Object imageUrl) {
+            if (imageUrl == null) {
                 return this;
             }
 
-            if (imageUrl.isTextual()) {
-                return inputImageUrl(imageUrl.asText());
+            if (imageUrl instanceof String url) {
+                return inputImageUrl(url);
             }
 
-            return imageUrl(ImageUrl.builder()
-                    .url(textValue(imageUrl.get("url")))
-                    .detail(imageDetail(imageUrl.get("detail")))
-                    .build());
+            if (imageUrl instanceof ImageUrl url) {
+                return imageUrl(url);
+            }
+
+            if (imageUrl instanceof Map<?, ?> map) {
+                return imageUrl(ImageUrl.builder()
+                        .url(textValue(map.get("url")))
+                        .detail(imageDetail(map.get("detail")))
+                        .build());
+            }
+
+            return this;
         }
 
         public Builder inputImageUrl(String inputImageUrl) {
@@ -194,20 +230,25 @@ public final class Content {
             return this;
         }
 
+        public Builder promptCacheBreakpoint(PromptCacheBreakpoint promptCacheBreakpoint) {
+            this.promptCacheBreakpoint = promptCacheBreakpoint;
+            return this;
+        }
+
         public Content build() {
             return new Content(this);
         }
 
-        private static String textValue(JsonNode node) {
-            return node == null || node.isNull() ? null : node.asText();
+        private static String textValue(Object value) {
+            return value == null ? null : String.valueOf(value);
         }
 
-        private static ImageDetail imageDetail(JsonNode node) {
-            if (node == null || node.isNull()) {
+        private static ImageDetail imageDetail(Object value) {
+            if (value == null) {
                 return null;
             }
 
-            return ImageDetail.valueOf(node.asText().toUpperCase(Locale.ROOT));
+            return ImageDetail.valueOf(String.valueOf(value).toUpperCase(Locale.ROOT));
         }
     }
 }

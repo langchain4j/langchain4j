@@ -1,18 +1,5 @@
 package dev.langchain4j.store.embedding;
 
-import dev.langchain4j.data.embedding.Embedding;
-import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.embedding.EmbeddingModel;
-import dev.langchain4j.store.embedding.filter.Filter;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIf;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.NullAndEmptySource;
-import org.junit.jupiter.params.provider.ValueSource;
-
-import java.util.Collection;
-import java.util.List;
-
 import static dev.langchain4j.data.document.Metadata.metadata;
 import static dev.langchain4j.store.embedding.TestUtils.awaitUntilAsserted;
 import static dev.langchain4j.store.embedding.filter.MetadataFilterBuilder.metadataKey;
@@ -20,6 +7,18 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import dev.langchain4j.data.embedding.Embedding;
+import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.store.embedding.filter.Filter;
+import java.util.Collection;
+import java.util.List;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIf;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 public abstract class EmbeddingStoreWithRemovalIT {
 
@@ -83,19 +82,37 @@ public abstract class EmbeddingStoreWithRemovalIT {
     }
 
     @Test
-    void should_fail_to_remove_all_by_ids_null() {
+    void should_do_nothing_when_removing_all_by_ids_null() {
 
-        assertThatThrownBy(() -> embeddingStore().removeAll((Collection<String>) null))
-                .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasMessage("ids cannot be null or empty");
+        // given
+        Embedding embedding = embeddingModel().embed("test").content();
+        String id = embeddingStore().add(embedding);
+
+        awaitUntilAsserted(() -> assertThat(getAllEmbeddings()).hasSize(1));
+
+        // when
+        embeddingStore().removeAll((Collection<String>) null);
+
+        // then
+        assertThat(getAllEmbeddings()).hasSize(1);
+        assertThat(getAllEmbeddings().get(0).embeddingId()).isEqualTo(id);
     }
 
     @Test
-    void should_fail_to_remove_all_by_ids_empty() {
+    void should_do_nothing_when_removing_all_by_ids_empty() {
 
-        assertThatThrownBy(() -> embeddingStore().removeAll(emptyList()))
-                .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasMessage("ids cannot be null or empty");
+        // given
+        Embedding embedding = embeddingModel().embed("test").content();
+        String id = embeddingStore().add(embedding);
+
+        awaitUntilAsserted(() -> assertThat(getAllEmbeddings()).hasSize(1));
+
+        // when
+        embeddingStore().removeAll(emptyList());
+
+        // then
+        assertThat(getAllEmbeddings()).hasSize(1);
+        assertThat(getAllEmbeddings().get(0).embeddingId()).isEqualTo(id);
     }
 
     @Test

@@ -1,6 +1,7 @@
 package dev.langchain4j.model.anthropic;
 
 import dev.langchain4j.model.output.TokenUsage;
+import java.util.Objects;
 
 public class AnthropicTokenUsage extends TokenUsage {
 
@@ -62,14 +63,28 @@ public class AnthropicTokenUsage extends TokenUsage {
     }
 
     @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        if (!super.equals(o)) return false;
+        AnthropicTokenUsage that = (AnthropicTokenUsage) o;
+        return Objects.equals(cacheCreationInputTokens, that.cacheCreationInputTokens)
+                && Objects.equals(cacheReadInputTokens, that.cacheReadInputTokens);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(super.hashCode(), cacheCreationInputTokens, cacheReadInputTokens);
+    }
+
+    @Override
     public String toString() {
-        return "AnthropicTokenUsage {" +
-                " inputTokenCount = " + inputTokenCount() +
-                ", outputTokenCount = " + outputTokenCount() +
-                ", totalTokenCount = " + totalTokenCount() +
-                ", cacheCreationInputTokens = " + cacheCreationInputTokens +
-                ", cacheReadInputTokens = " + cacheReadInputTokens +
-                " }";
+        return "AnthropicTokenUsage {" + " inputTokenCount = "
+                + inputTokenCount() + ", outputTokenCount = "
+                + outputTokenCount() + ", totalTokenCount = "
+                + totalTokenCount() + ", cacheCreationInputTokens = "
+                + cacheCreationInputTokens + ", cacheReadInputTokens = "
+                + cacheReadInputTokens + " }";
     }
 
     public static Builder builder() {

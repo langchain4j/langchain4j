@@ -12,7 +12,6 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 
 import dev.langchain4j.agent.tool.Tool;
-import dev.langchain4j.agentic.Agents.LoanApplication;
 import dev.langchain4j.agentic.Agents.AudienceEditor;
 import dev.langchain4j.agentic.Agents.CategoryRouter;
 import dev.langchain4j.agentic.Agents.CreativeWriter;
@@ -26,6 +25,7 @@ import dev.langchain4j.agentic.Agents.ExpertRouterAgentWithMemory;
 import dev.langchain4j.agentic.Agents.FoodExpert;
 import dev.langchain4j.agentic.Agents.LegalExpert;
 import dev.langchain4j.agentic.Agents.LegalExpertWithMemory;
+import dev.langchain4j.agentic.Agents.LoanApplication;
 import dev.langchain4j.agentic.Agents.MedicalExpert;
 import dev.langchain4j.agentic.Agents.MedicalExpertWithMemory;
 import dev.langchain4j.agentic.Agents.MovieExpert;
@@ -39,10 +39,6 @@ import dev.langchain4j.agentic.Agents.TechnicalExpertWithMemory;
 import dev.langchain4j.agentic.agent.AgentInvocationException;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
-import dev.langchain4j.guardrail.InputGuardrail;
-import dev.langchain4j.guardrail.InputGuardrailResult;
-import dev.langchain4j.guardrail.OutputGuardrail;
-import dev.langchain4j.guardrail.OutputGuardrailResult;
 import dev.langchain4j.agentic.declarative.ChatModelSupplier;
 import dev.langchain4j.agentic.internal.AgenticScopeOwner;
 import dev.langchain4j.agentic.observability.AgentInvocation;
@@ -56,17 +52,21 @@ import dev.langchain4j.agentic.planner.AgenticSystemConfigurationException;
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.scope.AgenticScopeAccess;
-import dev.langchain4j.agentic.scope.AgenticScopeSerializer;
-import dev.langchain4j.agentic.scope.UnserializableAgenticScopeException;
 import dev.langchain4j.agentic.scope.AgenticScopePersister;
 import dev.langchain4j.agentic.scope.AgenticScopeRegistry;
+import dev.langchain4j.agentic.scope.AgenticScopeSerializer;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
+import dev.langchain4j.agentic.scope.UnserializableAgenticScopeException;
 import dev.langchain4j.agentic.workflow.ConditionalAgentInstance;
 import dev.langchain4j.agentic.workflow.HumanInTheLoop;
 import dev.langchain4j.agentic.workflow.LoopAgentInstance;
 import dev.langchain4j.agentic.workflow.impl.LoopPlanner;
 import dev.langchain4j.agentic.workflow.impl.SequentialPlanner;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.guardrail.InputGuardrail;
+import dev.langchain4j.guardrail.InputGuardrailResult;
+import dev.langchain4j.guardrail.OutputGuardrail;
+import dev.langchain4j.guardrail.OutputGuardrailResult;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -402,25 +402,25 @@ public class WorkflowAgentsIT {
     void sequential_agents_with_error_recovery_tests(boolean useProgrammaticAgent) {
         AtomicBoolean errorRecoveryCalled = new AtomicBoolean(false);
 
-        Object creativeWriter = useProgrammaticAgent ?
-            AgenticServices.agentBuilder()
-                .chatModel(baseModel())
-                .name("generateStory")
-                .description("Generate a story based on the given topic")
-                .userMessage("""
+        Object creativeWriter = useProgrammaticAgent
+                ? AgenticServices.agentBuilder()
+                        .chatModel(baseModel())
+                        .name("generateStory")
+                        .description("Generate a story based on the given topic")
+                        .userMessage("""
                     You are a creative writer.
                     Generate a draft of a story long no more than 3 sentence around the given topic.
                     Return only the story and nothing else.
                     The topic is {{topic}}.
                     """)
-                .inputKey(String.class, "topic")
-                .returnType(String.class) // String is the default return type for untyped agents
-                .outputKey("story")
-                .build() :
-            AgenticServices.agentBuilder(CreativeWriter.class)
-                .chatModel(baseModel())
-                .outputKey("story")
-                .build();
+                        .inputKey(String.class, "topic")
+                        .returnType(String.class) // String is the default return type for untyped agents
+                        .outputKey("story")
+                        .build()
+                : AgenticServices.agentBuilder(CreativeWriter.class)
+                        .chatModel(baseModel())
+                        .outputKey("story")
+                        .build();
 
         AudienceEditor audienceEditor = spy(AgenticServices.agentBuilder(AudienceEditor.class)
                 .chatModel(baseModel())
@@ -1457,13 +1457,11 @@ public class WorkflowAgentsIT {
                 .outputKey("horoscope")
                 .build();
 
-        assertThat(assertThrows(
-                        Exception.class,
-                        () -> AgenticServices.parallelMapperBuilder(BatchHoroscopeAgent.class)
-                                .subAgents(personAstrologyAgent)
-                                .build()))
-                .rootCause()
-                .isInstanceOf(AgenticSystemConfigurationException.class);
+        assertThrows(
+                AgenticSystemConfigurationException.class,
+                () -> AgenticServices.parallelMapperBuilder(BatchHoroscopeAgent.class)
+                        .subAgents(personAstrologyAgent)
+                        .build());
     }
 
     @Test
@@ -1521,14 +1519,15 @@ public class WorkflowAgentsIT {
         AgenticScopePersister.setStore(store);
 
         try {
-            LoanApplication result = processor.processLoan("user1",
-                    "John Smith, 35 years old, wants a loan of 10000 dollars");
+            LoanApplication result =
+                    processor.processLoan("user1", "John Smith, 35 years old, wants a loan of 10000 dollars");
             assertThat(result).isNotNull();
 
             AgenticScopeRegistry registry = ((AgenticScopeOwner) processor).registry();
             registry.clearInMemory();
 
-            UnserializableAgenticScopeException ex = assertThrows(UnserializableAgenticScopeException.class,
+            UnserializableAgenticScopeException ex = assertThrows(
+                    UnserializableAgenticScopeException.class,
                     () -> processor.processLoan("user1", "What was my previous loan application?"));
             assertThat(ex.getMessage())
                     .contains(LoanApplication.class.getName())
@@ -1557,8 +1556,8 @@ public class WorkflowAgentsIT {
         AgenticScopePersister.setStore(store);
 
         try {
-            LoanApplication result = processor.processLoan("user1",
-                    "John Smith, 35 years old, wants a loan of 10000 dollars");
+            LoanApplication result =
+                    processor.processLoan("user1", "John Smith, 35 years old, wants a loan of 10000 dollars");
             assertThat(result).isNotNull();
 
             AgenticScopeRegistry registry = ((AgenticScopeOwner) processor).registry();
@@ -1594,9 +1593,7 @@ public class WorkflowAgentsIT {
             @Override
             public ChatResponse chat(ChatRequest chatRequest) {
                 callCount.incrementAndGet();
-                return ChatResponse.builder()
-                        .aiMessage(AiMessage.from("0.5"))
-                        .build();
+                return ChatResponse.builder().aiMessage(AiMessage.from("0.5")).build();
             }
         };
 
@@ -1621,9 +1618,7 @@ public class WorkflowAgentsIT {
         ChatModel model = new ChatModel() {
             @Override
             public ChatResponse chat(ChatRequest chatRequest) {
-                return ChatResponse.builder()
-                        .aiMessage(AiMessage.from("0.5"))
-                        .build();
+                return ChatResponse.builder().aiMessage(AiMessage.from("0.5")).build();
             }
         };
 
@@ -1632,9 +1627,7 @@ public class WorkflowAgentsIT {
             @Override
             public ChatResponse chat(ChatRequest chatRequest) {
                 callCount.incrementAndGet();
-                return ChatResponse.builder()
-                        .aiMessage(AiMessage.from("0.5"))
-                        .build();
+                return ChatResponse.builder().aiMessage(AiMessage.from("0.5")).build();
             }
         };
 

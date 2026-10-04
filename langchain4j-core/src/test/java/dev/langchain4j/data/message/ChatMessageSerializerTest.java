@@ -35,6 +35,12 @@ class ChatMessageSerializerTest {
         return Stream.of(
                 Arguments.of(SystemMessage.from("hello"), "{\"text\":\"hello\",\"type\":\"SYSTEM\"}"),
                 Arguments.of(
+                        SystemMessage.builder()
+                                .text("hello")
+                                .attributes(Map.of("prompt_cache_breakpoint", "explicit"))
+                                .build(),
+                        "{\"text\":\"hello\",\"attributes\":{\"prompt_cache_breakpoint\":\"explicit\"},\"type\":\"SYSTEM\"}"),
+                Arguments.of(
                         UserMessage.from("hello"),
                         "{\"contents\":[{\"text\":\"hello\",\"type\":\"TEXT\"}],\"type\":\"USER\"}"),
                 Arguments.of(
@@ -158,6 +164,18 @@ class ChatMessageSerializerTest {
 
         List<ChatMessage> deserializedMessages = messagesFromJson(json);
         assertThat(deserializedMessages).isEqualTo(messages);
+    }
+
+    @Test
+    void should_deserialize_SystemMessage_without_attributes() {
+
+        SystemMessage deserialized = (SystemMessage) messageFromJson("{\"text\":\"hello\",\"type\":\"SYSTEM\"}");
+
+        assertThat(deserialized.text()).isEqualTo("hello");
+        assertThat(deserialized.attributes()).isEmpty();
+
+        deserialized.attributes().put("k", "v");
+        assertThat(deserialized.attributes()).containsExactly(Map.entry("k", "v"));
     }
 
     @Test

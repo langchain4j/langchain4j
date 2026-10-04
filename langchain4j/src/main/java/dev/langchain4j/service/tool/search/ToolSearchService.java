@@ -1,24 +1,5 @@
 package dev.langchain4j.service.tool.search;
 
-import dev.langchain4j.Internal;
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.ToolExecutionResultMessage;
-import dev.langchain4j.invocation.InvocationContext;
-import dev.langchain4j.service.tool.ToolExecutionResult;
-import dev.langchain4j.service.tool.ToolExecutor;
-import dev.langchain4j.service.tool.ToolServiceContext;
-
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-
 import static dev.langchain4j.agent.tool.SearchBehavior.ALWAYS_VISIBLE;
 import static dev.langchain4j.agent.tool.ToolSpecification.METADATA_SEARCH_BEHAVIOR;
 import static dev.langchain4j.internal.Utils.copy;
@@ -28,13 +9,32 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.util.stream.Collectors.toCollection;
 import static java.util.stream.Collectors.toSet;
 
+import dev.langchain4j.Internal;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.invocation.InvocationContext;
+import dev.langchain4j.service.tool.ToolExecutionResult;
+import dev.langchain4j.service.tool.ToolExecutor;
+import dev.langchain4j.service.tool.ToolServiceContext;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+
 /**
  * @since 1.12.0
  */
 @Internal
 public class ToolSearchService {
 
-    private static final String FOUND_TOOLS_ATTRIBUTE = "found_tools"; // do not change, will break backward compatibility!
+    private static final String FOUND_TOOLS_ATTRIBUTE =
+            "found_tools"; // do not change, will break backward compatibility!
 
     private final ToolSearchStrategy strategy;
 
@@ -42,9 +42,8 @@ public class ToolSearchService {
         this.strategy = ensureNotNull(toolSearchStrategy, "toolSearchStrategy");
     }
 
-    public ToolServiceContext adjust(ToolServiceContext toolServiceContext,
-                                     List<ChatMessage> messages,
-                                     InvocationContext invocationContext) {
+    public ToolServiceContext adjust(
+            ToolServiceContext toolServiceContext, List<ChatMessage> messages, InvocationContext invocationContext) {
         List<ToolSpecification> toolSearchTools = strategy.getToolSearchTools(invocationContext);
         List<ToolSpecification> availableTools = toolServiceContext.availableTools();
         List<ToolSpecification> effectiveTools = calculateEffectiveTools(toolSearchTools, availableTools, messages);
@@ -56,9 +55,10 @@ public class ToolSearchService {
                 .build();
     }
 
-    private List<ToolSpecification> calculateEffectiveTools(List<ToolSpecification> toolSearchTools,
-                                                            List<ToolSpecification> availableTools,
-                                                            List<ChatMessage> messages) {
+    private List<ToolSpecification> calculateEffectiveTools(
+            List<ToolSpecification> toolSearchTools,
+            List<ToolSpecification> availableTools,
+            List<ChatMessage> messages) {
         List<ToolSpecification> effectiveTools = new ArrayList<>();
 
         availableTools.forEach(tool -> {
@@ -88,20 +88,35 @@ public class ToolSearchService {
 
         Map<String, ToolSpecification> toolsByName = new HashMap<>(availableTools.size());
         availableTools.forEach(tool -> toolsByName.put(tool.name(), tool));
-        toolNamesFoundEarlier.forEach(toolName -> effectiveTools.add(toolsByName.get(toolName)));
+
+        Set<String> effectiveToolNames =
+                effectiveTools.stream().map(ToolSpecification::name).collect(toSet());
+
+        toolNamesFoundEarlier.forEach(toolName -> {
+            if (effectiveToolNames.contains(toolName)) {
+                // already effective (e.g. ALWAYS_VISIBLE), adding it again would duplicate the tool
+                return;
+            }
+            ToolSpecification toolFoundEarlier = toolsByName.get(toolName);
+            // the tool names come from the chat memory, so they can refer to tools
+            // that are no longer available in the current invocation
+            if (toolFoundEarlier != null) {
+                effectiveTools.add(toolFoundEarlier);
+            }
+        });
 
         return effectiveTools;
     }
 
-    private List<ToolSpecification> calculateSearchableTools(List<ToolSpecification> availableTools,
-                                                             List<ToolSpecification> effectiveTools) {
+    private List<ToolSpecification> calculateSearchableTools(
+            List<ToolSpecification> availableTools, List<ToolSpecification> effectiveTools) {
         Set<ToolSpecification> searchableTools = new LinkedHashSet<>(availableTools);
         searchableTools.removeAll(effectiveTools);
         return new ArrayList<>(searchableTools);
     }
 
-    private Map<String, ToolExecutor> createExecutors(List<ToolSpecification> toolSearchTools,
-                                                      List<ToolSpecification> searchableTools) {
+    private Map<String, ToolExecutor> createExecutors(
+            List<ToolSpecification> toolSearchTools, List<ToolSpecification> searchableTools) {
         Map<String, ToolExecutor> executors = new HashMap<>();
         for (ToolSpecification toolSearchTool : toolSearchTools) {
             executors.put(toolSearchTool.name(), new ToolSearchExecutor(searchableTools));
@@ -109,8 +124,8 @@ public class ToolSearchService {
         return executors;
     }
 
-    public static ToolServiceContext addFoundTools(ToolServiceContext toolServiceContext,
-                                                   Collection<ToolExecutionResult> toolResults) {
+    public static ToolServiceContext addFoundTools(
+            ToolServiceContext toolServiceContext, Collection<ToolExecutionResult> toolResults) {
         Set<String> foundToolNames = new LinkedHashSet<>();
         for (ToolExecutionResult toolResult : toolResults) {
             Object attribute = toolResult.attributes().get(FOUND_TOOLS_ATTRIBUTE);
@@ -126,7 +141,8 @@ public class ToolSearchService {
                 .map(ToolSpecification::name)
                 .collect(toSet());
 
-        Map<String, ToolSpecification> availableToolsByName = new HashMap<>(toolServiceContext.availableTools().size());
+        Map<String, ToolSpecification> availableToolsByName =
+                new HashMap<>(toolServiceContext.availableTools().size());
         toolServiceContext.availableTools().forEach(tool -> availableToolsByName.put(tool.name(), tool));
 
         List<ToolSpecification> foundTools = new ArrayList<>();

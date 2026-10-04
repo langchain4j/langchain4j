@@ -363,8 +363,15 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
         if (agent.topology() != AgenticSystemTopology.ROUTER) {
             return Map.of();
         }
+        ConditionalAgentInstance router;
+        try {
+            router = agent.as(ConditionalAgentInstance.class);
+        } catch (ClassCastException e) {
+            // a router built on a custom planner, with no activation conditions to show
+            return Map.of();
+        }
         Map<String, String> map = new LinkedHashMap<>();
-        for (ConditionalAgent ca : agent.as(ConditionalAgentInstance.class).conditionalSubagents()) {
+        for (ConditionalAgent ca : router.conditionalSubagents()) {
             if (ca.condition() != null) {
                 for (AgentInstance child : ca.agentInstances()) {
                     map.put(child.agentId(), ca.condition());

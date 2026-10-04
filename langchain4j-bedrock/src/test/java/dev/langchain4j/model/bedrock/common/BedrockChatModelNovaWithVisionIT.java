@@ -19,7 +19,6 @@ import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.TokenUsage;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -35,7 +34,7 @@ class BedrockChatModelNovaWithVisionIT extends AbstractChatModelIT {
 
     @Override
     protected String customModelName() {
-        return "cohere.command-r-v1:0";
+        return "us.anthropic.claude-haiku-4-5-20251001-v1:0";
     }
 
     @Override
@@ -45,16 +44,22 @@ class BedrockChatModelNovaWithVisionIT extends AbstractChatModelIT {
 
     @Override
     protected ChatModel createModelWith(ChatRequestParameters parameters) {
-        return BedrockChatModel.builder()
-                .defaultRequestParameters(parameters)
-                // force a working model with stopSequence parameter for @Tests
-                .modelId("cohere.command-r-v1:0")
-                .build();
+        BedrockChatModel.Builder builder = BedrockChatModel.builder().defaultRequestParameters(parameters);
+        if (parameters.modelName() == null) {
+            // Claude excludes the stop sequence from the response, as should_respect_stopSequences_* expects
+            builder.modelId("us.anthropic.claude-haiku-4-5-20251001-v1:0");
+        }
+        return builder.build();
     }
 
     @Override
     protected Class<? extends TokenUsage> tokenUsageType(ChatModel model) {
         return BedrockTokenUsage.class;
+    }
+
+    @Override
+    protected boolean supportsChatAsync() {
+        return true;
     }
 
     @Override
@@ -112,11 +117,6 @@ class BedrockChatModelNovaWithVisionIT extends AbstractChatModelIT {
         if (assertFinishReason()) {
             assertThat(chatResponse.metadata().finishReason()).isEqualTo(STOP);
         }
-    }
-
-    @Disabled("Sorry but I can't tell you that information because is not appropriate to share someone's personal information")
-    @Override
-    protected void should_respect_multiple_messages(ChatModel model) {
     }
 
     @AfterEach

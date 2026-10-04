@@ -13,6 +13,7 @@ import dev.langchain4j.store.embedding.filter.comparison.IsLessThanOrEqualTo;
 import dev.langchain4j.store.embedding.filter.comparison.IsNotEqualTo;
 import dev.langchain4j.store.embedding.filter.comparison.IsNotIn;
 import dev.langchain4j.store.embedding.filter.logical.And;
+import dev.langchain4j.store.embedding.filter.logical.Not;
 import dev.langchain4j.store.embedding.filter.logical.Or;
 import java.util.HashSet;
 import java.util.List;
@@ -119,5 +120,46 @@ class ChromaMetadataFilterMapperTest {
         // then
         assertThat(result).containsKey("$and");
         assertThat((List<?>) result.get("$and")).hasSize(2);
+    }
+
+    @Test
+    void should_map_not() {
+        // given
+        Not filter = new Not(new IsEqualTo("key", "value"));
+
+        // when
+        Map<String, Object> result = ChromaMetadataFilterMapper.map(filter);
+
+        // then
+        assertThat(result).isEqualTo(singletonMap("key", singletonMap("$ne", "value")));
+    }
+
+    @Test
+    void should_map_nested_not_by_removing_double_negation() {
+        // given
+        Not filter = new Not(new Not(new IsEqualTo("key", "value")));
+
+        // when
+        Map<String, Object> result = ChromaMetadataFilterMapper.map(filter);
+
+        // then
+        assertThat(result).isEqualTo(singletonMap("key", "value"));
+    }
+
+    @Test
+    void should_map_not_of_and_containing_not() {
+        // given: not(key1 = value1 and not(key2 > 1)) — De Morgan produces a nested Not
+        Not filter = new Not(new And(new IsEqualTo("key1", "value1"), new Not(new IsGreaterThan("key2", 1))));
+
+        // when
+        Map<String, Object> result = ChromaMetadataFilterMapper.map(filter);
+
+        // then: not(A) or B
+        assertThat(result)
+                .isEqualTo(singletonMap(
+                        "$or",
+                        asList(
+                                singletonMap("key1", singletonMap("$ne", "value1")),
+                                singletonMap("key2", singletonMap("$gt", 1)))));
     }
 }

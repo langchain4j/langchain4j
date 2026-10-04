@@ -21,7 +21,6 @@ public class JlamaStreamingLanguageModel implements StreamingLanguageModel {
     private final AbstractModel model;
     private final Float temperature;
     private final Integer maxTokens;
-    private final UUID id = UUID.randomUUID();
 
     public JlamaStreamingLanguageModel(
             Path modelCachePath,
@@ -64,8 +63,8 @@ public class JlamaStreamingLanguageModel implements StreamingLanguageModel {
     @Override
     public void generate(String prompt, StreamingResponseHandler<String> handler) {
         try {
-            Generator.Response r =
-                    model.generate(id, PromptContext.of(prompt), temperature, maxTokens, (token, time) -> {
+            Generator.Response r = model.generate(
+                    UUID.randomUUID(), PromptContext.of(prompt), temperature, maxTokens, (token, time) -> {
                         handler.onNext(token);
                     });
 
@@ -151,7 +150,8 @@ public class JlamaStreamingLanguageModel implements StreamingLanguageModel {
 
         public String toString() {
             return "JlamaStreamingLanguageModel.JlamaStreamingLanguageModelBuilder(modelCachePath="
-                    + this.modelCachePath + ", modelName=" + this.modelName + ", authToken=" + (this.authToken == null ? null : "********")
+                    + this.modelCachePath + ", modelName=" + this.modelName + ", authToken="
+                    + (this.authToken == null ? null : "********")
                     + ", threadCount=" + this.threadCount + ", quantizeModelAtRuntime=" + this.quantizeModelAtRuntime
                     + ", workingDirectory=" + this.workingDirectory + ", workingQuantizedType="
                     + this.workingQuantizedType + ", temperature=" + this.temperature + ", maxTokens=" + this.maxTokens

@@ -121,6 +121,47 @@ import static dev.langchain4j.model.LambdaStreamingResponseHandler.onPartialResp
 model.chat("Tell me a joke", onPartialResponseAndError(System.out::print, Throwable::printStackTrace));
 ```
 
+## Reactive API
+
+:::note
+Experimental. The API is annotated `@Experimental` and may change in future releases.
+:::
+
+Besides the handler-based API above, `StreamingChatModel` can hand you the same response as a
+`Flow.Publisher` of events, without blocking the calling thread:
+
+```java
+Flow.Publisher<ChatModelStreamingEvent> publisher = model.chat(chatRequest);
+```
+
+The stream emits `PartialThinking`, `PartialResponse`, `PartialToolCall` and `CompleteToolCall` events as they
+arrive, interleaved with any `RawStreamingEvent`s (see [Unmapped Raw Events](#unmapped-raw-events) below), then a
+single terminal `CompleteResponse` carrying the assembled `ChatResponse`. A convenience overload
+emits just the text:
+
+```java
+Flow.Publisher<String> textOnly = model.chat("Tell me a joke");
+```
+
+The publisher is **cold**: nothing happens until you subscribe, and each subscription sends a new request.
+Cancelling the subscription makes a best-effort attempt to abort the in-flight HTTP call.
+
+New event types may be added over time, so handle unrecognized ones gracefully rather than writing an exhaustive
+type switch without a default branch.
+
+:::note
+Events are delivered on the model's own thread - for HTTP models, the transport's I/O worker that reads the
+response. Do not block or do heavy work in `onNext`: it stalls the stream and, under concurrency, degrades
+throughput for every in-flight call. Offload such work to your own executor.
+
+An LLM response cannot meaningfully be throttled, so implementations consume it eagerly and relay events through a
+bounded buffer instead of propagating your demand to the model. Request liberally
+(for example `Long.MAX_VALUE`); a subscriber that requests less may exhaust the buffer and terminate with an error.
+:::
+
+For the AI Service level equivalent - which also surfaces tool executions and RAG content - see
+[Non-blocking and Reactive](/tutorials/non-blocking).
+
 ## Unmapped Raw Events
 
 :::note

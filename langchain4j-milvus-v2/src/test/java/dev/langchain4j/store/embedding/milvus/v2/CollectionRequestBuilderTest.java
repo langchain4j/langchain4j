@@ -1,6 +1,7 @@
 package dev.langchain4j.store.embedding.milvus.v2;
 
 import static dev.langchain4j.store.embedding.milvus.v2.CollectionRequestBuilder.buildHybridSearchRequest;
+import static dev.langchain4j.store.embedding.milvus.v2.CollectionRequestBuilder.buildQueryRequest;
 import static dev.langchain4j.store.embedding.milvus.v2.CollectionRequestBuilder.buildSearchRequest;
 import static dev.langchain4j.store.embedding.milvus.v2.CollectionRequestBuilder.createDenseAnnSearchReq;
 import static dev.langchain4j.store.embedding.milvus.v2.CollectionRequestBuilder.createDenseSearchReq;
@@ -11,8 +12,10 @@ import dev.langchain4j.data.embedding.Embedding;
 import io.milvus.v2.common.ConsistencyLevel;
 import io.milvus.v2.common.IndexParam;
 import io.milvus.v2.service.vector.request.HybridSearchReq;
+import io.milvus.v2.service.vector.request.QueryReq;
 import io.milvus.v2.service.vector.request.SearchReq;
 import java.util.Arrays;
+import java.util.List;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
 
@@ -46,6 +49,18 @@ class CollectionRequestBuilderTest implements WithAssertions {
         assertThat(result.getMetricType()).isEqualTo(IndexParam.MetricType.COSINE);
         assertThat(result.getLimit()).isEqualTo(5);
         assertThat(result.getOutputFields()).containsExactly("id", "text", "metadata");
+    }
+
+    @Test
+    void should_quote_and_escape_row_ids_in_query_expression() {
+        List<String> rowIds = Arrays.asList("normal-id", "id'with'apostrophe", "id\"with-quote", "id\\with-backslash");
+
+        QueryReq result = buildQueryRequest(COLLECTION_NAME, FIELD_DEFINITION, rowIds, ConsistencyLevel.STRONG);
+
+        assertThat(result.getFilter())
+                .isEqualTo(
+                        "id in [\"normal-id\", \"id'with'apostrophe\", \"id\\\"with-quote\", \"id\\\\with-backslash\"]");
+        assertThat(result.getLimit()).isEqualTo(4);
     }
 
     @Test

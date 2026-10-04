@@ -3,8 +3,7 @@ package dev.langchain4j.model.bedrock.common;
 import static dev.langchain4j.model.bedrock.TestedModels.AWS_NOVA_LITE;
 import static dev.langchain4j.model.bedrock.TestedModels.AWS_NOVA_MICRO;
 import static dev.langchain4j.model.bedrock.TestedModels.AWS_NOVA_PRO;
-import static dev.langchain4j.model.bedrock.TestedModels.CLAUDE_3_HAIKU;
-import static dev.langchain4j.model.bedrock.TestedModels.COHERE_COMMAND_R_PLUS;
+import static dev.langchain4j.model.bedrock.TestedModels.CLAUDE_HAIKU_4_5;
 import static dev.langchain4j.model.bedrock.TestedModels.MISTRAL_LARGE;
 
 import dev.langchain4j.model.bedrock.BedrockTokenUsage;
@@ -20,8 +19,7 @@ public class BedrockAiServicesIT extends AbstractAiServiceIT {
 
     @Override
     protected List<ChatModel> models() {
-        return List.of(
-                AWS_NOVA_MICRO, AWS_NOVA_LITE, AWS_NOVA_PRO, COHERE_COMMAND_R_PLUS, MISTRAL_LARGE, CLAUDE_3_HAIKU);
+        return List.of(AWS_NOVA_MICRO, AWS_NOVA_LITE, AWS_NOVA_PRO, CLAUDE_HAIKU_4_5, MISTRAL_LARGE);
     }
 
     @Override

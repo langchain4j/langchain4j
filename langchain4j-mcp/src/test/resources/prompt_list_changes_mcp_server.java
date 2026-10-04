@@ -1,6 +1,6 @@
 ///usr/bin/env jbang "$0" "$@" ; exit $?
-//DEPS io.quarkus:quarkus-bom:${quarkus.version:3.33.0}@pom
-//DEPS io.quarkiverse.mcp:quarkus-mcp-server-stdio:1.11.0
+//DEPS io.quarkus:quarkus-bom:${quarkus.version:3.33.2.1}@pom
+//DEPS io.quarkiverse.mcp:quarkus-mcp-server-stdio:2.0.0.Beta3
 
 import io.quarkiverse.mcp.server.Prompt;
 import io.quarkiverse.mcp.server.PromptManager;

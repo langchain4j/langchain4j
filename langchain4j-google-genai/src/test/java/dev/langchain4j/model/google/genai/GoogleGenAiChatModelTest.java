@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 
 import com.google.genai.Client;
 import com.google.genai.Models;
+import com.google.genai.types.AudioTranscriptionConfig;
 import com.google.genai.types.Candidate;
 import com.google.genai.types.Content;
 import com.google.genai.types.GenerateContentConfig;
@@ -123,6 +124,9 @@ class GoogleGenAiChatModelTest {
                 .presencePenalty(0.3)
                 .maxOutputTokens(1024)
                 .thinkingBudget(500)
+                .includeThoughts(true)
+                .returnThinking(true)
+                .sendThinking(true)
                 .seed(42)
                 .stopSequences(List.of("STOP"))
                 .maxRetries(5)
@@ -166,6 +170,9 @@ class GoogleGenAiChatModelTest {
         assertThat(builder.presencePenalty(0.3)).isSameAs(builder);
         assertThat(builder.maxOutputTokens(100)).isSameAs(builder);
         assertThat(builder.thinkingBudget(500)).isSameAs(builder);
+        assertThat(builder.includeThoughts(true)).isSameAs(builder);
+        assertThat(builder.returnThinking(true)).isSameAs(builder);
+        assertThat(builder.sendThinking(true)).isSameAs(builder);
         assertThat(builder.seed(42)).isSameAs(builder);
         assertThat(builder.stopSequences(List.of("STOP"))).isSameAs(builder);
         assertThat(builder.maxRetries(3)).isSameAs(builder);
@@ -177,6 +184,9 @@ class GoogleGenAiChatModelTest {
         assertThat(builder.responseFormat(ResponseFormat.JSON)).isSameAs(builder);
         assertThat(builder.allowedFunctionNames(List.of("fn1"))).isSameAs(builder);
         assertThat(builder.listeners(List.of())).isSameAs(builder);
+        assertThat(builder.audioTranscriptionConfig(
+                        AudioTranscriptionConfig.builder().build()))
+                .isSameAs(builder);
     }
 
     @Test
@@ -243,6 +253,44 @@ class GoogleGenAiChatModelTest {
         assertThat(configCaptor.getValue().cachedContent().isPresent()).isTrue();
         assertThat(configCaptor.getValue().cachedContent().get())
                 .isEqualTo("projects/123/locations/us-central1/cachedContents/per-request");
+    }
+
+    @Test
+    void should_send_audio_transcription_config() throws Exception {
+        Client client = mock(Client.class);
+        Models models = mock(Models.class);
+        Field modelsField = Client.class.getDeclaredField("models");
+        modelsField.setAccessible(true);
+        modelsField.set(client, models);
+
+        GenerateContentResponse mockResponse = GenerateContentResponse.builder()
+                .candidates(List.of(Candidate.builder()
+                        .content(Content.builder()
+                                .role("model")
+                                .parts(List.of(Part.builder().text("transcript").build()))
+                                .build())
+                        .build()))
+                .build();
+
+        ArgumentCaptor<GenerateContentConfig> configCaptor = ArgumentCaptor.forClass(GenerateContentConfig.class);
+
+        when(models.generateContent(any(String.class), anyList(), configCaptor.capture()))
+                .thenReturn(mockResponse);
+
+        AudioTranscriptionConfig audioTranscriptionConfig = AudioTranscriptionConfig.builder()
+                .mode("SMART")
+                .languageCodes(List.of("en-US"))
+                .build();
+
+        GoogleGenAiChatModel model = GoogleGenAiChatModel.builder()
+                .client(client)
+                .modelName("gemini-3.5-transcribe")
+                .audioTranscriptionConfig(audioTranscriptionConfig)
+                .build();
+
+        model.chat(ChatRequest.builder().messages(UserMessage.from("Hello")).build());
+
+        assertThat(configCaptor.getValue().audioTranscriptionConfig()).contains(audioTranscriptionConfig);
     }
 
     @Test

@@ -1,25 +1,23 @@
 package dev.langchain4j.model.anthropic.common;
 
-import static dev.langchain4j.internal.Utils.readBytes;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_HAIKU_4_5_20251001;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.atLeast;
 
-import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.model.anthropic.AnthropicChatRequestParameters;
 import dev.langchain4j.model.anthropic.AnthropicChatResponseMetadata;
 import dev.langchain4j.model.anthropic.AnthropicStreamingChatModel;
 import dev.langchain4j.model.anthropic.AnthropicTokenUsage;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
+import dev.langchain4j.model.chat.common.StreamingMode;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.TokenUsage;
-import java.util.Base64;
 import java.util.List;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -50,8 +48,13 @@ class AnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT {
             .build();
 
     @Override
-    protected List<StreamingChatModel> models() {
+    protected List<StreamingChatModel> baseModels() {
         return List.of(ANTHROPIC_STREAMING_CHAT_MODEL);
+    }
+
+    @Override
+    protected List<StreamingMode> streamingModes() {
+        return List.of(StreamingMode.HANDLER, StreamingMode.PUBLISHER);
     }
 
     @Override
@@ -144,7 +147,7 @@ class AnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Override
-    protected List<StreamingChatModel> modelsSupportingStructuredOutputs() {
+    protected List<StreamingChatModel> baseModelsSupportingStructuredOutputs() {
         return List.of(ANTHROPIC_STREAMING_SCHEMA_MODEL);
     }
 
@@ -169,28 +172,6 @@ class AnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT {
         // Claude Sonnet 4.5, Opus 4.1/4.5, and Haiku 4.5 when the
         // 'structured-outputs-2025-11-13' beta header is enabled.
         super.should_respect_JsonRawSchema_responseFormat(model);
-    }
-
-    @Override
-    protected String catImageUrl() {
-        return "https://images.all-free-download.com/images/graphicwebp/cat_hangover_relax_213869.webp";
-    }
-
-    @Override
-    protected ImageContent catImageContentBase64() {
-        String base64Data = Base64.getEncoder().encodeToString(readBytes(catImageUrl()));
-        return ImageContent.from(base64Data, "image/webp");
-    }
-
-    @Override
-    protected String diceImageUrl() {
-        return "https://images.all-free-download.com/images/graphicwebp/double_six_dice_196084.webp";
-    }
-
-    @Override
-    protected ImageContent diceImageContentBase64() {
-        String base64Data = Base64.getEncoder().encodeToString(readBytes(diceImageUrl()));
-        return ImageContent.from(base64Data, "image/webp");
     }
 
     @Override

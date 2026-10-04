@@ -88,6 +88,8 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
     private final List<AgentArgument> arguments;
     private final List<AgentInstance> subagents;
 
+    private final Supplier<Object> defaultMemoryIdSupplier;
+
     private String agentId;
     private InternalAgent parent;
     private boolean crossAgentCompensationEnabled;
@@ -128,6 +130,7 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
         this.arguments = service.agenticMethod != null ? argumentsFromMethod(service.agenticMethod) : List.of();
         this.subagents =
                 service.subagents.stream().map(AgentInstance.class::cast).toList();
+        this.defaultMemoryIdSupplier = service.defaultMemoryIdSupplier;
         setParent(parent);
     }
 
@@ -212,11 +215,10 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
             beforeAgentInvocation(agentListener, currentScope, this, namedArgs);
         }
 
-        Planner planner = plannerSupplier.get();
-        planner.init(new InitPlanningContext(currentScope, this, subagents));
-
         Object result;
         try {
+            Planner planner = plannerSupplier.get();
+            planner.init(new InitPlanningContext(currentScope, this, subagents));
             result = new PlannerLoop(planner, currentScope, registry).loop();
         } catch (Exception e) {
             currentScope.compensateAll();
@@ -480,7 +482,7 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
         }
 
         private void parallelExecution(List<AgentExecutor> agents) {
-            Executor exec = executor != null ? executor : DefaultExecutorProvider.getDefaultExecutorService();
+            Executor exec = executor != null ? executor : DefaultExecutorProvider.getDefaultExecutor();
             var tasks = agents.stream()
                     .map(agentExecutor ->
                             CompletableFuture.supplyAsync(() -> agentExecutor.execute(agenticScope, this), exec))
@@ -642,6 +644,9 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
             if (parameters[i].getAnnotation(MemoryId.class) != null) {
                 return args[i];
             }
+        }
+        if (defaultMemoryIdSupplier != null) {
+            return defaultMemoryIdSupplier.get();
         }
         return null;
     }

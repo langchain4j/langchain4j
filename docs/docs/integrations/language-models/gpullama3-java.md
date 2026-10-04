@@ -2,6 +2,12 @@
 sidebar_position: 22
 ---
 # GPULlama3.java
+
+:::note
+`langchain4j-gpu-llama3` is deprecated. GPULlama3.java has been succeeded by [jitLLM](/integrations/language-models/jitllm):
+use `langchain4j-jitllm` instead.
+:::
+
 [GPULlama3.java](https://github.com/beehive-lab/GPULlama3.java)
 
 GPULlama3.java builds on [TornadoVM](https://github.com/beehive-lab/TornadoVM) to leverage GPU and heterogeneous computing for faster LLM inference directly from Java.
@@ -19,13 +25,13 @@ For Maven project `pom.xml`
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j</artifactId>
-    <version>1.18.1</version>
+    <version>1.21.0</version>
 </dependency>
 
 <dependency>
 <groupId>dev.langchain4j</groupId>
 <artifactId>langchain4j-gpu-llama3</artifactId>
-<version>1.18.1-beta28</version>
+<version>1.21.0-beta31</version>
 </dependency>
 
 ```
@@ -33,8 +39,8 @@ For Maven project `pom.xml`
 For Gradle project `build.gradle`
 
 ```groovy
-implementation 'dev.langchain4j:langchain4j:1.18.1'
-implementation 'dev.langchain4j:langchain4j-gpu-llama3:1.18.1-beta28'
+implementation 'dev.langchain4j:langchain4j:1.21.0'
+implementation 'dev.langchain4j:langchain4j-gpu-llama3:1.21.0-beta31'
 ```
 ---
 ## Model Compatibility
@@ -175,7 +181,7 @@ mvn clean package
 
 Your main JAR will be located at:
 ```bash
-target/gpullama3.java-example-1.18.1-beta28.jar
+target/gpullama3.java-example-1.21.0-beta31.jar
 ```
 
 #### **Step 4 — Run the program directly with Java**
@@ -183,7 +189,7 @@ You can now run the example with all JVM and Tornado flags:
 
 ```bash
 JAVA_BIN=/home/mikepapadim/.sdkman/candidates/java/current/bin/java
-CP="target/gpullama3.java-example-1.18.1-beta28.jar:$(cat cp.txt)"
+CP="target/gpullama3.java-example-1.21.0-beta31.jar:$(cat cp.txt)"
 
 $JAVA_BIN \
   -server \

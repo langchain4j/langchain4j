@@ -13,7 +13,6 @@ import com.google.protobuf.Struct;
 import com.google.protobuf.Value;
 import com.google.protobuf.util.JsonFormat;
 import dev.langchain4j.data.audio.Audio;
-import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.AudioContent;
@@ -28,11 +27,13 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.message.VideoContent;
 import dev.langchain4j.data.pdf.PdfFile;
 import dev.langchain4j.data.video.Video;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 class PartsMapper {
@@ -60,7 +61,7 @@ class PartsMapper {
         EXTENSION_TO_MIME_TYPE.put("wav", "audio/wav");
         EXTENSION_TO_MIME_TYPE.put("aac", "audio/aac");
         EXTENSION_TO_MIME_TYPE.put("flac", "audio/flac");
-        EXTENSION_TO_MIME_TYPE.put("mpa", "audio/m4a");
+        EXTENSION_TO_MIME_TYPE.put("m4a", "audio/m4a");
         EXTENSION_TO_MIME_TYPE.put("mpga", "audio/mpga");
         EXTENSION_TO_MIME_TYPE.put("opus", "audio/opus");
         EXTENSION_TO_MIME_TYPE.put("pcm", "audio/pcm");
@@ -75,7 +76,7 @@ class PartsMapper {
         EXTENSION_TO_MIME_TYPE.put("avi", "video/avi");
         EXTENSION_TO_MIME_TYPE.put("flv", "video/x-flv");
         EXTENSION_TO_MIME_TYPE.put("webm", "video/webm");
-        EXTENSION_TO_MIME_TYPE.put("mmv", "video/wmv");
+        EXTENSION_TO_MIME_TYPE.put("wmv", "video/wmv");
         EXTENSION_TO_MIME_TYPE.put("3gpp", "video/3gpp");
 
         // see document understanding:
@@ -182,7 +183,7 @@ class PartsMapper {
     static String detectMimeType(URI url) {
         String[] pathParts = url.getPath().split("\\.");
         if (pathParts.length > 1) {
-            String extension = pathParts[pathParts.length - 1].toLowerCase();
+            String extension = pathParts[pathParts.length - 1].toLowerCase(Locale.ROOT);
             String mimeType = EXTENSION_TO_MIME_TYPE.get(extension);
             if (mimeType != null) {
                 return mimeType;

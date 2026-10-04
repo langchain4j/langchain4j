@@ -3,7 +3,7 @@ package dev.langchain4j.store.embedding.azure.documentdb;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.randomUUID;
-import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
+import static dev.langchain4j.internal.ValidationUtils.ensureConsistentSizes;
 import static dev.langchain4j.store.embedding.azure.documentdb.MappingUtils.toEmbeddingMatch;
 import static dev.langchain4j.store.embedding.azure.documentdb.MappingUtils.toMongoDbDocument;
 import static java.util.Collections.singletonList;
@@ -45,8 +45,6 @@ import org.bson.Document;
 import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.codecs.pojo.PojoCodecProvider;
 import org.bson.conversions.Bson;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Represents an Azure DocumentDB as an embedding store.
@@ -59,7 +57,6 @@ import org.slf4j.LoggerFactory;
  */
 public class AzureDocumentDbEmbeddingStore implements EmbeddingStore<TextSegment>, AutoCloseable {
 
-    private static final Logger log = LoggerFactory.getLogger(AzureDocumentDbEmbeddingStore.class);
     private final MongoClient mongoClient;
     private final boolean ownsMongoClient;
     private final AtomicBoolean closed = new AtomicBoolean();
@@ -348,14 +345,10 @@ public class AzureDocumentDbEmbeddingStore implements EmbeddingStore<TextSegment
 
     @Override
     public void addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
-        if (isNullOrEmpty(ids) || isNullOrEmpty(embeddings)) {
-            log.info("do not add empty embeddings to Azure DocumentDB");
+        ensureConsistentSizes(ids, embeddings, embedded);
+        if (isNullOrEmpty(embeddings)) {
             return;
         }
-        ensureTrue(ids.size() == embeddings.size(), "ids size is not equal to embeddings size");
-        ensureTrue(
-                embedded == null || embeddings.size() == embedded.size(),
-                "embeddings size is not equal to embedded size");
 
         List<AzureDocumentDbDocument> documents = new ArrayList<>(ids.size());
         for (int i = 0; i < ids.size(); i++) {

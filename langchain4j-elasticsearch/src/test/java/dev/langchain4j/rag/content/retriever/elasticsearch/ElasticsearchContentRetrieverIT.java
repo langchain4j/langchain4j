@@ -4,6 +4,7 @@ import static dev.langchain4j.internal.Utils.randomUUID;
 import static dev.langchain4j.store.embedding.TestUtils.awaitUntilAsserted;
 import static dev.langchain4j.store.embedding.elasticsearch.ElasticsearchConfiguration.TEXT_FIELD;
 import static dev.langchain4j.store.embedding.elasticsearch.ElasticsearchConfiguration.VECTOR_FIELD;
+import static dev.langchain4j.store.embedding.filter.MetadataFilterBuilder.metadataKey;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.CoreMatchers.is;
@@ -11,6 +12,7 @@ import static org.junit.Assume.assumeThat;
 
 import co.elastic.clients.elasticsearch._types.mapping.DenseVectorIndexOptionsType;
 import co.elastic.clients.transport.endpoints.BooleanResponse;
+import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
@@ -187,6 +189,35 @@ public class ElasticsearchContentRetrieverIT extends EmbeddingStoreWithFiltering
         log.info("#1 relevant item: {}", relevant2.get(0).textSegment().text());
         assertContent(relevant2.get(0));
         assertThat(relevant2.get(0).textSegment().text()).contains("Maurice Jean Jacques Merleau-Ponty");
+    }
+
+    @Test
+    void fullTextSearchWithMetadataFilter() {
+        TextSegment publicArticle =
+                TextSegment.from("Elasticsearch filtering guide", Metadata.from("tenant", "public"));
+        TextSegment privateArticle =
+                TextSegment.from("Elasticsearch private guide", Metadata.from("tenant", "private"));
+        contentRetrieverWithFullText.add(embeddingModel.embed(publicArticle).content(), publicArticle);
+        contentRetrieverWithFullText.add(embeddingModel.embed(privateArticle).content(), privateArticle);
+
+        awaitUntilAsserted(() -> assertThat(contentRetrieverWithFullText.retrieve(Query.from("Elasticsearch")))
+                .hasSize(2));
+
+        ElasticsearchContentRetriever filteredRetriever = ElasticsearchContentRetriever.builder()
+                .configuration(ElasticsearchConfigurationFullText.builder().build())
+                .client(elasticsearchClientHelper.client)
+                .indexName(indexName)
+                .maxResults(3)
+                .minScore(0.0)
+                .filter(metadataKey("tenant").isEqualTo("private"))
+                .build();
+
+        List<Content> relevant = filteredRetriever.retrieve(Query.from("Elasticsearch"));
+
+        assertThat(relevant).singleElement().satisfies(content -> {
+            assertThat(content.textSegment().text()).isEqualTo("Elasticsearch private guide");
+            assertThat(content.textSegment().metadata().getString("tenant")).isEqualTo("private");
+        });
     }
 
     @Test

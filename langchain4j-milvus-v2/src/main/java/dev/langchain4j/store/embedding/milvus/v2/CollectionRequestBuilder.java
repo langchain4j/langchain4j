@@ -1,8 +1,8 @@
 package dev.langchain4j.store.embedding.milvus.v2;
 
+import static dev.langchain4j.store.embedding.milvus.v2.MilvusV2MetadataFilterMapper.formatValues;
 import static java.lang.String.format;
 import static java.util.Collections.singletonList;
-import static java.util.stream.Collectors.joining;
 
 import com.google.gson.JsonObject;
 import dev.langchain4j.data.embedding.Embedding;
@@ -232,6 +232,6 @@ class CollectionRequestBuilder {
     }
 
     private static String buildQueryExpression(List<String> rowIds, String idFieldName) {
-        return rowIds.stream().map(id -> format("%s == '%s'", idFieldName, id)).collect(joining(" || "));
+        return format("%s in %s", idFieldName, formatValues(rowIds));
     }
 }

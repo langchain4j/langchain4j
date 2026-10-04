@@ -1,12 +1,15 @@
 package dev.langchain4j.model.googleai;
 
+import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.googleai.FinishReasonMapper.fromGFinishReasonToFinishReason;
 import static dev.langchain4j.model.googleai.FunctionMapper.fromToolSpecsToGTools;
 import static dev.langchain4j.model.googleai.PartsAndContentsMapper.fromGPartsToAiMessage;
 import static dev.langchain4j.model.googleai.PartsAndContentsMapper.fromMessageToGContent;
+import static dev.langchain4j.model.googleai.SchemaMapper.canBeMapped;
 import static dev.langchain4j.model.googleai.SchemaMapper.fromJsonSchemaToGSchema;
 import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 
@@ -20,7 +23,7 @@ import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
-import dev.langchain4j.model.chat.request.json.JsonRawSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.googleai.GeminiGenerateContentRequest.GeminiToolConfig;
 import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiCandidate;
@@ -74,8 +77,8 @@ class BaseGeminiChatModel {
         this.returnThinking = builder.returnThinking;
         this.sendThinking = getOrDefault(builder.sendThinking, false);
         this.seed = builder.seed;
-        this.responseLogprobs = getOrDefault(builder.responseLogprobs, false);
-        this.enableEnhancedCivicAnswers = getOrDefault(builder.enableEnhancedCivicAnswers, false);
+        this.responseLogprobs = builder.responseLogprobs;
+        this.enableEnhancedCivicAnswers = builder.enableEnhancedCivicAnswers;
         this.logprobs = builder.logprobs;
         this.mediaResolution = builder.mediaResolution;
         this.mediaResolutionPerPartEnabled = getOrDefault(builder.mediaResolutionPerPartEnabled, false);
@@ -140,10 +143,11 @@ class BaseGeminiChatModel {
 
         if (responseFormat != null) {
             if (responseFormat.jsonSchema() != null) {
-                if (responseFormat.jsonSchema().rootElement() instanceof JsonRawSchema jsonRawSchema) {
-                    rawSchema = Json.fromJson(jsonRawSchema.schema(), Map.class);
+                JsonSchemaElement rootElement = responseFormat.jsonSchema().rootElement();
+                if (canBeMapped(rootElement)) {
+                    schema = fromJsonSchemaToGSchema(rootElement);
                 } else {
-                    schema = fromJsonSchemaToGSchema(responseFormat.jsonSchema());
+                    rawSchema = toMap(rootElement);
                 }
             }
         }
@@ -249,6 +253,10 @@ class BaseGeminiChatModel {
     }
 
     protected ChatResponse processResponse(GeminiGenerateContentResponse geminiResponse) {
+        if (isNullOrEmpty(geminiResponse.candidates())) {
+            return processBlockedPromptResponse(geminiResponse);
+        }
+
         GeminiCandidate firstCandidate = geminiResponse.candidates().get(0);
         AiMessage aiMessage = createAiMessage(firstCandidate);
 
@@ -272,8 +280,37 @@ class BaseGeminiChatModel {
                                 firstCandidate.urlContextMetadata() != null
                                         ? toUrlContextMetadata(firstCandidate.urlContextMetadata())
                                         : null)
+                        .safetyRatings(firstCandidate.safetyRatings())
+                        .promptSafetyRatings(promptSafetyRatings(geminiResponse))
+                        .blockReason(blockReason(geminiResponse))
                         .build())
                 .build();
+    }
+
+    private ChatResponse processBlockedPromptResponse(GeminiGenerateContentResponse geminiResponse) {
+        // Gemini returns no candidates at all when it refuses the prompt; the reason is in promptFeedback instead.
+        return ChatResponse.builder()
+                .aiMessage(createAiMessage(null))
+                .metadata(GoogleAiGeminiChatResponseMetadata.builder()
+                        .id(geminiResponse.responseId())
+                        .modelName(geminiResponse.modelVersion())
+                        .tokenUsage(
+                                geminiResponse.usageMetadata() != null
+                                        ? createTokenUsage(geminiResponse.usageMetadata())
+                                        : null)
+                        .finishReason(FinishReason.CONTENT_FILTER)
+                        .promptSafetyRatings(promptSafetyRatings(geminiResponse))
+                        .blockReason(blockReason(geminiResponse))
+                        .build())
+                .build();
+    }
+
+    private static List<GeminiSafetyRating> promptSafetyRatings(GeminiGenerateContentResponse response) {
+        return response.promptFeedback() != null ? response.promptFeedback().safetyRatings() : null;
+    }
+
+    private static String blockReason(GeminiGenerateContentResponse response) {
+        return response.promptFeedback() != null ? response.promptFeedback().blockReason() : null;
     }
 
     protected AiMessage createAiMessage(GeminiCandidate candidate) {
@@ -294,17 +331,17 @@ class BaseGeminiChatModel {
                 .build();
     }
 
-    private UrlContextMetadata toUrlContextMetadata(
+    static UrlContextMetadata toUrlContextMetadata(
             GeminiGenerateContentResponse.GeminiUrlContextMetadata geminiUrlContextMetadata) {
         if (geminiUrlContextMetadata == null || geminiUrlContextMetadata.urlMetadata() == null) {
             return null;
         }
         return new UrlContextMetadata(geminiUrlContextMetadata.urlMetadata().stream()
-                .map(this::toUrlMetadata)
+                .map(BaseGeminiChatModel::toUrlMetadata)
                 .toList());
     }
 
-    private UrlContextMetadata.UrlMetadata toUrlMetadata(
+    private static UrlContextMetadata.UrlMetadata toUrlMetadata(
             GeminiGenerateContentResponse.GeminiUrlMetadata geminiUrlMetadata) {
         if (geminiUrlMetadata == null) {
             return null;

@@ -20,7 +20,6 @@ public class JlamaLanguageModel implements LanguageModel {
     private final AbstractModel model;
     private final Float temperature;
     private final Integer maxTokens;
-    private final UUID id = UUID.randomUUID();
 
     public JlamaLanguageModel(
             Path modelCachePath,
@@ -71,8 +70,8 @@ public class JlamaLanguageModel implements LanguageModel {
 
     @Override
     public Response<String> generate(String prompt) {
-        Generator.Response r =
-                model.generate(id, PromptContext.of(prompt), temperature, maxTokens, (token, time) -> {});
+        Generator.Response r = model.generate(
+                UUID.randomUUID(), PromptContext.of(prompt), temperature, maxTokens, (token, time) -> {});
         return Response.from(
                 r.responseText, new TokenUsage(r.promptTokens, r.generatedTokens), toFinishReason(r.finishReason));
     }
@@ -152,7 +151,8 @@ public class JlamaLanguageModel implements LanguageModel {
 
         public String toString() {
             return "JlamaLanguageModel.JlamaLanguageModelBuilder(modelCachePath=" + this.modelCachePath + ", modelName="
-                    + this.modelName + ", authToken=" + (this.authToken == null ? null : "********") + ", threadCount=" + this.threadCount
+                    + this.modelName + ", authToken=" + (this.authToken == null ? null : "********") + ", threadCount="
+                    + this.threadCount
                     + ", quantizeModelAtRuntime=" + this.quantizeModelAtRuntime + ", workingDirectory="
                     + this.workingDirectory + ", workingQuantizedType=" + this.workingQuantizedType + ", temperature="
                     + this.temperature + ", maxTokens=" + this.maxTokens + ")";

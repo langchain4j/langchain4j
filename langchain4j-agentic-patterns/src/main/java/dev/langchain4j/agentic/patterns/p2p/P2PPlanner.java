@@ -1,25 +1,25 @@
 package dev.langchain4j.agentic.patterns.p2p;
 
+import static dev.langchain4j.agentic.patterns.p2p.P2PAgent.P2P_REQUEST_KEY;
+import static java.util.stream.Collectors.toMap;
+
 import dev.langchain4j.agentic.planner.Action;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.planner.InitPlanningContext;
-import dev.langchain4j.agentic.planner.PlanningContext;
 import dev.langchain4j.agentic.planner.Planner;
+import dev.langchain4j.agentic.planner.PlanningContext;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.service.AiServices;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.function.BiPredicate;
 import java.util.function.Predicate;
-
-import static dev.langchain4j.agentic.patterns.p2p.P2PAgent.P2P_REQUEST_KEY;
-import static java.util.stream.Collectors.toMap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class P2PPlanner implements Planner {
 
@@ -65,7 +65,8 @@ public class P2PPlanner implements Planner {
 
     @Override
     public void init(InitPlanningContext initPlanningContext) {
-        this.agentActivators = initPlanningContext.subagents().stream().collect(toMap(AgentInstance::agentId, AgentActivator::new));
+        this.agentActivators =
+                initPlanningContext.subagents().stream().collect(toMap(AgentInstance::agentId, AgentActivator::new));
     }
 
     @Override
@@ -74,9 +75,11 @@ public class P2PPlanner implements Planner {
             String request = planningContext.agenticScope().readState(P2P_REQUEST_KEY, "");
             Collection<String> variableNames = this.agentActivators.values().stream()
                     .flatMap(agentActivator -> agentActivator.argumentNames().stream())
-                    .distinct().toList();
+                    .distinct()
+                    .toList();
 
-            Map<String, String> vars = createVariablesExtractorAgent(chatModel).extractVariables(request, variableNames);
+            Map<String, String> vars =
+                    createVariablesExtractorAgent(chatModel).extractVariables(request, variableNames);
             LOG.info("Variables extracted from user's prompt: {}", vars);
             vars.forEach(planningContext.agenticScope()::writeState);
         }
@@ -90,7 +93,8 @@ public class P2PPlanner implements Planner {
             return done();
         }
 
-        AgentActivator lastExecutedAgent = agentActivators.get(planningContext.previousAgentInvocation().agentId());
+        AgentActivator lastExecutedAgent =
+                agentActivators.get(planningContext.previousAgentInvocation().agentId());
         if (lastExecutedAgent != null) {
             lastExecutedAgent.finishExecution();
             agentActivators.values().forEach(a -> a.onStateChanged(lastExecutedAgent.agent.outputKey()));
@@ -105,12 +109,20 @@ public class P2PPlanner implements Planner {
                 .peek(AgentActivator::startExecution)
                 .map(AgentActivator::agent)
                 .toArray(AgentInstance[]::new);
+
+        if (agentsToCall.length == 0 && agentActivators.values().stream().noneMatch(AgentActivator::isExecuting)) {
+            LOG.info(
+                    "No agent can be activated: agentic scope reached a stable state after {} invocations",
+                    invocationCounter);
+            return done();
+        }
+
         invocationCounter += agentsToCall.length;
         return call(agentsToCall);
     }
 
     private boolean terminated(AgenticScope agenticScope) {
-        return invocationCounter > maxAgentsInvocations || exitCondition.test(agenticScope, invocationCounter);
+        return invocationCounter >= maxAgentsInvocations || exitCondition.test(agenticScope, invocationCounter);
     }
 
     private static class AgentActivator {
@@ -122,7 +134,8 @@ public class P2PPlanner implements Planner {
 
         AgentActivator(AgentInstance agent) {
             this.agent = agent;
-            this.argumentNames = agent.arguments().stream().map(AgentArgument::name).toList();
+            this.argumentNames =
+                    agent.arguments().stream().map(AgentArgument::name).toList();
         }
 
         private AgentInstance agent() {
@@ -144,6 +157,10 @@ public class P2PPlanner implements Planner {
             executing = false;
         }
 
+        private boolean isExecuting() {
+            return executing;
+        }
+
         private void onStateChanged(String state) {
             boolean inputChanged = argumentNames.contains(state);
             // if the input changed, mark the agent to be executed again
@@ -157,9 +174,12 @@ public class P2PPlanner implements Planner {
 
     private static VariablesExtractorAgent createVariablesExtractorAgent(ChatModel chatModel) {
         if (chatModel == null) {
-            throw new IllegalArgumentException("ChatModel must be provided for P2PAgent to extract variables from user's prompt.");
+            throw new IllegalArgumentException(
+                    "ChatModel must be provided for P2PAgent to extract variables from user's prompt.");
         }
-        return AiServices.builder(VariablesExtractorAgent.class).chatModel(chatModel).build();
+        return AiServices.builder(VariablesExtractorAgent.class)
+                .chatModel(chatModel)
+                .build();
     }
 
     @Override

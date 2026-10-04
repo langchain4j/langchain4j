@@ -1,5 +1,8 @@
 package dev.langchain4j.store.embedding.chroma;
 
+import static java.util.Arrays.asList;
+import static java.util.Collections.singletonMap;
+
 import dev.langchain4j.Internal;
 import dev.langchain4j.store.embedding.filter.Filter;
 import dev.langchain4j.store.embedding.filter.comparison.IsEqualTo;
@@ -13,11 +16,7 @@ import dev.langchain4j.store.embedding.filter.comparison.IsNotIn;
 import dev.langchain4j.store.embedding.filter.logical.And;
 import dev.langchain4j.store.embedding.filter.logical.Not;
 import dev.langchain4j.store.embedding.filter.logical.Or;
-
 import java.util.Map;
-
-import static java.util.Arrays.asList;
-import static java.util.Collections.singletonMap;
 
 @Internal
 class ChromaMetadataFilterMapper {
@@ -52,7 +51,8 @@ class ChromaMetadataFilterMapper {
         } else if (filter instanceof Not) {
             return mapNot((Not) filter);
         } else {
-            throw new UnsupportedOperationException("Unsupported filter type: " + filter.getClass().getName());
+            throw new UnsupportedOperationException(
+                    "Unsupported filter type: " + filter.getClass().getName());
         }
     }
 
@@ -104,15 +104,21 @@ class ChromaMetadataFilterMapper {
         if (expression instanceof IsEqualTo) {
             expression = new IsNotEqualTo(((IsEqualTo) expression).key(), ((IsEqualTo) expression).comparisonValue());
         } else if (expression instanceof IsNotEqualTo) {
-            expression = new IsEqualTo(((IsNotEqualTo) expression).key(), ((IsNotEqualTo) expression).comparisonValue());
+            expression =
+                    new IsEqualTo(((IsNotEqualTo) expression).key(), ((IsNotEqualTo) expression).comparisonValue());
         } else if (expression instanceof IsGreaterThan) {
-            expression = new IsLessThanOrEqualTo(((IsGreaterThan) expression).key(), ((IsGreaterThan) expression).comparisonValue());
+            expression = new IsLessThanOrEqualTo(
+                    ((IsGreaterThan) expression).key(), ((IsGreaterThan) expression).comparisonValue());
         } else if (expression instanceof IsGreaterThanOrEqualTo) {
-            expression = new IsLessThan(((IsGreaterThanOrEqualTo) expression).key(), ((IsGreaterThanOrEqualTo) expression).comparisonValue());
+            expression = new IsLessThan(
+                    ((IsGreaterThanOrEqualTo) expression).key(),
+                    ((IsGreaterThanOrEqualTo) expression).comparisonValue());
         } else if (expression instanceof IsLessThan) {
-            expression = new IsGreaterThanOrEqualTo(((IsLessThan) expression).key(), ((IsLessThan) expression).comparisonValue());
+            expression = new IsGreaterThanOrEqualTo(
+                    ((IsLessThan) expression).key(), ((IsLessThan) expression).comparisonValue());
         } else if (expression instanceof IsLessThanOrEqualTo) {
-            expression = new IsGreaterThan(((IsLessThanOrEqualTo) expression).key(), ((IsLessThanOrEqualTo) expression).comparisonValue());
+            expression = new IsGreaterThan(
+                    ((IsLessThanOrEqualTo) expression).key(), ((IsLessThanOrEqualTo) expression).comparisonValue());
         } else if (expression instanceof IsIn) {
             expression = new IsNotIn(((IsIn) expression).key(), ((IsIn) expression).comparisonValues());
         } else if (expression instanceof IsNotIn) {
@@ -121,8 +127,11 @@ class ChromaMetadataFilterMapper {
             expression = new Or(Filter.not(((And) expression).left()), Filter.not(((And) expression).right()));
         } else if (expression instanceof Or) {
             expression = new And(Filter.not(((Or) expression).left()), Filter.not(((Or) expression).right()));
+        } else if (expression instanceof Not) {
+            expression = ((Not) expression).expression();
         } else {
-            throw new UnsupportedOperationException("Unsupported filter type: " + expression.getClass().getName());
+            throw new UnsupportedOperationException(
+                    "Unsupported filter type: " + expression.getClass().getName());
         }
         return map(expression);
     }

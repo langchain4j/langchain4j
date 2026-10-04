@@ -5,7 +5,7 @@
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>1.19.0-beta29-SNAPSHOT</version>
+        <version>1.22.0-beta32-SNAPSHOT</version>
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
@@ -29,7 +29,9 @@
         <module>integration-tests-class-instance-loader/integration-tests-class-instance-loader-quarkus</module>
         <module>integration-tests-class-metadata-provider</module>
         <module>integration-tests-class-metadata-provider/integration-tests-class-metadata-provider-spring</module>
+        <module>integration-tests-decision-models</module>
         <module>integration-tests-guardrails</module>
+        <module>integration-tests-jackson3</module>
     </modules>
 
     <properties>

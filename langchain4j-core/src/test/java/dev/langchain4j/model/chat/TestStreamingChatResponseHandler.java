@@ -49,6 +49,9 @@ public class TestStreamingChatResponseHandler implements StreamingChatResponseHa
     public void onPartialToolCall(PartialToolCall partialToolCall, PartialToolCallContext context) {}
 
     @Override
+    public void onUnmappedRawEvent(Object rawEvent) {}
+
+    @Override
     public void onCompleteResponse(ChatResponse completeResponse) {
         AiMessage aiMessage = completeResponse.aiMessage();
         if (responseBuilder.length() > 0) {

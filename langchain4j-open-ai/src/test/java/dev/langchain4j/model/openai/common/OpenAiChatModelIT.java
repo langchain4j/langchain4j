@@ -37,6 +37,11 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
 
     // TODO https://github.com/langchain4j/langchain4j/issues/2219
 
+    @Override
+    protected boolean supportsChatAsync() {
+        return true;
+    }
+
     public static OpenAiChatModel.OpenAiChatModelBuilder defaultModelBuilder() {
         return OpenAiChatModel.builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
@@ -140,16 +145,6 @@ class OpenAiChatModelIT extends AbstractChatModelIT {
     @Override
     protected void should_fail_if_stopSequences_parameter_is_not_supported(ChatModel model) {
         // GPT-5 does not support stop sequences, but other models do support
-    }
-
-    @Override
-    protected String catImageUrl() {
-        return "https://images.all-free-download.com/images/graphicwebp/cat_hangover_relax_213869.webp";
-    }
-
-    @Override
-    protected String diceImageUrl() {
-        return "https://images.all-free-download.com/images/graphicwebp/double_six_dice_196084.webp";
     }
 
     @Override

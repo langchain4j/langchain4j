@@ -47,7 +47,6 @@ public class JlamaStreamingChatModel implements StreamingChatModel {
     private final AbstractModel model;
     private final Float temperature;
     private final Integer maxTokens;
-    private final UUID id = UUID.randomUUID();
 
     public JlamaStreamingChatModel(
             Path modelCachePath,
@@ -186,9 +185,10 @@ public class JlamaStreamingChatModel implements StreamingChatModel {
         PromptContext promptContext = tools.isEmpty() ? promptBuilder.build() : promptBuilder.build(tools);
 
         try {
-            Generator.Response r = model.generate(id, promptContext, temperature, maxTokens, (token, time) -> {
-                handler.onNext(token);
-            });
+            Generator.Response r =
+                    model.generate(UUID.randomUUID(), promptContext, temperature, maxTokens, (token, time) -> {
+                        handler.onNext(token);
+                    });
 
             if (r.finishReason == Generator.FinishReason.TOOL_CALL) {
                 List<ToolExecutionRequest> toolCalls = r.toolCalls.stream()
@@ -289,7 +289,8 @@ public class JlamaStreamingChatModel implements StreamingChatModel {
 
         public String toString() {
             return "JlamaStreamingChatModel.JlamaStreamingChatModelBuilder(modelCachePath=" + this.modelCachePath
-                    + ", modelName=" + this.modelName + ", authToken=" + (this.authToken == null ? null : "********") + ", threadCount="
+                    + ", modelName=" + this.modelName + ", authToken=" + (this.authToken == null ? null : "********")
+                    + ", threadCount="
                     + this.threadCount + ", quantizeModelAtRuntime=" + this.quantizeModelAtRuntime
                     + ", workingDirectory=" + this.workingDirectory + ", workingQuantizedType="
                     + this.workingQuantizedType + ", temperature=" + this.temperature + ", maxTokens=" + this.maxTokens
