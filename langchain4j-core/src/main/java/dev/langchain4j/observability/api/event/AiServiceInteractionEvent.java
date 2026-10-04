@@ -1,9 +1,10 @@
 package dev.langchain4j.observability.api.event;
 
-import dev.langchain4j.invocation.InvocationContext;
-import dev.langchain4j.observability.event.DefaultAiServiceInteractionEvent;
 import java.util.ArrayList;
 import java.util.List;
+
+import dev.langchain4j.invocation.InvocationContext;
+import dev.langchain4j.observability.event.DefaultAiServiceInteractionEvent;
 
 /**
  * Aggregates all AiServiceEvent instances for a single invocationId,
@@ -64,6 +65,7 @@ public interface AiServiceInteractionEvent extends AiServiceEvent {
          * Adds multiple events to this builder.
          */
         public AiServiceInteractionEventBuilder events(List<AiServiceEvent> events) {
+            this.events.clear();
             if (events != null) {
                 this.events.addAll(events);
             }
