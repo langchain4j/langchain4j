@@ -248,6 +248,18 @@ class DefaultAiServiceListenerRegistrarTests {
     }
 
     @Test
+    void shouldRejectExternallyFiredInteractionEvent() {
+        var registrar = AiServiceListenerRegistrar.newInstance();
+        var interactionEvent = AiServiceInteractionEvent.builder()
+                .invocationContext(DEFAULT_INVOCATION_CONTEXT)
+                .events(List.of(INVOCATION_STARTED_EVENT, INVOCATION_COMPLETED_EVENT))
+                .build();
+
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> registrar.fireEvent(interactionEvent))
+                .withMessageContaining("composite event");
+    }
+    @Test
     void shouldNotFireInteractionEventBeforeCompletionOrError() {
         // From https://github.com/langchain4j/langchain4j/issues/4207
        
