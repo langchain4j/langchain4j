@@ -29,8 +29,7 @@ class McpToolExecutorTest {
 
     private McpClient asyncMcpClientReturning(ToolExecutionResult result) {
         McpClient mcpClient = mock(McpClient.class);
-        when(mcpClient.executeToolAsync(any(), any()))
-                .thenReturn(CompletableFuture.completedFuture(result));
+        when(mcpClient.executeToolAsync(any(), any())).thenReturn(CompletableFuture.completedFuture(result));
         return mcpClient;
     }
 
@@ -58,7 +57,8 @@ class McpToolExecutorTest {
 
         McpToolExecutor executor = new McpToolExecutor(mcpClient);
 
-        ToolExecutionResult result = executor.executeAsync(request, invocationContext).join();
+        ToolExecutionResult result =
+                executor.executeAsync(request, invocationContext).join();
 
         assertThat(result.resultText()).isEqualTo("Sunny, 22 degrees");
         assertThat(result.attributes()).isEmpty();
@@ -88,7 +88,8 @@ class McpToolExecutorTest {
 
         McpToolExecutor executor = new McpToolExecutor(mcpClient, null, true);
 
-        ToolExecutionResult result = executor.executeAsync(request, invocationContext).join();
+        ToolExecutionResult result =
+                executor.executeAsync(request, invocationContext).join();
 
         assertThat(result.resultText()).isEqualTo("Sunny, 22 degrees");
         assertThat(result.attributes()).containsExactly(Map.entry("example.org/traceId", "abc-123"));
@@ -107,8 +108,7 @@ class McpToolExecutorTest {
     void should_return_result_as_is_when_there_are_no_attributes_when_executing_asynchronously() {
         ToolExecutionResult originalResult =
                 ToolExecutionResult.builder().resultText("Sunny, 22 degrees").build();
-        McpToolExecutor executor =
-                new McpToolExecutor(asyncMcpClientReturning(originalResult));
+        McpToolExecutor executor = new McpToolExecutor(asyncMcpClientReturning(originalResult));
 
         assertThat(executor.executeAsync(request, invocationContext).join()).isSameAs(originalResult);
     }
@@ -121,8 +121,7 @@ class McpToolExecutorTest {
 
         McpToolExecutor executor = new McpToolExecutor(mcpClient);
 
-        CompletableFuture<ToolExecutionResult> executorFuture =
-                executor.executeAsync(request, invocationContext);
+        CompletableFuture<ToolExecutionResult> executorFuture = executor.executeAsync(request, invocationContext);
         assertThat(executorFuture.cancel(true)).isTrue();
 
         assertThat(clientFuture).isCancelled();
