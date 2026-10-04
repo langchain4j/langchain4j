@@ -197,8 +197,7 @@ class ToolAwareMessageSanitizerTest implements WithAssertions {
         ToolExecutionResultMessage surplus = ToolExecutionResultMessage.from(request, "4");
         UserMessage nextTurn = userMessage("thanks");
 
-        List<ChatMessage> sanitized =
-                ToolAwareMessageSanitizer.sanitize(asList(aiMessage, result, surplus, nextTurn));
+        List<ChatMessage> sanitized = ToolAwareMessageSanitizer.sanitize(asList(aiMessage, result, surplus, nextTurn));
 
         assertThat(sanitized).containsExactly(aiMessage, result, nextTurn);
     }
