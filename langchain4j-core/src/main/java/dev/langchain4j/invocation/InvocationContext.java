@@ -183,7 +183,6 @@ public interface InvocationContext {
             this.methodName = methodName;
             return this;
         }
-
         /**
          * Sets the method arguments for the builder. If the provided list of method arguments is not null,
          * they will be added to the existing list of method arguments.
