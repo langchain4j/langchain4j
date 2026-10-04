@@ -25,7 +25,7 @@ LangChain4j provides 3 different integrations with OpenAI for generating images,
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai</artifactId>
-    <version>1.20.2</version>
+    <version>1.21.0</version>
 </dependency>
 ```
 
@@ -34,7 +34,7 @@ LangChain4j provides 3 different integrations with OpenAI for generating images,
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai-spring-boot4-starter</artifactId>
-    <version>1.20.2-beta30</version>
+    <version>1.21.0-beta31</version>
 </dependency>
 ```
 
@@ -88,6 +88,25 @@ langchain4j.open-ai.image-model.size=...
 langchain4j.open-ai.image-model.timeout=...
 langchain4j.open-ai.image-model.user=...
 ```
+
+## Token usage
+
+GPT image models report how many tokens a request used. `OpenAiImageModel` returns this as an
+`OpenAiImageTokenUsage`, which also splits the input and output tokens into image tokens and text
+tokens (OpenAI prices them differently):
+
+```java
+Response<Image> response = model.generate("A watercolor painting of a lighthouse");
+
+OpenAiImageTokenUsage tokenUsage = (OpenAiImageTokenUsage) response.tokenUsage();
+tokenUsage.inputTokenCount();                    // all input tokens
+tokenUsage.inputTokensDetails().textTokens();    // input tokens from the prompt
+tokenUsage.inputTokensDetails().imageTokens();   // input tokens from input images (edits)
+tokenUsage.outputTokenCount();                   // all output tokens
+```
+
+The details are `null` when OpenAI does not report them. DALL·E models do not report usage at all,
+so for them `response.tokenUsage()` is `null`.
 
 ## Examples
 

@@ -20,6 +20,7 @@ public class DefaultInvocationContext implements InvocationContext {
     private final String methodName;
     private final List<Object> methodArguments = new ArrayList<>();
     private final UserMessage userMessage;
+    private final UserMessage originalUserMessage;
     private final Object chatMemoryId;
     private final ChatRequestParameters defaultRequestParameters;
     private final ModelProvider modelProvider;
@@ -33,6 +34,7 @@ public class DefaultInvocationContext implements InvocationContext {
         this.methodName = builder.methodName();
         this.methodArguments.addAll(builder.methodArguments());
         this.userMessage = builder.userMessage();
+        this.originalUserMessage = builder.originalUserMessage();
         this.chatMemoryId = builder.chatMemoryId();
         this.defaultRequestParameters = builder.defaultRequestParameters();
         this.modelProvider = builder.modelProvider();
@@ -64,6 +66,11 @@ public class DefaultInvocationContext implements InvocationContext {
     @Override
     public UserMessage userMessage() {
         return userMessage;
+    }
+
+    @Override
+    public UserMessage originalUserMessage() {
+        return originalUserMessage;
     }
 
     @Override
@@ -106,6 +113,7 @@ public class DefaultInvocationContext implements InvocationContext {
                 && Objects.equals(methodName, that.methodName)
                 && Objects.equals(methodArguments, that.methodArguments)
                 && Objects.equals(userMessage, that.userMessage)
+                && Objects.equals(originalUserMessage, that.originalUserMessage)
                 && Objects.equals(chatMemoryId, that.chatMemoryId)
                 && Objects.equals(defaultRequestParameters, that.defaultRequestParameters)
                 && Objects.equals(modelProvider, that.modelProvider)
@@ -122,6 +130,7 @@ public class DefaultInvocationContext implements InvocationContext {
                 methodName,
                 methodArguments,
                 userMessage,
+                originalUserMessage,
                 chatMemoryId,
                 defaultRequestParameters,
                 modelProvider,
@@ -138,6 +147,7 @@ public class DefaultInvocationContext implements InvocationContext {
                 ", methodName='" + methodName + '\'' +
                 ", methodArguments=" + methodArguments +
                 ", userMessage=" + userMessage +
+                ", originalUserMessage=" + originalUserMessage +
                 ", chatMemoryId=" + chatMemoryId +
                 ", defaultRequestParameters=" + defaultRequestParameters +
                 ", modelProvider=" + modelProvider +

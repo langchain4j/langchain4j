@@ -19,7 +19,7 @@ Add one dependency:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-jackson3</artifactId>
-    <version>1.20.2-beta30</version>
+    <version>1.21.0-beta31</version>
 </dependency>
 ```
 
@@ -42,7 +42,9 @@ directly. Adding it alongside `langchain4j-jackson3` is unnecessary but harmless
 ## What stays the same
 
 Switching a JSON library is a good way to change behaviour by accident, so the module works hard not
-to. Jackson 3 changed several defaults, and every one of them is set back to what Jackson 2 did:
+to. Jackson 3 changed several defaults, and almost every one that changes what LangChain4j reads or
+writes is set back to what Jackson 2 did. The few kept on purpose are listed under
+[What is deliberately different](#what-is-deliberately-different).
 
 | Setting | Jackson 3 default | What this module does |
 |---|---|---|
@@ -51,12 +53,60 @@ to. Jackson 3 changed several defaults, and every one of them is set back to wha
 | `SORT_PROPERTIES_ALPHABETICALLY` | enabled | disabled |
 | `FAIL_ON_TRAILING_TOKENS` | enabled | disabled |
 | `FAIL_ON_NULL_FOR_PRIMITIVES` | enabled | disabled |
-| `""` coerced to an enum | rejected | read as `null`, as Jackson 2 does |
+| `READ_ENUMS_USING_TO_STRING` | enabled | disabled: an enum is read by `name()` |
+| `WRITE_ENUMS_USING_TO_STRING` | enabled | disabled: an enum is written by `name()` |
+| `DETECT_PARAMETER_NAMES` | enabled | disabled, except for structured output and tool arguments (see below) |
+| `FAIL_ON_UNKNOWN_PROPERTIES` | disabled | enabled: a field the target type does not have fails in structured output, tool arguments, chat memory, agent state and stored embedding stores; provider responses still ignore unknown fields |
+| `FAIL_ON_EMPTY_BEANS` | disabled | enabled: an object with nothing to write - for example one whose fields are private and have no getters - fails instead of being sent as `{}` |
 
 The first one matters most: without it, a final collection field is left empty instead of being
 populated, and nothing tells you.
 
-**Failures get a LangChain4j type.** This is the one place where the opt-in does change something.
+`DETECT_PARAMETER_NAMES` only matters when your code is compiled with `-parameters`, as Spring Boot
+and Quarkus projects usually are. For structured output and tool arguments, constructor parameter
+names are used, as the Jackson 2 codec does when `jackson-module-parameter-names` is on the classpath,
+which it is in Spring Boot and Quarkus: a class with only a constructor with arguments, such as a
+Lombok `@AllArgsConstructor` class, can be read. Chat memory, agent state and the other codecs do not
+use parameter names, as with Jackson 2.
+
+To choose a constructor explicitly, whatever the compiler settings, annotate it:
+
+- with `@JsonCreator(mode = JsonCreator.Mode.DELEGATING)` to read a plain value such as `"abc"` through
+  a one-argument constructor;
+- with `@JsonCreator`, and each parameter with `@JsonProperty("name")`, to read an object through a
+  constructor with arguments.
+
+Both work with either Jackson version.
+
+## What is deliberately different
+
+A few differences remain on purpose, because restoring them would cost more than it gives:
+
+- **Dates and times are written as ISO-8601 strings.** `java.util.Date` and `Calendar` become
+  `"1970-01-01T00:00:00.000Z"` instead of epoch milliseconds. With `jackson-datatype-jsr310` on the
+  classpath, as in Spring Boot and Quarkus applications, Jackson 2 also writes `Instant`,
+  `OffsetDateTime` and `Duration` as numbers; this module writes them as ISO-8601 strings, which an
+  LLM reads far more reliably. Numbers are still read for `Date`, `Instant` and `Duration`.
+- **`java.time.Month` is written as a number starting at 1** (`1` for January). With
+  `jackson-datatype-jsr310`, Jackson 2 writes `"JANUARY"` and reads a number as a position starting
+  at 0, so `1` is `FEBRUARY`. Both versions read the name.
+- **`""` is read as `null` for an enum**, the same as a missing value. This applies to required
+  enums too: like a missing field, `""` gives `null` rather than an error. Jackson 2 fails instead,
+  but providers send it - an OpenAI-compatible server returning `"type": ""` for a tool call is what
+  found this - and an LLM may answer `""` for an optional enum. `""` for an object, a map or a list
+  still fails, as it does with Jackson 2.
+- **A `private` one-argument constructor is not used to read a plain value.** Jackson 2 uses it;
+  with Jackson 3, annotate it with `@JsonCreator(mode = JsonCreator.Mode.DELEGATING)`.
+- **For structured output and tool arguments, a class with both a no-argument constructor and a
+  constructor with arguments is created through the one with arguments** when it is compiled with
+  `-parameters`. Jackson 2 uses the no-argument constructor and then sets the fields. This only
+  matters if that constructor does more than assign fields.
+- **A field such as `xValue` with a getter `getXValue()` is written as `"xValue"`.** Jackson 2 derives
+  `"xvalue"` from the getter: for structured output, tool results and agent state it writes both
+  `"xValue"` and `"xvalue"`, and for provider requests only `"xvalue"`. Agent state written by
+  Jackson 2 with such a duplicate key fails to read with this module.
+
+**Failures get a LangChain4j type.**
 By default, a JSON failure surfaces as a `RuntimeException` wrapping Jackson 2's own exception -
 which means code that reacts to it has to know Jackson 2. With this module, reading or writing JSON
 that fails throws `JsonReadException` or `JsonWriteException` instead, both `LangChain4jException`,
@@ -132,7 +182,7 @@ dependency you declare, not only the first:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j</artifactId>
-    <version>1.20.2</version>
+    <version>1.21.0</version>
     <exclusions>
         <exclusion>
             <groupId>com.fasterxml.jackson.core</groupId>
@@ -178,9 +228,12 @@ ProviderJson.codec(ProviderJsonSpec.builder()
 If a single field needs a different name, `@JsonProperty("...")` works under both, because it comes
 from `jackson-annotations`, the artifact the two versions share.
 
-**A builder-based DTO needs `@JsonCreator`.** `@JsonDeserialize(builder = ...)` is also a `databind`
-annotation, so under Jackson 3 the DTO is instead built through the `@JsonCreator` on the
-constructor that takes the builder. Both have to be present.
+**A builder-based DTO needs `@JsonCreator` and field visibility on its builder.**
+`@JsonDeserialize(builder = ...)` is also a `databind` annotation, so under Jackson 3 the DTO is
+instead built through the `@JsonCreator` on the constructor that takes the builder. Jackson 3 fills
+that builder by writing its private fields, so the builder also needs
+`@JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)`. Without it, the response parses
+without an error but the fields stay `null`. All three have to be present.
 
 **Whether a builder method runs depends on the annotations on it.** This is the part to
 internalise, because it is silent and the rule is not the one you would guess. Jackson 2 fills a
@@ -227,7 +280,8 @@ that needs the full artifact, is covered by `langchain4j-jackson3`'s own tests a
 `langchain4j-open-ai` also carries `OpenAiBuilderCreatorParityTest`, which compares every
 builder-based DTO built through its builder against the same DTO parsed from `{}`. That is the
 difference the missing `build()` call above produces, so the test catches it for the whole of the
-OpenAI wire model at once rather than one field at a time.
+OpenAI wire model at once rather than one field at a time. The same test also fails when a
+builder-based DTO is missing the `@JsonCreator` or its builder is missing `@JsonAutoDetect`.
 
 ## If you plug in your own JSON
 

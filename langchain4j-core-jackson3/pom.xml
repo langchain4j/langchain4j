@@ -5,12 +5,12 @@
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>1.21.0-beta31-SNAPSHOT</version>
+        <version>1.22.0-beta32-SNAPSHOT</version>
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
     <artifactId>langchain4j-core-jackson3</artifactId>
-    <version>1.21.0-beta31-SNAPSHOT</version>
+    <version>1.22.0-beta32-SNAPSHOT</version>
     <name>LangChain4j :: Core :: Jackson 3</name>
     <description>Opt-in Jackson 3 codecs for the types in langchain4j-core</description>
 
@@ -19,7 +19,7 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
-            <version>1.21.0-SNAPSHOT</version>
+            <version>1.22.0-SNAPSHOT</version>
         </dependency>
 
         <dependency>
@@ -42,5 +42,23 @@
         </dependency>
 
     </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <!-- Spring Boot and Quarkus applications are compiled with -parameters, which changes how constructors are chosen -->
+                        <id>java-test-compile</id>
+                        <configuration>
+                            <parameters>true</parameters>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
 
 </project>

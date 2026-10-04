@@ -4,7 +4,7 @@
 
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-aggregator</artifactId>
-    <version>1.21.0-beta31-SNAPSHOT</version>
+    <version>1.22.0-beta32-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>LangChain4j :: Aggregator</name>
 
@@ -152,8 +152,8 @@
     </modules>
 
     <properties>
-        <langchain4j.stable.version>1.21.0-SNAPSHOT</langchain4j.stable.version>
-        <langchain4j.beta.version>1.21.0-beta31-SNAPSHOT</langchain4j.beta.version>
+        <langchain4j.stable.version>1.22.0-SNAPSHOT</langchain4j.stable.version>
+        <langchain4j.beta.version>1.22.0-beta32-SNAPSHOT</langchain4j.beta.version>
         <gib.disable>true</gib.disable>
     </properties>
 
@@ -250,6 +250,7 @@
             </activation>
             <modules>
                 <module>langchain4j-jlama</module>
+                <module>langchain4j-jitllm</module>
             </modules>
         </profile>
 

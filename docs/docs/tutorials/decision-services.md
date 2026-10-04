@@ -213,6 +213,7 @@ triage.refund().probability();     // 0.99
 ```
 
 Every field needs a question in `@Decide`; a field without it fails when `build()` is called.
+To keep a field that is not a question, declare it `transient`.
 `@Decide` on the method itself is not supported for such methods.
 
 A regular class works as well, as long as it is a top-level or static nested class with a no-argument constructor
@@ -232,7 +233,7 @@ class Triage {
 ## Parameters
 
 All parameters are sent to the model as the input (state), keyed by parameter name.
-Parameters that are `null` are left out.
+Parameters that are `null` are left out, so the model cannot tell a `null` value from a missing parameter.
 
 ```java
 Triage triage(String ticket, Customer customer);
@@ -325,7 +326,8 @@ SupportDesk supportDesk = DecisionServices.builder(SupportDesk.class)
         .build();
 ```
 
-When the provider returns `null`, the default of 0.5 is used.
+When the provider returns `null`, the default of 0.5 is used. The threshold is requested after the model answered (so
+that it can depend on the model that answered): a value outside 0..1 fails the call after the model was called.
 Make sure your configuration keys match the question names exactly:
 a missing key silently falls back to 0.5, which is rarely what a gate needs.
 
