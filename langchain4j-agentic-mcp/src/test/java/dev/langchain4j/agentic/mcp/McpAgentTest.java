@@ -36,6 +36,7 @@ import dev.langchain4j.service.V;
 import dev.langchain4j.service.tool.ToolExecutionResult;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -607,6 +608,39 @@ class McpAgentTest {
         ResultWithAgenticScope<String> result = sequence.invokeWithAgenticScope(Map.of("name", "World"));
         assertThat(result.result()).isEqualTo("Hello, World!");
         assertThat(listener.requestedName).isEqualTo("World");
+    }
+
+    @Test
+    void mcp_agent_with_multiple_listeners() {
+        McpClient mcpClient = mockMcpClient("greet", "Generate a greeting", "name");
+        mockToolResult(mcpClient, "Hello, World!");
+
+        List<String> notifiedListeners = new ArrayList<>();
+
+        UntypedAgent greeter = McpAgent.builder(mcpClient)
+                .listener(notifyingListener("first", notifiedListeners))
+                .listener(notifyingListener("second", notifiedListeners))
+                .inputKeys("name")
+                .outputKey("greeting")
+                .build();
+
+        UntypedAgent sequence = AgenticServices.sequenceBuilder()
+                .subAgents(greeter)
+                .outputKey("greeting")
+                .build();
+
+        assertThat(sequence.invoke(Map.of("name", "World"))).isEqualTo("Hello, World!");
+        // ComposedAgentListener doesn't guarantee any notification order
+        assertThat(notifiedListeners).containsExactlyInAnyOrder("first", "second");
+    }
+
+    private static AgentListener notifyingListener(String name, List<String> notifiedListeners) {
+        return new AgentListener() {
+            @Override
+            public void beforeAgentInvocation(AgentRequest request) {
+                notifiedListeners.add(name);
+            }
+        };
     }
 
     @Test
