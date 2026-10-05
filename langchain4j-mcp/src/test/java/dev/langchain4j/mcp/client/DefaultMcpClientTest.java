@@ -546,6 +546,62 @@ public class DefaultMcpClientTest {
     }
 
     @Test
+    public void cancelling_async_tool_future_cancels_transport_request() {
+        McpTransport transport = getMinimalMcpTransportMock();
+        CompletableFuture<JsonNode> transportFuture = new CompletableFuture<>();
+        when(transport.executeOperationWithResponse(any(McpCallContext.class))).thenReturn(transportFuture);
+
+        DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion("2025-11-25")
+                .toolExecutionTimeout(java.time.Duration.ofSeconds(30))
+                .build();
+
+        CompletableFuture<ToolExecutionResult> resultFuture = client.executeToolAsync(
+                ToolExecutionRequest.builder().name("test").arguments("{}").build(), null);
+
+        ArgumentCaptor<McpCallContext> requestCaptor = ArgumentCaptor.forClass(McpCallContext.class);
+        verify(transport).executeOperationWithResponse(requestCaptor.capture());
+        Long requestId = requestCaptor.getValue().message().getId();
+
+        assertThat(resultFuture.cancel(true)).isTrue();
+        assertThat(resultFuture.isCancelled()).isTrue();
+        assertThat(transportFuture.isCancelled())
+                .as("cancelling the client future must abort the in-flight transport request")
+                .isTrue();
+
+        ArgumentCaptor<McpClientMessage> cancellationCaptor = ArgumentCaptor.forClass(McpClientMessage.class);
+        verify(transport).sendMessage(cancellationCaptor.capture());
+        McpCancellationNotification cancellation = (McpCancellationNotification) cancellationCaptor.getValue();
+        McpCancellationParams params = (McpCancellationParams) cancellation.getParams();
+        assertThat(params.getRequestId()).isEqualTo(requestId);
+        assertThat(params.getReason()).isEqualTo("Cancelled");
+    }
+
+    @Test
+    public void cancelling_async_tool_future_does_not_send_notification_for_modern_http() {
+        McpTransport transport = getModernHttpTransportMock();
+
+        DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion("2026-07-28")
+                .autoHealthCheck(false)
+                .toolExecutionTimeout(java.time.Duration.ofSeconds(30))
+                .build();
+
+        CompletableFuture<JsonNode> transportFuture = new CompletableFuture<>();
+        when(transport.executeOperationWithResponse(any(McpCallContext.class))).thenReturn(transportFuture);
+
+        CompletableFuture<ToolExecutionResult> resultFuture = client.executeToolAsync(
+                ToolExecutionRequest.builder().name("test").arguments("{}").build(), null);
+
+        assertThat(resultFuture.cancel(true)).isTrue();
+        assertThat(resultFuture.isCancelled()).isTrue();
+        assertThat(transportFuture.isCancelled()).isTrue();
+        verify(transport, never()).sendMessage(any(McpCancellationNotification.class));
+    }
+
+    @Test
     public void async_tool_execution_sends_mcp_param_headers() throws Exception {
         McpTransport transport = getModernStdioTransportMock();
         AtomicReference<McpCallContext> toolCallContext = new AtomicReference<>();

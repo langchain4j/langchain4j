@@ -645,8 +645,12 @@ public class DefaultMcpClient implements McpClient {
             timedOutResultFuture.cancel(true);
         }
         pendingOperations.remove(timedOutOperationId);
+        sendCancellationNotification(timedOutOperationId, "Timeout");
+    }
+
+    private void sendCancellationNotification(long operationId, String reason) {
         if (shouldSendCancellationNotification()) {
-            McpCancellationNotification cancellation = new McpCancellationNotification(timedOutOperationId, "Timeout");
+            McpCancellationNotification cancellation = new McpCancellationNotification(operationId, reason);
             applyMeta(cancellation, null);
             transport.sendMessage(cancellation);
         }
@@ -793,18 +797,39 @@ public class DefaultMcpClient implements McpClient {
             return CompletableFuture.failedFuture(e);
         }
 
-        return resultFuture.orTimeout(timeoutMillis, TimeUnit.MILLISECONDS).handle((result, error) -> {
-            pendingOperations.remove(operationId);
+        CompletableFuture<ToolExecutionResult> handledFuture = resultFuture
+                .orTimeout(timeoutMillis, TimeUnit.MILLISECONDS)
+                .handle((result, error) -> {
+                    pendingOperations.remove(operationId);
+                    if (error != null) {
+                        Throwable cause = unwrapCompletionException(error);
+                        if (cause instanceof CancellationException) {
+                            throw (CancellationException) cause;
+                        }
+                        if (cause instanceof TimeoutException timeout) {
+                            return handleToolTimeout(context, operationId, resultFuture, timeout);
+                        }
+                        notifyListeners(l -> l.onExecuteToolError(context, cause));
+                        throw new ToolExecutionException(cause);
+                    }
+                    return extractResultAndNotifyListeners(context, result);
+                });
+
+        CompletableFuture<ToolExecutionResult> returnedFuture = new CompletableFuture<>();
+        handledFuture.whenComplete((result, error) -> {
             if (error != null) {
-                Throwable cause = unwrapCompletionException(error);
-                if (cause instanceof TimeoutException timeout) {
-                    return handleToolTimeout(context, operationId, resultFuture, timeout);
-                }
-                notifyListeners(l -> l.onExecuteToolError(context, cause));
-                throw new ToolExecutionException(cause);
+                returnedFuture.completeExceptionally(error);
+            } else {
+                returnedFuture.complete(result);
             }
-            return extractResultAndNotifyListeners(context, result);
         });
+        returnedFuture.whenComplete((result, error) -> {
+            if (returnedFuture.isCancelled() && resultFuture.cancel(true)) {
+                pendingOperations.remove(operationId);
+                sendCancellationNotification(operationId, "Cancelled");
+            }
+        });
+        return returnedFuture;
     }
 
     private static Map<String, Object> parseToolArguments(ToolExecutionRequest executionRequest) {
