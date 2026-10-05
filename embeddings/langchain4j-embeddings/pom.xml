@@ -15,6 +15,9 @@
 
     <properties>
         <ai.djl.version>0.36.0</ai.djl.version>
+        <!-- The CLIP model that the integration tests run against, downloaded into target/test-classes -->
+        <embeddingsSkipDownload>false</embeddingsSkipDownload>
+        <embeddingsSkipCache>false</embeddingsSkipCache>
     </properties>
 
     <dependencies>
@@ -51,5 +54,71 @@
         </dependency>
 
     </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>com.googlecode.maven-download-plugin</groupId>
+                <artifactId>download-maven-plugin</artifactId>
+                <version>1.13.0</version>
+                <executions>
+                    <execution>
+                        <id>download-clip-vision-model</id>
+                        <goals>
+                            <goal>wget</goal>
+                        </goals>
+                        <phase>generate-test-resources</phase>
+                        <configuration>
+                            <skip>${embeddingsSkipDownload}</skip>
+                            <url>https://huggingface.co/Xenova/clip-vit-base-patch32/resolve/main/onnx/vision_model_quantized.onnx</url>
+                            <outputDirectory>${project.build.testOutputDirectory}/clip</outputDirectory>
+                            <outputFileName>vision_model.onnx</outputFileName>
+                            <sha256>583fd1110a514667812fee7d684952aaf82a99b959760c8d7dca7e0ab9839299</sha256>
+                            <skipCache>${embeddingsSkipCache}</skipCache>
+                            <!-- 10 minutes -->
+                            <readTimeOut>600000</readTimeOut>
+                            <retries>5</retries>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>download-clip-text-model</id>
+                        <goals>
+                            <goal>wget</goal>
+                        </goals>
+                        <phase>generate-test-resources</phase>
+                        <configuration>
+                            <skip>${embeddingsSkipDownload}</skip>
+                            <url>https://huggingface.co/Xenova/clip-vit-base-patch32/resolve/main/onnx/text_model_quantized.onnx</url>
+                            <outputDirectory>${project.build.testOutputDirectory}/clip</outputDirectory>
+                            <outputFileName>text_model.onnx</outputFileName>
+                            <sha256>73baab855d406190da9faa498cfedf65f15cf309f4cc7385b7b032e6d08e5c3a</sha256>
+                            <skipCache>${embeddingsSkipCache}</skipCache>
+                            <!-- 10 minutes -->
+                            <readTimeOut>600000</readTimeOut>
+                            <retries>5</retries>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>download-clip-tokenizer</id>
+                        <goals>
+                            <goal>wget</goal>
+                        </goals>
+                        <phase>generate-test-resources</phase>
+                        <configuration>
+                            <skip>${embeddingsSkipDownload}</skip>
+                            <url>https://huggingface.co/Xenova/clip-vit-base-patch32/resolve/main/tokenizer.json</url>
+                            <outputDirectory>${project.build.testOutputDirectory}/clip</outputDirectory>
+                            <outputFileName>tokenizer.json</outputFileName>
+                            <sha256>f7f3b7af117d467b58374797691a6438d3e6b9e9cef800dfd5dced7f697a90cd</sha256>
+                            <skipCache>${embeddingsSkipCache}</skipCache>
+                            <!-- 10 minutes -->
+                            <readTimeOut>600000</readTimeOut>
+                            <retries>5</retries>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
 
 </project>
