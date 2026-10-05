@@ -20,6 +20,7 @@ public class BedrockChatRequestParameters extends DefaultChatRequestParameters {
     private final CacheTTL cacheTtl;
     private final BedrockGuardrailConfiguration bedrockGuardrailConfiguration;
     private final BedrockServiceTier serviceTier;
+    private final Boolean strictTools;
     private final Map<String, String> requestMetadata;
 
     private BedrockChatRequestParameters(Builder builder) {
@@ -29,6 +30,7 @@ public class BedrockChatRequestParameters extends DefaultChatRequestParameters {
         this.cacheTtl = builder.cacheTtl;
         this.bedrockGuardrailConfiguration = builder.bedrockGuardrailConfiguration;
         this.serviceTier = builder.serviceTier;
+        this.strictTools = builder.strictTools;
         this.requestMetadata = copy(builder.requestMetadata);
     }
 
@@ -72,6 +74,14 @@ public class BedrockChatRequestParameters extends DefaultChatRequestParameters {
         return serviceTier;
     }
 
+    /**
+     * Returns whether Bedrock tool definitions should use strict schema enforcement by default.
+     * Individual tools can override this setting via {@link dev.langchain4j.agent.tool.ToolSpecification#strict()}.
+     */
+    public Boolean strictTools() {
+        return strictTools;
+    }
+
     public Map<String, String> requestMetadata() {
         return requestMetadata;
     }
@@ -87,6 +97,7 @@ public class BedrockChatRequestParameters extends DefaultChatRequestParameters {
                 && Objects.equals(cacheTtl, that.cacheTtl)
                 && Objects.equals(bedrockGuardrailConfiguration, that.bedrockGuardrailConfiguration)
                 && Objects.equals(serviceTier, that.serviceTier)
+                && Objects.equals(strictTools, that.strictTools)
                 && Objects.equals(requestMetadata, that.requestMetadata);
     }
 
@@ -99,6 +110,7 @@ public class BedrockChatRequestParameters extends DefaultChatRequestParameters {
                 cacheTtl,
                 bedrockGuardrailConfiguration,
                 serviceTier,
+                strictTools,
                 requestMetadata);
     }
 
@@ -120,7 +132,8 @@ public class BedrockChatRequestParameters extends DefaultChatRequestParameters {
                 + cachePointPlacement + ", cacheTtl="
                 + cacheTtl + ", bedrockGuardrailConfiguration="
                 + bedrockGuardrailConfiguration + ", serviceTier="
-                + serviceTier + ", requestMetadata="
+                + serviceTier + ", strictTools="
+                + strictTools + ", requestMetadata="
                 + (requestMetadata.isEmpty() ? "{}" : "[REDACTED]") + '}';
     }
 
@@ -131,6 +144,7 @@ public class BedrockChatRequestParameters extends DefaultChatRequestParameters {
         private CacheTTL cacheTtl;
         private BedrockGuardrailConfiguration bedrockGuardrailConfiguration;
         private BedrockServiceTier serviceTier;
+        private Boolean strictTools;
         private Map<String, String> requestMetadata;
 
         @Override
@@ -151,6 +165,7 @@ public class BedrockChatRequestParameters extends DefaultChatRequestParameters {
                 this.bedrockGuardrailConfiguration = getOrDefault(
                         bedrockRequestParameters.bedrockGuardrailConfiguration, bedrockGuardrailConfiguration);
                 this.serviceTier = getOrDefault(bedrockRequestParameters.serviceTier, serviceTier);
+                this.strictTools = getOrDefault(bedrockRequestParameters.strictTools, strictTools);
                 this.requestMetadata = getOrDefault(bedrockRequestParameters.requestMetadata, requestMetadata);
             }
             return this;
@@ -272,6 +287,15 @@ public class BedrockChatRequestParameters extends DefaultChatRequestParameters {
          */
         public Builder serviceTier(BedrockServiceTier serviceTier) {
             this.serviceTier = serviceTier;
+            return this;
+        }
+
+        /**
+         * Controls whether Bedrock tool definitions should use strict schema enforcement by default.
+         * Individual tools can override this setting via {@link dev.langchain4j.agent.tool.ToolSpecification#strict()}.
+         */
+        public Builder strictTools(Boolean strictTools) {
+            this.strictTools = strictTools;
             return this;
         }
 
