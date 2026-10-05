@@ -217,7 +217,7 @@ deliberately different. If you are migrating an existing method, these are the o
 | | Synchronous / `TokenStream` | `CompletableFuture` / `Flow.Publisher` |
 |---|---|---|
 | Multiple tool calls | executed **sequentially** | executed **concurrently** |
-| Tool **execution** error | sent back to the LLM | **fails the invocation** |
+| Tool **execution** error | sent back to the LLM | **fails the invocation**, unless the exception implements `ToolErrorVisibleToLlm` |
 | Tool **argument-parse** error | **fails the invocation** | sent back to the LLM |
 | `@Moderate` | supported | rejected at AI Service creation |
 
@@ -225,7 +225,8 @@ deliberately different. If you are migrating an existing method, these are the o
 
 The two tool error defaults are reversed on purpose. Sending an *execution* failure to the LLM hides a bug in your
 tool from you and invites the model to invent an answer around it, so the asynchronous modes fail the invocation
-instead. A malformed *argument* string, on the other hand, is something the model produced and can usually fix
+instead, unless the exception itself says what the LLM may be told
+(see [`ToolErrorVisibleToLlm`](/tutorials/tools#deciding-per-exception-what-the-llm-sees)). A malformed *argument* string, on the other hand, is something the model produced and can usually fix
 when told, so it is sent back rather than failing the call.
 
 Both remain configurable, and an explicitly configured handler is used by every mode:
@@ -331,6 +332,7 @@ interaction fails the call the same way. In practice that means:
 | Content retriever, query router, aggregator | `retrieveAsync`, `routeAsync`, `aggregateAsync` | opt into offloading instead with `offloadBlocking(true)` |
 | Embedding store | `searchAsync` | as above, via the retriever's `offloadBlocking(true)` |
 | Custom `ToolExecutor` | `executeAsync` | `@Tool`-annotated methods are offloaded for you |
+| Chat model router ([`RoutingChatModel`](/tutorials/model-routing)) | `routeAsync` | `DecisionModelChatModelRouter` does, if its decision model supports `decideAsync` |
 
 A guardrail that does no blocking work satisfies the contract in one line:
 
