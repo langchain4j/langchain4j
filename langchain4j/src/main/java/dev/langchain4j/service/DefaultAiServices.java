@@ -1701,6 +1701,7 @@ class DefaultAiServices<T> extends AiServices<T> {
         for (int i = 0; i < parameters.length; i++) {
             if (parameters[i].isAnnotationPresent(dev.langchain4j.service.UserMessage.class)) {
                 if (args[i] instanceof Content content) {
+                    hasTextContent |= content instanceof TextContent;
                     contents.add(content);
                 } else if (isListOfContents(args[i])) {
                     hasTextContent |= ((List<Content>) args[i]).stream().anyMatch(TextContent.class::isInstance);
