@@ -52,7 +52,7 @@ class BedrockBatchChatModelIT {
         model = BedrockBatchChatModel.builder()
                 .bedrockClient(bedrock)
                 .s3Client(s3)
-                .modelId(System.getenv().getOrDefault("BEDROCK_BATCH_MODEL", "anthropic.claude-3-haiku-20240307-v1:0"))
+                .modelId(System.getenv().getOrDefault("BEDROCK_BATCH_MODEL", "us.anthropic.claude-haiku-4-5-20251001-v1:0"))
                 .roleArn(System.getenv("BEDROCK_BATCH_ROLE_ARN"))
                 .outputS3Uri("s3://" + BUCKET + "/" + PREFIX)
                 .jobTimeout(Duration.ofHours(24))

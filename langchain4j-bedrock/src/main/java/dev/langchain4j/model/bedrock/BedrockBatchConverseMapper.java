@@ -124,7 +124,10 @@ final class BedrockBatchConverseMapper {
         if (sendThinking && aiMessage.thinking() != null) {
             Map<String, Object> reasoningText = new LinkedHashMap<>();
             reasoningText.put("text", aiMessage.thinking());
-            reasoningText.put("signature", aiMessage.attribute(THINKING_SIGNATURE_KEY, String.class));
+            String signature = aiMessage.attribute(THINKING_SIGNATURE_KEY, String.class);
+            if (signature != null) {
+                reasoningText.put("signature", signature);
+            }
             blocks.add(Map.of("reasoningContent", Map.of("reasoningText", reasoningText)));
         }
         if (aiMessage.text() != null) {

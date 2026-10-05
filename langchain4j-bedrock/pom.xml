@@ -54,11 +54,13 @@
         <dependency>
             <groupId>software.amazon.awssdk</groupId>
             <artifactId>bedrock</artifactId>
+            <optional>true</optional>
         </dependency>
 
         <dependency>
             <groupId>software.amazon.awssdk</groupId>
             <artifactId>s3</artifactId>
+            <optional>true</optional>
         </dependency>
 
         <!-- test: shared reactive test support (BlockHound policy, TCK environment, partial-response filter) -->

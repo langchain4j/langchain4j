@@ -120,22 +120,38 @@ until you remove them.
 
 :::note
 Bedrock batch inference does not support tool calling, structured output or prompt caching, so a request that
-specifies tools, a JSON response format or cache points is rejected with an `UnsupportedFeatureException`. Only a subset of models supports batch
-inference, see [supported models](https://docs.aws.amazon.com/bedrock/latest/userguide/batch-inference-supported.html).
+specifies tools, a JSON response format or cache points is rejected with an `UnsupportedFeatureException`, and so is
+a request that specifies a service tier or a model other than the one configured on `BedrockBatchChatModel`. Only a
+subset of models supports batch inference, see [supported models](https://docs.aws.amazon.com/bedrock/latest/userguide/batch-inference-supported.html).
 Bedrock also enforces a minimum and a maximum number of records per job as
 [service quotas](https://docs.aws.amazon.com/bedrock/latest/userguide/quotas.html), and rejects a job outside them.
 :::
+
+### Dependencies
+`BedrockBatchChatModel` uses the Amazon Bedrock and Amazon S3 clients of the AWS SDK, which `langchain4j-bedrock`
+declares as optional dependencies. Add them to your project to use it:
+
+```xml
+<dependency>
+    <groupId>software.amazon.awssdk</groupId>
+    <artifactId>bedrock</artifactId>
+</dependency>
+<dependency>
+    <groupId>software.amazon.awssdk</groupId>
+    <artifactId>s3</artifactId>
+</dependency>
+```
 
 ### Configuration
 ```java
 BedrockBatchChatModel model = BedrockBatchChatModel.builder()
         .region(...)
-        .modelId("anthropic.claude-3-haiku-20240307-v1:0")
+        .modelId("us.anthropic.claude-haiku-4-5-20251001-v1:0")
         .roleArn("arn:aws:iam::123456789012:role/my-bedrock-batch-role")
         .outputS3Uri("s3://my-bucket/batch-output")
         .inputS3Uri(...)             // optional, defaults to outputS3Uri
         .defaultRequestParameters(...)
-        .jobTimeout(Duration.ofHours(24))
+        .jobTimeout(Duration.ofHours(24))     // between 24 and 168 hours
         .returnThinking(...)
         .sendThinking(...)
         .timeout(...)
@@ -172,6 +188,11 @@ for (BatchItemResult<ChatResponse> result : batch.results()) {
     }
 }
 ```
+
+Results are returned in the order of the submitted requests. A job that Bedrock reports as partially completed has
+the state `SUCCEEDED`, so check each result. `model.cancel(batchId)` stops a job, and the results of the records it
+already processed are still returned (and billed). `model.list(...)` lists every batch inference job in the region,
+including jobs not submitted through LangChain4j.
 
 
 ## Additional Model Request Fields

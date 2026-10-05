@@ -6,11 +6,13 @@ import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.AuthenticationException;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.batch.BatchItemResult;
 import dev.langchain4j.model.batch.BatchPage;
@@ -45,6 +47,7 @@ import software.amazon.awssdk.core.ResponseBytes;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.bedrock.BedrockClient;
+import software.amazon.awssdk.services.bedrock.model.BedrockException;
 import software.amazon.awssdk.services.bedrock.model.CreateModelInvocationJobRequest;
 import software.amazon.awssdk.services.bedrock.model.CreateModelInvocationJobResponse;
 import software.amazon.awssdk.services.bedrock.model.GetModelInvocationJobRequest;
@@ -53,6 +56,7 @@ import software.amazon.awssdk.services.bedrock.model.ListModelInvocationJobsRequ
 import software.amazon.awssdk.services.bedrock.model.ListModelInvocationJobsResponse;
 import software.amazon.awssdk.services.bedrock.model.ModelInvocationJobStatus;
 import software.amazon.awssdk.services.bedrock.model.ModelInvocationJobSummary;
+import software.amazon.awssdk.services.bedrock.model.ModelInvocationType;
 import software.amazon.awssdk.services.bedrock.model.S3InputFormat;
 import software.amazon.awssdk.services.bedrock.model.StopModelInvocationJobRequest;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -220,8 +224,10 @@ class BedrockBatchChatModelTest {
 
         CreateModelInvocationJobRequest job = createdJob();
         assertThat(job.jobName()).startsWith("lc4j-batch-");
+        assertThat(job.clientRequestToken()).isEqualTo(job.jobName());
         assertThat(job.roleArn()).isEqualTo("arn:role");
         assertThat(job.modelId()).isEqualTo(MODEL_ID);
+        assertThat(job.modelInvocationType()).isEqualTo(ModelInvocationType.CONVERSE);
         assertThat(job.inputDataConfig().s3InputDataConfig().s3Uri())
                 .startsWith("s3://in-bucket/in/lc4j-batch-")
                 .endsWith("/input.jsonl");
@@ -329,6 +335,51 @@ class BedrockBatchChatModelTest {
         assertThat(createdJob().timeoutDurationInHours()).isEqualTo(48);
     }
 
+    @ParameterizedTest
+    @CsvSource({"PT23H", "PT168H1S", "PT169H", "PT0S", "PT-1H"})
+    void should_reject_a_job_timeout_outside_the_hours_bedrock_accepts(Duration jobTimeout) {
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> modelBuilder().jobTimeout(jobTimeout).build())
+                .withMessageContaining("jobTimeout");
+    }
+
+    @ParameterizedTest
+    @CsvSource({"PT24H, 24", "PT167H30M, 168", "PT168H, 168"})
+    void should_accept_a_job_timeout_within_the_hours_bedrock_accepts(Duration jobTimeout, int expectedHours) {
+        stubSubmit();
+
+        modelBuilder().jobTimeout(jobTimeout).build().submit(new BatchRequest<>(List.of(request("A"))));
+
+        assertThat(createdJob().timeoutDurationInHours()).isEqualTo(expectedHours);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void should_retry_creating_the_job_with_the_same_client_request_token() {
+        when(s3.putObject(any(Consumer.class), any(RequestBody.class)))
+                .thenReturn(PutObjectResponse.builder().build());
+        when(bedrock.createModelInvocationJob(any(Consumer.class)))
+                .thenThrow(BedrockException.builder().statusCode(500).message("boom").build())
+                .thenReturn(CreateModelInvocationJobResponse.builder()
+                        .jobArn(JOB_ARN)
+                        .build());
+
+        BatchResponse<ChatResponse> response = model().submit(new BatchRequest<>(List.of(request("A"))));
+
+        assertThat(response.batchId()).isEqualTo(JOB_ARN);
+        ArgumentCaptor<Consumer<CreateModelInvocationJobRequest.Builder>> jobs = ArgumentCaptor.forClass(Consumer.class);
+        verify(bedrock, times(2)).createModelInvocationJob(jobs.capture());
+        List<String> tokens = jobs.getAllValues().stream()
+                .map(job -> {
+                    CreateModelInvocationJobRequest.Builder builder = CreateModelInvocationJobRequest.builder();
+                    job.accept(builder);
+                    return builder.build().clientRequestToken();
+                })
+                .toList();
+        assertThat(tokens).hasSize(2).doesNotContainNull();
+        assertThat(tokens.get(0)).isEqualTo(tokens.get(1));
+    }
+
     @Test
     void should_reject_tool_specifications_without_uploading_anything() {
         ChatRequest withTools = ChatRequest.builder()
@@ -379,15 +430,24 @@ class BedrockBatchChatModelTest {
 
     @Test
     void should_reject_prompt_caching_set_on_the_default_request_parameters() {
-        BedrockBatchChatModel model = modelBuilder()
-                .defaultRequestParameters(BedrockChatRequestParameters.builder()
-                        .promptCaching(BedrockCachePointPlacement.AFTER_LAST_USER_MESSAGE)
-                        .build())
-                .build();
-
         assertThatExceptionOfType(UnsupportedFeatureException.class)
-                .isThrownBy(() -> model.submit(new BatchRequest<>(List.of(request("A")))))
+                .isThrownBy(() -> modelBuilder()
+                        .defaultRequestParameters(BedrockChatRequestParameters.builder()
+                                .promptCaching(BedrockCachePointPlacement.AFTER_LAST_USER_MESSAGE)
+                                .build())
+                        .build())
                 .withMessage("Prompt caching is not supported by Bedrock batch inference");
+    }
+
+    @Test
+    void should_reject_a_service_tier_set_on_the_default_request_parameters() {
+        assertThatExceptionOfType(UnsupportedFeatureException.class)
+                .isThrownBy(() -> modelBuilder()
+                        .defaultRequestParameters(BedrockChatRequestParameters.builder()
+                                .serviceTier(BedrockServiceTier.FLEX)
+                                .build())
+                        .build())
+                .withMessage("serviceTier is not supported by BedrockBatchChatModel");
     }
 
     @Test
@@ -772,15 +832,15 @@ class BedrockBatchChatModelTest {
             GetObjectRequest.Builder getObject = GetObjectRequest.builder();
             ((Consumer<GetObjectRequest.Builder>) invocation.getArgument(0)).accept(getObject);
             if (getObject.build().key().endsWith("manifest.json.out")) {
-                throw S3Exception.builder().message("Access Denied").build();
+                throw S3Exception.builder().statusCode(403).message("Access Denied").build();
             }
             return ResponseBytes.fromByteArray(
                     GetObjectResponse.builder().build(), (success("r0000000000", "first") + "\n").getBytes(UTF_8));
         });
 
-        assertThatExceptionOfType(S3Exception.class)
+        assertThatExceptionOfType(AuthenticationException.class)
                 .isThrownBy(() -> model().retrieve(JOB_ARN))
-                .withMessage("Access Denied");
+                .withCauseInstanceOf(S3Exception.class);
     }
 
     @Test
@@ -807,6 +867,62 @@ class BedrockBatchChatModelTest {
         assertThat(response.results()).hasSize(1);
         assertThat(response.results().get(0).error().code()).isZero();
         assertThat(response.results().get(0).error().message()).isEqualTo("The role cannot read the input");
+    }
+
+    @Test
+    void should_return_the_partial_results_of_a_failed_job() {
+        stubJob(
+                ModelInvocationJobStatus.FAILED,
+                "The job failed",
+                files(
+                        OUTPUT_PREFIX + "manifest.json.out",
+                        manifest(2),
+                        OUTPUT_PREFIX + "input.jsonl.out",
+                        success("r0000000001", "second") + "\n"));
+
+        BatchResponse<ChatResponse> response = model().retrieve(JOB_ARN);
+
+        assertThat(response.state()).isEqualTo(BatchState.FAILED);
+        assertThat(response.results()).hasSize(2);
+        assertThat(response.results().get(0).isSuccess()).isFalse();
+        assertThat(text(response.results().get(1))).isEqualTo("second");
+    }
+
+    @Test
+    void should_keep_every_result_in_output_order_when_a_record_id_is_out_of_range_and_there_is_no_manifest() {
+        stubJob(
+                ModelInvocationJobStatus.COMPLETED,
+                files(
+                        OUTPUT_PREFIX + "input.jsonl.out",
+                        success("r2147483647", "one") + "\n" + success("r0000000000", "two") + "\n"));
+
+        List<BatchItemResult<ChatResponse>> results = model().retrieve(JOB_ARN).results();
+
+        assertThat(results).extracting(BedrockBatchChatModelTest::text).containsExactly("one", "two");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void should_read_the_results_from_the_output_location_of_the_job() {
+        stubJob(
+                ModelInvocationJobStatus.COMPLETED,
+                files(
+                        OUTPUT_PREFIX + "manifest.json.out",
+                        manifest(1),
+                        OUTPUT_PREFIX + "input.jsonl.out",
+                        success("r0000000000", "first") + "\n"));
+        when(bedrock.getModelInvocationJob(any(Consumer.class)))
+                .thenReturn(GetModelInvocationJobResponse.builder()
+                        .jobArn(JOB_ARN)
+                        .status(ModelInvocationJobStatus.COMPLETED)
+                        .outputDataConfig(output -> output.s3OutputDataConfig(s3 -> s3.s3Uri("s3://out-bucket/out")))
+                        .build());
+        BedrockBatchChatModel model =
+                modelBuilder().outputS3Uri("s3://another-bucket/elsewhere").build();
+
+        List<BatchItemResult<ChatResponse>> results = model.retrieve(JOB_ARN).results();
+
+        assertThat(results).extracting(BedrockBatchChatModelTest::text).containsExactly("first");
     }
 
     @Test
@@ -887,6 +1003,25 @@ class BedrockBatchChatModelTest {
         captor.getValue().accept(builder);
         assertThat(builder.build().maxResults()).isEqualTo(5);
         assertThat(builder.build().nextToken()).isEqualTo("token");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void should_list_jobs_without_pagination() {
+        when(bedrock.listModelInvocationJobs(any(Consumer.class)))
+                .thenReturn(ListModelInvocationJobsResponse.builder().build());
+
+        BatchPage<ChatResponse> page = model().list(null);
+
+        assertThat(page.batches()).isEmpty();
+        assertThat(page.nextPageToken()).isNull();
+        ArgumentCaptor<Consumer<ListModelInvocationJobsRequest.Builder>> captor =
+                ArgumentCaptor.forClass(Consumer.class);
+        verify(bedrock).listModelInvocationJobs(captor.capture());
+        ListModelInvocationJobsRequest.Builder builder = ListModelInvocationJobsRequest.builder();
+        captor.getValue().accept(builder);
+        assertThat(builder.build().maxResults()).isNull();
+        assertThat(builder.build().nextToken()).isNull();
     }
 
     @Test

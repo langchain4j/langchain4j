@@ -3,6 +3,7 @@ package dev.langchain4j.model.bedrock;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.internal.ValidationUtils.ensureBetween;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.bedrock.AbstractBedrockChatModel.validate;
 import static dev.langchain4j.model.bedrock.BedrockBatchConverseMapper.fromJsonLine;
@@ -52,8 +53,10 @@ import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.bedrock.BedrockClient;
 import software.amazon.awssdk.services.bedrock.model.CreateModelInvocationJobResponse;
 import software.amazon.awssdk.services.bedrock.model.GetModelInvocationJobResponse;
+import software.amazon.awssdk.services.bedrock.model.ModelInvocationJobOutputDataConfig;
 import software.amazon.awssdk.services.bedrock.model.ModelInvocationJobStatus;
 import software.amazon.awssdk.services.bedrock.model.ModelInvocationJobSummary;
+import software.amazon.awssdk.services.bedrock.model.ModelInvocationType;
 import software.amazon.awssdk.services.bedrock.model.S3InputFormat;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.S3Object;
@@ -72,7 +75,8 @@ import software.amazon.awssdk.utils.SdkAutoCloseable;
  *
  * <p>Bedrock batch inference does not support tool calling, structured output or prompt caching, so a
  * {@link ChatRequest} that specifies tools, a JSON response format or cache points is rejected with an
- * {@link UnsupportedFeatureException}.</p>
+ * {@link UnsupportedFeatureException}. So is a request that specifies a service tier or a model other than
+ * {@link Builder#modelId(String)}.</p>
  *
  * @see BatchChatModel
  * @see BatchResponse
@@ -100,6 +104,8 @@ public final class BedrockBatchChatModel implements BatchChatModel, Closeable {
     private static final String MISSING_RESULT_MESSAGE = "No result was returned for this request";
     private static final String UNREADABLE_RESULT_MESSAGE = "The result line could not be parsed";
     private static final String UNKNOWN_ERROR_MESSAGE = "The record failed without a model output";
+    private static final int MIN_JOB_TIMEOUT_HOURS = 24;
+    private static final int MAX_JOB_TIMEOUT_HOURS = 168;
 
     private final BedrockClient bedrockClient;
     private final S3Client s3Client;
@@ -108,7 +114,7 @@ public final class BedrockBatchChatModel implements BatchChatModel, Closeable {
     private final S3Location outputLocation;
     private final S3Location inputLocation;
     private final ChatRequestParameters defaultRequestParameters;
-    private final Duration jobTimeout;
+    private final Integer jobTimeoutInHours;
     private final int maxRetries;
     private final boolean returnThinking;
     private final boolean sendThinking;
@@ -126,10 +132,11 @@ public final class BedrockBatchChatModel implements BatchChatModel, Closeable {
         this.roleArn = ensureNotBlank(builder.roleArn, "roleArn");
         this.outputLocation = S3Location.parse(ensureNotBlank(builder.outputS3Uri, "outputS3Uri"));
         this.inputLocation = builder.inputS3Uri != null ? S3Location.parse(builder.inputS3Uri) : outputLocation;
-        this.jobTimeout = builder.jobTimeout;
+        this.jobTimeoutInHours = toWholeHours(builder.jobTimeout);
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
         this.returnThinking = getOrDefault(builder.returnThinking, false);
         this.sendThinking = getOrDefault(builder.sendThinking, true);
+        validateSupported(defaultRequestParameters);
 
         Region region = getOrDefault(builder.region, Region.US_EAST_1);
         AwsCredentialsProvider credentials = builder.credentialsProvider != null
@@ -186,7 +193,7 @@ public final class BedrockBatchChatModel implements BatchChatModel, Closeable {
         List<ChatRequest> requests = request.requests();
         List<ChatRequest> effectiveRequests =
                 requests.stream().map(this::withDefaultRequestParameters).toList();
-        effectiveRequests.forEach(this::validateSupported);
+        effectiveRequests.forEach(effectiveRequest -> validateSupported(effectiveRequest.parameters()));
 
         String jobName = "lc4j-batch-" + UUID.randomUUID();
         S3Location input = uploadInput(jobName, toJsonl(requests, effectiveRequests));
@@ -202,9 +209,9 @@ public final class BedrockBatchChatModel implements BatchChatModel, Closeable {
     /**
      * Retrieves the job and, once it has ended, its results.
      *
-     * <p>Results are read for every ended job that produced output, which includes the partial results of a
-     * stopped or expired job, since Bedrock charges for the records it processed. Every parsed result is held
-     * in memory.</p>
+     * <p>Results are read from the output location recorded on the job, for every ended job that produced output.
+     * This includes the partial results of a stopped or expired job, since Bedrock charges for the records it
+     * processed. Every parsed result is held in memory.</p>
      *
      * <p>Results are correlated by {@code recordId}, using the identifiers that {@link #submit(BatchRequest)}
      * generates, and a request that produced no result is represented by a failure. If any identifier is missing,
@@ -300,16 +307,22 @@ public final class BedrockBatchChatModel implements BatchChatModel, Closeable {
     private S3Location uploadInput(String jobName, String jsonl) {
         S3Location input =
                 new S3Location(inputLocation.bucket(), joinKey(inputLocation.key(), jobName, INPUT_FILE_NAME));
-        s3Client.putObject(builder -> builder.bucket(input.bucket()).key(input.key()), RequestBody.fromString(jsonl));
+        withRetryMappingExceptions(
+                () -> s3Client.putObject(
+                        builder -> builder.bucket(input.bucket()).key(input.key()), RequestBody.fromString(jsonl)),
+                maxRetries,
+                BedrockExceptionMapper.INSTANCE);
         return input;
     }
 
     private CreateModelInvocationJobResponse createJob(String jobName, S3Location input) {
         return withRetryMappingExceptions(
                 () -> bedrockClient.createModelInvocationJob(builder -> builder.jobName(jobName)
+                        .clientRequestToken(jobName)
                         .roleArn(roleArn)
                         .modelId(modelId)
-                        .timeoutDurationInHours(jobTimeoutInHours())
+                        .modelInvocationType(ModelInvocationType.CONVERSE)
+                        .timeoutDurationInHours(jobTimeoutInHours)
                         .inputDataConfig(inputConfig -> inputConfig.s3InputDataConfig(
                                 s3 -> s3.s3Uri(input.uri()).s3InputFormat(S3InputFormat.JSONL)))
                         .outputDataConfig(
@@ -318,23 +331,23 @@ public final class BedrockBatchChatModel implements BatchChatModel, Closeable {
                 BedrockExceptionMapper.INSTANCE);
     }
 
-    private void validateSupported(ChatRequest request) {
-        validate(request.parameters());
-        if (!isNullOrEmpty(request.toolSpecifications())) {
+    private void validateSupported(ChatRequestParameters parameters) {
+        validate(parameters);
+        if (!isNullOrEmpty(parameters.toolSpecifications())) {
             throw new UnsupportedFeatureException("Tool calling is not supported by Bedrock batch inference");
         }
-        if (request.responseFormat() != null && request.responseFormat().type() == ResponseFormatType.JSON) {
+        if (parameters.responseFormat() != null && parameters.responseFormat().type() == ResponseFormatType.JSON) {
             throw new UnsupportedFeatureException("Structured output is not supported by Bedrock batch inference");
         }
-        if (request.parameters() instanceof BedrockChatRequestParameters parameters) {
-            if (parameters.cachePointPlacement() != null || parameters.cacheTtl() != null) {
+        if (parameters instanceof BedrockChatRequestParameters bedrockParameters) {
+            if (bedrockParameters.cachePointPlacement() != null || bedrockParameters.cacheTtl() != null) {
                 throw new UnsupportedFeatureException(PROMPT_CACHING_NOT_SUPPORTED);
             }
-            if (parameters.serviceTier() != null) {
+            if (bedrockParameters.serviceTier() != null) {
                 throw new UnsupportedFeatureException("serviceTier is not supported by BedrockBatchChatModel");
             }
         }
-        String modelName = request.parameters().modelName();
+        String modelName = parameters.modelName();
         if (modelName != null && !modelName.equals(modelId)) {
             throw new UnsupportedFeatureException("A Bedrock batch job runs every request against one model, '"
                     + modelId + "', so a request cannot use '" + modelName + "'");
@@ -354,33 +367,36 @@ public final class BedrockBatchChatModel implements BatchChatModel, Closeable {
         return fields;
     }
 
-    private @Nullable Integer jobTimeoutInHours() {
+    private static @Nullable Integer toWholeHours(@Nullable Duration jobTimeout) {
         if (jobTimeout == null) {
             return null;
         }
         long hours = jobTimeout.toHours();
-        return (int) (jobTimeout.equals(Duration.ofHours(hours)) ? hours : hours + 1);
+        long wholeHours = jobTimeout.equals(Duration.ofHours(hours)) ? hours : hours + 1;
+        return (int) ensureBetween(wholeHours, MIN_JOB_TIMEOUT_HOURS, MAX_JOB_TIMEOUT_HOURS, "jobTimeout in hours");
     }
 
     private List<BatchItemResult<ChatResponse>> readResults(GetModelInvocationJobResponse job) {
         String jobId = job.jobArn().substring(job.jobArn().lastIndexOf('/') + 1);
-        String prefix = joinKey(outputLocation.key(), jobId) + "/";
-        List<String> keys =
-                s3Client
-                        .listObjectsV2(builder ->
-                                builder.bucket(outputLocation.bucket()).prefix(prefix))
-                        .contents()
-                        .stream()
-                        .map(S3Object::key)
-                        .toList();
+        S3Location output = outputLocationOf(job);
+        String prefix = joinKey(output.key(), jobId) + "/";
+        List<String> keys = withRetryMappingExceptions(
+                        () -> s3Client.listObjectsV2(
+                                builder -> builder.bucket(output.bucket()).prefix(prefix)),
+                        maxRetries,
+                        BedrockExceptionMapper.INSTANCE)
+                .contents()
+                .stream()
+                .map(S3Object::key)
+                .toList();
 
         List<ResultLine> resultLines = new ArrayList<>();
         Integer totalRecordCount = null;
         for (String key : keys) {
             if (key.endsWith(MANIFEST_FILE_SUFFIX)) {
-                totalRecordCount = totalRecordCount(key);
+                totalRecordCount = totalRecordCount(output.bucket(), key);
             } else if (key.endsWith(RESULT_FILE_SUFFIX)) {
-                for (String line : getObjectAsString(key).split("\n")) {
+                for (String line : getObjectAsString(output.bucket(), key).split("\n")) {
                     if (!line.isBlank()) {
                         resultLines.add(toResultLine(key, line));
                     }
@@ -394,7 +410,7 @@ public final class BedrockBatchChatModel implements BatchChatModel, Closeable {
                     : List.of();
         }
 
-        int requestCount = totalRecordCount != null ? totalRecordCount : highestIndex(resultLines) + 1;
+        int requestCount = totalRecordCount != null ? totalRecordCount : resultLines.size();
         List<BatchItemResult<ChatResponse>> correlated = correlateByRequestIndex(resultLines, requestCount);
         if (correlated != null) {
             return correlated;
@@ -454,8 +470,8 @@ public final class BedrockBatchChatModel implements BatchChatModel, Closeable {
         return BatchItemResult.failure(new BatchError(code, message, null));
     }
 
-    private @Nullable Integer totalRecordCount(String manifestKey) {
-        String manifest = getObjectAsString(manifestKey);
+    private @Nullable Integer totalRecordCount(String bucket, String manifestKey) {
+        String manifest = getObjectAsString(bucket, manifestKey);
         try {
             return integer(fromJsonLine(manifest), TOTAL_RECORD_COUNT_FIELD);
         } catch (RuntimeException e) {
@@ -467,20 +483,22 @@ public final class BedrockBatchChatModel implements BatchChatModel, Closeable {
         }
     }
 
-    private String getObjectAsString(String key) {
-        return s3Client.getObjectAsBytes(
-                        builder -> builder.bucket(outputLocation.bucket()).key(key))
+    private String getObjectAsString(String bucket, String key) {
+        return withRetryMappingExceptions(
+                        () -> s3Client.getObjectAsBytes(builder -> builder.bucket(bucket).key(key)),
+                        maxRetries,
+                        BedrockExceptionMapper.INSTANCE)
                 .asUtf8String();
     }
 
-    private static int highestIndex(List<ResultLine> resultLines) {
-        int highest = -1;
-        for (ResultLine resultLine : resultLines) {
-            if (resultLine.index() != null) {
-                highest = Math.max(highest, resultLine.index());
-            }
+    private S3Location outputLocationOf(GetModelInvocationJobResponse job) {
+        ModelInvocationJobOutputDataConfig outputDataConfig = job.outputDataConfig();
+        if (outputDataConfig == null
+                || outputDataConfig.s3OutputDataConfig() == null
+                || outputDataConfig.s3OutputDataConfig().s3Uri() == null) {
+            return outputLocation;
         }
-        return highest;
+        return S3Location.parse(outputDataConfig.s3OutputDataConfig().s3Uri());
     }
 
     private static String recordId(int index) {
@@ -670,8 +688,9 @@ public final class BedrockBatchChatModel implements BatchChatModel, Closeable {
         }
 
         /**
-         * Sets how long the job may run before its unprocessed records expire. Bedrock accepts whole hours, so a
-         * value that is not a whole number of hours is rounded up. If not set, Bedrock applies its default.
+         * Sets how long the job may run before its unprocessed records expire. Bedrock accepts whole hours between
+         * 24 and 168, so a value that is not a whole number of hours is rounded up, and a value outside that range is
+         * rejected. If not set, Bedrock applies its default.
          *
          * @return {@code this}
          */
@@ -682,6 +701,7 @@ public final class BedrockBatchChatModel implements BatchChatModel, Closeable {
 
         /**
          * Sets the timeout of each control-plane and S3 call. If not set, the AWS SDK default applies.
+         * Ignored for a client passed to {@link #bedrockClient(BedrockClient)} or {@link #s3Client(S3Client)}.
          *
          * @return {@code this}
          */
@@ -691,7 +711,7 @@ public final class BedrockBatchChatModel implements BatchChatModel, Closeable {
         }
 
         /**
-         * Sets the number of times to retry a control-plane call on transient errors. Defaults to {@code 2}.
+         * Sets the number of times to retry a control-plane or S3 call on transient errors. Defaults to {@code 2}.
          *
          * @return {@code this}
          */
@@ -724,6 +744,7 @@ public final class BedrockBatchChatModel implements BatchChatModel, Closeable {
 
         /**
          * Sets headers added to every control-plane call.
+         * Ignored for a client passed to {@link #bedrockClient(BedrockClient)}.
          *
          * @return {@code this}
          */
@@ -734,6 +755,7 @@ public final class BedrockBatchChatModel implements BatchChatModel, Closeable {
 
         /**
          * Sets a supplier of headers added to every control-plane call.
+         * Ignored for a client passed to {@link #bedrockClient(BedrockClient)}.
          *
          * @return {@code this}
          */
@@ -744,6 +766,7 @@ public final class BedrockBatchChatModel implements BatchChatModel, Closeable {
 
         /**
          * Enables logging of the control-plane and S3 requests. Defaults to {@code false}.
+         * Ignored for a client passed to {@link #bedrockClient(BedrockClient)} or {@link #s3Client(S3Client)}.
          *
          * @return {@code this}
          */
@@ -754,6 +777,7 @@ public final class BedrockBatchChatModel implements BatchChatModel, Closeable {
 
         /**
          * Enables logging of the control-plane and S3 responses. Defaults to {@code false}.
+         * Ignored for a client passed to {@link #bedrockClient(BedrockClient)} or {@link #s3Client(S3Client)}.
          *
          * @return {@code this}
          */

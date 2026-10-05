@@ -49,6 +49,17 @@ class BedrockBatchConverseMapperTest {
     }
 
     @Test
+    void should_escape_line_breaks_and_keep_non_ascii_text_in_a_record() {
+        String text = "line 1\nline 2\r\nünïcødé 🚀";
+        String line = BedrockBatchConverseMapper.toJsonLine(Map.of(
+                "modelInput", modelInput(ChatRequest.builder().messages(UserMessage.from(text)).build())));
+
+        assertThat(line).doesNotContain("\n").doesNotContain("\r");
+        assertThat(line).isEqualTo(BedrockBatchConverseMapper.toJsonLine(BedrockBatchConverseMapper.fromJsonLine(line)));
+        assertThat(line).contains("ünïcødé 🚀");
+    }
+
+    @Test
     void should_build_the_messages_and_inference_config() {
         Map<String, Object> modelInput = modelInput(ChatRequest.builder()
                 .messages(UserMessage.from("hi"))
@@ -189,6 +200,23 @@ class BedrockBatchConverseMapperTest {
                 .build();
 
         assertThat(((List<?>) modelInput(request).get("messages"))).hasSize(3);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void should_not_send_a_signature_for_thinking_that_has_none() {
+        ChatRequest request = ChatRequest.builder()
+                .messages(
+                        UserMessage.from("q"),
+                        AiMessage.builder().thinking("hmm").text("a").build(),
+                        UserMessage.from("again"))
+                .build();
+
+        List<Map<String, Object>> messages =
+                (List<Map<String, Object>>) modelInput(request).get("messages");
+        List<Map<String, Object>> content =
+                (List<Map<String, Object>>) messages.get(1).get("content");
+        assertThat(content.get(0)).isEqualTo(Map.of("reasoningContent", Map.of("reasoningText", Map.of("text", "hmm"))));
     }
 
     @Test
