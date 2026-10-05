@@ -141,6 +141,8 @@ The model automatically batches requests when embedding multiple segments, with 
 
 ## Batch Embedding Processing
 
+> For an in-depth description of batching see the [batching tutorial](/tutorials/batch-processing).
+
 The `GoogleAiGeminiBatchEmbeddingModel` provides an interface for processing large volumes of embedding requests asynchronously at a reduced cost (50% of standard pricing). It is ideal for non-urgent, large-scale embedding tasks with a 24-hour turnaround SLO.
 
 ### Creating Batch Embedding Jobs
@@ -313,7 +315,7 @@ For advanced use cases, you can write batch requests to a JSONL file and upload 
 // Create a JSONL file with batch requests
 Path batchFile = Files.createTempFile("batch", ".jsonl");
 
-try (JsonLinesWriter writer = new StreamingJsonLinesWriter(batchFile)) {
+try (JsonLinesWriter writer = JsonLinesWriters.streaming(batchFile)) {
     List<BatchFileRequest<TextSegment>> fileRequests = List.of(
         new BatchFileRequest<>("segment-1", TextSegment.from("First document")),
         new BatchFileRequest<>("segment-2", TextSegment.from("Second document")),
