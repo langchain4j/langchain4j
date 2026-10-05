@@ -1,5 +1,6 @@
 package dev.langchain4j.mcp;
 
+import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -9,7 +10,6 @@ import dev.langchain4j.service.tool.ToolExecutionResult;
 import dev.langchain4j.service.tool.ToolExecutor;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -76,12 +76,7 @@ public class McpToolExecutor implements ToolExecutor {
         }
         CompletableFuture<ToolExecutionResult> filteredFuture =
                 resultFuture.thenApply(this::applyToolResultAttributesPolicy);
-        // when the returned future is cancelled, also cancel the underlying MCP client future
-        filteredFuture.whenComplete((result, throwable) -> {
-            if (throwable instanceof CancellationException) {
-                resultFuture.cancel(true);
-            }
-        });
+        propagateCancellation(filteredFuture, resultFuture);
         return filteredFuture;
     }
 

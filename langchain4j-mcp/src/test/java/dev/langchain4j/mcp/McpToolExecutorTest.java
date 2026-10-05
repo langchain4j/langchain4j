@@ -11,6 +11,7 @@ import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.mcp.client.McpClient;
 import dev.langchain4j.service.tool.ToolExecutionResult;
 import java.util.Map;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.Test;
 
@@ -125,6 +126,6 @@ class McpToolExecutorTest {
         assertThat(executorFuture.cancel(true)).isTrue();
 
         assertThat(clientFuture).isCancelled();
-        assertThatThrownBy(executorFuture::join).isInstanceOf(java.util.concurrent.CancellationException.class);
+        assertThatThrownBy(executorFuture::join).isInstanceOf(CancellationException.class);
     }
 }
