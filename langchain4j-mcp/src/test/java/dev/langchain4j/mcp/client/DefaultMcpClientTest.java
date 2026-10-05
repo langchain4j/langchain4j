@@ -1,5 +1,6 @@
 package dev.langchain4j.mcp.client;
 
+import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -35,6 +36,7 @@ import dev.langchain4j.service.tool.ToolExecutionResult;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -576,6 +578,28 @@ public class DefaultMcpClientTest {
         McpCancellationParams params = (McpCancellationParams) cancellation.getParams();
         assertThat(params.getRequestId()).isEqualTo(requestId);
         assertThat(params.getReason()).isEqualTo("Cancelled");
+    }
+
+    @Test
+    public void async_tool_execution_cancelled_by_server_fails_with_cancellation_exception() {
+        McpTransport transport = getMinimalMcpTransportMock();
+        CompletableFuture<JsonNode> transportFuture = new CompletableFuture<>();
+        when(transport.executeOperationWithResponse(any(McpCallContext.class))).thenReturn(transportFuture);
+
+        DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion("2025-11-25")
+                .toolExecutionTimeout(java.time.Duration.ofSeconds(30))
+                .build();
+
+        CompletableFuture<ToolExecutionResult> resultFuture = client.executeToolAsync(
+                ToolExecutionRequest.builder().name("test").arguments("{}").build(), null);
+        transportFuture.completeExceptionally(new CancellationException("cancelled by the server"));
+
+        // same as the blocking executeTool(), which surfaces a server-side cancellation as CancellationException
+        assertThat(resultFuture.handle((result, error) -> unwrapCompletionException(error)).join())
+                .isInstanceOf(CancellationException.class)
+                .hasMessage("cancelled by the server");
     }
 
     @Test

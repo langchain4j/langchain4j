@@ -815,21 +815,13 @@ public class DefaultMcpClient implements McpClient {
                     return extractResultAndNotifyListeners(context, result);
                 });
 
-        CompletableFuture<ToolExecutionResult> returnedFuture = new CompletableFuture<>();
         handledFuture.whenComplete((result, error) -> {
-            if (error != null) {
-                returnedFuture.completeExceptionally(error);
-            } else {
-                returnedFuture.complete(result);
-            }
-        });
-        returnedFuture.whenComplete((result, error) -> {
-            if (returnedFuture.isCancelled() && resultFuture.cancel(true)) {
+            if (handledFuture.isCancelled() && resultFuture.cancel(true)) {
                 pendingOperations.remove(operationId);
                 sendCancellationNotification(operationId, "Cancelled");
             }
         });
-        return returnedFuture;
+        return handledFuture;
     }
 
     private static Map<String, Object> parseToolArguments(ToolExecutionRequest executionRequest) {
