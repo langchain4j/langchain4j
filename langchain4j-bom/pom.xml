@@ -697,6 +697,12 @@
 
             <dependency>
                 <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-azure-documentdb-spring-boot-starter</artifactId>
+                <version>${langchain4j.beta.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-azure-open-ai-spring-boot-starter</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>
@@ -735,6 +741,12 @@
             <dependency>
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-azure-ai-search-spring-boot4-starter</artifactId>
+                <version>${langchain4j.beta.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-azure-documentdb-spring-boot4-starter</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>
 
