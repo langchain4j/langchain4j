@@ -1,5 +1,6 @@
 package dev.langchain4j.micrometer.metrics.listeners;
 
+import static java.util.stream.Collectors.toSet;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 
@@ -14,16 +15,19 @@ import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.listener.EmbeddingModelErrorContext;
 import dev.langchain4j.model.embedding.listener.EmbeddingModelRequestContext;
 import dev.langchain4j.model.embedding.listener.EmbeddingModelResponseContext;
+import dev.langchain4j.model.embedding.mock.EmbeddingModelMock;
 import dev.langchain4j.model.embedding.request.EmbeddingRequest;
 import dev.langchain4j.model.embedding.response.EmbeddingResponse;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.Timer;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -65,17 +69,7 @@ class MicrometerMetricsEmbeddingModelListenerTest {
 
     @Test
     void should_record_unknown_provider_name_when_model_provider_is_null() {
-        EmbeddingModel modelWithoutProvider = new EmbeddingModel() {
-            @Override
-            public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
-                return Response.from(List.of(Embedding.from(List.of(1f, 2f, 3f))));
-            }
-
-            @Override
-            public ModelProvider provider() {
-                return null;
-            }
-        };
+        EmbeddingModel modelWithoutProvider = new EmbeddingModelMock().withProvider(null);
 
         listener.onResponse(EmbeddingModelResponseContext.builder()
                 .embeddingRequest(embeddingRequest("text-embedding-3-small"))
@@ -138,6 +132,8 @@ class MicrometerMetricsEmbeddingModelListenerTest {
                 .tag(OTelGenAiAttributes.PROVIDER_NAME.value(), "azure.ai.inference")
                 .tag(OTelGenAiAttributes.REQUEST_MODEL.value(), "text-embedding-3-small")
                 .tag(OTelGenAiAttributes.RESPONSE_MODEL.value(), "text-embedding-3-small")
+                .tag("outcome", "SUCCESS")
+                .tag(OTelGenAiAttributes.ERROR_TYPE.value(), "none")
                 .timer();
 
         assertThat(timer).isNotNull();
@@ -145,24 +141,37 @@ class MicrometerMetricsEmbeddingModelListenerTest {
     }
 
     @Test
-    void should_record_error_type_on_the_duration_when_the_call_fails() {
+    void should_record_operation_duration_with_error_outcome_when_the_call_fails() {
         listener.onRequest(requestContext());
         listener.onError(errorContext(new IllegalStateException("boom")));
 
-        String errorType = IllegalStateException.class.getName();
+        // a failed call has no response, so the response model is unknown
+        Timer timer = meterRegistry
+                .find(OTelGenAiMetricName.OPERATION_DURATION.value())
+                .tag(OTelGenAiAttributes.REQUEST_MODEL.value(), "text-embedding-3-small")
+                .tag(OTelGenAiAttributes.RESPONSE_MODEL.value(), "unknown")
+                .tag("outcome", "ERROR")
+                .tag(OTelGenAiAttributes.ERROR_TYPE.value(), IllegalStateException.class.getName())
+                .timer();
 
-        assertThat(meterRegistry
-                        .find(OTelGenAiMetricName.OPERATION_DURATION.value())
-                        .tag(OTelGenAiAttributes.ERROR_TYPE.value(), errorType)
-                        .timer())
-                .isNotNull();
-        // a failed call has no response, so the duration must not claim a response model
-        assertThat(meterRegistry
-                        .find(OTelGenAiMetricName.OPERATION_DURATION.value())
-                        .tag(OTelGenAiAttributes.ERROR_TYPE.value(), errorType)
-                        .tag(OTelGenAiAttributes.RESPONSE_MODEL.value(), "text-embedding-3-small")
-                        .meter())
-                .isNull();
+        assertThat(timer).isNotNull();
+        assertThat(timer.count()).isEqualTo(1L);
+    }
+
+    @Test
+    void should_record_operation_duration_with_the_same_tag_keys_on_success_and_failure() {
+        listener.onRequest(requestContext());
+        listener.onError(errorContext(new IllegalStateException("boom")));
+        listener.onRequest(requestContext());
+        listener.onResponse(responseContextWithTokenUsage(new TokenUsage(10, null)));
+
+        // registries like Prometheus drop meters whose tag keys differ from an existing meter with the same name
+        List<Set<String>> tagKeys = meterRegistry.find(OTelGenAiMetricName.OPERATION_DURATION.value()).timers().stream()
+                .map(timer -> timer.getId().getTags().stream().map(Tag::getKey).collect(toSet()))
+                .toList();
+
+        assertThat(tagKeys).hasSize(2);
+        assertThat(tagKeys.get(0)).isEqualTo(tagKeys.get(1));
     }
 
     @Test
@@ -251,16 +260,6 @@ class MicrometerMetricsEmbeddingModelListenerTest {
     }
 
     private static EmbeddingModel embeddingModel() {
-        return new EmbeddingModel() {
-            @Override
-            public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
-                return Response.from(List.of(Embedding.from(List.of(1f, 2f, 3f))));
-            }
-
-            @Override
-            public ModelProvider provider() {
-                return ModelProvider.MICROSOFT_FOUNDRY;
-            }
-        };
+        return new EmbeddingModelMock().withProvider(ModelProvider.MICROSOFT_FOUNDRY);
     }
 }

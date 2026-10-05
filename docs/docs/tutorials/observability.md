@@ -621,8 +621,9 @@ ChatResponse response = chatModel.chat(ChatRequest.builder()
 | `gen_ai.operation.name` | The operation being performed | `embeddings`                                |
 | `gen_ai.provider.name`  | The AI provider name | `openai`, `ollama`                          |
 | `gen_ai.request.model`  | The model name from the request | `text-embedding-3-small`                    |
-| `gen_ai.response.model` | The model name from the response | `text-embedding-3-small`                    |
-| `error.type`            | The class name of the exception, on failed calls only | `java.net.SocketTimeoutException`           |
+| `gen_ai.response.model` | The model name from the response, `unknown` on failed calls | `text-embedding-3-small`, `unknown`         |
+| `outcome`               | Whether the call succeeded or failed | `SUCCESS`, `ERROR`                          |
+| `error.type`            | The class name of the exception, `none` on successful calls | `none`, `java.net.SocketTimeoutException` |
 
 #### Creating the `MicrometerMetricsEmbeddingModelListener`
 
@@ -633,9 +634,13 @@ failure.
 It requires a Micrometer's `MeterRegistry` to be instantiated.
 
 ```java
+import dev.langchain4j.data.embedding.Embedding;
+import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.micrometer.metrics.listeners.MicrometerMetricsEmbeddingModelListener;
 import dev.langchain4j.model.openai.OpenAiEmbeddingModel;
+import dev.langchain4j.model.output.Response;
 import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 
 import java.util.List;
 
@@ -643,7 +648,7 @@ import java.util.List;
 MeterRegistry meterRegistry = new SimpleMeterRegistry();
 
 // 1. Create the listener with the MeterRegistry
-MicrometerMetricsEmbeddingModelListener listener = 
+MicrometerMetricsEmbeddingModelListener listener =
     new MicrometerMetricsEmbeddingModelListener(meterRegistry);
 
 // 2. Add the listener to your EmbeddingModel
