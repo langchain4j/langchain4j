@@ -10,11 +10,11 @@ https://azure.microsoft.com/en-us/products/cosmos-db/
 Azure CosmosDB for MongoDB vCore has been rebranded by Microsoft as
 **Azure DocumentDB** (see https://learn.microsoft.com/en-us/azure/documentdb/).
 
-This module and its Spring Boot starter are kept for backwards compatibility
-but will be deprecated in favor of a new
-[Azure DocumentDB](./azure-documentdb.md) integration. New projects should
-use the DocumentDB integration; existing projects can continue to use the
-module documented below and migrate at their own pace.
+This module is deprecated in favor of the
+[Azure DocumentDB](./azure-documentdb.md) integration.
+The legacy module and its Spring Boot starters remain available for backwards compatibility.
+New projects should use the DocumentDB integration; existing projects can
+follow the [migration guide](./azure-documentdb.md#migrating-from-azure-cosmosdb-mongo-vcore).
 :::
 
 ## Maven Dependency
@@ -33,6 +33,8 @@ You can use Azure CosmosDB Mongo vCore with LangChain4j in plain Java or Spring 
 
 ### Spring Boot
 
+**Spring Boot 3:**
+
 ```xml
 <dependency>
     <groupId>dev.langchain4j</groupId>
@@ -40,6 +42,9 @@ You can use Azure CosmosDB Mongo vCore with LangChain4j in plain Java or Spring 
     <version>${latest version here}</version>
 </dependency>
 ```
+
+For **Spring Boot 4**, use `langchain4j-azure-cosmos-mongo-vcore-spring-boot4-starter`
+instead, with the same configuration properties below.
 
 Then configure the embedding store in your `application.properties` or `application.yml`:
 

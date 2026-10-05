@@ -4,11 +4,13 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.randomUUID;
 import static dev.langchain4j.internal.ValidationUtils.ensureConsistentSizes;
+import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZeroIfNotNull;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.store.embedding.azure.documentdb.MappingUtils.toEmbeddingMatch;
 import static dev.langchain4j.store.embedding.azure.documentdb.MappingUtils.toMongoDbDocument;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
-import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
+import static org.bson.codecs.configuration.CodecRegistries.fromCodecs;
 import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
 
 import com.mongodb.ConnectionString;
@@ -28,8 +30,6 @@ import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.RelevanceScore;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -43,14 +43,13 @@ import org.bson.BsonDocument;
 import org.bson.BsonValue;
 import org.bson.Document;
 import org.bson.codecs.configuration.CodecRegistry;
-import org.bson.codecs.pojo.PojoCodecProvider;
 import org.bson.conversions.Bson;
 
 /**
- * Represents an Azure DocumentDB as an embedding store.
+ * Stores embeddings in Azure DocumentDB.
  * <p>
- * More <a href="https://learn.microsoft.com/en-us/azure/cosmos-db/mongodb/vcore/vector-search">info</a>
- * to set up MongoDb as vectorDatabase.
+ * See the <a href="https://learn.microsoft.com/en-us/azure/documentdb/vector-search">vector search documentation</a>
+ * for supported index types and cluster tiers.
  * <p>
  * When configured with a connection string, this store owns its MongoClient and must be closed
  * when no longer needed. A supplied MongoClient remains caller-owned and is never closed by this store.
@@ -72,24 +71,19 @@ public class AzureDocumentDbEmbeddingStore implements EmbeddingStore<TextSegment
     /**
      * @param mongoClient             - caller-owned MongoClient for Azure DocumentDB; never closed by this store
      * @param connectionString        - connection string used to create an owned client when mongoClient is not provided
-     * @param databaseName            - databaseName for the mongoDb vCore
-     * @param collectionName          - collection name for the mongoDB vCore
-     * @param indexName               - index name for the mongoDB vCore collection
+     * @param databaseName            - database name in Azure DocumentDB
+     * @param collectionName          - collection name in Azure DocumentDB
+     * @param indexName               - vector index name for the collection
      * @param applicationName         - application name for the client for tracking and logging
      * @param createCollectionOptions - options for creating a collection
      * @param createIndex             - set to true if you want the application to create an index, or false if you want to create
      *                                it manually.
-     * @param kind                    - Type of vector index to create.
-     *                                Possible options are:
-     *                                - vector-ivf
-     *                                - vector-hnsw: available as a preview feature only, to enable visit
-     *                                https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/preview-features
+     * @param kind                    - required vector index type for index creation and search
      * @param numLists                - This integer is the number of clusters that the inverted file (IVF) index uses to group the
      *                                vector data. We recommend that numLists is set to documentCount/1000 for up to 1 million
      *                                documents and to sqrt(documentCount) for more than 1 million documents. Using a numLists value
      *                                of 1 is akin to performing brute-force search, which has limited performance.
-     * @param dimensions              - Number of dimensions for vector similarity. The maximum number of supported dimensions
-     *                                is 2000.
+     * @param dimensions              - embedding dimensions; required when createIndex is true and must match the embedding model
      * @param m                       - used only for vector -hnsw. The max number of connections per layer (16 by default, minimum value is 2, maximum
      *                                value is 100). Higher m is suitable for datasets with high dimensionality and/or high
      *                                accuracy requirements.
@@ -100,7 +94,7 @@ public class AzureDocumentDbEmbeddingStore implements EmbeddingStore<TextSegment
      * @param efSearch                - used only for vector -hnsw. The size of the dynamic candidate list for search (40 by default). A higher value provides
      *                                better recall at the cost of speed.
      */
-    public AzureDocumentDbEmbeddingStore(
+    private AzureDocumentDbEmbeddingStore(
             MongoClient mongoClient,
             String connectionString,
             String databaseName,
@@ -109,7 +103,7 @@ public class AzureDocumentDbEmbeddingStore implements EmbeddingStore<TextSegment
             String applicationName,
             CreateCollectionOptions createCollectionOptions,
             Boolean createIndex,
-            String kind,
+            VectorIndexType kind,
             Integer numLists,
             Integer dimensions,
             Integer m,
@@ -126,19 +120,18 @@ public class AzureDocumentDbEmbeddingStore implements EmbeddingStore<TextSegment
         createIndex = getOrDefault(createIndex, false);
         this.indexName = getOrDefault(indexName, "defaultIndexAzureCosmos");
         applicationName = getOrDefault(applicationName, "LangChain4j");
-        this.kind = VectorIndexType.fromString(kind);
+        this.kind = ensureNotNull(kind, "kind");
         this.numLists = getOrDefault(numLists, 1);
-        // TODO: update this value as a user input once LangChain4j only
-        //  supports other similarity types other than Cosine.
-        this.dimensions = getOrDefault(dimensions, 1536);
+        if (Boolean.TRUE.equals(createIndex) && dimensions == null) {
+            throw new IllegalArgumentException("dimensions must be provided when createIndex is true");
+        }
+        this.dimensions = ensureGreaterThanZeroIfNotNull(dimensions, "dimensions");
         this.m = getOrDefault(m, 16);
         this.efConstruction = getOrDefault(efConstruction, 64);
         this.efSearch = getOrDefault(efSearch, 40);
 
-        CodecRegistry pojoCodecRegistry = fromProviders(PojoCodecProvider.builder()
-                .register(AzureDocumentDbDocument.class, BsonDocument.class)
-                .build());
-        CodecRegistry codecRegistry = fromRegistries(MongoClientSettings.getDefaultCodecRegistry(), pojoCodecRegistry);
+        CodecRegistry codecRegistry = fromRegistries(
+                MongoClientSettings.getDefaultCodecRegistry(), fromCodecs(new AzureDocumentDbDocumentCodec()));
 
         this.ownsMongoClient = mongoClient == null;
         this.mongoClient = ownsMongoClient
@@ -151,7 +144,7 @@ public class AzureDocumentDbEmbeddingStore implements EmbeddingStore<TextSegment
         try {
             MongoDatabase database = this.mongoClient.getDatabase(databaseName);
             // create collection if not exist
-            if (!isCollectionExist(database, collectionName)) {
+            if (!collectionExists(database, collectionName)) {
                 createCollection(
                         database, collectionName, getOrDefault(createCollectionOptions, new CreateCollectionOptions()));
             }
@@ -226,7 +219,7 @@ public class AzureDocumentDbEmbeddingStore implements EmbeddingStore<TextSegment
         return new EmbeddingSearchResult<>(matches);
     }
 
-    public List<EmbeddingMatch<TextSegment>> findRelevant(
+    private List<EmbeddingMatch<TextSegment>> findRelevant(
             Embedding referenceEmbedding, int maxResults, double minScore) {
 
         List<Bson> pipeline = new ArrayList<>();
@@ -359,35 +352,13 @@ public class AzureDocumentDbEmbeddingStore implements EmbeddingStore<TextSegment
 
         InsertManyResult result = collection.insertMany(documents);
         if (!result.wasAcknowledged()) {
-            String errMsg =
-                    String.format("[AzureDocumentDbEmbeddingStore] Add document failed, Document=%s", documents);
-            throw new RuntimeException(errMsg);
-        }
-    }
-
-    @SuppressWarnings("unchecked")
-    static Iterable<String> listCollectionNames(MongoDatabase database) {
-        try {
-            Method m = MongoDatabase.class.getMethod("listCollectionNames");
-            Object result = m.invoke(database);
-            if (result instanceof Iterable) {
-                return (Iterable<String>) result;
-            }
-            throw new IllegalStateException("MongoDatabase.listCollectionNames() returned non-Iterable: " + result);
-        } catch (NoSuchMethodException e) {
-            throw new IllegalStateException("MongoDatabase.listCollectionNames() not found", e);
-        } catch (IllegalAccessException | InvocationTargetException e) {
-            throw new RuntimeException("Failed to invoke MongoDatabase.listCollectionNames()", e);
+            throw new RuntimeException("Failed to add embeddings to Azure DocumentDB: the insert was not acknowledged");
         }
     }
 
     static boolean collectionExists(MongoDatabase database, String collectionName) {
-        return StreamSupport.stream(listCollectionNames(database).spliterator(), false)
+        return StreamSupport.stream(database.listCollectionNames().spliterator(), false)
                 .anyMatch(collectionName::equals);
-    }
-
-    private boolean isCollectionExist(MongoDatabase database, String collectionName) {
-        return collectionExists(database, collectionName);
     }
 
     private void createCollection(
@@ -470,7 +441,7 @@ public class AzureDocumentDbEmbeddingStore implements EmbeddingStore<TextSegment
         private String applicationName;
         private CreateCollectionOptions createCollectionOptions;
         private Boolean createIndex;
-        private String kind;
+        private VectorIndexType kind;
         private Integer numLists;
         private Integer dimensions;
         private Integer m;
@@ -529,7 +500,9 @@ public class AzureDocumentDbEmbeddingStore implements EmbeddingStore<TextSegment
          *
          * <p>default value is false</p>
          *
-         * @param createIndex whether in production mode
+         * When true, {@link #dimensions(Integer)} must also be configured.
+         *
+         * @param createIndex whether to create the vector index if it is missing
          * @return builder
          */
         public Builder createIndex(Boolean createIndex) {
@@ -538,13 +511,23 @@ public class AzureDocumentDbEmbeddingStore implements EmbeddingStore<TextSegment
         }
 
         /**
-         * @param kind - Type of vector index to create.
-         *             Possible options are:
-         *             - vector-ivf
-         *             - vector-hnsw: available as a preview feature only, to enable visit
-         *             https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/preview-feature
+         * Sets the required vector index type for index creation and search.
+         *
+         * @param kind {@code vector-ivf} or {@code vector-hnsw}
+         * @return builder
          */
         public Builder kind(String kind) {
+            return kind(VectorIndexType.fromString(kind));
+        }
+
+        /**
+         * Sets the required vector index type for index creation and search.
+         * HNSW requires an M30 or higher Azure DocumentDB cluster tier.
+         *
+         * @param kind the vector index type
+         * @return builder
+         */
+        public Builder kind(VectorIndexType kind) {
             this.kind = kind;
             return this;
         }
@@ -562,9 +545,10 @@ public class AzureDocumentDbEmbeddingStore implements EmbeddingStore<TextSegment
         }
 
         /**
-         * @param dimensions - Number of dimensions for vector similarity. The maximum number of supported dimensions
-         *                   is 2000.
-         * @return
+         * Sets the number of embedding dimensions. Required when {@link #createIndex(Boolean)} is true.
+         *
+         * @param dimensions a positive value matching the embedding model's output dimensions
+         * @return builder
          */
         public Builder dimensions(Integer dimensions) {
             this.dimensions = dimensions;
@@ -623,7 +607,7 @@ public class AzureDocumentDbEmbeddingStore implements EmbeddingStore<TextSegment
         }
     }
 
-    public enum SimilarityMetric {
+    private enum SimilarityMetric {
         COS("COS");
 
         private final String value;
@@ -660,6 +644,7 @@ public class AzureDocumentDbEmbeddingStore implements EmbeddingStore<TextSegment
         }
 
         public static VectorIndexType fromString(String kindString) {
+            ensureNotNull(kindString, "kind");
             return Arrays.stream(VectorIndexType.values())
                     .filter(k -> k.getValue().equals(kindString))
                     .findFirst()

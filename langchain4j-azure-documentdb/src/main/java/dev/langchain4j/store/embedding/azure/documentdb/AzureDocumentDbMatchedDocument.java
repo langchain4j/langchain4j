@@ -3,7 +3,7 @@ package dev.langchain4j.store.embedding.azure.documentdb;
 import java.util.List;
 import java.util.Map;
 
-public class AzureDocumentDbMatchedDocument {
+class AzureDocumentDbMatchedDocument {
 
     private String id;
     private List<Float> embedding;

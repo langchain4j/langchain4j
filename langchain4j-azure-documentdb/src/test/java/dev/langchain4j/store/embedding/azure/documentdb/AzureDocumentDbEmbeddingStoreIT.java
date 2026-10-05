@@ -1,6 +1,7 @@
 package dev.langchain4j.store.embedding.azure.documentdb;
 
-import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
+import static dev.langchain4j.store.embedding.azure.documentdb.AzureDocumentDbEmbeddingStore.VectorIndexType.VECTOR_HNSW;
+import static org.bson.codecs.configuration.CodecRegistries.fromCodecs;
 import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
 
 import com.mongodb.ConnectionString;
@@ -14,14 +15,12 @@ import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreIT;
-import org.bson.BsonDocument;
 import org.bson.codecs.configuration.CodecRegistry;
-import org.bson.codecs.pojo.PojoCodecProvider;
 import org.bson.conversions.Bson;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
-@EnabledIfEnvironmentVariable(named = "AZURE_COSMOS_ENDPOINT", matches = ".+")
+@EnabledIfEnvironmentVariable(named = "AZURE_DOCUMENTDB_CONNECTION_STRING", matches = ".+")
 public class AzureDocumentDbEmbeddingStoreIT extends EmbeddingStoreIT {
 
     private final MongoClient client;
@@ -32,7 +31,7 @@ public class AzureDocumentDbEmbeddingStoreIT extends EmbeddingStoreIT {
         embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
 
         client = MongoClients.create(MongoClientSettings.builder()
-                .applyConnectionString(new ConnectionString(System.getenv("AZURE_COSMOS_ENDPOINT")))
+                .applyConnectionString(new ConnectionString(System.getenv("AZURE_DOCUMENTDB_CONNECTION_STRING")))
                 .applicationName("JAVA_LANG_CHAIN")
                 .build());
 
@@ -43,7 +42,7 @@ public class AzureDocumentDbEmbeddingStoreIT extends EmbeddingStoreIT {
                 .indexName("test_index")
                 .applicationName("JAVA_LANG_CHAIN")
                 .createIndex(true)
-                .kind("vector-hnsw")
+                .kind(VECTOR_HNSW)
                 .numLists(2)
                 .dimensions(embeddingModel.dimension())
                 .m(16)
@@ -69,10 +68,8 @@ public class AzureDocumentDbEmbeddingStoreIT extends EmbeddingStoreIT {
 
     @Override
     protected void clearStore() {
-        CodecRegistry pojoCodecRegistry = fromProviders(PojoCodecProvider.builder()
-                .register(AzureDocumentDbDocument.class, BsonDocument.class)
-                .build());
-        CodecRegistry codecRegistry = fromRegistries(MongoClientSettings.getDefaultCodecRegistry(), pojoCodecRegistry);
+        CodecRegistry codecRegistry = fromRegistries(
+                MongoClientSettings.getDefaultCodecRegistry(), fromCodecs(new AzureDocumentDbDocumentCodec()));
 
         MongoCollection<AzureDocumentDbDocument> collection = client.getDatabase("test_database")
                 .getCollection("test_collection", AzureDocumentDbDocument.class)

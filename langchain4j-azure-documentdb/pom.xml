@@ -15,11 +15,6 @@
         previously known as "Azure CosmosDB for MongoDB vCore" and has since
         been rebranded by Microsoft as "Azure DocumentDB".</description>
 
-    <properties>
-        <!-- No prior published artifact to compare against; re-enable after first release. -->
-        <revapi.skip>true</revapi.skip>
-    </properties>
-
     <dependencies>
 
         <dependency>

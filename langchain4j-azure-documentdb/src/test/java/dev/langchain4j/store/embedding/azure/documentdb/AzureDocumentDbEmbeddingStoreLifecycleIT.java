@@ -16,7 +16,7 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
-@EnabledIfEnvironmentVariable(named = "AZURE_COSMOS_ENDPOINT", matches = ".+")
+@EnabledIfEnvironmentVariable(named = "AZURE_DOCUMENTDB_CONNECTION_STRING", matches = ".+")
 class AzureDocumentDbEmbeddingStoreLifecycleIT {
 
     private static final String COLLECTION_NAME = "embeddings";
@@ -25,7 +25,7 @@ class AzureDocumentDbEmbeddingStoreLifecycleIT {
 
     @Test
     void should_close_owned_client_after_real_database_operations() {
-        String connectionString = System.getenv("AZURE_COSMOS_ENDPOINT");
+        String connectionString = System.getenv("AZURE_DOCUMENTDB_CONNECTION_STRING");
         try (MongoClient verificationClient = MongoClients.create(connectionString)) {
             MongoDatabase database = verificationClient.getDatabase(databaseName());
             try {
@@ -51,7 +51,7 @@ class AzureDocumentDbEmbeddingStoreLifecycleIT {
     @ParameterizedTest
     @ValueSource(strings = {"vector-ivf", "vector-hnsw"})
     void should_leave_supplied_client_usable_after_closing_store(String kind) {
-        try (MongoClient client = MongoClients.create(System.getenv("AZURE_COSMOS_ENDPOINT"))) {
+        try (MongoClient client = MongoClients.create(System.getenv("AZURE_DOCUMENTDB_CONNECTION_STRING"))) {
             MongoDatabase database = client.getDatabase(databaseName());
             try {
                 try (AzureDocumentDbEmbeddingStore store =

@@ -159,6 +159,7 @@ class AzureDocumentDbEmbeddingStoreLifecycleTest {
             assertThatThrownBy(() -> builder()
                             .connectionString(CONNECTION_STRING)
                             .createIndex(true)
+                            .dimensions(3)
                             .build())
                     .isSameAs(failure);
 

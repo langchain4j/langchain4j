@@ -2,11 +2,9 @@ package dev.langchain4j.store.embedding.azure.documentdb;
 
 import java.util.List;
 import java.util.Map;
-import org.bson.codecs.pojo.annotations.BsonId;
 
-public class AzureDocumentDbDocument {
+class AzureDocumentDbDocument {
 
-    @BsonId
     private String id;
 
     private List<Float> embedding;
