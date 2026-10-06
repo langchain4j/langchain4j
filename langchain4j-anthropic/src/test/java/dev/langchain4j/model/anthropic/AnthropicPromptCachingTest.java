@@ -1,6 +1,7 @@
 package dev.langchain4j.model.anthropic;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -18,6 +19,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class AnthropicPromptCachingTest {
 
@@ -122,6 +125,19 @@ class AnthropicPromptCachingTest {
         model.chat(conversation());
 
         assertThat(httpClient.request().body()).doesNotContain("cache_control");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"", " "})
+    void should_fail_on_blank_cache_ttl(String cacheTtl) {
+        assertThatThrownBy(() -> modelBuilder().cacheTtl(cacheTtl).build())
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("cacheTtl");
+        assertThatThrownBy(() -> AnthropicChatRequestParameters.builder()
+                        .cacheTtl(cacheTtl)
+                        .build())
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("cacheTtl");
     }
 
     @Test

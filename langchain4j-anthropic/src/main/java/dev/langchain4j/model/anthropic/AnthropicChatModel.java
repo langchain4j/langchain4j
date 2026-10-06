@@ -606,7 +606,7 @@ public class AnthropicChatModel implements ChatModel {
          * <p>
          * Applies to every cache breakpoint: system messages, tools, automatic conversation caching and
          * messages marked with the {@code cache_control} attribute. It has no effect unless at least one of them
-         * is cached. The value is sent to Anthropic as is.
+         * is cached. The value is sent to Anthropic as is; a blank value is rejected.
          * Each cache hit refreshes the TTL, so {@code "5m"} is enough when requests sharing the same prefix are
          * less than 5 minutes apart. Use {@code "1h"} when they are further apart (for example, a user replying
          * after 20 minutes, or batch processing). Writing to the 1-hour cache costs more than writing to

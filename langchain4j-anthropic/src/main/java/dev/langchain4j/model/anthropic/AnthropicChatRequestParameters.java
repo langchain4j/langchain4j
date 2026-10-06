@@ -1,6 +1,7 @@
 package dev.langchain4j.model.anthropic;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
@@ -45,7 +46,7 @@ public class AnthropicChatRequestParameters extends DefaultChatRequestParameters
         this.cacheSystemMessages = builder.cacheSystemMessages;
         this.cacheTools = builder.cacheTools;
         this.cacheAutomatically = builder.cacheAutomatically;
-        this.cacheTtl = builder.cacheTtl;
+        this.cacheTtl = builder.cacheTtl == null ? null : ensureNotBlank(builder.cacheTtl, "cacheTtl");
         this.thinkingType = builder.thinkingType;
         this.thinkingBudgetTokens = builder.thinkingBudgetTokens;
         this.sendThinking = builder.sendThinking;
