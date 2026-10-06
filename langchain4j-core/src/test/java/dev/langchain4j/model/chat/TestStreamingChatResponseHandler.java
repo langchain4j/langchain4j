@@ -70,10 +70,14 @@ public class TestStreamingChatResponseHandler implements StreamingChatResponseHa
     }
 
     public ChatResponse get() {
-        return get(Duration.ofSeconds(60));
+        return await(Duration.ofSeconds(60));
     }
 
     public ChatResponse get(Duration timeout) {
+        return await(timeout);
+    }
+
+    private ChatResponse await(Duration timeout) {
         try {
             return futureResponse.get(timeout.toMillis(), MILLISECONDS);
         } catch (InterruptedException e) {
