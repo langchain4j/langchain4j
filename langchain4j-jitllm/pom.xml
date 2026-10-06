@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>dev.langchain4j</groupId>
+        <artifactId>langchain4j-parent</artifactId>
+        <version>1.22.0-beta32-SNAPSHOT</version>
+        <relativePath>../langchain4j-parent/pom.xml</relativePath>
+    </parent>
+
+    <artifactId>langchain4j-jitllm</artifactId>
+    <name>LangChain4j :: Integration :: jitLLM</name>
+    <description>jitLLM: LLM inference engine for Java, running on GPUs through TornadoVM or on the CPU. Requires Java 21+</description>
+
+    <properties>
+        <maven.compiler.release>21</maven.compiler.release>
+        <!-- the published artifact depends on the JDK 22+ build of jitllm; JDK 21 users switch to the jdk21 build -->
+        <jitllm.version>1.0.2-jdk22plus</jitllm.version>
+        <tornadovm.home>${env.TORNADOVM_HOME}</tornadovm.home>
+        <!-- Which ITs the run-tests profile executes; overridable with -Dit.selection=... -->
+        <it.selection>--scan-classpath --include-classname=.*IT</it.selection>
+    </properties>
+
+    <dependencies>
+
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-core</artifactId>
+            <version>1.22.0-SNAPSHOT</version>
+        </dependency>
+
+        <dependency>
+            <groupId>io.github.beehive-lab</groupId>
+            <artifactId>jitllm</artifactId>
+            <version>${jitllm.version}</version>
+        </dependency>
+
+        <!-- test dependencies -->
+
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-core</artifactId>
+            <version>1.22.0-SNAPSHOT</version>
+            <classifier>tests</classifier>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j</artifactId>
+            <version>1.22.0-SNAPSHOT</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j</artifactId>
+            <version>1.22.0-SNAPSHOT</version>
+            <classifier>tests</classifier>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.junit.platform</groupId>
+            <artifactId>junit-platform-console-standalone</artifactId>
+            <version>${junit.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+    </dependencies>
+
+    <build>
+        <plugins>
+
+            <!-- jitllm uses jdk.incubator.vector, an incubator module on every supported JDK -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <compilerArgs combine.children="append">
+                        <arg>--add-modules</arg>
+                        <arg>jdk.incubator.vector</arg>
+                    </compilerArgs>
+                </configuration>
+            </plugin>
+
+        </plugins>
+    </build>
+
+    <profiles>
+
+        <!-- javac 21 cannot read the JDK 22+ build of jitllm, so a JDK 21 build compiles and tests against the jdk21 one -->
+        <profile>
+            <id>jdk21</id>
+            <activation>
+                <jdk>21</jdk>
+            </activation>
+            <properties>
+                <jitllm.version>1.0.2-jdk21</jitllm.version>
+                <!-- the jdk21 build of jitllm uses java.lang.foreign, a preview API on JDK 21 -->
+                <argLine>--enable-preview</argLine>
+            </properties>
+        </profile>
+
+        <!-- Runs the ITs in a TornadoVM JVM: requires TORNADOVM_HOME, a GPU and MODEL pointing to a GGUF file -->
+        <profile>
+            <id>run-tests</id>
+            <build>
+                <defaultGoal>clean generate-test-resources compile test-compile exec:exec</defaultGoal>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-dependency-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>build-test-classpath</id>
+                                <goals>
+                                    <goal>build-classpath</goal>
+                                </goals>
+                                <phase>generate-test-resources</phase>
+                                <configuration>
+                                    <includeScope>test</includeScope>
+                                    <outputProperty>test.classpath</outputProperty>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
+                        <version>3.6.4</version>
+                        <configuration>
+                            <executable>${tornadovm.home}/bin/tornado</executable>
+                            <arguments>
+                                <argument>--jvm=@${project.basedir}/src/test/resources/tornado-jvm.args</argument>
+                                <argument>-cp</argument>
+                                <argument>${project.build.outputDirectory}:${project.build.testOutputDirectory}:${test.classpath}</argument>
+                                <argument>--params=execute ${it.selection}</argument>
+                                <argument>org.junit.platform.console.ConsoleLauncher</argument>
+                            </arguments>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+    </profiles>
+
+</project>

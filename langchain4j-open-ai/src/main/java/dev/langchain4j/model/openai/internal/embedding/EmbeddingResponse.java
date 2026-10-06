@@ -1,11 +1,11 @@
 package dev.langchain4j.model.openai.internal.embedding;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
 import dev.langchain4j.model.openai.internal.shared.Usage;
@@ -17,7 +17,6 @@ import static java.util.Collections.unmodifiableList;
 
 @JsonDeserialize(builder = EmbeddingResponse.Builder.class)
 @JsonInclude(JsonInclude.Include.NON_NULL)
-@JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public final class EmbeddingResponse {
 
     @JsonProperty
@@ -27,9 +26,10 @@ public final class EmbeddingResponse {
     @JsonProperty
     private final Usage usage;
 
+    @JsonCreator
     public EmbeddingResponse(Builder builder) {
         this.model = builder.model;
-        this.data = builder.data;
+        this.data = builder.data == null ? null : unmodifiableList(builder.data);
         this.usage = builder.usage;
     }
 
@@ -93,7 +93,7 @@ public final class EmbeddingResponse {
 
     @JsonPOJOBuilder(withPrefix = "")
     @JsonIgnoreProperties(ignoreUnknown = true)
-    @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
+    @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
     public static final class Builder {
 
         private String model;
@@ -107,7 +107,7 @@ public final class EmbeddingResponse {
 
         public Builder data(List<Embedding> data) {
             if (data != null) {
-                this.data = unmodifiableList(data);
+                this.data = data;
             }
             return this;
         }

@@ -15,13 +15,13 @@ RAG, and more.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-hibernate</artifactId>
-    <version>1.19.0-beta29</version>
+    <version>1.21.0-beta31</version>
 </dependency>
 ```
 
 ## Gradle Dependency
 
-```implementation 'dev.langchain4j:langchain4j-hibernate:1.19.0-beta29'```
+```implementation 'dev.langchain4j:langchain4j-hibernate:1.21.0-beta31'```
 
 ## APIs
 
@@ -502,7 +502,7 @@ create index if not exists my_entity_ivfflat_index
 
 ##### CockroachDB
 
-See the [CockroachDB documentation]([https://github.com/pgvector/pgvector?tab=readme-ov-file#indexing](https://www.cockroachlabs.com/docs/v26.2/vector-indexes)) for details.
+See the [CockroachDB documentation](https://www.cockroachlabs.com/docs/v26.2/vector-indexes) for details.
 
 ```sql
 create vector index if not exists my_entity_ivfflat_index
@@ -531,7 +531,7 @@ create vector index my_entity_vector_index
 
 ##### SAP HANA
 
-See the [`create vector index` statement documentation]([https://learn.microsoft.com/en-us/sql/t-sql/statements/create-vector-index-transact-sql?view=sql-server-ver17](https://help.sap.com/docs/hana-cloud-database/sap-hana-cloud-sap-hana-database-sql-reference-guide/create-vector-index-statement-data-definition?locale=en-US))
+See the [`create vector index` statement documentation](https://help.sap.com/docs/hana-cloud-database/sap-hana-cloud-sap-hana-database-sql-reference-guide/create-vector-index-statement-data-definition?locale=en-US)
 for details.
 
 ```sql

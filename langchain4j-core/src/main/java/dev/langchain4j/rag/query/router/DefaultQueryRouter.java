@@ -4,6 +4,7 @@ import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.query.Query;
 
 import java.util.Collection;
+import java.util.concurrent.CompletableFuture;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static java.util.Arrays.asList;
@@ -39,5 +40,11 @@ public class DefaultQueryRouter implements QueryRouter {
     @Override
     public Collection<ContentRetriever> route(Query query) {
         return contentRetrievers;
+    }
+
+    @Override
+    public CompletableFuture<Collection<ContentRetriever>> routeAsync(Query query) {
+        // Static routing, no I/O: complete synchronously so the async RAG flow treats this stage as non-blocking.
+        return CompletableFuture.completedFuture(route(query));
     }
 }

@@ -1,5 +1,6 @@
 package dev.langchain4j.web.search.tavily;
 
+import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
@@ -17,6 +18,7 @@ import java.net.URI;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Represents Tavily Search API as a {@code WebSearchEngine}.
@@ -84,8 +86,27 @@ public class TavilyWebSearchEngine implements WebSearchEngine {
 
     @Override
     public WebSearchResults search(WebSearchRequest webSearchRequest) {
+        TavilyResponse tavilyResponse = tavilyClient.search(toTavilyRequest(webSearchRequest));
+        return toWebSearchResults(tavilyResponse);
+    }
 
-        TavilySearchRequest request = TavilySearchRequest.builder()
+    /**
+     * Genuinely non-blocking counterpart of {@link #search(WebSearchRequest)}, used by the asynchronous and reactive
+     * RAG flow. The underlying HTTP call is dispatched asynchronously (no thread is parked while it is in flight),
+     * and cancelling the returned future aborts the in-flight call (best-effort).
+     */
+    @Override
+    public CompletableFuture<WebSearchResults> searchAsync(WebSearchRequest webSearchRequest) {
+        CompletableFuture<TavilyResponse> searchFuture = tavilyClient.searchAsync(toTavilyRequest(webSearchRequest));
+        CompletableFuture<WebSearchResults> result = searchFuture.thenApply(TavilyWebSearchEngine::toWebSearchResults);
+        // Link the caller-facing derived stage back to the raw HTTP call so cancelling the returned future aborts it
+        // (TavilyClient.searchAsync delegates to HttpClient.executeAsync, which propagates the cancellation).
+        propagateCancellation(result, searchFuture);
+        return result;
+    }
+
+    private TavilySearchRequest toTavilyRequest(WebSearchRequest webSearchRequest) {
+        return TavilySearchRequest.builder()
                 .apiKey(apiKey)
                 .query(webSearchRequest.searchTerms())
                 .searchDepth(searchDepth)
@@ -95,9 +116,9 @@ public class TavilyWebSearchEngine implements WebSearchEngine {
                 .includeDomains(includeDomains)
                 .excludeDomains(excludeDomains)
                 .build();
+    }
 
-        TavilyResponse tavilyResponse = tavilyClient.search(request);
-
+    private static WebSearchResults toWebSearchResults(TavilyResponse tavilyResponse) {
         final List<WebSearchOrganicResult> results = tavilyResponse.getResults().stream()
                 .map(TavilyWebSearchEngine::toWebSearchOrganicResult)
                 .collect(toList());

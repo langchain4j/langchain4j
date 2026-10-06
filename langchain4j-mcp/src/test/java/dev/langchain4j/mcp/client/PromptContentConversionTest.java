@@ -1,10 +1,9 @@
 package dev.langchain4j.mcp.client;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import dev.langchain4j.mcp.client.transport.McpJson;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.Content;
@@ -19,14 +18,37 @@ import org.junit.jupiter.api.Test;
 class PromptContentConversionTest {
 
     @Test
+    void shouldRejectResponseWithoutResult() {
+        // language=JSON
+        String response = """
+                {"jsonrpc":"2.0","id":1}
+                """;
+
+        assertThatThrownBy(() -> PromptsHelper.parsePromptContents(response))
+                .isInstanceOf(IllegalResponseException.class)
+                .hasMessage("Result does not contain 'result' element");
+    }
+
+    @Test
+    void shouldRejectResponseWithoutMessages() {
+        // language=JSON
+        String response = """
+                {"jsonrpc":"2.0","id":1,"result":{}}
+                """;
+
+        assertThatThrownBy(() -> PromptsHelper.parsePromptContents(response))
+                .isInstanceOf(IllegalResponseException.class)
+                .hasMessage("Result does not contain 'messages' element");
+    }
+
+    @Test
     void userMessageWithText() throws JsonProcessingException {
         // language=JSON
-        String response =
-                """
+        String response = """
                 {"jsonrpc":"2.0","id":111,"result":{"messages":[{"role":"user","content":{"text":"Hello","type":"text"}}]}}
                 """;
-        JsonNode responseJsonNode = McpJson.parse(response);
-        McpGetPromptResult promptResponse = PromptsHelper.parsePromptContents(responseJsonNode);
+
+        McpGetPromptResult promptResponse = PromptsHelper.parsePromptContents(response);
 
         ChatMessage chatMessage = promptResponse.messages().get(0).toChatMessage();
         assertThat(chatMessage).isInstanceOf(UserMessage.class);
@@ -36,12 +58,11 @@ class PromptContentConversionTest {
     @Test
     void aiMessageWithText() throws JsonProcessingException {
         // language=JSON
-        String response =
-                """
+        String response = """
                 {"jsonrpc":"2.0","id":123,"result":{"messages":[{"role":"assistant","content":{"text":"Hello","type":"text"}}]}}
                 """;
-        JsonNode responseJsonNode = McpJson.parse(response);
-        McpGetPromptResult promptResponse = PromptsHelper.parsePromptContents(responseJsonNode);
+
+        McpGetPromptResult promptResponse = PromptsHelper.parsePromptContents(response);
 
         ChatMessage chatMessage = promptResponse.messages().get(0).toChatMessage();
         assertThat(chatMessage).isInstanceOf(AiMessage.class);
@@ -51,12 +72,11 @@ class PromptContentConversionTest {
     @Test
     void userMessageWithImage() throws JsonProcessingException {
         // language=JSON
-        String response =
-                """
+        String response = """
                 {"jsonrpc":"2.0","id":1,"result":{"messages":[{"role":"user","content":{"data":"aaa","mimeType":"image/png","type":"image"}}]}}
                 """;
-        JsonNode responseJsonNode = McpJson.parse(response);
-        McpGetPromptResult promptResponse = PromptsHelper.parsePromptContents(responseJsonNode);
+
+        McpGetPromptResult promptResponse = PromptsHelper.parsePromptContents(response);
 
         ChatMessage chatMessage = promptResponse.messages().get(0).toChatMessage();
         assertThat(chatMessage).isInstanceOf(UserMessage.class);

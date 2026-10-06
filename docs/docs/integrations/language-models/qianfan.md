@@ -308,7 +308,7 @@ LangChain4j has an "Easy RAG" feature that makes it as easy as possible to get s
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-easy-rag</artifactId>
-    <version>1.19.0-beta29</version>
+    <version>1.21.0-beta31</version>
 </dependency>
 ```
 - Use

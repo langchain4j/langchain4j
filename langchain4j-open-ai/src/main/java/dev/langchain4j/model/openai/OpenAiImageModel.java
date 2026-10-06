@@ -16,6 +16,7 @@ import dev.langchain4j.model.openai.internal.image.GenerateImagesRequest;
 import dev.langchain4j.model.openai.internal.image.GenerateImagesResponse;
 import dev.langchain4j.model.openai.internal.image.ImageData;
 import dev.langchain4j.model.openai.internal.image.ImageFile;
+import dev.langchain4j.model.openai.internal.image.ImageUsage;
 import dev.langchain4j.model.openai.spi.OpenAiImageModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
 import java.time.Duration;
@@ -84,7 +85,8 @@ public class OpenAiImageModel implements ImageModel {
         GenerateImagesResponse response =
                 withRetryMappingExceptions(() -> client.imagesGeneration(request).execute(), maxRetries);
 
-        return Response.from(fromImageData(response.data().get(0), response.outputFormat()));
+        return Response.from(
+                fromImageData(response.data().get(0), response.outputFormat()), tokenUsageFrom(response.usage()));
     }
 
     @Override
@@ -95,9 +97,11 @@ public class OpenAiImageModel implements ImageModel {
                 withRetryMappingExceptions(() -> client.imagesGeneration(request).execute(), maxRetries);
 
         String responseOutputFormat = response.outputFormat();
-        return Response.from(response.data().stream()
-                .map(data -> fromImageData(data, responseOutputFormat))
-                .collect(Collectors.toList()));
+        return Response.from(
+                response.data().stream()
+                        .map(data -> fromImageData(data, responseOutputFormat))
+                        .collect(Collectors.toList()),
+                tokenUsageFrom(response.usage()));
     }
 
     @Override
@@ -107,7 +111,8 @@ public class OpenAiImageModel implements ImageModel {
         GenerateImagesResponse response =
                 withRetryMappingExceptions(() -> client.imagesEdit(request).execute(), maxRetries);
 
-        return Response.from(fromImageData(response.data().get(0), response.outputFormat()));
+        return Response.from(
+                fromImageData(response.data().get(0), response.outputFormat()), tokenUsageFrom(response.usage()));
     }
 
     @Override
@@ -118,7 +123,8 @@ public class OpenAiImageModel implements ImageModel {
         GenerateImagesResponse response =
                 withRetryMappingExceptions(() -> client.imagesEdit(request).execute(), maxRetries);
 
-        return Response.from(fromImageData(response.data().get(0), response.outputFormat()));
+        return Response.from(
+                fromImageData(response.data().get(0), response.outputFormat()), tokenUsageFrom(response.usage()));
     }
 
     public static OpenAiImageModelBuilder builder() {
@@ -292,6 +298,29 @@ public class OpenAiImageModel implements ImageModel {
         }
 
         return imageBuilder.build();
+    }
+
+    private static OpenAiImageTokenUsage tokenUsageFrom(ImageUsage usage) {
+        if (usage == null) {
+            return null;
+        }
+        return OpenAiImageTokenUsage.builder()
+                .inputTokenCount(usage.inputTokens())
+                .inputTokensDetails(tokensDetailsFrom(usage.inputTokensDetails()))
+                .outputTokenCount(usage.outputTokens())
+                .outputTokensDetails(tokensDetailsFrom(usage.outputTokensDetails()))
+                .totalTokenCount(usage.totalTokens())
+                .build();
+    }
+
+    private static OpenAiImageTokenUsage.TokensDetails tokensDetailsFrom(ImageUsage.TokensDetails details) {
+        if (details == null) {
+            return null;
+        }
+        return OpenAiImageTokenUsage.TokensDetails.builder()
+                .imageTokens(details.imageTokens())
+                .textTokens(details.textTokens())
+                .build();
     }
 
     private GenerateImagesRequest.Builder requestBuilder(String prompt) {

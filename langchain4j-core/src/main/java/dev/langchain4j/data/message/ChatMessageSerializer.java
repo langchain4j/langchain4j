@@ -4,17 +4,18 @@ import dev.langchain4j.spi.data.message.ChatMessageJsonCodecFactory;
 
 import java.util.List;
 
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+import static dev.langchain4j.spi.ServiceHelper.loadFactory;
 
 public class ChatMessageSerializer {
 
     static final ChatMessageJsonCodec CODEC = loadCodec();
 
     private static ChatMessageJsonCodec loadCodec() {
-        for (ChatMessageJsonCodecFactory factory : loadFactories(ChatMessageJsonCodecFactory.class)) {
-            return factory.create();
-        }
-        return new JacksonChatMessageJsonCodec();
+        // Substituted by quarkus-langchain4j for native image (@TargetClass/@Substitute in its
+        // Substitutions), so this name and signature are depended on from outside despite being
+        // private. Renaming it breaks that build with no compile error here.
+        ChatMessageJsonCodecFactory factory = loadFactory(ChatMessageJsonCodecFactory.class);
+        return factory != null ? factory.create() : new JacksonChatMessageJsonCodec();
     }
 
     /**

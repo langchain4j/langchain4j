@@ -34,6 +34,7 @@ The following types of events are currently available:
 | [`AiServiceErrorEvent`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/event/AiServiceErrorEvent.java)                       | Fired when an invocation with an LLM fails. The failure could be because of network failure, AiService unavailable, input/output guardrails blocking the request, or many other reasons.<br/><br/>Contains information about the failure that occurred.                                                                                                                                                                                                                                                                                                                                                                       |
 | [`AiServiceCompletedEvent`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/event/AiServiceCompletedEvent.java)               | Invoked when an LLM invocation has completed successfully.<br/><br/>Not every invocation will receive this event. If an invocation fails it will receive an [`AiServiceErrorEvent`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/event/AiServiceErrorEvent.java) instead.<br/><br/>Contains information about the result of the invocation.                                                                                                                                                                                                          |
 | [`ToolExecutedEvent`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/event/ToolExecutedEvent.java)                           | Invoked when a tool invocation has completed. It is important to note that this can be invoked multiple times within a single LLM invocation.<br/><br/>Contains information about the tool request and result.                                                                                                                                                                                                                                                                                                                                                                                                                |
+| [`ToolCompensatedEvent`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/event/ToolCompensatedEvent.java)                           | Invoked when a tool that had already completed is compensated, because the interaction was later cancelled or failed. Experimental; emitted by the non-blocking AI Service modes.<br/><br/>Contains the tool request, its result and the reason for compensation.                           |
 | [`InputGuardrailExecutedEvent`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/event/InputGuardrailExecutedEvent.java)       | Invoked when an [input guardrail](https://docs.langchain4j.dev/tutorials/guardrails#input-guardrails) validation has been executed. One of these events will be fired for each invocation of a guardrail.<br/><br/>Contains information about the input to an individual input guardrail, its output (i.e. was it successful or a failure?), and the execution duration.                                                                                                                                                                                                                                                      |
 | [`OutputGuardrailExecutedEvent`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/event/OutputGuardrailExecutedEvent.java)     | Invoked when an [output guardrail](https://docs.langchain4j.dev/tutorials/guardrails#output-guardrails) validation has been executed. One of these events will be fired for each invocation of a guardrail.<br/><br/>Contains information about the input to an individual output guardrail, its output (i.e. was it successful? failure? a retry? reprompt?), and the execution duration.                                                                                                                                                                                                                                    |
 
@@ -51,6 +52,7 @@ To listen for an event, create your own class implementing the listener interfac
 | [`AiServiceErrorListener`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/listener/AiServiceErrorListener.java)                       | [`AiServiceErrorEvent`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/event/AiServiceErrorEvent.java)                       |
 | [`AiServiceCompletedListener`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/listener/AiServiceCompletedListener.java)               | [`AiServiceCompletedEvent`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/event/AiServiceCompletedEvent.java)               |
 | [`ToolExecutedEventListener`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/listener/ToolExecutedEventListener.java)                 | [`ToolExecutedEvent`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/event/ToolExecutedEvent.java)                           |
+| [`ToolCompensatedEventListener`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/listener/ToolCompensatedEventListener.java)                 | [`ToolCompensatedEvent`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/event/ToolCompensatedEvent.java)                           |
 | [`InputGuardrailExecutedListener`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/listener/InputGuardrailExecutedListener.java)       | [`InputGuardrailExecutedEvent`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/event/InputGuardrailExecutedEvent.java)       |
 | [`OutputGuardrailExecutedListener`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/listener/OutputGuardrailExecutedListener.java)     | [`OutputGuardrailExecutedEvent`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/event/OutputGuardrailExecutedEvent.java)     |
 
@@ -548,7 +550,8 @@ observedRetriever.retrieve(Query.from("my query"));
 
 The `langchain4j-micrometer-metrics` module provides a Micrometer-based metrics implementation for the LangChain4j library.
 Currently, it provides metrics for `ChatModel` and `StreamingChatModel` interactions
-using a `ChatModelListener` implementation that collects metrics via Micrometer's `MeterRegistry`.
+using a `ChatModelListener` implementation, and for `EmbeddingModel` interactions
+using an `EmbeddingModelListener` implementation that collects metrics via Micrometer's `MeterRegistry`.
 
 The naming of the metrics follows the [OpenTelemetry Semantic Conventions for Generative AI Metrics](https://opentelemetry.io/docs/specs/semconv/gen-ai/gen-ai-metrics/). (v1.39.0)
 
@@ -562,17 +565,18 @@ The following metrics are currently collected:
 
 | Metric Name | Type | Description                                                     |
 |-------------|------|-----------------------------------------------------------------|
-| `gen_ai.client.token.usage` | Histogram (DistributionSummary) | The number of input and output tokens used per **chat** model request |
+| `gen_ai.client.token.usage` | Histogram (DistributionSummary) | The number of input and output tokens used per **chat** model request, and the number of input tokens per **embedding** model request |
+| `gen_ai.client.operation.duration` | Timer | The duration of **embedding** model operations, recorded for both successful and failed calls |
 
 #### Tags on `gen_ai.client.token.usage`
 
 | Tag                     | Description | Example Values                              |
 |-------------------------|-------------|---------------------------------------------|
-| `gen_ai.operation.name` | The operation being performed | `chat`                                      |
+| `gen_ai.operation.name` | The operation being performed | `chat`, `embeddings`                        |
 | `gen_ai.provider.name`  | The AI provider name | `openai`, `azure.ai.inference`, `anthropic` |
-| `gen_ai.request.model`  | The model name from the request | `gpt-4`, `gpt-35-turbo`                     |
+| `gen_ai.request.model`  | The model name from the request | `gpt-4`, `gpt-35-turbo`, `text-embedding-3-small` |
 | `gen_ai.response.model` | The model name from the response | `gpt-4-0613`                                |
-| `gen_ai.token.type`     | The type of token counted | `input`, `output`                           |
+| `gen_ai.token.type`     | The type of token counted | `input`, `output` (embeddings record `input` only) |
 
 #### Creating the `MicrometerMetricsChatModelListener`
 
@@ -608,6 +612,54 @@ AzureOpenAiChatModel chatModel = AzureOpenAiChatModel.builder()
 ChatResponse response = chatModel.chat(ChatRequest.builder()
         .messages(UserMessage.from("Hello!"))
         .build());
+```
+
+#### Tags on `gen_ai.client.operation.duration` (embeddings)
+
+| Tag                     | Description | Example Values                              |
+|-------------------------|-------------|---------------------------------------------|
+| `gen_ai.operation.name` | The operation being performed | `embeddings`                                |
+| `gen_ai.provider.name`  | The AI provider name | `openai`, `ollama`                          |
+| `gen_ai.request.model`  | The model name from the request | `text-embedding-3-small`                    |
+| `gen_ai.response.model` | The model name from the response, `unknown` on failed calls | `text-embedding-3-small`, `unknown`         |
+| `outcome`               | Whether the call succeeded or failed | `SUCCESS`, `ERROR`                          |
+| `error.type`            | The class name of the exception, `none` on successful calls | `none`, `java.net.SocketTimeoutException` |
+
+#### Creating the `MicrometerMetricsEmbeddingModelListener`
+
+The `MicrometerMetricsEmbeddingModelListener` collects metrics for `EmbeddingModel` interactions.
+It records `gen_ai.client.token.usage` with `gen_ai.token.type = input` only, since an embedding
+call has no output tokens, and `gen_ai.client.operation.duration` for every call, success or
+failure.
+It requires a Micrometer's `MeterRegistry` to be instantiated.
+
+```java
+import dev.langchain4j.data.embedding.Embedding;
+import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.micrometer.metrics.listeners.MicrometerMetricsEmbeddingModelListener;
+import dev.langchain4j.model.openai.OpenAiEmbeddingModel;
+import dev.langchain4j.model.output.Response;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+
+import java.util.List;
+
+// Get the MeterRegistry
+MeterRegistry meterRegistry = new SimpleMeterRegistry();
+
+// 1. Create the listener with the MeterRegistry
+MicrometerMetricsEmbeddingModelListener listener =
+    new MicrometerMetricsEmbeddingModelListener(meterRegistry);
+
+// 2. Add the listener to your EmbeddingModel
+OpenAiEmbeddingModel embeddingModel = OpenAiEmbeddingModel.builder()
+        .apiKey(System.getenv("OPENAI_API_KEY"))
+        .modelName("text-embedding-3-small")
+        .listeners(List.of(listener))
+        .build();
+
+// 3. Use the embedding model as usual - metrics are collected automatically
+Response<List<Embedding>> embeddings = embeddingModel.embedAll(List.of(TextSegment.from("Hello!")));
 ```
 
 ## Micrometer Observation API
@@ -657,6 +709,17 @@ gen_ai_client_token_usage_tokens_sum{gen_ai_operation_name="chat",gen_ai_provide
 gen_ai_client_token_usage_tokens_max{gen_ai_operation_name="chat",gen_ai_provider_name="OPEN_AI",gen_ai_request_model="gpt-4o-mini",gen_ai_response_model="gpt-4o-mini-2024-07-18",gen_ai_token_type="input"} 273.0
 gen_ai_client_token_usage_tokens_max{gen_ai_operation_name="chat",gen_ai_provider_name="OPEN_AI",gen_ai_request_model="gpt-4o-mini",gen_ai_response_model="gpt-4o-mini-2024-07-18",gen_ai_token_type="output"} 27.0
 ```
+
+:::note
+**Listener callbacks must not block.** `ChatModelListener` and `EmbeddingModelListener` callbacks are invoked
+synchronously on the model's own threads and are never offloaded. On the synchronous API that is the caller's
+thread; on the asynchronous and reactive APIs, `onResponse`/`onError` run on the transport's I/O worker that reads
+the response. A callback that performs blocking I/O there - a synchronous database write, a synchronous HTTP call
+to an observability backend - stalls that worker and, under concurrency, degrades throughput for every in-flight
+call. Record metrics or start/stop spans (the bundled Micrometer and Observation listeners are non-blocking by
+design); if a callback genuinely must block, offload it to your own executor from inside the callback.
+See [Non-blocking and Reactive](/tutorials/non-blocking).
+:::
 
 ## Observability in Spring Boot Application
 

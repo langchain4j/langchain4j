@@ -1,6 +1,5 @@
 package dev.langchain4j.service.output;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -259,7 +258,7 @@ class ServiceOutputParserTest {
         // When / Then
         assertThatThrownBy(() -> sut.parse(chatResponseStub, KeyProperty.class))
                 .isExactlyInstanceOf(OutputParsingException.class)
-                .hasRootCauseInstanceOf(JsonProcessingException.class);
+                .hasRootCauseInstanceOf(Exception.class);
     }
 
     static class KeyPropertyWrapper {

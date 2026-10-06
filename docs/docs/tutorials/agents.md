@@ -917,7 +917,7 @@ so it will reveal the nested sequence of agents invocations necessary to generat
 
 ```
 AgentInvocation{agent=Sequential, startTime=2026-03-18T17:27:28.099439515, finishTime=2026-03-18T17:27:38.683498783, duration=10584 ms, tokens=0, inputs={topic=dragons and wiz..., style=comedy}, output=In a realm wher...}
-|=> AgentInvocation{agent=generateStory, startTime=2026-03-18T17:27:28.1.19.0287, finishTime=2026-03-18T17:27:31.033561726, duration=2932 ms, tokens=127, inputs={topic=dragons and wiz...}, output=In a realm wher...}
+|=> AgentInvocation{agent=generateStory, startTime=2026-03-18T17:27:28.1.21.0287, finishTime=2026-03-18T17:27:31.033561726, duration=2932 ms, tokens=127, inputs={topic=dragons and wiz...}, output=In a realm wher...}
 |=> AgentInvocation{agent=reviewLoop, startTime=2026-03-18T17:27:31.035952285, finishTime=2026-03-18T17:27:38.683438433, duration=7647 ms, tokens=0, inputs={score=0.8, topic=dragons and wiz..., style=comedy, story=In a realm wher...}, output=null}
     |=> AgentInvocation{agent=scoreStyle, iteration=0, startTime=2026-03-18T17:27:31.036155107, finishTime=2026-03-18T17:27:31.671478699, duration=635 ms, tokens=152, inputs={style=comedy, story=In a realm wher...}, output=0.2}
     |=> AgentInvocation{agent=editStory, iteration=0, startTime=2026-03-18T17:27:31.671711250, finishTime=2026-03-18T17:27:38.182881941, duration=6511 ms, tokens=491, inputs={style=comedy, story=In a realm wher...}, output=In a realm wher...}
@@ -1418,7 +1418,7 @@ AgentInvocation{agentName='withdraw', arguments={user=Mario, amount=115.0}}
 
 AgentInvocation{agentName='credit', arguments={user=Georgios, amount=115.0}}
 
-AgentInvocation{agentName='done', arguments={response=The transfer of 100 EUR from Mario's account to Georgios' account has been completed. Mario's balance is 885.0 USD, and Georgios' balance is 1.19.0 USD. The conversion rate was 1.15 EUR to USD.}}
+AgentInvocation{agentName='done', arguments={response=The transfer of 100 EUR from Mario's account to Georgios' account has been completed. Mario's balance is 885.0 USD, and Georgios' balance is 1.21.0 USD. The conversion rate was 1.15 EUR to USD.}}
 ```
 
 The last invocation is a special one that signals the supervisor believes the task has been completed, and returns as a response a summary of all the operations performed.
@@ -2523,6 +2523,148 @@ TradingSystem tradingSystem = AgenticServices.plannerBuilder(TradingSystem.class
 
 When invoked with market data and portfolio state, the planner's deliberation cycle works as follows: the "analyze market" and "maintain liquidity" desires are initially achievable. Once the `MarketAnalysisAgent` and `MarketRecommendationAgent` complete, the recommendation determines the next step. If the recommendation is `SELL` or `STRONG_SELL`, the "hedge risks" desire (priority 2) becomes achievable and preempts any lower-priority work, causing the planner to invoke the `HedgingAgent`. After hedging completes, the planner re-deliberates: the "rebalance portfolio" desire runs `HedgingStrategyDefaulter` (which preserves the existing hedging strategy) followed by `RebalancingAgent`, which receives the hedging strategy as input. If the recommendation is not `SELL` or `STRONG_SELL`, hedging is skipped entirely, and the `HedgingStrategyDefaulter` writes `"None"` so that `RebalancingAgent` can still proceed. This reactive, condition-driven switching is the essence of BDI — the system adapts its behavior based on changing beliefs rather than following a rigid plan.
 
+### Decision router agentic pattern
+
+:::note
+The decision router is based on the experimental [`DecisionModel` API](/tutorials/decision-models) and may change in future releases.
+:::
+
+The decision router is provided by the `langchain4j-agentic-patterns` module, and also requires a decision model integration, such as `langchain4j-typesafe`.
+
+The conditional workflow discussed before routes a request to the right expert in two steps: an LLM-based `CategoryRouter` agent writes a category in the `AgenticScope`, then a conditional agent evaluates one predicate per expert against that category. This works, but every routing decision costs a full LLM call whose textual answer has to be parsed, it requires an enum and a predicate to be kept in sync with the experts, and it says nothing about how sure the LLM was about its choice.
+
+A [decision model](/tutorials/decision-models) is a better fit for this kind of task: instead of generating text, it answers typed questions about an input, returning the probability of each possible answer. The decision router pattern uses one to choose among its subagents directly: each subagent is an option of a single choice question, described by its name and description, and the decision model returns the most probable one together with the probability of every subagent. Optionally, with an activation threshold, the router asks instead whether each subagent should handle the request, and invokes in parallel all those whose probability reaches the threshold, which is useful when a request spans more than one domain.
+
+The `DecisionRouterPlanner` implementing this pattern is created with a `DecisionModel` and, optionally, an activation threshold strictly between 0 and 1. When it is initialized, the planner turns each of its subagents into an option of a single `ChoiceQuestion`, "Which agent is best suited to handle this request?", using the name of the subagent as the option name and its description as the description of when that option applies. With an activation threshold, it creates instead one `YesNoQuestion` per subagent, like "Should the agent 'medical' (A medical expert, answering questions about health, injuries and treatments) handle this request?", all asked in the same request. This means that the descriptions of the subagents are what the decision model reads to route a request, so they should clearly state which requests each subagent is meant to handle. The input of the question is made of the arguments of the router agent itself, read from the `AgenticScope`, so the router has to be defined through a typed agent interface, and its subagents must have distinct names.
+
+When the router is invoked, the planner asks the decision model these questions in a single call, and then selects the subagents to activate from the answers. Internally, its `firstAction` method does roughly the following:
+
+```java
+DecisionResponse response = decide(planningContext.agenticScope());
+activated = activationThreshold == null
+        ? List.of(response.choice(QUESTION_NAME).value())
+        : routes.keySet().stream()
+                .filter(name -> response.yesNo(name).probability() >= activationThreshold)
+                .toList();
+```
+
+Without an activation threshold, only the most probable subagent is invoked, and the `nextAction` method returns its output as the result of the router. With an activation threshold, all the subagents whose probability of "yes" is at least the threshold are invoked in parallel, and the `nextAction` method collects their outputs, so that the result of the router is a map from the name of each invoked subagent to its output, which is empty when no subagent reaches the threshold.
+
+The planner also saves the names of the activated subagents, and the outputs of those that already completed, as its execution state. This way, when the agentic system is resumed after a [suspension](#agenticscope-and-agentic-systems-recoverability), for instance because one of the activated subagents is waiting for a human, or after a crash, the router doesn't ask the decision model again: it only invokes the activated subagents that didn't run yet, and its result still contains the outputs collected before the interruption.
+
+To give a practical example, let's reimplement the expert router of the conditional workflow section. The experts are the same, except that their descriptions now say which requests they handle:
+
+```java
+public interface MedicalExpert {
+
+    @UserMessage("""
+        You are a medical expert.
+        Analyze the following user request under a medical point of view and provide the best possible answer.
+        The user request is {{request}}.
+        """)
+    @Agent(description = "A medical expert, answering questions about health, injuries and treatments",
+            outputKey = "medicalResponse")
+    String medical(@V("request") String request);
+}
+```
+
+with similar `LegalExpert` (`"A legal expert, answering questions about laws, rights, contracts and lawsuits"`) and `TechnicalExpert` (`"A technical expert, answering questions about computers, software and devices"`) agents. There is no need for the `CategoryRouter` agent and the `RequestCategory` enum anymore: the `ExpertRouterAgent` interface is directly implemented by a `DecisionRouterPlanner`, configured with a decision model like [TypeSafe](/integrations/decision-models/typesafe):
+
+```java
+DecisionModel decisionModel = TypeSafeDecisionModel.builder()
+        .apiKey(System.getenv("TYPESAFE_API_KEY"))
+        .modelName("jev-1.13.0")
+        .build();
+
+ExpertRouterAgent expertRouterAgent = AgenticServices.plannerBuilder(ExpertRouterAgent.class)
+        .subAgents(medicalExpert, legalExpert, technicalExpert)
+        .outputKey("response")
+        .planner(() -> new DecisionRouterPlanner(decisionModel))
+        .build();
+
+String response = expertRouterAgent.ask("I broke my leg, what should I do?");
+```
+
+Here the decision model receives the input `{"request": "I broke my leg, what should I do?"}` and the question "Which agent is best suited to handle this request?" with the options `medical`, `legal` and `technical`, and chooses `medical`, so that only the `MedicalExpert` is invoked and its answer is returned.
+
+Some requests, however, belong to more than one domain. To invoke all the experts whose probability reaches a given threshold, pass the threshold to the planner and let the router return a map, from the name of each invoked expert to its answer:
+
+```java
+public interface MultiExpertRouterAgent {
+
+    @Agent
+    Map<String, String> ask(@V("request") String request);
+}
+
+MultiExpertRouterAgent multiExpertRouterAgent = AgenticServices.plannerBuilder(MultiExpertRouterAgent.class)
+        .subAgents(medicalExpert, legalExpert, technicalExpert)
+        .outputKey("responses")
+        .planner(() -> new DecisionRouterPlanner(decisionModel, 0.5))
+        .build();
+
+Map<String, String> responses = multiExpertRouterAgent.ask(
+        "I broke my leg in a car accident caused by another driver: " +
+        "how should I take care of my leg, and can I sue the driver for damages?");
+```
+
+For this request both the `MedicalExpert` and the `LegalExpert` are expected to reach the threshold, so they are invoked in parallel and the returned map contains their two answers, under the `medical` and `legal` keys. When no expert reaches the threshold, for instance for a request asking for a chocolate cake recipe, none of them is invoked and the returned map is empty.
+
+Note that each subagent gets its own probability, independent of the others: several subagents can reach a high threshold, and adding a subagent doesn't change the probabilities of the existing ones. For the same reason, a subagent with a very broad description, like a general assistant answering any kind of question, tends to be activated for most requests, so with a threshold it is better to describe each subagent precisely, and to treat an empty result as the case where no subagent is relevant. Also, probabilities are not calibrated in the same way by different models, so the threshold should be tuned on your own requests, and tuned again when you change the decision model or its version.
+
+As with any other agentic pattern, the decision router can be a step of a more complex agentic system. For instance, the answers of the activated experts can be merged into a single one by a `ResponseSynthesizer` agent, invoked after the router in a sequence:
+
+```java
+public interface ResponseSynthesizer {
+
+    @UserMessage("""
+        Merge the answers that different experts gave to the same user request into a single answer.
+        The user request is: {{request}}
+        The answers of the experts, keyed by expert, are: {{responses}}
+        """)
+    @Agent(description = "Merges the answers of several experts into one", outputKey = "answer")
+    String synthesize(@V("request") String request, @V("responses") Map<String, String> responses);
+}
+
+public interface ExpertPipeline {
+
+    @Agent
+    String process(@V("request") String request);
+}
+
+ResponseSynthesizer responseSynthesizer = AgenticServices.agentBuilder(ResponseSynthesizer.class)
+        .chatModel(BASE_MODEL)
+        .build();
+
+ExpertPipeline pipeline = AgenticServices.sequenceBuilder(ExpertPipeline.class)
+        .subAgents(multiExpertRouterAgent, responseSynthesizer)
+        .outputKey("answer")
+        .build();
+```
+
+The same router can also be defined with the declarative API, by providing the planner through a static method annotated with `@PlannerSupplier`:
+
+```java
+public interface DeclarativeExpertRouter {
+
+    @PlannerAgent(
+            outputKey = "response",
+            subAgents = {MedicalExpert.class, LegalExpert.class, TechnicalExpert.class})
+    String ask(@V("request") String request);
+
+    @PlannerSupplier
+    static Planner planner() {
+        return new DecisionRouterPlanner(TypeSafeDecisionModel.builder()
+                .apiKey(System.getenv("TYPESAFE_API_KEY"))
+                .modelName("jev-1.13.0")
+                .build());
+    }
+}
+```
+
+where the experts provide their chat model through a `@ChatModelSupplier`, as discussed in the [declarative API](#declarative-api) section.
+
+Finally, keep in mind that the arguments of the router agent are sent to the decision model as they are, so they can be strings, numbers, booleans, or maps and lists of them: an argument of any other type is rejected by the decision model with an error explaining which types are supported. Also note that the routing decision follows the user's input, so it is not an authorization boundary: a subagent that must only be used under some conditions, for instance by authorized users, has to enforce its own access checks.
+
 ## Non-AI agents
 
 All the agents discussed so far are AI agents, meaning that they are based on LLMs and can be invoked to perform tasks that require natural language understanding and generation. However, the `langchain4j-agentic` module also supports non-AI agents, which can be used to perform tasks that do not require natural language processing, like invoking a REST API or executing a command. These non-AI agents are indeed more similar to tools, but in this context it is convenient to model them as agents, so that they can be used in the same way as AI agents, and mixed with them to compose more powerful and complete agentic systems.
@@ -2562,6 +2704,23 @@ SupervisorAgent bankSupervisor = AgenticServices
 ```
 
 In essence an agent in `langchain4j-agentic` can be any Java class having one and only one method annotated with the `@Agent` annotation.
+
+When defining a dedicated class is not practical, for example because the agent's logic is only available at runtime, the same non-AI agent can also be created programmatically. The `nonAiAgentBuilder` factory method of `AgenticServices` takes a function of the `AgenticScope` computing the agent's result, and allows to configure the name, the description, the typed input keys and the output key that would otherwise be defined through the `@Agent` annotation and the method's parameters. In this way the `ExchangeOperator` above can be equivalently defined as:
+
+```java
+AgenticScopeFunction<Double> exchangeOperator = AgenticServices
+        .nonAiAgentBuilder(agenticScope -> exchange(
+                agenticScope.readState("originalCurrency", ""),
+                agenticScope.readState("amount", 0.0),
+                agenticScope.readState("targetCurrency", "")))
+        .name("exchange")
+        .description("A money exchanger that converts a given amount of money from the original to the target currency")
+        .inputKeys(String.class, "originalCurrency", Double.class, "amount", String.class, "targetCurrency")
+        .outputKey("exchange")
+        .build();
+```
+
+and then passed to the supervisor in place of the `new ExchangeOperator()` instance. Before invoking the function, the declared inputs are read from the `AgenticScope` and converted to their declared types, so that for instance an `amount` generated by the supervisor as an integer or as a string can be safely read as a `Double`, while a missing input makes the invocation fail with a `MissingArgumentException`. The builder also allows to set a `TypedKey` as output key, the `outputType` of the agent's result (defaulting to `Object`, since the generic type of the function isn't available at runtime), whether the agent has to be executed `async`, and an `AgentListener` for its invocations. If no name is provided, the agent is named `accept`, after the method of `AgenticScopeFunction` wrapping the function.
 
 Finally, non-AI agents can also be useful to read the state of the `AgenticScope` or execute small operations on it, and for this reason the `AgenticServices` provides an `agentAction` factory method to create a simple agent from a `Consumer<AgenticServices>`. For instance suppose to have a `scorer` agent that produces a `score` as a `String` value, and a subsequent `reviewer` agent that needs to consume that `score` as a `double`. In this case the two agents would be incompatible, but it is possible to adapt the output of the first in the format required by the second using an `agentAction`, rewriting the `score` state of the `AgenticScope` like it follows:
 
@@ -3096,7 +3255,7 @@ The remote A2A agent must return a [Task](https://a2a-protocol.org/latest/specif
 
 ### Multi-turn conversations with A2A servers
 
-The A2A protocol supports multi-turn conversations through `contextId` and `taskId` fields on the message envelope. A `contextId` groups related tasks into a conversation, while a `taskId` references a specific task within that conversation. When omitted, the A2A server generates new values; when provided, the server continues the existing conversation.
+The A2A protocol supports multi-turn conversations through `contextId` and `taskId` fields on the message envelope. A `contextId` groups related tasks into a conversation, while a `taskId` references a specific task within that conversation. When omitted, the A2A server generates new values; when a `taskId` is provided, the server continues that existing task instead of creating a new one.
 
 To pass these fields on the outgoing message envelope, annotate method parameters with `@A2AContextId` and `@A2ATaskId`. These parameters are **not** sent as message content — they are set on the message envelope instead.
 
@@ -3112,9 +3271,13 @@ public interface ChatAgent {
 
 When `null` is passed for `contextId` or `taskId`, the field is omitted from the envelope and the server creates new values.
 
-When the `@A2AContextId` or `@A2ATaskId` parameters also have recognizable names, possibly configured through the `@V` annotation, the server-assigned values from the response are automatically written back to the `AgenticScope` under that name. This enables multi-turn flows where the first call captures the IDs and subsequent calls reuse them.
+When the `@A2AContextId` parameter also has a recognizable name, possibly configured through the `@V` annotation, the server-assigned value from the response is automatically written back to the `AgenticScope` under that name. This enables multi-turn flows, where the first call captures the context and subsequent calls continue the same conversation: the server keeps the context and creates a new task in it for every invocation.
 
-If the method returns `ResultWithAgenticScope`, the IDs are accessible directly:
+The `taskId` follows a different rule: it is written back to the `AgenticScope` only when the remote task is still open at the moment the invocation returns, and the scope entry is cleared otherwise. An invocation normally returns once its task has reached a terminal state, and the A2A server rejects any further message sent to such a task, so in the common case nothing is propagated and the next invocation starts a fresh task. The one exception is a [streaming client listener](#streaming-a2a-client-listener) that stops consuming the stream early: the remote task keeps running, and its identifier is kept in the scope so that it can still be polled, canceled or continued.
+
+Outside of that case the `taskId` is taken from the invocation arguments: pass `null` (or omit the parameter) to let the server create a new task, or pass the identifier of an existing task to continue it.
+
+If the method returns `ResultWithAgenticScope`, the context is accessible directly:
 
 ```java
 public interface ChatAgent {
@@ -3129,13 +3292,13 @@ public interface ChatAgent {
 // First turn — server generates contextId and taskId
 ResultWithAgenticScope<String> first = chatAgent.chat("hello", null, null);
 String contextId = (String) first.agenticScope().readState("contextId");
-String taskId = (String) first.agenticScope().readState("taskId");
 
-// Second turn — reuse the server-generated IDs to continue the conversation
-ResultWithAgenticScope<String> second = chatAgent.chat("follow-up", contextId, taskId);
+// Second turn — reuse the server-generated context to continue the conversation,
+// while letting the server create a new task for this invocation
+ResultWithAgenticScope<String> second = chatAgent.chat("follow-up", contextId, null);
 ```
 
-In this way, when an A2A agent is used in an agentic system, the `contextId` and `taskId` are automatically propagated through the shared `AgenticScope`. This means a sequence of two A2A calls to the same server will naturally form a multi-turn conversation:
+In this way, when an A2A agent is used in an agentic system, the `contextId` is automatically propagated through the shared `AgenticScope`. This means a sequence of two A2A calls to the same server will naturally form a multi-turn conversation:
 
 ```java
 public interface EchoSubAgent {
@@ -3166,7 +3329,118 @@ MultiTurnWorkflow workflow = AgenticServices.sequenceBuilder(MultiTurnWorkflow.c
 ResultWithAgenticScope<String> result = workflow.converse("hello");
 ```
 
-In this sequence, the first agent sends a message with no `contextId`/`taskId` (they are `null` in the scope). The server creates a new task and context. The response IDs are written to the scope. When the second agent runs, it reads the now-populated `contextId` and `taskId` from the scope and sends them on the message envelope, continuing the same conversation.
+In this sequence, the first agent sends a message with no `contextId`/`taskId` (they are `null` in the scope). The server creates a new context and a new task, and then the `contextId` is written to the scope. When the second agent runs, it reads the now-populated `contextId` from the scope and sends it on the message envelope, so the conversation continues. As the task completed by the first agent cannot accept further messages, the `taskId` is left unset in the scope, and the server creates a new task in the same context.
+
+### Multi-tenant A2A agents
+
+In a multi-tenant A2A deployment, messages must be scoped to a specific tenant so the server can apply the correct routing, isolation, and policies. The `langchain4j-agentic-a2a` module supports three ways to configure the tenant, depending on whether it is fixed, dynamic, or derived automatically from the server URL.
+
+#### Auto-detection from the agent card URL
+
+When no tenant is configured, the client automatically extracts it from the agent card URL. A multi-tenant A2A server typically follows the convention `/.well-known/{tenant}/agent-card.json`. If the agent card URL matches this pattern, the extracted tenant is silently applied to every outgoing message — no configuration is needed.
+
+#### Static tenant via the `@A2AClientAgent` annotation
+
+When the tenant is known at build time and is the same for every call, set the `tenant` attribute directly on the `@A2AClientAgent` annotation:
+
+```java
+public interface MyA2AAgent {
+
+    @A2AClientAgent(a2aServerUrl = "http://localhost:8080", tenant = "acme", outputKey = "response")
+    String chat(@V("question") String question);
+}
+```
+
+The tenant is set on `MessageSendParams` for every message sent by this agent — no method parameter is needed. It is **not** included as a `TextPart` in the message content. Setting `tenant` in the annotation takes precedence over auto-detection from the agent card URL.
+
+When building programmatically, pass the tenant as the second argument to `a2aBuilder`:
+
+```java
+UntypedAgent agent = AgenticServices
+        .a2aBuilder("http://localhost:8080", "acme")
+        .inputKeys("question")
+        .outputKey("response")
+        .build();
+
+// Or with a typed interface:
+MyA2AAgent agent = AgenticServices
+        .a2aBuilder("http://localhost:8080", "acme", MyA2AAgent.class)
+        .outputKey("response")
+        .build();
+```
+
+#### Dynamic tenant via `@A2ATenantId`
+
+When the tenant varies per call, annotate a method parameter with `@A2ATenantId`. The parameter value is set as the `tenant` field on the outgoing `MessageSendParams` — it is **not** included as a `TextPart` in the message content.
+
+```java
+public interface MyA2AAgent {
+
+    @A2AClientAgent(a2aServerUrl = "http://localhost:8080", outputKey = "response")
+    String chat(@V("question") String question,
+                @A2AContextId String contextId,
+                @A2ATenantId String tenant);
+}
+```
+
+When `null` or an empty string is passed for `tenant`, the field is omitted from `MessageSendParams` and the server applies its default tenant resolution.
+
+`@A2ATenantId` can be combined with `@A2AContextId` and `@A2ATaskId` freely:
+
+```java
+public interface MultiTenantChatAgent {
+
+    @A2AClientAgent(a2aServerUrl = "http://localhost:8080", outputKey = "response")
+    String chat(@V("question") String question,
+                @A2AContextId @V("contextId") String contextId,
+                @A2ATaskId   @V("taskId")    String taskId,
+                @A2ATenantId                 String tenant);
+}
+```
+
+Unlike `@A2AContextId` and `@A2ATaskId`, the tenant value is never written back to the `AgenticScope` — the caller is responsible for supplying it on every invocation.
+
+#### Summary: tenant resolution order
+
+| Approach | When to use |
+|---|---|
+| Auto-detection from agent card URL | Server URL follows `/.well-known/{tenant}/agent-card.json` and tenant is constant |
+| `tenant` on `@A2AClientAgent` (or `a2aBuilder(url, tenant, ...)`) | Tenant is fixed and known at build time |
+| `@A2ATenantId` method parameter | Tenant varies per call |
+
+### Human-in-the-loop A2A agents
+
+An A2A server can pause a task in the `input-required` or `auth-required` state. When this happens inside an agentic system, the A2A client stores a `SuspendedResponse` in the `AgenticScope`, checkpoints the workflow, and releases the calling thread. The interruption contains the task and context IDs required to continue the same remote task.
+
+The caller can publish those details to an external system, such as a Kafka topic:
+
+```java
+try {
+    workflow.invoke("request-123", "Book the trip");
+} catch (AgenticSystemSuspendedException e) {
+    AgenticScope scope = e.scope();
+    String responseId = scope.pendingResponseIds().iterator().next();
+    A2ATaskInterruptedException interruption = A2ATaskInterruptedException.from(scope, responseId);
+
+    inputRequests.publish(new InputRequest(
+            scope.memoryId(), responseId, interruption.taskId(),
+            interruption.contextId(), interruption.reason()));
+}
+```
+
+When the human response arrives later, complete the pending response and invoke the workflow again. The planner resumes from its checkpoint, and the A2A client sends the response with the stored `contextId` and `taskId` instead of starting a new task:
+
+```java
+void onInputResponse(InputResponse response) {
+    AgenticScope scope = workflow.getAgenticScope(response.memoryId());
+    scope.completePendingResponse(response.responseId(), response.text());
+    workflow.invoke(response.memoryId(), "Book the trip");
+}
+```
+
+`completePendingResponse(...)` records the human's answer in the suspended scope, but does not restart the workflow by itself. The following call is to the same `workflow.invoke(...)` method used for the original request, with the same memory ID and original arguments. The memory ID restores the saved planner checkpoint; when execution reaches the A2A client, it sends the completed response with the stored `contextId` and `taskId`, continuing the existing remote task.
+
+If an A2A client is invoked outside an agentic system, there is no scope to suspend. In that case it throws `A2ATaskInterruptedException` directly so the caller can handle the interruption manually.
 
 ### Customizing the A2A client
 
@@ -3200,6 +3474,32 @@ public interface DeclarativeA2AWithCustomizer {
     }
 }
 ```
+
+### Streaming A2A Client Listener
+
+When invoking a remote A2A agent with streaming enabled, you can use `A2AStreamingClientListener` to observe events received from the remote agent and control when the client should stop consuming the stream.
+
+This is useful when you only need to react to specific events instead of waiting for the remote task to finish. For example, you can stop listening when the remote agent requests additional input and return the message to the caller immediately.
+
+```java
+UntypedAgent creativeWriter = AgenticServices.a2aBuilder(A2A_SERVER_URL)
+        .inputKeys("topic")
+        .outputKey("story")
+        .streamingClientListener((TaskUpdateEvent event) -> {
+            UpdateEvent updateEvent = event.getUpdateEvent();
+            if (updateEvent instanceof TaskStatusUpdateEvent taskStatusUpdateEvent
+                    && taskStatusUpdateEvent.status().state() == TaskState.TASK_STATE_WORKING) {
+                return A2AStreamingClientListenerResult.stopWithResponse(
+                        "stop when status update to TASK_STATE_WORKING, and return this message to the caller");
+            }
+            return A2AStreamingClientListenerResult.continueStreaming();
+        })
+        .build();
+```
+
+The listener is invoked for each event received from the remote A2A agent. Return `continueStreaming()` to keep consuming events, `stopWithResponse(response)` to stop consuming the stream and return the specified response to the caller, or `stopWithCurrentArtifacts()` to stop consuming the stream and return the artifacts received so far, using the default A2A client artifact-to-text extraction logic.
+
+Stopping the client-side stream does not cancel the remote A2A task. The remote task may continue executing asynchronously. Because that task is still open when the invocation returns, its identifier is written back to the `AgenticScope` under the name of the `@A2ATaskId` parameter, if the agent declares one, so that the caller can poll, cancel or continue it. This is the only case in which a `taskId` is propagated through the scope, as explained in the [Multi-turn conversations with A2A servers](#multi-turn-conversations-with-a2a-servers) section.
 
 ### Configuring the A2A server URL dynamically
 

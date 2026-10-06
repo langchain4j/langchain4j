@@ -1,13 +1,13 @@
 package dev.langchain4j.model.huggingface;
 
 import static dev.langchain4j.http.client.HttpMethod.POST;
+import static java.util.Arrays.asList;
 import static dev.langchain4j.internal.Utils.ensureTrailingForwardSlash;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.huggingface.HuggingFaceJsonUtils.fromJson;
 import static dev.langchain4j.model.huggingface.HuggingFaceJsonUtils.toJson;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.http.client.HttpClientBuilderLoader;
@@ -59,10 +59,9 @@ class DefaultHuggingFaceClient implements HuggingFaceClient {
 
         SuccessfulHttpResponse httpResponse = httpClient.execute(httpRequest);
 
-        List<TextGenerationResponse> responses =
-                fromJson(httpResponse.body(), new TypeReference<List<TextGenerationResponse>>() {});
+        TextGenerationResponse[] responses = fromJson(httpResponse.body(), TextGenerationResponse[].class);
 
-        return toOneResponse(responses);
+        return toOneResponse(responses == null ? null : asList(responses));
     }
 
     private static TextGenerationResponse toOneResponse(List<TextGenerationResponse> responses) {
@@ -86,6 +85,8 @@ class DefaultHuggingFaceClient implements HuggingFaceClient {
 
         SuccessfulHttpResponse httpResponse = httpClient.execute(httpRequest);
 
-        return fromJson(httpResponse.body(), new TypeReference<List<float[]>>() {});
+        float[][] embeddings = fromJson(httpResponse.body(), float[][].class);
+
+        return embeddings == null ? null : asList(embeddings);
     }
 }

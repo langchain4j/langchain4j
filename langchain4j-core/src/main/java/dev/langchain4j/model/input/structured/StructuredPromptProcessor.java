@@ -4,7 +4,7 @@ import dev.langchain4j.Internal;
 import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.spi.prompt.structured.StructuredPromptFactory;
 
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+import static dev.langchain4j.spi.ServiceHelper.loadFactory;
 
 /**
  * Utility class for structured prompts.
@@ -18,10 +18,11 @@ public class StructuredPromptProcessor {
     private static final StructuredPromptFactory FACTORY = factory();
 
     private static StructuredPromptFactory factory() {
-        for (StructuredPromptFactory factory : loadFactories(StructuredPromptFactory.class)) {
-            return factory;
-        }
-        return new DefaultStructuredPromptFactory();
+        // Substituted by quarkus-langchain4j for native image (@TargetClass/@Substitute in its
+        // Substitutions), so this name and signature are depended on from outside despite being
+        // private. Renaming it breaks that build with no compile error here.
+        StructuredPromptFactory factory = loadFactory(StructuredPromptFactory.class);
+        return factory != null ? factory : new DefaultStructuredPromptFactory();
     }
 
     /**

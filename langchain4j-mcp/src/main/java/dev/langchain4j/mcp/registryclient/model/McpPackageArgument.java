@@ -16,12 +16,15 @@ public class McpPackageArgument {
     private String format;
 
     @JsonAlias("is_repeated")
+    @JsonProperty("isRepeated")
     private boolean isRepeated;
 
     @JsonAlias("is_required")
+    @JsonProperty("isRequired")
     private boolean isRequired;
 
     @JsonAlias("is_secret")
+    @JsonProperty("isSecret")
     private boolean isSecret;
 
     private String name;

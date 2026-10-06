@@ -7,8 +7,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import dev.langchain4j.mcp.client.McpCallContext;
 import dev.langchain4j.mcp.client.McpHeadersSupplier;
 import dev.langchain4j.mcp.client.logging.McpLoggers;
-import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import dev.langchain4j.mcp.client.transport.McpJson;
+import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import dev.langchain4j.mcp.client.transport.McpTransport;
 import dev.langchain4j.mcp.protocol.McpClientMessage;
 import dev.langchain4j.mcp.protocol.McpInitializationNotification;
@@ -241,8 +241,10 @@ public class WebSocketMcpTransport implements McpTransport {
                 trafficLog.info("> " + messageJson);
             }
             synchronized (wsToUse) {
-                wsToUse.sendText(messageJson, true).thenAccept(ws -> {
-                    if (id == null) {
+                wsToUse.sendText(messageJson, true).whenComplete((ws, error) -> {
+                    if (error != null) {
+                        future.completeExceptionally(error);
+                    } else if (id == null) {
                         // for operations without an ID, consider them done immediately after the message was sent
                         future.complete(null);
                     }
@@ -395,5 +397,4 @@ public class WebSocketMcpTransport implements McpTransport {
     public void executeOperationWithoutResponse(McpCallContext context) {
         sendMessage(context);
     }
-
 }
