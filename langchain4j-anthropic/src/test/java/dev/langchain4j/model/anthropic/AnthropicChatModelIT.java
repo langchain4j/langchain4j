@@ -10,7 +10,6 @@ import static dev.langchain4j.model.output.FinishReason.STOP;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -220,10 +219,7 @@ class AnthropicChatModelIT {
     }
 
     @ParameterizedTest
-    @EnumSource(
-            value = AnthropicChatModelName.class,
-            mode = EXCLUDE,
-            names = "CLAUDE_OPUS_4_1_20250805") // retired by Anthropic
+    @EnumSource(AnthropicChatModelName.class)
     void should_support_all_enum_model_names(AnthropicChatModelName modelName) {
 
         // given
@@ -246,10 +242,7 @@ class AnthropicChatModelIT {
     }
 
     @ParameterizedTest
-    @EnumSource(
-            value = AnthropicChatModelName.class,
-            mode = EXCLUDE,
-            names = "CLAUDE_OPUS_4_1_20250805") // retired by Anthropic
+    @EnumSource(AnthropicChatModelName.class)
     void should_support_all_string_model_names(AnthropicChatModelName modelName) {
 
         // given
