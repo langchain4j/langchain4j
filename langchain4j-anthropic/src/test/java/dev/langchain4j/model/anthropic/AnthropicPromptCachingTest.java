@@ -56,8 +56,8 @@ class AnthropicPromptCachingTest {
     }
 
     @Test
-    void should_send_top_level_cache_control_when_cache_messages_automatically_is_enabled() throws Exception {
-        AnthropicChatModel model = modelBuilder().cacheMessagesAutomatically(true).build();
+    void should_send_top_level_cache_control_when_cache_automatically_is_enabled() throws Exception {
+        AnthropicChatModel model = modelBuilder().cacheAutomatically(true).build();
 
         model.chat(conversation());
 
@@ -71,7 +71,7 @@ class AnthropicPromptCachingTest {
         AnthropicChatModel model = modelBuilder()
                 .cacheSystemMessages(true)
                 .cacheTools(true)
-                .cacheMessagesAutomatically(true)
+                .cacheAutomatically(true)
                 .cacheTtl(AnthropicChatRequestParameters.CACHE_TTL_1H)
                 .build();
 
@@ -89,13 +89,13 @@ class AnthropicPromptCachingTest {
     }
 
     @Test
-    void should_override_cache_messages_automatically_and_cache_ttl_per_request() throws Exception {
-        AnthropicChatModel model = modelBuilder().cacheMessagesAutomatically(false).build();
+    void should_override_cache_automatically_and_cache_ttl_per_request() throws Exception {
+        AnthropicChatModel model = modelBuilder().cacheAutomatically(false).build();
 
         model.chat(ChatRequest.builder()
                 .messages(conversation().messages())
                 .parameters(AnthropicChatRequestParameters.builder()
-                        .cacheMessagesAutomatically(true)
+                        .cacheAutomatically(true)
                         .cacheTtl("1h")
                         .build())
                 .build());
@@ -105,13 +105,13 @@ class AnthropicPromptCachingTest {
     }
 
     @Test
-    void should_disable_cache_messages_automatically_per_request_when_model_default_is_enabled() throws Exception {
-        AnthropicChatModel model = modelBuilder().cacheMessagesAutomatically(true).build();
+    void should_disable_cache_automatically_per_request_when_model_default_is_enabled() throws Exception {
+        AnthropicChatModel model = modelBuilder().cacheAutomatically(true).build();
 
         model.chat(ChatRequest.builder()
                 .messages(conversation().messages())
                 .parameters(AnthropicChatRequestParameters.builder()
-                        .cacheMessagesAutomatically(false)
+                        .cacheAutomatically(false)
                         .build())
                 .build());
 
@@ -128,10 +128,10 @@ class AnthropicPromptCachingTest {
     }
 
     @Test
-    void should_configure_cache_messages_automatically_via_default_request_parameters() throws Exception {
+    void should_configure_cache_automatically_via_default_request_parameters() throws Exception {
         AnthropicChatModel model = modelBuilder()
                 .defaultRequestParameters(AnthropicChatRequestParameters.builder()
-                        .cacheMessagesAutomatically(true)
+                        .cacheAutomatically(true)
                         .build())
                 .build();
 
@@ -141,7 +141,7 @@ class AnthropicPromptCachingTest {
     }
 
     @Test
-    void should_send_cache_messages_automatically_and_cache_ttl_from_streaming_model() throws Exception {
+    void should_send_cache_automatically_and_cache_ttl_from_streaming_model() throws Exception {
         MockHttpClient streamingHttpClient = MockHttpClient.thatAlwaysResponds(List.of(
                 new ServerSentEvent(
                         "message_start",
@@ -153,7 +153,7 @@ class AnthropicPromptCachingTest {
                 .httpClientBuilder(new MockHttpClientBuilder(streamingHttpClient))
                 .apiKey("test-key")
                 .modelName("claude-opus-5-5")
-                .cacheMessagesAutomatically(true)
+                .cacheAutomatically(true)
                 .cacheTtl("1h")
                 .build();
 

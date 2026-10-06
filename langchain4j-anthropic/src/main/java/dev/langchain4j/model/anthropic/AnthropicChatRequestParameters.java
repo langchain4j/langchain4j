@@ -27,7 +27,7 @@ public class AnthropicChatRequestParameters extends DefaultChatRequestParameters
 
     private final Boolean cacheSystemMessages;
     private final Boolean cacheTools;
-    private final Boolean cacheMessagesAutomatically;
+    private final Boolean cacheAutomatically;
     private final String cacheTtl;
     private final String thinkingType;
     private final Integer thinkingBudgetTokens;
@@ -44,7 +44,7 @@ public class AnthropicChatRequestParameters extends DefaultChatRequestParameters
         super(builder);
         this.cacheSystemMessages = builder.cacheSystemMessages;
         this.cacheTools = builder.cacheTools;
-        this.cacheMessagesAutomatically = builder.cacheMessagesAutomatically;
+        this.cacheAutomatically = builder.cacheAutomatically;
         this.cacheTtl = builder.cacheTtl;
         this.thinkingType = builder.thinkingType;
         this.thinkingBudgetTokens = builder.thinkingBudgetTokens;
@@ -66,8 +66,8 @@ public class AnthropicChatRequestParameters extends DefaultChatRequestParameters
         return cacheTools;
     }
 
-    public Boolean cacheMessagesAutomatically() {
-        return cacheMessagesAutomatically;
+    public Boolean cacheAutomatically() {
+        return cacheAutomatically;
     }
 
     public String cacheTtl() {
@@ -156,7 +156,7 @@ public class AnthropicChatRequestParameters extends DefaultChatRequestParameters
         AnthropicChatRequestParameters that = (AnthropicChatRequestParameters) o;
         return Objects.equals(cacheSystemMessages, that.cacheSystemMessages)
                 && Objects.equals(cacheTools, that.cacheTools)
-                && Objects.equals(cacheMessagesAutomatically, that.cacheMessagesAutomatically)
+                && Objects.equals(cacheAutomatically, that.cacheAutomatically)
                 && Objects.equals(cacheTtl, that.cacheTtl)
                 && Objects.equals(thinkingType, that.thinkingType)
                 && Objects.equals(thinkingBudgetTokens, that.thinkingBudgetTokens)
@@ -176,7 +176,7 @@ public class AnthropicChatRequestParameters extends DefaultChatRequestParameters
                 super.hashCode(),
                 cacheSystemMessages,
                 cacheTools,
-                cacheMessagesAutomatically,
+                cacheAutomatically,
                 cacheTtl,
                 thinkingType,
                 thinkingBudgetTokens,
@@ -206,7 +206,7 @@ public class AnthropicChatRequestParameters extends DefaultChatRequestParameters
                 + ", responseFormat=" + responseFormat()
                 + ", cacheSystemMessages=" + cacheSystemMessages
                 + ", cacheTools=" + cacheTools
-                + ", cacheMessagesAutomatically=" + cacheMessagesAutomatically
+                + ", cacheAutomatically=" + cacheAutomatically
                 + ", cacheTtl=" + cacheTtl
                 + ", thinkingType=" + thinkingType
                 + ", thinkingBudgetTokens=" + thinkingBudgetTokens
@@ -233,7 +233,7 @@ public class AnthropicChatRequestParameters extends DefaultChatRequestParameters
 
         private Boolean cacheSystemMessages;
         private Boolean cacheTools;
-        private Boolean cacheMessagesAutomatically;
+        private Boolean cacheAutomatically;
         private String cacheTtl;
         private String thinkingType;
         private Integer thinkingBudgetTokens;
@@ -252,7 +252,7 @@ public class AnthropicChatRequestParameters extends DefaultChatRequestParameters
             if (parameters instanceof AnthropicChatRequestParameters anthropicParameters) {
                 cacheSystemMessages(getOrDefault(anthropicParameters.cacheSystemMessages(), cacheSystemMessages));
                 cacheTools(getOrDefault(anthropicParameters.cacheTools(), cacheTools));
-                cacheMessagesAutomatically(getOrDefault(anthropicParameters.cacheMessagesAutomatically(), cacheMessagesAutomatically));
+                cacheAutomatically(getOrDefault(anthropicParameters.cacheAutomatically(), cacheAutomatically));
                 cacheTtl(getOrDefault(anthropicParameters.cacheTtl(), cacheTtl));
                 thinkingType(getOrDefault(anthropicParameters.thinkingType(), thinkingType));
                 thinkingBudgetTokens(getOrDefault(anthropicParameters.thinkingBudgetTokens(), thinkingBudgetTokens));
@@ -286,10 +286,10 @@ public class AnthropicChatRequestParameters extends DefaultChatRequestParameters
         }
 
         /**
-         * See {@link AnthropicChatModel.AnthropicChatModelBuilder#cacheMessagesAutomatically(Boolean)}.
+         * See {@link AnthropicChatModel.AnthropicChatModelBuilder#cacheAutomatically(Boolean)}.
          */
-        public Builder cacheMessagesAutomatically(Boolean cacheMessagesAutomatically) {
-            this.cacheMessagesAutomatically = cacheMessagesAutomatically;
+        public Builder cacheAutomatically(Boolean cacheAutomatically) {
+            this.cacheAutomatically = cacheAutomatically;
             return this;
         }
 

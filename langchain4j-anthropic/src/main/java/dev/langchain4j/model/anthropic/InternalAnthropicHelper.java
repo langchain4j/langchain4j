@@ -115,7 +115,7 @@ class InternalAnthropicHelper {
             boolean midConversationSystemMessages,
             AnthropicCacheType cacheType,
             AnthropicCacheType toolsCacheType,
-            boolean cacheMessagesAutomatically,
+            boolean cacheAutomatically,
             String cacheTtl,
             boolean stream,
             String toolChoiceName,
@@ -168,7 +168,7 @@ class InternalAnthropicHelper {
         requestBuilder.toolChoice(
                 resolveToolChoice(chatRequest, toolChoiceName, disableParallelToolUse, !tools.isEmpty()));
 
-        if (cacheMessagesAutomatically) {
+        if (cacheAutomatically) {
             requestBuilder.cacheControl(AnthropicCacheType.EPHEMERAL.cacheControl(cacheTtl));
         }
 

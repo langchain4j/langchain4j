@@ -135,7 +135,7 @@ public class AnthropicChatModel implements ChatModel {
                 .responseFormat(getOrDefault(builder.responseFormat, commonParameters.responseFormat()))
                 .cacheSystemMessages(getOrDefault(builder.cacheSystemMessages, anthropicDefaults.cacheSystemMessages()))
                 .cacheTools(getOrDefault(builder.cacheTools, anthropicDefaults.cacheTools()))
-                .cacheMessagesAutomatically(getOrDefault(builder.cacheMessagesAutomatically, anthropicDefaults.cacheMessagesAutomatically()))
+                .cacheAutomatically(getOrDefault(builder.cacheAutomatically, anthropicDefaults.cacheAutomatically()))
                 .cacheTtl(getOrDefault(builder.cacheTtl, anthropicDefaults.cacheTtl()))
                 .thinkingType(getOrDefault(builder.thinkingType, anthropicDefaults.thinkingType()))
                 .thinkingBudgetTokens(
@@ -183,7 +183,7 @@ public class AnthropicChatModel implements ChatModel {
         private List<AnthropicSkill> skills;
         private Boolean cacheSystemMessages;
         private Boolean cacheTools;
-        private Boolean cacheMessagesAutomatically;
+        private Boolean cacheAutomatically;
         private String cacheTtl;
         private String thinkingType;
         private Integer thinkingBudgetTokens;
@@ -532,8 +532,11 @@ public class AnthropicChatModel implements ChatModel {
         /**
          * Enables prompt caching for {@link SystemMessage}s.
          * <p>
-         * When {@code true}, system messages are sent with the {@code cache_control} header to allow
-         * Anthropic to cache them across requests, reducing cost and latency for repeated prompts.
+         * When {@code true}, the last system message is marked with {@code cache_control}, so that Anthropic caches
+         * the tools and system messages across requests, reducing cost and latency for repeated prompts.
+         * It works for any kind of usage, including independent calls without chat memory.
+         * To also cache a conversation whose history grows from one request to the next,
+         * enable {@code cacheAutomatically} as well.
          * See the <a href="https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching">prompt caching docs</a>.
          *
          * @param cacheSystemMessages whether to cache system messages
@@ -547,8 +550,10 @@ public class AnthropicChatModel implements ChatModel {
         /**
          * Enables prompt caching for {@link ToolSpecification}s.
          * <p>
-         * When {@code true}, tool definitions are sent with the {@code cache_control} header to allow
-         * Anthropic to cache them across requests.
+         * When {@code true}, the last tool definition is marked with {@code cache_control}, so that Anthropic caches
+         * the tool definitions across requests.
+         * To also cache a conversation whose history grows from one request to the next,
+         * enable {@code cacheAutomatically} as well.
          * See the <a href="https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching">prompt caching docs</a>.
          *
          * @param cacheTools whether to cache tool definitions
@@ -565,12 +570,16 @@ public class AnthropicChatModel implements ChatModel {
          * When {@code true}, Anthropic places a cache breakpoint on the last cacheable block of each request
          * and moves it forward as the conversation grows, so that every request reads the whole previous
          * conversation (tools, system messages and earlier messages) from the cache instead of processing it again.
-         * This is the simplest way to cache multi-turn conversations, AI Service tool-calling loops and agents,
-         * because no message has to be marked for caching by hand.
+         * No message has to be marked for caching by hand, so it also works for AI Services and agents.
          * <p>
-         * The cache is only read while the beginning of the conversation stays the same. When it changes
-         * (for example, when a chat memory evicts old messages), enable {@code cacheSystemMessages} and
-         * {@code cacheTools} as well, to keep the system messages and tools cached.
+         * It only pays off when each request starts with everything the previous request sent, for example when
+         * an AI Service or an agent calls tools in a loop, or in a chat whose memory still holds all previous
+         * messages. When the beginning of the conversation changes on every request (for example, when a chat
+         * memory evicts old messages on every turn, or for independent calls without chat memory), every request
+         * pays the cache write price and nothing is read back, which costs more than not caching at all.
+         * <p>
+         * When enabling it, enable {@code cacheSystemMessages} and {@code cacheTools} as well, to keep the system
+         * messages and tools cached even when the beginning of the conversation changes.
          * Each of these options, as well as each message marked with the {@code cache_control} attribute,
          * uses one of the 4 cache breakpoints Anthropic allows per request; a request with more is rejected.
          * <p>
@@ -582,11 +591,11 @@ public class AnthropicChatModel implements ChatModel {
          * Prompts shorter than the model-specific minimum are not cached. Disabled by default.
          * See the <a href="https://platform.claude.com/docs/en/build-with-claude/prompt-caching">prompt caching docs</a>.
          *
-         * @param cacheMessagesAutomatically whether to enable automatic caching of the conversation
+         * @param cacheAutomatically whether to enable automatic caching of the conversation
          * @return {@code this}
          */
-        public AnthropicChatModelBuilder cacheMessagesAutomatically(Boolean cacheMessagesAutomatically) {
-            this.cacheMessagesAutomatically = cacheMessagesAutomatically;
+        public AnthropicChatModelBuilder cacheAutomatically(Boolean cacheAutomatically) {
+            this.cacheAutomatically = cacheAutomatically;
             return this;
         }
 
@@ -952,7 +961,7 @@ public class AnthropicChatModel implements ChatModel {
                 getOrDefault(parameters.midConversationSystemMessages(), false),
                 getOrDefault(parameters.cacheSystemMessages(), false) ? EPHEMERAL : NO_CACHE,
                 getOrDefault(parameters.cacheTools(), false) ? EPHEMERAL : NO_CACHE,
-                getOrDefault(parameters.cacheMessagesAutomatically(), false),
+                getOrDefault(parameters.cacheAutomatically(), false),
                 parameters.cacheTtl(),
                 false,
                 parameters.toolChoiceName(),

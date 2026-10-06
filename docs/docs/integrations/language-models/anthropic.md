@@ -51,7 +51,7 @@ AnthropicChatModel model = AnthropicChatModel.builder()
     .toolMetadataKeysToSend(...)
     .cacheSystemMessages(...)
     .cacheTools(...)
-    .cacheMessagesAutomatically(...)
+    .cacheAutomatically(...)
     .cacheTtl(...)
     .returnCacheDiagnostics(...)
     .thinkingType(...)
@@ -75,7 +75,7 @@ See the description of some of the parameters above [here](https://docs.anthropi
 
 ### Per-Request Parameters
 
-The Anthropic-specific options shown above (`cacheSystemMessages`, `cacheTools`, `cacheMessagesAutomatically`,
+The Anthropic-specific options shown above (`cacheSystemMessages`, `cacheTools`, `cacheAutomatically`,
 `cacheTtl`, `returnCacheDiagnostics`,
 `thinkingType`, `thinkingBudgetTokens`, `sendThinking`, `returnThinking`, `midConversationSystemMessages`,
 `toolChoiceName`, `disableParallelToolUse` and `userId`), as well as `previousMessageId` (request-only, see
@@ -554,8 +554,17 @@ tools) prevents a cache hit for everything that comes after it. Prompts shorter 
 [model-specific minimum](https://platform.claude.com/docs/en/build-with-claude/prompt-caching)
 (between 512 and 4,096 tokens) are not cached.
 
+Which options to use:
+
+- Enable `cacheSystemMessages` and `cacheTools` whenever the system messages and tools stay the same between
+  requests. They pay off for any kind of usage, including independent calls without chat memory.
+- Additionally enable `cacheAutomatically` (see [Automatic Caching](#automatic-caching)) when the conversation history
+  is kept and grows from one request to the next, for example when an AI Service or an agent calls tools in a loop.
+  Do not enable it when the beginning of the conversation changes on every request, for example when the chat memory
+  evicts old messages on every turn, or for independent calls without chat memory: it then costs more than it saves.
+
 Anthropic allows at most 4 cache breakpoints per request. `cacheSystemMessages`, `cacheTools` and
-`cacheMessagesAutomatically` use one each, and so does every message marked with the `cache_control` attribute.
+`cacheAutomatically` use one each, and so does every message marked with the `cache_control` attribute.
 A request with more breakpoints is rejected by Anthropic.
 
 Cached content is stored by Anthropic for the duration of the [cache TTL](#cache-ttl) and is not shared with other
@@ -570,13 +579,22 @@ More info on caching can be found [here](https://platform.claude.com/docs/en/bui
 
 ### Automatic Caching
 
-The simplest way to cache a conversation is to enable `cacheMessagesAutomatically`.
-Anthropic then places the cache breakpoint on the last block of each request and moves it forward as the
-conversation grows, so that every request reads everything sent before from the cache.
-Messages do not need to be marked for caching one by one, which makes this option a good fit for
-[AI Services](/tutorials/ai-services) and [agents](/tutorials/agents), where messages are created by LangChain4j.
+When `cacheAutomatically` is enabled, Anthropic places the cache breakpoint on the last block of each request and
+moves it forward as the conversation grows, so that each request reads everything sent before it from the cache.
+No message needs to be marked for caching by hand, which also makes it work for [AI Services](/tutorials/ai-services)
+and [agents](/tutorials/agents), where messages are created by LangChain4j.
 
-For AI Services and agents, it is recommended to enable it together with `cacheSystemMessages` and `cacheTools`:
+Automatic caching only pays off when each request starts with everything the previous request sent:
+
+- **Use it** when the conversation history is kept and grows, for example when an AI Service or an agent calls tools
+  in a loop, or in a chat whose memory still holds all previous messages.
+- **Do not use it** when the beginning of the conversation changes on every request, for example when the chat memory
+  evicts old messages on every turn, or for independent calls without chat memory. Each request then pays the
+  cache write price for the whole prompt, and nothing is read back, which costs more than not caching at all.
+  In these cases, cache only system messages and tools (see below).
+
+When using automatic caching, enable `cacheSystemMessages` and `cacheTools` as well: they keep system messages and
+tools cached even when the beginning of the conversation changes.
 
 ```java
 ChatModel model = AnthropicChatModel.builder()
@@ -584,19 +602,14 @@ ChatModel model = AnthropicChatModel.builder()
     .modelName("claude-opus-5-5")
     .cacheSystemMessages(true)
     .cacheTools(true)
-    .cacheMessagesAutomatically(true)
+    .cacheAutomatically(true)
     .build();
 
 Assistant assistant = AiServices.builder(Assistant.class)
     .chatModel(model)
     .tools(new MyTools())
-    .chatMemory(MessageWindowChatMemory.withMaxMessages(20))
     .build();
 ```
-
-`cacheMessagesAutomatically` caches the conversation as it grows, while `cacheSystemMessages` and `cacheTools` keep the
-system messages and tools cached even when the beginning of the conversation changes, for example when the chat
-memory evicts old messages.
 
 Automatic caching is sent as a top-level `cache_control` field of the request. Anthropic-compatible gateways and
 proxies that do not support this field, as well as the legacy Amazon Bedrock integration, may reject the request or
@@ -649,7 +662,7 @@ after 20 minutes, or [batch processing](#batch-api)), the cache can be kept for 
 ChatModel model = AnthropicChatModel.builder()
     .apiKey(System.getenv("ANTHROPIC_API_KEY"))
     .modelName("claude-opus-5-5")
-    .cacheMessagesAutomatically(true)
+    .cacheAutomatically(true)
     .cacheTtl("1h") // "5m" by default
     .build();
 ```

@@ -313,7 +313,7 @@ class AnthropicBatchChatModelTest {
                 .apiKey("test-key")
                 .modelName("claude-haiku-4-5-20251001")
                 .defaultRequestParameters(AnthropicChatRequestParameters.builder()
-                        .cacheMessagesAutomatically(true)
+                        .cacheAutomatically(true)
                         .cacheTtl("1h")
                         .build())
                 .build();

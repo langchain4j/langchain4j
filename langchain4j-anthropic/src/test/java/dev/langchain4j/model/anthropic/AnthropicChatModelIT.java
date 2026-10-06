@@ -133,14 +133,14 @@ class AnthropicChatModelIT {
     @ParameterizedTest
     @NullSource
     @ValueSource(strings = {"5m", "1h"})
-    void should_cache_messages_automatically(String cacheTtl) {
+    void should_cache_automatically(String cacheTtl) {
 
         // given
         ChatModel model = AnthropicChatModel.builder()
                 .baseUrl(null) // caching test requires no other caching
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_HAIKU_4_5_20251001)
-                .cacheMessagesAutomatically(true)
+                .cacheAutomatically(true)
                 .cacheTtl(cacheTtl)
                 .logRequests(true)
                 .logResponses(true)
@@ -177,7 +177,7 @@ class AnthropicChatModelIT {
                 .modelName(CLAUDE_HAIKU_4_5_20251001)
                 .cacheSystemMessages(true)
                 .cacheTools(true)
-                .cacheMessagesAutomatically(true)
+                .cacheAutomatically(true)
                 .cacheTtl("1h")
                 .logRequests(true)
                 .logResponses(true)
