@@ -32,10 +32,13 @@ import java.time.Duration;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.NullSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 @EnabledIfEnvironmentVariable(named = "ANTHROPIC_API_KEY", matches = ".+")
 class AnthropicChatModelIT {
@@ -125,6 +128,83 @@ class AnthropicChatModelIT {
         AnthropicTokenUsage readCacheTokenUsage = (AnthropicTokenUsage) response2.tokenUsage();
         assertThat(readCacheTokenUsage.cacheCreationInputTokens()).isEqualTo(0);
         assertThat(readCacheTokenUsage.cacheReadInputTokens()).isGreaterThan(0);
+    }
+
+    @ParameterizedTest
+    @NullSource
+    @ValueSource(strings = {"5m", "1h"})
+    void should_cache_automatically(String cacheTtl) {
+
+        // given
+        ChatModel model = AnthropicChatModel.builder()
+                .baseUrl(null) // caching test requires no other caching
+                .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+                .modelName(CLAUDE_HAIKU_4_5_20251001)
+                .cacheAutomatically(true)
+                .cacheTtl(cacheTtl)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        UserMessage userMessage1 = UserMessage.from(
+                "What types of messages are supported in LangChain?".repeat(350) + UUID.randomUUID());
+
+        // when
+        ChatResponse response1 = model.chat(userMessage1);
+
+        // then
+        AnthropicTokenUsage tokenUsage1 = (AnthropicTokenUsage) response1.tokenUsage();
+        assertThat(tokenUsage1.cacheCreationInputTokens()).isGreaterThan(0);
+        assertThat(tokenUsage1.cacheReadInputTokens()).isEqualTo(0);
+
+        // when
+        ChatResponse response2 =
+                model.chat(userMessage1, response1.aiMessage(), UserMessage.from("Answer in one sentence."));
+
+        // then
+        AnthropicTokenUsage tokenUsage2 = (AnthropicTokenUsage) response2.tokenUsage();
+        assertThat(tokenUsage2.cacheReadInputTokens()).isEqualTo(tokenUsage1.cacheCreationInputTokens());
+        assertThat(tokenUsage2.cacheCreationInputTokens()).isGreaterThan(0); // the new messages
+    }
+
+    @Test
+    void should_cache_system_messages_tools_and_messages_with_1h_ttl() {
+
+        // given
+        ChatModel model = AnthropicChatModel.builder()
+                .baseUrl(null) // caching test requires no other caching
+                .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+                .modelName(CLAUDE_HAIKU_4_5_20251001)
+                .cacheSystemMessages(true)
+                .cacheTools(true)
+                .cacheAutomatically(true)
+                .cacheTtl("1h")
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        UserMessage markedUserMessage = UserMessage.from("What types of messages are supported in LangChain?");
+        markedUserMessage.attributes().put("cache_control", "ephemeral");
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(
+                        SystemMessage.from(
+                                "What types of messages are supported in LangChain?".repeat(350) + UUID.randomUUID()),
+                        markedUserMessage,
+                        AiMessage.from("SystemMessage, UserMessage, AiMessage and ToolExecutionResultMessage."),
+                        UserMessage.from("Which one is used for tool results?"))
+                .toolSpecifications(ToolSpecification.builder()
+                        .name("get_message_types")
+                        .description("Returns the message types supported by LangChain")
+                        .build())
+                .build();
+
+        // when
+        ChatResponse response = model.chat(chatRequest);
+
+        // then all 4 cache breakpoints (system, tools, marked message, automatic on the last message) are accepted
+        AnthropicTokenUsage tokenUsage = (AnthropicTokenUsage) response.tokenUsage();
+        assertThat(tokenUsage.cacheCreationInputTokens()).isGreaterThan(0);
     }
 
     @Test

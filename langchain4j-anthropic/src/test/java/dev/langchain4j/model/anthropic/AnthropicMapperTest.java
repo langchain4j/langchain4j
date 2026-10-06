@@ -34,6 +34,7 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicCacheControl;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCacheMissReason;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCacheType;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicContent;
@@ -48,6 +49,7 @@ import dev.langchain4j.model.anthropic.internal.api.AnthropicTool;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicToolResultContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicToolSchema;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicToolUseContent;
+import dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonReferenceSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
@@ -55,6 +57,7 @@ import java.net.URI;
 import java.util.AbstractMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
@@ -1165,6 +1168,96 @@ class AnthropicMapperTest {
     @SafeVarargs
     private static <K, V> Map<K, V> mapOf(Map.Entry<K, V>... entries) {
         return Stream.of(entries).collect(toMap(Map.Entry::getKey, Map.Entry::getValue));
+    }
+
+    @ParameterizedTest
+    @MethodSource("messagesMarkedForCaching")
+    void should_apply_cache_ttl_to_message_marked_for_caching(ChatMessage message) {
+        // when
+        List<AnthropicMessage> anthropicMessages = toAnthropicMessages(singletonList(message), false, false, "1h");
+
+        // then
+        List<AnthropicCacheControl> cacheControls = anthropicMessages.get(0).content.stream()
+                .map(content -> content.cacheControl)
+                .filter(Objects::nonNull)
+                .toList();
+        assertThat(cacheControls).hasSize(1);
+        assertThat(cacheControls.get(0).getType()).isEqualTo("ephemeral");
+        assertThat(cacheControls.get(0).getTtl()).isEqualTo("1h");
+    }
+
+    static Stream<ChatMessage> messagesMarkedForCaching() {
+        Map<String, Object> cacheControl = singletonMap("cache_control", "ephemeral");
+        UserMessage userText = UserMessage.from("Hello");
+        userText.attributes().putAll(cacheControl);
+        UserMessage userImage = UserMessage.from(ImageContent.from(Image.builder()
+                .base64Data("base64data")
+                .mimeType("image/jpeg")
+                .build()));
+        userImage.attributes().putAll(cacheControl);
+        UserMessage userPdf = UserMessage.from(PdfFileContent.from("base64data", "application/pdf"));
+        userPdf.attributes().putAll(cacheControl);
+        return Stream.of(
+                userText,
+                userImage,
+                userPdf,
+                AiMessage.builder().text("Hi").attributes(cacheControl).build(),
+                AiMessage.builder()
+                        .text("Let me check")
+                        .toolExecutionRequests(List.of(ToolExecutionRequest.builder()
+                                .id("12345")
+                                .name("weather")
+                                .arguments("{}")
+                                .build()))
+                        .attributes(cacheControl)
+                        .build(),
+                ToolExecutionResultMessage.builder()
+                        .id("12345")
+                        .toolName("weather")
+                        .text("sunny")
+                        .attributes(cacheControl)
+                        .build(),
+                ToolExecutionResultMessage.builder()
+                        .id("12345")
+                        .toolName("weather")
+                        .contents(TextContent.from("here is the map"), ImageContent.from(DICE_IMAGE_URL))
+                        .attributes(cacheControl)
+                        .build());
+    }
+
+    @Test
+    void should_apply_cache_ttl_to_last_system_message_and_last_tool() {
+        // when
+        List<AnthropicTextContent> systemPrompt = toAnthropicSystemPrompt(
+                List.of(SystemMessage.from("one"), SystemMessage.from("two")), AnthropicCacheType.EPHEMERAL, false, "1h");
+        List<AnthropicTool> tools = AnthropicMapper.toAnthropicTools(
+                List.of(
+                        ToolSpecification.builder().name("one").build(),
+                        ToolSpecification.builder().name("two").build()),
+                AnthropicCacheType.EPHEMERAL,
+                Set.of(),
+                null,
+                "1h");
+
+        // then
+        assertThat(systemPrompt.get(0).cacheControl).isNull();
+        assertThat(systemPrompt.get(1).cacheControl.getTtl()).isEqualTo("1h");
+        assertThat(tools.get(0).cacheControl).isNull();
+        assertThat(tools.get(1).cacheControl.getTtl()).isEqualTo("1h");
+    }
+
+    @Test
+    void should_not_send_ttl_when_cache_ttl_is_not_set() {
+        // given
+        UserMessage userMessage = UserMessage.from("Hello");
+        userMessage.attributes().put("cache_control", "ephemeral");
+
+        // when
+        List<AnthropicMessage> anthropicMessages = toAnthropicMessages(singletonList(userMessage), false, false, null);
+
+        // then
+        assertThat(anthropicMessages.get(0).content.get(0).cacheControl.getTtl())
+                .isNull();
     }
 
     private static <K, V> Map.Entry<K, V> entry(K key, V value) {
