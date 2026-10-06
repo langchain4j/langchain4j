@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
@@ -550,12 +551,14 @@ public class DefaultMcpClientTest {
     @Test
     public void cancelling_async_tool_future_cancels_transport_request() {
         McpTransport transport = getMinimalMcpTransportMock();
+        McpClientListener listener = mock(McpClientListener.class);
         CompletableFuture<JsonNode> transportFuture = new CompletableFuture<>();
         when(transport.executeOperationWithResponse(any(McpCallContext.class))).thenReturn(transportFuture);
 
         DefaultMcpClient client = new DefaultMcpClient.Builder()
                 .transport(transport)
                 .protocolVersion("2025-11-25")
+                .listener(listener)
                 .toolExecutionTimeout(java.time.Duration.ofSeconds(30))
                 .build();
 
@@ -578,17 +581,25 @@ public class DefaultMcpClientTest {
         McpCancellationParams params = (McpCancellationParams) cancellation.getParams();
         assertThat(params.getRequestId()).isEqualTo(requestId);
         assertThat(params.getReason()).isEqualTo("Cancelled");
+        McpCallContext context = requestCaptor.getValue();
+        verify(listener).beforeExecuteTool(same(context));
+        ArgumentCaptor<Throwable> errorCaptor = ArgumentCaptor.forClass(Throwable.class);
+        verify(listener).onExecuteToolError(same(context), errorCaptor.capture());
+        assertThat(errorCaptor.getValue()).isInstanceOf(CancellationException.class);
+        verify(listener, never()).afterExecuteTool(any(), any(), any());
     }
 
     @Test
     public void async_tool_execution_cancelled_by_server_fails_with_cancellation_exception() {
         McpTransport transport = getMinimalMcpTransportMock();
+        McpClientListener listener = mock(McpClientListener.class);
         CompletableFuture<JsonNode> transportFuture = new CompletableFuture<>();
         when(transport.executeOperationWithResponse(any(McpCallContext.class))).thenReturn(transportFuture);
 
         DefaultMcpClient client = new DefaultMcpClient.Builder()
                 .transport(transport)
                 .protocolVersion("2025-11-25")
+                .listener(listener)
                 .toolExecutionTimeout(java.time.Duration.ofSeconds(30))
                 .build();
 
@@ -597,19 +608,34 @@ public class DefaultMcpClientTest {
         transportFuture.completeExceptionally(new CancellationException("cancelled by the server"));
 
         // same as the blocking executeTool(), which surfaces a server-side cancellation as CancellationException
-        assertThat(resultFuture.handle((result, error) -> unwrapCompletionException(error)).join())
+        assertThat(resultFuture
+                        .handle((result, error) -> unwrapCompletionException(error))
+                        .join())
                 .isInstanceOf(CancellationException.class)
                 .hasMessage("cancelled by the server");
+
+        ArgumentCaptor<McpCallContext> requestCaptor = ArgumentCaptor.forClass(McpCallContext.class);
+        verify(transport).executeOperationWithResponse(requestCaptor.capture());
+        McpCallContext context = requestCaptor.getValue();
+        verify(listener).beforeExecuteTool(same(context));
+        ArgumentCaptor<Throwable> errorCaptor = ArgumentCaptor.forClass(Throwable.class);
+        verify(listener).onExecuteToolError(same(context), errorCaptor.capture());
+        assertThat(errorCaptor.getValue())
+                .isInstanceOf(CancellationException.class)
+                .hasMessage("cancelled by the server");
+        verify(listener, never()).afterExecuteTool(any(), any(), any());
     }
 
     @Test
     public void cancelling_async_tool_future_does_not_send_notification_for_modern_http() {
         McpTransport transport = getModernHttpTransportMock();
+        McpClientListener listener = mock(McpClientListener.class);
 
         DefaultMcpClient client = new DefaultMcpClient.Builder()
                 .transport(transport)
                 .protocolVersion("2026-07-28")
                 .autoHealthCheck(false)
+                .listener(listener)
                 .toolExecutionTimeout(java.time.Duration.ofSeconds(30))
                 .build();
 
@@ -623,6 +649,50 @@ public class DefaultMcpClientTest {
         assertThat(resultFuture.isCancelled()).isTrue();
         assertThat(transportFuture.isCancelled()).isTrue();
         verify(transport, never()).sendMessage(any(McpCancellationNotification.class));
+        ArgumentCaptor<McpCallContext> contextCaptor = ArgumentCaptor.forClass(McpCallContext.class);
+        verify(listener).beforeExecuteTool(contextCaptor.capture());
+        ArgumentCaptor<Throwable> errorCaptor = ArgumentCaptor.forClass(Throwable.class);
+        verify(listener).onExecuteToolError(same(contextCaptor.getValue()), errorCaptor.capture());
+        assertThat(errorCaptor.getValue()).isInstanceOf(CancellationException.class);
+        verify(listener, never()).afterExecuteTool(any(), any(), any());
+    }
+
+    @Test
+    public void cancelling_async_tool_future_during_server_cancellation_notifies_listener_once() {
+        McpTransport transport = getMinimalMcpTransportMock();
+        McpClientListener listener = mock(McpClientListener.class);
+        CompletableFuture<JsonNode> transportFuture = new CompletableFuture<>();
+        when(transport.executeOperationWithResponse(any(McpCallContext.class))).thenReturn(transportFuture);
+
+        DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .protocolVersion("2025-11-25")
+                .listener(listener)
+                .toolExecutionTimeout(java.time.Duration.ofSeconds(30))
+                .build();
+
+        CompletableFuture<ToolExecutionResult> resultFuture = client.executeToolAsync(
+                ToolExecutionRequest.builder().name("test").arguments("{}").build(), null);
+        doAnswer(invocation -> {
+                    resultFuture.cancel(true);
+                    return null;
+                })
+                .when(listener)
+                .onExecuteToolError(any(), any());
+
+        transportFuture.completeExceptionally(new CancellationException("cancelled by the server"));
+
+        assertThat(resultFuture.isCancelled()).isTrue();
+        assertThat(transportFuture.isCancelled()).isTrue();
+        ArgumentCaptor<McpCallContext> contextCaptor = ArgumentCaptor.forClass(McpCallContext.class);
+        verify(listener).beforeExecuteTool(contextCaptor.capture());
+        ArgumentCaptor<Throwable> errorCaptor = ArgumentCaptor.forClass(Throwable.class);
+        verify(listener).onExecuteToolError(same(contextCaptor.getValue()), errorCaptor.capture());
+        assertThat(errorCaptor.getValue())
+                .isInstanceOf(CancellationException.class)
+                .hasMessage("cancelled by the server");
+        verify(listener, never()).afterExecuteTool(any(), any(), any());
+        verify(transport).sendMessage(any(McpCancellationNotification.class));
     }
 
     @Test

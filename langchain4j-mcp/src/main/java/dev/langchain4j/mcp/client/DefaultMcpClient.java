@@ -63,6 +63,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
@@ -797,13 +798,19 @@ public class DefaultMcpClient implements McpClient {
             return CompletableFuture.failedFuture(e);
         }
 
+        // Caller cancellation can race with a response handler that has already started.
+        AtomicBoolean completionHandled = new AtomicBoolean();
         CompletableFuture<ToolExecutionResult> handledFuture = resultFuture
                 .orTimeout(timeoutMillis, TimeUnit.MILLISECONDS)
                 .handle((result, error) -> {
                     pendingOperations.remove(operationId);
+                    if (!completionHandled.compareAndSet(false, true)) {
+                        throw new CancellationException();
+                    }
                     if (error != null) {
                         Throwable cause = unwrapCompletionException(error);
                         if (cause instanceof CancellationException) {
+                            notifyListeners(l -> l.onExecuteToolError(context, cause));
                             throw (CancellationException) cause;
                         }
                         if (cause instanceof TimeoutException timeout) {
@@ -816,9 +823,19 @@ public class DefaultMcpClient implements McpClient {
                 });
 
         handledFuture.whenComplete((result, error) -> {
-            if (handledFuture.isCancelled() && resultFuture.cancel(true)) {
-                pendingOperations.remove(operationId);
-                sendCancellationNotification(operationId, "Cancelled");
+            if (handledFuture.isCancelled()) {
+                boolean notifyCancellation = completionHandled.compareAndSet(false, true);
+                try {
+                    if (resultFuture.cancel(true)) {
+                        pendingOperations.remove(operationId);
+                        sendCancellationNotification(operationId, "Cancelled");
+                    }
+                } finally {
+                    if (notifyCancellation) {
+                        Throwable cause = unwrapCompletionException(error);
+                        notifyListeners(l -> l.onExecuteToolError(context, cause));
+                    }
+                }
             }
         });
         return handledFuture;
