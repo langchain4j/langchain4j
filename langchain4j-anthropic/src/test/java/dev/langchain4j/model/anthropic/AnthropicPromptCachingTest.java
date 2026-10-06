@@ -12,14 +12,11 @@ import dev.langchain4j.http.client.MockHttpClient;
 import dev.langchain4j.http.client.MockHttpClientBuilder;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
+import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
 import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
 
 class AnthropicPromptCachingTest {
@@ -128,16 +125,18 @@ class AnthropicPromptCachingTest {
     }
 
     @Test
-    void should_configure_cache_automatically_via_default_request_parameters() throws Exception {
+    void should_configure_cache_automatically_and_cache_ttl_via_default_request_parameters() throws Exception {
         AnthropicChatModel model = modelBuilder()
                 .defaultRequestParameters(AnthropicChatRequestParameters.builder()
                         .cacheAutomatically(true)
+                        .cacheTtl(AnthropicChatRequestParameters.CACHE_TTL_1H)
                         .build())
                 .build();
 
         model.chat(conversation());
 
-        assertThat(lastRequestBody().get("cache_control").toString()).isEqualTo("{\"type\":\"ephemeral\"}");
+        assertThat(lastRequestBody().get("cache_control").toString())
+                .isEqualTo("{\"type\":\"ephemeral\",\"ttl\":\"1h\"}");
     }
 
     @Test
@@ -154,22 +153,14 @@ class AnthropicPromptCachingTest {
                 .apiKey("test-key")
                 .modelName("claude-opus-5-5")
                 .cacheAutomatically(true)
-                .cacheTtl("1h")
+                .defaultRequestParameters(AnthropicChatRequestParameters.builder()
+                        .cacheTtl(AnthropicChatRequestParameters.CACHE_TTL_1H)
+                        .build())
                 .build();
 
-        CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
-        model.chat(conversation(), new StreamingChatResponseHandler() {
-            @Override
-            public void onCompleteResponse(ChatResponse completeResponse) {
-                futureResponse.complete(completeResponse);
-            }
-
-            @Override
-            public void onError(Throwable error) {
-                futureResponse.completeExceptionally(error);
-            }
-        });
-        assertThat(futureResponse.get(5, TimeUnit.SECONDS)).isNotNull();
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat(conversation(), handler);
+        assertThat(handler.get()).isNotNull();
 
         JsonNode body = OBJECT_MAPPER.readTree(streamingHttpClient.request().body());
         assertThat(body.get("cache_control").toString()).isEqualTo("{\"type\":\"ephemeral\",\"ttl\":\"1h\"}");

@@ -190,7 +190,9 @@ class AnthropicChatModelIT {
                 .messages(
                         SystemMessage.from(
                                 "What types of messages are supported in LangChain?".repeat(350) + UUID.randomUUID()),
-                        markedUserMessage)
+                        markedUserMessage,
+                        AiMessage.from("SystemMessage, UserMessage, AiMessage and ToolExecutionResultMessage."),
+                        UserMessage.from("Which one is used for tool results?"))
                 .toolSpecifications(ToolSpecification.builder()
                         .name("get_message_types")
                         .description("Returns the message types supported by LangChain")
@@ -200,7 +202,7 @@ class AnthropicChatModelIT {
         // when
         ChatResponse response = model.chat(chatRequest);
 
-        // then all 4 cache breakpoints are accepted
+        // then all 4 cache breakpoints (system, tools, marked message, automatic on the last message) are accepted
         AnthropicTokenUsage tokenUsage = (AnthropicTokenUsage) response.tokenUsage();
         assertThat(tokenUsage.cacheCreationInputTokens()).isGreaterThan(0);
     }

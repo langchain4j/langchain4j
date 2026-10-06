@@ -537,7 +537,7 @@ public class AnthropicChatModel implements ChatModel {
          * It works for any kind of usage, including independent calls without chat memory.
          * To also cache a conversation whose history grows from one request to the next,
          * enable {@code cacheAutomatically} as well.
-         * See the <a href="https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching">prompt caching docs</a>.
+         * See the <a href="https://platform.claude.com/docs/en/build-with-claude/prompt-caching">prompt caching docs</a>.
          *
          * @param cacheSystemMessages whether to cache system messages
          * @return {@code this}
@@ -554,7 +554,7 @@ public class AnthropicChatModel implements ChatModel {
          * the tool definitions across requests.
          * To also cache a conversation whose history grows from one request to the next,
          * enable {@code cacheAutomatically} as well.
-         * See the <a href="https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching">prompt caching docs</a>.
+         * See the <a href="https://platform.claude.com/docs/en/build-with-claude/prompt-caching">prompt caching docs</a>.
          *
          * @param cacheTools whether to cache tool definitions
          * @return {@code this}
@@ -575,8 +575,9 @@ public class AnthropicChatModel implements ChatModel {
          * It only pays off when each request starts with everything the previous request sent, for example when
          * an AI Service or an agent calls tools in a loop, or in a chat whose memory still holds all previous
          * messages. When the beginning of the conversation changes on every request (for example, when a chat
-         * memory evicts old messages on every turn, or for independent calls without chat memory), every request
-         * pays the cache write price and nothing is read back, which costs more than not caching at all.
+         * memory such as a full MessageWindowChatMemory evicts old messages on every turn, or for independent calls
+         * without chat memory), every request pays the cache write price and nothing is read back, which costs
+         * more than not caching at all.
          * <p>
          * When enabling it, enable {@code cacheSystemMessages} and {@code cacheTools} as well, to keep the system
          * messages and tools cached even when the beginning of the conversation changes.
