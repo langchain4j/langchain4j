@@ -129,6 +129,8 @@ public final class AnthropicBatchChatModel implements BatchChatModel {
                 .responseFormat(commonParameters.responseFormat())
                 .cacheSystemMessages(anthropicDefaults.cacheSystemMessages())
                 .cacheTools(anthropicDefaults.cacheTools())
+                .cacheMessagesAutomatically(anthropicDefaults.cacheMessagesAutomatically())
+                .cacheTtl(anthropicDefaults.cacheTtl())
                 .thinkingType(anthropicDefaults.thinkingType())
                 .thinkingBudgetTokens(anthropicDefaults.thinkingBudgetTokens())
                 .sendThinking(anthropicDefaults.sendThinking())
@@ -228,6 +230,8 @@ public final class AnthropicBatchChatModel implements BatchChatModel {
                 getOrDefault(parameters.cacheTools(), false)
                         ? AnthropicCacheType.EPHEMERAL
                         : AnthropicCacheType.NO_CACHE,
+                getOrDefault(parameters.cacheMessagesAutomatically(), false),
+                parameters.cacheTtl(),
                 false,
                 parameters.toolChoiceName(),
                 parameters.disableParallelToolUse(),

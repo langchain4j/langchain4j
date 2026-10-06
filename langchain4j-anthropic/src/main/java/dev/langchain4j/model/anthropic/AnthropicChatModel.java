@@ -135,6 +135,8 @@ public class AnthropicChatModel implements ChatModel {
                 .responseFormat(getOrDefault(builder.responseFormat, commonParameters.responseFormat()))
                 .cacheSystemMessages(getOrDefault(builder.cacheSystemMessages, anthropicDefaults.cacheSystemMessages()))
                 .cacheTools(getOrDefault(builder.cacheTools, anthropicDefaults.cacheTools()))
+                .cacheMessagesAutomatically(getOrDefault(builder.cacheMessagesAutomatically, anthropicDefaults.cacheMessagesAutomatically()))
+                .cacheTtl(getOrDefault(builder.cacheTtl, anthropicDefaults.cacheTtl()))
                 .thinkingType(getOrDefault(builder.thinkingType, anthropicDefaults.thinkingType()))
                 .thinkingBudgetTokens(
                         getOrDefault(builder.thinkingBudgetTokens, anthropicDefaults.thinkingBudgetTokens()))
@@ -181,6 +183,8 @@ public class AnthropicChatModel implements ChatModel {
         private List<AnthropicSkill> skills;
         private Boolean cacheSystemMessages;
         private Boolean cacheTools;
+        private Boolean cacheMessagesAutomatically;
+        private String cacheTtl;
         private String thinkingType;
         private Integer thinkingBudgetTokens;
         private String thinkingDisplay;
@@ -556,6 +560,59 @@ public class AnthropicChatModel implements ChatModel {
         }
 
         /**
+         * Enables automatic prompt caching of the conversation.
+         * <p>
+         * When {@code true}, Anthropic places a cache breakpoint on the last cacheable block of each request
+         * and moves it forward as the conversation grows, so that every request reads the whole previous
+         * conversation (tools, system messages and earlier messages) from the cache instead of processing it again.
+         * This is the simplest way to cache multi-turn conversations, AI Service tool-calling loops and agents,
+         * because no message has to be marked for caching by hand.
+         * <p>
+         * The cache is only read while the beginning of the conversation stays the same. When it changes
+         * (for example, when a chat memory evicts old messages), enable {@code cacheSystemMessages} and
+         * {@code cacheTools} as well, to keep the system messages and tools cached.
+         * Each of these options, as well as each message marked with the {@code cache_control} attribute,
+         * uses one of the 4 cache breakpoints Anthropic allows per request; a request with more is rejected.
+         * <p>
+         * This option is sent as a top-level {@code cache_control} field of the request. Anthropic-compatible
+         * gateways and proxies that do not support this field may reject the request or ignore the field.
+         * <p>
+         * Writing to the cache costs more than regular input tokens, and reading from it costs much less,
+         * so caching pays off when the same prefix is sent more than once within the cache TTL (see {@code cacheTtl}).
+         * Prompts shorter than the model-specific minimum are not cached. Disabled by default.
+         * See the <a href="https://platform.claude.com/docs/en/build-with-claude/prompt-caching">prompt caching docs</a>.
+         *
+         * @param cacheMessagesAutomatically whether to enable automatic caching of the conversation
+         * @return {@code this}
+         */
+        public AnthropicChatModelBuilder cacheMessagesAutomatically(Boolean cacheMessagesAutomatically) {
+            this.cacheMessagesAutomatically = cacheMessagesAutomatically;
+            return this;
+        }
+
+        /**
+         * Sets how long the cached prompt is kept: {@link AnthropicChatRequestParameters#CACHE_TTL_5M} (5 minutes,
+         * the default) or {@link AnthropicChatRequestParameters#CACHE_TTL_1H} (1 hour).
+         * <p>
+         * Applies to every cache breakpoint: system messages, tools, automatic conversation caching and
+         * messages marked with the {@code cache_control} attribute. It has no effect unless at least one of them
+         * is cached. The value is sent to Anthropic as is.
+         * Each cache hit refreshes the TTL, so {@code "5m"} is enough when requests sharing the same prefix are
+         * less than 5 minutes apart. Use {@code "1h"} when they are further apart (for example, a user replying
+         * after 20 minutes, or batch processing). Writing to the 1-hour cache costs more than writing to
+         * the 5-minute one.
+         * See the <a href="https://platform.claude.com/docs/en/build-with-claude/prompt-caching">prompt caching docs</a>.
+         *
+         * @param cacheTtl the cache TTL, {@link AnthropicChatRequestParameters#CACHE_TTL_5M} or
+         *                 {@link AnthropicChatRequestParameters#CACHE_TTL_1H}
+         * @return {@code this}
+         */
+        public AnthropicChatModelBuilder cacheTtl(String cacheTtl) {
+            this.cacheTtl = cacheTtl;
+            return this;
+        }
+
+        /**
          * Enables <a href="https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking">thinking</a>.
          */
         public AnthropicChatModelBuilder thinkingType(String thinkingType) {
@@ -895,6 +952,8 @@ public class AnthropicChatModel implements ChatModel {
                 getOrDefault(parameters.midConversationSystemMessages(), false),
                 getOrDefault(parameters.cacheSystemMessages(), false) ? EPHEMERAL : NO_CACHE,
                 getOrDefault(parameters.cacheTools(), false) ? EPHEMERAL : NO_CACHE,
+                getOrDefault(parameters.cacheMessagesAutomatically(), false),
+                parameters.cacheTtl(),
                 false,
                 parameters.toolChoiceName(),
                 parameters.disableParallelToolUse(),
