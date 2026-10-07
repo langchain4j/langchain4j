@@ -13,6 +13,8 @@ import dev.langchain4j.model.decision.request.ScaleQuestion;
 import dev.langchain4j.model.decision.request.YesNoQuestion;
 import dev.langchain4j.model.decision.response.ChoiceAnswer;
 import dev.langchain4j.model.decision.response.DecisionAnswer;
+import dev.langchain4j.model.decision.response.DecisionResponse;
+import dev.langchain4j.model.decision.response.RefusalAnswer;
 import dev.langchain4j.model.decision.response.ScaleAnswer;
 import dev.langchain4j.model.decision.response.YesNoAnswer;
 import java.time.Duration;
@@ -45,6 +47,20 @@ class DecisionResponseValidationTest {
                 Map.of("urgent", URGENT, "team", TEAM, "frustration", FRUSTRATION));
 
         assertThat(model.decide(REQUEST).choice("team").value()).isEqualTo("billing");
+    }
+
+    @Test
+    void should_accept_refusals_for_any_question_type() {
+
+        DecisionModelMock model = DecisionModelMock.thatAlwaysAnswers(Map.of(
+                "urgent", RefusalAnswer.of(), "team", RefusalAnswer.of(), "frustration", FRUSTRATION));
+
+        DecisionResponse response = model.decide(REQUEST);
+
+        assertThat(response.isRefused("urgent")).isTrue();
+        assertThat(response.isRefused("team")).isTrue();
+        assertThat(response.isRefused("frustration")).isFalse();
+        assertThat(response.scale("frustration").mean()).isEqualTo(1.2);
     }
 
     @Test

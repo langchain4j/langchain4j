@@ -4,6 +4,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
+import dev.langchain4j.data.message.Content;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -13,7 +14,7 @@ import java.util.Map;
 
 /**
  * Validates the input of a request and copies it into an immutable tree of maps, lists, strings, numbers, booleans
- * and {@code null}s.
+ * and {@code null}s, or into an immutable list of {@link Content}s.
  */
 final class FreeFormValue {
 
@@ -27,8 +28,18 @@ final class FreeFormValue {
         if (value instanceof Map<?, ?> map) {
             return copy(ensureNotEmpty(map, name), name);
         }
+        if (value instanceof List<?> list) {
+            ensureNotEmpty(list, name);
+            for (Object content : list) {
+                if (!(content instanceof Content)) {
+                    throw new IllegalArgumentException(name + " can only contain Contents, but contains "
+                            + (content == null ? "null" : content.getClass().getName()));
+                }
+            }
+            return List.copyOf(list);
+        }
         throw new IllegalArgumentException(
-                name + " must be a String or a Map, but was " + value.getClass().getName());
+                name + " must be a String, a Map or a List of Contents, but was " + value.getClass().getName());
     }
 
     private static Object copy(Object value, String name) {

@@ -162,6 +162,24 @@ ChoiceQuestion team = ChoiceQuestion.builder()
         .build();
 ```
 
+Write questions and descriptions around criteria that can be observed in the input, such as "mentions a charge"
+or "asks for a refund", rather than around intentions or feelings the model has to guess.
+
+If the input may fit none of the options, add an option for that case, for example
+`.option("other", "Anything else")`: otherwise the model has to choose one of the options that do not fit, and its
+probabilities look more confident than they are.
+
+Levels can be described the same way, in addition to their label:
+
+```java
+ScaleQuestion severity = ScaleQuestion.builder()
+        .text("How severe is the incident?")
+        .level("Minor", "No customer is affected")
+        .level("Major", "Some customers are affected")
+        .level("Critical", "No customer can use the product")
+        .build();
+```
+
 ## Describing the input (state)
 
 The input is either text or a `Map` of named values.
@@ -180,6 +198,23 @@ DecisionRequest request = DecisionRequest.builder()
 The values of the map can be strings, numbers, booleans, `null`s, maps and lists. Other objects are rejected,
 so that you decide which fields are sent to the model provider: convert them to a `Map` that holds only what the
 decision needs.
+
+### Images
+
+The input can also be a list of contents, such as text and images, if the decision model supports them
+(for example [OpenAI](/integrations/decision-models/open-ai)):
+
+```java
+DecisionRequest request = DecisionRequest.builder()
+        .input(List.of(
+                TextContent.from("The customer says the package arrived like this."),
+                ImageContent.from(base64Image, "image/jpeg")))
+        .question("damaged", YesNoQuestion.of("Is the item visibly damaged?"))
+        .build();
+```
+
+A decision model that does not support a kind of content throws `UnsupportedFeatureException` without calling
+the model.
 
 ## Probabilities and confidence
 
@@ -228,6 +263,22 @@ DecisionRequest request = DecisionRequest.builder()
 
 `decideAsync(request)` returns a `CompletableFuture<DecisionResponse>`.
 Implementations that do not support non-blocking calls return a future that fails with `AsyncNotSupportedException`.
+
+## Refusals
+
+A decision model can refuse to answer a question, for example because the input or the question goes against the
+usage policies of the provider. The answers to the other questions are still returned. Check
+`response.isRefused(name)` before reading an answer: reading a refused answer, for example with
+`response.yesNo(name)`, throws a `ContentFilteredException`. When a decision is used as a safety check, treat a
+refused answer as a failed check, as the [guardrails](#guardrails) do, rather than as a "no".
+
+```java
+if (response.isRefused("urgent")) {
+    escalateToHuman(ticket);
+} else if (response.yesNo("urgent").isYes(0.8)) {
+    notifyOnCallTeam(ticket);
+}
+```
 
 ## Other question types
 
@@ -423,6 +474,9 @@ requests fall back to what they would do without a decision model:
 | `DecisionModelToolSearchStrategy` | the tool search fails, and the LLM receives the error like for any tool | no |
 | `DecisionScoringModel` | the scoring fails | no |
 
+A question that the decision model [refuses to answer](#refusals) is handled the same way, except by the guardrails:
+a refused check fails, so the message is rejected. Decision Services throw a `ContentFilteredException`.
+
 Since these components call the decision model before the chat model, a slow decision model delays every request.
 Configure a short timeout and few retries on the decision model, so that the fallbacks apply quickly.
 
@@ -446,6 +500,10 @@ Configure a short timeout and few retries on the decision model, so that the fal
 - The answers are checked against the request, whatever the implementation: an answer that does not match it
   (a missing answer, an answer of the wrong type, an option that was not offered, or a scale answer outside the
   levels) throws `InvalidDecisionResponseException`.
+- Input that the decision model does not support, for example an image for a model that only reads text, throws
+  `UnsupportedFeatureException` before the model is called.
+- Reading the answer to a question that the model [refused](#refusals) throws `ContentFilteredException`.
+  `DecisionScoringModel` and Decision Services propagate it.
 - Errors of the provider (authentication, rate limits, timeouts, server errors) throw the corresponding
   `LangChain4jException` subclasses, such as `AuthenticationException`, `RateLimitException` or `TimeoutException`.
   Implementations usually retry transient errors (see their `maxRetries` setting), so a call can take several times

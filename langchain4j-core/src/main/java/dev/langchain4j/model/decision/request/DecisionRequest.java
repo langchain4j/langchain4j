@@ -7,7 +7,9 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.Experimental;
+import dev.langchain4j.data.message.Content;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -15,8 +17,10 @@ import java.util.Objects;
  * A request to a {@link dev.langchain4j.model.decision.DecisionModel}: the {@link #input()} to evaluate and the
  * named {@link #questions()} to answer about it.
  * <p>
- * The input is either plain text or a {@link java.util.Map} of named values (strings, numbers, booleans, maps and
- * lists), for example a support ticket together with the customer's plan.
+ * The input is plain text, a {@link java.util.Map} of named values (strings, numbers, booleans, maps and lists), for
+ * example a support ticket together with the customer's plan, or a list of {@link Content}s, for example text and
+ * images. Not every decision model supports every kind of input: a model that does not support it throws an
+ * {@link dev.langchain4j.exception.UnsupportedFeatureException}.
  * Every question is answered against the same input, and each answer is returned under the name of its question:
  * <pre>{@code
  * DecisionRequest request = DecisionRequest.builder()
@@ -48,7 +52,8 @@ public final class DecisionRequest {
     }
 
     /**
-     * The input to evaluate: a {@link String}, or an unmodifiable {@link java.util.Map} with {@link String} keys.
+     * The input to evaluate: a {@link String}, an unmodifiable {@link java.util.Map} with {@link String} keys, or an
+     * unmodifiable {@link List} of {@link Content}s.
      */
     public Object input() {
         return input;
@@ -122,6 +127,18 @@ public final class DecisionRequest {
          * Other objects are rejected: convert them to a {@link java.util.Map} that holds only what the decision needs.
          */
         public Builder input(Map<String, ?> input) {
+            this.input = input;
+            return this;
+        }
+
+        /**
+         * Sets the input to evaluate as a list of contents, for example a {@link dev.langchain4j.data.message.TextContent}
+         * and an {@link dev.langchain4j.data.message.ImageContent}. Which kinds of contents are supported depends on the
+         * decision model.
+         *
+         * @since 1.22.0
+         */
+        public Builder input(List<? extends Content> input) {
             this.input = input;
             return this;
         }
