@@ -79,7 +79,7 @@
         <tinylog.version>2.7.0</tinylog.version>
         <wiremock.version>3.13.2</wiremock.version>
         <hibernate.version>7.4.2.Final</hibernate.version>
-        <jsoup.version>1.23.1</jsoup.version>
+        <jsoup.version>1.23.2</jsoup.version>
     </properties>
 
     <dependencyManagement>

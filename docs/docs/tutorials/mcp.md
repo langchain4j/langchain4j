@@ -53,6 +53,11 @@ McpTransport transport = StdioMcpTransport.builder()
     .build();
 ```
 
+If the server needs to run in a particular project directory, configure
+`.workingDirectory(Path.of("/path/to/project"))` on the stdio transport builder.
+The directory applies to the server subprocess on both startup and restart. When
+omitted, the subprocess inherits the current process's working directory.
+
 For the Streamable HTTP transport, you need to provide a URL to the server's `POST` endpoint:
 
 ```java

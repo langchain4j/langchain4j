@@ -71,6 +71,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.IntStream;
 
 @Internal
 public class AnthropicMapper {
@@ -320,15 +321,15 @@ public class AnthropicMapper {
             }
         }
 
-        SystemMessage lastSystemMessage =
-                systemMessages.isEmpty() ? null : systemMessages.get(systemMessages.size() - 1);
-        return systemMessages.stream()
-                .map(message -> {
-                    boolean isLastItem = message.equals(lastSystemMessage);
+        int lastIndex = systemMessages.size() - 1;
+        return IntStream.range(0, systemMessages.size())
+                .mapToObj(i -> {
+                    String text = systemMessages.get(i).text();
+                    boolean isLastItem = i == lastIndex;
                     if (isLastItem && cacheType != AnthropicCacheType.NO_CACHE) {
-                        return new AnthropicTextContent(message.text(), cacheType.cacheControl(cacheTtl));
+                        return new AnthropicTextContent(text, cacheType.cacheControl(cacheTtl));
                     }
-                    return new AnthropicTextContent(message.text());
+                    return new AnthropicTextContent(text);
                 })
                 .toList();
     }
@@ -483,19 +484,21 @@ public class AnthropicMapper {
             Set<String> toolMetadataKeysToSend,
             Boolean strictTools,
             String cacheTtl) {
-        ToolSpecification lastToolSpecification =
-                toolSpecifications.isEmpty() ? null : toolSpecifications.get(toolSpecifications.size() - 1);
-        return toolSpecifications.stream()
-                .map(toolSpecification -> {
-                    boolean isLastItem = toolSpecification.equals(lastToolSpecification);
-                    if (isLastItem && cacheToolsPrompt != AnthropicCacheType.NO_CACHE) {
-                        return toAnthropicTool(
-                                toolSpecification, cacheToolsPrompt, toolMetadataKeysToSend, strictTools, cacheTtl);
-                    }
-                    return toAnthropicTool(
-                            toolSpecification, AnthropicCacheType.NO_CACHE, toolMetadataKeysToSend, strictTools);
-                })
-                .toList();
+        int lastIndex = toolSpecifications.size() - 1;
+        List<AnthropicTool> tools = new ArrayList<>(toolSpecifications.size());
+
+        for (int i = 0; i < toolSpecifications.size(); i++) {
+            ToolSpecification toolSpecification = toolSpecifications.get(i);
+            boolean isLastItem = i == lastIndex;
+            if (isLastItem && cacheToolsPrompt != AnthropicCacheType.NO_CACHE) {
+                tools.add(toAnthropicTool(
+                        toolSpecification, cacheToolsPrompt, toolMetadataKeysToSend, strictTools, cacheTtl));
+            } else {
+                tools.add(toAnthropicTool(
+                        toolSpecification, AnthropicCacheType.NO_CACHE, toolMetadataKeysToSend, strictTools));
+            }
+        }
+        return tools;
     }
 
     public static AnthropicTool toAnthropicTool(
