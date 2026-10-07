@@ -8,7 +8,7 @@ import dev.langchain4j.spi.json.JsonCodecFactory;
 
 import java.lang.reflect.Type;
 
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+import static dev.langchain4j.spi.ServiceHelper.loadFactory;
 
 /**
  * JSON helper class. It is supposed to be used by "tools" and "structured output" functionalities.
@@ -77,10 +77,8 @@ public class Json {
         // Substituted by quarkus-langchain4j for native image (@TargetClass/@Substitute in its
         // Substitutions), so this name and signature are depended on from outside despite being
         // private. Renaming it breaks that build with no compile error here.
-        for (JsonCodecFactory factory : loadFactories(JsonCodecFactory.class)) {
-            return factory.create();
-        }
-        return new JacksonJsonCodec();
+        JsonCodecFactory factory = loadFactory(JsonCodecFactory.class);
+        return factory != null ? factory.create() : new JacksonJsonCodec();
     }
 
     /**

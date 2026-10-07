@@ -8,6 +8,7 @@ import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.google.genai.types.Blob;
 import com.google.genai.types.Candidate;
 import com.google.genai.types.Content;
 import com.google.genai.types.FinishReason;
@@ -30,6 +31,7 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Base64;
@@ -1090,11 +1092,75 @@ class GoogleGenAiContentMapperTest {
         assertThat(result.aiMessage().text()).isEqualTo("Hello world Hi");
     }
 
+    @Test
+    void should_collect_a_generated_image_from_inline_data() {
+        byte[] pngBytes = "fake-png-bytes".getBytes(StandardCharsets.UTF_8);
+
+        ChatResponse result = GoogleGenAiContentMapper.toChatResponse(
+                responseWithParts(imagePart(pngBytes, "image/png")), "gemini-2.5-flash-image");
+
+        assertThat(result.aiMessage().images()).hasSize(1);
+        Image generatedImage = result.aiMessage().images().get(0);
+        assertThat(generatedImage.mimeType()).isEqualTo("image/png");
+        assertThat(generatedImage.base64Data()).isEqualTo(Base64.getEncoder().encodeToString(pngBytes));
+    }
+
+    @Test
+    void should_collect_every_generated_image_returned_in_one_response() {
+        ChatResponse result = GoogleGenAiContentMapper.toChatResponse(
+                responseWithParts(
+                        imagePart("first".getBytes(StandardCharsets.UTF_8), "image/png"),
+                        imagePart("second".getBytes(StandardCharsets.UTF_8), "image/jpeg")),
+                "gemini-2.5-flash-image");
+
+        assertThat(result.aiMessage().images()).hasSize(2);
+        assertThat(result.aiMessage().images().get(0).mimeType()).isEqualTo("image/png");
+        assertThat(result.aiMessage().images().get(1).mimeType()).isEqualTo("image/jpeg");
+    }
+
+    @Test
+    void should_keep_text_alongside_a_generated_image() {
+        ChatResponse result = GoogleGenAiContentMapper.toChatResponse(
+                responseWithParts(
+                        Part.builder().text("Here is your picture").build(),
+                        imagePart("bytes".getBytes(StandardCharsets.UTF_8), "image/png")),
+                "gemini-2.5-flash-image");
+
+        assertThat(result.aiMessage().text()).isEqualTo("Here is your picture");
+        assertThat(result.aiMessage().images()).hasSize(1);
+    }
+
+    @Test
+    void should_ignore_inline_data_that_is_not_an_image() {
+        ChatResponse result = GoogleGenAiContentMapper.toChatResponse(
+                responseWithParts(imagePart("audio-bytes".getBytes(StandardCharsets.UTF_8), "audio/mpeg")),
+                "gemini-2.5-flash-image");
+
+        assertThat(result.aiMessage().images()).isEmpty();
+    }
+
+    @Test
+    void should_ignore_inline_data_without_a_mime_type() {
+        Blob blob =
+                Blob.builder().data("bytes".getBytes(StandardCharsets.UTF_8)).build();
+
+        ChatResponse result = GoogleGenAiContentMapper.toChatResponse(
+                responseWithParts(Part.builder().inlineData(blob).build()), "gemini-2.5-flash-image");
+
+        assertThat(result.aiMessage().images()).isEmpty();
+    }
+
     private static GenerateContentResponse responseWithParts(Part... parts) {
         return GenerateContentResponse.builder()
                 .candidates(List.of(Candidate.builder()
                         .content(Content.builder().parts(parts).build())
                         .build()))
+                .build();
+    }
+
+    private static Part imagePart(byte[] data, String mimeType) {
+        return Part.builder()
+                .inlineData(Blob.builder().data(data).mimeType(mimeType).build())
                 .build();
     }
 

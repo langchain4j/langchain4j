@@ -31,7 +31,7 @@ For example, for OpenAI (`langchain4j-open-ai`):
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai-spring-boot4-starter</artifactId>
-    <version>1.20.1-beta30</version>
+    <version>1.21.0-beta31</version>
 </dependency>
 ```
 
@@ -40,7 +40,7 @@ For example, for OpenAI (`langchain4j-open-ai`):
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai-spring-boot-starter</artifactId>
-    <version>1.20.1-beta30</version>
+    <version>1.21.0-beta31</version>
 </dependency>
 ```
 
@@ -93,7 +93,7 @@ import `langchain4j-spring-boot4-starter` (Spring Boot 4) or `langchain4j-spring
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-spring-boot4-starter</artifactId>
-    <version>1.20.1-beta30</version>
+    <version>1.21.0-beta31</version>
 </dependency>
 ```
 
@@ -102,7 +102,7 @@ import `langchain4j-spring-boot4-starter` (Spring Boot 4) or `langchain4j-spring
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-spring-boot-starter</artifactId>
-    <version>1.20.1-beta30</version>
+    <version>1.21.0-beta31</version>
 </dependency>
 ```
 
@@ -146,6 +146,7 @@ The following components will be automatically wired into the AI Service if avai
 - `ContentRetriever`
 - `RetrievalAugmentor`
 - `ToolProvider`
+- `ToolExecutionErrorHandler` and `ToolArgumentsErrorHandler` (see [Error Handling](/tutorials/tools#error-handling))
 - All methods of any `@Component` or `@Service` class that are annotated with `@Tool`
 An example:
 ```java
@@ -303,12 +304,12 @@ For Maven:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-micrometer-metrics</artifactId>
-    <version>1.20.1-beta30</version>
+    <version>1.21.0-beta31</version>
 </dependency>
 ```
 For Gradle:
 ```gradle
-implementation 'dev.langchain4j:langchain4j-micrometer-metrics:1.20.1-beta30'
+implementation 'dev.langchain4j:langchain4j-micrometer-metrics:1.21.0-beta31'
 ```
 
 #### Micrometer (Actuator) Configuration

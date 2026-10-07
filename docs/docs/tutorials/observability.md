@@ -550,7 +550,8 @@ observedRetriever.retrieve(Query.from("my query"));
 
 The `langchain4j-micrometer-metrics` module provides a Micrometer-based metrics implementation for the LangChain4j library.
 Currently, it provides metrics for `ChatModel` and `StreamingChatModel` interactions
-using a `ChatModelListener` implementation that collects metrics via Micrometer's `MeterRegistry`.
+using a `ChatModelListener` implementation, and for `EmbeddingModel` interactions
+using an `EmbeddingModelListener` implementation that collects metrics via Micrometer's `MeterRegistry`.
 
 The naming of the metrics follows the [OpenTelemetry Semantic Conventions for Generative AI Metrics](https://opentelemetry.io/docs/specs/semconv/gen-ai/gen-ai-metrics/). (v1.39.0)
 
@@ -564,17 +565,18 @@ The following metrics are currently collected:
 
 | Metric Name | Type | Description                                                     |
 |-------------|------|-----------------------------------------------------------------|
-| `gen_ai.client.token.usage` | Histogram (DistributionSummary) | The number of input and output tokens used per **chat** model request |
+| `gen_ai.client.token.usage` | Histogram (DistributionSummary) | The number of input and output tokens used per **chat** model request, and the number of input tokens per **embedding** model request |
+| `gen_ai.client.operation.duration` | Timer | The duration of **embedding** model operations, recorded for both successful and failed calls |
 
 #### Tags on `gen_ai.client.token.usage`
 
 | Tag                     | Description | Example Values                              |
 |-------------------------|-------------|---------------------------------------------|
-| `gen_ai.operation.name` | The operation being performed | `chat`                                      |
+| `gen_ai.operation.name` | The operation being performed | `chat`, `embeddings`                        |
 | `gen_ai.provider.name`  | The AI provider name | `openai`, `azure.ai.inference`, `anthropic` |
-| `gen_ai.request.model`  | The model name from the request | `gpt-4`, `gpt-35-turbo`                     |
+| `gen_ai.request.model`  | The model name from the request | `gpt-4`, `gpt-35-turbo`, `text-embedding-3-small` |
 | `gen_ai.response.model` | The model name from the response | `gpt-4-0613`                                |
-| `gen_ai.token.type`     | The type of token counted | `input`, `output`                           |
+| `gen_ai.token.type`     | The type of token counted | `input`, `output` (embeddings record `input` only) |
 
 #### Creating the `MicrometerMetricsChatModelListener`
 
@@ -610,6 +612,54 @@ AzureOpenAiChatModel chatModel = AzureOpenAiChatModel.builder()
 ChatResponse response = chatModel.chat(ChatRequest.builder()
         .messages(UserMessage.from("Hello!"))
         .build());
+```
+
+#### Tags on `gen_ai.client.operation.duration` (embeddings)
+
+| Tag                     | Description | Example Values                              |
+|-------------------------|-------------|---------------------------------------------|
+| `gen_ai.operation.name` | The operation being performed | `embeddings`                                |
+| `gen_ai.provider.name`  | The AI provider name | `openai`, `ollama`                          |
+| `gen_ai.request.model`  | The model name from the request | `text-embedding-3-small`                    |
+| `gen_ai.response.model` | The model name from the response, `unknown` on failed calls | `text-embedding-3-small`, `unknown`         |
+| `outcome`               | Whether the call succeeded or failed | `SUCCESS`, `ERROR`                          |
+| `error.type`            | The class name of the exception, `none` on successful calls | `none`, `java.net.SocketTimeoutException` |
+
+#### Creating the `MicrometerMetricsEmbeddingModelListener`
+
+The `MicrometerMetricsEmbeddingModelListener` collects metrics for `EmbeddingModel` interactions.
+It records `gen_ai.client.token.usage` with `gen_ai.token.type = input` only, since an embedding
+call has no output tokens, and `gen_ai.client.operation.duration` for every call, success or
+failure.
+It requires a Micrometer's `MeterRegistry` to be instantiated.
+
+```java
+import dev.langchain4j.data.embedding.Embedding;
+import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.micrometer.metrics.listeners.MicrometerMetricsEmbeddingModelListener;
+import dev.langchain4j.model.openai.OpenAiEmbeddingModel;
+import dev.langchain4j.model.output.Response;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+
+import java.util.List;
+
+// Get the MeterRegistry
+MeterRegistry meterRegistry = new SimpleMeterRegistry();
+
+// 1. Create the listener with the MeterRegistry
+MicrometerMetricsEmbeddingModelListener listener =
+    new MicrometerMetricsEmbeddingModelListener(meterRegistry);
+
+// 2. Add the listener to your EmbeddingModel
+OpenAiEmbeddingModel embeddingModel = OpenAiEmbeddingModel.builder()
+        .apiKey(System.getenv("OPENAI_API_KEY"))
+        .modelName("text-embedding-3-small")
+        .listeners(List.of(listener))
+        .build();
+
+// 3. Use the embedding model as usual - metrics are collected automatically
+Response<List<Embedding>> embeddings = embeddingModel.embedAll(List.of(TextSegment.from("Hello!")));
 ```
 
 ## Micrometer Observation API

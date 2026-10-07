@@ -1,5 +1,6 @@
 package dev.langchain4j.model.google.genai;
 
+import static dev.langchain4j.data.message.AiMessage.GENERATED_IMAGES_KEY;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onUnmappedRawEvent;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -192,7 +193,7 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
 
                     if (aiMessage.attributes() != null
                             && !aiMessage.attributes().isEmpty()) {
-                        attributes.putAll(aiMessage.attributes());
+                        mergeAttributes(attributes, aiMessage.attributes());
                     }
 
                     if (aiMessage.thinking() != null && !aiMessage.thinking().isEmpty()) {
@@ -307,6 +308,27 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
 
     public static Builder builder() {
         return new Builder();
+    }
+
+    /**
+     * Copies the attributes of one chunk into the attributes accumulated so far. Generated images are
+     * concatenated rather than replaced, because each chunk carries its own images and the last chunk
+     * would otherwise discard the ones before it.
+     */
+    private static void mergeAttributes(Map<String, Object> accumulated, Map<String, Object> partial) {
+        partial.forEach((key, value) -> {
+            if (GENERATED_IMAGES_KEY.equals(key)) {
+                accumulated.merge(key, value, GoogleGenAiStreamingChatModel::concatenate);
+            } else {
+                accumulated.put(key, value);
+            }
+        });
+    }
+
+    private static Object concatenate(Object accumulated, Object added) {
+        List<Object> concatenated = new ArrayList<>((List<?>) accumulated);
+        concatenated.addAll((List<?>) added);
+        return concatenated;
     }
 
     public static class Builder {

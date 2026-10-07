@@ -1,6 +1,6 @@
 package dev.langchain4j.internal;
 
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+import static dev.langchain4j.spi.ServiceHelper.loadFactory;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.spi.json.ProviderJsonCodecFactory;
@@ -30,9 +30,7 @@ public final class ProviderJson {
     }
 
     private static Json.JsonCodec create(ProviderJsonSpec spec) {
-        for (ProviderJsonCodecFactory factory : loadFactories(ProviderJsonCodecFactory.class)) {
-            return factory.create(spec);
-        }
-        return new JacksonProviderJsonCodec(spec);
+        ProviderJsonCodecFactory factory = loadFactory(ProviderJsonCodecFactory.class);
+        return factory != null ? factory.create(spec) : new JacksonProviderJsonCodec(spec);
     }
 }

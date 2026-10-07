@@ -4,12 +4,12 @@
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>1.21.0-beta31-SNAPSHOT</version>
+        <version>1.22.0-beta32-SNAPSHOT</version>
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
     <artifactId>langchain4j-bedrock</artifactId>
-    <version>1.21.0-SNAPSHOT</version>
+    <version>1.22.0-SNAPSHOT</version>
     <name>LangChain4j :: Integration :: Amazon Bedrock</name>
 
     <dependencyManagement>
@@ -32,13 +32,13 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
-            <version>1.21.0-SNAPSHOT</version>
+            <version>1.22.0-SNAPSHOT</version>
         </dependency>
 
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-reactive-streaming</artifactId>
-            <version>1.21.0-beta31-SNAPSHOT</version>
+            <version>1.22.0-beta32-SNAPSHOT</version>
         </dependency>
 
         <dependency>
@@ -51,11 +51,23 @@
             <artifactId>mutiny-zero</artifactId>
         </dependency>
 
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>bedrock</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>s3</artifactId>
+            <optional>true</optional>
+        </dependency>
+
         <!-- test: shared reactive test support (BlockHound policy, TCK environment, partial-response filter) -->
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-reactive-streaming</artifactId>
-            <version>1.21.0-beta31-SNAPSHOT</version>
+            <version>1.22.0-beta32-SNAPSHOT</version>
             <classifier>tests</classifier>
             <type>test-jar</type>
             <scope>test</scope>
@@ -76,7 +88,7 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
-            <version>1.21.0-SNAPSHOT</version>
+            <version>1.22.0-SNAPSHOT</version>
             <classifier>tests</classifier>
             <type>test-jar</type>
             <scope>test</scope>
@@ -85,22 +97,16 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j</artifactId>
-            <version>1.21.0-SNAPSHOT</version>
+            <version>1.22.0-SNAPSHOT</version>
             <scope>test</scope>
         </dependency>
 
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j</artifactId>
-            <version>1.21.0-SNAPSHOT</version>
+            <version>1.22.0-SNAPSHOT</version>
             <classifier>tests</classifier>
             <type>test-jar</type>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>software.amazon.awssdk</groupId>
-            <artifactId>bedrock</artifactId>
             <scope>test</scope>
         </dependency>
 
