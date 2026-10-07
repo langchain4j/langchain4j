@@ -151,8 +151,7 @@ if (choice.margin() < 0.2) {
 
 When the options are ordered (severity, urgency, frustration, quality), return `Scale<E>`.
 The levels are the enum constants, from the first declared (lowest) to the last (highest).
-The model sees each level as the name of the constant followed by its `@Description`, for example
-`CRITICAL: Outage or data loss`:
+Each level is labeled with the name of the constant, and described with its `@Description`, if any:
 
 ```java
 enum Severity {

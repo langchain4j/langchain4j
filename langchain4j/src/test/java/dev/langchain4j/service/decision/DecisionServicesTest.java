@@ -418,12 +418,12 @@ class DecisionServicesTest {
         assertThat(model.request().questions())
                 .containsExactly(Map.entry(
                         "severity",
-                        ScaleQuestion.of(
-                                "How severe is this incident?",
-                                List.of(
-                                        "LOW: Cosmetic issue, no impact",
-                                        "MEDIUM: A feature is degraded, a workaround exists",
-                                        "HIGH"))));
+                        ScaleQuestion.builder()
+                                .text("How severe is this incident?")
+                                .level("LOW", "Cosmetic issue, no impact")
+                                .level("MEDIUM", "A feature is degraded, a workaround exists")
+                                .level("HIGH")
+                                .build()));
         assertThat(severity.mean()).isEqualTo(1.3);
         assertThat(severity.mostLikely()).isEqualTo(Severity.MEDIUM);
         assertThat(severity.probabilities()).containsExactly(

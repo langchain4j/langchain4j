@@ -544,10 +544,15 @@ public final class DecisionMethod {
             if (enumType == null) {
                 question = YesNoQuestion.of(questionText);
             } else if (kind == Kind.SCALE) {
-                List<String> levels = new ArrayList<>();
-                descriptions(name, enumType).forEach((constantName, description) ->
-                        levels.add(description == null ? constantName : constantName + ": " + description));
-                question = ScaleQuestion.of(questionText, levels);
+                ScaleQuestion.Builder scale = ScaleQuestion.builder().text(questionText);
+                descriptions(name, enumType).forEach((constantName, description) -> {
+                    if (description == null) {
+                        scale.level(constantName);
+                    } else {
+                        scale.level(constantName, description);
+                    }
+                });
+                question = scale.build();
             } else {
                 ChoiceQuestion.Builder choice = ChoiceQuestion.builder().text(questionText);
                 descriptions(name, enumType).forEach((constantName, description) -> {
