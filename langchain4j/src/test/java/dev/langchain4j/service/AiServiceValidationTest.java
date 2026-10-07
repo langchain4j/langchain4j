@@ -11,13 +11,16 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
+import dev.langchain4j.service.memory.ChatMemoryAccess;
 import java.util.List;
 import java.util.Set;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
@@ -169,6 +172,15 @@ class AiServiceValidationTest {
         }
     }
 
+    interface WithStaticMethodReturningLangChain4jType {
+
+        String chat(String userMessage);
+
+        static Result<ChatResponse> notAnAiServiceMethod() {
+            return null;
+        }
+    }
+
     @ParameterizedTest
     @ValueSource(
             classes = {
@@ -186,11 +198,26 @@ class AiServiceValidationTest {
                 WithResponse.class,
                 WithImage.class,
                 WithImageContentList.class,
-                WithDefaultMethodReturningLangChain4jType.class
+                WithDefaultMethodReturningLangChain4jType.class,
+                WithStaticMethodReturningLangChain4jType.class
             })
     void should_allow_supported_return_types(Class<?> aiServiceClass) {
         assertThatCode(() ->
                         AiServices.builder(aiServiceClass).chatModel(CHAT_MODEL).build())
+                .doesNotThrowAnyException();
+    }
+
+    interface WithChatMemoryAccess extends ChatMemoryAccess {
+
+        String chat(@MemoryId String memoryId, @dev.langchain4j.service.UserMessage String userMessage);
+    }
+
+    @Test
+    void should_not_validate_ChatMemoryAccess_methods_as_AI_Service_methods() {
+        assertThatCode(() -> AiServices.builder(WithChatMemoryAccess.class)
+                        .chatModel(CHAT_MODEL)
+                        .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
+                        .build())
                 .doesNotThrowAnyException();
     }
 }

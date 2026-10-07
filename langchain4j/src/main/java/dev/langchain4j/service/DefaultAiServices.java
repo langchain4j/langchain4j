@@ -14,6 +14,7 @@ import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
 import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 import static dev.langchain4j.service.AiServiceParamsUtil.chatRequestParameters;
 import static dev.langchain4j.service.AiServiceParamsUtil.findArgumentOfType;
+import static dev.langchain4j.service.AiServiceValidation.isImplementedByModel;
 import static dev.langchain4j.service.AiServiceValidation.validateParameters;
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
 import static dev.langchain4j.service.TypeUtils.getRawClass;
@@ -95,6 +96,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Flow;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Internal
 class DefaultAiServices<T> extends AiServices<T> {
@@ -119,6 +121,25 @@ class DefaultAiServices<T> extends AiServices<T> {
     protected void validate() {
         performBasicValidation();
         AiServiceValidation.validate(context);
+    }
+
+    private Object invokeImplementedByProxy(Object proxy, Method method, Object[] args) throws Throwable {
+        if (method.isDefault()) {
+            return InvocationHandler.invokeDefault(proxy, method, args);
+        }
+        if (method.getDeclaringClass() == Object.class) {
+            return switch (method.getName()) {
+                case "equals" -> proxy == args[0];
+                case "hashCode" -> System.identityHashCode(proxy);
+                case "toString" ->
+                    context.aiServiceClass.getName() + "@" + Integer.toHexString(System.identityHashCode(proxy));
+                default -> throw new IllegalStateException("Unexpected Object method: " + method);
+            };
+        }
+        if (method.getDeclaringClass() == ChatMemoryAccess.class) {
+            return handleChatMemoryAccess(method, args);
+        }
+        throw new IllegalStateException("Unexpected method: " + method);
     }
 
     private Object handleChatMemoryAccess(Method method, Object[] args) {
@@ -161,9 +182,19 @@ class DefaultAiServices<T> extends AiServices<T> {
                 || findPublisherAdapter(returnType) != null;
     }
 
+    /**
+     * Whether the AI Service has a method that calls the model and returns neither an asynchronous
+     * nor a reactive type.
+     */
+    boolean hasBlockingMethod() {
+        return Stream.of(context.aiServiceClass.getMethods())
+                .filter(AiServiceValidation::isImplementedByModel)
+                .anyMatch(method -> !isAsynchronousOrReactive(method.getGenericReturnType()));
+    }
+
     public T build() {
         validate();
-        ToolErrorHandlingNotice.logOnceIfNeeded(context, this::isAsynchronousOrReactive);
+        ToolErrorHandlingNotice.logOnceIfNeeded(context, this::hasBlockingMethod);
 
         context.streamingBufferSize = ensureGreaterThanZero(
                 getOrDefault(context.streamingBufferSize, AiServiceStreamingEventPublisher.DEFAULT_BUFFER_SIZE),
@@ -176,26 +207,8 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                     @Override
                     public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
-                        if (method.isDefault()) {
-                            return InvocationHandler.invokeDefault(proxy, method, args);
-                        }
-
-                        if (method.getDeclaringClass() == Object.class) {
-                            switch (method.getName()) {
-                                case "equals":
-                                    return proxy == args[0];
-                                case "hashCode":
-                                    return System.identityHashCode(proxy);
-                                case "toString":
-                                    return context.aiServiceClass.getName() + "@"
-                                            + Integer.toHexString(System.identityHashCode(proxy));
-                                default:
-                                    throw new IllegalStateException("Unexpected Object method: " + method);
-                            }
-                        }
-
-                        if (method.getDeclaringClass() == ChatMemoryAccess.class) {
-                            return handleChatMemoryAccess(method, args);
+                        if (!isImplementedByModel(method)) {
+                            return invokeImplementedByProxy(proxy, method, args);
                         }
 
                         // TODO do it once, when creating AI Service?
