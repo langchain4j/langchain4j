@@ -174,7 +174,11 @@ class DecisionServicesTest {
         assertThat(damaged.requests())
                 .extracting(DecisionRequest::input)
                 .containsExactly(
-                        Map.of("photos", List.of(ImageContent.from(first), ImageContent.from(second))),
+                        Map.of(
+                                "photos",
+                                List.of(
+                                        ImageContent.from(first, ImageContent.DetailLevel.AUTO),
+                                        ImageContent.from(second, ImageContent.DetailLevel.AUTO))),
                         Map.of("photos", List.of(PHOTO)),
                         Map.of("photos", List.of(PHOTO)));
     }

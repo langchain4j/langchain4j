@@ -245,13 +245,14 @@ public final class DecisionMethod {
 
     /**
      * Converts a content argument into a {@link Content}, or a list of them for a collection or an array, with
-     * {@link Image}s converted to {@link ImageContent}s and {@code null}s left out. Returns {@code null} if there is
+     * {@link Image}s converted to {@link ImageContent}s with the {@link ImageContent.DetailLevel#AUTO} detail level,
+     * so that the model provider chooses the detail, and {@code null}s left out. Returns {@code null} if there is
      * no content, so that the parameter is left out like a {@code null} argument.
      */
     private static Object toContents(Object value) {
         List<?> items = items(value);
         if (items == null) {
-            return value instanceof Image image ? ImageContent.from(image) : value;
+            return value instanceof Image image ? ImageContent.from(image, ImageContent.DetailLevel.AUTO) : value;
         }
         List<Object> contents = new ArrayList<>();
         items.forEach(item -> {
