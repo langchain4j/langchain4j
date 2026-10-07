@@ -53,6 +53,26 @@ class DecisionRequestTest {
     }
 
     @Test
+    void should_accept_contents_as_values_of_map_input() {
+
+        ImageContent photo = ImageContent.from("iVBORw0KGgo=", "image/png");
+        Map<String, Object> input = Map.of("comment", "Arrived like this", "photo", photo, "photos", List.of(photo));
+
+        assertThat(DecisionRequest.builder()
+                        .input(input)
+                        .question("damaged", QUESTION)
+                        .build()
+                        .input())
+                .isEqualTo(input);
+        assertThatThrownBy(() -> DecisionRequest.builder()
+                        .input(Map.of("ticket", Map.of("photo", photo)))
+                        .question("damaged", QUESTION)
+                        .build())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("as values of the map, Contents or lists of Contents");
+    }
+
+    @Test
     void should_reject_empty_contents_or_null_content() {
 
         assertThatThrownBy(() -> DecisionRequest.builder()

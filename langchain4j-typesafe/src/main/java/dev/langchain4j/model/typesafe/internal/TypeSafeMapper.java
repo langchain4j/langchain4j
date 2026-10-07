@@ -50,9 +50,20 @@ public final class TypeSafeMapper {
     }
 
     private static Object state(Object input) {
-        if (!(input instanceof List<?> contents)) {
-            return input;
+        if (input instanceof Map<?, ?> map) {
+            // text contents are sent as their text, other contents (such as images) are not supported
+            Map<Object, Object> state = new LinkedHashMap<>();
+            map.forEach((name, value) -> state.put(
+                    name,
+                    value instanceof Content || value instanceof List<?> list && !list.isEmpty() && list.get(0) instanceof Content
+                            ? text(value instanceof Content ? List.of(value) : (List<?>) value)
+                            : value));
+            return state;
         }
+        return input instanceof List<?> contents ? text(contents) : input;
+    }
+
+    private static String text(List<?> contents) {
         StringBuilder text = new StringBuilder();
         for (Object content : contents) {
             if (!(content instanceof TextContent textContent)) {

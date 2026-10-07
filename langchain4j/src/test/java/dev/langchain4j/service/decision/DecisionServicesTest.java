@@ -8,6 +8,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.offset;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import dev.langchain4j.data.image.Image;
+import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.PdfFileContent;
+import dev.langchain4j.model.decision.mock.DecisionModelMock;
 import dev.langchain4j.exception.InvalidDecisionResponseException;
 import dev.langchain4j.model.decision.DecisionModel;
 import dev.langchain4j.model.decision.response.ScaleAnswer;
@@ -107,6 +111,111 @@ class DecisionServicesTest {
 
         // when-then
         assertThatThrownBy(() -> spamFilter.isSpam("You won a cruise!")).isInstanceOf(ContentFilteredException.class);
+    }
+
+    interface DamageInspector {
+
+        @Decide("Is the item visibly damaged?")
+        boolean isDamaged(@V("photo") ImageContent photo, @V("comment") String comment);
+
+        @Decide("Is any of the items visibly damaged?")
+        boolean anyDamaged(@V("photos") List<Image> photos);
+
+        @Decide("Is any of the items visibly damaged?")
+        boolean anyDamagedInArray(@V("photos") ImageContent[] photos);
+
+        @Decide("Is any of the items visibly damaged?")
+        boolean anyDamagedInWildcardList(@V("photos") List<? extends ImageContent> photos);
+
+        @Decide("Is the item visibly damaged?")
+        boolean isDamagedAccordingTo(@V("evidence") Object evidence);
+
+        @Decide("Is the invoice for a damaged item?")
+        boolean isInvoiceForDamagedItem(@V("invoice") PdfFileContent invoice);
+    }
+
+    static final ImageContent PHOTO = ImageContent.from("iVBORw0KGgo=", "image/png");
+
+    DecisionModelMock damaged = DecisionModelMock.thatAnswersYesNoQuestions(question -> 0.9);
+
+    DamageInspector inspector = DecisionServices.builder(DamageInspector.class)
+            .decisionModel(damaged)
+            .build();
+
+    @Test
+    void should_send_images_as_named_image_contents() {
+
+        assertThat(inspector.isDamaged(PHOTO, "Arrived like this")).isTrue();
+
+        assertThat(damaged.request().input()).isEqualTo(Map.of("photo", PHOTO, "comment", "Arrived like this"));
+    }
+
+    @Test
+    void should_leave_out_null_values_next_to_images() {
+
+        inspector.isDamaged(PHOTO, null);
+
+        assertThat(damaged.request().input()).isEqualTo(Map.of("photo", PHOTO));
+    }
+
+    @Test
+    void should_send_images_of_collections_and_arrays_and_leave_out_nulls() {
+
+        Image first = Image.builder().base64Data("iVBORw0KGgo=").mimeType("image/png").build();
+        Image second = Image.builder().base64Data("R0lGODlh").mimeType("image/gif").build();
+        List<Image> withNull = new ArrayList<>(List.of(first));
+        withNull.add(null);
+        withNull.add(second);
+
+        inspector.anyDamaged(withNull);
+        inspector.anyDamagedInArray(new ImageContent[] {PHOTO});
+        inspector.anyDamagedInWildcardList(List.of(PHOTO));
+
+        assertThat(damaged.requests())
+                .extracting(DecisionRequest::input)
+                .containsExactly(
+                        Map.of(
+                                "photos",
+                                List.of(
+                                        ImageContent.from(first, ImageContent.DetailLevel.AUTO),
+                                        ImageContent.from(second, ImageContent.DetailLevel.AUTO))),
+                        Map.of("photos", List.of(PHOTO)),
+                        Map.of("photos", List.of(PHOTO)));
+    }
+
+    @Test
+    void should_send_contents_of_parameters_whose_declared_type_is_not_a_content_type() {
+
+        inspector.isDamagedAccordingTo(PHOTO);
+
+        assertThat(damaged.request().input()).isEqualTo(Map.of("evidence", PHOTO));
+    }
+
+    @Test
+    void should_send_other_contents_as_they_are() {
+
+        PdfFileContent invoice = PdfFileContent.from("JVBERi0=", "application/pdf");
+
+        inspector.isInvoiceForDamagedItem(invoice);
+
+        assertThat(damaged.request().input()).isEqualTo(Map.of("invoice", invoice));
+    }
+
+    @Test
+    void should_fail_when_all_contents_are_missing() {
+
+        assertThatThrownBy(() -> inspector.anyDamaged(List.of()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("are null");
+    }
+
+    @Test
+    void should_not_register_content_parameters_as_json_input_types() throws Exception {
+
+        DecisionMethod method = DecisionMethod.of(
+                DamageInspector.class.getMethod("isDamaged", ImageContent.class, String.class));
+
+        assertThat(method.inputTypes()).containsExactly(String.class);
     }
 
     @Test
@@ -418,12 +527,12 @@ class DecisionServicesTest {
         assertThat(model.request().questions())
                 .containsExactly(Map.entry(
                         "severity",
-                        ScaleQuestion.of(
-                                "How severe is this incident?",
-                                List.of(
-                                        "LOW: Cosmetic issue, no impact",
-                                        "MEDIUM: A feature is degraded, a workaround exists",
-                                        "HIGH"))));
+                        ScaleQuestion.builder()
+                                .text("How severe is this incident?")
+                                .level("LOW", "Cosmetic issue, no impact")
+                                .level("MEDIUM", "A feature is degraded, a workaround exists")
+                                .level("HIGH")
+                                .build()));
         assertThat(severity.mean()).isEqualTo(1.3);
         assertThat(severity.mostLikely()).isEqualTo(Severity.MEDIUM);
         assertThat(severity.probabilities()).containsExactly(

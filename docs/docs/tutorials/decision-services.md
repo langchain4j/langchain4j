@@ -151,8 +151,7 @@ if (choice.margin() < 0.2) {
 
 When the options are ordered (severity, urgency, frustration, quality), return `Scale<E>`.
 The levels are the enum constants, from the first declared (lowest) to the last (highest).
-The model sees each level as the name of the constant followed by its `@Description`, for example
-`CRITICAL: Outage or data loss`:
+Each level is labeled with the name of the constant, and described with its `@Description`, if any:
 
 ```java
 enum Severity {
@@ -241,7 +240,7 @@ Triage triage(String ticket, Customer customer);
 ```
 
 The names help the model understand what each value means, so choose them well.
-Objects are converted to maps using their Java field names.
+Objects are converted to maps using their Java field names, except contents such as images (see [Images](#images)).
 All fields are sent, so to control exactly what the model sees (and to avoid sending personal data it does not
 need), pass a small record containing only the relevant fields, rather than, for example, a JPA entity.
 If all parameters sent to the model are `null`, the call fails with an `IllegalArgumentException`.
@@ -254,6 +253,26 @@ Triage triage(@V("ticket") String ticket, @V("plan") String plan);
 ```
 
 If a name is not available, `build()` fails and explains both options.
+
+### Images
+
+Parameters of type `Image` or of a `Content` type, such as `ImageContent`, or collections or arrays of them, are
+sent as contents, for example images, if the decision model supports them
+(for example [OpenAI](/integrations/decision-models/open-ai)):
+
+```java
+interface DamageInspector {
+
+    @Decide("Is the item visibly damaged?")
+    boolean isDamaged(ImageContent photo, String comment);
+}
+```
+
+Like the other parameters, contents are sent under the names of their parameters (see
+[Images](/tutorials/decision-models#images)), and each decision model sends them in the form its API expects.
+`Image`s are sent as `ImageContent`s with the `AUTO` detail level, so that the model provider chooses it; to choose
+another detail level, pass an `ImageContent`.
+A decision model that does not support images throws an `UnsupportedFeatureException` without calling the model.
 
 ### Model name and other parameters
 

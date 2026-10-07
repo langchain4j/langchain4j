@@ -14,7 +14,8 @@ import java.util.Map;
 
 /**
  * Validates the input of a request and copies it into an immutable tree of maps, lists, strings, numbers, booleans
- * and {@code null}s, or into an immutable list of {@link Content}s.
+ * and {@code null}s, where the values of the top-level map can also be {@link Content}s or lists of them, or into an
+ * immutable list of {@link Content}s.
  */
 final class FreeFormValue {
 
@@ -26,7 +27,10 @@ final class FreeFormValue {
             return ensureNotBlank(text, name);
         }
         if (value instanceof Map<?, ?> map) {
-            return copy(ensureNotEmpty(map, name), name);
+            Map<String, Object> result = new LinkedHashMap<>();
+            ensureNotEmpty(map, name)
+                    .forEach((key, item) -> result.put(String.valueOf(key), copyTopLevelValue(item, name)));
+            return Collections.unmodifiableMap(result);
         }
         if (value instanceof List<?> list) {
             ensureNotEmpty(list, name);
@@ -40,6 +44,22 @@ final class FreeFormValue {
         }
         throw new IllegalArgumentException(
                 name + " must be a String, a Map or a List of Contents, but was " + value.getClass().getName());
+    }
+
+    /**
+     * A value of the map: like any other value, or a {@link Content} or a non-empty list of {@link Content}s,
+     * for example an image.
+     */
+    private static Object copyTopLevelValue(Object value, String name) {
+        if (value instanceof Content) {
+            return value;
+        }
+        if (value instanceof Collection<?> collection
+                && !collection.isEmpty()
+                && collection.stream().allMatch(Content.class::isInstance)) {
+            return List.copyOf(collection);
+        }
+        return copy(value, name);
     }
 
     private static Object copy(Object value, String name) {
@@ -57,6 +77,6 @@ final class FreeFormValue {
             return Collections.unmodifiableList(result);
         }
         throw new IllegalArgumentException(name + " can only contain strings, numbers, booleans, nulls, maps and lists, "
-                + "but contains " + value.getClass().getName());
+                + "and, as values of the map, Contents or lists of Contents, but contains " + value.getClass().getName());
     }
 }
