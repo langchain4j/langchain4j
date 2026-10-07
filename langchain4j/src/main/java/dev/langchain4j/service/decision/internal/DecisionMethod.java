@@ -16,9 +16,7 @@ import static dev.langchain4j.service.IllegalConfigurationException.illegalConfi
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.data.image.Image;
-import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.ImageContent;
-import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.exception.InvalidDecisionResponseException;
 import dev.langchain4j.model.decision.request.ChoiceQuestion;
 import dev.langchain4j.model.decision.request.DecisionRequest;
@@ -203,53 +201,39 @@ public final class DecisionMethod {
      */
     public DecisionRequest toRequest(Object[] args) {
         Map<String, Object> input = new LinkedHashMap<>();
-        List<Content> images = new ArrayList<>();
         for (InputParameter parameter : inputParameters) {
             Object value = args[parameter.index()];
-            if (value == null) {
-                continue;
-            }
-            if (parameter.images()) {
-                addImages(value, images);
-            } else {
-                input.put(parameter.name(), toInputValue(value));
+            if (value != null) {
+                input.put(parameter.name(), parameter.images() ? toImages(value) : toInputValue(value));
             }
         }
-        if (input.isEmpty() && images.isEmpty()) {
+        if (input.isEmpty()) {
             throw new IllegalArgumentException("All arguments of method '%s' that are sent to the model (%s) are null"
                     .formatted(
                             method.getName(),
                             inputParameters.stream().map(InputParameter::name).toList()));
         }
-        DecisionRequest.Builder request = DecisionRequest.builder();
-        if (images.isEmpty()) {
-            request.input(input);
-        } else {
-            // the named values are sent as JSON text, followed by the images
-            List<Content> contents = new ArrayList<>();
-            if (!input.isEmpty()) {
-                contents.add(TextContent.from(Json.toJson(input)));
-            }
-            contents.addAll(images);
-            request.input(contents);
-        }
-        return request.questions(questions)
+        return DecisionRequest.builder()
+                .input(input)
+                .questions(questions)
                 .parameters(requestParameters(args))
                 .build();
     }
 
-    private static void addImages(Object value, List<Content> images) {
+    /**
+     * Converts an image argument into an {@link ImageContent}, or a list of them for a collection.
+     */
+    private static Object toImages(Object value) {
         if (value instanceof Collection<?> collection) {
+            List<ImageContent> images = new ArrayList<>();
             collection.forEach(item -> {
                 if (item != null) {
-                    addImages(item, images);
+                    images.add((ImageContent) toImages(item));
                 }
             });
-        } else if (value instanceof Image image) {
-            images.add(ImageContent.from(image));
-        } else {
-            images.add((ImageContent) value);
+            return images;
         }
+        return value instanceof Image image ? ImageContent.from(image) : value;
     }
 
     /**

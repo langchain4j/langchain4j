@@ -50,6 +50,16 @@ public final class TypeSafeMapper {
     }
 
     private static Object state(Object input) {
+        if (input instanceof Map<?, ?> map) {
+            map.values().forEach(value -> {
+                Object first = value instanceof List<?> list && !list.isEmpty() ? list.get(0) : value;
+                if (first instanceof Content content) {
+                    throw new UnsupportedFeatureException(
+                            "TypeSafe supports only text input, but the input contains " + content.type());
+                }
+            });
+            return input;
+        }
         if (!(input instanceof List<?> contents)) {
             return input;
         }

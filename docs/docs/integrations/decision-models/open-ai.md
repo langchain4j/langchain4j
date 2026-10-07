@@ -134,7 +134,8 @@ With `langchain4j-open-ai`, the starter uses Spring's `RestClient`, which does n
 
 The input can be:
 - text;
-- a `Map` of named values, which is sent as JSON text;
+- a `Map` of named values, which is sent as JSON text. If some values are images, each value is sent as a text part
+  with its name (`comment: "..."`), and each image after a text part with its name (`photo:`);
 - a list of `TextContent`s and `ImageContent`s, for example a photo together with a description:
 
 ```java

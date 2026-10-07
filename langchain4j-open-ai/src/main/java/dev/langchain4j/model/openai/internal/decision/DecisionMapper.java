@@ -54,15 +54,45 @@ public final class DecisionMapper {
         if (input instanceof String text) {
             return text;
         }
-        if (input instanceof Map<?, ?> map) {
-            return Json.toJson(map);
-        }
         DecisionCreateRequest.InputMessage message = new DecisionCreateRequest.InputMessage();
         message.content = new ArrayList<>();
+        if (input instanceof Map<?, ?> map) {
+            if (!containsContents(map)) {
+                return Json.toJson(map);
+            }
+            // each value is labeled with its name, contents such as images follow their label
+            map.forEach((name, value) -> {
+                if (value instanceof Content content) {
+                    message.content.add(textPart(name + ":"));
+                    message.content.add(toInputPart(content));
+                } else if (isContents(value)) {
+                    message.content.add(textPart(name + ":"));
+                    ((List<?>) value).forEach(content -> message.content.add(toInputPart((Content) content)));
+                } else {
+                    message.content.add(textPart(name + ": " + Json.toJson(value)));
+                }
+            });
+            return List.of(message);
+        }
         for (Object content : (List<?>) input) {
             message.content.add(toInputPart((Content) content));
         }
         return List.of(message);
+    }
+
+    private static boolean containsContents(Map<?, ?> map) {
+        return map.values().stream().anyMatch(value -> value instanceof Content || isContents(value));
+    }
+
+    private static boolean isContents(Object value) {
+        return value instanceof List<?> list && !list.isEmpty() && list.get(0) instanceof Content;
+    }
+
+    private static DecisionCreateRequest.InputPart textPart(String text) {
+        DecisionCreateRequest.InputPart part = new DecisionCreateRequest.InputPart();
+        part.type = "input_text";
+        part.text = text;
+        return part;
     }
 
     private static DecisionCreateRequest.InputPart toInputPart(Content content) {

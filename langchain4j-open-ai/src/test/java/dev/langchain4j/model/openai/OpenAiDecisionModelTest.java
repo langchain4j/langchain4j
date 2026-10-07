@@ -25,6 +25,7 @@ import dev.langchain4j.exception.InvalidDecisionResponseException;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
+import java.util.LinkedHashMap;
 import org.junit.jupiter.api.Test;
 
 class OpenAiDecisionModelTest {
@@ -245,6 +246,42 @@ class OpenAiDecisionModelTest {
                         }]
                         """));
         assertThat(response.yesNo("damaged").probability()).isEqualTo(0.95);
+    }
+
+    @Test
+    void should_send_map_with_contents_as_labeled_parts() throws Exception {
+
+        // given
+        MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(
+                """
+                {"model": "gpt-6-luna", "answers": [{"type": "predicate", "name": "damaged", "probability": 0.95}]}
+                """));
+        ImageContent photo = ImageContent.from("iVBORw0KGgo=", "image/png", ImageContent.DetailLevel.LOW);
+        Map<String, Object> input = new LinkedHashMap<>();
+        input.put("comment", "Arrived like this");
+        input.put("photo", photo);
+
+        // when
+        model(httpClient)
+                .decide(DecisionRequest.builder()
+                        .input(input)
+                        .question("damaged", YesNoQuestion.of("Is the item damaged?"))
+                        .build());
+
+        // then
+        assertThat(OBJECT_MAPPER.readTree(httpClient.request().body()).get("input"))
+                .isEqualTo(OBJECT_MAPPER.readTree(
+                        """
+                        [{
+                          "type": "message",
+                          "role": "user",
+                          "content": [
+                            {"type": "input_text", "text": "comment: \\"Arrived like this\\""},
+                            {"type": "input_text", "text": "photo:"},
+                            {"type": "input_image", "image_url": "data:image/png;base64,iVBORw0KGgo=", "detail": "low"}
+                          ]
+                        }]
+                        """));
     }
 
     @Test

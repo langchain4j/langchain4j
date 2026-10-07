@@ -18,16 +18,13 @@ class DecisionServicesWithImagesIT {
     static final String RED_SQUARE_PNG =
             "iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAIAAAD8GO2jAAAAKElEQVR4nO3NsQ0AAAzCMP5/un0CNkuZ41wybXsHAAAAAAAAAAAAxR4yw/wuPL6QkAAAAABJRU5ErkJggg==";
 
-    interface PhotoChecker {
+    interface ColorChecker {
 
-        @Decide("Is the photo mostly red?")
-        boolean isRed(@V("photo") ImageContent photo, @V("comment") String comment);
-
-        @Decide("Is the photo mostly blue?")
-        boolean isBlue(@V("photo") ImageContent photo, @V("comment") String comment);
+        @Decide("Is the photo mostly of the given color?")
+        boolean hasColor(@V("photo") ImageContent photo, @V("color") String color);
     }
 
-    PhotoChecker photoChecker = DecisionServices.builder(PhotoChecker.class)
+    ColorChecker colorChecker = DecisionServices.builder(ColorChecker.class)
             .decisionModel(OpenAiDecisionModel.builder()
                     .apiKey(System.getenv("OPENAI_API_KEY"))
                     .modelName(GPT_6_LUNA)
@@ -39,7 +36,8 @@ class DecisionServicesWithImagesIT {
 
         ImageContent photo = ImageContent.from(RED_SQUARE_PNG, "image/png");
 
-        assertThat(photoChecker.isRed(photo, "A photo sent by the customer")).isTrue();
-        assertThat(photoChecker.isBlue(photo, "A photo sent by the customer")).isFalse();
+        // the answer depends on both the image and the named value it is compared with
+        assertThat(colorChecker.hasColor(photo, "red")).isTrue();
+        assertThat(colorChecker.hasColor(photo, "blue")).isFalse();
     }
 }

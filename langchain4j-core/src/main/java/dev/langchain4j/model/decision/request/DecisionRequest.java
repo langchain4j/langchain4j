@@ -124,6 +124,9 @@ public final class DecisionRequest {
 
         /**
          * Sets the input to evaluate as named values: strings, numbers, booleans, {@code null}s, maps and lists.
+         * A value of the map can also be a {@link Content} or a list of {@link Content}s, for example a named image
+         * ({@code Map.of("comment", comment, "photo", ImageContent.from(...))}); which kinds of contents are supported
+         * depends on the decision model.
          * Other objects are rejected: convert them to a {@link java.util.Map} that holds only what the decision needs.
          */
         public Builder input(Map<String, ?> input) {

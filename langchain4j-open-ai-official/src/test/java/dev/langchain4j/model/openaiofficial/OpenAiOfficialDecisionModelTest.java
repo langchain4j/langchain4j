@@ -26,6 +26,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.MethodSource;
+import java.util.LinkedHashMap;
 import org.junit.jupiter.api.Test;
 
 class OpenAiOfficialDecisionModelTest {
@@ -216,6 +217,42 @@ class OpenAiOfficialDecisionModelTest {
                           "content": [
                             {"type": "input_text", "text": "The package arrived like this."},
                             {"type": "input_image", "image_url": "data:image/png;base64,iVBORw0KGgo=", "detail": "high"}
+                          ],
+                          "type": "message"
+                        }]
+                        """));
+    }
+
+    @Test
+    void should_send_map_with_contents_as_labeled_parts() throws Exception {
+
+        // given
+        httpClient.enqueue(
+                "decisions",
+                """
+                {"model": "gpt-6-luna", "answers": [{"type": "predicate", "name": "damaged", "probability": 0.95}]}
+                """);
+        ImageContent photo = ImageContent.from("iVBORw0KGgo=", "image/png", ImageContent.DetailLevel.LOW);
+        Map<String, Object> input = new LinkedHashMap<>();
+        input.put("comment", "Arrived like this");
+        input.put("photo", photo);
+
+        // when
+        model().decide(DecisionRequest.builder()
+                .input(input)
+                .question("damaged", YesNoQuestion.of("Is the item damaged?"))
+                .build());
+
+        // then
+        assertThat(OBJECT_MAPPER.readTree(httpClient.requestTo("decisions").body()).get("input"))
+                .isEqualTo(OBJECT_MAPPER.readTree(
+                        """
+                        [{
+                          "role": "user",
+                          "content": [
+                            {"type": "input_text", "text": "comment: \\"Arrived like this\\""},
+                            {"type": "input_text", "text": "photo:"},
+                            {"type": "input_image", "image_url": "data:image/png;base64,iVBORw0KGgo=", "detail": "low"}
                           ],
                           "type": "message"
                         }]

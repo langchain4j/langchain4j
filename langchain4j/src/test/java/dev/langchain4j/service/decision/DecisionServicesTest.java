@@ -10,7 +10,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.ImageContent;
-import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.exception.InvalidDecisionResponseException;
 import dev.langchain4j.model.decision.DecisionModel;
 import dev.langchain4j.model.decision.response.ScaleAnswer;
@@ -122,7 +121,7 @@ class DecisionServicesTest {
     }
 
     @Test
-    void should_send_images_as_image_contents_and_the_other_values_as_json_text() {
+    void should_send_images_as_named_image_contents() {
 
         // given
         FakeDecisionModel model = new FakeDecisionModel(Map.of("isDamaged", yesNo(0.9)));
@@ -135,12 +134,11 @@ class DecisionServicesTest {
 
         // then
         assertThat(damaged).isTrue();
-        assertThat(model.request().input())
-                .isEqualTo(List.of(TextContent.from("{\"comment\":\"Arrived like this\"}"), photo));
+        assertThat(model.request().input()).isEqualTo(Map.of("photo", photo, "comment", "Arrived like this"));
     }
 
     @Test
-    void should_send_only_images_when_the_other_values_are_null() {
+    void should_leave_out_null_values_next_to_images() {
 
         // given
         FakeDecisionModel model = new FakeDecisionModel(Map.of("isDamaged", yesNo(0.9)));
@@ -152,7 +150,7 @@ class DecisionServicesTest {
         inspector.isDamaged(photo, null);
 
         // then
-        assertThat(model.request().input()).isEqualTo(List.of(photo));
+        assertThat(model.request().input()).isEqualTo(Map.of("photo", photo));
     }
 
     @Test
@@ -169,7 +167,8 @@ class DecisionServicesTest {
         inspector.anyDamaged(List.of(first, second));
 
         // then
-        assertThat(model.request().input()).isEqualTo(List.of(ImageContent.from(first), ImageContent.from(second)));
+        assertThat(model.request().input())
+                .isEqualTo(Map.of("photos", List.of(ImageContent.from(first), ImageContent.from(second))));
     }
 
     @Test

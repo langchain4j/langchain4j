@@ -267,9 +267,9 @@ interface DamageInspector {
 }
 ```
 
-The other parameters are then sent as JSON text, followed by the images:
-`{"comment": "..."}`, then the photo. A decision model that does not support images throws an
-`UnsupportedFeatureException` without calling the model.
+Like the other parameters, the images are sent under the names of their parameters (see
+[Images](/tutorials/decision-models#images)), and each decision model sends them in the form its API expects.
+A decision model that does not support images throws an `UnsupportedFeatureException` without calling the model.
 
 ### Model name and other parameters
 

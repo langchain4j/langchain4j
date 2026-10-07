@@ -252,6 +252,23 @@ class TypeSafeDecisionModelTest {
     }
 
     @Test
+    void should_reject_images_in_map_input_without_calling_the_api() {
+
+        // given
+        MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(RESPONSE));
+        TypeSafeDecisionModel model = model(httpClient);
+
+        // when-then
+        assertThatThrownBy(() -> model.decide(DecisionRequest.builder()
+                        .input(Map.of("comment", "Arrived like this", "photo", ImageContent.from("iVBORw0KGgo=", "image/png")))
+                        .question("damaged", YesNoQuestion.of("Is the item damaged?"))
+                        .build()))
+                .isInstanceOf(UnsupportedFeatureException.class)
+                .hasMessage("TypeSafe supports only text input, but the input contains IMAGE");
+        assertThat(httpClient.requests()).isEmpty();
+    }
+
+    @Test
     void should_keep_null_values_in_state() {
 
         // given

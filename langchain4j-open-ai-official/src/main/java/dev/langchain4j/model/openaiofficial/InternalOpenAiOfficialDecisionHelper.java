@@ -54,8 +54,24 @@ class InternalOpenAiOfficialDecisionHelper {
         Object input = request.input();
         if (input instanceof String text) {
             params.input(text);
-        } else if (input instanceof Map<?, ?> map) {
+        } else if (input instanceof Map<?, ?> map && !containsContents(map)) {
             params.input(Json.toJson(map));
+        } else if (input instanceof Map<?, ?> map) {
+            // each value is labeled with its name, contents such as images follow their label
+            List<DecisionInputPart> parts = new ArrayList<>();
+            map.forEach((name, value) -> {
+                if (value instanceof Content content) {
+                    parts.add(textPart(name + ":"));
+                    parts.add(toInputPart(content));
+                } else if (isContents(value)) {
+                    parts.add(textPart(name + ":"));
+                    ((List<?>) value).forEach(content -> parts.add(toInputPart((Content) content)));
+                } else {
+                    parts.add(textPart(name + ": " + Json.toJson(value)));
+                }
+            });
+            params.inputOfDecisionInputMessages(
+                    List.of(DecisionInputMessage.builder().contentOfParts(parts).build()));
         } else {
             List<DecisionInputPart> parts = new ArrayList<>();
             for (Object content : (List<?>) input) {
@@ -66,6 +82,18 @@ class InternalOpenAiOfficialDecisionHelper {
         }
         request.questions().forEach((name, question) -> addQuestion(params, name, question));
         return params.build();
+    }
+
+    private static boolean containsContents(Map<?, ?> map) {
+        return map.values().stream().anyMatch(value -> value instanceof Content || isContents(value));
+    }
+
+    private static boolean isContents(Object value) {
+        return value instanceof List<?> list && !list.isEmpty() && list.get(0) instanceof Content;
+    }
+
+    private static DecisionInputPart textPart(String text) {
+        return DecisionInputPart.ofInputText(DecisionInputText.builder().text(text).build());
     }
 
     private static DecisionInputPart toInputPart(Content content) {

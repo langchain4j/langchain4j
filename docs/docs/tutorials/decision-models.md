@@ -213,6 +213,17 @@ DecisionRequest request = DecisionRequest.builder()
         .build();
 ```
 
+Images can also be values of a `Map` input, so that each one keeps a name:
+
+```java
+DecisionRequest request = DecisionRequest.builder()
+        .input(Map.of(
+                "comment", "The package arrived like this.",
+                "photo", ImageContent.from(base64Image, "image/jpeg")))
+        .question("damaged", YesNoQuestion.of("Is the item visibly damaged?"))
+        .build();
+```
+
 A decision model that does not support a kind of content throws `UnsupportedFeatureException` without calling
 the model.
 
