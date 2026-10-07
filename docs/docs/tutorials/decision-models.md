@@ -162,6 +162,13 @@ ChoiceQuestion team = ChoiceQuestion.builder()
         .build();
 ```
 
+Write questions and descriptions around criteria that can be observed in the input, such as "mentions a charge"
+or "asks for a refund", rather than around intentions or feelings the model has to guess.
+
+If the input may fit none of the options, add an option for that case, for example
+`.option("other", "Anything else")`: otherwise the model has to choose one of the options that do not fit, and its
+probabilities look more confident than they are.
+
 Levels can be described the same way, in addition to their label:
 
 ```java
