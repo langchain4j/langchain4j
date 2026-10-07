@@ -822,10 +822,12 @@ class OpenAiResponsesClient {
                         outputContents.add(createInputTextContent(textContent.text()));
                     } else if (content instanceof ImageContent imageContent) {
                         outputContents.add(createInputImageContent(imageContent.image(), imageContent.detailLevel()));
+                    } else if (content instanceof PdfFileContent pdfFileContent) {
+                        outputContents.add(createInputPdfContent(pdfFileContent));
                     } else {
                         throw new UnsupportedFeatureException("Unsupported content type in tool result: "
                                 + content.getClass().getName()
-                                + ". Only TextContent and ImageContent are supported.");
+                                + ". Only TextContent, ImageContent, and PdfFileContent are supported.");
                     }
                 }
                 if (promptCacheBreakpoint) {

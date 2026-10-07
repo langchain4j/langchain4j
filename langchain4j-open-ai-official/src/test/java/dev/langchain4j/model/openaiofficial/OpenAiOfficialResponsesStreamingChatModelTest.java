@@ -15,20 +15,25 @@ import com.openai.core.http.HttpResponse;
 import com.openai.models.responses.Response;
 import com.openai.models.responses.ResponseCompletedEvent;
 import com.openai.models.responses.ResponseCreateParams.Input;
+import com.openai.models.responses.ResponseFunctionCallOutputItem;
 import com.openai.models.responses.ResponseIncompleteEvent;
 import com.openai.models.responses.ResponseInputContent;
+import com.openai.models.responses.ResponseInputFileContent;
 import com.openai.models.responses.ResponseStreamEvent;
 import com.openai.models.responses.ResponseWebSearchCallInProgressEvent;
 import com.openai.models.responses.Tool;
 import com.openai.models.responses.ToolSearchTool;
 import com.openai.models.responses.WebSearchTool;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.audio.Audio;
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.AudioContent;
 import dev.langchain4j.data.message.CustomMessage;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.PdfFileContent;
 import dev.langchain4j.data.message.TextContent;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.message.VideoContent;
 import dev.langchain4j.data.pdf.PdfFile;
@@ -43,6 +48,7 @@ import dev.langchain4j.model.chat.response.StreamingHandle;
 import dev.langchain4j.model.output.FinishReason;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
@@ -396,6 +402,81 @@ class OpenAiOfficialResponsesStreamingChatModelTest {
             assertThat(contents.get(1).isInputImage()).isTrue();
             assertThat(contents.get(2).isInputFile()).isTrue();
         });
+    }
+
+    @Test
+    void should_map_text_image_and_pdf_tool_result_content_to_function_call_output() {
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(
+                        UserMessage.from("Get the report"),
+                        AiMessage.from(ToolExecutionRequest.builder()
+                                .id("call_123")
+                                .name("getReport")
+                                .arguments("{}")
+                                .build()),
+                        ToolExecutionResultMessage.builder()
+                                .id("call_123")
+                                .toolName("getReport")
+                                .contents(
+                                        TextContent.from("Here is the report"),
+                                        ImageContent.from("QUJD", "image/png"),
+                                        PdfFileContent.from(URI.create("https://example.com/report.pdf")),
+                                        PdfFileContent.from(PdfFile.builder()
+                                                .base64Data("QUJD")
+                                                .mimeType("application/pdf")
+                                                .build()))
+                                .build())
+                .parameters(PARAMETERS)
+                .build();
+
+        var requestParams = OpenAiOfficialResponsesStreamingChatModel.buildRequestParams(chatRequest, PARAMETERS);
+
+        assertThat(requestParams.input().map(Input::asResponse)).hasValueSatisfying(items -> {
+            var functionCallOutput = items.get(items.size() - 1).asFunctionCallOutput();
+            assertThat(functionCallOutput.callId()).hasValue("call_123");
+
+            List<ResponseFunctionCallOutputItem> outputItems =
+                    functionCallOutput.output().asResponseFunctionCallOutputItemList();
+            assertThat(outputItems).hasSize(4);
+            assertThat(outputItems.get(0).isInputText()).isTrue();
+            assertThat(outputItems.get(1).isInputImage()).isTrue();
+
+            ResponseInputFileContent pdfFromUrl = outputItems.get(2).asInputFile();
+            assertThat(pdfFromUrl.fileUrl()).hasValue("https://example.com/report.pdf");
+            assertThat(pdfFromUrl.fileData()).isEmpty();
+
+            ResponseInputFileContent pdfFromBase64 = outputItems.get(3).asInputFile();
+            assertThat(pdfFromBase64.fileData()).hasValue("data:application/pdf;base64,QUJD");
+            assertThat(pdfFromBase64.filename()).hasValue("document.pdf");
+            assertThat(pdfFromBase64.fileUrl()).isEmpty();
+        });
+    }
+
+    @Test
+    void should_throw_when_tool_result_content_type_is_not_supported() {
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(
+                        UserMessage.from("Get the recording"),
+                        AiMessage.from(ToolExecutionRequest.builder()
+                                .id("call_123")
+                                .name("getRecording")
+                                .arguments("{}")
+                                .build()),
+                        ToolExecutionResultMessage.builder()
+                                .id("call_123")
+                                .toolName("getRecording")
+                                .contents(AudioContent.from(Audio.builder()
+                                        .base64Data("AAAA")
+                                        .mimeType("audio/mp3")
+                                        .build()))
+                                .build())
+                .parameters(PARAMETERS)
+                .build();
+
+        assertThatThrownBy(() -> OpenAiOfficialResponsesStreamingChatModel.buildRequestParams(chatRequest, PARAMETERS))
+                .isInstanceOf(UnsupportedFeatureException.class)
+                .hasMessage("Unsupported content type in tool result: dev.langchain4j.data.message.AudioContent"
+                        + ". Only TextContent, ImageContent, and PdfFileContent are supported.");
     }
 
     @Test
