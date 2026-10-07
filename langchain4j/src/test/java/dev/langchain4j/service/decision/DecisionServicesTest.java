@@ -1,5 +1,7 @@
 package dev.langchain4j.service.decision;
 
+import dev.langchain4j.exception.ContentFilteredException;
+import dev.langchain4j.model.decision.response.RefusalAnswer;
 import dev.langchain4j.service.decision.internal.DecisionMethod;
 import dev.langchain4j.service.decision.internal.DecisionServiceConfig;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -93,6 +95,18 @@ class DecisionServicesTest {
 
         @Decide("Is this message spam?")
         boolean isSpam(@V("message") String message);
+    }
+
+    @Test
+    void should_throw_content_filtered_exception_when_decision_model_refuses_to_answer() {
+
+        // given
+        FakeDecisionModel model = new FakeDecisionModel(Map.<String, DecisionAnswer>of("isSpam", RefusalAnswer.of()));
+        SpamFilter spamFilter =
+                DecisionServices.builder(SpamFilter.class).decisionModel(model).build();
+
+        // when-then
+        assertThatThrownBy(() -> spamFilter.isSpam("You won a cruise!")).isInstanceOf(ContentFilteredException.class);
     }
 
     @Test

@@ -3,6 +3,7 @@ package dev.langchain4j.model.chat.router;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import dev.langchain4j.model.decision.response.RefusalAnswer;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -84,6 +85,17 @@ class DecisionModelChatModelRouterTest {
                 .build();
 
         assertThat(router.route(request(UserMessage.from("Hi!")))).isEqualTo(ChatModelRoutingResult.defaultRoute());
+    }
+
+    @Test
+    void should_use_default_route_when_decision_model_refuses_to_choose() {
+
+        ChatModelRouter router = new DecisionModelChatModelRouter(
+                DecisionModelMock.thatAlwaysAnswers(Map.of("route", RefusalAnswer.of())));
+
+        assertThat(router.route(request(UserMessage.from("Hi!")))).isEqualTo(ChatModelRoutingResult.defaultRoute());
+        assertThat(router.routeAsync(request(UserMessage.from("Hi!"))).join())
+                .isEqualTo(ChatModelRoutingResult.defaultRoute());
     }
 
     @Test

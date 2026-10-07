@@ -9,6 +9,8 @@ import dev.langchain4j.exception.InternalServerException;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpRequest;
+import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.http.client.MockHttpClient;
 import dev.langchain4j.http.client.MockHttpClientBuilder;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
@@ -180,6 +182,44 @@ class TypeSafeDecisionModelTest {
         // then
         assertThat(httpClient.request().body())
                 .contains("\"criteria\":{\"positive\":\"positive\",\"negative\":\"negative\"}");
+    }
+
+    @Test
+    void should_send_text_contents_as_text_state() {
+
+        // given
+        MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(
+                """
+                {"model": "jev-1.13.0", "answers": {"spam": {"type": "noul", "noul": 0.1}}}
+                """));
+        TypeSafeDecisionModel model = model(httpClient);
+
+        // when
+        model.decide(DecisionRequest.builder()
+                .input(List.of(TextContent.from("Hi,"), TextContent.from("are we still meeting tomorrow?")))
+                .question("spam", YesNoQuestion.of("Is this spam?"))
+                .build());
+
+        // then
+        Map<?, ?> body = Json.fromJson(httpClient.request().body(), Map.class);
+        assertThat(body.get("state")).isEqualTo("Hi,\n\nare we still meeting tomorrow?");
+    }
+
+    @Test
+    void should_reject_images_without_calling_the_api() {
+
+        // given
+        MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(RESPONSE));
+        TypeSafeDecisionModel model = model(httpClient);
+
+        // when-then
+        assertThatThrownBy(() -> model.decide(DecisionRequest.builder()
+                        .input(List.of(TextContent.from("Is it damaged?"), ImageContent.from("iVBORw0KGgo=", "image/png")))
+                        .question("damaged", YesNoQuestion.of("Is the item damaged?"))
+                        .build()))
+                .isInstanceOf(UnsupportedFeatureException.class)
+                .hasMessage("TypeSafe supports only text input, but the input contains IMAGE");
+        assertThat(httpClient.requests()).isEmpty();
     }
 
     @Test

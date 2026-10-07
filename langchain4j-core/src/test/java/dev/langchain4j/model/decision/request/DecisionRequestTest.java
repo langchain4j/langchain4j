@@ -3,6 +3,9 @@ package dev.langchain4j.model.decision.request;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import dev.langchain4j.data.message.Content;
+import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.TextContent;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -33,6 +36,41 @@ class DecisionRequestTest {
                         .build()
                         .input())
                 .isEqualTo(Map.of("subject", "Buy now!", "tags", List.of("promo")));
+    }
+
+    @Test
+    void should_accept_contents_as_input() {
+
+        List<Content> contents =
+                List.of(TextContent.from("Is this damaged?"), ImageContent.from("iVBORw0KGgo=", "image/png"));
+
+        assertThat(DecisionRequest.builder()
+                        .input(contents)
+                        .question("damaged", QUESTION)
+                        .build()
+                        .input())
+                .isEqualTo(contents);
+    }
+
+    @Test
+    void should_reject_empty_contents_or_null_content() {
+
+        assertThatThrownBy(() -> DecisionRequest.builder()
+                        .input(List.<Content>of())
+                        .question("spam", QUESTION)
+                        .build())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("input");
+
+        List<Content> withNull = new ArrayList<>();
+        withNull.add(TextContent.from("Buy now!"));
+        withNull.add(null);
+        assertThatThrownBy(() -> DecisionRequest.builder()
+                        .input(withNull)
+                        .question("spam", QUESTION)
+                        .build())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("input can only contain Contents, but contains null");
     }
 
     @Test

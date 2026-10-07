@@ -50,8 +50,8 @@ import org.slf4j.LoggerFactory;
  *                 wikiRetriever, "Engineering wiki: services, deployments, on-call"))
  *         .build();
  * }</pre>
- * If the decision model fails, the {@link FallbackStrategy} applies: by default, no content is retrieved and a warning
- * is logged.
+ * If the decision model fails or refuses to answer, the {@link FallbackStrategy} applies: by default, no content is
+ * retrieved and a warning is logged.
  *
  * @since 1.21.0
  */

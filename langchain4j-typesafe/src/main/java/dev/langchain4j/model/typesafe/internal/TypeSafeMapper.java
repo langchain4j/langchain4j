@@ -5,6 +5,8 @@ import static dev.langchain4j.internal.Utils.isNullOrBlank;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.exception.InvalidDecisionResponseException;
+import dev.langchain4j.data.message.Content;
+import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.decision.request.ChoiceQuestion;
 import dev.langchain4j.model.decision.request.DecisionRequest;
@@ -41,10 +43,28 @@ public final class TypeSafeMapper {
         }
         TypeSafeRequest typeSafeRequest = new TypeSafeRequest();
         typeSafeRequest.model = request.modelName();
-        typeSafeRequest.state = request.input();
+        typeSafeRequest.state = state(request.input());
         typeSafeRequest.questions = new LinkedHashMap<>();
         request.questions().forEach((name, question) -> typeSafeRequest.questions.put(name, toQuestion(question)));
         return typeSafeRequest;
+    }
+
+    private static Object state(Object input) {
+        if (!(input instanceof List<?> contents)) {
+            return input;
+        }
+        StringBuilder text = new StringBuilder();
+        for (Object content : contents) {
+            if (!(content instanceof TextContent textContent)) {
+                throw new UnsupportedFeatureException("TypeSafe supports only text input, but the input contains "
+                        + ((Content) content).type());
+            }
+            if (!text.isEmpty()) {
+                text.append("\n\n");
+            }
+            text.append(textContent.text());
+        }
+        return text.toString();
     }
 
     private static TypeSafeQuestion toQuestion(Question question) {

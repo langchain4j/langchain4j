@@ -66,12 +66,18 @@ final class DecisionModelChecks {
 
     private List<String> failedChecks(DecisionRequest.Builder request) {
         DecisionResponse response = decisionModel.decide(request.questions(questions).build());
+        // a check that the decision model refused to answer fails, so that the guardrail fails closed
         List<String> failedChecks = questions.keySet().stream()
-                .filter(name -> response.yesNo(name).isYes(thresholds.get(name)))
+                .filter(name -> response.isRefused(name) || response.yesNo(name).isYes(thresholds.get(name)))
                 .toList();
         if (log.isDebugEnabled()) {
-            failedChecks.forEach(name -> log.debug(
-                    "Check '{}' failed with a probability of {}", name, response.yesNo(name).probability()));
+            failedChecks.forEach(name -> {
+                if (response.isRefused(name)) {
+                    log.debug("Check '{}' failed because the decision model refused to answer it", name);
+                } else {
+                    log.debug("Check '{}' failed with a probability of {}", name, response.yesNo(name).probability());
+                }
+            });
         }
         return failedChecks;
     }

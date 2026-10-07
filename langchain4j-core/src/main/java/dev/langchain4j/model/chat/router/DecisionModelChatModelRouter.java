@@ -12,6 +12,7 @@ import dev.langchain4j.Experimental;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.AsyncNotSupportedException;
+import dev.langchain4j.exception.ContentFilteredException;
 import dev.langchain4j.internal.DecisionModelInputUtils;
 import dev.langchain4j.model.decision.DecisionModel;
 import dev.langchain4j.model.decision.request.ChoiceQuestion;
@@ -50,9 +51,9 @@ import org.slf4j.LoggerFactory;
  * the request contains
  * no user message, and when the probability of the chosen route is below {@link Builder#minProbability(Double)}.
  * A minimum probability requires a decision model that reports probabilities: otherwise the call fails with an
- * {@link IllegalStateException}, whatever the {@link FallbackStrategy}. When the decision model fails, the
- * {@link FallbackStrategy} applies: by default, the default route is used and a warning is logged. When only one
- * route can handle the request (for example, the only route supporting a JSON schema response format), that route is
+ * {@link IllegalStateException}, whatever the {@link FallbackStrategy}. When the decision model fails or refuses to
+ * choose a route, the {@link FallbackStrategy} applies: by default, the default route is used and a warning is
+ * logged. When only one route can handle the request (for example, the only route supporting a JSON schema response format), that route is
  * selected without calling the decision model.
  * <p>
  * {@link #routeAsync(ChatModelRoutingRequest)} uses {@link DecisionModel#decideAsync(DecisionRequest)}, so it fails
@@ -129,6 +130,13 @@ public class DecisionModelChatModelRouter implements ChatModelRouter {
         } catch (RuntimeException e) {
             return fallback(e);
         }
+        return selectOrFallBack(response, request);
+    }
+
+    private ChatModelRoutingResult selectOrFallBack(DecisionResponse response, ChatModelRoutingRequest request) {
+        if (response.isRefused(QUESTION_NAME)) {
+            return fallback(new ContentFilteredException("The decision model refused to choose a route"));
+        }
         return select(response.choice(QUESTION_NAME), request.routes());
     }
 
@@ -154,7 +162,7 @@ public class DecisionModelChatModelRouter implements ChatModelRouter {
         }
         CompletableFuture<ChatModelRoutingResult> result = source.handle((response, error) -> {
             if (error == null) {
-                return select(response.choice(QUESTION_NAME), request.routes());
+                return selectOrFallBack(response, request);
             }
             Throwable cause = unwrapCompletionException(error);
             if (cause instanceof CancellationException
