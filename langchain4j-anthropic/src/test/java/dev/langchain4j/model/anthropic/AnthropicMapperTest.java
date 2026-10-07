@@ -11,6 +11,7 @@ import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.to
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicSchema;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicSystemPrompt;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicTool;
+import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicTools;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toCacheDiagnostics;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
@@ -764,6 +765,65 @@ class AnthropicMapperTest {
         AnthropicToolResultContent content =
                 (AnthropicToolResultContent) anthropicMessages.get(0).content.get(0);
         assertThat(content.cacheControl).isNull();
+    }
+
+    @Test
+    void should_only_apply_cache_control_to_last_tool_when_multiple_tools_present() {
+        // given
+        ToolSpecification firstTool = ToolSpecification.builder()
+                .name("getWeather")
+                .description("Gets the weather")
+                .build();
+        ToolSpecification secondTool = ToolSpecification.builder()
+                .name("getStockPrice")
+                .description("Gets a stock price")
+                .build();
+
+        // when
+        List<AnthropicTool> tools =
+                toAnthropicTools(List.of(firstTool, secondTool), AnthropicCacheType.EPHEMERAL, false);
+
+        // then
+        assertThat(tools).hasSize(2);
+
+        // first tool should NOT have cache control
+        assertThat(tools.get(0).name).isEqualTo("getWeather");
+        assertThat(tools.get(0).cacheControl).isNull();
+
+        // second (last) tool SHOULD have cache control
+        assertThat(tools.get(1).name).isEqualTo("getStockPrice");
+        assertThat(tools.get(1).cacheControl).isNotNull();
+        assertThat(tools.get(1).cacheControl).extracting("type").isEqualTo("ephemeral");
+    }
+
+    @Test
+    void should_only_apply_cache_control_to_last_tool_even_when_an_earlier_tool_is_structurally_equal() {
+        // given two structurally identical ToolSpecifications (same name, description, parameters, metadata, strict)
+        ToolSpecification firstTool = ToolSpecification.builder()
+                .name("getWeather")
+                .description("Gets the weather")
+                .build();
+        ToolSpecification duplicateOfFirstTool = ToolSpecification.builder()
+                .name("getWeather")
+                .description("Gets the weather")
+                .build();
+
+        // sanity check: these are genuinely equal by value, not by reference, which is what makes the bug reachable
+        assertThat(firstTool).isNotSameAs(duplicateOfFirstTool).isEqualTo(duplicateOfFirstTool);
+
+        // when
+        List<AnthropicTool> tools =
+                toAnthropicTools(List.of(firstTool, duplicateOfFirstTool), AnthropicCacheType.EPHEMERAL, false);
+
+        // then
+        assertThat(tools).hasSize(2);
+
+        // only the tool at the true last index should have cache control...
+        assertThat(tools.get(1).cacheControl).isNotNull();
+        assertThat(tools.get(1).cacheControl).extracting("type").isEqualTo("ephemeral");
+
+        // ...even though it is structurally equal to the first one
+        assertThat(tools.get(0).cacheControl).isNull();
     }
 
     @Test

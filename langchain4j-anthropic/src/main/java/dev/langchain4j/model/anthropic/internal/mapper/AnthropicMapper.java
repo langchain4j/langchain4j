@@ -484,19 +484,21 @@ public class AnthropicMapper {
             Set<String> toolMetadataKeysToSend,
             Boolean strictTools,
             String cacheTtl) {
-        ToolSpecification lastToolSpecification =
-                toolSpecifications.isEmpty() ? null : toolSpecifications.get(toolSpecifications.size() - 1);
-        return toolSpecifications.stream()
-                .map(toolSpecification -> {
-                    boolean isLastItem = toolSpecification.equals(lastToolSpecification);
-                    if (isLastItem && cacheToolsPrompt != AnthropicCacheType.NO_CACHE) {
-                        return toAnthropicTool(
-                                toolSpecification, cacheToolsPrompt, toolMetadataKeysToSend, strictTools, cacheTtl);
-                    }
-                    return toAnthropicTool(
-                            toolSpecification, AnthropicCacheType.NO_CACHE, toolMetadataKeysToSend, strictTools);
-                })
-                .toList();
+        int lastIndex = toolSpecifications.size() - 1;
+        List<AnthropicTool> tools = new ArrayList<>(toolSpecifications.size());
+
+        for (int i = 0; i < toolSpecifications.size(); i++) {
+            ToolSpecification toolSpecification = toolSpecifications.get(i);
+            boolean isLastItem = i == lastIndex;
+            if (isLastItem && cacheToolsPrompt != AnthropicCacheType.NO_CACHE) {
+                tools.add(toAnthropicTool(
+                        toolSpecification, cacheToolsPrompt, toolMetadataKeysToSend, strictTools, cacheTtl));
+            } else {
+                tools.add(toAnthropicTool(
+                        toolSpecification, AnthropicCacheType.NO_CACHE, toolMetadataKeysToSend, strictTools));
+            }
+        }
+        return tools;
     }
 
     public static AnthropicTool toAnthropicTool(
