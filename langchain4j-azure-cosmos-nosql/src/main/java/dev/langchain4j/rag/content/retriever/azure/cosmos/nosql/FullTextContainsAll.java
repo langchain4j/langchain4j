@@ -8,6 +8,7 @@ import dev.langchain4j.store.embedding.filter.Filter;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 
 /**
@@ -52,9 +53,9 @@ public class FullTextContainsAll implements Filter {
 
         Object actualValue = metadata.toMap().get(key);
         if (actualValue instanceof String str) {
-            String lowerStr = str.toLowerCase();
+            String lowerStr = str.toLowerCase(Locale.ROOT);
             // Check if all search terms are contained in the string
-            return searchTerms.stream().allMatch(term -> lowerStr.contains(term.toLowerCase()));
+            return searchTerms.stream().allMatch(term -> lowerStr.contains(term.toLowerCase(Locale.ROOT)));
         }
 
         return false;
