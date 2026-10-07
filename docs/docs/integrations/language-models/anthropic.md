@@ -13,7 +13,7 @@ sidebar_position: 2
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-anthropic</artifactId>
-    <version>1.21.0</version>
+    <version>1.22.0</version>
 </dependency>
 ```
 
@@ -952,7 +952,7 @@ Import Spring Boot starter for Anthropic:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-anthropic-spring-boot4-starter</artifactId>
-    <version>1.21.0-beta31</version>
+    <version>1.22.0-beta32</version>
 </dependency>
 ```
 

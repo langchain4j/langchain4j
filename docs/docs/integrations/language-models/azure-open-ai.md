@@ -32,7 +32,7 @@ The `langchain4j-azure-open-ai` library is available on Maven Central.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-azure-open-ai</artifactId>
-    <version>1.21.0</version>
+    <version>1.22.0</version>
 </dependency>
 ```
 
@@ -44,7 +44,7 @@ A Spring Boot starter is available to configure the `langchain4j-azure-open-ai` 
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-azure-open-ai-spring-boot4-starter</artifactId>
-    <version>1.21.0-beta31</version>
+    <version>1.22.0-beta32</version>
 </dependency>
 ```
 
@@ -363,7 +363,7 @@ The audio transcription feature is included in the main `langchain4j-azure-open-
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-azure-open-ai</artifactId>
-    <version>1.21.0</version>
+    <version>1.22.0</version>
 </dependency>
 ```
 

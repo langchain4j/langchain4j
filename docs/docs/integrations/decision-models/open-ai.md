@@ -22,7 +22,7 @@ The Decisions API is in public beta, and this integration is experimental and ma
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai</artifactId>
-    <version>1.21.0</version>
+    <version>1.22.0</version>
 </dependency>
 ```
 
@@ -32,7 +32,7 @@ or, for the official SDK:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai-official</artifactId>
-    <version>1.21.0-beta31</version>
+    <version>1.22.0-beta32</version>
 </dependency>
 ```
 
@@ -81,7 +81,7 @@ Add the starter of the module you use:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai-spring-boot4-starter</artifactId>
-    <version>1.21.0-beta31</version>
+    <version>1.22.0-beta32</version>
 </dependency>
 ```
 

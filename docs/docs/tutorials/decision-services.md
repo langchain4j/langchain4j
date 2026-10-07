@@ -49,7 +49,7 @@ Decision Services are part of the `langchain4j` module; add it next to the modul
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j</artifactId>
-    <version>1.21.0</version>
+    <version>1.22.0</version>
 </dependency>
 ```
 
