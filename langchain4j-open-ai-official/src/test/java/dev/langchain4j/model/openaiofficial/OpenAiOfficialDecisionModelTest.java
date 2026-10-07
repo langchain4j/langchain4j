@@ -225,6 +225,34 @@ class OpenAiOfficialDecisionModelTest {
     }
 
     @Test
+    void should_send_map_input_as_labeled_text_parts() throws Exception {
+
+        // given
+        httpClient.enqueue(
+                "decisions",
+                """
+                {"model": "gpt-6-luna", "answers": [{"type": "predicate", "name": "urgent", "probability": 0.9}]}
+                """);
+
+        // when
+        model().decide(DecisionRequest.builder()
+                .input(Map.of("ticket", "My payouts are failing"))
+                .question("urgent", YesNoQuestion.of("Does this need attention today?"))
+                .build());
+
+        // then
+        assertThat(OBJECT_MAPPER.readTree(httpClient.requestTo("decisions").body()).get("input"))
+                .isEqualTo(OBJECT_MAPPER.readTree(
+                        """
+                        [{
+                          "role": "user",
+                          "content": [{"type": "input_text", "text": "ticket: \\"My payouts are failing\\""}],
+                          "type": "message"
+                        }]
+                        """));
+    }
+
+    @Test
     void should_send_map_with_contents_as_labeled_parts() throws Exception {
 
         // given

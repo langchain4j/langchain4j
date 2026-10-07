@@ -57,9 +57,6 @@ public final class DecisionMapper {
         DecisionCreateRequest.InputMessage message = new DecisionCreateRequest.InputMessage();
         message.content = new ArrayList<>();
         if (input instanceof Map<?, ?> map) {
-            if (!containsContents(map)) {
-                return Json.toJson(map);
-            }
             // each value is labeled with its name, contents such as images follow their label
             map.forEach((name, value) -> {
                 if (value instanceof Content content) {
@@ -78,10 +75,6 @@ public final class DecisionMapper {
             message.content.add(toInputPart((Content) content));
         }
         return List.of(message);
-    }
-
-    private static boolean containsContents(Map<?, ?> map) {
-        return map.values().stream().anyMatch(value -> value instanceof Content || isContents(value));
     }
 
     private static boolean isContents(Object value) {

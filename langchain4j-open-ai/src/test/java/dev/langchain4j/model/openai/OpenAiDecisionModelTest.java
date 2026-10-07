@@ -194,7 +194,7 @@ class OpenAiDecisionModelTest {
     }
 
     @Test
-    void should_send_map_input_as_json_text() throws Exception {
+    void should_send_map_input_as_labeled_text_parts() throws Exception {
 
         // given
         MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(
@@ -211,7 +211,15 @@ class OpenAiDecisionModelTest {
 
         // then
         JsonNode body = OBJECT_MAPPER.readTree(httpClient.request().body());
-        assertThat(body.get("input").asText()).isEqualTo("{\"ticket\":\"My payouts are failing\"}");
+        assertThat(body.get("input"))
+                .isEqualTo(OBJECT_MAPPER.readTree(
+                        """
+                        [{
+                          "type": "message",
+                          "role": "user",
+                          "content": [{"type": "input_text", "text": "ticket: \\"My payouts are failing\\""}]
+                        }]
+                        """));
     }
 
     @Test

@@ -54,8 +54,6 @@ class InternalOpenAiOfficialDecisionHelper {
         Object input = request.input();
         if (input instanceof String text) {
             params.input(text);
-        } else if (input instanceof Map<?, ?> map && !containsContents(map)) {
-            params.input(Json.toJson(map));
         } else if (input instanceof Map<?, ?> map) {
             // each value is labeled with its name, contents such as images follow their label
             List<DecisionInputPart> parts = new ArrayList<>();
@@ -82,10 +80,6 @@ class InternalOpenAiOfficialDecisionHelper {
         }
         request.questions().forEach((name, question) -> addQuestion(params, name, question));
         return params.build();
-    }
-
-    private static boolean containsContents(Map<?, ?> map) {
-        return map.values().stream().anyMatch(value -> value instanceof Content || isContents(value));
     }
 
     private static boolean isContents(Object value) {
