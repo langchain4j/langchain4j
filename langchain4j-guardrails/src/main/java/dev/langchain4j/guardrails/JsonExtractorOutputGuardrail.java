@@ -22,6 +22,10 @@ import org.slf4j.LoggerFactory;
  *     defaults to {@link #DEFAULT_REPROMPT_PROMPT}.
  * </p>
  * <p>
+ *     When the response is already clean JSON, the result is a plain {@code SUCCESS} carrying the deserialized
+ *     object, not a rewritten output: a rewrite would prevent any guardrail later in the chain from reprompting.
+ * </p>
+ * <p>
  *     Deserialization uses a plain Jackson {@link ObjectMapper} with its default settings. A
  *     guardrail exists to reject output that does not fit the expected shape, so it deliberately
  *     does not use LangChain4j's own JSON codec, which is more forgiving: that codec reads private
@@ -118,7 +122,10 @@ public class JsonExtractorOutputGuardrail<T> implements OutputGuardrail {
         LOGGER.debug("LLM output: {}", llmResponse);
 
         return deserialize(llmResponse)
-                .map(r -> successWith(r.json(), r.value()))
+                // Clean JSON is not a rewrite: marking it as one would block every later guardrail
+                // in the chain from reprompting. Only extracted JSON differs from the original text.
+                .map(r ->
+                        r.json().equals(llmResponse) ? successWithResult(r.value()) : successWith(r.json(), r.value()))
                 .orElseGet(() -> invokeInvalidJson(responseFromLLM, llmResponse));
     }
 

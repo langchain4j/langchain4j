@@ -123,6 +123,20 @@ public final class OutputGuardrailResult implements GuardrailResult<OutputGuardr
     }
 
     /**
+     * Produces a successful result carrying a result object without marking the output as rewritten.
+     * <p>
+     * Unlike {@link #successWith(String, Object)} and {@link #successWith(AiMessage, Object)}, the result is a
+     * plain {@link Result#SUCCESS}, so subsequent guardrails in the chain remain allowed to retry or reprompt.
+     *
+     * @param successfulResult
+     *            the object to carry on the successful result.
+     * @return The result of a successful output guardrail validation carrying the given object.
+     */
+    public static OutputGuardrailResult successWithResult(Object successfulResult) {
+        return new OutputGuardrailResult(Result.SUCCESS, (AiMessage) null, successfulResult, Collections.emptyList());
+    }
+
+    /**
      * Produces a non-fatal failure
      *
      * @param failures A list of {@link Failure}s
