@@ -254,6 +254,23 @@ Triage triage(@V("ticket") String ticket, @V("plan") String plan);
 
 If a name is not available, `build()` fails and explains both options.
 
+### Images
+
+Parameters of type `ImageContent` or `Image`, or lists of them, are sent as images, if the decision model supports
+them (for example [OpenAI](/integrations/decision-models/open-ai)):
+
+```java
+interface DamageInspector {
+
+    @Decide("Is the item visibly damaged?")
+    boolean isDamaged(ImageContent photo, String comment);
+}
+```
+
+The other parameters are then sent as JSON text, followed by the images:
+`{"comment": "..."}`, then the photo. A decision model that does not support images throws an
+`UnsupportedFeatureException` without calling the model.
+
 ### Model name and other parameters
 
 A parameter of type `DecisionRequestParameters` is not sent as part of the input.

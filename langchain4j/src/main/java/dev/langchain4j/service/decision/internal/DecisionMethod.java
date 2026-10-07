@@ -15,6 +15,10 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
 
 import dev.langchain4j.Internal;
+import dev.langchain4j.data.image.Image;
+import dev.langchain4j.data.message.Content;
+import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.exception.InvalidDecisionResponseException;
 import dev.langchain4j.model.decision.request.ChoiceQuestion;
 import dev.langchain4j.model.decision.request.DecisionRequest;
@@ -124,6 +128,7 @@ public final class DecisionMethod {
         this.questions = Collections.unmodifiableMap(analysis.questions);
         this.reflectiveTypes = Collections.unmodifiableSet(analysis.reflectiveTypes);
         this.inputTypes = analysis.inputParameters.stream()
+                .filter(parameter -> !parameter.images())
                 .map(parameter -> method.getGenericParameterTypes()[parameter.index()])
                 .toList();
     }
@@ -198,23 +203,53 @@ public final class DecisionMethod {
      */
     public DecisionRequest toRequest(Object[] args) {
         Map<String, Object> input = new LinkedHashMap<>();
+        List<Content> images = new ArrayList<>();
         for (InputParameter parameter : inputParameters) {
             Object value = args[parameter.index()];
-            if (value != null) {
+            if (value == null) {
+                continue;
+            }
+            if (parameter.images()) {
+                addImages(value, images);
+            } else {
                 input.put(parameter.name(), toInputValue(value));
             }
         }
-        if (input.isEmpty()) {
+        if (input.isEmpty() && images.isEmpty()) {
             throw new IllegalArgumentException("All arguments of method '%s' that are sent to the model (%s) are null"
                     .formatted(
                             method.getName(),
                             inputParameters.stream().map(InputParameter::name).toList()));
         }
-        return DecisionRequest.builder()
-                .input(input)
-                .questions(questions)
+        DecisionRequest.Builder request = DecisionRequest.builder();
+        if (images.isEmpty()) {
+            request.input(input);
+        } else {
+            // the named values are sent as JSON text, followed by the images
+            List<Content> contents = new ArrayList<>();
+            if (!input.isEmpty()) {
+                contents.add(TextContent.from(Json.toJson(input)));
+            }
+            contents.addAll(images);
+            request.input(contents);
+        }
+        return request.questions(questions)
                 .parameters(requestParameters(args))
                 .build();
+    }
+
+    private static void addImages(Object value, List<Content> images) {
+        if (value instanceof Collection<?> collection) {
+            collection.forEach(item -> {
+                if (item != null) {
+                    addImages(item, images);
+                }
+            });
+        } else if (value instanceof Image image) {
+            images.add(ImageContent.from(image));
+        } else {
+            images.add((ImageContent) value);
+        }
     }
 
     /**
@@ -413,7 +448,7 @@ public final class DecisionMethod {
                     throw illegalConfiguration(
                             "Method '%s' has several parameters named '%s'", method.getName(), name);
                 }
-                inputParameters.add(new InputParameter(name, i));
+                inputParameters.add(new InputParameter(name, i, isImageType(parameter.getParameterizedType())));
             }
             if (inputParameters.isEmpty()) {
                 throw illegalConfiguration(
@@ -607,7 +642,20 @@ public final class DecisionMethod {
         SCALE
     }
 
-    private record InputParameter(String name, int index) {}
+    /**
+     * Whether the type is {@link ImageContent} or {@link Image}, or a collection of them.
+     */
+    private static boolean isImageType(Type type) {
+        if (type instanceof Class<?> c) {
+            return c == ImageContent.class || c == Image.class;
+        }
+        return type instanceof ParameterizedType parameterized
+                && parameterized.getRawType() instanceof Class<?> raw
+                && Collection.class.isAssignableFrom(raw)
+                && isImageType(parameterized.getActualTypeArguments()[0]);
+    }
+
+    private record InputParameter(String name, int index, boolean images) {}
 
     private record QuestionMapping(String name, Question question, Kind kind, Class<?> enumType) {
 

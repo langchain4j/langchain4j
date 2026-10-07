@@ -8,6 +8,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.offset;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import dev.langchain4j.data.image.Image;
+import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.exception.InvalidDecisionResponseException;
 import dev.langchain4j.model.decision.DecisionModel;
 import dev.langchain4j.model.decision.response.ScaleAnswer;
@@ -107,6 +110,75 @@ class DecisionServicesTest {
 
         // when-then
         assertThatThrownBy(() -> spamFilter.isSpam("You won a cruise!")).isInstanceOf(ContentFilteredException.class);
+    }
+
+    interface DamageInspector {
+
+        @Decide("Is the item visibly damaged?")
+        boolean isDamaged(@V("photo") ImageContent photo, @V("comment") String comment);
+
+        @Decide("Is any of the items visibly damaged?")
+        boolean anyDamaged(@V("photos") List<Image> photos);
+    }
+
+    @Test
+    void should_send_images_as_image_contents_and_the_other_values_as_json_text() {
+
+        // given
+        FakeDecisionModel model = new FakeDecisionModel(Map.of("isDamaged", yesNo(0.9)));
+        DamageInspector inspector =
+                DecisionServices.builder(DamageInspector.class).decisionModel(model).build();
+        ImageContent photo = ImageContent.from("iVBORw0KGgo=", "image/png");
+
+        // when
+        boolean damaged = inspector.isDamaged(photo, "Arrived like this");
+
+        // then
+        assertThat(damaged).isTrue();
+        assertThat(model.request().input())
+                .isEqualTo(List.of(TextContent.from("{\"comment\":\"Arrived like this\"}"), photo));
+    }
+
+    @Test
+    void should_send_only_images_when_the_other_values_are_null() {
+
+        // given
+        FakeDecisionModel model = new FakeDecisionModel(Map.of("isDamaged", yesNo(0.9)));
+        DamageInspector inspector =
+                DecisionServices.builder(DamageInspector.class).decisionModel(model).build();
+        ImageContent photo = ImageContent.from("iVBORw0KGgo=", "image/png");
+
+        // when
+        inspector.isDamaged(photo, null);
+
+        // then
+        assertThat(model.request().input()).isEqualTo(List.of(photo));
+    }
+
+    @Test
+    void should_send_each_image_of_a_list() {
+
+        // given
+        FakeDecisionModel model = new FakeDecisionModel(Map.of("anyDamaged", yesNo(0.2)));
+        DamageInspector inspector =
+                DecisionServices.builder(DamageInspector.class).decisionModel(model).build();
+        Image first = Image.builder().base64Data("iVBORw0KGgo=").mimeType("image/png").build();
+        Image second = Image.builder().base64Data("R0lGODlh").mimeType("image/gif").build();
+
+        // when
+        inspector.anyDamaged(List.of(first, second));
+
+        // then
+        assertThat(model.request().input()).isEqualTo(List.of(ImageContent.from(first), ImageContent.from(second)));
+    }
+
+    @Test
+    void should_not_register_image_parameters_as_json_input_types() throws Exception {
+
+        DecisionMethod method = DecisionMethod.of(
+                DamageInspector.class.getMethod("isDamaged", ImageContent.class, String.class));
+
+        assertThat(method.inputTypes()).containsExactly(String.class);
     }
 
     @Test
