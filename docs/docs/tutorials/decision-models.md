@@ -182,7 +182,7 @@ ScaleQuestion severity = ScaleQuestion.builder()
 
 ## Describing the input (state)
 
-The input is either text or a `Map` of named values.
+The input is text, a `Map` of named values, or a list of contents (see [Images](#images)).
 Use a `Map` to give the model several pieces of information that belong together:
 
 ```java
@@ -195,9 +195,9 @@ DecisionRequest request = DecisionRequest.builder()
         .build();
 ```
 
-The values of the map can be strings, numbers, booleans, `null`s, maps and lists. Other objects are rejected,
-so that you decide which fields are sent to the model provider: convert them to a `Map` that holds only what the
-decision needs.
+The values of the map can be strings, numbers, booleans, `null`s, maps and lists, and, directly in the map, contents
+such as images (see [Images](#images)). Other objects are rejected, so that you decide which fields are sent to the
+model provider: convert them to a `Map` that holds only what the decision needs.
 
 ### Images
 

@@ -27,6 +27,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import java.util.LinkedHashMap;
+import dev.langchain4j.data.message.PdfFileContent;
 import org.junit.jupiter.api.Test;
 
 class OpenAiOfficialDecisionModelTest {
@@ -257,6 +258,47 @@ class OpenAiOfficialDecisionModelTest {
                           "type": "message"
                         }]
                         """));
+    }
+
+    @Test
+    void should_send_list_of_images_after_their_name_and_reject_other_contents() throws Exception {
+
+        // given
+        httpClient.enqueue(
+                "decisions",
+                """
+                {"model": "gpt-6-luna", "answers": [{"type": "predicate", "name": "damaged", "probability": 0.95}]}
+                """);
+        ImageContent front = ImageContent.from("iVBORw0KGgo=", "image/png", ImageContent.DetailLevel.LOW);
+        ImageContent back = ImageContent.from("R0lGODlh", "image/gif", ImageContent.DetailLevel.LOW);
+
+        // when
+        model().decide(DecisionRequest.builder()
+                .input(Map.of("photos", List.of(front, back)))
+                .question("damaged", YesNoQuestion.of("Is the item damaged?"))
+                .build());
+
+        // then
+        assertThat(OBJECT_MAPPER
+                        .readTree(httpClient.requestTo("decisions").body())
+                        .get("input")
+                        .get(0)
+                        .get("content"))
+                .isEqualTo(OBJECT_MAPPER.readTree(
+                        """
+                        [
+                          {"type": "input_text", "text": "photos:"},
+                          {"type": "input_image", "image_url": "data:image/png;base64,iVBORw0KGgo=", "detail": "low"},
+                          {"type": "input_image", "image_url": "data:image/gif;base64,R0lGODlh", "detail": "low"}
+                        ]
+                        """));
+        assertThatThrownBy(() -> model().decide(DecisionRequest.builder()
+                        .input(Map.of("invoice", PdfFileContent.from("JVBERi0=", "application/pdf")))
+                        .question("damaged", YesNoQuestion.of("Is the item damaged?"))
+                        .build()))
+                .isInstanceOf(UnsupportedFeatureException.class)
+                .hasMessageContaining("PDF");
+        assertThat(httpClient.recordedRequests()).hasSize(1);
     }
 
     @Test

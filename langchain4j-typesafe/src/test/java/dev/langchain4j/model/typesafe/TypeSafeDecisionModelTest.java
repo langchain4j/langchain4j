@@ -265,7 +265,33 @@ class TypeSafeDecisionModelTest {
                         .build()))
                 .isInstanceOf(UnsupportedFeatureException.class)
                 .hasMessage("TypeSafe supports only text input, but the input contains IMAGE");
+        assertThatThrownBy(() -> model.decide(DecisionRequest.builder()
+                        .input(Map.of("photos", List.of(ImageContent.from("iVBORw0KGgo=", "image/png"))))
+                        .question("damaged", YesNoQuestion.of("Is the item damaged?"))
+                        .build()))
+                .isInstanceOf(UnsupportedFeatureException.class);
         assertThat(httpClient.requests()).isEmpty();
+    }
+
+    @Test
+    void should_send_text_contents_of_map_input_as_text() {
+
+        // given
+        MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(
+                """
+                {"model": "jev-1.13.0", "answers": {"spam": {"type": "noul", "noul": 0.1}}}
+                """));
+        TypeSafeDecisionModel model = model(httpClient);
+
+        // when
+        model.decide(DecisionRequest.builder()
+                .input(Map.of("message", TextContent.from("Hi, are we still meeting tomorrow?")))
+                .question("spam", YesNoQuestion.of("Is this spam?"))
+                .build());
+
+        // then
+        Map<?, ?> body = Json.fromJson(httpClient.request().body(), Map.class);
+        assertThat(body.get("state")).isEqualTo(Map.of("message", "Hi, are we still meeting tomorrow?"));
     }
 
     @Test

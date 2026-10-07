@@ -26,6 +26,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import java.util.LinkedHashMap;
+import dev.langchain4j.data.message.PdfFileContent;
 import org.junit.jupiter.api.Test;
 
 class OpenAiDecisionModelTest {
@@ -282,6 +283,44 @@ class OpenAiDecisionModelTest {
                           ]
                         }]
                         """));
+    }
+
+    @Test
+    void should_send_list_of_images_after_their_name_and_reject_other_contents() throws Exception {
+
+        // given
+        MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(
+                """
+                {"model": "gpt-6-luna", "answers": [{"type": "predicate", "name": "damaged", "probability": 0.95}]}
+                """));
+        ImageContent front = ImageContent.from("iVBORw0KGgo=", "image/png", ImageContent.DetailLevel.LOW);
+        ImageContent back = ImageContent.from("R0lGODlh", "image/gif", ImageContent.DetailLevel.LOW);
+
+        // when
+        model(httpClient)
+                .decide(DecisionRequest.builder()
+                        .input(Map.of("photos", List.of(front, back)))
+                        .question("damaged", YesNoQuestion.of("Is the item damaged?"))
+                        .build());
+
+        // then
+        assertThat(OBJECT_MAPPER.readTree(httpClient.request().body()).get("input").get(0).get("content"))
+                .isEqualTo(OBJECT_MAPPER.readTree(
+                        """
+                        [
+                          {"type": "input_text", "text": "photos:"},
+                          {"type": "input_image", "image_url": "data:image/png;base64,iVBORw0KGgo=", "detail": "low"},
+                          {"type": "input_image", "image_url": "data:image/gif;base64,R0lGODlh", "detail": "low"}
+                        ]
+                        """));
+        assertThatThrownBy(() -> model(httpClient)
+                        .decide(DecisionRequest.builder()
+                                .input(Map.of("invoice", PdfFileContent.from("JVBERi0=", "application/pdf")))
+                                .question("damaged", YesNoQuestion.of("Is the item damaged?"))
+                                .build()))
+                .isInstanceOf(UnsupportedFeatureException.class)
+                .hasMessageContaining("PDF");
+        assertThat(httpClient.requests()).hasSize(1);
     }
 
     @Test

@@ -53,7 +53,9 @@ public final class DecisionRequest {
 
     /**
      * The input to evaluate: a {@link String}, an unmodifiable {@link java.util.Map} with {@link String} keys, or an
-     * unmodifiable {@link List} of {@link Content}s.
+     * unmodifiable {@link List} of {@link Content}s. A value of the map can be a {@link Content} or a list of
+     * {@link Content}s (for example, a named image): implementations must not convert such values to JSON text, but
+     * send them as contents or throw an {@link dev.langchain4j.exception.UnsupportedFeatureException}.
      */
     public Object input() {
         return input;

@@ -14,7 +14,8 @@ import java.util.Map;
 
 /**
  * Validates the input of a request and copies it into an immutable tree of maps, lists, strings, numbers, booleans
- * and {@code null}s, or into an immutable list of {@link Content}s.
+ * and {@code null}s, where the values of the top-level map can also be {@link Content}s or lists of them, or into an
+ * immutable list of {@link Content}s.
  */
 final class FreeFormValue {
 

@@ -240,7 +240,7 @@ Triage triage(String ticket, Customer customer);
 ```
 
 The names help the model understand what each value means, so choose them well.
-Objects are converted to maps using their Java field names.
+Objects are converted to maps using their Java field names, except contents such as images (see [Images](#images)).
 All fields are sent, so to control exactly what the model sees (and to avoid sending personal data it does not
 need), pass a small record containing only the relevant fields, rather than, for example, a JPA entity.
 If all parameters sent to the model are `null`, the call fails with an `IllegalArgumentException`.
@@ -256,8 +256,9 @@ If a name is not available, `build()` fails and explains both options.
 
 ### Images
 
-Parameters of type `ImageContent` or `Image`, or lists of them, are sent as images, if the decision model supports
-them (for example [OpenAI](/integrations/decision-models/open-ai)):
+Parameters of type `Image` or of a `Content` type, such as `ImageContent`, or collections or arrays of them, are
+sent as contents, for example images, if the decision model supports them
+(for example [OpenAI](/integrations/decision-models/open-ai)):
 
 ```java
 interface DamageInspector {
@@ -267,8 +268,9 @@ interface DamageInspector {
 }
 ```
 
-Like the other parameters, the images are sent under the names of their parameters (see
+Like the other parameters, contents are sent under the names of their parameters (see
 [Images](/tutorials/decision-models#images)), and each decision model sends them in the form its API expects.
+`Image`s are sent as `ImageContent`s with the default detail level; to choose another, pass an `ImageContent`.
 A decision model that does not support images throws an `UnsupportedFeatureException` without calling the model.
 
 ### Model name and other parameters
